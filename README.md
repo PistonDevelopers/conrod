@@ -1,7 +1,7 @@
 conrod
 ======
 
-A graph based user interface with Boolean algebra search and flexible panel system written in Rust.
+A graph based user interface with Boolean predicate search and flexible panel system written in Rust.
 
 Here's an example of the c++ implementation of the nodal UI.
 
