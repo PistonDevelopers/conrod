@@ -73,7 +73,7 @@ endif
 all: $(DEFAULT)
 
 help:
-	$(Q)echo "--- rust-empty (0.4 004)" \
+	$(Q)echo "--- rust-empty (0.4 005)" \
 	&& echo "make run               - Runs executable" \
 	&& echo "make exe               - Builds main executable" \
 	&& echo "make lib               - Both static and dynamic library" \
@@ -318,7 +318,7 @@ git-ignore:
 	) \
 	|| \
 	( \
-		echo -e ".DS_Store\n*~\n*#\n*.o\n*.so\n*.swp\n*.dylib\n*.dSYM\n*.dll\n*.rlib\n*.dummy\n*.exe\n*-test\n/bin/main\n/bin/test-internal\n/bin/test-external\n/doc/\n/target/\n/build/\n/.rust/\nrusti.sh\n/examples/*\n!/examples/*.rs" > .gitignore \
+		echo -e ".DS_Store\n*~\n*#\n*.o\n*.so\n*.swp\n*.dylib\n*.dSYM\n*.dll\n*.rlib\n*.dummy\n*.exe\n*-test\n/bin/main\n/bin/test-internal\n/bin/test-external\n/doc/\n/target/\n/build/\n/.rust/\nrusti.sh\n/examples/**\n!/examples/*.rs\n!/examples/assets/" > .gitignore \
 		&& echo "--- Created '.gitignore' for git" \
 		&& cat .gitignore \
 	)
