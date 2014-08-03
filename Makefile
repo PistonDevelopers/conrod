@@ -64,7 +64,8 @@ DYLIB_FILE = $(shell (rustc --crate-type=dylib --crate-file-name "$(LIB_ENTRY_FI
 DYLIB = target/$(DYLIB_FILE)
 
 EXE_FILE = $(shell (rustc --crate-type=bin --print-file-name "$(EXE_ENTRY_FILE)" 2> /dev/null) || (echo "main"))
-EXE = bin/$(EXE_FILE)
+EXE_DIR = target
+EXE = $(EXE_DIR)/$(EXE_FILE)
 
 # Use 'VERBOSE=1' to echo all commands, for example 'make help VERBOSE=1'.
 ifdef VERBOSE
@@ -76,7 +77,7 @@ endif
 all: $(DEFAULT)
 
 help:
-	$(Q)echo "--- rust-empty (0.7 000)"
+	$(Q)echo "--- rust-empty (0.7 002)"
 	$(Q)echo "make run               - Runs executable"
 	$(Q)echo "make exe               - Builds main executable"
 	$(Q)echo "make lib               - Both static and dynamic library"
@@ -165,8 +166,7 @@ cargo-exe: $(EXE_ENTRY_FILE)
 	|| \
 	( \
 		name=$${PWD##/*/} ; \
-		readme=$$((test -e README.md && echo -e "readme = \"README.md\"") || ("")) ; \
-		echo -e "[package]\n\nname = \"$$name\"\nversion = \"0.0.0\"\n$$readme\nauthors = [\"Your Name <your@email.com>\"]\ntags = []\n\n[[bin]]\n\nname = \"$$name\"\npath = \"$(EXE_ENTRY_FILE)\"\n" > Cargo.toml \
+		echo -e "[package]\n\nname = \"$$name\"\nversion = \"0.0.0\"\nauthors = [\"Your Name <your@email.com>\"]\ntags = []\n\n[[bin]]\n\nname = \"$$name\"\npath = \"$(EXE_ENTRY_FILE)\"\n" > Cargo.toml \
 		&& echo "--- Created 'Cargo.toml' for executable" \
 		&& cat Cargo.toml \
 	)
@@ -179,8 +179,7 @@ cargo-lib: $(LIB_ENTRY_FILE)
 	|| \
 	( \
 		name=$${PWD##/*/} ; \
-		readme=$$((test -e README.md && echo -e "readme = \"README.md\"") || ("")) ; \
-		echo -e "[package]\n\nname = \"$$name\"\nversion = \"0.0.0\"\n$$readme\nauthors = [\"Your Name <your@email.com>\"]\ntags = []\n\n[[lib]]\n\nname = \"$$name\"\npath = \"$(LIB_ENTRY_FILE)\"\n" > Cargo.toml \
+		echo -e "[package]\n\nname = \"$$name\"\nversion = \"0.0.0\"\nauthors = [\"Your Name <your@email.com>\"]\ntags = []\n\n[[lib]]\n\nname = \"$$name\"\npath = \"$(LIB_ENTRY_FILE)\"\n" > Cargo.toml \
 		&& echo "--- Created 'Cargo.toml' for library" \
 		&& cat Cargo.toml \
 	)
@@ -214,14 +213,14 @@ doc: $(SOURCE_FILES) | src/
 	&& echo "--- Built documentation"
 
 run: exe
-	$(Q)cd bin/ \
+	$(Q)cd "$(EXE_DIR)/" \
 	&& ./$(EXE_FILE)
 
 target-dir: $(TARGET_LIB_DIR)
 
 exe: $(EXE) | $(TARGET_LIB_DIR)
 
-$(EXE): $(SOURCE_FILES) | bin/ $(EXE_ENTRY_FILE)
+$(EXE): $(SOURCE_FILES) | $(EXE_DIR)/ $(EXE_ENTRY_FILE)
 	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) $(EXE_ENTRY_FILE) -o $(EXE) -L "$(TARGET_LIB_DIR)" -L "target" \
 	&& echo "--- Built executable" \
 	&& echo "--- Type 'make run' to run executable"
@@ -230,29 +229,29 @@ test: test-internal test-external
 	$(Q)echo "--- Internal tests succeeded" \
 	&& echo "--- External tests succeeded"
 
-test-external: bin/test-external
-	$(Q)cd "bin/" \
+test-external: $(EXE_DIR)/test-external
+	$(Q)cd "$(EXE_DIR)/" \
 	&& ./test-external
 
-bin/test-external: $(SOURCE_FILES) | rlib bin/ src/test.rs
-	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) --test src/test.rs -o bin/test-external -L "$(TARGET_LIB_DIR)" -L "target" \
+$(EXE_DIR)/test-external: $(SOURCE_FILES) | rlib $(EXE_DIR)/ src/test.rs
+	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) --test src/test.rs -o "$(EXE_DIR)/test-external" -L "$(TARGET_LIB_DIR)" -L "target" \
 	&& echo "--- Built external test runner"
 
-test-internal: bin/test-internal
-	$(Q)cd "bin/" \
+test-internal: $(EXE_DIR)/test-internal
+	$(Q)cd "$(EXE_DIR)/" \
 	&& ./test-internal
 
-bin/test-internal: $(SOURCE_FILES) | rlib src/ bin/
-	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) --test $(LIB_ENTRY_FILE) -o bin/test-internal -L "$(TARGET_LIB_DIR)" -L "target" \
+$(EXE_DIR)/test-internal: $(SOURCE_FILES) | rlib src/ $(EXE_DIR)/
+	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) --test $(LIB_ENTRY_FILE) -o "$(EXE_DIR)/test-internal" -L "$(TARGET_LIB_DIR)" -L "target" \
 	&& echo "--- Built internal test runner"
 
 bench: bench-internal bench-external
 
 bench-external: test-external
-	$(Q)bin/test-external --bench
+	$(Q)$(EXE_DIR)/test-external --bench
 
 bench-internal: test-internal
-	$(Q)bin/test-internal --bench
+	$(Q)$(EXE_DIR)/test-internal --bench
 
 lib: rlib dylib
 	$(Q)echo "--- Type 'make test' to test library"
@@ -269,10 +268,10 @@ $(DYLIB): $(SOURCE_FILES) | $(LIB_ENTRY_FILE) $(TARGET_LIB_DIR)
 	$(Q)$(COMPILER) --target "$(TARGET)" $(COMPILER_FLAGS) --crate-type=dylib $(LIB_ENTRY_FILE) -L "$(TARGET_LIB_DIR)" --out-dir "target/" \
 	&& echo "--- Built dylib"
 
-bin/:
-	$(Q)mkdir -p bin
+$(EXE_DIR)/:
+	$(Q)mkdir -p $(EXE_DIR)
 
-$(TARGET_LIB_DIR):
+$(TARGET_LIB_DIR)/:
 	$(Q)mkdir -p $(TARGET_LIB_DIR)
 
 src/:
@@ -297,7 +296,7 @@ git-ignore:
 	) \
 	|| \
 	( \
-		echo -e ".DS_Store\n*~\n*#\n*.o\n*.so\n*.swp\n*.old\n*.bak\n*.kate-swp\n*.dylib\n*.dSYM\n*.dll\n*.rlib\n*.dummy\n*.exe\n*-test\n/$(EXE)\n/bin/test-internal\n/bin/test-external\n/doc/\n/target/\n/build/\n/.rust/\nrusti.sh\nwatch.sh\n/examples/**\n!/examples/*.rs\n!/examples/assets/" > .gitignore \
+		echo -e ".DS_Store\n*~\n*#\n*.o\n*.so\n*.swp\n*.old\n*.bak\n*.kate-swp\n*.dylib\n*.dSYM\n*.dll\n*.rlib\n*.dummy\n*.exe\n*-test\n/$(EXE)\n/$(EXE_DIR)/test-internal\n/$(EXE_DIR)/test-external\n/doc/\n/target/\n/build/\n/.rust/\nrusti.sh\nwatch.sh\n/examples/**\n!/examples/*.rs\n!/examples/assets/\n!/$(EXE_DIR)/assets/" > .gitignore \
 		&& echo "--- Created '.gitignore' for git" \
 		&& cat .gitignore \
 	)
@@ -312,7 +311,8 @@ $(EXE_ENTRY_FILE): | src/
 	$(Q)test -e $(EXE_ENTRY_FILE) \
 	|| \
 	( \
-		echo -e "fn main() {\n\tprintln!(\"Hello world!\");\n}" > $(EXE_ENTRY_FILE) \
+		name=$${PWD##/*/} ; \
+		echo -e "#![crate_name = \"$$name\"]\n\nfn main() {\n\tprintln!(\"Hello world!\");\n}" > $(EXE_ENTRY_FILE) \
 	)
 
 src/test.rs: | src/
@@ -335,8 +335,8 @@ clean:
 	$(Q)rm -f "$(DYLIB)"
 	$(Q)rm -rf "doc/"
 	$(Q)rm -f "$(EXE)"
-	$(Q)rm -f "bin/test-internal"
-	$(Q)rm -f "bin/test-external"
+	$(Q)rm -f "$(EXE_DIR)/test-internal"
+	$(Q)rm -f "$(EXE_DIR)/test-external"
 	$(Q)echo "--- Deleted binaries and documentation"
 
 clear-project:
@@ -347,7 +347,7 @@ clear-project:
 	$(Q)rm -f "watch.sh"
 	$(Q)rm -rf "target/"
 	$(Q)rm -rf "src/"
-	$(Q)rm -rf "bin/"
+	$(Q)rm -rf "$(EXE_DIR)/"
 	$(Q)rm -rf "examples/"
 	$(Q)rm -rf "doc/"
 	$(Q)echo "--- Removed all source files, binaries and documentation" \

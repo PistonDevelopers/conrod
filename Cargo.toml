@@ -1,0 +1,12 @@
+[package]
+
+name = "conrod"
+version = "0.0.0"
+authors = ["Your Name <your@email.com>"]
+tags = []
+
+[[lib]]
+
+name = "conrod"
+path = "src/lib.rs"
+
