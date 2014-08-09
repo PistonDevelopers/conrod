@@ -1,168 +1,177 @@
 
-use widget;
-use widget::{
-    Clicked,
-    Highlighted,
-    Normal,
-    Widget,
-    RelativePosition,
-    Relative,
-};
 use piston::{
-    MouseMoveArgs,
-    MousePressArgs,
+    RenderArgs,
 };
-use rectangle::Rectangle;
+use rectangle;
+use rectangle::RectangleState;
 use point::Point;
 use color::Color;
 use utils::clamp;
-use std::default::Default;
+use opengl_graphics::Gl;
+use ui_context::{
+    UIContext,
+    MouseState,
+    Up,
+    Down,
+};
+use std::num::from_f32;
+use widget::{
+    Widget,
+    Slider,
+};
+
+widget_state!(SliderState, SliderState {
+    Normal -> 0,
+    Highlighted -> 0,
+    Clicked -> 2
+})
+
+impl SliderState {
+    /// Return the associated Rectangle state.
+    fn as_rectangle_state(&self) -> RectangleState {
+        match self {
+            &Normal => rectangle::Normal,
+            &Highlighted => rectangle::Highlighted,
+            &Clicked => rectangle::Clicked,
+        }
+    }
+}
 
 /// A generic slider user-interface widget. It will
 /// automatically convert itself between horizontal
 /// and vertical depending on the dimensions given.
-#[deriving(Show, Clone)]
-pub struct Slider<T> {
-    widget_data: widget::Data,
-    frame: Rectangle,
-    rect: Rectangle,
-    border: uint,
-    min: T,
-    max: T,
-    value: T,
-    last_pos: Point<int>,
+pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
+    (args: &RenderArgs,
+     gl: &mut Gl,
+     uic: &mut UIContext,
+     ui_id: uint,
+     pos: Point<f64>,
+     width: f64,
+     height: f64,
+     border: f64,
+     color: Color,
+     value: T,
+     min: T,
+     max: T,
+     event: |T|) {
+    let state = get_state(uic, ui_id);
+    let mouse = uic.get_mouse_state();
+    let is_horizontal = width > height;
+    let is_over = rectangle::is_over(pos, mouse.pos, width, height);
+    let new_state = check_state(is_over, state, mouse);
+    let rect_state = new_state.as_rectangle_state();
+    rectangle::draw(args, gl, rect_state, pos, width, height, 0f64, Color::black());
+    let (r_pos, r_width, r_height, new_val) = match is_horizontal {
+        true => horizontal(pos, width, height, border, value, min, max, mouse, is_over, state, new_state),
+        false => vertical(pos, width, height, border, value, min, max, mouse, is_over, state, new_state),
+    };
+    rectangle::draw(args, gl, rect_state, r_pos, r_width, r_height, 0f64, color);
+    set_state(uic, ui_id, new_state);
+    event(new_val);
 }
 
-impl<T: Num + Copy + FromPrimitive + ToPrimitive> Slider<T> {
-
-    /// Constructor for a Slider widget.
-    pub fn new(pos: RelativePosition,
-               width: uint,
-               height: uint,
-               border: uint,
-               color: Color,
-               min: T,
-               max: T,
-               value: T) -> Slider<T> {
-        let perc = Slider::percentage(value, min, max);
-        let slider_rect = match width >= height {
-            true => { // Horizontal Slider...
-                Rectangle::new(Relative(Point::new(border as int, border as int, 0)),
-                               ((width - 2u * border) as f32 * perc) as uint,
-                               height - 2u * border, color, 0u)
-            },
-            false => { // Vertical Slider...
-                let perc_alt = ::std::num::abs(perc - 1f32);
-                let y = border as int + (perc_alt * (height - 2u * border) as f32) as int;
-                Rectangle::new(Relative(Point::new(border as int, y, 0)),
-                               width - 2u * border,
-                               ((height - 2u * border) as f32 * perc) as uint,
-                               color, 0u)
-            },
-        };
-        Slider {
-            widget_data: widget::Data::new(pos),
-            frame: Rectangle::new(Relative(Point::new(0, 0, 0)), width, height, Color::black(), 0u),
-            rect: slider_rect,
-            border: border,
-            min: min,
-            max: max,
-            value: value,
-            last_pos: Default::default(),
-        }
-    }
-
-    /// Get value percentage between max and min.
-    fn percentage(value: T, min: T, max: T) -> f32 {
-        let v = value.to_f32().unwrap();
-        let mn = min.to_f32().unwrap();
-        let mx = max.to_f32().unwrap();
-        (v - mn) / (mx - mn)
-    }
-
-    /// Adjust the slider to the given point.
-    fn adjust_slider(&mut self, p: Point<int>) {
-        match self.get_draw_state() {
-            Clicked => {
-                match self.frame.width > self.frame.height {
-                    true => {
-                        // Horizontal Slider.
-                        let width = (p - self.get_abs_pos()).x - self.border as int;
-                        let frame_width = self.frame.width;
-                        let border = self.border;
-                        self.rect.width = clamp(width, 0, frame_width as int - border as int * 2) as uint;
-                        self.adjust_value(width as f32 / (frame_width as int - border as int * 2) as f32);
-                    },
-                    false => {
-                        // Vertical Slider.
-                        let y_min = self.get_abs_pos().y + self.border as int;
-                        let y_max = self.get_abs_pos().y + self.frame.height as int - self.border as int;
-                        let new_y = clamp(p.y, y_min, y_max);
-                        let height = (self.get_abs_pos().y + self.frame.height as int - self.border as int) - new_y;
-                        self.rect.height = height as uint;
-                        let x = self.rect.get_abs_pos().x;
-                        self.rect.set_abs_pos(Point::new(x, new_y, 0));
-                        self.adjust_value((new_y - y_min) as f32 / (y_max - y_min) as f32);
-                    }
-                }
-            },
-            _ => (),
-        }
-    }
-
-    /// Adjust the value to the given percentage.
-    fn adjust_value(&mut self, perc: f32) {
-        self.value = FromPrimitive::from_f32((self.max - self.min).to_f32().unwrap() * perc).unwrap();
-    }
-
+/// Horizontal slider.
+fn horizontal<T: Num + Copy + FromPrimitive + ToPrimitive>
+             (pos: Point<f64>,
+              width: f64,
+              height: f64,
+              border: f64,
+              value: T,
+              min: T,
+              max: T,
+              mouse: MouseState,
+              is_over: bool,
+              state: SliderState,
+              new_state: SliderState) -> (Point<f64>, f64, f64, T) {
+    let p = pos + Point::new(border, border, 0f64);
+    let max_width = width - (border * 2f64);
+    let w = match (is_over, state, new_state) {
+        (true, Highlighted, Clicked) | (true, Clicked, Clicked)
+            => clamp(mouse.pos.x - p.x, 0f64, max_width),
+        _ => clamp(get_percentage(value, min, max) as f64 * max_width, 0f64, max_width),
+    };
+    let h = height - (border * 2f64);
+    let v = get_value((w / max_width) as f32, min, max);
+    (p, w, h, v)
 }
 
-impl<T: Num + Copy + FromPrimitive + ToPrimitive> Widget for Slider<T> {
+/// Vertical slider.
+fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
+            (pos: Point<f64>,
+             width: f64,
+             height: f64,
+             border: f64,
+             value: T,
+             min: T,
+             max: T,
+             mouse: MouseState,
+             is_over: bool,
+             state: SliderState,
+             new_state: SliderState) -> (Point<f64>, f64, f64, T) {
+    let corner = pos + Point::new(border, border, 0f64);
+    let max_height = height - (border * 2f64);
+    let y_max = corner.y + max_height;
+    let (h, p) = match (is_over, state, new_state) {
+        (true, Highlighted, Clicked) | (true, Clicked, Clicked) => {
+            let p = Point::new(corner.x, clamp(mouse.pos.y, corner.y, y_max), 0f64);
+            let h = clamp(max_height - (p.y - corner.y), 0f64, max_height);
+            (h, p)
+        },
+        _ => {
+            let h = clamp(get_percentage(value, min, max) as f64 * max_height, 0f64, max_height);
+            let p = Point::new(corner.x, corner.y + max_height - h, 0f64);
+            (h, p)
+        },
+    };
+    let w = width - (border * 2f64);
+    let v = get_value((h / max_height) as f32, min, max);
+    (p, w, h, v)
+}
 
-    impl_get_widget_data!(widget_data)
+/// Get a reference to the widget associated with the given UIID.
+fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+    uic.get_widget(ui_id, Slider(Normal))
+}
 
-    /// Return the dimensions as a tuple holding width and height.
-    fn get_dimensions(&self) -> (uint, uint) { self.frame.get_dimensions() }
-
-    /// Return a reference to the rectangle as a widget child.
-    fn get_children(&self) -> Vec<&Widget> {
-        vec![&self.frame as &Widget, &self.rect as &Widget]
+/// Get the current SliderState for the widget.
+fn get_state(uic: &mut UIContext, ui_id: uint) -> SliderState {
+    match *get_widget(uic, ui_id) {
+        Slider(state) => state,
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return all children widgets.
-    fn get_children_mut(&mut self) -> Vec<&mut Widget> {
-        vec![&mut self.frame as &mut Widget, &mut self.rect as &mut Widget]
+/// Set the state for the widget in the UIContext.
+fn set_state(uic: &mut UIContext, ui_id: uint, new_state: SliderState) {
+    match *get_widget(uic, ui_id) {
+        Slider(ref mut state) => { *state = new_state; },
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return whether or not the widget has been hit by a mouse_press.
-    fn is_over(&self, mouse_pos: Point<int>) -> bool {
-        self.frame.is_over(mouse_pos)
+/// Get value percentage between max and min.
+fn get_percentage<T: Num + Copy + FromPrimitive + ToPrimitive>
+    (value: T, min: T, max: T) -> f32 {
+    let v = value.to_f32().unwrap();
+    let mn = min.to_f32().unwrap();
+    let mx = max.to_f32().unwrap();
+    (v - mn) / (mx - mn)
+}
+
+/// Adjust the value to the given percentage.
+fn get_value<T: Num + Copy + FromPrimitive + ToPrimitive>
+    (perc: f32, min: T, max: T) -> T {
+    from_f32::<T>((max - min).to_f32().unwrap() * perc).unwrap()
+}
+
+/// Check the current state of the slider.
+fn check_state(is_over: bool,
+               prev: SliderState,
+               mouse: MouseState) -> SliderState {
+    match (is_over, prev, mouse) {
+        (true, _, MouseState { left: Down, .. }) => Clicked,
+        (true, _, MouseState { left: Up, .. }) => Highlighted,
+        _ => Normal,
     }
-
-    /// Mouse move event.
-    fn mouse_move(&mut self, args: &MouseMoveArgs) {
-        self.mouse_move_update_draw_state(args);
-        self.mouse_move_children(args);
-        let p = Point::new(args.x as int, args.y as int, 0);
-        self.adjust_slider(p);
-        match self.get_draw_state() {
-            Highlighted | Clicked => { self.last_pos = p; },
-            Normal => (),
-        };
-    }
-
-    /// Mouse Press event.
-    fn mouse_press(&mut self, args: &MousePressArgs) {
-        self.mouse_press_update_draw_state(args);
-        self.mouse_press_children(args);
-        match self.get_draw_state() {
-            Highlighted | Clicked => {
-                let p = self.last_pos;
-                self.adjust_slider(p)
-            },
-            _ => ()
-        }
-    }
-
 }
 

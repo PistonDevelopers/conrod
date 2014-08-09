@@ -1,107 +1,100 @@
 
+use opengl_graphics::Gl;
 use piston::{
-    MouseReleaseArgs,
+    RenderArgs,
 };
-use piston::mouse;
-use widget;
-use widget::{
-    Widget,
-    RelativePosition,
-    Highlighted,
-    Clicked,
-};
-use std::default::Default;
-use graphics::AddRectangle;
 use color::Color;
 use point::Point;
-use rectangle::Rectangle;
+use rectangle;
+use rectangle::RectangleState;
+use widget::{
+    Widget,
+    Toggle,
+};
+use ui_context::{
+    UIContext,
+    MouseState,
+    Up,
+    Down,
+};
 
-/// A simple `Toggle` type widget which will always
-/// remain in one of two states: `true` (on) or
-/// `false` (off).
-#[deriving(Show, Clone)]
-pub struct Toggle {
-    widget_data: widget::Data,
-    rect: Rectangle,
-    color: Color,
-    value: bool,
-}
+widget_state!(ToggleState, ToggleState {
+    Normal -> 0,
+    Highlighted -> 1,
+    Clicked -> 2
+})
 
-impl Toggle {
-
-    /// Constructor for Button widget.
-    pub fn new(pos: RelativePosition,
-               width: uint,
-               height: uint,
-               border: uint,
-               color: Color,
-               value: bool) -> Toggle {
-        let r_color = match value {
-            true => color,
-            false => Color::new(color.r * 0.1f32, color.g * 0.1f32, color.b * 0.1f32, color.a),
-        };
-        Toggle {
-            widget_data: widget::Data::new(pos),
-            rect: Rectangle::new(pos, width, height, r_color, border),
-            color: color,
-            value: value,
+impl ToggleState {
+    /// Return the associated Rectangle state.
+    fn as_rectangle_state(&self) -> RectangleState {
+        match self {
+            &Normal => rectangle::Normal,
+            &Highlighted => rectangle::Highlighted,
+            &Clicked => rectangle::Clicked,
         }
     }
-
 }
 
-impl Default for Toggle {
-
-    /// Default constructor for Button widget.
-    fn default() -> Toggle {
-        Toggle {
-            widget_data: Default::default(),
-            rect: Default::default(),
-            color: Default::default(),
-            value: false,
-        }
+/// Draw a Toggle widget. If the toggle
+/// is switched, call `event` with the
+/// new state.
+pub fn draw(args: &RenderArgs,
+            gl: &mut Gl,
+            uic: &mut UIContext,
+            ui_id: uint,
+            pos: Point<f64>,
+            width: f64,
+            height: f64,
+            border: f64,
+            color: Color,
+            value: bool,
+            event: |bool|) {
+    let state = get_state(uic, ui_id);
+    let mouse = uic.get_mouse_state();
+    let is_over = rectangle::is_over(pos, mouse.pos, width, height);
+    let new_state = check_state(is_over, state, mouse);
+    let rect_state = new_state.as_rectangle_state();
+    let rect_color = match value {
+        true => color,
+        false => Color::new(color.r * 0.1f32, color.g * 0.1f32, color.b * 0.1f32, color.a),
+    };
+    rectangle::draw(args, gl, rect_state, pos, width, height, border, rect_color);
+    set_state(uic, ui_id, new_state);
+    match (is_over, state, new_state) {
+        (true, Clicked, Highlighted) => event(if value == true { false } else { true }),
+        _ => event(value),
     }
-
 }
 
-impl Widget for Toggle {
+/// Get a reference to the widget associated with the given UIID.
+fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+    uic.get_widget(ui_id, Toggle(Normal))
+}
 
-    impl_get_widget_data!(widget_data)
-
-    /// Return the dimensions as a tuple holding width and height.
-    fn get_dimensions(&self) -> (uint, uint) { self.rect.get_dimensions() }
-
-    /// Return a reference to the rectangle as a widget child.
-    fn get_children(&self) -> Vec<&Widget> {
-        vec![&self.rect as &Widget]
+/// Get the current ToggleState for the widget.
+fn get_state(uic: &mut UIContext, ui_id: uint) -> ToggleState {
+    match *get_widget(uic, ui_id) {
+        Toggle(state) => state,
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return all children widgets.
-    fn get_children_mut(&mut self) -> Vec<&mut Widget> {
-        vec![&mut self.rect as &mut Widget]
+/// Set the state for the widget in the UIContext.
+fn set_state(uic: &mut UIContext, ui_id: uint, new_state: ToggleState) {
+    match *get_widget(uic, ui_id) {
+        Toggle(ref mut state) => { *state = new_state; },
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return whether or not the widget has been hit by a mouse_press.
-    fn is_over(&self, mouse_pos: Point<int>) -> bool {
-        self.rect.is_over(mouse_pos)
+/// Check the current state of the button.
+fn check_state(is_over: bool,
+               prev: ToggleState,
+               mouse: MouseState) -> ToggleState {
+    match (is_over, prev, mouse) {
+        (true, _, MouseState { left: Down, .. }) => Clicked,
+        (true, _, MouseState { left: Up, .. }) => Highlighted,
+        _ => Normal,
     }
-
-    /// Mouse released.
-    fn mouse_release_update_draw_state(&mut self, args: &MouseReleaseArgs) {
-        match (args.button, self.get_draw_state()) {
-            (mouse::Left, Clicked) => {
-                // Toggle value.
-                self.value = if self.value == true { false } else { true };
-                // Toggle rectangle color.
-                self.rect.color = match self.value {
-                    true => self.color,
-                    false => Color::new(self.color.r * 0.1f32, self.color.g * 0.1f32, self.color.b * 0.1f32, self.color.a),
-                };
-                self.set_draw_state(Highlighted);
-            },
-            _ => (),
-        }
-    }
-
 }
 

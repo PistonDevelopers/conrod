@@ -1,84 +1,94 @@
 
+use opengl_graphics::Gl;
 use piston::{
-    MouseReleaseArgs,
+    RenderArgs,
 };
-use piston::mouse;
-use widget;
-use widget::{
-    Widget,
-    RelativePosition,
-    Highlighted,
-    Clicked,
-};
-use std::default::Default;
-use graphics::AddRectangle;
 use color::Color;
 use point::Point;
-use rectangle::Rectangle;
+use rectangle;
+use rectangle::RectangleState;
+use widget::{
+    Widget,
+    Button,
+};
+use ui_context::{
+    UIContext,
+    MouseState,
+    Up,
+    Down,
+};
 
-/// Button type widget.
-#[deriving(Show, Clone)]
-pub struct Button {
-    widget_data: widget::Data,
-    rect: Rectangle,
-}
+widget_state!(ButtonState, ButtonState {
+    Normal -> 0,
+    Highlighted -> 1,
+    Clicked -> 2
+})
 
-impl Button {
-
-    /// Constructor for Button widget.
-    pub fn new(pos: RelativePosition, width: uint, height: uint, color: Color, border: uint) -> Button {
-        Button {
-            widget_data: widget::Data::new(pos),
-            rect: Rectangle::new(pos, width, height, color, border),
+impl ButtonState {
+    /// Return the associated Rectangle state.
+    fn as_rectangle_state(&self) -> RectangleState {
+        match self {
+            &Normal => rectangle::Normal,
+            &Highlighted => rectangle::Highlighted,
+            &Clicked => rectangle::Clicked,
         }
     }
-
 }
 
-impl Default for Button {
-
-    /// Default constructor for Button widget.
-    fn default() -> Button {
-        Button {
-            widget_data: Default::default(),
-            rect: Default::default(),
-        }
+/// Draw the button. When successfully pressed,
+/// the given `event` function will be called.
+pub fn draw(args: &RenderArgs,
+            gl: &mut Gl,
+            uic: &mut UIContext,
+            ui_id: uint,
+            pos: Point<f64>,
+            width: f64,
+            height: f64,
+            border: f64,
+            color: Color,
+            event: ||) {
+    let state = get_state(uic, ui_id);
+    let mouse = uic.get_mouse_state();
+    let is_over = rectangle::is_over(pos, mouse.pos, width, height);
+    let new_state = check_state(is_over, state, mouse);
+    let rect_state = new_state.as_rectangle_state();
+    rectangle::draw(args, gl, rect_state, pos, width, height, border, color);
+    set_state(uic, ui_id, new_state);
+    match (is_over, state, new_state) {
+        (true, Clicked, Highlighted) => event(),
+        _ => (),
     }
-
 }
 
-impl Widget for Button {
+/// Get a reference to the widget associated with the given UIID.
+fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+    uic.get_widget(ui_id, Button(Normal))
+}
 
-    impl_get_widget_data!(widget_data)
-
-    /// Return the dimensions as a tuple holding width and height.
-    fn get_dimensions(&self) -> (uint, uint) { self.rect.get_dimensions() }
-
-    /// Return a reference to the rectangle as a widget child.
-    fn get_children(&self) -> Vec<&Widget> {
-        vec![&self.rect as &Widget]
+/// Get the current ButtonState for the widget.
+fn get_state(uic: &mut UIContext, ui_id: uint) -> ButtonState {
+    match *get_widget(uic, ui_id) {
+        Button(state) => state,
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return all children widgets.
-    fn get_children_mut(&mut self) -> Vec<&mut Widget> {
-        vec![&mut self.rect as &mut Widget]
+/// Set the state for the widget in the UIContext.
+fn set_state(uic: &mut UIContext, ui_id: uint, new_state: ButtonState) {
+    match *get_widget(uic, ui_id) {
+        Button(ref mut state) => { *state = new_state; },
+        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
+}
 
-    /// Return whether or not the widget has been hit by a mouse_press.
-    fn is_over(&self, mouse_pos: Point<int>) -> bool {
-        self.rect.is_over(mouse_pos)
+/// Check the current state of the button.
+fn check_state(is_over: bool,
+               prev: ButtonState,
+               mouse: MouseState) -> ButtonState {
+    match (is_over, prev, mouse) {
+        (true, _, MouseState { left: Down, .. }) => Clicked,
+        (true, _, MouseState { left: Up, .. }) => Highlighted,
+        _ => Normal,
     }
-
-    /// Mouse released.
-    fn mouse_release_update_draw_state(&mut self, args: &MouseReleaseArgs) {
-        match (args.button, self.get_draw_state()) {
-            (mouse::Left, Clicked) => {
-                // TRIGGER EVENT HERE.
-                self.set_draw_state(Highlighted);
-            },
-            _ => (),
-        }
-    }
-
 }
 

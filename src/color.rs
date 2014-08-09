@@ -1,6 +1,8 @@
 
 use std::default::Default;
 use utils::clampf32;
+use std::rand::random;
+use std::num::abs;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -55,6 +57,23 @@ impl Color {
         let b = clampf32((1f32 - self.b) * 0.25f32 + self.b);
         let a = clampf32((1f32 - self.a) * 0.75f32 + self.a);
         Color::new(r, g, b, a)
+    }
+
+    /// Return a random color.
+    pub fn random() -> Color {
+        let r = random::<f32>();
+        let g = random::<f32>();
+        let b = random::<f32>();
+        let a = 1f32;
+        Color::new(r, g, b, a)
+    }
+
+    /// Return an inverted version of the color.
+    pub fn invert(&self) -> Color {
+        let r = abs(1f32 - self.r);
+        let g = abs(1f32 - self.g);
+        let b = abs(1f32 - self.b);
+        Color::new(r, g, b, self.a)
     }
 
 }
