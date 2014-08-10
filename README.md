@@ -9,6 +9,8 @@ http://www.youtube.com/watch?v=BK0f3CicNR4
 
 The plan is not to port all of it directly, but to closesly draw inspiration while implementing a much more powerful, searchable graph/node system.
 
+![NodalUI Demo](https://raw.githubusercontent.com/PistonDevelopers/conrod/master/nodalUIdemo.png)
+
 Current State
 -------------
 
@@ -19,8 +21,6 @@ Dependencies
 
 At the moment, Conrod uses [freetype-rs](https://github.com/PistonDevelopers/freetype-rs) for its font rendering, which means you'll need to have the freetype library installed on your system. You can [download and install the freetype library here] (http://www.freetype.org/download.html).
 
-
-![NodalUI Demo](https://raw.githubusercontent.com/PistonDevelopers/conrod/master/nodalUIdemo.png)
 
 # Goals
 
