@@ -2,6 +2,12 @@
 use piston::{
     RenderArgs,
 };
+use label;
+use label::{
+    IsLabel,
+    Label,
+    NoLabel,
+};
 use rectangle;
 use rectangle::RectangleState;
 use point::Point;
@@ -50,6 +56,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
      height: f64,
      border: f64,
      color: Color,
+     label: IsLabel,
      value: T,
      min: T,
      max: T,
@@ -66,6 +73,24 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
         false => vertical(pos, width, height, border, value, min, max, mouse, is_over, state, new_state),
     };
     rectangle::draw(args, gl, rect_state, r_pos, r_width, r_height, 0f64, color);
+    match label {
+        NoLabel => (),
+        Label(text, size, text_color) => {
+            let l_pos = match is_horizontal {
+                true => {
+                    let x = r_pos.x + border;
+                    let y = r_pos.y + (r_height - size as f64) / 2.0;
+                    Point::new(x, y, 0f64)
+                },
+                false => {
+                    let x = r_pos.x + (r_width - label::get_text_width(uic, size, text.as_slice())) / 2.0;
+                    let y = r_pos.y + r_height - size as f64 - border;
+                    Point::new(x, y, 0f64)
+                },
+            };
+            label::draw(args, gl, uic, l_pos, size, text_color, text.as_slice());
+        }
+    }
     set_state(uic, ui_id, new_state);
     event(new_val);
 }
@@ -161,7 +186,7 @@ fn get_percentage<T: Num + Copy + FromPrimitive + ToPrimitive>
 /// Adjust the value to the given percentage.
 fn get_value<T: Num + Copy + FromPrimitive + ToPrimitive>
     (perc: f32, min: T, max: T) -> T {
-    from_f32::<T>((max - min).to_f32().unwrap() * perc).unwrap()
+    from_f32::<T>((max - min).to_f32().unwrap() * perc).unwrap() + min
 }
 
 /// Check the current state of the slider.
