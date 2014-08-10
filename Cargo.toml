@@ -4,6 +4,11 @@ name = "conrod"
 version = "0.0.0"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 
+[[lib]]
+
+name = "conrod"
+path = "./src/lib.rs"
+
 [dependencies.piston]
 
 git = "https://github.com/PistonDevelopers/piston"
@@ -19,18 +24,4 @@ git = "https://github.com/PistonDevelopers/rust-graphics.git"
 [dependencies.opengl_graphics]
 
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
-
-[dependencies.vecmath]
-
-git = "https://github.com/PistonDevelopers/vecmath"
-
-[[lib]]
-
-name = "conrod"
-path = "./src/lib.rs"
-
-[[bin]]
-
-name = "conrodtest"
-path = "./examples/main.rs"
 
