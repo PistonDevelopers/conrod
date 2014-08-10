@@ -1,0 +1,31 @@
+[package]
+
+name = "all_widgets"
+version = "0.0.0"
+authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
+
+[[bin]]
+
+name = "all_widgets"
+path = "./all_widgets.rs"
+
+[dependencies.conrod]
+
+path = "../../"
+
+[dependencies.piston]
+
+git = "https://github.com/PistonDevelopers/piston"
+
+[dependencies.sdl2_game_window]
+
+git = "https://github.com/mitchmindtree/sdl2_game_window.git"
+
+[dependencies.graphics]
+
+git = "https://github.com/PistonDevelopers/rust-graphics.git"
+
+[dependencies.opengl_graphics]
+
+git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+
