@@ -26,6 +26,11 @@ impl Color {
         Color { r: 0f32, g: 0f32, b: 0f32, a: 1f32 }
     }
 
+    /// Basic constructor for a White Color struct.
+    pub fn white() -> Color {
+        Color { r: 1f32, g: 1f32, b: 1f32, a: 1f32 }
+    }
+
     /// Return color as a vector.
     pub fn as_vec(&self) -> Vec<f32> {
         vec![self.r, self.g, self.b, self.a]

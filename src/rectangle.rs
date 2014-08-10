@@ -56,14 +56,13 @@ fn draw_normal(context: &Context,
                height: f64,
                border: f64,
                color: Color) {
-    let half_border = border / 2f64;
     let (r, g, b, a) = match state {
         Normal => color.as_tuple(),
         Highlighted => color.highlighted().as_tuple(),
         Clicked => color.clicked().as_tuple(),
     };
     context
-        .rect(pos.x + half_border, pos.y + half_border, width - border, height - border)
+        .rect(pos.x + border, pos.y + border, width - border * 2.0, height - border * 2.0)
         .rgba(r, g, b, a)
         .draw(gl);
 }

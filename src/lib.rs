@@ -3,10 +3,9 @@
 
 extern crate graphics;
 extern crate piston;
-extern crate sdl2_game_window;
 extern crate opengl_graphics;
-extern crate vecmath;
 extern crate serialize;
+extern crate freetype;
 
 pub use Widget = widget::Widget;
 pub use Color = color::Color;
@@ -17,6 +16,7 @@ pub mod macros;
 
 pub mod button;
 pub mod color;
+pub mod label;
 pub mod point;
 pub mod rectangle;
 pub mod slider;

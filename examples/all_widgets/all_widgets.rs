@@ -22,10 +22,15 @@ use piston::{
 use conrod::{
     UIContext,
     button,
+    label,
     toggle,
     slider,
     Color,
     Point,
+};
+use conrod::label::{
+    Label,
+    NoLabel,
 };
 use graphics::{
     Context,
@@ -60,7 +65,9 @@ fn main() {
     // Background color (for demonstration or button and sliders).
     let mut bg_color = Color::new(0.05f32, 0.025f32, 0.1f32, 1f32);
     // Should the button be shown (for demonstration of button).
-    let mut show_button = true;
+    let mut show_button = false;
+    // The number of pixels between the left side of the window and the title.
+    let mut title_padding = 50f64;
 
     // Main program loop begins.
     loop {
@@ -70,7 +77,8 @@ fn main() {
                                         &mut gl,
                                         &mut uic,
                                         &mut bg_color,
-                                        &mut show_button),
+                                        &mut show_button,
+                                        &mut title_padding),
         }
     }
 
@@ -81,12 +89,13 @@ fn handle_event(event: &mut GameEvent,
                 gl: &mut Gl,
                 uic: &mut UIContext,
                 bg_color: &mut Color,
-                show_button: &mut bool) {
+                show_button: &mut bool,
+                title_padding: &mut f64) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
             draw_background(args, gl, bg_color);
-            draw_ui(args, gl, uic, bg_color, show_button);
+            draw_ui(args, gl, uic, bg_color, show_button, title_padding);
         },
         _ => (),
     }
@@ -109,7 +118,17 @@ fn draw_ui(args: &RenderArgs,
            gl: &mut Gl,
            uic: &mut UIContext,
            bg_color: &mut Color,
-           show_button: &mut bool) {
+           show_button: &mut bool,
+           title_padding: &mut f64) {
+
+    // Label example.
+    label::draw(args, // RenderArgs.
+                gl, // Open GL instance.
+                uic, // UIContext.
+                Point::new(*title_padding, 30f64, 0f64), // Screen position.
+                48u32, // Font size.
+                Color::white(),
+                "Widgets Demonstration");
 
     // Button widget example.
     if *show_button {
@@ -117,57 +136,97 @@ fn draw_ui(args: &RenderArgs,
                      gl, // Open GL instance.
                      uic, // UIContext.
                      0u, // UI ID.
-                     Point::new(50f64, 50f64, 0f64), // Screen position.
+                     Point::new(50f64, 115f64, 0f64), // Screen position.
                      90f64, // Width.
                      60f64, // Height.
-                     12f64, // Border.
+                     6f64, // Border.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
                      || {
             *bg_color = Color::random();
         });
     }
 
+    // Horizontal slider example.
+    else {
+
+        // Create the label for the slider.
+        let pad: f64 = *title_padding;
+        let mut pad_string = pad.to_string();
+        if pad_string.len() > 5u { pad_string.truncate(4u); }
+        let label = "Padding: ".to_string().append(pad_string.as_slice());
+
+        // Draw the slider.
+        slider::draw(args, // RenderArgs.
+                     gl, // OpenGL Instance.
+                     uic, // UIContext.
+                     1u, // UIID
+                     Point::new(50.0f64, 115.0, 0.0), // Screen position.
+                     200f64, // Width.
+                     50f64, // Height.
+                     6f64, // Border.
+                     Color::new(0.5, 0.3, 0.6, 1.0), // Rectangle color.
+                     //NoLabel,
+                     Label(label.as_slice(), 24u32, Color::white()),
+                     pad, // Slider value.
+                     10f64, // Min value.
+                     250f64, // Max value.
+                     |new_pad| {
+            *title_padding = new_pad;
+        });
+
+    }
+
     // Toggle widget example.
     toggle::draw(args, // RenderArgs.
                  gl, // Open GL instance.
                  uic, // UIContext.
-                 1u, // UI ID.
-                 Point::new(50f64, 150f64, 0f64), // Screen position.
+                 2u, // UI ID.
+                 Point::new(50f64, 200f64, 0f64), // Screen position.
                  75f64, // Width.
                  75f64, // Height.
-                 12f64, // Border.
+                 6f64, // Border.
                  Color::new(0.6f32, 0.25f32, 0.75f32, 1f32), // Button Color.
                  *show_button, // bool.
                  |value| {
         *show_button = value;
+        if value { *title_padding = 50f64; }
     });
 
-    // A slider for each color.
+    // Let's draw a slider for each color element.
+    // 0 => red, 1 => green, 2 => blue.
     for i in range(0u, 3) {
 
+        // We'll color the slider similarly to the element which it will control.
         let color = match i {
             0u => Color::new(0.75f32, 0.3f32, 0.3f32, 1f32),
             1u => Color::new(0.3f32, 0.75f32, 0.3f32, 1f32),
             _  => Color::new(0.3f32, 0.3f32, 0.75f32, 1f32),
         };
 
+        // Grab the value of the color element.
         let value = match i {
             0u => bg_color.r,
             1u => bg_color.g,
             _  => bg_color.b,
         };
-        
-        // Slider widget example.
+
+        // Create the label to be drawn with the slider.
+        let mut label = value.to_string();
+        if label.len() > 4u { label.truncate(4u); }
+
+        // Vertical slider widget example.
         slider::draw(args, // RenderArgs.
                      gl, // Open GL instance
                      uic, // UIContext.
-                     2u + i, // UI ID.
-                     Point::new(50f64 + i as f64 * 60f64, 250f64, 0f64), // Position.
+                     3u + i, // UI ID.
+                     Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
                      35f64, // Width.
                      200f64, // Height.
                      6f64, // Border.
-                     color,
-                     value,
+                     color, // Slider color.
+                     //NoLabel,
+                     Label(label.as_slice(), 24u32, Color::white()),
+                     value, // Slider value.
                      0f32, // Minimum value.
                      1f32, // Maximum value.
                      |color| {
@@ -179,6 +238,6 @@ fn draw_ui(args: &RenderArgs,
         });
 
     }
-                 
+
 }
 

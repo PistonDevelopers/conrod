@@ -13,10 +13,6 @@ path = "./src/lib.rs"
 
 git = "https://github.com/PistonDevelopers/piston"
 
-[dependencies.sdl2_game_window]
-
-git = "https://github.com/mitchmindtree/sdl2_game_window.git"
-
 [dependencies.graphics]
 
 git = "https://github.com/PistonDevelopers/rust-graphics.git"
@@ -24,4 +20,8 @@ git = "https://github.com/PistonDevelopers/rust-graphics.git"
 [dependencies.opengl_graphics]
 
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+
+[dependencies.freetype-rs]
+
+git = "https://github.com/PistonDevelopers/freetype-rs.git"
 
