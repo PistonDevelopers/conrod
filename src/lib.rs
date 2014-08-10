@@ -3,9 +3,7 @@
 
 extern crate graphics;
 extern crate piston;
-extern crate sdl2_game_window;
 extern crate opengl_graphics;
-extern crate vecmath;
 extern crate serialize;
 
 pub use Widget = widget::Widget;

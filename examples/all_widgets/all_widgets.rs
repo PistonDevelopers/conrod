@@ -120,7 +120,7 @@ fn draw_ui(args: &RenderArgs,
                      Point::new(50f64, 50f64, 0f64), // Screen position.
                      90f64, // Width.
                      60f64, // Height.
-                     12f64, // Border.
+                     6f64, // Border.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
                      || {
             *bg_color = Color::random();
@@ -135,7 +135,7 @@ fn draw_ui(args: &RenderArgs,
                  Point::new(50f64, 150f64, 0f64), // Screen position.
                  75f64, // Width.
                  75f64, // Height.
-                 12f64, // Border.
+                 6f64, // Border.
                  Color::new(0.6f32, 0.25f32, 0.75f32, 1f32), // Button Color.
                  *show_button, // bool.
                  |value| {

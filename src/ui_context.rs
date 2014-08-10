@@ -29,7 +29,6 @@ pub struct MouseState {
 }
 
 impl MouseState {
-
     /// Constructor for a MouseState struct.
     pub fn new(pos: Point<f64>,
                left: MouseButtonState,
@@ -37,7 +36,6 @@ impl MouseState {
                right: MouseButtonState) -> MouseState {
         MouseState { pos: pos, left: left, middle: middle, right: right }
     }
-
 }
 
 /// UIContext retains the state of all widgets and
