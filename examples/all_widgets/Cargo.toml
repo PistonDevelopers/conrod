@@ -1,13 +1,17 @@
 [package]
 
-name = "conrod"
+name = "all_widgets"
 version = "0.0.0"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 
-[[lib]]
+[[bin]]
 
-name = "conrod"
-path = "./src/lib.rs"
+name = "all_widgets"
+path = "./all_widgets.rs"
+
+[dependencies.conrod]
+
+path = "../../"
 
 [dependencies.piston]
 
