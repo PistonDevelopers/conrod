@@ -38,7 +38,6 @@ pub fn draw(args: &RenderArgs,
     let context = Context::abs(args.width as f64, args.height as f64)
                     .trans(pos.x, pos.y + size as f64);
     for ch in text.chars() {
-        //print!("{}", ch);
         let character = uic.get_character(size, ch);
         context.trans((x + character.bitmap_glyph.left()) as f64,
                       (y - character.bitmap_glyph.top()) as f64)
@@ -48,7 +47,6 @@ pub fn draw(args: &RenderArgs,
         x += (character.glyph.advance().x >> 16) as i32;
         y += (character.glyph.advance().y >> 16) as i32;
     }
-    //println!("");
 }
 
 /// Determine the pixel width of the final text bitmap.
