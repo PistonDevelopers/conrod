@@ -5,7 +5,6 @@ use piston::{
 };
 use opengl_graphics::{
     Gl,
-    Texture,
 };
 use graphics::{
     Context,
@@ -16,9 +15,8 @@ use graphics::{
 };
 use ui_context::UIContext;
 use point::Point;
-use freetype;
 
-type FontSize = u32;
+pub type FontSize = u32;
 
 /// An enum for passing in label information to widget arguments.
 pub enum IsLabel<'a> {
@@ -34,39 +32,30 @@ pub fn draw(args: &RenderArgs,
             size: FontSize,
             color: Color,
             text: &str) {
-    let context = Context::abs(args.width as f64, args.height as f64)
-                    .trans(pos.x, pos.y + size as f64);
-    let face = &mut uic.face;
-    face.set_pixel_sizes(0, size);
     let mut x = 0;
     let mut y = 0;
     let (r, g, b, a) = color.as_tuple();
+    let context = Context::abs(args.width as f64, args.height as f64)
+                    .trans(pos.x, pos.y + size as f64);
     for ch in text.chars() {
-        face.load_char(ch as u64, freetype::face::Render).unwrap();
-        let glyph = face.glyph();
-        let texture = Texture::from_memory_alpha(glyph.bitmap().buffer(),
-                                                 glyph.bitmap().width() as u32,
-                                                 glyph.bitmap().rows() as u32).unwrap();
-        context.trans((x + glyph.bitmap_left()) as f64,
-                      (y - glyph.bitmap_top()) as f64)
-                        .image(&texture)
+        //print!("{}", ch);
+        let character = uic.get_character(size, ch);
+        context.trans((x + character.bitmap_glyph.left()) as f64,
+                      (y - character.bitmap_glyph.top()) as f64)
+                        .image(&character.texture)
                         .rgba(r, g, b, a)
                         .draw(gl);
-        x += (glyph.advance().x >> 6) as i32;
-        y += (glyph.advance().y >> 6) as i32;
+        x += (character.glyph.advance().x >> 16) as i32;
+        y += (character.glyph.advance().y >> 16) as i32;
     }
+    //println!("");
 }
 
 /// Determine the pixel width of the final text bitmap.
-pub fn get_text_width(uic: &mut UIContext, size: FontSize, text: &str) -> f64 {
-    let face = &mut uic.face;
-    face.set_pixel_sizes(0, size);
-    let mut width = 0u32;
-    for ch in text.chars() {
-        face.load_char(ch as u64, freetype::face::Render).unwrap();
-        let glyph = face.glyph();
-        width += glyph.bitmap().width() as u32;
-    }
-    width as f64
+pub fn width(uic: &mut UIContext, size: FontSize, text: &str) -> f64 {
+    text.chars().fold(0u32, |a, ch| {
+        let character = uic.get_character(size, ch);
+        a + (character.glyph.advance().x >> 16) as u32
+    }) as f64
 }
 

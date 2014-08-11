@@ -30,7 +30,6 @@ use conrod::{
 };
 use conrod::label::{
     Label,
-    NoLabel,
 };
 use graphics::{
     Context,
@@ -66,6 +65,8 @@ fn main() {
     let mut bg_color = Color::new(0.05f32, 0.025f32, 0.1f32, 1f32);
     // Should the button be shown (for demonstration of button).
     let mut show_button = false;
+    // The label that will be drawn to the Toggle.
+    let mut toggle_label = "OFF".to_string();
     // The number of pixels between the left side of the window and the title.
     let mut title_padding = 50f64;
 
@@ -78,6 +79,7 @@ fn main() {
                                         &mut uic,
                                         &mut bg_color,
                                         &mut show_button,
+                                        &mut toggle_label,
                                         &mut title_padding),
         }
     }
@@ -90,12 +92,13 @@ fn handle_event(event: &mut GameEvent,
                 uic: &mut UIContext,
                 bg_color: &mut Color,
                 show_button: &mut bool,
+                toggle_label: &mut String,
                 title_padding: &mut f64) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
             draw_background(args, gl, bg_color);
-            draw_ui(args, gl, uic, bg_color, show_button, title_padding);
+            draw_ui(args, gl, uic, bg_color, show_button, toggle_label, title_padding);
         },
         _ => (),
     }
@@ -119,6 +122,7 @@ fn draw_ui(args: &RenderArgs,
            uic: &mut UIContext,
            bg_color: &mut Color,
            show_button: &mut bool,
+           toggle_label: &mut String,
            title_padding: &mut f64) {
 
     // Label example.
@@ -141,6 +145,7 @@ fn draw_ui(args: &RenderArgs,
                      60f64, // Height.
                      6f64, // Border.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
+                     Label("PRESS", 24u32, Color::black()),
                      || {
             *bg_color = Color::random();
         });
@@ -176,6 +181,9 @@ fn draw_ui(args: &RenderArgs,
 
     }
 
+    // Clone the label toggle to be drawn.
+    let label = toggle_label.clone();
+
     // Toggle widget example.
     toggle::draw(args, // RenderArgs.
                  gl, // Open GL instance.
@@ -186,10 +194,19 @@ fn draw_ui(args: &RenderArgs,
                  75f64, // Height.
                  6f64, // Border.
                  Color::new(0.6f32, 0.25f32, 0.75f32, 1f32), // Button Color.
+                 Label(label.as_slice(), 24u32, Color::white()),
                  *show_button, // bool.
                  |value| {
         *show_button = value;
-        if value { *title_padding = 50f64; }
+        match value {
+            true => {
+                *title_padding = 50f64;
+                *toggle_label = "ON".to_string();
+            },
+            false => {
+                *toggle_label = "OFF".to_string();
+            },
+        }
     });
 
     // Let's draw a slider for each color element.

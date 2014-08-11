@@ -16,7 +16,9 @@ pub mod macros;
 
 pub mod button;
 pub mod color;
+pub mod glyph_cache;
 pub mod label;
+pub mod mouse_state;
 pub mod point;
 pub mod rectangle;
 pub mod slider;
