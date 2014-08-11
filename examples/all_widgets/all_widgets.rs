@@ -59,9 +59,9 @@ fn main() {
     let mut game_iter = GameIterator::new(&mut window, &game_iter_settings);
     // Create OpenGL instance.
     let mut gl = Gl::new();
-    // Create UI app.
+    // Create the UIContext.
     let mut uic = UIContext::new();
-    // Background color (for demonstration or button and sliders).
+    // Background color (for demonstration of button and sliders).
     let mut bg_color = Color::new(0.05f32, 0.025f32, 0.1f32, 1f32);
     // Should the button be shown (for demonstration of button).
     let mut show_button = false;
@@ -134,8 +134,8 @@ fn draw_ui(args: &RenderArgs,
                 Color::white(),
                 "Widgets Demonstration");
 
-    // Button widget example.
     if *show_button {
+        // Button widget example.
         button::draw(args, // RenderArgs.
                      gl, // Open GL instance.
                      uic, // UIContext.
@@ -145,8 +145,8 @@ fn draw_ui(args: &RenderArgs,
                      60f64, // Height.
                      6f64, // Border.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
-                     Label("PRESS", 24u32, Color::black()),
-                     || {
+                     Label("PRESS", 24u32, Color::black()), // Label for button.
+                     || { // Button "callback" event.
             *bg_color = Color::random();
         });
     }
@@ -155,9 +155,8 @@ fn draw_ui(args: &RenderArgs,
     else {
 
         // Create the label for the slider.
-        let pad: f64 = *title_padding;
-        let mut pad_string = pad.to_string();
-        if pad_string.len() > 5u { pad_string.truncate(4u); }
+        let pad = *title_padding as i16;
+        let pad_string = pad.to_string();
         let label = "Padding: ".to_string().append(pad_string.as_slice());
 
         // Draw the slider.
@@ -172,11 +171,11 @@ fn draw_ui(args: &RenderArgs,
                      Color::new(0.5, 0.3, 0.6, 1.0), // Rectangle color.
                      //NoLabel,
                      Label(label.as_slice(), 24u32, Color::white()),
-                     pad, // Slider value.
-                     10f64, // Min value.
-                     250f64, // Max value.
+                     pad as i16, // Slider value.
+                     10i16, // Min value.
+                     250i16, // Max value.
                      |new_pad| {
-            *title_padding = new_pad;
+            *title_padding = new_pad as f64;
         });
 
     }
@@ -200,7 +199,7 @@ fn draw_ui(args: &RenderArgs,
         *show_button = value;
         match value {
             true => {
-                *title_padding = 50f64;
+                //*title_padding = 50f64;
                 *toggle_label = "ON".to_string();
             },
             false => {
@@ -213,7 +212,7 @@ fn draw_ui(args: &RenderArgs,
     // 0 => red, 1 => green, 2 => blue.
     for i in range(0u, 3) {
 
-        // We'll color the slider similarly to the element which it will control.
+        // We'll color the slider similarly to the color element which it will control.
         let color = match i {
             0u => Color::new(0.75f32, 0.3f32, 0.3f32, 1f32),
             1u => Color::new(0.3f32, 0.75f32, 0.3f32, 1f32),

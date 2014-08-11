@@ -86,7 +86,7 @@ impl Color {
 impl Default for Color {
     /// Default constructor for a Color struct.
     fn default() -> Color {
-        Color { r: 0.5, g: 0.8, b: 0.6, a: 0.5 }
+        Color { r: 0.5, g: 0.8, b: 0.6, a: 1.0 }
     }
 }
 

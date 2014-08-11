@@ -14,7 +14,10 @@ use point::Point;
 use color::Color;
 use utils::clamp;
 use opengl_graphics::Gl;
-use ui_context::UIContext;
+use ui_context::{
+    UIID,
+    UIContext,
+};
 use mouse_state::{
     MouseState,
     Up,
@@ -50,7 +53,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
     (args: &RenderArgs,
      gl: &mut Gl,
      uic: &mut UIContext,
-     ui_id: uint,
+     ui_id: UIID,
      pos: Point<f64>,
      width: f64,
      height: f64,
@@ -92,7 +95,10 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
         }
     }
     set_state(uic, ui_id, new_state);
-    event(new_val);
+    if value != new_val || match (state, new_state) {
+        (Highlighted, Clicked) | (Clicked, Highlighted) => true,
+        _ => false,
+    } { event(new_val) };
 }
 
 /// Horizontal slider.

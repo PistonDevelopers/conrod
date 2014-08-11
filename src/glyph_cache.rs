@@ -16,18 +16,8 @@ pub struct Character {
     pub texture: Texture,
 }
 
-impl Character {
-    /// Constructor for a Character.
-    fn new(glyph: freetype::Glyph,
-           bitmap_glyph: freetype::BitmapGlyph,
-           texture: Texture) -> Character {
-        Character { glyph: glyph, bitmap_glyph: bitmap_glyph, texture: texture }
-    }
-}
-
 /// A struct used for caching rendered font.
 pub struct GlyphCache {
-    //freetype: freetype::Library,
     pub face: freetype::Face,
     data: HashMap<FontSize, HashMap<char, Character>>,
 }
@@ -41,7 +31,6 @@ impl GlyphCache {
         let font = asset_store.path("Dense-Regular.otf").unwrap();
         let face = freetype.new_face(font.as_str().unwrap(), 0).unwrap();
         GlyphCache {
-            //freetype: freetype,
             face: face,
             data: HashMap::new(),
         }
@@ -66,7 +55,11 @@ impl GlyphCache {
         let texture = Texture::from_memory_alpha(bitmap.buffer(),
                                                  bitmap.width() as u32,
                                                  bitmap.rows() as u32).unwrap();
-        self.data.get_mut(&size).insert(ch, Character::new(glyph, bitmap_glyph, texture));
+        self.data.get_mut(&size).insert(ch, Character {
+            glyph: glyph,
+            bitmap_glyph: bitmap_glyph,
+            texture: texture,
+        });
     }
 
 }

@@ -11,7 +11,10 @@ use widget::{
     Widget,
     Button,
 };
-use ui_context::UIContext;
+use ui_context::{
+    UIID,
+    UIContext,
+};
 use mouse_state::{
     MouseState,
     Up,
@@ -46,7 +49,7 @@ impl ButtonState {
 pub fn draw(args: &RenderArgs,
             gl: &mut Gl,
             uic: &mut UIContext,
-            ui_id: uint,
+            ui_id: UIID,
             pos: Point<f64>,
             width: f64,
             height: f64,

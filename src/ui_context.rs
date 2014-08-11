@@ -19,7 +19,7 @@ use glyph_cache::{
     Character,
 };
 
-type UIID = uint;
+pub type UIID = uint;
 
 /// UIContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
