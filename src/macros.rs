@@ -9,7 +9,7 @@ macro_rules! widget_state(
     }) => (
 
         /// Widget state.
-        #[deriving(FromPrimitive)]
+        #[deriving(FromPrimitive, PartialEq)]
         pub enum $obji {
             $($var, )+
         }
