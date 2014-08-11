@@ -14,8 +14,8 @@ use point::Point;
 use color::Color;
 use utils::clamp;
 use opengl_graphics::Gl;
-use ui_context::{
-    UIContext,
+use ui_context::UIContext;
+use mouse_state::{
     MouseState,
     Up,
     Down,
@@ -83,7 +83,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
                     Point::new(x, y, 0f64)
                 },
                 false => {
-                    let x = r_pos.x + (r_width - label::get_text_width(uic, size, text.as_slice())) / 2.0;
+                    let x = r_pos.x + (r_width - label::width(uic, size, text.as_slice())) / 2.0;
                     let y = r_pos.y + r_height - size as f64 - border;
                     Point::new(x, y, 0f64)
                 },

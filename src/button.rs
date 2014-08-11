@@ -11,11 +11,17 @@ use widget::{
     Widget,
     Button,
 };
-use ui_context::{
-    UIContext,
+use ui_context::UIContext;
+use mouse_state::{
     MouseState,
     Up,
     Down,
+};
+use label;
+use label::{
+    IsLabel,
+    NoLabel,
+    Label,
 };
 
 widget_state!(ButtonState, ButtonState {
@@ -46,6 +52,7 @@ pub fn draw(args: &RenderArgs,
             height: f64,
             border: f64,
             color: Color,
+            label: IsLabel,
             event: ||) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
@@ -53,6 +60,16 @@ pub fn draw(args: &RenderArgs,
     let new_state = check_state(is_over, state, mouse);
     let rect_state = new_state.as_rectangle_state();
     rectangle::draw(args, gl, rect_state, pos, width, height, border, color);
+    match label {
+        NoLabel => (),
+        Label(text, size, text_color) => {
+            let t_w = label::width(uic, size, text);
+            let x = pos.x + (width - t_w) / 2.0;
+            let y = pos.y + (height - size as f64) / 2.0;
+            let l_pos = Point::new(x, y, 0.0);
+            label::draw(args, gl, uic, l_pos, size, text_color, text);
+        },
+    }
     set_state(uic, ui_id, new_state);
     match (is_over, state, new_state) {
         (true, Clicked, Highlighted) => event(),
@@ -60,9 +77,12 @@ pub fn draw(args: &RenderArgs,
     }
 }
 
+/// Default Widget variant.
+fn default() -> Widget { Button(Normal) }
+
 /// Get a reference to the widget associated with the given UIID.
 fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
-    uic.get_widget(ui_id, Button(Normal))
+    uic.get_widget(ui_id, default())
 }
 
 /// Get the current ButtonState for the widget.

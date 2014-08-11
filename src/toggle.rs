@@ -11,11 +11,17 @@ use widget::{
     Widget,
     Toggle,
 };
-use ui_context::{
-    UIContext,
+use ui_context::UIContext;
+use mouse_state::{
     MouseState,
     Up,
     Down,
+};
+use label;
+use label::{
+    IsLabel,
+    Label,
+    NoLabel,
 };
 
 widget_state!(ToggleState, ToggleState {
@@ -47,6 +53,7 @@ pub fn draw(args: &RenderArgs,
             height: f64,
             border: f64,
             color: Color,
+            label: IsLabel,
             value: bool,
             event: |bool|) {
     let state = get_state(uic, ui_id);
@@ -59,6 +66,16 @@ pub fn draw(args: &RenderArgs,
         false => Color::new(color.r * 0.1f32, color.g * 0.1f32, color.b * 0.1f32, color.a),
     };
     rectangle::draw(args, gl, rect_state, pos, width, height, border, rect_color);
+    match label {
+        NoLabel => (),
+        Label(text, size, text_color) => {
+            let t_w = label::width(uic, size, text);
+            let x = pos.x + (width - t_w) / 2.0;
+            let y = pos.y + (height - size as f64) / 2.0;
+            let l_pos = Point::new(x, y, 0.0);
+            label::draw(args, gl, uic, l_pos, size, text_color, text);
+        },
+    }
     set_state(uic, ui_id, new_state);
     match (is_over, state, new_state) {
         (true, Clicked, Highlighted) => event(if value == true { false } else { true }),
