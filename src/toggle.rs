@@ -112,6 +112,7 @@ fn check_state(is_over: bool,
                prev: ToggleState,
                mouse: MouseState) -> ToggleState {
     match (is_over, prev, mouse) {
+        (true, Normal, MouseState { left: Down, .. }) => Normal,
         (true, _, MouseState { left: Down, .. }) => Clicked,
         (true, _, MouseState { left: Up, .. }) => Highlighted,
         _ => Normal,

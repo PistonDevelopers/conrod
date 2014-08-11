@@ -19,6 +19,9 @@ use glyph_cache::{
     Character,
 };
 
+/// User Interface Identifier. Each unique `widget::draw` call
+/// should pass it's own unique UIID so that UIContext can keep
+/// track of it's state.
 pub type UIID = uint;
 
 /// UIContext retains the state of all widgets and

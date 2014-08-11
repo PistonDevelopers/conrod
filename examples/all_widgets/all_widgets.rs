@@ -199,7 +199,6 @@ fn draw_ui(args: &RenderArgs,
         *show_button = value;
         match value {
             true => {
-                //*title_padding = 50f64;
                 *toggle_label = "ON".to_string();
             },
             false => {
