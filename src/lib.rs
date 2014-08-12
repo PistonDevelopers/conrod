@@ -1,6 +1,8 @@
 
 #![feature(macro_rules, phase)]
 
+extern crate syntax;
+extern crate rustc;
 extern crate graphics;
 extern crate piston;
 extern crate opengl_graphics;

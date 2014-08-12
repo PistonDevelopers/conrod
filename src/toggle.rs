@@ -87,12 +87,12 @@ pub fn draw(args: &RenderArgs,
 }
 
 /// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
     uic.get_widget(ui_id, Toggle(Normal))
 }
 
 /// Get the current ToggleState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: uint) -> ToggleState {
+fn get_state(uic: &mut UIContext, ui_id: UIID) -> ToggleState {
     match *get_widget(uic, ui_id) {
         Toggle(state) => state,
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),
@@ -100,7 +100,7 @@ fn get_state(uic: &mut UIContext, ui_id: uint) -> ToggleState {
 }
 
 /// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: uint, new_state: ToggleState) {
+fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: ToggleState) {
     match *get_widget(uic, ui_id) {
         Toggle(ref mut state) => { *state = new_state; },
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),

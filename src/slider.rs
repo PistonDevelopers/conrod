@@ -160,12 +160,12 @@ fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
 }
 
 /// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
     uic.get_widget(ui_id, Slider(Normal))
 }
 
 /// Get the current SliderState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: uint) -> SliderState {
+fn get_state(uic: &mut UIContext, ui_id: UIID) -> SliderState {
     match *get_widget(uic, ui_id) {
         Slider(state) => state,
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),
@@ -173,7 +173,7 @@ fn get_state(uic: &mut UIContext, ui_id: uint) -> SliderState {
 }
 
 /// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: uint, new_state: SliderState) {
+fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: SliderState) {
     match *get_widget(uic, ui_id) {
         Slider(ref mut state) => { *state = new_state; },
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),

@@ -139,7 +139,7 @@ fn draw_ui(args: &RenderArgs,
         button::draw(args, // RenderArgs.
                      gl, // Open GL instance.
                      uic, // UIContext.
-                     0u, // UI ID.
+                     0u64, // UI ID.
                      Point::new(50f64, 115f64, 0f64), // Screen position.
                      90f64, // Width.
                      60f64, // Height.
@@ -163,7 +163,7 @@ fn draw_ui(args: &RenderArgs,
         slider::draw(args, // RenderArgs.
                      gl, // OpenGL Instance.
                      uic, // UIContext.
-                     1u, // UIID
+                     1u64, // UIID
                      Point::new(50.0f64, 115.0, 0.0), // Screen position.
                      200f64, // Width.
                      50f64, // Height.
@@ -187,7 +187,7 @@ fn draw_ui(args: &RenderArgs,
     toggle::draw(args, // RenderArgs.
                  gl, // Open GL instance.
                  uic, // UIContext.
-                 2u, // UI ID.
+                 2u64, // UI ID.
                  Point::new(50f64, 200f64, 0f64), // Screen position.
                  75f64, // Width.
                  75f64, // Height.
@@ -233,7 +233,7 @@ fn draw_ui(args: &RenderArgs,
         slider::draw(args, // RenderArgs.
                      gl, // Open GL instance
                      uic, // UIContext.
-                     3u + i, // UI ID.
+                     3u64 + i as u64, // UI ID.
                      Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
                      35f64, // Width.
                      200f64, // Height.

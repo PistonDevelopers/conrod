@@ -84,12 +84,12 @@ pub fn draw(args: &RenderArgs,
 fn default() -> Widget { Button(Normal) }
 
 /// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: uint) -> &mut Widget {
+fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
     uic.get_widget(ui_id, default())
 }
 
 /// Get the current ButtonState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: uint) -> ButtonState {
+fn get_state(uic: &mut UIContext, ui_id: UIID) -> ButtonState {
     match *get_widget(uic, ui_id) {
         Button(state) => state,
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),
@@ -97,7 +97,7 @@ fn get_state(uic: &mut UIContext, ui_id: uint) -> ButtonState {
 }
 
 /// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: uint, new_state: ButtonState) {
+fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: ButtonState) {
     match *get_widget(uic, ui_id) {
         Button(ref mut state) => { *state = new_state; },
         _ => fail!("The Widget variant returned by UIContext is different to the requested."),

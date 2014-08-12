@@ -22,7 +22,7 @@ use glyph_cache::{
 /// User Interface Identifier. Each unique `widget::draw` call
 /// should pass it's own unique UIID so that UIContext can keep
 /// track of it's state.
-pub type UIID = uint;
+pub type UIID = u64;
 
 /// UIContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
@@ -73,7 +73,7 @@ impl UIContext {
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget(&mut self, ui_id: uint, default: Widget) -> &mut Widget {
+    pub fn get_widget(&mut self, ui_id: UIID, default: Widget) -> &mut Widget {
         self.data.find_or_insert(ui_id, default)
     }
 
