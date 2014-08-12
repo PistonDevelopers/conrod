@@ -36,6 +36,34 @@ impl Color {
         c[2]
     }
 
+    /// Sets the red component of the color.
+    #[inline(always)]
+    pub fn set_r(&mut self, r: f32) {
+        let &Color(ref mut c) = self;
+        c[0] = r;
+    }
+
+    /// Sets the green component of the color.
+    #[inline(always)]
+    pub fn set_g(&mut self, g: f32) {
+        let &Color(ref mut c) = self;
+        c[1] = g;
+    }
+
+    /// Sets the blue component of the color.
+    #[inline(always)]
+    pub fn set_b(&mut self, b: f32) {
+        let &Color(ref mut c) = self;
+        c[2] = b;
+    }
+
+    /// Sets the alpha component of the color.
+    #[inline(always)]
+    pub fn set_a(&mut self, a: f32) {
+        let &Color(ref mut c) = self;
+        c[3] = a;
+    }
+
     /// Returns the alpha component of the color.
     #[inline(always)]
     pub fn a(&self) -> f32 {
