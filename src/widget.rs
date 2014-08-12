@@ -1,5 +1,6 @@
 
 use button::ButtonState;
+use number_dialer::NumberDialerState;
 use toggle::ToggleState;
 use slider::SliderState;
 
@@ -7,6 +8,7 @@ use slider::SliderState;
 /// and for ease of state-matching.
 pub enum Widget {
     Button(ButtonState),
+    NumberDialer(NumberDialerState),
     Toggle(ToggleState),
     Slider(SliderState),
 }
