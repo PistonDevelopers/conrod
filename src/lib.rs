@@ -19,6 +19,7 @@ pub mod color;
 pub mod glyph_cache;
 pub mod label;
 pub mod mouse_state;
+pub mod number_dialer;
 pub mod point;
 pub mod rectangle;
 pub mod slider;

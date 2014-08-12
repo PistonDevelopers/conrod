@@ -1,7 +1,5 @@
 
-use piston::{
-    RenderArgs,
-};
+use piston::RenderArgs;
 use label;
 use label::{
     IsLabel,
@@ -24,10 +22,7 @@ use mouse_state::{
     Down,
 };
 use std::num::from_f32;
-use widget::{
-    Widget,
-    Slider,
-};
+use widget::Slider;
 
 widget_state!(SliderState, SliderState {
     Normal -> 0,
@@ -46,6 +41,8 @@ impl SliderState {
     }
 }
 
+widget_boilerplate_fns!(Slider, SliderState, Slider(Normal))
+
 /// A generic slider user-interface widget. It will
 /// automatically convert itself between horizontal
 /// and vertical depending on the dimensions given.
@@ -63,7 +60,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
      value: T,
      min: T,
      max: T,
-     event: |T|) {
+     callback: |T|) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_horizontal = width > height;
@@ -98,7 +95,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
     if value != new_val || match (state, new_state) {
         (Highlighted, Clicked) | (Clicked, Highlighted) => true,
         _ => false,
-    } { event(new_val) };
+    } { callback(new_val) };
 }
 
 /// Horizontal slider.
@@ -157,27 +154,6 @@ fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
     let w = width - (border * 2f64);
     let v = get_value((h / max_height) as f32, min, max);
     (p, w, h, v)
-}
-
-/// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
-    uic.get_widget(ui_id, Slider(Normal))
-}
-
-/// Get the current SliderState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: UIID) -> SliderState {
-    match *get_widget(uic, ui_id) {
-        Slider(state) => state,
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
-    }
-}
-
-/// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: SliderState) {
-    match *get_widget(uic, ui_id) {
-        Slider(ref mut state) => { *state = new_state; },
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
-    }
 }
 
 /// Get value percentage between max and min.

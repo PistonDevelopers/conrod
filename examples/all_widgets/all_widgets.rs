@@ -23,6 +23,7 @@ use conrod::{
     UIContext,
     button,
     label,
+    number_dialer,
     toggle,
     slider,
     Color,
@@ -69,6 +70,8 @@ fn main() {
     let mut toggle_label = "OFF".to_string();
     // The number of pixels between the left side of the window and the title.
     let mut title_padding = 50f64;
+    // The height of the vertical sliders (we will play with this using a number_dialer).
+    let mut v_slider_height = 200f64;
 
     // Main program loop begins.
     loop {
@@ -80,7 +83,8 @@ fn main() {
                                         &mut bg_color,
                                         &mut show_button,
                                         &mut toggle_label,
-                                        &mut title_padding),
+                                        &mut title_padding,
+                                        &mut v_slider_height),
         }
     }
 
@@ -93,12 +97,20 @@ fn handle_event(event: &mut GameEvent,
                 bg_color: &mut Color,
                 show_button: &mut bool,
                 toggle_label: &mut String,
-                title_padding: &mut f64) {
+                title_padding: &mut f64,
+                v_slider_height: &mut f64) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
             draw_background(args, gl, bg_color);
-            draw_ui(args, gl, uic, bg_color, show_button, toggle_label, title_padding);
+            draw_ui(args,
+                    gl,
+                    uic,
+                    bg_color,
+                    show_button,
+                    toggle_label,
+                    title_padding,
+                    v_slider_height);
         },
         _ => (),
     }
@@ -123,7 +135,8 @@ fn draw_ui(args: &RenderArgs,
            bg_color: &mut Color,
            show_button: &mut bool,
            toggle_label: &mut String,
-           title_padding: &mut f64) {
+           title_padding: &mut f64,
+           v_slider_height: &mut f64) {
 
     // Label example.
     label::draw(args, // RenderArgs.
@@ -236,7 +249,7 @@ fn draw_ui(args: &RenderArgs,
                      3u64 + i as u64, // UI ID.
                      Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
                      35f64, // Width.
-                     200f64, // Height.
+                     *v_slider_height, // Height.
                      6f64, // Border.
                      color, // Slider color.
                      //NoLabel,
@@ -253,6 +266,23 @@ fn draw_ui(args: &RenderArgs,
         });
 
     }
+
+    // Number Dialer example.
+    number_dialer::draw(args, // RenderArgs.
+                        gl, // OpenGL instance.
+                        uic, // UIContext.
+                        6u64, // UIID.
+                        Point::new(350.0, 115.0, 0.0), // Position.
+                        24u32, // Number Dialer font size.
+                        bg_color.invert(), // Number Dialer Color.
+                        Label("Height (pixels)", 24u32, *bg_color),
+                        *v_slider_height, // Initial value.
+                        25f64, // Minimum value.
+                        225f64, // Maximum value.
+                        1u8, // Precision (number of digits to show after decimal point).
+                        |new_height| { // Callback closure.
+        *v_slider_height = new_height;
+    });
 
 }
 
