@@ -220,9 +220,9 @@ fn draw_ui(args: &RenderArgs,
 
         // Grab the value of the color element.
         let value = match i {
-            0u => bg_color.r,
-            1u => bg_color.g,
-            _  => bg_color.b,
+            0u => bg_color.r(),
+            1u => bg_color.g(),
+            _  => bg_color.b(),
         };
 
         // Create the label to be drawn with the slider.
@@ -246,9 +246,9 @@ fn draw_ui(args: &RenderArgs,
                      1f32, // Maximum value.
                      |color| {
             match i {
-                0u => { bg_color.r = color; },
-                1u => { bg_color.g = color; },
-                _ => { bg_color.b = color; },
+                0u => { bg_color.set_r(color); },
+                1u => { bg_color.set_g(color); },
+                _ => { bg_color.set_b(color); },
             }
         });
 
