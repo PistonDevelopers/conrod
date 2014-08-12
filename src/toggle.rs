@@ -66,7 +66,12 @@ pub fn draw(args: &RenderArgs,
     let rect_state = new_state.as_rectangle_state();
     let rect_color = match value {
         true => color,
-        false => Color::new(color.r * 0.1f32, color.g * 0.1f32, color.b * 0.1f32, color.a),
+        false => Color::new(
+                color.r() * 0.1f32, 
+                color.g() * 0.1f32, 
+                color.b() * 0.1f32, 
+                color.a()
+            ),
     };
     rectangle::draw(args, gl, rect_state, pos, width, height, border, rect_color);
     match label {
