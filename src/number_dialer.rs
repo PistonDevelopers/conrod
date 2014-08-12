@@ -1,17 +1,13 @@
 
 use std::from_str::FromStr;
 use opengl_graphics::Gl;
-use piston::{
-    RenderArgs,
-};
+use piston::RenderArgs;
 use color::Color;
 use point::Point;
 use rectangle;
 use rectangle::RectangleState;
-use widget::{
-    Widget,
-    NumberDialer,
-};
+use widget::NumberDialer;
+use utils::clamp;
 use ui_context::{
     UIID,
     UIContext,
@@ -28,7 +24,6 @@ use label::{
     NoLabel,
     Label,
 };
-use utils::clamp;
 
 widget_state!(NumberDialerState, NumberDialerState {
     Normal -> 0,
@@ -46,6 +41,8 @@ impl NumberDialerState {
         }
     }
 }
+
+widget_boilerplate_fns!(NumberDialer, NumberDialerState, NumberDialer(Normal))
 
 /// Draw the number_dialer. When successfully pressed,
 /// or if the value is changed, the given `callback`
@@ -67,8 +64,12 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString +
     let val = clamp(value, min, max);
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
-    let string = create_string(&label, val, precision);
+    let val_string = create_string(val, precision);
     //println!("{}", string.as_slice());
+    
+
+
+
     
     // TODO
     // determine rect dimensions.
@@ -81,22 +82,18 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString +
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
 /// one is given.
-fn create_string<T: ToString>(label: &IsLabel, val: T, precision: u8) -> String {
-    let label_string = match *label {
-        NoLabel => String::new(),
-        Label(ref text, _, _) => text.to_string().append(": "),
-    };
+fn create_string<T: ToString>(val: T, precision: u8) -> String {
     let mut val_string = val.to_string();
     match (val_string.as_slice().chars().position(|ch| ch == '.'), precision) {
-        (None, 0u8) => label_string.append(val_string.as_slice()),
+        (None, 0u8) => val_string,
         (None, _) => {
             val_string.push_char('.');
             val_string.grow(precision as uint, '0');
-            label_string.append(val_string.as_slice())
+            val_string
         },
         (Some(idx), 0u8) => {
             val_string.truncate(idx);
-            label_string.append(val_string.as_slice())
+            val_string
         },
         (Some(idx), _) => {
             let (len, desired_len) = (val_string.len(), idx + precision as uint + 1u);
@@ -105,34 +102,23 @@ fn create_string<T: ToString>(label: &IsLabel, val: T, precision: u8) -> String 
                 Equal => (),
                 Less => val_string.grow(desired_len - len, '0'),
             }
-            label_string.append(val_string.as_slice())
+            val_string
         },
     }
 }
 
-/// Return a default Widget variant.
-fn default() -> Widget { NumberDialer(Normal) }
+///// Return the total width of string glyphs.
+//fn string_dimensions(font_size: FontSize,
+//                     label: IsLabel,
+//                     val_string: String) -> (f64, f64) {
+//    let label_string = match label {
+//        NoLabel => String::new(),
+//        Label(ref text, _, _) => text.to_string().append(": "),
+//    };
+//}
 
-/// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
-    uic.get_widget(ui_id, default())
+/// Return the dimensions of a character slot for the given font_size.
+fn character_slot_dimensions(font_size: FontSize) -> (f64, f64) {
+    (font_size as f64, (font_size as f64 * 1.5).round())
 }
-
-/// Get the current SliderState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: UIID) -> NumberDialerState {
-    match *get_widget(uic, ui_id) {
-        NumberDialer(state) => state,
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
-    }
-}
-
-/// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: NumberDialerState) {
-    match *get_widget(uic, ui_id) {
-        NumberDialer(ref mut state) => { *state = new_state; },
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
-    }
-}
-
-
 

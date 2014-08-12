@@ -1,16 +1,11 @@
 
 use opengl_graphics::Gl;
-use piston::{
-    RenderArgs,
-};
+use piston::RenderArgs;
 use color::Color;
 use point::Point;
 use rectangle;
 use rectangle::RectangleState;
-use widget::{
-    Widget,
-    Toggle,
-};
+use widget::Toggle;
 use ui_context::{
     UIID,
     UIContext,
@@ -43,6 +38,8 @@ impl ToggleState {
         }
     }
 }
+
+widget_boilerplate_fns!(Toggle, ToggleState, Toggle(Normal))
 
 /// Draw a Toggle widget. If the toggle
 /// is switched, call `event` with the
@@ -88,27 +85,6 @@ pub fn draw(args: &RenderArgs,
     match (is_over, state, new_state) {
         (true, Clicked, Highlighted) => callback(match value { true => false, false => true }),
         _ => (),
-    }
-}
-
-/// Get a reference to the widget associated with the given UIID.
-fn get_widget(uic: &mut UIContext, ui_id: UIID) -> &mut Widget {
-    uic.get_widget(ui_id, Toggle(Normal))
-}
-
-/// Get the current ToggleState for the widget.
-fn get_state(uic: &mut UIContext, ui_id: UIID) -> ToggleState {
-    match *get_widget(uic, ui_id) {
-        Toggle(state) => state,
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
-    }
-}
-
-/// Set the state for the widget in the UIContext.
-fn set_state(uic: &mut UIContext, ui_id: UIID, new_state: ToggleState) {
-    match *get_widget(uic, ui_id) {
-        Toggle(ref mut state) => { *state = new_state; },
-        _ => fail!("The Widget variant returned by UIContext is different to the requested."),
     }
 }
 
