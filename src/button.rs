@@ -45,7 +45,7 @@ impl ButtonState {
 }
 
 /// Draw the button. When successfully pressed,
-/// the given `event` function will be called.
+/// the given `callback` function will be called.
 pub fn draw(args: &RenderArgs,
             gl: &mut Gl,
             uic: &mut UIContext,
@@ -56,7 +56,7 @@ pub fn draw(args: &RenderArgs,
             border: f64,
             color: Color,
             label: IsLabel,
-            event: ||) {
+            callback: ||) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
@@ -75,7 +75,7 @@ pub fn draw(args: &RenderArgs,
     }
     set_state(uic, ui_id, new_state);
     match (is_over, state, new_state) {
-        (true, Clicked, Highlighted) => event(),
+        (true, Clicked, Highlighted) => callback(),
         _ => (),
     }
 }

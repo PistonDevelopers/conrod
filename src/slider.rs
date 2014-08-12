@@ -63,7 +63,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
      value: T,
      min: T,
      max: T,
-     event: |T|) {
+     callback: |T|) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_horizontal = width > height;
@@ -98,7 +98,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
     if value != new_val || match (state, new_state) {
         (Highlighted, Clicked) | (Clicked, Highlighted) => true,
         _ => false,
-    } { event(new_val) };
+    } { callback(new_val) };
 }
 
 /// Horizontal slider.

@@ -58,7 +58,7 @@ pub fn draw(args: &RenderArgs,
             color: Color,
             label: IsLabel,
             value: bool,
-            event: |bool|) {
+            callback: |bool|) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
@@ -81,8 +81,8 @@ pub fn draw(args: &RenderArgs,
     }
     set_state(uic, ui_id, new_state);
     match (is_over, state, new_state) {
-        (true, Clicked, Highlighted) => event(if value == true { false } else { true }),
-        _ => event(value),
+        (true, Clicked, Highlighted) => callback(match value { true => false, false => true }),
+        _ => (),
     }
 }
 
