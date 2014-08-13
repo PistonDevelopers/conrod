@@ -25,10 +25,10 @@ pub struct GlyphCache {
 impl GlyphCache {
 
     /// Constructor for a GlyphCache.
-    pub fn new() -> GlyphCache {
+    pub fn new(font_file: &str) -> GlyphCache {
         let freetype = freetype::Library::init().unwrap();
         let asset_store = AssetStore::from_folder("../assets");
-        let font = asset_store.path("Dense-Regular.otf").unwrap();
+        let font = asset_store.path(font_file).unwrap();
         let face = freetype.new_face(font.as_str().unwrap(), 0).unwrap();
         GlyphCache {
             face: face,

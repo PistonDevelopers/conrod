@@ -28,6 +28,7 @@ use conrod::{
     slider,
     Color,
     Point,
+    Frame,
 };
 use conrod::label::{
     Label,
@@ -60,10 +61,14 @@ fn main() {
     let mut game_iter = GameIterator::new(&mut window, &game_iter_settings);
     // Create OpenGL instance.
     let mut gl = Gl::new();
-    // Create the UIContext.
-    let mut uic = UIContext::new();
+    // Create the UIContext and specify the name of a font that's in our "assets" directory.
+    let mut uic = UIContext::new("Dense-Regular.otf");
+
+    // TODO: Put the following vars all in an 'app' struct or something and pass
+    // as a mut reference to struct instead.
+
     // Background color (for demonstration of button and sliders).
-    let mut bg_color = Color::new(0.05f32, 0.025f32, 0.1f32, 1f32);
+    let mut bg_color = Color::new(0.2, 0.35, 0.45, 1.0);
     // Should the button be shown (for demonstration of button).
     let mut show_button = false;
     // The label that will be drawn to the Toggle.
@@ -71,7 +76,9 @@ fn main() {
     // The number of pixels between the left side of the window and the title.
     let mut title_padding = 50f64;
     // The height of the vertical sliders (we will play with this using a number_dialer).
-    let mut v_slider_height = 200f64;
+    let mut v_slider_height = 185f64;
+    // The widget frame width (we'll use this to demo Framing and number_dialer).
+    let mut frame_width = 6f64;
 
     // Main program loop begins.
     loop {
@@ -84,7 +91,8 @@ fn main() {
                                         &mut show_button,
                                         &mut toggle_label,
                                         &mut title_padding,
-                                        &mut v_slider_height),
+                                        &mut v_slider_height,
+                                        &mut frame_width),
         }
     }
 
@@ -98,7 +106,8 @@ fn handle_event(event: &mut GameEvent,
                 show_button: &mut bool,
                 toggle_label: &mut String,
                 title_padding: &mut f64,
-                v_slider_height: &mut f64) {
+                v_slider_height: &mut f64,
+                frame_width: &mut f64) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
@@ -110,7 +119,8 @@ fn handle_event(event: &mut GameEvent,
                     show_button,
                     toggle_label,
                     title_padding,
-                    v_slider_height);
+                    v_slider_height,
+                    frame_width);
         },
         _ => (),
     }
@@ -136,7 +146,8 @@ fn draw_ui(args: &RenderArgs,
            show_button: &mut bool,
            toggle_label: &mut String,
            title_padding: &mut f64,
-           v_slider_height: &mut f64) {
+           v_slider_height: &mut f64,
+           frame_width: &mut f64) {
 
     // Label example.
     label::draw(args, // RenderArgs.
@@ -144,7 +155,7 @@ fn draw_ui(args: &RenderArgs,
                 uic, // UIContext.
                 Point::new(*title_padding, 30f64, 0f64), // Screen position.
                 48u32, // Font size.
-                Color::white(),
+                bg_color.plain_contrast(),
                 "Widgets Demonstration");
 
     if *show_button {
@@ -156,7 +167,7 @@ fn draw_ui(args: &RenderArgs,
                      Point::new(50f64, 115f64, 0f64), // Screen position.
                      90f64, // Width.
                      60f64, // Height.
-                     6f64, // Border.
+                     Frame(*frame_width, Color::black()), // Widget Frame.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
                      Label("PRESS", 24u32, Color::black()), // Label for button.
                      || { // Button "callback" event.
@@ -180,7 +191,7 @@ fn draw_ui(args: &RenderArgs,
                      Point::new(50.0f64, 115.0, 0.0), // Screen position.
                      200f64, // Width.
                      50f64, // Height.
-                     6f64, // Border.
+                     Frame(*frame_width, Color::black()), // Widget Frame.
                      Color::new(0.5, 0.3, 0.6, 1.0), // Rectangle color.
                      //NoLabel,
                      Label(label.as_slice(), 24u32, Color::white()),
@@ -204,7 +215,7 @@ fn draw_ui(args: &RenderArgs,
                  Point::new(50f64, 200f64, 0f64), // Screen position.
                  75f64, // Width.
                  75f64, // Height.
-                 6f64, // Border.
+                 Frame(*frame_width, Color::black()), // Widget Frame.
                  Color::new(0.6f32, 0.25f32, 0.75f32, 1f32), // Button Color.
                  Label(label.as_slice(), 24u32, Color::white()),
                  *show_button, // bool.
@@ -250,7 +261,7 @@ fn draw_ui(args: &RenderArgs,
                      Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
                      35f64, // Width.
                      *v_slider_height, // Height.
-                     6f64, // Border.
+                     Frame(*frame_width, Color::black()), // Widget Frame.
                      color, // Slider color.
                      //NoLabel,
                      Label(label.as_slice(), 24u32, Color::white()),
@@ -274,15 +285,35 @@ fn draw_ui(args: &RenderArgs,
                         6u64, // UIID.
                         Point::new(350.0, 115.0, 0.0), // Position.
                         24u32, // Number Dialer font size.
+                        Frame(*frame_width, Color::black()), // Widget Frame
                         bg_color.invert(), // Number Dialer Color.
-                        Label("Height (pixels)", 24u32, *bg_color),
+                        Label("Height (pixels)", 24u32, bg_color.invert().plain_contrast()),
                         *v_slider_height, // Initial value.
                         25f64, // Minimum value.
-                        225f64, // Maximum value.
+                        250f64, // Maximum value.
                         1u8, // Precision (number of digits to show after decimal point).
                         |new_height| { // Callback closure.
         *v_slider_height = new_height;
     });
+
+    // Number Dialer example.
+    number_dialer::draw(args, // RenderArgs.
+                        gl, // OpenGL instance.
+                        uic, // UIContext.
+                        7u64, // UIID.
+                        Point::new(350.0, 195.0, 0.0), // Position.
+                        24u32, // Number Dialer font size.
+                        Frame(4.0, bg_color.plain_contrast()), // Widget Frame
+                        bg_color.invert().plain_contrast(), // Number Dialer Color.
+                        Label("Frame (pixels)", 24u32, bg_color.plain_contrast()),
+                        *frame_width, // Initial value.
+                        0f64, // Minimum value.
+                        15f64, // Maximum value.
+                        2u8, // Precision (number of digits to show after decimal point).
+                        |new_width| { // Callback closure.
+        *frame_width = new_width;
+    });
+
 
 }
 

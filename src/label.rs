@@ -19,9 +19,9 @@ use point::Point;
 pub type FontSize = u32;
 
 /// An enum for passing in label information to widget arguments.
-pub enum IsLabel<'a> {
-    NoLabel,
+pub enum Labeling<'a> {
     Label(&'a str, FontSize, Color),
+    NoLabel,
 }
 
 /// Draw a label using the freetype font rendering backend.

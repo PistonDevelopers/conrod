@@ -17,20 +17,21 @@ use mouse_state::{
 };
 use label;
 use label::{
-    IsLabel,
+    Labeling,
     Label,
     NoLabel,
 };
+use frame::Framing;
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq)]
-pub enum ToggleState {
+pub enum State {
     Normal,
     Highlighted,
     Clicked,
 }
 
-impl ToggleState {
+impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> RectangleState {
         match self {
@@ -41,7 +42,7 @@ impl ToggleState {
     }
 }
 
-widget_fns!(Toggle, ToggleState, Toggle(Normal))
+widget_fns!(Toggle, State, Toggle(Normal))
 
 /// Draw a Toggle widget. If the toggle
 /// is switched, call `event` with the
@@ -53,9 +54,9 @@ pub fn draw(args: &RenderArgs,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            border: f64,
+            frame: Framing,
             color: Color,
-            label: IsLabel,
+            label: Labeling,
             value: bool,
             callback: |bool|) {
     let state = get_state(uic, ui_id);
@@ -72,7 +73,7 @@ pub fn draw(args: &RenderArgs,
                 color.a()
             ),
     };
-    rectangle::draw(args, gl, rect_state, pos, width, height, border, rect_color);
+    rectangle::draw(args, gl, rect_state, pos, width, height, frame, rect_color);
     match label {
         NoLabel => (),
         Label(text, size, text_color) => {
@@ -92,12 +93,13 @@ pub fn draw(args: &RenderArgs,
 
 /// Check the current state of the button.
 fn check_state(is_over: bool,
-               prev: ToggleState,
-               mouse: MouseState) -> ToggleState {
-    match (is_over, prev, mouse) {
-        (true, Normal, MouseState { left: Down, .. }) => Normal,
-        (true, _, MouseState { left: Down, .. }) => Clicked,
-        (true, _, MouseState { left: Up, .. }) => Highlighted,
+               prev: State,
+               mouse: MouseState) -> State {
+    match (is_over, prev, mouse.left) {
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
+        (false, Clicked, Down) => Clicked,
         _ => Normal,
     }
 }

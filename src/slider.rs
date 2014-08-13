@@ -2,7 +2,7 @@
 use piston::RenderArgs;
 use label;
 use label::{
-    IsLabel,
+    Labeling,
     Label,
     NoLabel,
 };
@@ -23,16 +23,21 @@ use mouse_state::{
 };
 use std::num::from_f32;
 use widget::Slider;
+use frame::{
+    Framing,
+    Frame,
+    NoFrame,
+};
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq)]
-pub enum SliderState {
+pub enum State {
     Normal,
     Highlighted,
     Clicked,
 }
 
-impl SliderState {
+impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> RectangleState {
         match self {
@@ -43,7 +48,7 @@ impl SliderState {
     }
 }
 
-widget_fns!(Slider, SliderState, Slider(Normal))
+widget_fns!(Slider, State, Slider(Normal))
 
 /// A generic slider user-interface widget. It will
 /// automatically convert itself between horizontal
@@ -56,37 +61,43 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
      pos: Point<f64>,
      width: f64,
      height: f64,
-     border: f64,
+     frame: Framing,
      color: Color,
-     label: IsLabel,
+     label: Labeling,
      value: T,
      min: T,
      max: T,
      callback: |T|) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
-    let is_horizontal = width > height;
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
     let new_state = check_state(is_over, state, mouse);
     let rect_state = new_state.as_rectangle_state();
-    rectangle::draw(args, gl, rect_state, pos, width, height, 0f64, Color::black());
-    let (r_pos, r_width, r_height, new_val) = match is_horizontal {
-        true => horizontal(pos, width, height, border, value, min, max, mouse, is_over, state, new_state),
-        false => vertical(pos, width, height, border, value, min, max, mouse, is_over, state, new_state),
+    let (frame_w, frame_c) = match frame {
+        Frame(frame_w, frame_c) => (frame_w, frame_c),
+        NoFrame => (0.0, Color::black()),
     };
-    rectangle::draw(args, gl, rect_state, r_pos, r_width, r_height, 0f64, color);
+    rectangle::draw(args, gl, rect_state, pos, width, height, NoFrame, frame_c);
+    let is_horizontal = width > height;
+    let (r_pos, r_width, r_height, new_val) = match is_horizontal {
+        true => horizontal(pos, width, height, frame_w,
+                           value, min, max, mouse, is_over, state, new_state),
+        false => vertical(pos, width, height, frame_w,
+                          value, min, max, mouse, is_over, state, new_state),
+    };
+    rectangle::draw(args, gl, rect_state, r_pos, r_width, r_height, NoFrame, color);
     match label {
         NoLabel => (),
         Label(text, size, text_color) => {
             let l_pos = match is_horizontal {
                 true => {
-                    let x = r_pos.x + border;
+                    let x = r_pos.x + (r_height - size as f64) / 2.0;
                     let y = r_pos.y + (r_height - size as f64) / 2.0;
                     Point::new(x, y, 0f64)
                 },
                 false => {
                     let x = r_pos.x + (r_width - label::width(uic, size, text.as_slice())) / 2.0;
-                    let y = r_pos.y + r_height - size as f64 - border;
+                    let y = r_pos.y + r_height - r_width - frame_w;
                     Point::new(x, y, 0f64)
                 },
             };
@@ -105,22 +116,23 @@ fn horizontal<T: Num + Copy + FromPrimitive + ToPrimitive>
              (pos: Point<f64>,
               width: f64,
               height: f64,
-              border: f64,
+              frame_w: f64,
               value: T,
               min: T,
               max: T,
               mouse: MouseState,
               is_over: bool,
-              state: SliderState,
-              new_state: SliderState) -> (Point<f64>, f64, f64, T) {
-    let p = pos + Point::new(border, border, 0f64);
-    let max_width = width - (border * 2f64);
+              state: State,
+              new_state: State) -> (Point<f64>, f64, f64, T) {
+    let p = pos + Point::new(frame_w, frame_w, 0f64);
+    let max_width = width - (frame_w * 2f64);
     let w = match (is_over, state, new_state) {
-        (true, Highlighted, Clicked) | (true, Clicked, Clicked)
-            => clamp(mouse.pos.x - p.x, 0f64, max_width),
+        (true, Highlighted, Clicked) | (true, Clicked, Clicked) | (false, Clicked, Clicked) => {
+            clamp(mouse.pos.x - p.x, 0f64, max_width)
+        },
         _ => clamp(get_percentage(value, min, max) as f64 * max_width, 0f64, max_width),
     };
-    let h = height - (border * 2f64);
+    let h = height - (frame_w * 2f64);
     let v = get_value((w / max_width) as f32, min, max);
     (p, w, h, v)
 }
@@ -130,19 +142,19 @@ fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
             (pos: Point<f64>,
              width: f64,
              height: f64,
-             border: f64,
+             frame_w: f64,
              value: T,
              min: T,
              max: T,
              mouse: MouseState,
              is_over: bool,
-             state: SliderState,
-             new_state: SliderState) -> (Point<f64>, f64, f64, T) {
-    let corner = pos + Point::new(border, border, 0f64);
-    let max_height = height - (border * 2f64);
+             state: State,
+             new_state: State) -> (Point<f64>, f64, f64, T) {
+    let corner = pos + Point::new(frame_w, frame_w, 0f64);
+    let max_height = height - (frame_w * 2f64);
     let y_max = corner.y + max_height;
     let (h, p) = match (is_over, state, new_state) {
-        (true, Highlighted, Clicked) | (true, Clicked, Clicked) => {
+        (true, Highlighted, Clicked) | (true, Clicked, Clicked) | (false, Clicked, Clicked) => {
             let p = Point::new(corner.x, clamp(mouse.pos.y, corner.y, y_max), 0f64);
             let h = clamp(max_height - (p.y - corner.y), 0f64, max_height);
             (h, p)
@@ -153,7 +165,7 @@ fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
             (h, p)
         },
     };
-    let w = width - (border * 2f64);
+    let w = width - (frame_w * 2f64);
     let v = get_value((h / max_height) as f32, min, max);
     (p, w, h, v)
 }
@@ -175,12 +187,13 @@ fn get_value<T: Num + Copy + FromPrimitive + ToPrimitive>
 
 /// Check the current state of the slider.
 fn check_state(is_over: bool,
-               prev: SliderState,
-               mouse: MouseState) -> SliderState {
+               prev: State,
+               mouse: MouseState) -> State {
     match (is_over, prev, mouse) {
         (true, Normal, MouseState { left: Down, .. }) => Normal,
         (true, _, MouseState { left: Down, .. }) => Clicked,
         (true, _, MouseState { left: Up, .. }) => Highlighted,
+        (false, Clicked, MouseState { left: Down, .. }) => Clicked,
         _ => Normal,
     }
 }
