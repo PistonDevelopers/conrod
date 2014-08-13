@@ -137,6 +137,14 @@ impl Color {
         Color::new(r, g, b, self.a())
     }
 
+    /// Return either black or white, depending which contrasts
+    /// the Color the most. This will be useful for determining
+    /// a readable color for text on any given background Color.
+    pub fn plain_contrast(&self) -> Color {
+        if (self.r() + self.g() + self.b()) > 1.5f32 { Color::black() }
+        else { Color::white() }
+    }
+
 }
 
 impl Clone for Color {

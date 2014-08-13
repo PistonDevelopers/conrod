@@ -11,6 +11,11 @@ use graphics::{
 };
 use point::Point;
 use color::Color;
+use frame::{
+    Framing,
+    Frame,
+    NoFrame,
+};
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq)]
@@ -29,42 +34,54 @@ pub fn draw(args: &RenderArgs,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            border: f64,
+            frame: Framing,
             color: Color) {
     let context = &Context::abs(args.width as f64, args.height as f64);
-    draw_border(context, gl, pos, width, height);
-    draw_normal(context, gl, state, pos, width, height, border, color);
+    match frame {
+        Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
+        NoFrame => (),
+    }
+    draw_normal(context, gl, state, pos, width, height, frame, color);
 }
 
 /// Draw the button border.
-fn draw_border(context: &Context,
-               gl: &mut Gl,
-               pos: Point<f64>,
-               width: f64,
-               height: f64) {
-    let (r, g, b, a) = (0.0, 0.0, 0.0, 1.0);
+fn draw_frame(context: &Context,
+              gl: &mut Gl,
+              pos: Point<f64>,
+              width: f64,
+              height: f64,
+              color: Color) {
+    let (r, g, b, a) = color.as_tuple();
     context
         .rect(pos.x, pos.y, width, height)
         .rgba(r, g, b, a)
         .draw(gl);
 }
 
-/// Draw the button while considering border for dimensions and position.
+/// Draw the rectangle while considering frame
+/// width for position and dimensions.
 fn draw_normal(context: &Context,
                gl: &mut Gl,
                state: RectangleState,
                pos: Point<f64>,
                width: f64,
                height: f64,
-               border: f64,
+               frame: Framing,
                color: Color) {
     let (r, g, b, a) = match state {
         Normal => color.as_tuple(),
         Highlighted => color.highlighted().as_tuple(),
         Clicked => color.clicked().as_tuple(),
     };
+    let frame_w = match frame {
+        Frame(frame_w, _) => frame_w,
+        _ => 0.0,
+    };
     context
-        .rect(pos.x + border, pos.y + border, width - border * 2.0, height - border * 2.0)
+        .rect(pos.x + frame_w,
+              pos.y + frame_w,
+              width - frame_w * 2.0,
+              height - frame_w * 2.0)
         .rgba(r, g, b, a)
         .draw(gl);
 }

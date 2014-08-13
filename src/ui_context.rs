@@ -35,11 +35,11 @@ pub struct UIContext {
 impl UIContext {
 
     /// Constructor for a UIContext.
-    pub fn new() -> UIContext {
+    pub fn new(font_file: &str) -> UIContext {
         UIContext {
             data: HashMap::new(),
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
-            glyph_cache: GlyphCache::new(),
+            glyph_cache: GlyphCache::new(font_file),
         }
     }
 

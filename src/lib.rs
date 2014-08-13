@@ -7,15 +7,17 @@ extern crate opengl_graphics;
 extern crate serialize;
 extern crate freetype;
 
-pub use Widget = widget::Widget;
-pub use Color = color::Color;
-pub use Point = point::Point;
-pub use UIContext = ui_context::UIContext;
+pub use widget::Widget;
+pub use color::Color;
+pub use point::Point;
+pub use ui_context::UIContext;
+pub use frame::{Framing, Frame, NoFrame};
 
 pub mod macros;
 
 pub mod button;
 pub mod color;
+pub mod frame;
 pub mod glyph_cache;
 pub mod label;
 pub mod mouse_state;

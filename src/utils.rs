@@ -9,4 +9,10 @@ pub fn clampf32(f: f32) -> f32 {
     if f < 0f32 { 0f32 } else if f > 1f32 { 1f32 } else { f }
 }
 
+/// Compare two f64s and return an Ordering.
+pub fn compare_f64s(a: f64, b: f64) -> Ordering {
+    if a > b { Greater }
+    else if a < b { Less }
+    else { Equal }
+}
 

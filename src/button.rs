@@ -5,6 +5,7 @@ use color::Color;
 use point::Point;
 use rectangle;
 use rectangle::RectangleState;
+use frame::Framing;
 use widget::{
     Button,
 };
@@ -19,20 +20,20 @@ use mouse_state::{
 };
 use label;
 use label::{
-    IsLabel,
+    Labeling,
     NoLabel,
     Label,
 };
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq)]
-pub enum ButtonState {
+pub enum State {
     Normal,
     Highlighted,
     Clicked,
 }
 
-impl ButtonState {
+impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> RectangleState {
         match self {
@@ -43,7 +44,7 @@ impl ButtonState {
     }
 }
 
-widget_fns!(Button, ButtonState, Button(Normal))
+widget_fns!(Button, State, Button(Normal))
 
 /// Draw the button. When successfully pressed,
 /// the given `callback` function will be called.
@@ -54,16 +55,16 @@ pub fn draw(args: &RenderArgs,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            border: f64,
+            frame: Framing,
             color: Color,
-            label: IsLabel,
+            label: Labeling,
             callback: ||) {
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
     let new_state = check_state(is_over, state, mouse);
     let rect_state = new_state.as_rectangle_state();
-    rectangle::draw(args, gl, rect_state, pos, width, height, border, color);
+    rectangle::draw(args, gl, rect_state, pos, width, height, frame, color);
     match label {
         NoLabel => (),
         Label(text, size, text_color) => {
@@ -83,12 +84,13 @@ pub fn draw(args: &RenderArgs,
 
 /// Check the current state of the button.
 fn check_state(is_over: bool,
-               prev: ButtonState,
-               mouse: MouseState) -> ButtonState {
+               prev: State,
+               mouse: MouseState) -> State {
     match (is_over, prev, mouse) {
         (true, Normal, MouseState { left: Down, .. }) => Normal,
         (true, _, MouseState { left: Down, .. }) => Clicked,
         (true, _, MouseState { left: Up, .. }) => Highlighted,
+        (false, Clicked, MouseState { left: Down, .. }) => Clicked,
         _ => Normal,
     }
 }

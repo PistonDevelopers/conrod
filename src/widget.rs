@@ -1,16 +1,16 @@
 
-use button::ButtonState;
-use number_dialer::NumberDialerState;
-use toggle::ToggleState;
-use slider::SliderState;
+use button;
+use number_dialer;
+use toggle;
+use slider;
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
 pub enum Widget {
-    Button(ButtonState),
-    NumberDialer(NumberDialerState),
-    Toggle(ToggleState),
-    Slider(SliderState),
+    Button(button::State),
+    NumberDialer(number_dialer::State),
+    Toggle(toggle::State),
+    Slider(slider::State),
 }
 
 /*
