@@ -24,11 +24,13 @@ use mouse_state::{
 use std::num::from_f32;
 use widget::Slider;
 
-widget_state!(SliderState, SliderState {
-    Normal -> 0,
-    Highlighted -> 0,
-    Clicked -> 2
-})
+/// Represents the state of the Button widget.
+#[deriving(PartialEq)]
+pub enum SliderState {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
 impl SliderState {
     /// Return the associated Rectangle state.
@@ -41,7 +43,7 @@ impl SliderState {
     }
 }
 
-widget_boilerplate_fns!(Slider, SliderState, Slider(Normal))
+widget_fns!(Slider, SliderState, Slider(Normal))
 
 /// A generic slider user-interface widget. It will
 /// automatically convert itself between horizontal

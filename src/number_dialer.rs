@@ -25,11 +25,13 @@ use label::{
     Label,
 };
 
-widget_state!(NumberDialerState, NumberDialerState {
-    Normal -> 0,
-    Highlighted -> 1,
-    Clicked -> 2
-})
+/// Represents the state of the Button widget.
+#[deriving(PartialEq)]
+pub enum NumberDialerState {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
 impl NumberDialerState {
     /// Return the associated Rectangle state.
@@ -42,7 +44,7 @@ impl NumberDialerState {
     }
 }
 
-widget_boilerplate_fns!(NumberDialer, NumberDialerState, NumberDialer(Normal))
+widget_fns!(NumberDialer, NumberDialerState, NumberDialer(Normal))
 
 /// Draw the number_dialer. When successfully pressed,
 /// or if the value is changed, the given `callback`

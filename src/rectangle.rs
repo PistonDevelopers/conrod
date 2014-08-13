@@ -12,11 +12,13 @@ use graphics::{
 use point::Point;
 use color::Color;
 
-widget_state!(RectangleState, RectangleState {
-    Normal -> 0,
-    Highlighted -> 1,
-    Clicked -> 2
-})
+/// Represents the state of the Button widget.
+#[deriving(PartialEq)]
+pub enum RectangleState {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
