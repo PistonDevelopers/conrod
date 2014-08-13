@@ -22,11 +22,13 @@ use label::{
     NoLabel,
 };
 
-widget_state!(ToggleState, ToggleState {
-    Normal -> 0,
-    Highlighted -> 1,
-    Clicked -> 2
-})
+/// Represents the state of the Button widget.
+#[deriving(PartialEq)]
+pub enum ToggleState {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
 impl ToggleState {
     /// Return the associated Rectangle state.
@@ -39,7 +41,7 @@ impl ToggleState {
     }
 }
 
-widget_boilerplate_fns!(Toggle, ToggleState, Toggle(Normal))
+widget_fns!(Toggle, ToggleState, Toggle(Normal))
 
 /// Draw a Toggle widget. If the toggle
 /// is switched, call `event` with the

@@ -24,11 +24,13 @@ use label::{
     Label,
 };
 
-widget_state!(ButtonState, ButtonState {
-    Normal -> 0,
-    Highlighted -> 1,
-    Clicked -> 2
-})
+/// Represents the state of the Button widget.
+#[deriving(PartialEq)]
+pub enum ButtonState {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
 impl ButtonState {
     /// Return the associated Rectangle state.
@@ -41,7 +43,7 @@ impl ButtonState {
     }
 }
 
-widget_boilerplate_fns!(Button, ButtonState, Button(Normal))
+widget_fns!(Button, ButtonState, Button(Normal))
 
 /// Draw the button. When successfully pressed,
 /// the given `callback` function will be called.
