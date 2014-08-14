@@ -84,12 +84,12 @@ fn main() {
     // Bool matrix for widget_matrix demonstration.
     let mut bool_matrix = vec![
                             vec![true, true, true, true, true, true, true, true],
-                            vec![true, false, false, false, false, true, true, true],
-                            vec![true, false, true, true, false, true, false, true],
-                            vec![true, false, false, false, false, true, true, true],
-                            vec![true, false, true, true, true, true, false, true],
-                            vec![true, false, true, true, true, true, false, true],
-                            vec![true, false, true, true, true, true, false, true],
+                            vec![true, false, false, false, false, false, false, true],
+                            vec![true, false, true, false, true, true, true, true],
+                            vec![true, false, true, false, true, true, true, true],
+                            vec![true, false, false, false, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, false, true, false, false, false, true],
                             vec![true, true, true, true, true, true, true, true],
                             ];
 
