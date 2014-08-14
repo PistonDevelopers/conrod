@@ -20,18 +20,20 @@ use piston::{
     Render,
 };
 use conrod::{
-    UIContext,
     button,
     label,
     number_dialer,
-    toggle,
     slider,
+    toggle,
+    widget_matrix,
     Color,
     Point,
     Frame,
+    UIContext,
 };
 use conrod::label::{
     Label,
+    NoLabel,
 };
 use graphics::{
     Context,
@@ -79,6 +81,17 @@ fn main() {
     let mut v_slider_height = 185f64;
     // The widget frame width (we'll use this to demo Framing and number_dialer).
     let mut frame_width = 6f64;
+    // Bool matrix for widget_matrix demonstration.
+    let mut bool_matrix = vec![
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, true, true, true, true, true, true, true],
+                            ];
 
     // Main program loop begins.
     loop {
@@ -92,7 +105,8 @@ fn main() {
                                         &mut toggle_label,
                                         &mut title_padding,
                                         &mut v_slider_height,
-                                        &mut frame_width),
+                                        &mut frame_width,
+                                        &mut bool_matrix),
         }
     }
 
@@ -107,7 +121,8 @@ fn handle_event(event: &mut GameEvent,
                 toggle_label: &mut String,
                 title_padding: &mut f64,
                 v_slider_height: &mut f64,
-                frame_width: &mut f64) {
+                frame_width: &mut f64,
+                bool_matrix: &mut Vec<Vec<bool>>) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
@@ -120,7 +135,8 @@ fn handle_event(event: &mut GameEvent,
                     toggle_label,
                     title_padding,
                     v_slider_height,
-                    frame_width);
+                    frame_width,
+                    bool_matrix);
         },
         _ => (),
     }
@@ -147,7 +163,8 @@ fn draw_ui(args: &RenderArgs,
            toggle_label: &mut String,
            title_padding: &mut f64,
            v_slider_height: &mut f64,
-           frame_width: &mut f64) {
+           frame_width: &mut f64,
+           bool_matrix: &mut Vec<Vec<bool>>) {
 
     // Label example.
     label::draw(args, // RenderArgs.
@@ -312,6 +329,30 @@ fn draw_ui(args: &RenderArgs,
                         2u8, // Precision (number of digits to show after decimal point).
                         |new_width| { // Callback closure.
         *frame_width = new_width;
+    });
+
+    // A demonstration using widget_matrix to easily draw
+    // a matrix of any kind of widget.
+    let (cols, rows) = (8u, 8u);
+    widget_matrix::draw(cols, // cols.
+                        rows, // rows.
+                        Point::new(300.0, 270.0, 0.0), // matrix position.
+                        260.0, // width.
+                        260.0, // height.
+                        |num, col, row, pos, width, height| {
+        // Now draw the widgets with the given callback.
+        let val = (*bool_matrix)[col][row];
+        toggle::draw(args, gl, uic, 8u64 + num as u64, pos, width, height,
+                     Frame(*frame_width, Color::black()),
+                     Color::new(0.5 + (col as f32 / cols as f32) / 2.0,
+                                0.75,
+                                1.0 - (row as f32 / rows as f32) / 2.0,
+                                1.0),
+                     NoLabel,
+                     val,
+                     |new_val| {
+            *bool_matrix.get_mut(col).get_mut(row) = new_val;
+        });
     });
 
 
