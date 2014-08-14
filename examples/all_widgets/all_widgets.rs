@@ -80,16 +80,16 @@ fn main() {
     // The height of the vertical sliders (we will play with this using a number_dialer).
     let mut v_slider_height = 185f64;
     // The widget frame width (we'll use this to demo Framing and number_dialer).
-    let mut frame_width = 6f64;
+    let mut frame_width = 1f64;
     // Bool matrix for widget_matrix demonstration.
     let mut bool_matrix = vec![
                             vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
-                            vec![true, true, true, true, true, true, true, true],
+                            vec![true, false, false, false, false, true, true, true],
+                            vec![true, false, true, true, false, true, false, true],
+                            vec![true, false, false, false, false, true, true, true],
+                            vec![true, false, true, true, true, true, false, true],
+                            vec![true, false, true, true, true, true, false, true],
+                            vec![true, false, true, true, true, true, false, true],
                             vec![true, true, true, true, true, true, true, true],
                             ];
 
