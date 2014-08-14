@@ -47,7 +47,7 @@ fn main() {
     let mut window = GameWindowSDL2::new(
         GameWindowSettings {
             title: "Hello Conrod".to_string(),
-            size: [600, 600],
+            size: [1000, 600],
             fullscreen: false,
             exit_on_esc: true
         }
@@ -340,6 +340,7 @@ fn draw_ui(args: &RenderArgs,
                         260.0, // width.
                         260.0, // height.
                         |num, col, row, pos, width, height| {
+
         // Now draw the widgets with the given callback.
         let val = (*bool_matrix)[col][row];
         toggle::draw(args, gl, uic, 8u64 + num as u64, pos, width, height,
@@ -353,6 +354,7 @@ fn draw_ui(args: &RenderArgs,
                      |new_val| {
             *bool_matrix.get_mut(col).get_mut(row) = new_val;
         });
+
     });
 
 

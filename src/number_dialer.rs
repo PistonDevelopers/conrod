@@ -186,7 +186,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
 
 /// Return the dimensions of a value glyph slot.
 fn value_glyph_slot_width(size: FontSize) -> f64 {
-    (size as f64 * 0.75).round() as f64
+    (size as f64 * 0.75).floor() as f64
 }
 
 /// Return the height of a value glyph slot.
@@ -339,27 +339,43 @@ fn draw_value_string(args: &RenderArgs,
     let half_slot_w = slot_w / 2.0;
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
-        let (rect_r, rect_g, rect_b, rect_a) = match state {
+        match state {
             Highlighted(elem) => match elem {
-                ValueGlyph(idx, _) => if idx == i { rect_color.highlighted().as_tuple() }
-                                      else { rect_color.as_tuple() },
-                _ => rect_color.as_tuple(),
+                ValueGlyph(idx, _) => {
+                    let rect_color = if idx == i { rect_color.highlighted() }
+                                     else { rect_color };
+                    draw_slot_rect(gl, &context,
+                                   x as f64,
+                                   -slot_h + RECT_PADDING,
+                                   size as f64,
+                                   rect_h - frame_w * 2.0,
+                                   rect_color);
+                },
+                _ => (),
             },
             Clicked(elem) => match elem {
-                ValueGlyph(idx, _) => if idx == i { rect_color.clicked().as_tuple() }
-                                      else { rect_color.as_tuple() },
-                _ => rect_color.as_tuple(),
+                ValueGlyph(idx, _) => {
+                    let rect_color = if idx == i { rect_color.clicked() }
+                                     else { rect_color };
+                    draw_slot_rect(gl, &context,
+                                   x as f64,
+                                   -slot_h + RECT_PADDING,
+                                   size as f64,
+                                   rect_h - frame_w * 2.0,
+                                   rect_color);
+                },
+                _ => (),
             },
-            _ => rect_color.as_tuple(),
+            _ => (),
         };
-        context
+        /*context
             // Something here needs to be changed to RECT_PADDING instead of frame_w
-            .rect((x + character.bitmap_glyph.left()) as f64,
+            .rect((x /*+ character.bitmap_glyph.left() */) as f64,
                   -slot_h + RECT_PADDING, //+ frame_w,
                   //-(size as f64) - frame_w,
                   size as f64, rect_h - frame_w * 2.0)
             .rgba(rect_r, rect_g, rect_b, rect_a)
-            .draw(gl);
+            .draw(gl); */
         let x_shift = half_slot_w - (character.glyph.advance().x >> 16) as f64 / 2.0;
         context.trans((x + character.bitmap_glyph.left() + x_shift as i32) as f64,
                       (y - character.bitmap_glyph.top()) as f64)
@@ -369,5 +385,13 @@ fn draw_value_string(args: &RenderArgs,
         x += slot_w as i32;
     }
 
+}
+
+/// Draw the slot behind the value.
+fn draw_slot_rect(gl: &mut Gl, context: &Context,
+                  x: f64, y: f64, w: f64, h: f64,
+                  color: Color) {
+    let (r, g, b, a) = color.as_tuple();
+    context.rect(x, y, w, h).rgba(r, g, b, a).draw(gl)
 }
 
