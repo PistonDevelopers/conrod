@@ -57,3 +57,10 @@ pub fn width(uic: &mut UIContext, size: FontSize, text: &str) -> f64 {
     }) as f64
 }
 
+/// Determine a suitable FontSize from a given rectangle height.
+#[inline]
+pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
+    let size = rect_height as u32 - 832;
+    if size % 2 == 0 { size } else { size - 1u32 }
+}
+

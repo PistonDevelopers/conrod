@@ -4,7 +4,6 @@ use piston::RenderArgs;
 use color::Color;
 use point::Point;
 use rectangle;
-use rectangle::RectangleState;
 use widget::Toggle;
 use ui_context::{
     UIID,
@@ -15,7 +14,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use label;
 use label::{
     Labeling,
     Label,
@@ -33,7 +31,7 @@ pub enum State {
 
 impl State {
     /// Return the associated Rectangle state.
-    fn as_rectangle_state(&self) -> RectangleState {
+    fn as_rectangle_state(&self) -> rectangle::State {
         match self {
             &Normal => rectangle::Normal,
             &Highlighted => rectangle::Highlighted,
@@ -73,15 +71,14 @@ pub fn draw(args: &RenderArgs,
                 color.a()
             ),
     };
-    rectangle::draw(args, gl, rect_state, pos, width, height, frame, rect_color);
     match label {
-        NoLabel => (),
+        NoLabel => {
+            rectangle::draw(args, gl, rect_state, pos, width, height, frame, rect_color)
+        },
         Label(text, size, text_color) => {
-            let t_w = label::width(uic, size, text);
-            let x = pos.x + (width - t_w) / 2.0;
-            let y = pos.y + (height - size as f64) / 2.0;
-            let l_pos = Point::new(x, y, 0.0);
-            label::draw(args, gl, uic, l_pos, size, text_color, text);
+            rectangle::draw_with_centered_label(args, gl, uic, rect_state,
+                                                pos, width, height, frame, rect_color,
+                                                text, size, text_color)
         },
     }
     set_state(uic, ui_id, new_state);

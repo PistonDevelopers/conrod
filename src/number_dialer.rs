@@ -368,14 +368,6 @@ fn draw_value_string(args: &RenderArgs,
             },
             _ => (),
         };
-        /*context
-            // Something here needs to be changed to RECT_PADDING instead of frame_w
-            .rect((x /*+ character.bitmap_glyph.left() */) as f64,
-                  -slot_h + RECT_PADDING, //+ frame_w,
-                  //-(size as f64) - frame_w,
-                  size as f64, rect_h - frame_w * 2.0)
-            .rgba(rect_r, rect_g, rect_b, rect_a)
-            .draw(gl); */
         let x_shift = half_slot_w - (character.glyph.advance().x >> 16) as f64 / 2.0;
         context.trans((x + character.bitmap_glyph.left() + x_shift as i32) as f64,
                       (y - character.bitmap_glyph.top()) as f64)

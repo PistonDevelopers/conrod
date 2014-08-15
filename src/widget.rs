@@ -1,5 +1,6 @@
 
 use button;
+use drop_down_list;
 use number_dialer;
 use toggle;
 use slider;
@@ -8,6 +9,7 @@ use slider;
 /// and for ease of state-matching.
 pub enum Widget {
     Button(button::State),
+    DropDownList(drop_down_list::State),
     NumberDialer(number_dialer::State),
     Toggle(toggle::State),
     Slider(slider::State),
