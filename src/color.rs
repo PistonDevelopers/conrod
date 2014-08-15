@@ -104,18 +104,48 @@ impl Color {
 
     /// Return a highlighted version of the current Color.
     pub fn highlighted(&self) -> Color {
-        let r = clampf32((1f32 - self.r()) * 0.5f32 * self.r() + self.r());
-        let g = clampf32((1f32 - self.g()) * 0.1f32 * self.g() + self.g());
-        let b = clampf32((1f32 - self.b()) * 0.1f32 * self.b() + self.b());
+        let luminance = self.luminance();
+        let (r, g, b) = {
+            if luminance > 0.8 {
+                (self.r() - 0.2,
+                 self.g() - 0.2,
+                 self.b() - 0.2)
+            }
+            else if luminance < 0.2 {
+                (self.r() + 0.2,
+                 self.g() + 0.2,
+                 self.b() + 0.2)
+            }
+            else {
+                (clampf32((1f32 - self.r()) * 0.5f32 * self.r() + self.r()),
+                 clampf32((1f32 - self.g()) * 0.1f32 * self.g() + self.g()),
+                 clampf32((1f32 - self.b()) * 0.1f32 * self.b() + self.b()))
+            }
+        };
         let a = clampf32((1f32 - self.a()) * 0.5f32 + self.a());
         Color::new(r, g, b, a)
     }
 
     /// Return a clicked version of the current Color.
     pub fn clicked(&self) -> Color {
-        let r = clampf32((1f32 - self.r()) * 0.75f32 + self.r());
-        let g = clampf32((1f32 - self.g()) * 0.25f32 + self.g());
-        let b = clampf32((1f32 - self.b()) * 0.25f32 + self.b());
+        let luminance = self.luminance();
+        let (r, g, b) = {
+            if luminance > 0.8 {
+                (self.r(),
+                 self.g() - 0.2,
+                 self.b() - 0.2)
+            }
+            else if luminance < 0.2 {
+                (self.r() + 0.4,
+                 self.g() + 0.2,
+                 self.b() + 0.2)
+            }
+            else {
+                (clampf32((1f32 - self.r()) * 0.75f32 + self.r()),
+                 clampf32((1f32 - self.g()) * 0.25f32 + self.g()),
+                 clampf32((1f32 - self.b()) * 0.25f32 + self.b()))
+            }
+        };
         let a = clampf32((1f32 - self.a()) * 0.75f32 + self.a());
         Color::new(r, g, b, a)
     }
@@ -141,8 +171,13 @@ impl Color {
     /// the Color the most. This will be useful for determining
     /// a readable color for text on any given background Color.
     pub fn plain_contrast(&self) -> Color {
-        if (self.r() + self.g() + self.b()) > 1.5f32 { Color::black() }
+        if self.luminance() > 0.5f32 { Color::black() }
         else { Color::white() }
+    }
+
+    /// Return the luminance of the color.
+    pub fn luminance(&self) -> f32 {
+        (self.r() + self.g() + self.b()) / 3f32
     }
 
 }
@@ -167,7 +202,7 @@ impl Add<Color, Color> for Color {
                 self.r() + rhs.r(), 
                 self.g() + rhs.g(), 
                 self.b() + rhs.b(), 
-                self.a() + rhs.a()
+                self.a()
             ])
         )
     }
@@ -180,9 +215,34 @@ impl Sub<Color, Color> for Color {
                 self.r() - rhs.r(), 
                 self.g() - rhs.g(), 
                 self.b() - rhs.b(), 
-                self.a() - rhs.a()
+                self.a()
             ])
         )
     }
 }
 
+impl Div<Color, Color> for Color {
+    fn div(&self, rhs: &Color) -> Color {
+        Color::clamp(
+            Color([
+                self.r() / rhs.r(), 
+                self.g() / rhs.g(), 
+                self.b() / rhs.b(), 
+                self.a()
+            ])
+        )
+    }
+}
+
+impl Mul<Color, Color> for Color {
+    fn mul(&self, rhs: &Color) -> Color {
+        Color::clamp(
+            Color([
+                self.r() * rhs.r(), 
+                self.g() * rhs.g(), 
+                self.b() * rhs.b(), 
+                self.a()
+            ])
+        )
+    }
+}

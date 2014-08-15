@@ -21,6 +21,7 @@ use piston::{
 };
 use conrod::{
     button,
+    drop_down_list,
     label,
     number_dialer,
     slider,
@@ -47,7 +48,7 @@ fn main() {
     let mut window = GameWindowSDL2::new(
         GameWindowSettings {
             title: "Hello Conrod".to_string(),
-            size: [1000, 600],
+            size: [860, 600],
             fullscreen: false,
             exit_on_esc: true
         }
@@ -92,6 +93,14 @@ fn main() {
                             vec![true, true, false, true, false, false, false, true],
                             vec![true, true, true, true, true, true, true, true],
                             ];
+    // A vector of strings for drop_down_list demonstration.
+    let mut ddl_colors = vec!["Black".to_string(),
+                              "White".to_string(),
+                              "Red".to_string(),
+                              "Green".to_string(),
+                              "Blue".to_string()];
+    // We also need an Option<idx> to indicate whether or not an item is selected.
+    let mut selected_idx = None;
 
     // Main program loop begins.
     loop {
@@ -106,7 +115,9 @@ fn main() {
                                         &mut title_padding,
                                         &mut v_slider_height,
                                         &mut frame_width,
-                                        &mut bool_matrix),
+                                        &mut bool_matrix,
+                                        &mut ddl_colors,
+                                        &mut selected_idx),
         }
     }
 
@@ -122,7 +133,9 @@ fn handle_event(event: &mut GameEvent,
                 title_padding: &mut f64,
                 v_slider_height: &mut f64,
                 frame_width: &mut f64,
-                bool_matrix: &mut Vec<Vec<bool>>) {
+                bool_matrix: &mut Vec<Vec<bool>>,
+                ddl_colors: &mut Vec<String>,
+                selected_idx: &mut Option<uint>) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
@@ -136,7 +149,9 @@ fn handle_event(event: &mut GameEvent,
                     title_padding,
                     v_slider_height,
                     frame_width,
-                    bool_matrix);
+                    bool_matrix,
+                    ddl_colors,
+                    selected_idx);
         },
         _ => (),
     }
@@ -164,7 +179,9 @@ fn draw_ui(args: &RenderArgs,
            title_padding: &mut f64,
            v_slider_height: &mut f64,
            frame_width: &mut f64,
-           bool_matrix: &mut Vec<Vec<bool>>) {
+           bool_matrix: &mut Vec<Vec<bool>>,
+           ddl_colors: &mut Vec<String>,
+           selected_idx: &mut Option<uint>) {
 
     // Label example.
     label::draw(args, // RenderArgs.
@@ -214,7 +231,7 @@ fn draw_ui(args: &RenderArgs,
                      Label(label.as_slice(), 24u32, Color::white()),
                      pad as i16, // Slider value.
                      10i16, // Min value.
-                     250i16, // Max value.
+                     560i16, // Max value.
                      |new_pad| {
             *title_padding = new_pad as f64;
         });
@@ -300,7 +317,7 @@ fn draw_ui(args: &RenderArgs,
                         gl, // OpenGL instance.
                         uic, // UIContext.
                         6u64, // UIID.
-                        Point::new(350.0, 115.0, 0.0), // Position.
+                        Point::new(330.0, 115.0, 0.0), // Position.
                         24u32, // Number Dialer font size.
                         Frame(*frame_width, Color::black()), // Widget Frame
                         bg_color.invert(), // Number Dialer Color.
@@ -318,7 +335,7 @@ fn draw_ui(args: &RenderArgs,
                         gl, // OpenGL instance.
                         uic, // UIContext.
                         7u64, // UIID.
-                        Point::new(350.0, 195.0, 0.0), // Position.
+                        Point::new(330.0, 195.0, 0.0), // Position.
                         24u32, // Number Dialer font size.
                         Frame(4.0, bg_color.plain_contrast()), // Widget Frame
                         bg_color.invert().plain_contrast(), // Number Dialer Color.
@@ -357,6 +374,36 @@ fn draw_ui(args: &RenderArgs,
 
     });
 
+    let ddl_color = match *selected_idx {
+        Some(idx) => match (*ddl_colors)[idx].as_slice() {
+            "Black" => Color::black(),
+            "White" => Color::white(),
+            "Red" => Color::new(0.75, 0.4, 0.4, 1.0),
+            "Green" => Color::new(0.4, 0.8, 0.4, 1.0),
+            "Blue" => Color::new(0.4, 0.4, 0.8, 1.0),
+            _ => Color::new(0.75, 0.55, 0.85, 1.0),
+        },
+        None => Color::new(0.75, 0.55, 0.85, 1.0),
+    };
+
+    // A demonstration using drop_down_list.
+    drop_down_list::draw(args,
+                         gl,
+                         uic,
+                         75u64,
+                         Point::new(620.0, 115.0, 0.0), // Position.
+                         150.0, // width.
+                         40.0, // height.
+                         Frame(*frame_width, ddl_color.plain_contrast()),
+                         ddl_color,
+                         Label("Colors", 24u32, ddl_color.plain_contrast()),
+                         ddl_colors,
+                         *selected_idx,
+                         |idx, _string| {
+        *selected_idx = Some(idx);
+    });
+
+                         
 
 }
 

@@ -7,7 +7,6 @@ use label::{
     NoLabel,
 };
 use rectangle;
-use rectangle::RectangleState;
 use point::Point;
 use color::Color;
 use utils::clamp;
@@ -39,7 +38,7 @@ pub enum State {
 
 impl State {
     /// Return the associated Rectangle state.
-    fn as_rectangle_state(&self) -> RectangleState {
+    fn as_rectangle_state(&self) -> rectangle::State {
         match self {
             &Normal => rectangle::Normal,
             &Highlighted => rectangle::Highlighted,
