@@ -387,20 +387,20 @@ fn draw_ui(args: &RenderArgs,
     };
 
     // A demonstration using drop_down_list.
-    drop_down_list::draw(args,
-                         gl,
-                         uic,
-                         75u64,
+    drop_down_list::draw(args, // RenderArgs.
+                         gl, // OpenGL instance.
+                         uic, // UIContext.
+                         75u64, // UIID.
                          Point::new(620.0, 115.0, 0.0), // Position.
                          150.0, // width.
                          40.0, // height.
                          Frame(*frame_width, ddl_color.plain_contrast()),
-                         ddl_color,
+                         ddl_color, // Color of drop_down_list.
                          Label("Colors", 24u32, ddl_color.plain_contrast()),
-                         ddl_colors,
-                         *selected_idx,
-                         |idx, _string| {
-        *selected_idx = Some(idx);
+                         ddl_colors, // String vector.
+                         *selected_idx, // Currently selected string index.
+                         |idx, _string| { // Callback (on new selection).
+        *selected_idx = Some(idx); // Assign the newly selected index.
     });
 
                          
