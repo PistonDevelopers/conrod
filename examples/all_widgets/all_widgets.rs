@@ -27,6 +27,7 @@ use conrod::{
     slider,
     toggle,
     widget_matrix,
+    xy_pad,
     Color,
     Point,
     Frame,
@@ -39,6 +40,7 @@ use conrod::label::{
 use graphics::{
     Context,
     AddColor,
+    AddEllipse,
     Draw,
 };
 
@@ -101,6 +103,8 @@ fn main() {
                               "Blue".to_string()];
     // We also need an Option<idx> to indicate whether or not an item is selected.
     let mut selected_idx = None;
+    // Co-ordinates for a little circle used to demonstrate the xy_pad.
+    let mut circle_pos = Point::new(700f64, 200.0, 0.0);
 
     // Main program loop begins.
     loop {
@@ -117,7 +121,8 @@ fn main() {
                                         &mut frame_width,
                                         &mut bool_matrix,
                                         &mut ddl_colors,
-                                        &mut selected_idx),
+                                        &mut selected_idx,
+                                        &mut circle_pos),
         }
     }
 
@@ -135,7 +140,8 @@ fn handle_event(event: &mut GameEvent,
                 frame_width: &mut f64,
                 bool_matrix: &mut Vec<Vec<bool>>,
                 ddl_colors: &mut Vec<String>,
-                selected_idx: &mut Option<uint>) {
+                selected_idx: &mut Option<uint>,
+                circle_pos: &mut Point<f64>) {
     uic.event(event);
     match *event {
         Render(ref mut args) => {
@@ -151,7 +157,8 @@ fn handle_event(event: &mut GameEvent,
                     frame_width,
                     bool_matrix,
                     ddl_colors,
-                    selected_idx);
+                    selected_idx,
+                    circle_pos);
         },
         _ => (),
     }
@@ -181,7 +188,8 @@ fn draw_ui(args: &RenderArgs,
            frame_width: &mut f64,
            bool_matrix: &mut Vec<Vec<bool>>,
            ddl_colors: &mut Vec<String>,
-           selected_idx: &mut Option<uint>) {
+           selected_idx: &mut Option<uint>,
+           circle_pos: &mut Point<f64>) {
 
     // Label example.
     label::draw(args, // RenderArgs.
@@ -318,7 +326,9 @@ fn draw_ui(args: &RenderArgs,
                         uic, // UIContext.
                         6u64, // UIID.
                         Point::new(330.0, 115.0, 0.0), // Position.
-                        24u32, // Number Dialer font size.
+                        200.0, // width.
+                        60.0, // height.
+                        24u32, // Font size. If a label is given, that size will be used instead.
                         Frame(*frame_width, Color::black()), // Widget Frame
                         bg_color.invert(), // Number Dialer Color.
                         Label("Height (pixels)", 24u32, bg_color.invert().plain_contrast()),
@@ -386,6 +396,9 @@ fn draw_ui(args: &RenderArgs,
         None => Color::new(0.75, 0.55, 0.85, 1.0),
     };
 
+    // Draw the circle that's controlled by the XYPad.
+    draw_circle(args, gl, *circle_pos, ddl_color);
+
     // A demonstration using drop_down_list.
     drop_down_list::draw(args, // RenderArgs.
                          gl, // OpenGL instance.
@@ -403,7 +416,36 @@ fn draw_ui(args: &RenderArgs,
         *selected_idx = Some(idx); // Assign the newly selected index.
     });
 
-                         
+    // Draw a xy_pad.
+    xy_pad::draw(args, // RenderArgs.
+                 gl, // OpenGL instance.
+                 uic, // UIContext.
+                 76u64, // UIID.
+                 Point::new(620.0, 370.0, 0.0), // Position.
+                 160.0, // width.
+                 160.0, // height.
+                 Frame(*frame_width, Color::white()),
+                 Color::black(),
+                 NoLabel,
+                 circle_pos.x, 770.0, 620.0,
+                 circle_pos.y, 320.0, 175.0,
+                 |new_x, new_y| {
+        circle_pos.x = new_x;
+        circle_pos.y = new_y;
+    });
 
+}
+
+/// Draw a circle controlled by the XYPad.
+fn draw_circle(args: &RenderArgs,
+               gl: &mut Gl,
+               pos: Point<f64>,
+               color: Color) {
+    let context = &Context::abs(args.width as f64, args.height as f64);
+    let (r, g, b, a) = color.as_tuple();
+    context
+        .ellipse(pos.x, pos.y, 30.0, 30.0)
+        .rgba(r, g, b, a)
+        .draw(gl)
 }
 
