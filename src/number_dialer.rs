@@ -137,7 +137,6 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
     let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
     draw_value_string(args, gl, uic, new_state, pos.y + frame_w, color, height, frame_w,
                       value_glyph_slot_width(val_string_size),
-                      value_glyph_slot_height(height, frame_w),
                       val_string_pos,
                       val_string_size,
                       val_string_color,
@@ -189,11 +188,6 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
 /// Return the dimensions of a value glyph slot.
 fn value_glyph_slot_width(size: FontSize) -> f64 {
     (size as f64 * 0.75).floor() as f64
-}
-
-/// Return the height of a value glyph slot.
-fn value_glyph_slot_height(rect_height: f64, frame_w: f64) -> f64 {
-    rect_height - frame_w * 2.0
 }
 
 /// Return the dimensions of the label.
@@ -331,7 +325,6 @@ fn draw_value_string(args: &RenderArgs,
                      rect_h: f64,
                      frame_w: f64,
                      slot_w: f64,
-                     slot_h: f64,
                      pos: Point<f64>,
                      size: FontSize,
                      font_color: Color,

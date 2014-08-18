@@ -6,7 +6,6 @@ use opengl_graphics::Gl;
 use graphics::{
     AddColor,
     AddLine,
-    AddRectangle,
     AddSquareBorder,
     Context,
     Draw,
@@ -40,10 +39,8 @@ use mouse_state::{
     Down,
 };
 use utils::{
-    clamp,
     map,
     percentage,
-    value_from_perc,
 };
 use widget::XYPad;
 

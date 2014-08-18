@@ -24,7 +24,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use std::num::from_f32;
 use widget::Slider;
 use frame::{
     Framing,
