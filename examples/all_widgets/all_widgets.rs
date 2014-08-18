@@ -11,7 +11,6 @@ extern crate opengl_graphics;
 use sdl2_game_window::GameWindowSDL2;
 use opengl_graphics::Gl;
 use piston::{
-    Game,
     GameEvent,
     GameWindowSettings,
     GameIterator,
@@ -48,6 +47,7 @@ fn main() {
 
     // Create a SDL2 window.
     let mut window = GameWindowSDL2::new(
+        piston::shader_version::opengl::OpenGL_3_2,
         GameWindowSettings {
             title: "Hello Conrod".to_string(),
             size: [860, 600],
