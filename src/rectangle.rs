@@ -21,7 +21,7 @@ use label::FontSize;
 use ui_context::UIContext;
 
 /// Represents the state of the Button widget.
-#[deriving(Show, PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum State {
     Normal,
     Highlighted,
@@ -119,9 +119,9 @@ pub fn draw_with_centered_label(args: &RenderArgs,
     }
     draw_normal(context, gl, state, pos, width, height, frame, color);
     let text_w = label::width(uic, font_size, text);
-    let x = pos.x + (width - text_w) / 2.0;
-    let y = pos.y + (height - font_size as f64) / 2.0;
-    let l_pos = Point::new(x, y, 0.0);
+    let l_pos = Point::new(pos.x + (width - text_w) / 2.0,
+                           pos.y + (height - font_size as f64) / 2.0,
+                           0.0);
     label::draw(args, gl, uic, l_pos, font_size, text_color, text);
 }
 

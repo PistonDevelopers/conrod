@@ -50,6 +50,7 @@ pub fn draw(args: &RenderArgs,
 }
 
 /// Determine the pixel width of the final text bitmap.
+#[inline]
 pub fn width(uic: &mut UIContext, size: FontSize, text: &str) -> f64 {
     text.chars().fold(0u32, |a, ch| {
         let character = uic.get_character(size, ch);

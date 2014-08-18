@@ -9,7 +9,11 @@ use label::{
 use rectangle;
 use point::Point;
 use color::Color;
-use utils::clamp;
+use utils::{
+    clamp,
+    percentage,
+    value_from_perc,
+};
 use opengl_graphics::Gl;
 use ui_context::{
     UIID,
@@ -20,7 +24,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use std::num::from_f32;
 use widget::Slider;
 use frame::{
     Framing,
@@ -70,7 +73,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
-    let new_state = check_state(is_over, state, mouse);
+    let new_state = get_new_state(is_over, state, mouse);
     let rect_state = new_state.as_rectangle_state();
     let (frame_w, frame_c) = match frame {
         Frame(frame_w, frame_c) => (frame_w, frame_c),
@@ -129,10 +132,10 @@ fn horizontal<T: Num + Copy + FromPrimitive + ToPrimitive>
         (true, Highlighted, Clicked) | (true, Clicked, Clicked) | (false, Clicked, Clicked) => {
             clamp(mouse.pos.x - p.x, 0f64, max_width)
         },
-        _ => clamp(get_percentage(value, min, max) as f64 * max_width, 0f64, max_width),
+        _ => clamp(percentage(value, min, max) as f64 * max_width, 0f64, max_width),
     };
     let h = height - (frame_w * 2f64);
-    let v = get_value((w / max_width) as f32, min, max);
+    let v = value_from_perc((w / max_width) as f32, min, max);
     (p, w, h, v)
 }
 
@@ -159,35 +162,20 @@ fn vertical<T: Num + Copy + FromPrimitive + ToPrimitive>
             (h, p)
         },
         _ => {
-            let h = clamp(get_percentage(value, min, max) as f64 * max_height, 0f64, max_height);
+            let h = clamp(percentage(value, min, max) as f64 * max_height, 0f64, max_height);
             let p = Point::new(corner.x, corner.y + max_height - h, 0f64);
             (h, p)
         },
     };
     let w = width - (frame_w * 2f64);
-    let v = get_value((h / max_height) as f32, min, max);
+    let v = value_from_perc((h / max_height) as f32, min, max);
     (p, w, h, v)
 }
 
-/// Get value percentage between max and min.
-fn get_percentage<T: Num + Copy + FromPrimitive + ToPrimitive>
-    (value: T, min: T, max: T) -> f32 {
-    let v = value.to_f32().unwrap();
-    let mn = min.to_f32().unwrap();
-    let mx = max.to_f32().unwrap();
-    (v - mn) / (mx - mn)
-}
-
-/// Adjust the value to the given percentage.
-fn get_value<T: Num + Copy + FromPrimitive + ToPrimitive>
-    (perc: f32, min: T, max: T) -> T {
-    from_f32::<T>((max - min).to_f32().unwrap() * perc).unwrap() + min
-}
-
 /// Check the current state of the slider.
-fn check_state(is_over: bool,
-               prev: State,
-               mouse: MouseState) -> State {
+fn get_new_state(is_over: bool,
+                 prev: State,
+                 mouse: MouseState) -> State {
     match (is_over, prev, mouse) {
         (true, Normal, MouseState { left: Down, .. }) => Normal,
         (true, _, MouseState { left: Down, .. }) => Clicked,
