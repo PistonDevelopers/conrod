@@ -63,9 +63,6 @@ pub enum State {
 
 widget_fns!(NumberDialer, State, NumberDialer(Normal))
 
-/// Six pixels between rect edge and value string.
-static RECT_PADDING: f64 = 6.0;
-
 /// Draw the number_dialer. When successfully pressed,
 /// or if the value is changed, the given `callback`
 /// function will be called.
@@ -75,6 +72,8 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
      uic: &mut UIContext,
      ui_id: UIID,
      pos: Point<f64>,
+     width: f64,
+     height: f64,
      font_size: FontSize,
      frame: Framing,
      color: Color,
@@ -93,20 +92,23 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
                                                  else { 1u + precision as uint };
     let mut val_string = create_val_string(val, val_string_len, precision);
     let (val_string_w, val_string_h) = val_string_dimensions(font_size, label, &val_string);
-    let (rect_w, rect_h) = (val_string_w + label_w + RECT_PADDING * 2.0 + frame_w * 2.0,
-                            val_string_h + RECT_PADDING * 2.0 + frame_w * 2.0);
+    /*let (rect_w, rect_h) = (val_string_w + label_w + RECT_PADDING * 2.0 + frame_w * 2.0,
+                            val_string_h + RECT_PADDING * 2.0 + frame_w * 2.0);*/
+    let l_pos = Point::new(pos.x + (width - (label_w + val_string_w)) / 2.0,
+                           pos.y + (height - font_size as f64) / 2.0,
+                           0.0);
     let is_over_elem = is_over(pos, frame_w, mouse.pos,
-                               rect_w, rect_h,
-                               label_w, label_h,
+                               width, height,
+                               l_pos, label_w, label_h,
                                val_string_w, val_string_h,
                                val_string.len());
     let new_state = get_new_state(is_over_elem, state, mouse);
 
     // Draw the widget rectangle.
-    rectangle::draw(args, gl, rectangle::Normal, pos, rect_w, rect_h, frame, color);
+    rectangle::draw(args, gl, rectangle::Normal, pos, width, height, frame, color);
 
     // If there's a label, draw it.
-    let l_pos = pos + Point::new(RECT_PADDING + frame_w, RECT_PADDING + frame_w, 0.0);
+    //let l_pos = pos + Point::new(RECT_PADDING + frame_w, RECT_PADDING + frame_w, 0.0);
     let (val_string_color, val_string_size) = match label {
         NoLabel => (color.plain_contrast(), font_size),
         Label(_, l_size, l_color) => {
@@ -133,9 +135,9 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 
     // Draw the value string.
     let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
-    draw_value_string(args, gl, uic, new_state, color, rect_h, frame_w,
+    draw_value_string(args, gl, uic, new_state, pos.y + frame_w, color, height, frame_w,
                       value_glyph_slot_width(val_string_size),
-                      value_glyph_slot_height(rect_h, frame_w),
+                      value_glyph_slot_height(height, frame_w),
                       val_string_pos,
                       val_string_size,
                       val_string_color,
@@ -225,6 +227,7 @@ fn is_over(pos: Point<f64>,
            mouse_pos: Point<f64>,
            rect_w: f64,
            rect_h: f64,
+           l_pos: Point<f64>,
            label_w: f64,
            label_h: f64,
            val_string_w: f64,
@@ -233,18 +236,19 @@ fn is_over(pos: Point<f64>,
     match rectangle::is_over(pos, mouse_pos, rect_w, rect_h) {
         false => None,
         true => {
-            let label_pos = pos + Point::new(RECT_PADDING + frame_w, RECT_PADDING + frame_w, 0.0);
-            match rectangle::is_over(label_pos, mouse_pos, label_w, label_h) {
+            match rectangle::is_over(l_pos, mouse_pos, label_w, label_h) {
                 true => Some(LabelGlyphs),
                 false => {
-                    let val_string_pos = label_pos + Point::new(label_w, 0.0, 0.0);
-                    match rectangle::is_over(val_string_pos, mouse_pos, val_string_w, val_string_h) {
+                    let frame_w2 = frame_w * 2.0;
+                    let slot_rect_pos = Point::new(l_pos.x + label_w, pos.y + frame_w, 0.0);
+                    match rectangle::is_over(slot_rect_pos, mouse_pos,
+                                             val_string_w, rect_h - frame_w2) {
                         false => Some(Rect),
                         true => {
                             let slot_w = value_glyph_slot_width(val_string_h as u32);
-                            let mut slot_pos = val_string_pos;
+                            let mut slot_pos = slot_rect_pos;
                             for i in range(0u, val_string_len) {
-                                if rectangle::is_over(slot_pos, mouse_pos, slot_w, val_string_h) {
+                                if rectangle::is_over(slot_pos, mouse_pos, slot_w, rect_h) {
                                     return Some(ValueGlyph(i, mouse_pos.y))
                                 }
                                 slot_pos.x += slot_w;
@@ -322,6 +326,7 @@ fn draw_value_string(args: &RenderArgs,
                      gl: &mut Gl,
                      uic: &mut UIContext,
                      state: State,
+                     slot_y: f64,
                      rect_color: Color,
                      rect_h: f64,
                      frame_w: f64,
@@ -342,11 +347,12 @@ fn draw_value_string(args: &RenderArgs,
         match state {
             Highlighted(elem) => match elem {
                 ValueGlyph(idx, _) => {
+                    let context_slot_y = slot_y - (pos.y + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
                     draw_slot_rect(gl, &context,
                                    x as f64,
-                                   -slot_h + RECT_PADDING,
+                                   context_slot_y,
                                    size as f64,
                                    rect_h - frame_w * 2.0,
                                    rect_color);
@@ -355,11 +361,12 @@ fn draw_value_string(args: &RenderArgs,
             },
             Clicked(elem) => match elem {
                 ValueGlyph(idx, _) => {
+                    let context_slot_y = slot_y - (pos.y + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
                     draw_slot_rect(gl, &context,
                                    x as f64,
-                                   -slot_h + RECT_PADDING,
+                                   context_slot_y,
                                    size as f64,
                                    rect_h - frame_w * 2.0,
                                    rect_color);
@@ -380,6 +387,7 @@ fn draw_value_string(args: &RenderArgs,
 }
 
 /// Draw the slot behind the value.
+#[inline]
 fn draw_slot_rect(gl: &mut Gl, context: &Context,
                   x: f64, y: f64, w: f64, h: f64,
                   color: Color) {

@@ -60,7 +60,7 @@ pub fn draw(args: &RenderArgs,
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
-    let new_state = check_state(is_over, state, mouse);
+    let new_state = get_new_state(is_over, state, mouse);
     let rect_state = new_state.as_rectangle_state();
     match label {
         NoLabel => {
@@ -80,14 +80,14 @@ pub fn draw(args: &RenderArgs,
 }
 
 /// Check the current state of the button.
-fn check_state(is_over: bool,
-               prev: State,
-               mouse: MouseState) -> State {
-    match (is_over, prev, mouse) {
-        (true, Normal, MouseState { left: Down, .. }) => Normal,
-        (true, _, MouseState { left: Down, .. }) => Clicked,
-        (true, _, MouseState { left: Up, .. }) => Highlighted,
-        (false, Clicked, MouseState { left: Down, .. }) => Clicked,
+fn get_new_state(is_over: bool,
+                 prev: State,
+                 mouse: MouseState) -> State {
+    match (is_over, prev, mouse.left) {
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
+        (false, Clicked, Down) => Clicked,
         _ => Normal,
     }
 }

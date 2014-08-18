@@ -96,9 +96,9 @@ pub fn draw(args: &RenderArgs,
 
     // Draw the DropDownList.
     match new_state {
+
         Closed(_) => {
             let rect_state = new_state.as_rect_state();
-            //rectangle::draw(args, gl, rect_state, pos, width, height, drame, color);
             let (t_size, t_color) = match label {
                 Label(_, t_size, t_color) => (t_size, t_color),
                 NoLabel => (label::auto_size_from_rect_height(height),
@@ -115,6 +115,7 @@ pub fn draw(args: &RenderArgs,
                                                 pos, width, height, frame, color,
                                                 text, t_size, t_color)
         },
+
         Open(draw_state) => {
             let (t_size, t_color) = match label {
                 Label(_, t_size, t_color) => (t_size, t_color),
@@ -147,14 +148,13 @@ pub fn draw(args: &RenderArgs,
                         }
                     },
                 };
-                rectangle::draw_with_centered_label(
-                    args, gl, uic, rect_state,
-                    pos + Point::new(0.0, height * i as f64 - i as f64 * frame_width, 0.0),
-                    width, height, frame, color,
-                    string.as_slice(), t_size, t_color
-                )
+                let idx_pos = pos + Point::new(0.0, height * i as f64 - i as f64 * frame_width, 0.0);
+                rectangle::draw_with_centered_label(args, gl, uic, rect_state,
+                                                    idx_pos, width, height, frame, color,
+                                                    string.as_slice(), t_size, t_color)
             }
-        }
+        },
+
     }
 
     set_state(uic, ui_id, new_state);
@@ -215,12 +215,7 @@ fn get_new_state(is_over_idx: Option<Idx>,
                         (Clicked(_, _), Up) => Open(Normal),
                     }
                 },
-                None => Closed(Normal), /*{
-                    match (draw_state, mouse.left) {
-                        (Clicked(_), Down) => Closed(Clicked(0u, len)),
-                        _ => Closed(Normal),
-                    }
-                },*/
+                None => Closed(Normal),
             }
         },
         Open(draw_state) => {

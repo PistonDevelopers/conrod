@@ -212,9 +212,7 @@ fn draw_ui(args: &RenderArgs,
                      Frame(*frame_width, Color::black()), // Widget Frame.
                      Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
                      Label("PRESS", 24u32, Color::black()), // Label for button.
-                     || { // Button "callback" event.
-            *bg_color = Color::random();
-        });
+                     || *bg_color = Color::random()); // Callback closure.
     }
 
     // Horizontal slider example.
@@ -240,9 +238,7 @@ fn draw_ui(args: &RenderArgs,
                      pad as i16, // Slider value.
                      10i16, // Min value.
                      560i16, // Max value.
-                     |new_pad| {
-            *title_padding = new_pad as f64;
-        });
+                     |new_pad| *title_padding = new_pad as f64); // Callback closure.
 
     }
 
@@ -325,8 +321,8 @@ fn draw_ui(args: &RenderArgs,
                         gl, // OpenGL instance.
                         uic, // UIContext.
                         6u64, // UIID.
-                        Point::new(330.0, 115.0, 0.0), // Position.
-                        200.0, // width.
+                        Point::new(300.0, 115.0, 0.0), // Position.
+                        260.0, // width.
                         60.0, // height.
                         24u32, // Font size. If a label is given, that size will be used instead.
                         Frame(*frame_width, Color::black()), // Widget Frame
@@ -336,27 +332,25 @@ fn draw_ui(args: &RenderArgs,
                         25f64, // Minimum value.
                         250f64, // Maximum value.
                         1u8, // Precision (number of digits to show after decimal point).
-                        |new_height| { // Callback closure.
-        *v_slider_height = new_height;
-    });
+                        |new_height| *v_slider_height = new_height); // Callback closure.
 
     // Number Dialer example.
     number_dialer::draw(args, // RenderArgs.
                         gl, // OpenGL instance.
                         uic, // UIContext.
                         7u64, // UIID.
-                        Point::new(330.0, 195.0, 0.0), // Position.
-                        24u32, // Number Dialer font size.
-                        Frame(4.0, bg_color.plain_contrast()), // Widget Frame
+                        Point::new(300.0, 195.0, 0.0), // Position.
+                        260.0, // width.
+                        60.0, // height.
+                        24u32, // Font size. If a label is given, label size will be used instead.
+                        Frame(*frame_width, bg_color.plain_contrast()), // Widget Frame
                         bg_color.invert().plain_contrast(), // Number Dialer Color.
                         Label("Frame (pixels)", 24u32, bg_color.plain_contrast()),
                         *frame_width, // Initial value.
                         0f64, // Minimum value.
                         15f64, // Maximum value.
                         2u8, // Precision (number of digits to show after decimal point).
-                        |new_width| { // Callback closure.
-        *frame_width = new_width;
-    });
+                        |new_width| *frame_width = new_width); // Callback closure.
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
@@ -366,7 +360,7 @@ fn draw_ui(args: &RenderArgs,
                         Point::new(300.0, 270.0, 0.0), // matrix position.
                         260.0, // width.
                         260.0, // height.
-                        |num, col, row, pos, width, height| {
+                        |num, col, row, pos, width, height| { // This is called for every widget.
 
         // Now draw the widgets with the given callback.
         let val = (*bool_matrix)[col][row];
@@ -422,14 +416,15 @@ fn draw_ui(args: &RenderArgs,
                  uic, // UIContext.
                  76u64, // UIID.
                  Point::new(620.0, 370.0, 0.0), // Position.
-                 160.0, // width.
-                 160.0, // height.
+                 150.0, // width.
+                 150.0, // height.
+                 18u32, // font size.
                  Frame(*frame_width, Color::white()),
-                 Color::black(),
-                 NoLabel,
-                 circle_pos.x, 770.0, 620.0,
-                 circle_pos.y, 320.0, 175.0,
-                 |new_x, new_y| {
+                 Color::black(), // rect color.
+                 Label("Circle Position", 32u32, Color::new(1.0, 1.0, 1.0, 0.5)),
+                 circle_pos.x, 760.0, 610.0, // x range.
+                 circle_pos.y, 320.0, 170.0, // y range.
+                 |new_x, new_y| { // Callback when x/y changes or mousepress/release.
         circle_pos.x = new_x;
         circle_pos.y = new_y;
     });
