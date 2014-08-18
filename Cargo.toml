@@ -2,9 +2,12 @@
 
 name = "conrod"
 version = "0.0.0"
-authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
+authors = [
+    "Mitchell Nordine <mitchell.nordine@gmail.com>",
+    "Sven Nilsen <bvssvni@gmail.com>"
+]
 
-[[lib]]
+[lib]
 
 name = "conrod"
 path = "./src/lib.rs"
