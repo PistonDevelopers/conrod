@@ -39,12 +39,13 @@ use mouse_state::{
     Down,
 };
 use utils::{
+    clamp,
     map,
     percentage,
 };
 use widget::XYPad;
 
-/// Represents the state of the Button widget.
+/// Represents the state of the xy_pad widget.
 #[deriving(Show, PartialEq)]
 pub enum State {
     Normal,
@@ -68,7 +69,6 @@ widget_fns!(XYPad, State, XYPad(Normal))
 /// Draw the xy_pad. When successfully pressed,
 /// the given `callback` closure will be called
 /// with the xy coordinates as params.
-//#[inline]
 pub fn draw
     <X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
      Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
@@ -105,25 +105,33 @@ pub fn draw
 
     // Crosshair.
     let (new_x, new_y, vert_x, hori_y) = match (is_over_pad, new_state) {
-        (false, _) | (true, Normal) | (true, Highlighted) => {
-            (x, y,
-             pad_pos.x + map(x.to_f64().unwrap(),
-                             min_x.to_f64().unwrap(),
-                             max_x.to_f64().unwrap(), pad_w, 0.0),
-             pad_pos.y + map(y.to_f64().unwrap(),
-                             min_y.to_f64().unwrap(),
-                             max_y.to_f64().unwrap(), pad_h, 0.0))
+        (_, Normal) | (_, Highlighted) => {
+            (
+                x,
+                y,
+                pad_pos.x + map(x.to_f64().unwrap(),
+                                min_x.to_f64().unwrap(),
+                                max_x.to_f64().unwrap(), pad_w, 0.0),
+                pad_pos.y + map(y.to_f64().unwrap(),
+                                min_y.to_f64().unwrap(),
+                                max_y.to_f64().unwrap(), pad_h, 0.0)
+            )
         },
         (_, Clicked) => {
-            (from_f64(
-                map(mouse.pos.x - pos.x, pad_w, 0.0,
-                    min_x.to_f64().unwrap(), max_x.to_f64().unwrap())
-             ).unwrap(),
-             from_f64(
-                map(mouse.pos.y - pos.y, pad_h, 0.0,
-                    min_y.to_f64().unwrap(), max_y.to_f64().unwrap())
-             ).unwrap(),
-             mouse.pos.x, mouse.pos.y)
+            let temp_x = clamp(mouse.pos.x, pad_pos.x, pad_pos.x + pad_w);
+            let temp_y = clamp(mouse.pos.y, pad_pos.y, pad_pos.y + pad_h);
+            (
+                from_f64(
+                    map(temp_x - pos.x, pad_w, 0.0,
+                        min_x.to_f64().unwrap(), max_x.to_f64().unwrap())
+                ).unwrap(),
+                from_f64(
+                    map(temp_y - pos.y, pad_h, 0.0,
+                        min_y.to_f64().unwrap(), max_y.to_f64().unwrap())
+                ).unwrap(),
+                temp_x,
+                temp_y
+            )
         }
     };
     draw_crosshair(args, gl, pad_pos,
