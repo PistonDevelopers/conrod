@@ -4,9 +4,8 @@ use point::Point;
 use widget::Widget;
 use piston::{
     GameEvent,
-    MouseMove,
-    MousePress,
-    MouseRelease,
+    Input,
+    input,
 };
 use label::FontSize;
 use mouse_state::{
@@ -46,18 +45,18 @@ impl UIContext {
     /// Handle game events and update the state.
     pub fn event(&mut self, event: &mut GameEvent) {
         match *event {
-            MouseMove(args) => {
-                self.mouse.pos = Point::new(args.x, args.y, 0f64);
+            Input(input::MouseMove { x, y, .. }) => {
+                self.mouse.pos = Point::new(x, y, 0f64);
             },
-            MousePress(args) => {
-                *match args.button {
+            Input(input::MousePress { button, .. }) => {
+                *match button {
                     /*Left*/ _ => &mut self.mouse.left,
                     //Right => &mut self.mouse.right,
                     //Middle => &mut self.mouse.middle,
                 } = Down;
             },
-            MouseRelease(args) => {
-                *match args.button {
+            Input(input::MouseRelease { button, .. }) => {
+                *match button {
                     /*Left*/ _ => &mut self.mouse.left,
                     //Right => &mut self.mouse.right,
                     //Middle => &mut self.mouse.middle,
