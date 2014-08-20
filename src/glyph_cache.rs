@@ -40,8 +40,8 @@ impl GlyphCache {
     /// the given `FontSize` and `char`, load the `Character`.
     pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
         match self.data.find_or_insert(size, HashMap::new()).contains_key(&ch) {
-            true => self.data.get(&size).get(&ch),
-            false => { self.load_character(size, ch); self.data.get(&size).get(&ch) }
+            true => &self.data[size][ch],
+            false => { self.load_character(size, ch); &self.data[size][ch] }
         }
     }
 
