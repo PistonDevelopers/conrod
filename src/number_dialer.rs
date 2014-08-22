@@ -1,7 +1,10 @@
 
-use opengl_graphics::Gl;
-use piston::RenderArgs;
 use color::Color;
+use frame::{
+    Framing,
+    Frame,
+    NoFrame,
+};
 use graphics::{
     Context,
     AddColor,
@@ -10,9 +13,22 @@ use graphics::{
     Draw,
     RelativeTransform2d,
 };
+use label;
+use label::{
+    FontSize,
+    Labeling,
+    NoLabel,
+    Label,
+};
+use mouse_state::{
+    MouseState,
+    Up,
+    Down,
+};
+use opengl_graphics::Gl;
+use piston::RenderArgs;
 use point::Point;
 use rectangle;
-use widget::NumberDialer;
 use utils::{
     clamp,
     compare_f64s,
@@ -21,23 +37,7 @@ use ui_context::{
     UIID,
     UIContext,
 };
-use mouse_state::{
-    MouseState,
-    Up,
-    Down,
-};
-use label;
-use label::{
-    FontSize,
-    Labeling,
-    NoLabel,
-    Label,
-};
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
-};
+use widget::NumberDialer;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -376,7 +376,6 @@ fn draw_value_string(args: &RenderArgs,
                         .draw(gl);
         x += slot_w as i32;
     }
-
 }
 
 /// Draw the slot behind the value.

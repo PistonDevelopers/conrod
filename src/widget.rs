@@ -1,6 +1,7 @@
 
 use button;
 use drop_down_list;
+use envelope_editor;
 use number_dialer;
 use slider;
 use toggle;
@@ -11,6 +12,7 @@ use xy_pad;
 pub enum Widget {
     Button(button::State),
     DropDownList(drop_down_list::State),
+    EnvelopeEditor(envelope_editor::State),
     NumberDialer(number_dialer::State),
     Slider(slider::State),
     Toggle(toggle::State),

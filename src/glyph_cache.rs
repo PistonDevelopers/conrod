@@ -1,12 +1,8 @@
 
 use freetype;
 use label::FontSize;
-use opengl_graphics::{
-    Texture,
-};
-use piston::{
-    AssetStore,
-};
+use opengl_graphics::Texture;
+use piston::AssetStore;
 use std::collections::HashMap;
 
 /// Struct used to hold rendered character data.

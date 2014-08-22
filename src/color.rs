@@ -1,8 +1,8 @@
 
-use std::default::Default;
 use utils::clampf32;
-use std::rand::random;
+use std::default::Default;
 use std::num::abs;
+use std::rand::random;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -228,7 +228,7 @@ impl Div<Color, Color> for Color {
                 self.r() / rhs.r(), 
                 self.g() / rhs.g(), 
                 self.b() / rhs.b(), 
-                self.a()
+                self.a() / rhs.a(),
             ])
         )
     }
@@ -241,7 +241,7 @@ impl Mul<Color, Color> for Color {
                 self.r() * rhs.r(), 
                 self.g() * rhs.g(), 
                 self.b() * rhs.b(), 
-                self.a()
+                self.a() * rhs.a(),
             ])
         )
     }

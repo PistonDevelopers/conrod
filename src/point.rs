@@ -1,11 +1,13 @@
 
+use envelope_editor::EnvelopePoint;
 use std::default::Default;
+use std::num::from_f32;
 
 /// General use 3D spatial point. Although only
 /// 2D widgets exist at the moment, this allows
 /// for the possibility of 3D widgets in the
 /// future.
-#[deriving(Show, Clone)]
+#[deriving(Show, Clone, PartialEq)]
 pub struct Point<T> {
     pub x: T,
     pub y: T,
@@ -29,6 +31,21 @@ impl<T: Num + Copy> Point<T> {
         (self.x, self.y, self.z)
     }
 
+}
+
+impl<T: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> EnvelopePoint<T, T> for Point<T> {
+    /// Return the X value.
+    fn get_x(&self) -> T { self.x }
+    /// Return the Y value.
+    fn get_y(&self) -> T { self.y }
+    /// Return the X value.
+    fn set_x(&mut self, x: T) { self.x = x }
+    /// Return the Y value.
+    fn set_y(&mut self, y: T) { self.y = y }
+    /// Create a new Envelope Point.
+    fn new(x: T, y: T) -> Point<T> {
+        Point::new(x, y, from_f32(0f32).unwrap())
+    }
 }
 
 impl<T: Num + Copy + Default> Default for Point<T> {

@@ -19,8 +19,8 @@ pub fn draw(cols: uint,
             width: f64,
             height: f64,
             widget_draw_callback: |WidgetNum, ColNum, RowNum, Point<f64>, Width, Height|) {
-    let widget_w = width / rows as f64;
-    let widget_h = height / cols as f64;
+    let widget_w = width / cols as f64;
+    let widget_h = height / rows as f64;
     let mut widget_num = 0u;
     for col in range(0u, cols) {
         for row in range(0u, rows) {

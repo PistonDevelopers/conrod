@@ -1,18 +1,9 @@
 
-use opengl_graphics::Gl;
-use piston::RenderArgs;
 use color::Color;
-use point::Point;
-use rectangle;
-use widget::DropDownList;
-use ui_context::{
-    UIID,
-    UIContext,
-};
-use mouse_state::{
-    MouseState,
-    Up,
-    Down,
+use frame::{
+    Framing,
+    Frame,
+    NoFrame,
 };
 use label;
 use label::{
@@ -20,11 +11,20 @@ use label::{
     NoLabel,
     Label,
 };
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
+use mouse_state::{
+    MouseState,
+    Up,
+    Down,
 };
+use opengl_graphics::Gl;
+use piston::RenderArgs;
+use point::Point;
+use rectangle;
+use ui_context::{
+    UIID,
+    UIContext,
+};
+use widget::DropDownList;
 
 /// Tuple / Callback params.
 pub type Idx = uint;
@@ -78,15 +78,15 @@ pub fn draw(args: &RenderArgs,
             frame: Framing,
             color: Color,
             label: Labeling,
-            strings: &Vec<String>,
-            selected: Option<Idx>,
-            callback: |Idx, String|) {
+            strings: &mut Vec<String>,
+            selected: &mut Option<Idx>,
+            callback: |&mut Option<Idx>, Idx, String|) {
 
     let len = strings.len();
     if len == 0u { return }
-    let selected = match selected {
+    let sel = match *selected {
         Some(idx) => if idx >= len { None } else { Some(idx) },
-        None => selected,
+        None => *selected,
     };
     let state = get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
@@ -104,7 +104,7 @@ pub fn draw(args: &RenderArgs,
                 NoLabel => (label::auto_size_from_rect_height(height),
                             color.plain_contrast()),
             };
-            let text = match selected {
+            let text = match sel {
                 Some(idx) => (*strings)[idx].as_slice(),
                 None => match label {
                     Label(text, _, _) => text,
@@ -123,7 +123,7 @@ pub fn draw(args: &RenderArgs,
                             color.plain_contrast()),
             };
             for (i, string) in strings.iter().enumerate() {
-                let rect_state = match selected {
+                let rect_state = match sel {
                     None => {
                         match draw_state {
                             Normal => rectangle::Normal,
@@ -164,7 +164,9 @@ pub fn draw(args: &RenderArgs,
     match (state, new_state) {
         (Open(o_d_state), Closed(c_d_state)) => {
             match (o_d_state, c_d_state) {
-                (Clicked(idx, _), Normal) => callback(idx, (*strings)[idx].clone()),
+                (Clicked(idx, _), Normal) => {
+                    callback(selected, idx, (*strings)[idx].clone())
+                },
                 _ => (),
             }
         },

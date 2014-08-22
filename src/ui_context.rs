@@ -1,11 +1,7 @@
 
-use std::collections::HashMap;
-use point::Point;
-use widget::Widget;
-use piston::{
-    GameEvent,
-    Input,
-    input,
+use glyph_cache::{
+    GlyphCache,
+    Character,
 };
 use label::FontSize;
 use mouse_state::{
@@ -13,10 +9,14 @@ use mouse_state::{
     Down,
     MouseState,
 };
-use glyph_cache::{
-    GlyphCache,
-    Character,
+use piston::{
+    GameEvent,
+    Input,
+    input,
 };
+use point::Point;
+use std::collections::HashMap;
+use widget::Widget;
 
 /// User Interface Identifier. Each unique `widget::draw` call
 /// should pass it's own unique UIID so that UIContext can keep
@@ -50,15 +50,15 @@ impl UIContext {
             },
             Input(input::MousePress { button, .. }) => {
                 *match button {
-                    /*Left*/ _ => &mut self.mouse.left,
-                    //Right => &mut self.mouse.right,
+                    input::mouse::Left => &mut self.mouse.left,
+                    _/*input::mouse::Right*/ => &mut self.mouse.right,
                     //Middle => &mut self.mouse.middle,
                 } = Down;
             },
             Input(input::MouseRelease { button, .. }) => {
                 *match button {
-                    /*Left*/ _ => &mut self.mouse.left,
-                    //Right => &mut self.mouse.right,
+                    input::mouse::Left => &mut self.mouse.left,
+                    _/*input::mouse::Right*/ => &mut self.mouse.right,
                     //Middle => &mut self.mouse.middle,
                 } = Up;
             },

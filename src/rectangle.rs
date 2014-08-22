@@ -1,24 +1,23 @@
 
-use piston::{
-    RenderArgs,
-};
-use opengl_graphics::Gl;
-use graphics::{
-    Context,
-    AddRectangle,
-    AddColor,
-    Draw,
-};
-use point::Point;
 use color::Color;
 use frame::{
     Framing,
     Frame,
     NoFrame,
 };
+use graphics::{
+    Context,
+    AddRectangle,
+    AddColor,
+    Draw,
+};
 use label;
 use label::FontSize;
+use opengl_graphics::Gl;
+use piston::RenderArgs;
+use point::Point;
 use ui_context::UIContext;
+use utils::map_range;
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq, Show)]
@@ -125,4 +124,22 @@ pub fn draw_with_centered_label(args: &RenderArgs,
     label::draw(args, gl, uic, l_pos, font_size, text_color, text);
 }
 
+pub enum Corner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+/// Return which corner of the rectangle the given Point is within.
+pub fn corner(rect_p: Point<f64>, p: Point<f64>, width: f64, height: f64) -> Corner {
+    let x_temp = p.x - rect_p.x;
+    let y_temp = p.y - rect_p.y;
+    let x_perc = map_range(x_temp, 0.0, width, 0f64, 1.0);
+    let y_perc = map_range(y_temp, height, 0.0, 0f64, 1.0);
+    if      x_perc <= 0.5 && y_perc <= 0.5 { BottomLeft }
+    else if x_perc >  0.5 && y_perc <= 0.5 { BottomRight }
+    else if x_perc <= 0.5 && y_perc >  0.5 { TopLeft }
+    else                                   { TopRight }
+}
 
