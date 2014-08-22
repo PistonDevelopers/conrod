@@ -1,11 +1,5 @@
 
 use color::Color;
-use piston::{
-    RenderArgs,
-};
-use opengl_graphics::{
-    Gl,
-};
 use graphics::{
     Context,
     AddColor,
@@ -13,8 +7,10 @@ use graphics::{
     Draw,
     RelativeTransform2d,
 };
-use ui_context::UIContext;
+use opengl_graphics::Gl;
+use piston::RenderArgs;
 use point::Point;
+use ui_context::UIContext;
 
 pub type FontSize = u32;
 

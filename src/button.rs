@@ -1,27 +1,25 @@
 
-use opengl_graphics::Gl;
-use piston::RenderArgs;
 use color::Color;
-use point::Point;
-use rectangle;
 use frame::Framing;
-use widget::{
-    Button,
-};
-use ui_context::{
-    UIID,
-    UIContext,
+use label::{
+    Labeling,
+    NoLabel,
+    Label,
 };
 use mouse_state::{
     MouseState,
     Up,
     Down,
 };
-use label::{
-    Labeling,
-    NoLabel,
-    Label,
+use opengl_graphics::Gl;
+use piston::RenderArgs;
+use point::Point;
+use rectangle;
+use ui_context::{
+    UIID,
+    UIContext,
 };
+use widget::Button;
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq)]

@@ -1,21 +1,16 @@
 
-use piston::{
-    RenderArgs,
+use color::Color;
+use frame::{
+    Framing,
+    Frame,
+    NoFrame,
 };
-use opengl_graphics::Gl;
 use graphics::{
     AddColor,
     AddLine,
     AddSquareBorder,
     Context,
     Draw,
-};
-use point::Point;
-use color::Color;
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
 };
 use label;
 use label::{
@@ -24,24 +19,30 @@ use label::{
     FontSize,
     Labeling,
 };
-use rectangle;
-use std::num::{
-    from_f64,
-    pow,
-};
-use ui_context::{
-    UIID,
-    UIContext,
-};
 use mouse_state::{
     MouseState,
     Up,
     Down,
 };
+use opengl_graphics::Gl;
+use piston::RenderArgs;
+use point::Point;
+use rectangle;
+use rectangle::{
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+};
+use std::num::from_f64;
+use ui_context::{
+    UIID,
+    UIContext,
+};
 use utils::{
     clamp,
-    map,
-    percentage,
+    map_range,
+    val_to_string,
 };
 use widget::XYPad;
 
@@ -109,12 +110,12 @@ pub fn draw
             (
                 x,
                 y,
-                pad_pos.x + map(x.to_f64().unwrap(),
-                                min_x.to_f64().unwrap(),
-                                max_x.to_f64().unwrap(), pad_w, 0.0),
-                pad_pos.y + map(y.to_f64().unwrap(),
-                                min_y.to_f64().unwrap(),
-                                max_y.to_f64().unwrap(), pad_h, 0.0)
+                pad_pos.x + map_range(x.to_f64().unwrap(),
+                                      min_x.to_f64().unwrap(),
+                                      max_x.to_f64().unwrap(), pad_w, 0.0),
+                pad_pos.y + map_range(y.to_f64().unwrap(),
+                                      min_y.to_f64().unwrap(),
+                                      max_y.to_f64().unwrap(), pad_h, 0.0)
             )
         },
         (_, Clicked) => {
@@ -122,18 +123,20 @@ pub fn draw
             let temp_y = clamp(mouse.pos.y, pad_pos.y, pad_pos.y + pad_h);
             (
                 from_f64(
-                    map(temp_x - pos.x, pad_w, 0.0,
-                        min_x.to_f64().unwrap(), max_x.to_f64().unwrap())
+                    map_range(temp_x - pos.x, pad_w, 0.0,
+                              min_x.to_f64().unwrap(), max_x.to_f64().unwrap())
                 ).unwrap(),
                 from_f64(
-                    map(temp_y - pos.y, pad_h, 0.0,
-                        min_y.to_f64().unwrap(), max_y.to_f64().unwrap())
+                    map_range(temp_y - pos.y, pad_h, 0.0,
+                              min_y.to_f64().unwrap(), max_y.to_f64().unwrap())
                 ).unwrap(),
                 temp_x,
                 temp_y
             )
         }
     };
+
+    // Crosshair.
     draw_crosshair(args, gl, pad_pos,
                    vert_x, hori_y,
                    pad_w, pad_h,
@@ -156,24 +159,14 @@ pub fn draw
     let y_string = val_to_string(new_y, max_y, max_y - min_y, height as uint);
     let xy_string = x_string.append(", ").append(y_string.as_slice());
     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
-    let x_perc = percentage(new_x, min_x, max_x);
-    let y_perc = percentage(new_y, min_y, max_y);
+    //let x_perc = percentage(new_x, min_x, max_x);
+    //let y_perc = percentage(new_y, min_y, max_y);
     let xy_string_pos = {
-        // If crosshair is in bottom left.
-        if      x_perc <= 0.5 && y_perc <= 0.5 {
-            Point::new(vert_x - xy_string_w, hori_y - font_size as f64, 0.0)
-        }
-        // If crosshair is in bottom right.
-        else if x_perc >  0.5 && y_perc <= 0.5 {
-            Point::new(vert_x, hori_y - font_size as f64, 0.0)
-        }
-        // If crosshair is in top left.
-        else if x_perc <= 0.5 && y_perc >  0.5 {
-            Point::new(vert_x - xy_string_w, hori_y, 0.0)
-        }
-        // If crosshair is in top right.
-        else {
-            Point::new(vert_x, hori_y, 0.0)
+        match rectangle::corner(pad_pos, Point::new(vert_x, hori_y, 0.0), pad_w, pad_h) {
+            TopLeft => Point::new(vert_x, hori_y, 0.0),
+            TopRight => Point::new(vert_x - xy_string_w, hori_y, 0.0),
+            BottomLeft => Point::new(vert_x, hori_y - font_size as f64, 0.0),
+            BottomRight => Point::new(vert_x - xy_string_w, hori_y - font_size as f64, 0.0),
         }
     };
     label::draw(args, gl, uic, xy_string_pos, font_size,
@@ -226,45 +219,5 @@ fn draw_crosshair(args: &RenderArgs,
         .square_border_width(1.0)
         .rgba(r, g, b, a)
         .draw(gl);
-}
-
-/// Get a suitable string from the value, its max and the pixel range.
-fn val_to_string<T: ToString + ToPrimitive>
-                (val: T, max: T, val_rng: T, pixel_range: uint) -> String {
-    let mut s = val.to_string();
-    let decimal = s.as_slice().chars().position(|ch| ch == '.');
-    match decimal {
-        None => s,
-        Some(idx) => {
-            // Find the minimum string length by determing
-            // what power of ten both the max and range are.
-            let val_rng_f = val_rng.to_f64().unwrap();
-            let max_f = max.to_f64().unwrap();
-            let mut n = 0f64;
-            let mut pow_ten = 0f64;
-            while pow_ten < val_rng_f || pow_ten < max_f {
-                pow_ten = (10f64).powf(n);
-                n += 1.0
-            }
-            let min_string_len = n as uint;
-
-            // Find out how many pixels there are to actually use
-            // and judge a reasonable precision from this.
-            let mut n = 0u;
-            while pow(10u, n) < pixel_range { n += 1u }
-            let precision = n - 1u;
-
-            // Truncate the length to the pixel precision as
-            // long as this doesn't cause it to be smaller
-            // than the necessary decimal place.
-            let truncate_len = {
-                if precision >= min_string_len { precision }
-                else { min_string_len }
-            };
-            if truncate_len - 1u == idx { s.truncate(truncate_len + 1u) }
-            else { s.truncate(truncate_len) }
-            s
-        }
-    }
 }
 
