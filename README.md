@@ -1,5 +1,4 @@
-Conrod
-======
+# Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg)](https://travis-ci.org/PistonDevelopers/conrod)
 
 Graph based, immediate mode, user interface with fancy search capabilities written in Rust.
 
