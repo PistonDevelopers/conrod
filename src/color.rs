@@ -183,6 +183,8 @@ impl Color {
         (self.r() + self.g() + self.b()) / 3f32
     }
 
+    /// Return an array of the channels in this color
+    /// clamped to [0..255]
     pub fn to_32_bit(&self) -> [u8, ..4] {
         [
             to_8_bit(self.r()),
@@ -190,6 +192,16 @@ impl Color {
             to_8_bit(self.b()),
             to_8_bit(self.a()),
         ]       
+    }
+
+    /// Return the hex representation of this color
+    /// in the format #RRGGBBAA
+    /// e.g. `Color(1.0, 0.0, 5.0, 1.0) == "#FF0080FF"`
+    pub fn to_hex(&self) -> String {
+        let vals = self.to_32_bit();
+        // Hex colors are always uppercased
+        let hex = vals.as_slice().to_hex().into_ascii_upper();
+        format!("#{}", hex.as_slice())
     }
 }
 
@@ -265,9 +277,7 @@ impl Mul<Color, Color> for Color {
 
 impl Show for Color {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
-        let vals = self.to_32_bit();
-        // Hex colors are always uppercased
-        let hex = vals.as_slice().to_hex().into_ascii_upper();
-        write!(fmt, "#{}", hex.as_slice())
+        let hex = self.to_hex(); 
+        fmt.pad(hex.as_slice())
     }
 }
