@@ -83,8 +83,9 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
      max: T,
      precision: u8,
      callback: |T|) {
+
     let val = clamp(value, min, max);
-    let state = get_state(uic, ui_id);
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let frame_w = match frame { Frame(frame_w, _) => frame_w, NoFrame => 0.0 };
     let (label_string, label_w, label_h) = label_string_and_dimensions(uic, label);

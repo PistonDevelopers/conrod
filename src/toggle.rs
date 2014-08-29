@@ -57,7 +57,8 @@ pub fn draw(args: &RenderArgs,
             label: Labeling,
             value: bool,
             callback: |bool|) {
-    let state = get_state(uic, ui_id);
+
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
     let new_state = check_state(is_over, state, mouse);
@@ -86,6 +87,7 @@ pub fn draw(args: &RenderArgs,
         (true, Clicked, Highlighted) => callback(match value { true => false, false => true }),
         _ => (),
     }
+
 }
 
 /// Check the current state of the button.

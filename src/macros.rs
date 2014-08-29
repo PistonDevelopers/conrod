@@ -16,9 +16,9 @@ macro_rules! widget_fns(
 
         /// Get the current State for the widget.
         fn get_state(uic: &mut ::ui_context::UIContext,
-                     ui_id: ::ui_context::UIID) -> $widget_state {
+                     ui_id: ::ui_context::UIID) -> &$widget_state {
             match *get_widget(uic, ui_id) {
-                ::widget::$widget(state) => state,
+                ::widget::$widget(ref state) => state,
                 _ => fail!("The Widget variant returned by UIContext is different to the requested."),
             }
         }
