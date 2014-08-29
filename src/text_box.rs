@@ -32,6 +32,9 @@ use piston::{
 use piston::input::keyboard::{
     Key,
     Backspace,
+    Left,
+    Right,
+    Return,
 };
 use point::Point;
 use rectangle;
@@ -150,30 +153,6 @@ pub fn draw(args: &RenderArgs,
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
 
-            // Check for control keys.
-            let pressed_keys = uic.get_pressed_keys();
-            for key in pressed_keys.iter() {
-                match *key {
-                    Backspace => {
-                        if text.len() > 0u
-                        && text.len() >= idx
-                        && idx > 0u {
-                            let rem_idx = idx - 1u;
-                            new_cursor_x = {
-                                let c = uic.get_character(font_size,
-                                                          text.as_slice().char_at(rem_idx));
-                                cursor_x - (c.glyph.advance().x >> 16) as f64
-                            };
-                            let new_text = String::from_str(text.as_slice().slice_to(rem_idx))
-                                .append(text.as_slice().slice_from(idx));
-                            *text = new_text;
-                            new_idx = rem_idx;
-                        }
-                    },
-                    _ => (),
-                }
-            }
-
             // Check for entered text.
             let entered_text = uic.get_entered_text();
             for t in entered_text.iter() {
@@ -184,6 +163,39 @@ pub fn draw(args: &RenderArgs,
                 for ch in t.as_slice().chars() {
                     let c = uic.get_character(font_size, ch);
                     new_cursor_x += (c.glyph.advance().x >> 16) as f64;
+                }
+            }
+
+            // Check for control keys.
+            let pressed_keys = uic.get_pressed_keys();
+            for key in pressed_keys.iter() {
+                match *key {
+                    Backspace => {
+                        if text.len() > 0u
+                        && text.len() >= idx
+                        && idx > 0u {
+                            let rem_idx = idx - 1u;
+                            new_cursor_x -= uic.get_character_w(font_size, text.as_slice().char_at(rem_idx));
+                            let new_text = String::from_str(text.as_slice().slice_to(rem_idx))
+                                .append(text.as_slice().slice_from(idx));
+                            *text = new_text;
+                            new_idx = rem_idx;
+                        }
+                    },
+                    Left => {
+                        if idx > 0 {
+                            new_cursor_x -= uic.get_character_w(font_size, text.as_slice().char_at(idx - 1u));
+                            new_idx -= 1u;
+                        }
+                    },
+                    Right => {
+                        if text.len() > idx {
+                            new_cursor_x += uic.get_character_w(font_size, text.as_slice().char_at(idx));
+                            new_idx += 1u;
+                        }
+                    },
+                    Return => if text.len() > 0u { callback(text) },
+                    _ => (),
                 }
             }
 
