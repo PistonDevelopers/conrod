@@ -28,6 +28,9 @@ pub type UIID = u64;
 pub struct UIContext {
     data: HashMap<UIID, Widget>,
     pub mouse: MouseState,
+    pub keys_just_pressed: Vec<input::keyboard::Key>,
+    pub keys_just_released: Vec<input::keyboard::Key>,
+    pub text_just_entered: Vec<String>,
     glyph_cache: GlyphCache,
 }
 
@@ -38,6 +41,9 @@ impl UIContext {
         UIContext {
             data: HashMap::new(),
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
+            keys_just_pressed: Vec::with_capacity(10u),
+            keys_just_released: Vec::with_capacity(10u),
+            text_just_entered: Vec::with_capacity(10u),
             glyph_cache: GlyphCache::new(font_file),
         }
     }
@@ -45,23 +51,34 @@ impl UIContext {
     /// Handle game events and update the state.
     pub fn event(&mut self, event: &mut GameEvent) {
         match *event {
-            Input(input::MouseMove { x, y, .. }) => {
-                self.mouse.pos = Point::new(x, y, 0f64);
+            Input(input::Move(input::MouseCursor(x, y))) => {
+                self.mouse.pos = Point::new(x, y, 0.0);
             },
-            Input(input::MousePress { button, .. }) => {
-                *match button {
-                    input::mouse::Left => &mut self.mouse.left,
-                    _/*input::mouse::Right*/ => &mut self.mouse.right,
-                    //Middle => &mut self.mouse.middle,
-                } = Down;
+            Input(input::Press(button_type)) => {
+                match button_type {
+                    input::Mouse(button) => {
+                        *match button {
+                            input::mouse::Left => &mut self.mouse.left,
+                            _/*input::mouse::Right*/ => &mut self.mouse.right,
+                            //Middle => &mut self.mouse.middle,
+                        } = Down;
+                    },
+                    input::Keyboard(key) => self.keys_just_pressed.push(key),
+                }
             },
-            Input(input::MouseRelease { button, .. }) => {
-                *match button {
-                    input::mouse::Left => &mut self.mouse.left,
-                    _/*input::mouse::Right*/ => &mut self.mouse.right,
-                    //Middle => &mut self.mouse.middle,
-                } = Up;
+            Input(input::Release(button_type)) => {
+                match button_type {
+                    input::Mouse(button) => {
+                        *match button {
+                            input::mouse::Left => &mut self.mouse.left,
+                            _/*input::mouse::Right*/ => &mut self.mouse.right,
+                            //Middle => &mut self.mouse.middle,
+                        } = Up;
+                    },
+                    input::Keyboard(key) => self.keys_just_released.push(key),
+                }
             },
+            Input(input::Text(ref text)) => self.text_just_entered.push(text.clone()),
             _ => (),
         }
     }
@@ -69,6 +86,16 @@ impl UIContext {
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> MouseState {
         self.mouse.clone()
+    }
+
+    /// Return the vector of recently pressed keys.
+    pub fn get_pressed_keys(&self) -> Vec<input::keyboard::Key> {
+        self.keys_just_pressed.clone()
+    }
+
+    /// Return the vector of recently entered text.
+    pub fn get_entered_text(&self) -> Vec<String> {
+        self.text_just_entered.clone()
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
@@ -79,6 +106,13 @@ impl UIContext {
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
         self.glyph_cache.get_character(size, ch)
+    }
+
+    /// Flush all stored keys.
+    pub fn flush_input(&mut self) {
+        self.keys_just_pressed.clear();
+        self.keys_just_released.clear();
+        self.text_just_entered.clear();
     }
 
 }

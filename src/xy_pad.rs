@@ -88,7 +88,7 @@ pub fn draw
             y: Y, min_y: Y, max_y: Y,
             callback: |X, Y|) {
 
-    let state = get_state(uic, ui_id);
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
 
     // Rect.

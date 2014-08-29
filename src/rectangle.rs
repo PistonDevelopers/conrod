@@ -89,12 +89,17 @@ fn draw_normal(context: &Context,
 }
 
 /// Return whether or not the widget has been hit by a mouse_press.
+#[inline]
 pub fn is_over(pos: Point<f64>,
                mouse_pos: Point<f64>,
                width: f64,
                height: f64) -> bool {
-    let p = mouse_pos - pos;
-    if p.x > 0f64 && p.y > 0f64 && p.x < width && p.y < height { true }
+    //let p = mouse_pos - pos;
+    //if p.x > 0f64 && p.y > 0f64 && p.x < width && p.y < height { true }
+    if mouse_pos.x > pos.x
+    && mouse_pos.y > pos.y
+    && mouse_pos.x < pos.x + width
+    && mouse_pos.y < pos.y + height { true }
     else { false }
 }
 

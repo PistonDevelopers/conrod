@@ -27,6 +27,7 @@ pub mod number_dialer;
 pub mod point;
 pub mod rectangle;
 pub mod slider;
+pub mod text_box;
 pub mod toggle;
 pub mod ui_context;
 pub mod utils;

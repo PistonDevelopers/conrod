@@ -15,6 +15,7 @@ use conrod::{
     label,
     number_dialer,
     slider,
+    text_box,
     toggle,
     widget_matrix,
     xy_pad,
@@ -77,7 +78,7 @@ struct DemoApp {
     /// xy_pad.
     circle_pos: Point<f64>,
     /// Envelope for demonstration of EnvelopeEditor.
-    envelopes: Vec<Vec<Point<f32>>>,
+    envelopes: Vec<(Vec<Point<f32>>, String)>,
 }
 
 impl DemoApp {
@@ -88,7 +89,7 @@ impl DemoApp {
             show_button: false,
             toggle_label: "OFF".to_string(),
             title_padding: 50.0,
-            v_slider_height: 185.0,
+            v_slider_height: 230.0,
             frame_width: 1.0,
             bool_matrix: vec![ vec![true, true, true, true, true, true, true, true],
                                vec![true, false, false, false, false, false, false, true],
@@ -105,18 +106,15 @@ impl DemoApp {
                               "Blue".to_string()],
             selected_idx: None,
             circle_pos: Point::new(700.0, 200.0, 0.0),
-            envelopes: vec![ vec![ Point::new(0.0, 0.0, 0.0),
+            envelopes: vec![(vec![ Point::new(0.0, 0.0, 0.0),
                                    Point::new(0.1, 0.85, 0.0),
                                    Point::new(0.25, 0.4, 0.0),
                                    Point::new(0.5, 0.1, 0.0),
-                                   Point::new(1.0, 0.0, 0.0), ],
-                             vec![ Point::new(0.0, 0.0, 0.0),
-                                   Point::new(0.4, 0.6, 0.0),
-                                   Point::new(1.0, 0.0, 0.0), ],
-                             vec![ Point::new(0.0, 0.85, 0.0),
+                                   Point::new(1.0, 0.0, 0.0), ], "Envelope A".to_string()),
+                            (vec![ Point::new(0.0, 0.85, 0.0),
                                    Point::new(0.3, 0.2, 0.0),
                                    Point::new(0.6, 0.6, 0.0),
-                                   Point::new(1.0, 0.0, 0.0), ] ],
+                                   Point::new(1.0, 0.0, 0.0), ], "Envelope B".to_string())],
         }
     }
 }
@@ -429,7 +427,10 @@ fn draw_ui(args: &RenderArgs,
         demo.circle_pos.y = new_y;
     });
 
-    let (cols, rows) = (1u, 3u);
+    // Let's use the widget matrix to draw
+    // one column of two envelope_editors,
+    // each with its own text_box.
+    let (cols, rows) = (1u, 2u);
     widget_matrix::draw(cols, // cols.
                         rows, // rows.
                         Point::new(830.0, 115.0, 0.0), // matrix position.
@@ -437,28 +438,53 @@ fn draw_ui(args: &RenderArgs,
                         415.0, // height.
                         |num, _col, _row, pos, width, height| { // This is called for every widget.
 
+        let (ref mut env, ref mut text) = *demo.envelopes.get_mut(num);
+        let text_box_height = height / 4.0;
+        let env_editor_height = height - text_box_height;
+        let env_editor_pos = pos + Point::new(0.0, text_box_height, 0.0);
+
+        // Draw a TextBox.
+        text_box::draw(args, // RenderArgs.
+                       gl, // OpenGL instance.
+                       uic, // UIContext.
+                       77u64 + (num * 2u) as u64, // UI_ID.
+                       pos, // Position.
+                       width, // Width.
+                       text_box_height - 10f64, // Height.
+                       24u32, // FontSize.
+                       Frame(demo.frame_width, demo.bg_color.invert().plain_contrast()),
+                       demo.bg_color.invert(),
+                       text,
+                       |_text| { }); // Callback upon Enter key.
+
         // Draw an EnvelopeEditor.
         envelope_editor::draw(args, // RenderArgs.
                               gl, // OpenGL instance.
                               uic, // UIContext.
-                              77u64 + num as u64, // UIID.
-                              pos, // Position.
+                              77u64 + (num * 2u + 1u) as u64, // UIID.
+                              env_editor_pos, // Position.
                               width, // Width.
-                              height - 10.0, // Height.
+                              env_editor_height - 10.0, // Height.
                               18u32, // Font size.
                               Frame(demo.frame_width, demo.bg_color.invert().plain_contrast()),
                               demo.bg_color.invert(), // Rect color.
-                              Label("Envelope Editor ", 32u32,
+                              Label(text.as_slice(), 32u32,
                                     Color::new(1.0, 1.0, 1.0, 0.5)
                                     * demo.bg_color.invert().plain_contrast()),
-                              demo.envelopes.get_mut(num), // Envelope.
+                              env, // Envelope.
                               0.0, 1.0, // `x` axis range.
                               0.0, 1.0, // `y` axis range.
                               6.0, // Point radius.
                               2.0, // Line width.
                               |_env, _idx| { }); // Callback upon x/y changes or mousepress/release.
 
-    });
+    }); // End of matrix widget callback.
+
+    // This must be called to flush the
+    // buffers that store various input types
+    // to be matched each render cycle, i.e.
+    // `Key`s, `Text`, etc.
+    uic.flush_input();
 
 }
 

@@ -88,7 +88,7 @@ pub fn draw(args: &RenderArgs,
         Some(idx) => if idx >= len { None } else { Some(idx) },
         None => *selected,
     };
-    let state = get_state(uic, ui_id);
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over_idx = is_over(pos, mouse.pos, width, height, state, len);
     let new_state = get_new_state(is_over_idx, len, state, mouse);

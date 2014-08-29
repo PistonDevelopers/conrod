@@ -55,7 +55,7 @@ pub fn draw(args: &RenderArgs,
             color: Color,
             label: Labeling,
             callback: ||) {
-    let state = get_state(uic, ui_id);
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
     let is_over = rectangle::is_over(pos, mouse.pos, width, height);
     let new_state = get_new_state(is_over, state, mouse);

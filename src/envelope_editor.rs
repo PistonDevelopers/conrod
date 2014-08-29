@@ -132,7 +132,7 @@ pub fn draw
             line_width: f64,
             callback: |&mut Vec<E>, uint|) {
 
-    let state = get_state(uic, ui_id);
+    let state = *get_state(uic, ui_id);
     let mouse = uic.get_mouse_state();
 
     // Rect.
