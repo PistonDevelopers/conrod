@@ -180,6 +180,19 @@ impl Color {
         (self.r() + self.g() + self.b()) / 3f32
     }
 
+    pub fn to_32_bit(&self) -> [u8, ..4] {
+        [
+            to_8_bit(self.r()),
+            to_8_bit(self.g()),
+            to_8_bit(self.b()),
+            to_8_bit(self.a()),
+        ]       
+    }
+}
+
+fn to_8_bit(f32: chan) -> u8 {
+    let chan = clampf32(chan);
+    (chan * 255.0) as u8
 }
 
 impl Clone for Color {
