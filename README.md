@@ -2,9 +2,13 @@
 
 Graph based, immediate mode, user interface with fancy search capabilities written in Rust.
 
-Here's an example of the c++ implementation of the nodal UI.
+Here's a demo!
 
-http://www.youtube.com/watch?v=BK0f3CicNR4
+[https://www.youtube.com/watch?v=n2UrjogA0j0](https://www.youtube.com/watch?v=n2UrjogA0j0)
+
+Here's an example of the "Nodal" style we're going for. This particular vid is of an old C++ implementation.
+
+[http://www.youtube.com/watch?v=BK0f3CicNR4](http://www.youtube.com/watch?v=BK0f3CicNR4)
 
 The plan is not to port all of it directly, but to closesly draw inspiration while implementing a much more powerful, searchable graph/node system.
 
@@ -16,6 +20,16 @@ Current State
 
 Currently in the middle of designing the widget framework and basic widgets. An example project will be kept up-to-date featuring demonstrations of all working widgets. Conrod is still in very early stages and may change a lot!
 
+Available Widgets
+-----------------
+
+- Buttons
+- Toggles
+- Envelope Editor
+- Number Dialers
+- Sliders
+- TextBox
+- XYPad
 
 Dependencies
 ------------
@@ -47,3 +61,4 @@ Goals
 * Graph based navigation
 * Boolean predicate search
 * Simple immediate-mode user implementation
+
