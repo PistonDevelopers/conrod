@@ -153,7 +153,6 @@ pub fn draw(args: &RenderArgs,
             // Check for control keys.
             let pressed_keys = uic.get_pressed_keys();
             for key in pressed_keys.iter() {
-                println!("Key: {}", key);
                 match *key {
                     Backspace => {
                         if text.len() > 0u
@@ -181,7 +180,7 @@ pub fn draw(args: &RenderArgs,
                 let new_text = String::from_str(text.as_slice().slice_to(idx))
                     .append(t.as_slice()).append(text.as_slice().slice_from(idx));
                 *text = new_text;
-                new_idx = idx + t.len();
+                new_idx += t.len();
                 for ch in t.as_slice().chars() {
                     let c = uic.get_character(font_size, ch);
                     new_cursor_x += (c.glyph.advance().x >> 16) as f64;
