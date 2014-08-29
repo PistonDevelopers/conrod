@@ -44,6 +44,8 @@ use rectangle::{
     BottomLeft,
     BottomRight,
 };
+use std::num::abs;
+use time::precise_time_s;
 use ui_context::{
     UIID,
     UIContext,
@@ -143,13 +145,7 @@ pub fn draw(args: &RenderArgs,
     let new_state = match new_state { State(w_state, capturing) => match capturing {
         Uncaptured => new_state,
         Captured(idx, cursor_x) => {
-            let context = Context::abs(args.width as f64, args.height as f64);
-            let (r, g, b, a) = color.plain_contrast().as_tuple();
-            context
-                .line(cursor_x, pad_pos.y, cursor_x, pad_pos.y + pad_h)
-                .round_border_width(1f64)
-                .rgba(r, g, b, a)
-                .draw(gl);
+            draw_cursor(args, gl, uic, color, cursor_x, pad_pos.y, pad_h);
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
 
@@ -294,4 +290,22 @@ fn get_new_state(over_elem: Element,
         },
     }
 }
+
+/// Draw the text cursor.
+fn draw_cursor(args: &RenderArgs,
+               gl: &mut Gl,
+               uic: &mut UIContext,
+               color: Color,
+               cursor_x: f64,
+               pad_pos_y: f64,
+               pad_h: f64) {
+    let context = Context::abs(args.width as f64, args.height as f64);
+    let (r, g, b, a) = color.plain_contrast().as_tuple();
+    context
+        .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)
+        .round_border_width(1f64)
+        .rgba(r, g, b, abs(a * (precise_time_s() * 2.5).sin() as f32))
+        .draw(gl);
+}
+
 
