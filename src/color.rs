@@ -1,8 +1,11 @@
 
 use utils::clampf32;
 use std::default::Default;
+use std::fmt::{Show, Formatter, FormatError};
 use std::num::abs;
 use std::rand::random;
+use std::ascii::OwnedAsciiExt;
+use serialize::hex::ToHex;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -190,7 +193,7 @@ impl Color {
     }
 }
 
-fn to_8_bit(f32: chan) -> u8 {
+fn to_8_bit(chan: f32) -> u8 {
     let chan = clampf32(chan);
     (chan * 255.0) as u8
 }
@@ -257,5 +260,14 @@ impl Mul<Color, Color> for Color {
                 self.a() * rhs.a(),
             ])
         )
+    }
+}
+
+impl Show for Color {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
+        let vals = self.to_32_bit();
+        // Hex colors are always uppercased
+        let hex = vals.as_slice().to_hex().into_ascii_upper();
+        write!(fmt, "#{}", hex.as_slice())
     }
 }
