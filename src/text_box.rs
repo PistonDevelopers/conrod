@@ -32,6 +32,9 @@ use piston::{
 use piston::input::keyboard::{
     Key,
     Backspace,
+    Left,
+    Right,
+    Return,
 };
 use point::Point;
 use rectangle;
@@ -41,6 +44,8 @@ use rectangle::{
     BottomLeft,
     BottomRight,
 };
+use std::num::abs;
+use time::precise_time_s;
 use ui_context::{
     UIID,
     UIContext,
@@ -140,15 +145,29 @@ pub fn draw(args: &RenderArgs,
     let new_state = match new_state { State(w_state, capturing) => match capturing {
         Uncaptured => new_state,
         Captured(idx, cursor_x) => {
-            let context = Context::abs(args.width as f64, args.height as f64);
-            let (r, g, b, a) = color.plain_contrast().as_tuple();
-            context
-                .line(cursor_x, pad_pos.y, cursor_x, pad_pos.y + pad_h)
-                .round_border_width(1f64)
-                .rgba(r, g, b, a)
-                .draw(gl);
+            draw_cursor(args, gl, uic, color, cursor_x, pad_pos.y, pad_h);
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
+
+            // Check for entered text.
+            let entered_text = uic.get_entered_text();
+            for t in entered_text.iter() {
+                let mut entered_text_width = 0f64;
+                for ch in t.as_slice().chars() {
+                    let c = uic.get_character(font_size, ch);
+                    entered_text_width += (c.glyph.advance().x >> 16) as f64;
+                }
+                if new_cursor_x + entered_text_width < pad_pos.x + pad_w - TEXT_PADDING {
+                    new_cursor_x += entered_text_width;
+                }
+                else {
+                    break;
+                }
+                let new_text = String::from_str(text.as_slice().slice_to(idx))
+                    .append(t.as_slice()).append(text.as_slice().slice_from(idx));
+                *text = new_text;
+                new_idx += t.len();
+            }
 
             // Check for control keys.
             let pressed_keys = uic.get_pressed_keys();
@@ -159,31 +178,27 @@ pub fn draw(args: &RenderArgs,
                         && text.len() >= idx
                         && idx > 0u {
                             let rem_idx = idx - 1u;
-                            new_cursor_x = {
-                                let c = uic.get_character(font_size,
-                                                          text.as_slice().char_at(rem_idx));
-                                cursor_x - (c.glyph.advance().x >> 16) as f64
-                            };
+                            new_cursor_x -= uic.get_character_w(font_size, text.as_slice().char_at(rem_idx));
                             let new_text = String::from_str(text.as_slice().slice_to(rem_idx))
                                 .append(text.as_slice().slice_from(idx));
                             *text = new_text;
                             new_idx = rem_idx;
                         }
                     },
+                    Left => {
+                        if idx > 0 {
+                            new_cursor_x -= uic.get_character_w(font_size, text.as_slice().char_at(idx - 1u));
+                            new_idx -= 1u;
+                        }
+                    },
+                    Right => {
+                        if text.len() > idx {
+                            new_cursor_x += uic.get_character_w(font_size, text.as_slice().char_at(idx));
+                            new_idx += 1u;
+                        }
+                    },
+                    Return => if text.len() > 0u { callback(text) },
                     _ => (),
-                }
-            }
-
-            // Check for entered text.
-            let entered_text = uic.get_entered_text();
-            for t in entered_text.iter() {
-                let new_text = String::from_str(text.as_slice().slice_to(idx))
-                    .append(t.as_slice()).append(text.as_slice().slice_from(idx));
-                *text = new_text;
-                new_idx += t.len();
-                for ch in t.as_slice().chars() {
-                    let c = uic.get_character(font_size, ch);
-                    new_cursor_x += (c.glyph.advance().x >> 16) as f64;
                 }
             }
 
@@ -275,4 +290,22 @@ fn get_new_state(over_elem: Element,
         },
     }
 }
+
+/// Draw the text cursor.
+fn draw_cursor(args: &RenderArgs,
+               gl: &mut Gl,
+               uic: &mut UIContext,
+               color: Color,
+               cursor_x: f64,
+               pad_pos_y: f64,
+               pad_h: f64) {
+    let context = Context::abs(args.width as f64, args.height as f64);
+    let (r, g, b, a) = color.plain_contrast().as_tuple();
+    context
+        .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)
+        .round_border_width(1f64)
+        .rgba(r, g, b, abs(a * (precise_time_s() * 2.5).sin() as f32))
+        .draw(gl);
+}
+
 

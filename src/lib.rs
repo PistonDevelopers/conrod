@@ -6,6 +6,7 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate serialize;
+extern crate time;
 
 pub use color::Color;
 pub use frame::{Framing, Frame, NoFrame};
