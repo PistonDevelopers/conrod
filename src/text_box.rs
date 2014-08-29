@@ -156,14 +156,21 @@ pub fn draw(args: &RenderArgs,
             // Check for entered text.
             let entered_text = uic.get_entered_text();
             for t in entered_text.iter() {
+                let mut entered_text_width = 0f64;
+                for ch in t.as_slice().chars() {
+                    let c = uic.get_character(font_size, ch);
+                    entered_text_width += (c.glyph.advance().x >> 16) as f64;
+                }
+                if new_cursor_x + entered_text_width < pad_pos.x + pad_w - TEXT_PADDING {
+                    new_cursor_x += entered_text_width;
+                }
+                else {
+                    break;
+                }
                 let new_text = String::from_str(text.as_slice().slice_to(idx))
                     .append(t.as_slice()).append(text.as_slice().slice_from(idx));
                 *text = new_text;
                 new_idx += t.len();
-                for ch in t.as_slice().chars() {
-                    let c = uic.get_character(font_size, ch);
-                    new_cursor_x += (c.glyph.advance().x >> 16) as f64;
-                }
             }
 
             // Check for control keys.
