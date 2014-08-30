@@ -1,8 +1,11 @@
 
 use utils::clampf32;
 use std::default::Default;
+use std::fmt::{Show, Formatter, FormatError};
 use std::num::abs;
 use std::rand::random;
+use std::ascii::OwnedAsciiExt;
+use serialize::hex::ToHex;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -180,6 +183,31 @@ impl Color {
         (self.r() + self.g() + self.b()) / 3f32
     }
 
+    /// Return an array of the channels in this color
+    /// clamped to [0..255]
+    pub fn to_32_bit(&self) -> [u8, ..4] {
+        [
+            to_8_bit(self.r()),
+            to_8_bit(self.g()),
+            to_8_bit(self.b()),
+            to_8_bit(self.a()),
+        ]       
+    }
+
+    /// Return the hex representation of this color
+    /// in the format #RRGGBBAA
+    /// e.g. `Color(1.0, 0.0, 5.0, 1.0) == "#FF0080FF"`
+    pub fn to_hex(&self) -> String {
+        let vals = self.to_32_bit();
+        // Hex colors are always uppercased
+        let hex = vals.as_slice().to_hex().into_ascii_upper();
+        format!("#{}", hex.as_slice())
+    }
+}
+
+fn to_8_bit(chan: f32) -> u8 {
+    let chan = clampf32(chan);
+    (chan * 255.0) as u8
 }
 
 impl Clone for Color {
@@ -244,5 +272,12 @@ impl Mul<Color, Color> for Color {
                 self.a() * rhs.a(),
             ])
         )
+    }
+}
+
+impl Show for Color {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
+        let hex = self.to_hex(); 
+        fmt.pad(hex.as_slice())
     }
 }
