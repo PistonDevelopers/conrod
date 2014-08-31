@@ -26,9 +26,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::{
-    RenderArgs,
-};
 use piston::input::keyboard::{
     Key,
     Backspace,
@@ -108,8 +105,7 @@ widget_fns!(TextBox, State, TextBox(State(Normal, Uncaptured)))
 static TEXT_PADDING: f64 = 5f64;
 
 /// Draw the text_box widget.
-pub fn draw(args: &RenderArgs,
-            gl: &mut Gl,
+pub fn draw(gl: &mut Gl,
             uic: &mut UIContext,
             ui_id: UIID,
             pos: Point<f64>,
@@ -139,13 +135,13 @@ pub fn draw(args: &RenderArgs,
                               text_pos, text_w, font_size, text.as_slice());
     let mut new_state = get_new_state(over_elem, state, mouse);
 
-    rectangle::draw(args, gl, new_state.as_rectangle_state(), pos, width, height, frame, color);
-    label::draw(args, gl, uic, text_pos, font_size, color.plain_contrast(), text.as_slice());
+    rectangle::draw(uic.win_w, uic.win_h, gl, new_state.as_rectangle_state(), pos, width, height, frame, color);
+    label::draw(gl, uic, text_pos, font_size, color.plain_contrast(), text.as_slice());
 
     let new_state = match new_state { State(w_state, capturing) => match capturing {
         Uncaptured => new_state,
         Captured(idx, cursor_x) => {
-            draw_cursor(args, gl, uic, color, cursor_x, pad_pos.y, pad_h);
+            draw_cursor(uic.win_w, uic.win_h, gl, uic, color, cursor_x, pad_pos.y, pad_h);
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
 
@@ -292,14 +288,15 @@ fn get_new_state(over_elem: Element,
 }
 
 /// Draw the text cursor.
-fn draw_cursor(args: &RenderArgs,
+fn draw_cursor(win_w: f64,
+               win_h: f64,
                gl: &mut Gl,
                uic: &mut UIContext,
                color: Color,
                cursor_x: f64,
                pad_pos_y: f64,
                pad_h: f64) {
-    let context = Context::abs(args.width as f64, args.height as f64);
+    let context = Context::abs(win_w, win_h);
     let (r, g, b, a) = color.plain_contrast().as_tuple();
     context
         .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)

@@ -12,7 +12,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -44,8 +43,7 @@ widget_fns!(Button, State, Button(Normal))
 
 /// Draw the button. When successfully pressed,
 /// the given `callback` function will be called.
-pub fn draw(args: &RenderArgs,
-            gl: &mut Gl,
+pub fn draw(gl: &mut Gl,
             uic: &mut UIContext,
             ui_id: UIID,
             pos: Point<f64>,
@@ -62,12 +60,13 @@ pub fn draw(args: &RenderArgs,
     let rect_state = new_state.as_rectangle_state();
     match label {
         NoLabel => {
-            rectangle::draw(args, gl, rect_state, pos, width, height, frame, color)
+            rectangle::draw(uic.win_w, uic.win_h, gl, rect_state, pos,
+                            width, height, frame, color)
         },
         Label(text, size, text_color) => {
-            rectangle::draw_with_centered_label(args, gl, uic, rect_state,
-                                                pos, width, height, frame, color,
-                                                text, size, text_color)
+            rectangle::draw_with_centered_label(uic.win_w, uic.win_h, gl, uic, 
+                                                rect_state, pos, width, height,
+                                                frame, color, text, size, text_color)
         },
     }
     set_state(uic, ui_id, new_state);

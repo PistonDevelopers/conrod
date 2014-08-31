@@ -162,7 +162,7 @@ fn handle_event(event: &mut GameEvent,
                 gl: &mut Gl,
                 uic: &mut UIContext,
                 demo: &mut DemoApp) {
-    uic.event(event);
+    uic.handle_event(event);
     match *event {
         Render(ref mut args) => {
             draw_background(args, gl, &demo.bg_color);
@@ -189,8 +189,7 @@ fn draw_ui(args: &RenderArgs,
            demo: &mut DemoApp) {
 
     // Label example.
-    label::draw(args, // RenderArgs.
-                gl, // Open GL instance.
+    label::draw(gl, // Open GL instance.
                 uic, // UIContext.
                 Point::new(demo.title_padding, 30f64, 0f64), // Screen position.
                 48u32, // Font size.
@@ -199,8 +198,7 @@ fn draw_ui(args: &RenderArgs,
 
     if demo.show_button {
         // Button widget example.
-        button::draw(args, // RenderArgs.
-                     gl, // Open GL instance.
+        button::draw(gl, // Open GL instance.
                      uic, // UIContext.
                      0u64, // UI ID.
                      Point::new(50f64, 115f64, 0f64), // Screen position.
@@ -221,8 +219,7 @@ fn draw_ui(args: &RenderArgs,
         let label = "Padding: ".to_string().append(pad_string.as_slice());
 
         // Draw the slider.
-        slider::draw(args, // RenderArgs.
-                     gl, // OpenGL Instance.
+        slider::draw(gl, // OpenGL Instance.
                      uic, // UIContext.
                      1u64, // UIID
                      Point::new(50.0f64, 115.0, 0.0), // Screen position.
@@ -243,8 +240,7 @@ fn draw_ui(args: &RenderArgs,
     let label = demo.toggle_label.clone();
 
     // Toggle widget example.
-    toggle::draw(args, // RenderArgs.
-                 gl, // Open GL instance.
+    toggle::draw(gl, // Open GL instance.
                  uic, // UIContext.
                  2u64, // UI ID.
                  Point::new(50f64, 200f64, 0f64), // Screen position.
@@ -289,8 +285,7 @@ fn draw_ui(args: &RenderArgs,
         if label.len() > 4u { label.truncate(4u); }
 
         // Vertical slider widget example.
-        slider::draw(args, // RenderArgs.
-                     gl, // Open GL instance
+        slider::draw(gl, // Open GL instance
                      uic, // UIContext.
                      3u64 + i as u64, // UI ID.
                      Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
@@ -314,8 +309,7 @@ fn draw_ui(args: &RenderArgs,
     }
 
     // Number Dialer example.
-    number_dialer::draw(args, // RenderArgs.
-                        gl, // OpenGL instance.
+    number_dialer::draw(gl, // OpenGL instance.
                         uic, // UIContext.
                         6u64, // UIID.
                         Point::new(300.0, 115.0, 0.0), // Position.
@@ -332,8 +326,7 @@ fn draw_ui(args: &RenderArgs,
                         |new_height| demo.v_slider_height = new_height); // Callback closure.
 
     // Number Dialer example.
-    number_dialer::draw(args, // RenderArgs.
-                        gl, // OpenGL instance.
+    number_dialer::draw(gl, // OpenGL instance.
                         uic, // UIContext.
                         7u64, // UIID.
                         Point::new(300.0, 195.0, 0.0), // Position.
@@ -361,7 +354,7 @@ fn draw_ui(args: &RenderArgs,
 
         // Now draw the widgets with the given callback.
         let val = demo.bool_matrix[col][row];
-        toggle::draw(args, gl, uic, 8u64 + num as u64, pos, width, height,
+        toggle::draw(gl, uic, 8u64 + num as u64, pos, width, height,
                      Frame(demo.frame_width, Color::black()),
                      Color::new(0.5 + (col as f32 / cols as f32) / 2.0,
                                 0.75,
@@ -391,8 +384,7 @@ fn draw_ui(args: &RenderArgs,
     draw_circle(args, gl, demo.circle_pos, ddl_color);
 
     // A demonstration using drop_down_list.
-    drop_down_list::draw(args, // RenderArgs.
-                         gl, // OpenGL instance.
+    drop_down_list::draw(gl, // OpenGL instance.
                          uic, // UIContext.
                          75u64, // UIID.
                          Point::new(620.0, 115.0, 0.0), // Position.
@@ -408,8 +400,7 @@ fn draw_ui(args: &RenderArgs,
     });
 
     // Draw a xy_pad.
-    xy_pad::draw(args, // RenderArgs.
-                 gl, // OpenGL instance.
+    xy_pad::draw(gl, // OpenGL instance.
                  uic, // UIContext.
                  76u64, // UIID.
                  Point::new(620.0, 370.0, 0.0), // Position.
@@ -444,8 +435,7 @@ fn draw_ui(args: &RenderArgs,
         let env_editor_pos = pos + Point::new(0.0, text_box_height, 0.0);
 
         // Draw a TextBox.
-        text_box::draw(args, // RenderArgs.
-                       gl, // OpenGL instance.
+        text_box::draw(gl, // OpenGL instance.
                        uic, // UIContext.
                        77u64 + (num * 2u) as u64, // UI_ID.
                        pos, // Position.
@@ -458,8 +448,7 @@ fn draw_ui(args: &RenderArgs,
                        |_text| { }); // Callback upon Enter key.
 
         // Draw an EnvelopeEditor.
-        envelope_editor::draw(args, // RenderArgs.
-                              gl, // OpenGL instance.
+        envelope_editor::draw(gl, // OpenGL instance.
                               uic, // UIContext.
                               77u64 + (num * 2u + 1u) as u64, // UIID.
                               env_editor_pos, // Position.
@@ -479,12 +468,6 @@ fn draw_ui(args: &RenderArgs,
                               |_env, _idx| { }); // Callback upon x/y changes or mousepress/release.
 
     }); // End of matrix widget callback.
-
-    // This must be called to flush the
-    // buffers that store various input types
-    // to be matched each render cycle, i.e.
-    // `Key`s, `Text`, etc.
-    uic.flush_input();
 
 }
 
