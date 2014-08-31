@@ -17,7 +17,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -68,8 +67,7 @@ impl State {
 widget_fns!(DropDownList, State, DropDownList(Closed(Normal)))
 
 /// Draw a dropdownlist generated from the given &Vec<String>.
-pub fn draw(args: &RenderArgs,
-            gl: &mut Gl,
+pub fn draw(gl: &mut Gl,
             uic: &mut UIContext,
             ui_id: UIID,
             pos: Point<f64>,
@@ -111,9 +109,9 @@ pub fn draw(args: &RenderArgs,
                     NoLabel => (*strings)[0u].as_slice(),
                 },
             };
-            rectangle::draw_with_centered_label(args, gl, uic, rect_state,
-                                                pos, width, height, frame, color,
-                                                text, t_size, t_color)
+            rectangle::draw_with_centered_label(uic.win_w, uic.win_h, gl, uic, 
+                                                rect_state, pos, width, height,
+                                                frame, color, text, t_size, t_color)
         },
 
         Open(draw_state) => {
@@ -149,7 +147,7 @@ pub fn draw(args: &RenderArgs,
                     },
                 };
                 let idx_pos = pos + Point::new(0.0, height * i as f64 - i as f64 * frame_width, 0.0);
-                rectangle::draw_with_centered_label(args, gl, uic, rect_state,
+                rectangle::draw_with_centered_label(uic.win_w, uic.win_h, gl, uic, rect_state,
                                                     idx_pos, width, height, frame, color,
                                                     string.as_slice(), t_size, t_color)
             }

@@ -17,7 +17,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -56,8 +55,7 @@ widget_fns!(Slider, State, Slider(Normal))
 /// automatically convert itself between horizontal
 /// and vertical depending on the dimensions given.
 pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
-    (args: &RenderArgs,
-     gl: &mut Gl,
+    (gl: &mut Gl,
      uic: &mut UIContext,
      ui_id: UIID,
      pos: Point<f64>,
@@ -80,7 +78,8 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
         Frame(frame_w, frame_c) => (frame_w, frame_c),
         NoFrame => (0.0, Color::black()),
     };
-    rectangle::draw(args, gl, rect_state, pos, width, height, NoFrame, frame_c);
+    rectangle::draw(uic.win_w, uic.win_h, gl, rect_state, pos,
+                    width, height, NoFrame, frame_c);
     let is_horizontal = width > height;
     let (r_pos, r_width, r_height, new_val) = match is_horizontal {
         true => horizontal(pos, width, height, frame_w,
@@ -88,7 +87,8 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
         false => vertical(pos, width, height, frame_w,
                           value, min, max, mouse, is_over, state, new_state),
     };
-    rectangle::draw(args, gl, rect_state, r_pos, r_width, r_height, NoFrame, color);
+    rectangle::draw(uic.win_w, uic.win_h, gl, rect_state, r_pos,
+                    r_width, r_height, NoFrame, color);
     match label {
         NoLabel => (),
         Label(text, size, text_color) => {
@@ -104,7 +104,7 @@ pub fn draw<T: Num + Copy + FromPrimitive + ToPrimitive>
                     Point::new(x, y, 0f64)
                 },
             };
-            label::draw(args, gl, uic, l_pos, size, text_color, text.as_slice());
+            label::draw(gl, uic, l_pos, size, text_color, text.as_slice());
         }
     }
     set_state(uic, ui_id, new_state);

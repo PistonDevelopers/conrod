@@ -12,7 +12,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -45,8 +44,7 @@ widget_fns!(Toggle, State, Toggle(Normal))
 /// Draw a Toggle widget. If the toggle
 /// is switched, call `event` with the
 /// new state.
-pub fn draw(args: &RenderArgs,
-            gl: &mut Gl,
+pub fn draw(gl: &mut Gl,
             uic: &mut UIContext,
             ui_id: UIID,
             pos: Point<f64>,
@@ -74,10 +72,10 @@ pub fn draw(args: &RenderArgs,
     };
     match label {
         NoLabel => {
-            rectangle::draw(args, gl, rect_state, pos, width, height, frame, rect_color)
+            rectangle::draw(uic.win_w, uic.win_h, gl, rect_state, pos, width, height, frame, rect_color)
         },
         Label(text, size, text_color) => {
-            rectangle::draw_with_centered_label(args, gl, uic, rect_state,
+            rectangle::draw_with_centered_label(uic.win_w, uic.win_h, gl, uic, rect_state,
                                                 pos, width, height, frame, rect_color,
                                                 text, size, text_color)
         },

@@ -14,7 +14,6 @@ use graphics::{
 use label;
 use label::FontSize;
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use ui_context::UIContext;
 use utils::map_range;
@@ -30,7 +29,8 @@ pub enum State {
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
 /// other widgets.
-pub fn draw(args: &RenderArgs,
+pub fn draw(win_w: f64,
+            win_h: f64,
             gl: &mut Gl,
             state: State,
             pos: Point<f64>,
@@ -38,7 +38,7 @@ pub fn draw(args: &RenderArgs,
             height: f64,
             frame: Framing,
             color: Color) {
-    let context = &Context::abs(args.width as f64, args.height as f64);
+    let context = &Context::abs(win_w, win_h);
     match frame {
         Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
         NoFrame => (),
@@ -104,7 +104,8 @@ pub fn is_over(pos: Point<f64>,
 }
 
 /// Draw a label centered within a rect of given position and dimensions.
-pub fn draw_with_centered_label(args: &RenderArgs,
+pub fn draw_with_centered_label(win_w: f64,
+                                win_h: f64,
                                 gl: &mut Gl,
                                 uic: &mut UIContext,
                                 state: State,
@@ -116,7 +117,7 @@ pub fn draw_with_centered_label(args: &RenderArgs,
                                 text: &str,
                                 font_size: FontSize,
                                 text_color: Color) {
-    let context = &Context::abs(args.width as f64, args.height as f64);
+    let context = &Context::abs(win_w, win_h);
     match frame {
         Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
         NoFrame => (),
@@ -126,7 +127,7 @@ pub fn draw_with_centered_label(args: &RenderArgs,
     let l_pos = Point::new(pos.x + (width - text_w) / 2.0,
                            pos.y + (height - font_size as f64) / 2.0,
                            0.0);
-    label::draw(args, gl, uic, l_pos, font_size, text_color, text);
+    label::draw(gl, uic, l_pos, font_size, text_color, text);
 }
 
 pub enum Corner {

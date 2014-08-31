@@ -10,6 +10,7 @@ use mouse_state::{
     MouseState,
 };
 use piston::{
+    Render,
     GameEvent,
     Input,
     input,
@@ -32,6 +33,11 @@ pub struct UIContext {
     pub keys_just_released: Vec<input::keyboard::Key>,
     pub text_just_entered: Vec<String>,
     glyph_cache: GlyphCache,
+    prev_event_was_render: bool,
+    /// Window width.
+    pub win_w: f64,
+    /// Window height.
+    pub win_h: f64,
 }
 
 impl UIContext {
@@ -45,12 +51,24 @@ impl UIContext {
             keys_just_released: Vec::with_capacity(10u),
             text_just_entered: Vec::with_capacity(10u),
             glyph_cache: GlyphCache::new(font_file),
+            prev_event_was_render: false,
+            win_w: 0f64,
+            win_h: 0f64,
         }
     }
 
     /// Handle game events and update the state.
-    pub fn event(&mut self, event: &mut GameEvent) {
+    pub fn handle_event(&mut self, event: &mut GameEvent) {
+        if self.prev_event_was_render {
+            self.flush_input();
+            self.prev_event_was_render = false;
+        }
         match *event {
+            Render(args) => {
+                self.win_w = args.width as f64;
+                self.win_h = args.height as f64;
+                self.prev_event_was_render = true;
+            }
             Input(input::Move(input::MouseCursor(x, y))) => {
                 self.mouse.pos = Point::new(x, y, 0.0);
             },

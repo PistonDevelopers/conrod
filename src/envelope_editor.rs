@@ -26,9 +26,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::{
-    RenderArgs,
-};
 use point::Point;
 use rectangle;
 use rectangle::{
@@ -114,8 +111,7 @@ pub fn draw
 <X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
  Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
  E: EnvelopePoint<X, Y>>
-           (args: &RenderArgs,
-            gl: &mut Gl,
+           (gl: &mut Gl,
             uic: &mut UIContext,
             ui_id: UIID,
             pos: Point<f64>,
@@ -150,7 +146,8 @@ pub fn draw
     let new_state = get_new_state(is_over_elem, state, mouse);
 
     // Draw rect.
-    rectangle::draw(args, gl, new_state.as_rectangle_state(), pos, width, height, frame, color);
+    rectangle::draw(uic.win_w, uic.win_h, gl, new_state.as_rectangle_state(),
+                    pos, width, height, frame, color);
 
     // If there's a label, draw it.
     match label {
@@ -160,7 +157,7 @@ pub fn draw
             let l_pos = Point::new(pad_pos.x + (pad_w - l_w) / 2.0,
                                    pad_pos.y + (pad_h - l_size as f64) / 2.0,
                                    0.0);
-            label::draw(args, gl, uic, l_pos, l_size, l_color, l_text);
+            label::draw(gl, uic, l_pos, l_size, l_color, l_text);
         },
     };
 
@@ -178,7 +175,7 @@ pub fn draw
                                      map_range(y_a, min_y, max_y, pad_pos.y + pad_h, pad_pos.y), 0.0);
                 let p_b = Point::new(map_range(x_b, min_x, max_x, pad_pos.x, pad_pos.x + pad_w),
                                      map_range(y_b, min_y, max_y, pad_pos.y + pad_h, pad_pos.y), 0.0);
-                let context = Context::abs(args.width as f64, args.height as f64);
+                let context = Context::abs(uic.win_w, uic.win_h);
                 context
                     .line(p_a.x, p_a.y, p_b.x, p_b.y)
                     .round_border_width(line_width)
@@ -217,9 +214,9 @@ pub fn draw
                     BottomLeft => Point::new(p_pos.x, p_pos.y - font_size as f64, 0.0),
                     BottomRight => Point::new(p_pos.x - xy_string_w, p_pos.y - font_size as f64, 0.0),
                 };
-                label::draw(args, gl, uic, xy_string_pos, font_size,
-                            color.plain_contrast(), xy_string.as_slice());
-                draw_circle(args, gl, p_pos - Point::new(pt_radius, pt_radius, 0.0),
+                label::draw(gl, uic, xy_string_pos, font_size, color.plain_contrast(), xy_string.as_slice());
+                draw_circle(uic.win_w, uic.win_h, gl,
+                            p_pos - Point::new(pt_radius, pt_radius, 0.0),
                             color.plain_contrast(), pt_radius);
             };
 
@@ -444,12 +441,13 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Draw a circle at the given position.
-fn draw_circle(args: &RenderArgs,
+fn draw_circle(win_w: f64,
+               win_h: f64,
                gl: &mut Gl,
                pos: Point<f64>,
                color: Color,
                radius: f64) {
-    let context = &Context::abs(args.width as f64, args.height as f64);
+    let context = &Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
     context
         .ellipse(pos.x, pos.y, radius * 2.0, radius * 2.0)

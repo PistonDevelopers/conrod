@@ -26,7 +26,6 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
 use utils::{
@@ -67,8 +66,7 @@ widget_fns!(NumberDialer, State, NumberDialer(Normal))
 /// or if the value is changed, the given `callback`
 /// function will be called.
 pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-    (args: &RenderArgs,
-     gl: &mut Gl,
+    (gl: &mut Gl,
      uic: &mut UIContext,
      ui_id: UIID,
      pos: Point<f64>,
@@ -106,14 +104,15 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
     let new_state = get_new_state(is_over_elem, state, mouse);
 
     // Draw the widget rectangle.
-    rectangle::draw(args, gl, rectangle::Normal, pos, width, height, frame, color);
+    rectangle::draw(uic.win_w, uic.win_h, gl, rectangle::Normal,
+                    pos, width, height, frame, color);
 
     // If there's a label, draw it.
     //let l_pos = pos + Point::new(RECT_PADDING + frame_w, RECT_PADDING + frame_w, 0.0);
     let (val_string_color, val_string_size) = match label {
         NoLabel => (color.plain_contrast(), font_size),
         Label(_, l_size, l_color) => {
-            label::draw(args, gl, uic, l_pos, l_size, l_color, label_string.as_slice());
+            label::draw(gl, uic, l_pos, l_size, l_color, label_string.as_slice());
             (l_color, l_size)
         },
     };
@@ -136,7 +135,8 @@ pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 
     // Draw the value string.
     let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
-    draw_value_string(args, gl, uic, new_state, pos.y + frame_w, color, height, frame_w,
+    draw_value_string(uic.win_w, uic.win_h, gl, uic, new_state,
+                      pos.y + frame_w, color, height, frame_w,
                       value_glyph_slot_width(val_string_size),
                       val_string_pos,
                       val_string_size,
@@ -317,7 +317,8 @@ fn get_new_value<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToStr
 }
 
 /// Draw the value string glyphs.
-fn draw_value_string(args: &RenderArgs,
+fn draw_value_string(win_w: f64,
+                     win_h: f64,
                      gl: &mut Gl,
                      uic: &mut UIContext,
                      state: State,
@@ -333,8 +334,7 @@ fn draw_value_string(args: &RenderArgs,
     let mut x = 0;
     let y = 0;
     let (font_r, font_g, font_b, font_a) = font_color.as_tuple();
-    let context = Context::abs(args.width as f64, args.height as f64)
-                    .trans(pos.x, pos.y + size as f64);
+    let context = Context::abs(win_w, win_h).trans(pos.x, pos.y + size as f64);
     let half_slot_w = slot_w / 2.0;
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
