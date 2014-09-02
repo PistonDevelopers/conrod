@@ -27,6 +27,7 @@ pub type UIID = u64;
 /// UIContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
 pub struct UIContext {
+    // TODO: change this to a Vector<Widget> and use index as UIID.
     data: HashMap<UIID, Widget>,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,

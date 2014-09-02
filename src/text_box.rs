@@ -7,19 +7,13 @@ use frame::{
 };
 use graphics::{
     AddColor,
-    AddEllipse,
     AddLine,
     AddRoundBorder,
     Context,
     Draw,
 };
 use label;
-use label::{
-    NoLabel,
-    Label,
-    FontSize,
-    Labeling,
-};
+use label::FontSize;
 use mouse_state::{
     MouseState,
     Up,
@@ -27,7 +21,6 @@ use mouse_state::{
 };
 use opengl_graphics::Gl;
 use piston::input::keyboard::{
-    Key,
     Backspace,
     Left,
     Right,
@@ -35,22 +28,11 @@ use piston::input::keyboard::{
 };
 use point::Point;
 use rectangle;
-use rectangle::{
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
-};
 use std::num::abs;
 use time::precise_time_s;
 use ui_context::{
     UIID,
     UIContext,
-};
-use utils::{
-    clamp,
-    map_range,
-    val_to_string,
 };
 use widget::TextBox;
 
@@ -59,11 +41,11 @@ pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.
 #[deriving(Show, PartialEq)]
-pub struct State(WidgetState, Capturing);
+pub struct State(DrawState, Capturing);
 
 /// Represents the next tier of state.
 #[deriving(Show, PartialEq)]
-pub enum WidgetState {
+pub enum DrawState {
     Normal,
     Highlighted(Element),
     Clicked(Element),
@@ -133,7 +115,7 @@ pub fn draw(gl: &mut Gl,
     let over_elem = over_elem(uic, pos, mouse.pos, width, height,
                               pad_pos, pad_w, pad_h,
                               text_pos, text_w, font_size, text.as_slice());
-    let mut new_state = get_new_state(over_elem, state, mouse);
+    let new_state = get_new_state(over_elem, state, mouse);
 
     rectangle::draw(uic.win_w, uic.win_h, gl, new_state.as_rectangle_state(), pos, width, height, frame, color);
     label::draw(gl, uic, text_pos, font_size, color.plain_contrast(), text.as_slice());
@@ -141,7 +123,7 @@ pub fn draw(gl: &mut Gl,
     let new_state = match new_state { State(w_state, capturing) => match capturing {
         Uncaptured => new_state,
         Captured(idx, cursor_x) => {
-            draw_cursor(uic.win_w, uic.win_h, gl, uic, color, cursor_x, pad_pos.y, pad_h);
+            draw_cursor(uic.win_w, uic.win_h, gl, color, cursor_x, pad_pos.y, pad_h);
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
 
@@ -224,7 +206,7 @@ fn over_elem(uic: &mut UIContext,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_w, pad_h) {
             false => Rect,
             true => {
-                let (idx, cursor_x) = closest_idx(uic, mouse_pos, pad_h, pad_pos.y, text_pos.x, text_w, font_size, text);
+                let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos.x, text_w, font_size, text);
                 Text(idx, cursor_x)
             },
         },
@@ -234,8 +216,6 @@ fn over_elem(uic: &mut UIContext,
 /// Check which character is closest to the mouse cursor.
 fn closest_idx(uic: &mut UIContext,
                mouse_pos: Point<f64>,
-               pad_h: f64,
-               pad_y: f64,
                text_x: f64,
                text_w: f64,
                font_size: FontSize,
@@ -291,7 +271,6 @@ fn get_new_state(over_elem: Element,
 fn draw_cursor(win_w: f64,
                win_h: f64,
                gl: &mut Gl,
-               uic: &mut UIContext,
                color: Color,
                cursor_x: f64,
                pad_pos_y: f64,
