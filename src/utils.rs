@@ -36,7 +36,7 @@ pub fn value_from_perc<T: Num + Copy + FromPrimitive + ToPrimitive>
 /// Map a value from a given range to a new given range.
 pub fn map_range<X: Num + Copy + FromPrimitive + ToPrimitive,
                  Y: Num + Copy + FromPrimitive + ToPrimitive>
-    (val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y {
+(val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y {
     let (val_f, in_min_f, in_max_f, out_min_f, out_max_f) = (
         val.to_f64().unwrap(),
         in_min.to_f64().unwrap(),
@@ -51,7 +51,7 @@ pub fn map_range<X: Num + Copy + FromPrimitive + ToPrimitive,
 
 /// Get a suitable string from the value, its max and the pixel range.
 pub fn val_to_string<T: ToString + ToPrimitive>
-                (val: T, max: T, val_rng: T, pixel_range: uint) -> String {
+(val: T, max: T, val_rng: T, pixel_range: uint) -> String {
     let mut s = val.to_string();
     let decimal = s.as_slice().chars().position(|ch| ch == '.');
     match decimal {
@@ -67,23 +67,20 @@ pub fn val_to_string<T: ToString + ToPrimitive>
                 pow_ten = (10f64).powf(n);
                 n += 1.0
             }
-            let min_string_len = n as uint;
+            let min_string_len = n as uint + 1u;
 
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.
-            let mut n = 0u;
+            let mut n = 1u;
             while pow(10u, n) < pixel_range { n += 1u }
-            let precision = n - 1u;
+            let precision = n;
 
             // Truncate the length to the pixel precision as
             // long as this doesn't cause it to be smaller
             // than the necessary decimal place.
-            let truncate_len = {
-                if precision >= min_string_len { precision }
-                else { min_string_len }
-            };
-            if truncate_len - 1u == idx { s.truncate(truncate_len + 1u) }
-            else { s.truncate(truncate_len) }
+            let mut truncate_len = min_string_len + (precision - 1u);
+            if idx + precision < truncate_len { truncate_len = idx + precision }
+            if s.len() > truncate_len { s.truncate(truncate_len) }
             s
         }
     }

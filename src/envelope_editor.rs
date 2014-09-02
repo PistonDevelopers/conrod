@@ -178,10 +178,14 @@ pub fn draw
             for (i, env_p) in perc_env.iter().enumerate().skip(1u) {
                 let (x_a, y_a) = perc_env[i - 1u];
                 let (x_b, y_b) = perc_env[i];
-                let p_a = Point::new(map_range(x_a, 0.0, 1.0, pad_pos.x, pad_pos.x + pad_w),
-                                     map_range(y_a, 0.0, 1.0, pad_pos.y + pad_h, pad_pos.y), 0.0);
-                let p_b = Point::new(map_range(x_b, 0.0, 1.0, pad_pos.x, pad_pos.x + pad_w),
-                                     map_range(y_b, 0.0, 1.0, pad_pos.y + pad_h, pad_pos.y), 0.0);
+                let p_a = Point::new(map_range(x_a, 0.0, 1.0,
+                                               pad_pos.x, pad_pos.x + pad_w),
+                                     map_range(y_a, 0.0, 1.0,
+                                               pad_pos.y + pad_h, pad_pos.y), 0.0);
+                let p_b = Point::new(map_range(x_b, 0.0, 1.0,
+                                               pad_pos.x, pad_pos.x + pad_w),
+                                     map_range(y_b, 0.0, 1.0,
+                                               pad_pos.y + pad_h, pad_pos.y), 0.0);
                 let context = Context::abs(uic.win_w, uic.win_h);
                 context
                     .line(p_a.x, p_a.y, p_b.x, p_b.y)
