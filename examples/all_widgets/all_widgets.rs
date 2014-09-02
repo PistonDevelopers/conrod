@@ -107,9 +107,9 @@ impl DemoApp {
             selected_idx: None,
             circle_pos: Point::new(700.0, 200.0, 0.0),
             envelopes: vec![(vec![ Point::new(0.0, 0.0, 0.0),
-                                   Point::new(0.1, 0.85, 0.0),
-                                   Point::new(0.25, 0.4, 0.0),
-                                   Point::new(0.5, 0.1, 0.0),
+                                   Point::new(0.1, 17000.0, 0.0),
+                                   Point::new(0.25, 8000.0, 0.0),
+                                   Point::new(0.5, 2000.0, 0.0),
                                    Point::new(1.0, 0.0, 0.0), ], "Envelope A".to_string()),
                             (vec![ Point::new(0.0, 0.85, 0.0),
                                    Point::new(0.3, 0.2, 0.0),
@@ -231,7 +231,6 @@ fn draw_ui(gl: &mut Gl,
             50f64, // Height.
             Frame(demo.frame_width, Color::black()), // Widget Frame.
             Color::new(0.5, 0.3, 0.6, 1.0), // Rectangle color.
-            //NoLabel,
             Label(label.as_slice(), 24u32, Color::white()),
             pad as i16, // Slider value.
             10i16, // Min value.
@@ -297,7 +296,6 @@ fn draw_ui(gl: &mut Gl,
             demo.v_slider_height, // Height.
             Frame(demo.frame_width, Color::black()), // Widget Frame.
             color, // Slider color.
-            //NoLabel,
             Label(label.as_slice(), 24u32, Color::white()),
             value, // Slider value.
             0f32, // Minimum value.
@@ -481,8 +479,9 @@ fn draw_ui(gl: &mut Gl,
                       Color::new(1.0, 1.0, 1.0, 0.5)
                       * demo.bg_color.invert().plain_contrast()),
                 env, // Envelope.
-                0.0, 1.0, // `x` axis range.
-                0.0, 1.0, // `y` axis range.
+                match num { 0u => Some(3f32), _ => None }, // y axis range skew amount.
+                0.0, 1.0, // x axis range.
+                0.0, match num { 0u => 20000.0, _ => 1.0 }, // y axis range.
                 6.0, // Point radius.
                 2.0, // Line width.
                 |_env, _idx| { } // Callback upon x/y changes or mousepress/release.

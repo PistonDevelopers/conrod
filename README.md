@@ -39,8 +39,8 @@ Dependencies
 - [freetype](http://www.freetype.org/download.html) - at the moment, Conrod uses [freetype-rs](https://github.com/PistonDevelopers/freetype-rs) for its font rendering, which means you'll need to have the freetype library installed on your system. You can [download and install the freetype library here](http://www.freetype.org/download.html).
 
 
-Usage
------
+Getting Started
+---------------
 
 Build the conrod lib like this:
 
