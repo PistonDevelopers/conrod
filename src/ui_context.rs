@@ -11,7 +11,7 @@ use mouse_state::{
 };
 use piston::{
     Render,
-    GameEvent,
+    Event,
     Input,
     input,
 };
@@ -59,7 +59,7 @@ impl UIContext {
     }
 
     /// Handle game events and update the state.
-    pub fn handle_event(&mut self, event: &mut GameEvent) {
+    pub fn handle_event(&mut self, event: &Event) {
         if self.prev_event_was_render {
             self.flush_input();
             self.prev_event_was_render = false;

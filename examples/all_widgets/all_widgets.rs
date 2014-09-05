@@ -36,14 +36,14 @@ use graphics::{
 };
 use opengl_graphics::Gl;
 use piston::{
-    GameEvent,
-    GameWindowSettings,
-    GameIterator,
-    GameIteratorSettings,
+    Event,
+    WindowSettings,
+    EventIterator,
+    EventSettings,
     Render,
     RenderArgs,
 };
-use sdl2_game_window::GameWindowSDL2;
+use sdl2_game_window::WindowSDL2;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -122,24 +122,25 @@ impl DemoApp {
 fn main() {
 
     // Create a SDL2 window.
-    let mut window = GameWindowSDL2::new(
+    let mut window = WindowSDL2::new(
         piston::shader_version::opengl::OpenGL_3_2,
-        GameWindowSettings {
+        WindowSettings {
             title: "Hello Conrod".to_string(),
             size: [1200, 600],
             fullscreen: false,
-            exit_on_esc: true
+            exit_on_esc: true,
+            samples: 4,
         }
     );
 
     // Some settings for how the game should be run.
-    let game_iter_settings = GameIteratorSettings {
+    let event_settings = EventSettings {
         updates_per_second: 180,
         max_frames_per_second: 60
     };
 
     // Create GameIterator to begin the event iteration loop.
-    let mut game_iter = GameIterator::new(&mut window, &game_iter_settings);
+    let mut event_iter = EventIterator::new(&mut window, &event_settings);
     // Create OpenGL instance.
     let mut gl = Gl::new();
     // Create the UIContext and specify the name of a font that's in our "assets" directory.
@@ -148,23 +149,20 @@ fn main() {
     let mut demo = DemoApp::new();
 
     // Main program loop begins.
-    loop {
-        match game_iter.next() {
-            None => break,
-            Some(mut e) => handle_event(&mut e, &mut gl, &mut uic, &mut demo),
-        }
+    for e in event_iter {
+        handle_event(&e, &mut gl, &mut uic, &mut demo);
     }
 
 }
 
 /// Match the game event.
-fn handle_event(event: &mut GameEvent,
+fn handle_event(event: &Event,
                 gl: &mut Gl,
                 uic: &mut UIContext,
                 demo: &mut DemoApp) {
     uic.handle_event(event);
     match *event {
-        Render(ref mut args) => {
+        Render(ref args) => {
             draw_background(args, gl, &demo.bg_color);
             draw_ui(gl, uic, demo);
         },
