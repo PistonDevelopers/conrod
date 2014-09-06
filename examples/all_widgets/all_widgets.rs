@@ -19,8 +19,14 @@ use conrod::{
     toggle,
     widget_matrix,
     xy_pad,
+    ButtonBuilder,
+    Callable,
     Color,
+    Colorable,
+    Drawable,
     Frame,
+    Frameable,
+    Labelable,
     Point,
     UIContext,
 };
@@ -198,19 +204,29 @@ fn draw_ui(gl: &mut Gl,
     );
 
     if demo.show_button {
-        // Button widget example.
-        button::draw(
-            gl, // Open GL instance.
-            uic, // UIContext.
-            0u64, // UI ID.
-            Point::new(50f64, 115f64, 0f64), // Screen position.
-            90f64, // Width.
-            60f64, // Height.
-            Frame(demo.frame_width, Color::black()), // Widget Frame.
-            Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
-            Label("PRESS", 24u32, Color::black()), // Label for button.
-            || demo.bg_color = Color::random() // Callback closure.
-        );
+
+        //// Button widget example.
+        //button::draw(
+        //    gl, // Open GL instance.
+        //    uic, // UIContext.
+        //    0u64, // UI ID.
+        //    Point::new(50f64, 115f64, 0f64), // Screen position.
+        //    90f64, // Width.
+        //    60f64, // Height.
+        //    Frame(demo.frame_width, Color::black()), // Widget Frame.
+        //    Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
+        //    Label("PRESS", 24u32, Color::black()), // Label for button.
+        //    || demo.bg_color = Color::random() // Callback closure.
+        //);
+
+        // Button widget example button(UIID, x, y, f64, f64).
+        uic.button(0u64, 50.0, 115.0, 90.0, 60.0)
+            .color(0.4, 0.75, 0.6, 1.0)
+            .frame(demo.frame_width, Color::black())
+            .label("PRESS", 24u32, Color::black())
+            .callback(|| demo.bg_color = Color::random())
+            .draw(gl);
+
     }
 
     // Horizontal slider example.

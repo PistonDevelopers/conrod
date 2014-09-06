@@ -246,3 +246,9 @@ impl Mul<Color, Color> for Color {
         )
     }
 }
+
+/// A trait used for "colorable" widget context types.
+pub trait Colorable<'a> {
+    fn color(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+}
+
