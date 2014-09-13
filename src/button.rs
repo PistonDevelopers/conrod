@@ -1,14 +1,5 @@
 
 use color::Color;
-use frame::{
-    NoFrame,
-    Framing
-};
-use label::{
-    Labeling,
-    NoLabel,
-    Label,
-};
 use mouse_state::{
     MouseState,
     Up,
@@ -60,15 +51,14 @@ fn get_new_state(is_over: bool,
 /// A context on which the builder pattern can be implemented.
 pub struct ButtonContext<'a> {
     uic: &'a mut UIContext,
-    is_over: bool,
-    state: State,
-    new_state: State,
+    ui_id: UIID,
     pos: Point<f64>,
     width: f64,
     height: f64,
     maybe_color: Option<Color>,
     maybe_frame: Option<(f64, Color)>,
     maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_callback: Option<||:'a>,
 }
 
 pub trait ButtonBuilder<'a> {
@@ -82,23 +72,16 @@ impl<'a> ButtonBuilder<'a> for UIContext {
     /// Create a button context to be built upon.
     fn button(&'a mut self, ui_id: UIID,
               x: f64, y: f64, width: f64, height: f64) -> ButtonContext<'a> {
-        let pos = Point::new(x, y, 0.0);
-        let state = *get_state(self, ui_id);
-        let mouse = self.get_mouse_state();
-        let is_over = rectangle::is_over(pos, mouse.pos, width, height);
-        let new_state = get_new_state(is_over, state, mouse);
-        set_state(self, ui_id, new_state);
         ButtonContext {
-            is_over: is_over,
-            state: state,
-            new_state: new_state,
-            pos: pos,
+            uic: self,
+            ui_id: ui_id,
+            pos: Point::new(x, y, 0.0),
             width: width,
             height: height,
+            maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_label: None,
-            uic: self,
         }
     }
 
@@ -111,21 +94,30 @@ impl_positionable!(ButtonContext)
 
 impl<'a> ::callback::Callable<||:'a> for ButtonContext<'a> {
     #[inline]
-    fn callback(self, callback: ||) -> ButtonContext<'a> {
-        match (self.is_over, self.state, self.new_state) {
-            (true, Clicked, Highlighted) => callback(), _ => (),
-        }
-        self
+    fn callback(self, callback: ||:'a) -> ButtonContext<'a> {
+        ButtonContext { maybe_callback: Some(callback), ..self }
     }
 }
 
 impl<'a> ::draw::Drawable for ButtonContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
-        let rect_state = self.new_state.as_rectangle_state();
-        let color: Color = match self.maybe_color {
-            None => ::std::default::Default::default(),
-            Some(color) => color,
-        };
+
+        let state = *get_state(self.uic, self.ui_id);
+        let mouse = self.uic.get_mouse_state();
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
+        let new_state = get_new_state(is_over, state, mouse);
+        set_state(self.uic, self.ui_id, new_state);
+
+        // Callback.
+        match (is_over, state, new_state) {
+            (true, Clicked, Highlighted) => match self.maybe_callback {
+                Some(ref mut callback) => (*callback)(), None => (),
+            }, _ => (),
+        }
+
+        // Draw.
+        let rect_state = new_state.as_rectangle_state();
+        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
         match self.maybe_label {
             None => {
                 rectangle::draw(
@@ -141,6 +133,7 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
                 )
             },
         }
+
     }
 }
 

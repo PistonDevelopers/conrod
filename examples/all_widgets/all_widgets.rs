@@ -9,30 +9,24 @@ extern crate sdl2_game_window;
 extern crate opengl_graphics;
 
 use conrod::{
-    button,
-    drop_down_list,
-    envelope_editor,
     label,
-    number_dialer,
-    slider,
-    text_box,
-    toggle,
     widget_matrix,
-    xy_pad,
-    ButtonBuilder,
+    Button,
     Callable,
     Color,
     Colorable,
     Drawable,
-    Frame,
+    DropDownList,
+    EnvelopeEditor,
     Frameable,
     Labelable,
+    NumberDialer,
     Point,
+    Slider,
+    TextBox,
+    Toggle,
     UIContext,
-};
-use conrod::label::{
-    Label,
-    NoLabel,
+    XYPad,
 };
 use graphics::{
     AddColor,
@@ -148,7 +142,7 @@ fn main() {
     // Create GameIterator to begin the event iteration loop.
     let mut event_iter = EventIterator::new(&mut window, &event_settings);
     // Create OpenGL instance.
-    let mut gl = Gl::new();
+    let mut gl = Gl::new(piston::shader_version::opengl::OpenGL_3_2);
     // Create the UIContext and specify the name of a font that's in our "assets" directory.
     let mut uic = UIContext::new("Dense-Regular.otf");
     // Create the Demonstration Application data.
@@ -203,23 +197,9 @@ fn draw_ui(gl: &mut Gl,
 
     if demo.show_button {
 
-        //// Button widget example.
-        //button::draw(
-        //    gl, // Open GL instance.
-        //    uic, // UIContext.
-        //    0u64, // UI ID.
-        //    Point::new(50f64, 115f64, 0f64), // Screen position.
-        //    90f64, // Width.
-        //    60f64, // Height.
-        //    Frame(demo.frame_width, Color::black()), // Widget Frame.
-        //    Color::new(0.4f32, 0.75f32, 0.6f32, 1f32), // Button Color.
-        //    Label("PRESS", 24u32, Color::black()), // Label for button.
-        //    || demo.bg_color = Color::random() // Callback closure.
-        //);
-
         // Button widget example button(UIID, x, y, f64, f64).
         uic.button(0u64, 50.0, 115.0, 90.0, 60.0)
-            .color(0.4, 0.75, 0.6, 1.0)
+            .rgba(0.4, 0.75, 0.6, 1.0)
             .frame(demo.frame_width, Color::black())
             .label("PRESS", 24u32, Color::black())
             .callback(|| demo.bg_color = Color::random())
@@ -235,48 +215,31 @@ fn draw_ui(gl: &mut Gl,
         let pad_string = pad.to_string();
         let label = "Padding: ".to_string().append(pad_string.as_slice());
 
-        // Draw the slider.
-        slider::draw(
-            gl, // OpenGL Instance.
-            uic, // UIContext.
-            1u64, // UIID
-            Point::new(50.0f64, 115.0, 0.0), // Screen position.
-            200f64, // Width.
-            50f64, // Height.
-            Frame(demo.frame_width, Color::black()), // Widget Frame.
-            Color::new(0.5, 0.3, 0.6, 1.0), // Rectangle color.
-            Label(label.as_slice(), 24u32, Color::white()),
-            pad as i16, // Slider value.
-            10i16, // Min value.
-            910i16, // Max value.
-            |new_pad| demo.title_padding = new_pad as f64 // Callback closure.
-        );
+        // Slider widget example slider(UIID, value, min, max, x, y, width, height).
+        uic.slider(1u64, pad as i16, 10i16, 910i16, 50.0, 115.0, 200.0, 50.0)
+            .rgba(0.5, 0.3, 0.6, 1.0)
+            .frame(demo.frame_width, Color::black())
+            .label(label.as_slice(), 24u32, Color::white())
+            .callback(|new_pad| demo.title_padding = new_pad as f64)
+            .draw(gl);
 
     }
 
     // Clone the label toggle to be drawn.
     let label = demo.toggle_label.clone();
 
-    // Toggle widget example.
-    toggle::draw(
-        gl, // Open GL instance.
-        uic, // UIContext.
-        2u64, // UI ID.
-        Point::new(50f64, 200f64, 0f64), // Screen position.
-        75f64, // Width.
-        75f64, // Height.
-        Frame(demo.frame_width, Color::black()), // Widget Frame.
-        Color::new(0.6f32, 0.25f32, 0.75f32, 1f32), // Button Color.
-        Label(label.as_slice(), 24u32, Color::white()),
-        demo.show_button, // bool.
-        |value| {
+    // Toggle widget example toggle(UIID, value, x, y, width, height).
+    uic.toggle(2u64, demo.show_button, 50.0, 200.0, 75.0, 75.0)
+        .rgba(0.6, 0.25, 0.75, 1.0)
+        .frame(demo.frame_width, Color::black())
+        .label(label.as_slice(), 24u32, Color::white())
+        .callback(|value| {
             demo.show_button = value;
-            match value {
-                true => { demo.toggle_label = "ON".to_string(); },
-                false => { demo.toggle_label = "OFF".to_string(); },
+            demo.toggle_label = match value {
+                true => "ON".to_string(), false => "OFF".to_string()
             }
-        }
-    );
+        })
+        .draw(gl);
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
@@ -300,66 +263,45 @@ fn draw_ui(gl: &mut Gl,
         let mut label = value.to_string();
         if label.len() > 4u { label.truncate(4u); }
 
-        // Vertical slider widget example.
-        slider::draw(
-            gl, // Open GL instance
-            uic, // UIContext.
-            3u64 + i as u64, // UI ID.
-            Point::new(50f64 + i as f64 * 60f64, 300f64, 0f64), // Position.
-            35f64, // Width.
-            demo.v_slider_height, // Height.
-            Frame(demo.frame_width, Color::black()), // Widget Frame.
-            color, // Slider color.
-            Label(label.as_slice(), 24u32, Color::white()),
-            value, // Slider value.
-            0f32, // Minimum value.
-            1f32, // Maximum value.
-            |color| match i {
-                0u => { demo.bg_color.set_r(color); },
-                1u => { demo.bg_color.set_g(color); },
-                _ => { demo.bg_color.set_b(color); },
-            }
-        );
+        // Slider widget examples.
+        uic.slider(3u64 + i as u64, // UIID
+                   value, 0.0, 1.0, // value, min, max
+                   50.0 + i as f64 * 60.0, 300.0, // x, y
+                   35.0, demo.v_slider_height) // width, height
+            .color(color)
+            .frame(demo.frame_width, Color::black())
+            .label(label.as_slice(), 24u32, Color::white())
+            .callback(|color| match i {
+                0u => demo.bg_color.set_r(color),
+                1u => demo.bg_color.set_g(color),
+                _ => demo.bg_color.set_b(color),
+            })
+            .draw(gl);
 
     }
 
-    // Number Dialer example.
-    number_dialer::draw(
-        gl, // OpenGL instance.
-        uic, // UIContext.
-        6u64, // UIID.
-        Point::new(300.0, 115.0, 0.0), // Position.
-        260.0, // width.
-        60.0, // height.
-        24u32, // Font size. If a label is given, that size will be used instead.
-        Frame(demo.frame_width, Color::black()), // Widget Frame
-        demo.bg_color.invert(), // Number Dialer Color.
-        Label("Height (pixels)", 24u32, demo.bg_color.invert().plain_contrast()),
-        demo.v_slider_height, // Initial value.
-        25f64, // Minimum value.
-        250f64, // Maximum value.
-        1u8, // Precision (number of digits to show after decimal point).
-        |new_height| demo.v_slider_height = new_height // Callback closure.
-    );
+    // Number Dialer widget example.
+    uic.number_dialer(6u64, // UIID
+                      demo.v_slider_height, 25.0, 250.0, // value, min, max
+                      1u8, // decimal precision
+                      300.0, 115.0, 260.0, 60.0) // x, y, width, height
+        .color(demo.bg_color.invert())
+        .frame(demo.frame_width, Color::black())
+        .label("Height (pixels)", 24u32, demo.bg_color.invert().plain_contrast())
+        .callback(|new_height| demo.v_slider_height = new_height)
+        .draw(gl);
 
-    // Number Dialer example.
-    number_dialer::draw(
-        gl, // OpenGL instance.
-        uic, // UIContext.
-        7u64, // UIID.
-        Point::new(300.0, 195.0, 0.0), // Position.
-        260.0, // width.
-        60.0, // height.
-        24u32, // Font size. If a label is given, label size will be used instead.
-        Frame(demo.frame_width, demo.bg_color.plain_contrast()), // Widget Frame
-        demo.bg_color.invert().plain_contrast(), // Number Dialer Color.
-        Label("Frame (pixels)", 24u32, demo.bg_color.plain_contrast()),
-        demo.frame_width, // Initial value.
-        0f64, // Minimum value.
-        15f64, // Maximum value.
-        2u8, // Precision (number of digits to show after decimal point).
-        |new_width| demo.frame_width = new_width // Callback closure.
-    );
+    // Number Dialer widget example.
+    uic.number_dialer(7u64, // UIID
+                      demo.frame_width, 0.0, 15.0, // value, min, max
+                      2u8, // decimal precision
+                      300.0, 195.0, 260.0, 60.0) // x, y, width, height
+        .color(demo.bg_color.invert().plain_contrast())
+        .frame(demo.frame_width, demo.bg_color.plain_contrast())
+        .label("Height (pixels)", 24u32, demo.bg_color.plain_contrast())
+        .callback(|new_width| demo.frame_width = new_width)
+        .draw(gl);
+
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
@@ -372,22 +314,21 @@ fn draw_ui(gl: &mut Gl,
         260.0, // height.
         |num, col, row, pos, width, height| { // This is called for every widget.
 
+            // Color effect for fun.
+            let (r, g, b, a) = (
+                0.5 + (col as f32 / cols as f32) / 2.0,
+                0.75,
+                1.0 - (row as f32 / rows as f32) / 2.0,
+                1.0
+            );
+
             // Now draw the widgets with the given callback.
             let val = demo.bool_matrix[col][row];
-            toggle::draw(
-                gl, // Graphics backend.
-                uic, // UI Context.
-                8u64 + num as u64, // UIID.
-                pos, // Position.
-                width,
-                height,
-                Frame(demo.frame_width, Color::black()),
-                Color::new(0.5 + (col as f32 / cols as f32) / 2.0, 0.75,
-                           1.0 - (row as f32 / rows as f32) / 2.0, 1.0),
-                NoLabel,
-                val, // Toggle value (true / false).
-                |new_val| { *demo.bool_matrix.get_mut(col).get_mut(row) = new_val; }
-            );
+            uic.toggle(8u64 + num as u64, val, pos.x, pos.y, width, height)
+                .rgba(r, g, b, a)
+                .frame(demo.frame_width, Color::black())
+                .callback(|new_val| *demo.bool_matrix.get_mut(col).get_mut(row) = new_val)
+                .draw(gl);
 
         }
     );
@@ -408,43 +349,28 @@ fn draw_ui(gl: &mut Gl,
     draw_circle(uic.win_w, uic.win_h, gl, demo.circle_pos, ddl_color);
 
     // A demonstration using drop_down_list.
-    drop_down_list::draw(
-        gl, // OpenGL instance.
-        uic, // UIContext.
-        75u64, // UIID.
-        Point::new(620.0, 115.0, 0.0), // Position.
-        150.0, // width.
-        40.0, // height.
-        Frame(demo.frame_width, ddl_color.plain_contrast()),
-        ddl_color, // Color of drop_down_list.
-        Label("Colors", 24u32, ddl_color.plain_contrast()),
-        &mut demo.ddl_colors, // String vector.
-        &mut demo.selected_idx, // Currently selected string index.
-        |selected_idx, new_idx, _string| { // Callback (upon new selection).
-            *selected_idx = Some(new_idx);
-        }
-    );
+    uic.drop_down_list(75u64, &mut demo.ddl_colors, &mut demo.selected_idx,
+                       620.0, 115.0, 150.0, 40.0) // x, y, width, height
+        .color(ddl_color)
+        .frame(demo.frame_width, ddl_color.plain_contrast())
+        .label("Colors", 24u32, ddl_color.plain_contrast())
+        .callback(|selected_idx, new_idx, _string| *selected_idx = Some(new_idx))
+        .draw(gl);
 
-    // Draw a xy_pad.
-    xy_pad::draw(
-        gl, // OpenGL instance.
-        uic, // UIContext.
-        76u64, // UIID.
-        Point::new(620.0, 370.0, 0.0), // Position.
-        150.0, // width.
-        150.0, // height.
-        18u32, // font size.
-        Frame(demo.frame_width, Color::white()),
-        ddl_color, // rect color.
-        Label("Circle Position", 32u32,
-              Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast()),
-        demo.circle_pos.x, 760.0, 610.0, // x range.
-        demo.circle_pos.y, 320.0, 170.0, // y range.
-        |new_x, new_y| { // Callback when x/y changes or mousepress/release.
+    // Draw an xy_pad.
+    let label_color = Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast();
+    uic.xy_pad(76u64, // UIID
+               demo.circle_pos.x, 760.0, 610.0, // x range.
+               demo.circle_pos.y, 320.0, 170.0, // y range.
+               620.0, 370.0, 150.0, 150.0) // x, y, width, height.
+        .color(ddl_color)
+        .frame(demo.frame_width, Color::white())
+        .label("Circle Position", 32u32, label_color)
+        .callback(|new_x, new_y| {
             demo.circle_pos.x = new_x;
             demo.circle_pos.y = new_y;
-        }
-    );
+        })
+        .draw(gl);
 
     // Let's use the widget matrix to draw
     // one column of two envelope_editors,
@@ -464,42 +390,28 @@ fn draw_ui(gl: &mut Gl,
             let env_editor_pos = pos + Point::new(0.0, text_box_height, 0.0);
 
             // Draw a TextBox.
-            text_box::draw(
-                gl, // OpenGL instance.
-                uic, // UIContext.
-                77u64 + (num * 2u) as u64, // UI_ID.
-                pos, // Position.
-                width, // Width.
-                text_box_height - 10f64, // Height.
-                24u32, // FontSize.
-                Frame(demo.frame_width, demo.bg_color.invert().plain_contrast()),
-                demo.bg_color.invert(),
-                text,
-                |_text| { } // Callback upon Enter key.
-            );
+            uic.text_box(77u64 + (num * 2u) as u64, // UIID
+                         text, 24u32, // mutable string, font size
+                         pos.x, pos.y, width, text_box_height - 10.0) // x, y, w, h
+                .frame(demo.frame_width, demo.bg_color.invert().plain_contrast())
+                .color(demo.bg_color.invert())
+                .draw(gl);
 
             // Draw an EnvelopeEditor.
-            envelope_editor::draw(
-                gl, // OpenGL instance.
-                uic, // UIContext.
-                77u64 + (num * 2u + 1u) as u64, // UIID.
-                env_editor_pos, // Position.
-                width, // Width.
-                env_editor_height - 10.0, // Height.
-                18u32, // Font size.
-                Frame(demo.frame_width, demo.bg_color.invert().plain_contrast()),
-                demo.bg_color.invert(), // Rect color.
-                Label(text.as_slice(), 32u32,
-                      Color::new(1.0, 1.0, 1.0, 0.5)
-                      * demo.bg_color.invert().plain_contrast()),
-                env, // Envelope.
-                match num { 0u => Some(3f32), _ => None }, // y axis range skew amount.
-                0.0, 1.0, // x axis range.
-                0.0, match num { 0u => 20000.0, _ => 1.0 }, // y axis range.
-                6.0, // Point radius.
-                2.0, // Line width.
-                |_env, _idx| { } // Callback upon x/y changes or mousepress/release.
-            );
+            let label_color =
+                Color::new(1.0, 1.0, 1.0, 0.5) * demo.bg_color.invert().plain_contrast();
+            uic.envelope_editor(77u64 + (num * 2u + 1u) as u64, // UIID
+                                env, // vector of envelope points.
+                                match num { 0u => Some(3f32), _ => None }, // y axis skew.
+                                0.0, 1.0, // x axis range.
+                                0.0, match num { 0u => 20000.0, _ => 1.0 }, // y axis range.
+                                env_editor_pos.x, env_editor_pos.y, // x, y
+                                width, env_editor_height - 10.0) // width, height
+                .color(demo.bg_color.invert())
+                .frame(demo.frame_width, demo.bg_color.invert().plain_contrast())
+                .label(text.as_slice(), 32u32, label_color)
+                .draw(gl);
+            
 
         } // End of matrix widget callback.
     ); 

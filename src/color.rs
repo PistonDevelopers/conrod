@@ -284,6 +284,8 @@ impl Show for Color {
 
 /// A trait used for "colorable" widget context types.
 pub trait Colorable<'a> {
-    fn color(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+    fn color(self, color: Color) -> Self;
+    /// A method used for passing color as rgba.
+    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
 }
 

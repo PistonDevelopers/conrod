@@ -8,13 +8,22 @@ extern crate piston;
 extern crate serialize;
 extern crate time;
 
-pub use button::ButtonBuilder;
+pub use button::ButtonBuilder as Button;
+pub use drop_down_list::DropDownListBuilder as DropDownList;
+pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
+pub use number_dialer::NumberDialerBuilder as NumberDialer;
+pub use slider::SliderBuilder as Slider;
+pub use text_box::TextBoxBuilder as TextBox;
+pub use toggle::ToggleBuilder as Toggle;
+pub use xy_pad::XYPadBuilder as XYPad;
+
 pub use callback::Callable;
 pub use color::{Color, Colorable};
 pub use draw::Drawable;
 pub use frame::{Framing, Frame, Frameable, NoFrame};
 pub use label::Labelable;
 pub use point::Point;
+pub use position::Positionable;
 pub use ui_context::UIContext;
 pub use widget::Widget;
 

@@ -41,7 +41,11 @@ macro_rules! impl_colorable(
     ($context:ident) => (
         impl<'a> ::color::Colorable<'a> for $context<'a> {
             #[inline]
-            fn color(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a> {
+            fn color(self, color: Color) -> $context<'a> {
+                $context { maybe_color: Some(color), ..self }
+            }
+            #[inline]
+            fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a> {
                 $context { maybe_color: Some(Color::new(r, g, b, a)), ..self }
             }
         }

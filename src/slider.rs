@@ -1,16 +1,6 @@
 
 use color::Color;
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
-};
 use label;
-use label::{
-    Labeling,
-    Label,
-    NoLabel,
-};
 use mouse_state::{
     MouseState,
     Up,
@@ -67,19 +57,14 @@ fn get_new_state(is_over: bool,
 /// A context on which the builder pattern can be implemented.
 pub struct SliderContext<'a, T> {
     uic: &'a mut UIContext,
+    ui_id: UIID,
     value: T,
     min: T,
     max: T,
-    new_value: T,
-    is_over: bool,
-    state: State,
-    new_state: State,
     pos: Point<f64>,
     width: f64,
     height: f64,
-    r_pos: Point<f64>,
-    r_width: f64,
-    r_height: f64,
+    maybe_callback: Option<|T|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<(f64, Color)>,
     maybe_label: Option<(&'a str, u32, Color)>,
@@ -96,27 +81,16 @@ SliderBuilder<'a, T> for UIContext {
     /// A button builder method to be implemented by the UIContext.
     fn slider(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
               x: f64, y: f64, width: f64, height: f64) -> SliderContext<'a, T> {
-        let pos = Point::new(x, y, 0.0);
-        let state = *get_state(self, ui_id);
-        let mouse = self.get_mouse_state();
-        let is_over = rectangle::is_over(pos, mouse.pos, width, height);
-        let new_state = get_new_state(is_over, state, mouse);
-        set_state(self, ui_id, new_state);
         SliderContext {
             uic: self,
+            ui_id: ui_id,
             value: value,
             min: min,
             max: max,
-            new_value: value,
-            is_over: is_over,
-            state: state,
-            new_state: new_state,
-            pos: pos,
+            pos: Point::new(x, y, 0.0),
             width: width,
             height: height,
-            r_pos: pos,
-            r_width: width,
-            r_height: height,
+            maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_label: None,
@@ -126,7 +100,11 @@ SliderBuilder<'a, T> for UIContext {
 
 impl<'a, T> ::color::Colorable<'a> for SliderContext<'a, T> {
     #[inline]
-    fn color(self, r: f32, g: f32, b: f32, a: f32) -> SliderContext<'a, T> {
+    fn color(self, color: Color) -> SliderContext<'a, T> {
+        SliderContext { maybe_color: Some(color), ..self }
+    }
+    #[inline]
+    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> SliderContext<'a, T> {
         SliderContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
     }
 }
@@ -146,105 +124,105 @@ impl<'a, T> ::position::Positionable for SliderContext<'a, T> {
     }
 }
 
-impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
-::frame::Frameable<'a> for SliderContext<'a, T> {
+impl<'a, T> ::frame::Frameable<'a> for SliderContext<'a, T> {
     #[inline]
     fn frame(self, width: f64, color: ::color::Color) -> SliderContext<'a, T> {
-        let mouse = self.uic.get_mouse_state();
-        let is_horizontal = self.width > self.height;
-        let (r_pos, r_width, r_height) = if is_horizontal {
-            // Horizontal.
-            let p = self.pos + Point::new(width, width, 0f64);
-            let max_width = self.width - (width * 2f64);
-            let w = match (self.is_over, self.state, self.new_state) {
-                (true, Highlighted, Clicked) | (_, Clicked, Clicked)  => {
-                    clamp(mouse.pos.x - p.x, 0f64, max_width)
-                },
-                _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_width,
-                           0f64, max_width),
-            };
-            let h = self.height - (width * 2.0);
-            (p, w, h)
-        } else {
-            // Vertical.
-            let corner = self.pos + Point::new(width, width, 0.0);
-            let max_height = self.height - (width * 2.0);
-            let y_max = corner.y + max_height;
-            let (h, p) = match (self.is_over, self.state, self.new_state) {
-                (true, Highlighted, Clicked) | (_, Clicked, Clicked) => {
-                    let p = Point::new(corner.x, clamp(mouse.pos.y, corner.y, y_max), 0.0);
-                    let h = clamp(max_height - (p.y - corner.y), 0.0, max_height);
-                    (h, p)
-                },
-                _ => {
-                    let h = clamp(percentage(self.value, self.min, self.max) as f64 * max_height,
-                                  0f64, max_height);
-                    let p = Point::new(corner.x, corner.y + max_height - h, 0f64);
-                    (h, p)
-                },
-            };
-            let w = self.width - (width * 2f64);
-            (p, w, h)
-        };
-        SliderContext {
-            r_pos: r_pos, r_width: r_width, r_height: r_height,
-            maybe_frame: Some((width, color)), ..self
-        }
+        SliderContext { maybe_frame: Some((width, color)), ..self }
+    }
+}
+
+impl<'a, T> ::callback::Callable<|T|:'a> for SliderContext<'a, T> {
+    #[inline]
+    fn callback(self, callback: |T|:'a) -> SliderContext<'a, T> {
+        SliderContext { maybe_callback: Some(callback), ..self }
     }
 }
 
 impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
-::callback::Callable<|T|:'a> for SliderContext<'a, T> {
-    #[inline]
-    fn callback(self, callback: |T|) -> SliderContext<'a, T> {
-        let mouse = self.uic.get_mouse_state();
-        let frame_w = match self.maybe_frame { Some((frame_w, _)) => frame_w, None => 0.0 };
-        let is_horizontal = self.width > self.height;
-        let new_value = if is_horizontal {
-            // Horizontal.
-            let max_w = self.width - (frame_w * 2.0);
-            value_from_perc((self.r_width / max_w) as f32, self.min, self.max)
-        } else {
-            // Vertical.
-            let max_h = self.height - (frame_w * 2.0);
-            value_from_perc((self.r_height / max_h) as f32, self.min, self.max)
-        };
-        if self.value != new_value || match (self.state, self.new_state) {
-            (Highlighted, Clicked) | (Clicked, Highlighted) => true,
-            _ => false,
-        } { callback(new_value) };
-        SliderContext { new_value: new_value, ..self }
-    }
-}
-
-impl<'a, T> ::draw::Drawable for SliderContext<'a, T> {
+::draw::Drawable for SliderContext<'a, T> {
     fn draw(&mut self, gl: &mut Gl) {
-        let rect_state = self.new_state.as_rectangle_state();
-        let color: Color = match self.maybe_color {
-            None => ::std::default::Default::default(),
-            Some(color) => color,
-        };
+
+        let state = *get_state(self.uic, self.ui_id);
+        let mouse = self.uic.get_mouse_state();
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
+        let new_state = get_new_state(is_over, state, mouse);
+        set_state(self.uic, self.ui_id, new_state);
+
         let (frame_w, frame_c) = match self.maybe_frame {
             Some((frame_w, frame_c)) => (frame_w, frame_c), None => (0.0, Color::black()),
         };
+        let frame_w2 = frame_w * 2.0;
+
+        let is_horizontal = self.width > self.height;
+        let (new_value, pad_pos, pad_w, pad_h) = if is_horizontal {
+            // Horizontal.
+            let p = self.pos + Point::new(frame_w, frame_w, 0.0);
+            let max_w = self.width - frame_w2;
+            let w = match (is_over, state, new_state) {
+                (true, Highlighted, Clicked) | (_, Clicked, Clicked)  => {
+                    clamp(mouse.pos.x - p.x, 0f64, max_w)
+                },
+                _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_w,
+                           0f64, max_w),
+            };
+            let h = self.height - frame_w2;
+            let new_value = value_from_perc((w / max_w) as f32, self.min, self.max);
+            (new_value, p, w, h)
+        } else {
+            // Vertical.
+            let max_h = self.height - frame_w2;
+            let corner = self.pos + Point::new(frame_w, frame_w, 0.0);
+            let y_max = corner.y + max_h;
+            let (h, p) = match (is_over, state, new_state) {
+                (true, Highlighted, Clicked) | (_, Clicked, Clicked) => {
+                    let p = Point::new(corner.x, clamp(mouse.pos.y, corner.y, y_max), 0.0);
+                    let h = clamp(max_h - (p.y - corner.y), 0.0, max_h);
+                    (h, p)
+                },
+                _ => {
+                    let h = clamp(percentage(self.value, self.min, self.max) as f64 * max_h, 0.0, max_h);
+                    let p = Point::new(corner.x, corner.y + max_h - h, 0.0);
+                    (h, p)
+                },
+            };
+            let w = self.width - frame_w2;
+            let new_value = value_from_perc((h / max_h) as f32, self.min, self.max);
+            (new_value, p, w, h)
+        };
+
+        // Callback.
+        match self.maybe_callback {
+            Some(ref mut callback) => {
+                if self.value != new_value || match (state, new_state) {
+                    (Highlighted, Clicked) | (Clicked, Highlighted) => true,
+                    _ => false,
+                } { (*callback)(new_value) }
+            }, None => (),
+        }
+
+        // Draw.
+        let rect_state = new_state.as_rectangle_state();
+        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+
         // Rectangle frame / backdrop.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
                         self.pos, self.width, self.height, None, frame_c);
         // Slider rectangle.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
-                        self.r_pos, self.r_width, self.r_height, None, color);
+                        pad_pos, pad_w, pad_h, None, color);
+
         match self.maybe_label {
             None => (),
             Some((text, size, text_color)) => {
                 let is_horizontal = self.width > self.height;
                 let l_pos = if is_horizontal {
-                    let x = self.r_pos.x + (self.r_height - size as f64) / 2.0;
-                    let y = self.r_pos.y + (self.r_height - size as f64) / 2.0;
+                    let x = pad_pos.x + (pad_h - size as f64) / 2.0;
+                    let y = pad_pos.y + (pad_h - size as f64) / 2.0;
                     Point::new(x, y, 0f64)
                 } else {
                     let label_w = label::width(self.uic, size, text.as_slice());
-                    let x = self.r_pos.x + (self.r_width - label_w) / 2.0;
-                    let y = self.r_pos.y + self.r_height - self.r_width - frame_w;
+                    let x = pad_pos.x + (pad_w - label_w) / 2.0;
+                    let y = pad_pos.y + pad_h - pad_w - frame_w;
                     Point::new(x, y, 0f64)
                 };
                 // Draw the label.

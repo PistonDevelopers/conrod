@@ -1,10 +1,5 @@
 
 use color::Color;
-use label::{
-    Labeling,
-    Label,
-    NoLabel,
-};
 use mouse_state::{
     MouseState,
     Up,
@@ -56,12 +51,11 @@ fn get_new_state(is_over: bool,
 /// A context on which the builder pattern can be implemented.
 pub struct ToggleContext<'a> {
     uic: &'a mut UIContext,
-    is_over: bool,
-    state: State,
-    new_state: State,
+    ui_id: UIID,
     pos: Point<f64>,
     width: f64,
     height: f64,
+    maybe_callback: Option<|bool|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<(f64, Color)>,
     maybe_label: Option<(&'a str, u32, Color)>,
@@ -79,23 +73,16 @@ impl<'a> ToggleBuilder<'a> for UIContext {
     /// Create a toggle context to be built upon.
     fn toggle(&'a mut self, ui_id: UIID, value: bool,
               x: f64, y: f64, width: f64, height: f64) -> ToggleContext<'a> {
-        let pos = Point::new(x, y, 0.0);
-        let state = *get_state(self, ui_id);
-        let mouse = self.get_mouse_state();
-        let is_over = rectangle::is_over(pos, mouse.pos, width, height);
-        let new_state = get_new_state(is_over, state, mouse);
-        set_state(self, ui_id, new_state);
         ToggleContext {
-            is_over: is_over,
-            state: state,
-            new_state: new_state,
-            pos: pos,
+            uic: self,
+            ui_id: ui_id,
+            pos: Point::new(x, y, 0.0),
             width: width,
             height: height,
+            maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_label: None,
-            uic: self,
             value: value,
         }
     }
@@ -109,23 +96,33 @@ impl_positionable!(ToggleContext)
 
 impl<'a> ::callback::Callable<|bool|:'a> for ToggleContext<'a> {
     #[inline]
-    fn callback(self, callback: |bool|) -> ToggleContext<'a> {
-        match (self.is_over, self.state, self.new_state) {
-            (true, Clicked, Highlighted) =>
-                callback(match self.value { true => false, false => true }),
-            _ => (),
-        }
-        self
+    fn callback(self, callback: |bool|:'a) -> ToggleContext<'a> {
+        ToggleContext { maybe_callback: Some(callback), ..self }
     }
 }
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
-        let rect_state = self.new_state.as_rectangle_state();
-        let color: Color = match self.maybe_color {
-            None => ::std::default::Default::default(),
-            Some(color) => color,
+        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+        let color = match self.value {
+            true => color,
+            false => color * Color::new(0.1, 0.1, 0.1, 1.0)
         };
+        let state = *get_state(self.uic, self.ui_id);
+        let mouse = self.uic.get_mouse_state();
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
+        let new_state = get_new_state(is_over, state, mouse);
+        set_state(self.uic, self.ui_id, new_state);
+        let rect_state = new_state.as_rectangle_state();
+        match self.maybe_callback {
+            Some(ref mut callback) => {
+                match (is_over, state, new_state) {
+                    (true, Clicked, Highlighted) =>
+                        (*callback)(match self.value { true => false, false => true }),
+                    _ => (),
+                }
+            }, None => (),
+        }
         match self.maybe_label {
             None => {
                 rectangle::draw(
