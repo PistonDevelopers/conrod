@@ -36,5 +36,57 @@ macro_rules! widget_fns(
     )
 )
 
+/// Simplify implementation of the `Colorable` trait.
+macro_rules! impl_colorable(
+    ($context:ident) => (
+        impl<'a> ::color::Colorable<'a> for $context<'a> {
+            #[inline]
+            fn color(self, color: Color) -> $context<'a> {
+                $context { maybe_color: Some(color), ..self }
+            }
+            #[inline]
+            fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a> {
+                $context { maybe_color: Some(Color::new(r, g, b, a)), ..self }
+            }
+        }
+    )
+)
 
+/// Simplify implementation of the `Frameable` trait.
+macro_rules! impl_frameable(
+    ($context:ident) => (
+        impl<'a> ::frame::Frameable<'a> for $context<'a> {
+            #[inline]
+            fn frame(self, width: f64, color: ::color::Color) -> $context<'a> {
+                $context { maybe_frame: Some((width, color)), ..self }
+            }
+        }
+    )
+)
+
+
+/// Simplify implementation of the `Labelable` trait.
+macro_rules! impl_labelable(
+    ($context:ident) => (
+        impl<'a> ::label::Labelable<'a> for $context<'a> {
+            #[inline]
+            fn label(self, text: &'a str, size: u32,
+                     color: ::color::Color) -> $context<'a> {
+                $context { maybe_label: Some((text, size, color)), ..self }
+            }
+        }
+    )
+)
+
+/// Simplify implementation of the `Positionable` trait.
+macro_rules! impl_positionable(
+    ($context:ident) => (
+        impl<'a> ::position::Positionable for $context<'a> {
+            #[inline]
+            fn position(self, x: f64, y: f64) -> $context<'a> {
+                $context { pos: Point::new(x, y, 0.0), ..self }
+            }
+        }
+    )
+)
 

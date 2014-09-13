@@ -1,10 +1,5 @@
 
 use color::Color;
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
-};
 use graphics::{
     Context,
     AddRectangle,
@@ -36,12 +31,12 @@ pub fn draw(win_w: f64,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            frame: Framing,
+            frame: Option<(f64, Color)>,
             color: Color) {
     let context = &Context::abs(win_w, win_h);
     match frame {
-        Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
-        NoFrame => (),
+        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
+        None => (),
     }
     draw_normal(context, gl, state, pos, width, height, frame, color);
 }
@@ -68,17 +63,14 @@ fn draw_normal(context: &Context,
                pos: Point<f64>,
                width: f64,
                height: f64,
-               frame: Framing,
+               frame: Option<(f64, Color)>,
                color: Color) {
     let (r, g, b, a) = match state {
         Normal => color.as_tuple(),
         Highlighted => color.highlighted().as_tuple(),
         Clicked => color.clicked().as_tuple(),
     };
-    let frame_w = match frame {
-        Frame(frame_w, _) => frame_w,
-        _ => 0.0,
-    };
+    let frame_w = match frame { Some((w, _)) => w, _ => 0.0 };
     context
         .rect(pos.x + frame_w,
               pos.y + frame_w,
@@ -94,8 +86,6 @@ pub fn is_over(pos: Point<f64>,
                mouse_pos: Point<f64>,
                width: f64,
                height: f64) -> bool {
-    //let p = mouse_pos - pos;
-    //if p.x > 0f64 && p.y > 0f64 && p.x < width && p.y < height { true }
     if mouse_pos.x > pos.x
     && mouse_pos.y > pos.y
     && mouse_pos.x < pos.x + width
@@ -112,15 +102,15 @@ pub fn draw_with_centered_label(win_w: f64,
                                 pos: Point<f64>,
                                 width: f64,
                                 height: f64,
-                                frame: Framing,
+                                frame: Option<(f64, Color)>,
                                 color: Color,
                                 text: &str,
                                 font_size: FontSize,
                                 text_color: Color) {
     let context = &Context::abs(win_w, win_h);
     match frame {
-        Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
-        NoFrame => (),
+        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
+        None => (),
     }
     draw_normal(context, gl, state, pos, width, height, frame, color);
     let text_w = label::width(uic, font_size, text);
