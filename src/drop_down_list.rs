@@ -140,23 +140,21 @@ pub struct DropDownListContext<'a> {
 
 pub trait DropDownListBuilder<'a> {
     /// A dropdownlist builder method to be implemented by the UIContext.
-    fn drop_down_list(&'a mut self, ui_id: UIID,
-                      strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>,
-                      x: f64, y: f64, width: f64, height: f64) -> DropDownListContext<'a>;
+    fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
+                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a>;
 }
 
 impl<'a> DropDownListBuilder<'a> for UIContext {
-    fn drop_down_list(&'a mut self, ui_id: UIID,
-                      strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>,
-                      x: f64, y: f64, width: f64, height: f64) -> DropDownListContext<'a> {
+    fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
+                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a> {
         DropDownListContext {
             uic: self,
             ui_id: ui_id,
             strings: strings,
             selected: selected,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 128.0,
+            height: 32.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -169,6 +167,7 @@ impl_colorable!(DropDownListContext)
 impl_frameable!(DropDownListContext)
 impl_labelable!(DropDownListContext)
 impl_positionable!(DropDownListContext)
+impl_shapeable!(DropDownListContext)
 
 impl<'a> ::callback::Callable<|&mut Option<Idx>, Idx, String|:'a> for DropDownListContext<'a> {
     #[inline]

@@ -72,24 +72,24 @@ pub struct SliderContext<'a, T> {
 
 pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive> {
     /// A slider builder method to be implemented by the UIContext.
-    fn slider(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-              x: f64, y: f64, width: f64, height: f64) -> SliderContext<'a, T>;
+    fn slider(&'a mut self, ui_id: UIID,
+              value: T, min: T, max: T) -> SliderContext<'a, T>;
 }
 
 impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
 SliderBuilder<'a, T> for UIContext {
     /// A button builder method to be implemented by the UIContext.
-    fn slider(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-              x: f64, y: f64, width: f64, height: f64) -> SliderContext<'a, T> {
+    fn slider(&'a mut self, ui_id: UIID,
+              value: T, min: T, max: T) -> SliderContext<'a, T> {
         SliderContext {
             uic: self,
             ui_id: ui_id,
             value: value,
             min: min,
             max: max,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 192.0,
+            height: 48.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -121,6 +121,13 @@ impl<'a, T> ::position::Positionable for SliderContext<'a, T> {
     #[inline]
     fn position(self, x: f64, y: f64) -> SliderContext<'a, T> {
         SliderContext { pos: Point::new(x, y, 0.0), ..self }
+    }
+}
+
+impl<'a, T> ::shape::Shapeable for SliderContext<'a, T> {
+    #[inline]
+    fn dimensions(self, width: f64, height: f64) -> SliderContext<'a, T> {
+        SliderContext { width: width, height: height, ..self }
     }
 }
 

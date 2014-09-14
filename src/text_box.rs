@@ -193,26 +193,28 @@ pub struct TextBoxContext<'a> {
     maybe_frame: Option<(f64, Color)>,
 }
 
+impl<'a> TextBoxContext<'a> {
+    pub fn font_size(self, font_size: FontSize) -> TextBoxContext<'a> {
+        TextBoxContext { font_size: font_size, ..self }
+    }
+}
+
 pub trait TextBoxBuilder<'a> {
     /// An text box builder method to be implemented by the UIContext.
-    fn text_box(&'a mut self, ui_id: UIID,
-                text: &'a mut String, font_size: u32,
-                x: f64, y: f64, width: f64, height: f64) -> TextBoxContext<'a>;
+    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a>;
 }
 
 impl<'a> TextBoxBuilder<'a> for UIContext {
     /// Initialise a TextBoxContext.
-    fn text_box(&'a mut self, ui_id: UIID,
-                text: &'a mut String, font_size: u32,
-                x: f64, y: f64, width: f64, height: f64) -> TextBoxContext<'a> {
+    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a> {
         TextBoxContext {
             uic: self,
             ui_id: ui_id,
             text: text,
-            font_size: font_size,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            font_size: 24u32, // Default font_size.
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 192.0,
+            height: 48.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -224,6 +226,7 @@ impl<'a> TextBoxBuilder<'a> for UIContext {
 impl_colorable!(TextBoxContext)
 impl_frameable!(TextBoxContext)
 impl_positionable!(TextBoxContext)
+impl_shapeable!(TextBoxContext)
 
 /*
 impl<'a> ::color::Colorable<'a> for TextBoxContext<'a> {

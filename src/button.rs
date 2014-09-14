@@ -63,21 +63,19 @@ pub struct ButtonContext<'a> {
 
 pub trait ButtonBuilder<'a> {
     /// A button builder method to be implemented by the UIContext.
-    fn button(&'a mut self, ui_id: UIID,
-              x: f64, y: f64, width: f64, height: f64) -> ButtonContext<'a>;
+    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a>;
 }
 
 impl<'a> ButtonBuilder<'a> for UIContext {
 
     /// Create a button context to be built upon.
-    fn button(&'a mut self, ui_id: UIID,
-              x: f64, y: f64, width: f64, height: f64) -> ButtonContext<'a> {
+    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a> {
         ButtonContext {
             uic: self,
             ui_id: ui_id,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 64.0,
+            height: 64.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -91,6 +89,7 @@ impl_colorable!(ButtonContext)
 impl_frameable!(ButtonContext)
 impl_labelable!(ButtonContext)
 impl_positionable!(ButtonContext)
+impl_shapeable!(ButtonContext)
 
 impl<'a> ::callback::Callable<||:'a> for ButtonContext<'a> {
     #[inline]

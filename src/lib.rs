@@ -24,6 +24,7 @@ pub use frame::{Framing, Frame, Frameable, NoFrame};
 pub use label::Labelable;
 pub use point::Point;
 pub use position::Positionable;
+pub use shape::Shapeable;
 pub use ui_context::UIContext;
 pub use widget::Widget;
 
@@ -43,6 +44,7 @@ pub mod number_dialer;
 pub mod point;
 pub mod position;
 pub mod rectangle;
+pub mod shape;
 pub mod slider;
 pub mod text_box;
 pub mod toggle;

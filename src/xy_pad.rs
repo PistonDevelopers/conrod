@@ -8,6 +8,7 @@ use graphics::{
     Draw,
 };
 use label;
+use label::FontSize;
 use mouse_state::{
     MouseState,
     Up,
@@ -72,6 +73,7 @@ fn draw_crosshair(win_w: f64,
                   win_h: f64,
                   gl: &mut Gl,
                   pos: Point<f64>,
+                  line_width: f64,
                   vert_x: f64, hori_y: f64,
                   pad_w: f64, pad_h: f64,
                   color: Color) {
@@ -79,12 +81,12 @@ fn draw_crosshair(win_w: f64,
     let (r, g, b, a) = color.as_tuple();
     context
         .line(vert_x, pos.y, vert_x, pos.y + pad_h)
-        .square_border_width(1.0)
+        .square_border_width(line_width)
         .rgba(r, g, b, a)
         .draw(gl);
     context
         .line(pos.x, hori_y, pos.x + pad_w, hori_y)
-        .square_border_width(1.0)
+        .square_border_width(line_width)
         .rgba(r, g, b, a)
         .draw(gl);
 }
@@ -96,21 +98,34 @@ pub struct XYPadContext<'a, X, Y> {
     ui_id: UIID,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
+    line_width: f64,
+    font_size: FontSize,
     pos: Point<f64>,
     width: f64,
     height: f64,
     maybe_callback: Option<|X, Y|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_label: Option<(&'a str, FontSize, Color)>,
+}
+
+impl <'a, X, Y> XYPadContext<'a, X, Y> {
+    #[inline]
+    pub fn line_width(self, width: f64) -> XYPadContext<'a, X, Y> {
+        XYPadContext { line_width: width, ..self }
+    }
+    #[inline]
+    pub fn value_font_size(self, size: FontSize) -> XYPadContext<'a, X, Y> {
+        XYPadContext { font_size: size, ..self }
+    }
 }
 
 pub trait XYPadBuilder<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
                            Y: Num + Copy + ToPrimitive + FromPrimitive + ToString> {
     /// A xy_pad builder method to be implemented by the UIContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
-              x_val: X, x_min: X, x_max: X, y_val: Y, y_min: Y, y_max: Y,
-              x: f64, y: f64, width: f64, height: f64) -> XYPadContext<'a, X, Y>;
+              x_val: X, x_min: X, x_max: X,
+              y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y>;
 }
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
@@ -118,16 +133,18 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
 XYPadBuilder<'a, X, Y> for UIContext {
     /// An xy_pad builder method to be implemented by the UIContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
-              x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y,
-              x: f64, y: f64, width: f64, height: f64) -> XYPadContext<'a, X, Y> {
+              x_val: X, min_x: X, max_x: X,
+              y_val: Y, min_y: Y, max_y: Y) -> XYPadContext<'a, X, Y> {
         XYPadContext {
             uic: self,
             ui_id: ui_id,
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            line_width: 1.0,
+            font_size: 18u32,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 128.0,
+            height: 128.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -149,7 +166,7 @@ impl<'a, X, Y> ::color::Colorable<'a> for XYPadContext<'a, X, Y> {
 
 impl<'a, X, Y> ::label::Labelable<'a> for XYPadContext<'a, X, Y> {
     #[inline]
-    fn label(self, text: &'a str, size: u32, color: Color) -> XYPadContext<'a, X, Y> {
+    fn label(self, text: &'a str, size: FontSize, color: Color) -> XYPadContext<'a, X, Y> {
         XYPadContext { maybe_label: Some((text, size, color)), ..self }
     }
 }
@@ -158,6 +175,13 @@ impl<'a, X, Y> ::position::Positionable for XYPadContext<'a, X, Y> {
     #[inline]
     fn position(self, x: f64, y: f64) -> XYPadContext<'a, X, Y> {
         XYPadContext { pos: Point::new(x, y, 0.0), ..self }
+    }
+}
+
+impl<'a, X, Y> ::shape::Shapeable for XYPadContext<'a, X, Y> {
+    #[inline]
+    fn dimensions(self, width: f64, height: f64) -> XYPadContext<'a, X, Y> {
+        XYPadContext { width: width, height: height, ..self }
     }
 }
 
@@ -174,8 +198,6 @@ impl<'a, X, Y> ::callback::Callable<|X, Y|:'a> for XYPadContext<'a, X, Y> {
         XYPadContext { maybe_callback: Some(callback), ..self }
     }
 }
-
-static VALUE_FONT_SIZE: u32 = 18u32;
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
@@ -234,7 +256,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
                  clamp(mouse.pos.y, pad_pos.y, pad_pos.y + pad_h)),
         };
         // Crosshair.
-        draw_crosshair(self.uic.win_w, self.uic.win_h, gl, pad_pos,
+        draw_crosshair(self.uic.win_w, self.uic.win_h, gl, pad_pos, self.line_width,
                        vert_x, hori_y, pad_w, pad_h, color.plain_contrast());
         // Label.
         match self.maybe_label {
@@ -253,16 +275,16 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         let y_string = val_to_string(self.y, self.max_y,
                                      self.max_y - self.min_y, self.height as uint);
         let xy_string = x_string.append(", ").append(y_string.as_slice());
-        let xy_string_w = label::width(self.uic, VALUE_FONT_SIZE, xy_string.as_slice());
+        let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
             match rectangle::corner(pad_pos, Point::new(vert_x, hori_y, 0.0), pad_w, pad_h) {
                 TopLeft => Point::new(vert_x, hori_y, 0.0),
                 TopRight => Point::new(vert_x - xy_string_w, hori_y, 0.0),
-                BottomLeft => Point::new(vert_x, hori_y - VALUE_FONT_SIZE as f64, 0.0),
-                BottomRight => Point::new(vert_x - xy_string_w, hori_y - VALUE_FONT_SIZE as f64, 0.0),
+                BottomLeft => Point::new(vert_x, hori_y - self.font_size as f64, 0.0),
+                BottomRight => Point::new(vert_x - xy_string_w, hori_y - self.font_size as f64, 0.0),
             }
         };
-        label::draw(gl, self.uic, xy_string_pos, VALUE_FONT_SIZE,
+        label::draw(gl, self.uic, xy_string_pos, self.font_size,
                     color.plain_contrast(), xy_string.as_slice());
     }
 }

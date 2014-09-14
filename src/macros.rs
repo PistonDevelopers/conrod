@@ -89,4 +89,15 @@ macro_rules! impl_positionable(
         }
     )
 )
+/// Simplify implementation of the `Shapeable` trait.
+macro_rules! impl_shapeable(
+    ($context:ident) => (
+        impl<'a> ::shape::Shapeable for $context<'a> {
+            #[inline]
+            fn dimensions(self, width: f64, height: f64) -> $context<'a> {
+                $context { width: width, height: height, ..self }
+            }
+        }
+    )
+)
 
