@@ -35,11 +35,11 @@ pub type Idx = uint;
 pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub struct State(DrawState, Capturing);
 
 /// Represents the next tier of state.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum DrawState {
     Normal,
     Highlighted(Element),
@@ -47,14 +47,14 @@ pub enum DrawState {
 }
 
 /// Whether the textbox is currently captured or not.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Capturing {
     Uncaptured,
     Captured(Idx, CursorX),
 }
 
 /// Represents an element of the TextBox widget.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Element {
     Nill,
     Rect,

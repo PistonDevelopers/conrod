@@ -15,7 +15,7 @@ use ui_context::{
 use widget::Toggle;
 
 /// Represents the state of the Toggle widget.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum State {
     Normal,
     Highlighted,

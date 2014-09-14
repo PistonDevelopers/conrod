@@ -20,14 +20,14 @@ pub type Idx = uint;
 pub type Len = uint;
 
 /// Represents the state of the menu.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum State {
     Closed(DrawState),
     Open(DrawState),
 }
 
 /// Represents the state of the DropDownList widget.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum DrawState {
     Normal,
     Highlighted(Idx, Len),

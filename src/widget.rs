@@ -10,7 +10,9 @@ use xy_pad;
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
+#[deriving(Clone)]
 pub enum Widget {
+		NoWidget,
     Button(button::State),
     DropDownList(drop_down_list::State),
     EnvelopeEditor(envelope_editor::State),
