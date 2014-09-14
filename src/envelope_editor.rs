@@ -190,7 +190,7 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     uic: &'a mut UIContext,
     ui_id: UIID,
     env: &'a mut Vec<E>,
-    maybe_skew_y_range: Option<f32>,
+    skew_y_range: f32,
     min_x: X, max_x: X,
     min_y: Y, max_y: Y,
     pt_radius: f64,
@@ -205,40 +205,53 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     maybe_label: Option<(&'a str, FontSize, Color)>,
 }
 
+impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
+    #[inline]
+    pub fn point_radius(self, radius: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+        EnvelopeEditorContext { pt_radius: radius, ..self }
+    }
+    #[inline]
+    pub fn line_width(self, width: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+        EnvelopeEditorContext { line_width: width, ..self }
+    }
+    #[inline]
+    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditorContext<'a, X, Y, E> {
+        EnvelopeEditorContext { font_size: size, ..self }
+    }
+    #[inline]
+    pub fn skew_y(self, skew: f32) -> EnvelopeEditorContext<'a, X, Y, E> {
+        EnvelopeEditorContext { skew_y_range: skew, ..self }
+    }
+}
+
 pub trait EnvelopeEditorBuilder
 <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      E: EnvelopePoint<X, Y>> {
     /// An envelope editor builder method to be implemented by the UIContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID,
-                       env: &'a mut Vec<E>, maybe_skew_y_range: Option<f32>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y,
-                       x: f64, y: f64,
-                       width: f64, height: f64) -> EnvelopeEditorContext<'a, X, Y, E>;
+    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
+                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
 }
 
 impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UIContext {
     /// An envelope editor builder method to be implemented by the UIContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID,
-                       env: &'a mut Vec<E>, maybe_skew_y_range: Option<f32>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y,
-                       x: f64, y: f64,
-                       width: f64, height: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
+                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E> {
         EnvelopeEditorContext {
             uic: self,
             ui_id: ui_id,
             env: env,
-            maybe_skew_y_range: maybe_skew_y_range,
+            skew_y_range: 1.0, // Default skew amount (no skew).
             min_x: min_x, max_x: max_x,
             min_y: min_y, max_y: max_y,
             pt_radius: 6.0, // Default envelope point radius.
             line_width: 2.0, // Default envelope line width.
             font_size: 18u32,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 256.0,
+            height: 128.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -273,6 +286,13 @@ impl<'a, X, Y, E> ::position::Positionable for EnvelopeEditorContext<'a, X, Y, E
     }
 }
 
+impl<'a, X, Y, E> ::shape::Shapeable for EnvelopeEditorContext<'a, X, Y, E> {
+    #[inline]
+    fn dimensions(self, width: f64, height: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+        EnvelopeEditorContext { width: width, height: height, ..self }
+    }
+}
+
 impl<'a, X, Y, E> ::frame::Frameable<'a> for EnvelopeEditorContext<'a, X, Y, E> {
     #[inline]
     fn frame(self, width: f64, color: ::color::Color) -> EnvelopeEditorContext<'a, X, Y, E> {
@@ -296,7 +316,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     fn draw(&mut self, gl: &mut Gl) {
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let skew = self.maybe_skew_y_range.unwrap_or(1.0);
+        let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
         let pt_radius = self.pt_radius;
         let font_size = self.font_size;

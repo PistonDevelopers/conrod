@@ -64,21 +64,19 @@ pub struct ToggleContext<'a> {
 
 pub trait ToggleBuilder<'a> {
     /// A builder method to be implemented by the UIContext.
-    fn toggle(&'a mut self, ui_id: UIID, value: bool,
-              x: f64, y: f64, width: f64, height: f64) -> ToggleContext<'a>;
+    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a>;
 }
 
 impl<'a> ToggleBuilder<'a> for UIContext {
 
     /// Create a toggle context to be built upon.
-    fn toggle(&'a mut self, ui_id: UIID, value: bool,
-              x: f64, y: f64, width: f64, height: f64) -> ToggleContext<'a> {
+    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a> {
         ToggleContext {
             uic: self,
             ui_id: ui_id,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 64.0,
+            height: 64.0,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -93,6 +91,7 @@ impl_colorable!(ToggleContext)
 impl_frameable!(ToggleContext)
 impl_labelable!(ToggleContext)
 impl_positionable!(ToggleContext)
+impl_shapeable!(ToggleContext)
 
 impl<'a> ::callback::Callable<|bool|:'a> for ToggleContext<'a> {
     #[inline]

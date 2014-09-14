@@ -313,24 +313,24 @@ pub struct NumberDialerContext<'a, T> {
 pub trait NumberDialerBuilder
 <'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
     /// A number_dialer builder method to be implemented by the UIContext.
-    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T, precision: u8,
-                     x: f64, y: f64, width: f64, height: f64) -> NumberDialerContext<'a, T>;
+    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
+                     precision: u8) -> NumberDialerContext<'a, T>;
 }
 
 impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 NumberDialerBuilder<'a, T> for UIContext {
     /// A number_dialer builder method to be implemented by the UIContext.
-    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T, precision: u8,
-                     x: f64, y: f64, width: f64, height: f64) -> NumberDialerContext<'a, T> {
+    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
+                     precision: u8) -> NumberDialerContext<'a, T> {
         NumberDialerContext {
             uic: self,
             ui_id: ui_id,
             value: clamp(value, min, max),
             min: min,
             max: max,
-            pos: Point::new(x, y, 0.0),
-            width: width,
-            height: height,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 128.0,
+            height: 48.0,
             precision: precision,
             maybe_color: None,
             maybe_frame: None,
@@ -363,6 +363,13 @@ impl<'a, T> ::position::Positionable for NumberDialerContext<'a, T> {
     #[inline]
     fn position(self, x: f64, y: f64) -> NumberDialerContext<'a, T> {
         NumberDialerContext { pos: Point::new(x, y, 0.0), ..self }
+    }
+}
+
+impl<'a, T> ::shape::Shapeable for NumberDialerContext<'a, T> {
+    #[inline]
+    fn dimensions(self, width: f64, height: f64) -> NumberDialerContext<'a, T> {
+        NumberDialerContext { width: width, height: height, ..self }
     }
 }
 
