@@ -35,7 +35,7 @@ use utils::{
 use widget::XYPad;
 
 /// Represents the state of the xy_pad widget.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum State {
     Normal,
     Highlighted,

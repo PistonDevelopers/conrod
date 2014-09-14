@@ -33,7 +33,7 @@ use widget::NumberDialer;
 /// NumberDialer is made up of. This is used to
 /// specify which element is Highlighted or Clicked
 /// when storing State.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Element {
     Rect,
     LabelGlyphs,
@@ -44,7 +44,7 @@ pub enum Element {
 }
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum State {
     Normal,
     Highlighted(Element),

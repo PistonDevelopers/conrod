@@ -16,7 +16,7 @@ use piston::{
     input,
 };
 use point::Point;
-use std::collections::HashMap;
+use widget;
 use widget::Widget;
 
 /// User Interface Identifier. Each unique `widget::draw` call
@@ -28,7 +28,7 @@ pub type UIID = u64;
 /// data relevant to the draw_widget functions.
 pub struct UIContext {
     // TODO: change this to a Vector<Widget> and use index as UIID.
-    data: HashMap<UIID, Widget>,
+    data: Vec<Widget>,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
@@ -46,7 +46,7 @@ impl UIContext {
     /// Constructor for a UIContext.
     pub fn new(font_file: &str) -> UIContext {
         UIContext {
-            data: HashMap::new(),
+            data: Vec::from_elem(512, widget::NoWidget),
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
@@ -119,7 +119,21 @@ impl UIContext {
 
     /// Return a mutable reference to the widget that matches the given ui_id
     pub fn get_widget(&mut self, ui_id: UIID, default: Widget) -> &mut Widget {
-        self.data.find_or_insert(ui_id, default)
+        let uiid = ui_id as uint;
+        if self.data.len() > uiid {
+            match *self.data.get_mut(uiid) {
+                widget::NoWidget => {
+                    *self.data.get_mut(uiid) = default;
+                    self.data.get_mut(uiid)
+                },
+                _ => {
+                    self.data.get_mut(uiid)
+                },
+            }
+        } else {
+            self.data.grow_set(uiid, &widget::NoWidget, default);
+            self.data.get_mut(uiid)
+        }
     }
 
     /// Return a reference to a `Character` from the GlyphCache.

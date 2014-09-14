@@ -21,7 +21,7 @@ use utils::{
 use widget::Slider;
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum State {
     Normal,
     Highlighted,
