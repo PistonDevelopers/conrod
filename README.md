@@ -11,7 +11,9 @@ You can find the example project that was used for that video [here](https://git
 Current State
 -------------
 
-Currently in the middle of designing the widget framework and basic widgets. An example project will be kept up-to-date featuring demonstrations of all working widgets. Conrod is still in very early stages and may change a lot!
+We're just starting to reach a stable-ish API pattern! There will still be large changes however these are more likely to be new features than API overhauls. Next on the todo list is `Theme`s!
+
+An example project will be kept up-to-date featuring demonstrations of all working widgets. Conrod is still in very early stages however definitely usable.
 
 Available Widgets
 -----------------
