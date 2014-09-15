@@ -128,7 +128,7 @@ fn main() {
         piston::shader_version::opengl::OpenGL_3_2,
         WindowSettings {
             title: "Hello Conrod".to_string(),
-            size: [1200, 600],
+            size: [1180, 580],
             fullscreen: false,
             exit_on_esc: true,
             samples: 4,
@@ -237,7 +237,7 @@ fn draw_ui(gl: &mut Gl,
     // Toggle widget example toggle(UIID, value).
     uic.toggle(2u64, demo.show_button)
         .dimensions(75.0, 75.0)
-        .position(50.0, 200.0)
+        .down(20.0)
         .rgba(0.6, 0.25, 0.75, 1.0)
         .frame(demo.frame_width, Color::black())
         .label(label.as_slice(), 24u32, Color::white())
@@ -301,7 +301,7 @@ fn draw_ui(gl: &mut Gl,
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
     uic.number_dialer(7u64, demo.frame_width, 0.0, 15.0, 2u8)
         .dimensions(260.0, 60.0)
-        .position(300.0, 195.0)
+        .down(20.0)
         .color(demo.bg_color.invert().plain_contrast())
         .frame(demo.frame_width, demo.bg_color.plain_contrast())
         .label("Frame Width (pixels)", 24u32, demo.bg_color.plain_contrast())
@@ -359,7 +359,7 @@ fn draw_ui(gl: &mut Gl,
     // A demonstration using drop_down_list.
     uic.drop_down_list(75u64, &mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
-        .position(620.0, 115.0)
+        .right_from(6u64, 50.0) // Position right from widget 6 by 50 pixels.
         .color(ddl_color)
         .frame(demo.frame_width, ddl_color.plain_contrast())
         .label("Colors", 24u32, ddl_color.plain_contrast())
@@ -369,10 +369,10 @@ fn draw_ui(gl: &mut Gl,
     // Draw an xy_pad.
     let label_color = Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast();
     uic.xy_pad(76u64, // UIID
-               demo.circle_pos.x, 760.0, 610.0, // x range.
+               demo.circle_pos.x, 745.0, 595.0, // x range.
                demo.circle_pos.y, 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
-        .position(620.0, 370.0)
+        .down(225.0)
         .color(ddl_color)
         .frame(demo.frame_width, Color::white())
         .label("Circle Position", 32u32, label_color)
@@ -391,9 +391,9 @@ fn draw_ui(gl: &mut Gl,
     widget_matrix::draw(
         cols, // cols.
         rows, // rows.
-        Point::new(830.0, 115.0, 0.0), // matrix position.
+        Point::new(810.0, 115.0, 0.0), // matrix position.
         320.0, // width.
-        415.0, // height.
+        425.0, // height.
         |num, _col, _row, pos, width, height| { // This is called for every widget.
 
             let (ref mut env, ref mut text) = *demo.envelopes.get_mut(num);

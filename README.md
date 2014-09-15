@@ -1,34 +1,30 @@
 # Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod)
 
-Graph based, immediate mode, user interface with fancy search capabilities written in Rust.
+An easy-to-use, immediate-mode, 2D GUI library written entirely in Rust.
 
 Here's a demo!
 
 [https://www.youtube.com/watch?v=n2UrjogA0j0](https://www.youtube.com/watch?v=n2UrjogA0j0)
 
-Here's an example of the "Nodal" style we're going for. This particular vid is of an old C++ implementation.
-
-[http://www.youtube.com/watch?v=BK0f3CicNR4](http://www.youtube.com/watch?v=BK0f3CicNR4)
-
-The plan is not to port all of it directly, but to closesly draw inspiration while implementing a much more powerful, searchable graph/node system.
-
-![NodalUI Demo](https://raw.githubusercontent.com/PistonDevelopers/conrod/master/nodalUIdemo.png)
-
+You can find the example project that was used for that video [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/all_widgets/all_widgets.rs).
 
 Current State
 -------------
 
-Currently in the middle of designing the widget framework and basic widgets. An example project will be kept up-to-date featuring demonstrations of all working widgets. Conrod is still in very early stages and may change a lot!
+We're just starting to reach a stable-ish API pattern! There will still be large changes however these are more likely to be new features than API overhauls. Next on the todo list is `Theme`s!
+
+An example project will be kept up-to-date featuring demonstrations of all working widgets. Conrod is still in very early stages however definitely usable.
 
 Available Widgets
 -----------------
 
-- Buttons
-- Toggles
+- Button
+- Drop Down List
 - Envelope Editor
-- Number Dialers
-- Sliders
+- Number Dialer
+- Slider
 - TextBox
+- Toggle
 - XYPad
 
 Dependencies
@@ -53,12 +49,4 @@ And then build and run the examples like this:
     cd examples/all_widgets
     cargo build
     ./target/all_widgets
-
-
-Goals
------
-
-* Graph based navigation
-* Boolean predicate search
-* Simple immediate-mode user implementation
 

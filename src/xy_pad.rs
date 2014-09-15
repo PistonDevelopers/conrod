@@ -153,51 +153,12 @@ XYPadBuilder<'a, X, Y> for UIContext {
     }
 }
 
-impl<'a, X, Y> ::color::Colorable<'a> for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn color(self, color: Color) -> XYPadContext<'a, X, Y> {
-        XYPadContext { maybe_color: Some(color), ..self }
-    }
-    #[inline]
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> XYPadContext<'a, X, Y> {
-        XYPadContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
-}
-
-impl<'a, X, Y> ::label::Labelable<'a> for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn label(self, text: &'a str, size: FontSize, color: Color) -> XYPadContext<'a, X, Y> {
-        XYPadContext { maybe_label: Some((text, size, color)), ..self }
-    }
-}
-
-impl<'a, X, Y> ::position::Positionable for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn position(self, x: f64, y: f64) -> XYPadContext<'a, X, Y> {
-        XYPadContext { pos: Point::new(x, y, 0.0), ..self }
-    }
-}
-
-impl<'a, X, Y> ::shape::Shapeable for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn dimensions(self, width: f64, height: f64) -> XYPadContext<'a, X, Y> {
-        XYPadContext { width: width, height: height, ..self }
-    }
-}
-
-impl<'a, X, Y> ::frame::Frameable<'a> for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn frame(self, width: f64, color: ::color::Color) -> XYPadContext<'a, X, Y> {
-        XYPadContext { maybe_frame: Some((width, color)), ..self }
-    }
-}
-
-impl<'a, X, Y> ::callback::Callable<|X, Y|:'a> for XYPadContext<'a, X, Y> {
-    #[inline]
-    fn callback(self, callback: |X, Y|:'a) -> XYPadContext<'a, X, Y> {
-        XYPadContext { maybe_callback: Some(callback), ..self }
-    }
-}
+impl_callable!(XYPadContext, |X, Y|:'a, X, Y)
+impl_colorable!(XYPadContext, X, Y)
+impl_frameable!(XYPadContext, X, Y)
+impl_labelable!(XYPadContext, X, Y)
+impl_positionable!(XYPadContext, X, Y)
+impl_shapeable!(XYPadContext, X, Y)
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
@@ -214,7 +175,6 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
         let is_over_pad = rectangle::is_over(pad_pos, mouse.pos, pad_w, pad_h);
         let new_state = get_new_state(is_over_pad, state, mouse);
-        set_state(self.uic, self.ui_id, new_state);
 
         // Determine new values.
         let (new_x, new_y) = match (is_over_pad, new_state) {
@@ -286,6 +246,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         };
         label::draw(gl, self.uic, xy_string_pos, self.font_size,
                     color.plain_contrast(), xy_string.as_slice());
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
+
     }
 }
 

@@ -8,11 +8,46 @@ use text_box;
 use toggle;
 use xy_pad;
 
+/// Represents the placement of the widget including
+/// x / y position, width and height.
+#[deriving(Clone)]
+pub enum Placing {
+    Place(f64, f64, f64, f64), // (x, y, w, h)
+    NoPlace,
+}
+
+impl Placing {
+    pub fn down(&self, padding: f64) -> (f64, f64) {
+        match self {
+            &Place(x, y, _, h) => (x, y + h + padding),
+            &NoPlace => (0.0, 0.0),
+        }
+    }
+    pub fn up(&self, padding: f64) -> (f64, f64) {
+        match self {
+            &Place(x, y, _, _) => (x, y - padding),
+            &NoPlace => (0.0, 0.0),
+        }
+    }
+    pub fn left(&self, padding: f64) -> (f64, f64) {
+        match self {
+            &Place(x, y, _, _) => (x - padding, y),
+            &NoPlace => (0.0, 0.0),
+        }
+    }
+    pub fn right(&self, padding: f64) -> (f64, f64) {
+        match self {
+            &Place(x, y, w, _) => (x + w + padding, y),
+            &NoPlace => (0.0, 0.0),
+        }
+    }
+}
+
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
 #[deriving(Clone)]
 pub enum Widget {
-		NoWidget,
+    NoWidget,
     Button(button::State),
     DropDownList(drop_down_list::State),
     EnvelopeEditor(envelope_editor::State),

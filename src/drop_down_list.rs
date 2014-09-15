@@ -163,18 +163,12 @@ impl<'a> DropDownListBuilder<'a> for UIContext {
     }
 }
 
+impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a)
 impl_colorable!(DropDownListContext)
 impl_frameable!(DropDownListContext)
 impl_labelable!(DropDownListContext)
 impl_positionable!(DropDownListContext)
 impl_shapeable!(DropDownListContext)
-
-impl<'a> ::callback::Callable<|&mut Option<Idx>, Idx, String|:'a> for DropDownListContext<'a> {
-    #[inline]
-    fn callback(self, callback: |&mut Option<Idx>, Idx, String|:'a) -> DropDownListContext<'a> {
-        DropDownListContext { maybe_callback: Some(callback), ..self }
-    }
-}
 
 impl<'a> ::draw::Drawable for DropDownListContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
@@ -184,7 +178,6 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
         let is_over_idx = is_over(self.pos, mouse.pos, self.width, self.height,
                                   state, self.strings.len());
         let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
-        set_state(self.uic, self.ui_id, new_state);
 
         let sel = match *self.selected {
             Some(idx) if idx < self.strings.len() => { Some(idx) },
@@ -277,6 +270,10 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
             },
 
         }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
+
     }
 }
 
