@@ -87,18 +87,12 @@ impl<'a> ToggleBuilder<'a> for UIContext {
 
 }
 
+impl_callable!(ToggleContext, |bool|:'a)
 impl_colorable!(ToggleContext)
 impl_frameable!(ToggleContext)
 impl_labelable!(ToggleContext)
 impl_positionable!(ToggleContext)
 impl_shapeable!(ToggleContext)
-
-impl<'a> ::callback::Callable<|bool|:'a> for ToggleContext<'a> {
-    #[inline]
-    fn callback(self, callback: |bool|:'a) -> ToggleContext<'a> {
-        ToggleContext { maybe_callback: Some(callback), ..self }
-    }
-}
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
@@ -111,7 +105,6 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
         let mouse = self.uic.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
         let new_state = get_new_state(is_over, state, mouse);
-        set_state(self.uic, self.ui_id, new_state);
         let rect_state = new_state.as_rectangle_state();
         match self.maybe_callback {
             Some(ref mut callback) => {
@@ -137,6 +130,10 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
                 )
             },
         }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
+
     }
 }
 

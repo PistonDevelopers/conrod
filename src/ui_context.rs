@@ -27,8 +27,7 @@ pub type UIID = u64;
 /// UIContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
 pub struct UIContext {
-    // TODO: change this to a Vector<Widget> and use index as UIID.
-    data: Vec<Widget>,
+    data: Vec<(Widget, widget::Placing)>,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
@@ -39,6 +38,8 @@ pub struct UIContext {
     pub win_w: f64,
     /// Window height.
     pub win_h: f64,
+    /// The UIID of the widget drawn previously.
+    prev_uiid: u64,
 }
 
 impl UIContext {
@@ -46,7 +47,7 @@ impl UIContext {
     /// Constructor for a UIContext.
     pub fn new(font_file: &str) -> UIContext {
         UIContext {
-            data: Vec::from_elem(512, widget::NoWidget),
+            data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
@@ -55,6 +56,7 @@ impl UIContext {
             prev_event_was_render: false,
             win_w: 0f64,
             win_h: 0f64,
+            prev_uiid: 0u64,
         }
     }
 
@@ -119,20 +121,50 @@ impl UIContext {
 
     /// Return a mutable reference to the widget that matches the given ui_id
     pub fn get_widget(&mut self, ui_id: UIID, default: Widget) -> &mut Widget {
-        let uiid = ui_id as uint;
-        if self.data.len() > uiid {
-            match *self.data.get_mut(uiid) {
-                widget::NoWidget => {
-                    *self.data.get_mut(uiid) = default;
-                    self.data.get_mut(uiid)
+        let ui_id_idx = ui_id as uint;
+        if self.data.len() > ui_id_idx {
+            match *self.data.get_mut(ui_id_idx) {
+                (widget::NoWidget, _) => {
+                    match *self.data.get_mut(ui_id_idx) {
+                        (ref mut widget, _) => {
+                            *widget = default; widget
+                        }
+                    }
                 },
                 _ => {
-                    self.data.get_mut(uiid)
+                    match *self.data.get_mut(ui_id_idx) {
+                        (ref mut widget, _) => widget
+                    }
                 },
             }
         } else {
-            self.data.grow_set(uiid, &widget::NoWidget, default);
-            self.data.get_mut(uiid)
+            self.data.grow_set(ui_id_idx,
+                               &(widget::NoWidget, widget::NoPlace),
+                               (default, widget::NoPlace));
+            match *self.data.get_mut(ui_id_idx) {
+                (ref mut widget, _) => widget,
+            }
+        }
+    }
+
+    /// Set the Placing for a particular widget.
+    pub fn set_place(&mut self, ui_id: UIID, x: f64, y: f64, w: f64, h: f64) {
+        match *self.data.get_mut(ui_id as uint) {
+            (_, ref mut placing) => {
+                *placing = widget::Place(x, y, w, h)
+            }
+        }
+        self.prev_uiid = ui_id;
+    }
+
+    /// Get the UIID of the previous widget.
+    pub fn get_prev_uiid(&self) -> UIID { self.prev_uiid }
+
+    /// Get the Placing for a particular widget.
+    pub fn get_placing(&self, ui_id: UIID) -> widget::Placing {
+        if ui_id as uint >= self.data.len() { widget::NoPlace }
+        else {
+            match self.data[ui_id as uint] { (_, ref placing) => *placing }
         }
     }
 
@@ -154,3 +186,4 @@ impl UIContext {
     }
 
 }
+

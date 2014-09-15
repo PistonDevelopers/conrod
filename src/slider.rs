@@ -98,52 +98,12 @@ SliderBuilder<'a, T> for UIContext {
     }
 }
 
-impl<'a, T> ::color::Colorable<'a> for SliderContext<'a, T> {
-    #[inline]
-    fn color(self, color: Color) -> SliderContext<'a, T> {
-        SliderContext { maybe_color: Some(color), ..self }
-    }
-    #[inline]
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> SliderContext<'a, T> {
-        SliderContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
-}
-
-impl<'a, T> ::label::Labelable<'a> for SliderContext<'a, T> {
-    #[inline]
-    fn label(self, text: &'a str, size: u32,
-             color: ::color::Color) -> SliderContext<'a, T> {
-        SliderContext { maybe_label: Some((text, size, color)), ..self }
-    }
-}
-
-impl<'a, T> ::position::Positionable for SliderContext<'a, T> {
-    #[inline]
-    fn position(self, x: f64, y: f64) -> SliderContext<'a, T> {
-        SliderContext { pos: Point::new(x, y, 0.0), ..self }
-    }
-}
-
-impl<'a, T> ::shape::Shapeable for SliderContext<'a, T> {
-    #[inline]
-    fn dimensions(self, width: f64, height: f64) -> SliderContext<'a, T> {
-        SliderContext { width: width, height: height, ..self }
-    }
-}
-
-impl<'a, T> ::frame::Frameable<'a> for SliderContext<'a, T> {
-    #[inline]
-    fn frame(self, width: f64, color: ::color::Color) -> SliderContext<'a, T> {
-        SliderContext { maybe_frame: Some((width, color)), ..self }
-    }
-}
-
-impl<'a, T> ::callback::Callable<|T|:'a> for SliderContext<'a, T> {
-    #[inline]
-    fn callback(self, callback: |T|:'a) -> SliderContext<'a, T> {
-        SliderContext { maybe_callback: Some(callback), ..self }
-    }
-}
+impl_callable!(SliderContext, |T|:'a, T)
+impl_colorable!(SliderContext, T)
+impl_frameable!(SliderContext, T)
+impl_labelable!(SliderContext, T)
+impl_positionable!(SliderContext, T)
+impl_shapeable!(SliderContext, T)
 
 impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for SliderContext<'a, T> {
@@ -153,7 +113,6 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
         let mouse = self.uic.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
         let new_state = get_new_state(is_over, state, mouse);
-        set_state(self.uic, self.ui_id, new_state);
 
         let (frame_w, frame_c) = match self.maybe_frame {
             Some((frame_w, frame_c)) => (frame_w, frame_c), None => (0.0, Color::black()),
@@ -236,6 +195,10 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
                 label::draw(gl, self.uic, l_pos, size, text_color, text.as_slice());
             },
         }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
+
     }
 }
 

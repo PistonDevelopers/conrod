@@ -55,10 +55,8 @@ And then build and run the examples like this:
     ./target/all_widgets
 
 
-Goals
------
+Goal
+----
 
-* Graph based navigation
-* Boolean predicate search
-* Simple immediate-mode user implementation
+* Simple 2D immediate-mode user interface implementation.
 

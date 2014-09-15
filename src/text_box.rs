@@ -223,41 +223,11 @@ impl<'a> TextBoxBuilder<'a> for UIContext {
 }
 
 
+impl_callable!(TextBoxContext, |&mut String|:'a)
 impl_colorable!(TextBoxContext)
 impl_frameable!(TextBoxContext)
 impl_positionable!(TextBoxContext)
 impl_shapeable!(TextBoxContext)
-
-/*
-impl<'a> ::color::Colorable<'a> for TextBoxContext<'a> {
-    #[inline]
-    fn color(self, r: f32, g: f32, b: f32, a: f32) -> TextBoxContext<'a> {
-        TextBoxContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
-}
-
-impl<'a> ::position::Positionable for TextBoxContext<'a> {
-    #[inline]
-    fn position(self, x: f64, y: f64) -> TextBoxContext<'a> {
-        TextBoxContext { pos: Point::new(x, y, 0.0), ..self }
-    }
-}
-
-impl<'a> ::frame::Frameable<'a> for TextBoxContext<'a> {
-    #[inline]
-    fn frame(self, width: f64, color: Color) -> TextBoxContext<'a> {
-        TextBoxContext { maybe_frame: Some((width, color)), ..self }
-    }
-}
-*/
-
-impl<'a> ::callback::Callable<|&mut String|:'a> for TextBoxContext<'a> {
-    #[inline]
-    fn callback(self, callback: |&mut String|:'a) -> TextBoxContext<'a> {
-        TextBoxContext { maybe_callback: Some(callback), ..self }
-    }
-}
-
 
 impl<'a> ::draw::Drawable for TextBoxContext<'a> {
     #[inline]
@@ -363,7 +333,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             },
         }};
 
-        set_state(self.uic, self.ui_id, new_state);
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
 
     }
 }

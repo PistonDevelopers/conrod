@@ -33,7 +33,8 @@ impl<T: Num + Copy> Point<T> {
 
 }
 
-impl<T: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> EnvelopePoint<T, T> for Point<T> {
+impl<T: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString>
+EnvelopePoint<T, T> for Point<T> {
     /// Return the X value.
     fn get_x(&self) -> T { self.x }
     /// Return the Y value.
@@ -42,9 +43,13 @@ impl<T: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> Envelo
     fn set_x(&mut self, x: T) { self.x = x }
     /// Return the Y value.
     fn set_y(&mut self, y: T) { self.y = y }
+    /// Return the bezier curve depth (-1. to 1.) for the next interpolation.
+    fn get_curve(&self) -> f32 { self.z.to_f32().unwrap() }
+    /// Set the bezier curve depth (-1. to 1.) for the next interpolation.
+    fn set_curve(&mut self, curve: f32) { self.z = from_f32(curve).unwrap(); }
     /// Create a new Envelope Point.
     fn new(x: T, y: T) -> Point<T> {
-        Point::new(x, y, from_f32(0f32).unwrap())
+        Point::new(x, y, from_f32(0.0).unwrap())
     }
 }
 

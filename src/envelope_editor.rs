@@ -48,6 +48,8 @@ pub enum Element {
     /// as well as the last mouse pos for comparison
     /// in determining new value.
     EnvPoint(uint, Point<f64>),
+    /// Represents an EnvelopePoint's `curve` value.
+    CurvePoint(uint, Point<f64>),
 }
 
 /// An enum to define which button is clicked.
@@ -87,10 +89,14 @@ pub trait EnvelopePoint
     fn get_x(&self) -> X;
     /// Return the Y value.
     fn get_y(&self) -> Y;
-    /// Return the X value.
+    /// Set the X value.
     fn set_x(&mut self, _x: X);
-    /// Return the Y value.
+    /// Set the Y value.
     fn set_y(&mut self, _y: Y);
+    /// Return the bezier curve depth (-1. to 1.) for the next interpolation.
+    fn get_curve(&self) -> f32 { 1.0 }
+    /// Set the bezier curve depth (-1. to 1.) for the next interpolation.
+    fn set_curve(&mut self, _curve: f32) {}
     /// Create a new EnvPoint.
     fn new(_x: X, _y: Y) -> Self;
 }
@@ -105,7 +111,7 @@ fn is_over_and_closest(pos: Point<f64>,
                        pad_pos: Point<f64>,
                        pad_w: f64,
                        pad_h: f64,
-                       perc_env: &Vec<(f32, f32)>,
+                       perc_env: &Vec<(f32, f32, f32)>,
                        pt_radius: f64) -> (Option<Element>, Option<Element>) {
     match rectangle::is_over(pos, mouse_pos, rect_w, rect_h) {
         false => (None, None),
@@ -115,7 +121,7 @@ fn is_over_and_closest(pos: Point<f64>,
                 let mut closest_distance = ::std::f64::MAX_VALUE;
                 let mut closest_env_point = Pad;
                 for (i, p) in perc_env.iter().enumerate() {
-                    let (x, y) = *p;
+                    let (x, y, _) = *p;
                     let p_pos = Point::new(map_range(x, 0.0, 1.0,
                                                      pad_pos.x, pad_pos.x + pad_w),
                                            map_range(y, 0.0, 1.0,
@@ -149,18 +155,21 @@ fn get_new_state(is_over_elem: Option<Element>,
         | (Some(_), Clicked(p_elem, m_button), Up, Down) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, mouse.pos), m_button),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, mouse.pos), m_button),
                 _ => Clicked(p_elem, m_button),
             }
         },
         (None, Clicked(p_elem, m_button), Down, Up) => {
             match (p_elem, m_button) {
                 (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, mouse.pos), Left),
+                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, mouse.pos), Left),
                 _ => Clicked(p_elem, Left),
             }
         },
         (Some(_), Highlighted(p_elem), Up, Down) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, mouse.pos), Right),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, mouse.pos), Right),
                 _ => Clicked(p_elem, Right),
             }
         },
@@ -260,54 +269,12 @@ impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl<'a, X, Y, E> ::color::Colorable<'a> for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn color(self, color: Color) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { maybe_color: Some(color), ..self }
-    }
-    #[inline]
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
-}
-
-impl<'a, X, Y, E> ::label::Labelable<'a> for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn label(self, text: &'a str, size: FontSize,
-             color: Color) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { maybe_label: Some((text, size, color)), ..self }
-    }
-}
-
-impl<'a, X, Y, E> ::position::Positionable for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn position(self, x: f64, y: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { pos: Point::new(x, y, 0.0), ..self }
-    }
-}
-
-impl<'a, X, Y, E> ::shape::Shapeable for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn dimensions(self, width: f64, height: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { width: width, height: height, ..self }
-    }
-}
-
-impl<'a, X, Y, E> ::frame::Frameable<'a> for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn frame(self, width: f64, color: ::color::Color) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { maybe_frame: Some((width, color)), ..self }
-    }
-}
-
-impl<'a, X, Y, E> ::callback::Callable<|&mut Vec<E>, uint|:'a>
-for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn callback(self, callback: |&mut Vec<E>, uint|:'a) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { maybe_callback: Some(callback), ..self }
-    }
-}
-
+impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E)
+impl_colorable!(EnvelopeEditorContext, X, Y, E)
+impl_frameable!(EnvelopeEditorContext, X, Y, E)
+impl_labelable!(EnvelopeEditorContext, X, Y, E)
+impl_positionable!(EnvelopeEditorContext, X, Y, E)
+impl_shapeable!(EnvelopeEditorContext, X, Y, E)
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
@@ -331,9 +298,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 
         // Create a vector with each EnvelopePoint value represented as a
         // skewed percentage between 0.0 .. 1.0 .
-        let perc_env: Vec<(f32, f32)> = self.env.iter().map(|pt| {
+        let perc_env: Vec<(f32, f32, f32)> = self.env.iter().map(|pt| {
             (percentage(pt.get_x(), min_x, max_x),
-             percentage(pt.get_y(), min_y, max_y).powf(1.0 / skew))
+             percentage(pt.get_y(), min_y, max_y).powf(1.0 / skew),
+             pt.get_curve())
         }).collect();
 
         // Check for new state.
@@ -366,8 +334,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             _ => {
                 let (r, g, b, a) = color.plain_contrast().as_tuple();
                 for (i, env_p) in perc_env.iter().enumerate().skip(1u) {
-                    let (x_a, y_a) = perc_env[i - 1u];
-                    let (x_b, y_b) = perc_env[i];
+                    let (x_a, y_a, _) = perc_env[i - 1u];
+                    let (x_b, y_b, _) = perc_env[i];
                     let p_a = Point::new(map_range(x_a, 0.0, 1.0,
                                                    pad_pos.x, pad_pos.x + pad_w),
                                          map_range(y_a, 0.0, 1.0,
@@ -386,8 +354,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             },
         }
 
-        // Determine the left and right X bounds.
-        let get_x_bounds = |envelope_perc: &Vec<(f32, f32)>, idx: uint| -> (f32, f32) {
+        // Determine the left and right X bounds for a point.
+        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: uint| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0u && envelope_perc.len() - 1u > idx {
                 (*envelope_perc)[idx + 1u].val0()
             } else { 1.0 };
@@ -414,8 +382,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         max_y, max_y - min_y, pad_h as uint
                     );
                     let xy_string = x_string.append(", ").append(y_string.as_slice());
-                    let xy_string_w =
-                        label::width(uic, font_size, xy_string.as_slice());
+                    let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
                     let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_w, pad_h) {
                         TopLeft => Point::new(p_pos.x, p_pos.y, 0.0),
                         TopRight => Point::new(p_pos.x - xy_string_w, p_pos.y, 0.0),
@@ -460,11 +427,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 
         };
 
-        // Set the new state.
-        set_state(self.uic, self.ui_id, new_state);
-
         // Determine new values.
-        let get_new_value = |perc_envelope: &Vec<(f32, f32)>,
+        let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
                              idx: uint,
                              mouse_x: f64,
                              mouse_y: f64| -> (X, Y) {
@@ -579,9 +543,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 
         }
 
+        // Set the new state.
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
 
     }
 }
-
-
 

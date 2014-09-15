@@ -10,7 +10,7 @@ pub enum Framing {
 }
 
 /// A trait used for "colorable" widget context types.
-pub trait Frameable<'a> {
+pub trait Frameable {
     fn frame(self, width: f64, color: Color) -> Self;
 }
 

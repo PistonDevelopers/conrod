@@ -340,53 +340,12 @@ NumberDialerBuilder<'a, T> for UIContext {
     }
 }
 
-impl<'a, T> ::color::Colorable<'a> for NumberDialerContext<'a, T> {
-    #[inline]
-    fn color(self, color: Color) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { maybe_color: Some(color), ..self }
-    }
-    #[inline]
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
-}
-
-impl<'a, T> ::label::Labelable<'a> for NumberDialerContext<'a, T> {
-    #[inline]
-    fn label(self, text: &'a str, size: FontSize,
-             color: ::color::Color) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { maybe_label: Some((text, size, color)), ..self }
-    }
-}
-
-impl<'a, T> ::position::Positionable for NumberDialerContext<'a, T> {
-    #[inline]
-    fn position(self, x: f64, y: f64) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { pos: Point::new(x, y, 0.0), ..self }
-    }
-}
-
-impl<'a, T> ::shape::Shapeable for NumberDialerContext<'a, T> {
-    #[inline]
-    fn dimensions(self, width: f64, height: f64) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { width: width, height: height, ..self }
-    }
-}
-
-impl<'a, T> ::frame::Frameable<'a> for NumberDialerContext<'a, T> {
-    #[inline]
-    fn frame(self, width: f64, color: ::color::Color) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { maybe_frame: Some((width, color)), ..self }
-    }
-}
-
-impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-::callback::Callable<|T|:'a> for NumberDialerContext<'a, T> {
-    #[inline]
-    fn callback(self, callback: |T|:'a) -> NumberDialerContext<'a, T> {
-        NumberDialerContext { maybe_callback: Some(callback), ..self }
-    }
-}
+impl_callable!(NumberDialerContext, |T|:'a, T)
+impl_colorable!(NumberDialerContext, T)
+impl_frameable!(NumberDialerContext, T)
+impl_labelable!(NumberDialerContext, T)
+impl_positionable!(NumberDialerContext, T)
+impl_shapeable!(NumberDialerContext, T)
 
 impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 ::draw::Drawable for NumberDialerContext<'a, T> {
@@ -460,7 +419,6 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
                           val_string_size,
                           val_string_color,
                           val_string.as_slice());
-        set_state(self.uic, self.ui_id, new_state);
 
         // Call the `callback` with the new value if the mouse is pressed/released
         // on the widget or if the value has changed.
@@ -473,6 +431,9 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
                 None => ()
             }
         }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
 
     }
 

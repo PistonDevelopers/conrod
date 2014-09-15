@@ -85,18 +85,12 @@ impl<'a> ButtonBuilder<'a> for UIContext {
 
 }
 
+impl_callable!(ButtonContext, ||:'a)
 impl_colorable!(ButtonContext)
 impl_frameable!(ButtonContext)
 impl_labelable!(ButtonContext)
 impl_positionable!(ButtonContext)
 impl_shapeable!(ButtonContext)
-
-impl<'a> ::callback::Callable<||:'a> for ButtonContext<'a> {
-    #[inline]
-    fn callback(self, callback: ||:'a) -> ButtonContext<'a> {
-        ButtonContext { maybe_callback: Some(callback), ..self }
-    }
-}
 
 impl<'a> ::draw::Drawable for ButtonContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
@@ -105,7 +99,6 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
         let mouse = self.uic.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
         let new_state = get_new_state(is_over, state, mouse);
-        set_state(self.uic, self.ui_id, new_state);
 
         // Callback.
         match (is_over, state, new_state) {
@@ -132,6 +125,9 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
                 )
             },
         }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
 
     }
 }
