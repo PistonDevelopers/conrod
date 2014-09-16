@@ -32,7 +32,7 @@ macro_rules! widget_fns(
                 ::widget::$widget(ref mut state) => { *state = new_state; },
                 _ => fail!("The Widget variant returned by UIContext is different to the requested."),
             }
-            uic.set_place(ui_id, x, y, w, h);
+            uic.set_place(ui_id, ::widget::Placing { x: x, y: y, w: w, h: h });
         }
 
     )
@@ -104,43 +104,67 @@ macro_rules! impl_positionable(
 
             #[inline]
             fn down(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).down(padding);
+                let (x, y) = match self.uic.get_placing(self.uic.get_prev_uiid()) {
+                    Some(ref p) => p.down(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn up(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).up(padding);
+                let (x, y) = match self.uic.get_placing(self.uic.get_prev_uiid()) {
+                    Some(ref p) => p.up(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn left(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).left(padding);
+                let (x, y) = match self.uic.get_placing(self.uic.get_prev_uiid()) {
+                    Some(ref p) => p.left(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn right(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).right(padding);
+                let (x, y) = match self.uic.get_placing(self.uic.get_prev_uiid()) {
+                    Some(ref p) => p.right(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
 
             #[inline]
             fn down_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).down(padding);
+                let (x, y) = match self.uic.get_placing(uiid) {
+                    Some(ref p) => p.down(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn up_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).up(padding);
+                let (x, y) = match self.uic.get_placing(uiid) {
+                    Some(ref p) => p.up(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn left_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).left(padding);
+                let (x, y) = match self.uic.get_placing(uiid) {
+                    Some(ref p) => p.left(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
             #[inline]
             fn right_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).right(padding);
+                let (x, y) = match self.uic.get_placing(uiid) {
+                    Some(ref p) => p.right(padding),
+                    None => (0.0, 0.0)
+                };
                 $context { pos: Point::new(x, y, 0.0), ..self }
             }
 
