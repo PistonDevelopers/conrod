@@ -11,35 +11,30 @@ use xy_pad;
 /// Represents the placement of the widget including
 /// x / y position, width and height.
 #[deriving(Clone)]
-pub enum Placing {
-    Place(f64, f64, f64, f64), // (x, y, w, h)
-    NoPlace,
+pub struct Placing {
+    pub x: f64, 
+    pub y: f64, 
+    pub w: f64, 
+    pub h: f64,
 }
+
+
 
 impl Placing {
     pub fn down(&self, padding: f64) -> (f64, f64) {
-        match self {
-            &Place(x, y, _, h) => (x, y + h + padding),
-            &NoPlace => (0.0, 0.0),
-        }
+        (self.x, self.y + self.h + padding)
     }
+
     pub fn up(&self, padding: f64) -> (f64, f64) {
-        match self {
-            &Place(x, y, _, _) => (x, y - padding),
-            &NoPlace => (0.0, 0.0),
-        }
+        (self.x, self.y - padding)
     }
+
     pub fn left(&self, padding: f64) -> (f64, f64) {
-        match self {
-            &Place(x, y, _, _) => (x - padding, y),
-            &NoPlace => (0.0, 0.0),
-        }
+        (self.x - padding, self.y)
     }
+
     pub fn right(&self, padding: f64) -> (f64, f64) {
-        match self {
-            &Place(x, y, w, _) => (x + w + padding, y),
-            &NoPlace => (0.0, 0.0),
-        }
+        (self.x + self.w + padding, self.y)
     }
 }
 

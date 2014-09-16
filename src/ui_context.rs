@@ -27,7 +27,7 @@ pub type UIID = u64;
 /// UIContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
 pub struct UIContext {
-    data: Vec<(Widget, widget::Placing)>,
+    data: Vec<(Widget, Option<Box<widget::Placing>>)>,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
@@ -47,7 +47,7 @@ impl UIContext {
     /// Constructor for a UIContext.
     pub fn new(font_file: &str) -> UIContext {
         UIContext {
-            data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
+            data: Vec::from_elem(512, (widget::NoWidget, None)),
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
@@ -139,8 +139,8 @@ impl UIContext {
             }
         } else {
             self.data.grow_set(ui_id_idx,
-                               &(widget::NoWidget, widget::NoPlace),
-                               (default, widget::NoPlace));
+                               &(widget::NoWidget, None),
+                               (default, None));
             match *self.data.get_mut(ui_id_idx) {
                 (ref mut widget, _) => widget,
             }
@@ -148,10 +148,10 @@ impl UIContext {
     }
 
     /// Set the Placing for a particular widget.
-    pub fn set_place(&mut self, ui_id: UIID, x: f64, y: f64, w: f64, h: f64) {
+    pub fn set_place(&mut self, ui_id: UIID, p: widget::Placing) {
         match *self.data.get_mut(ui_id as uint) {
             (_, ref mut placing) => {
-                *placing = widget::Place(x, y, w, h)
+                *placing = Some(box p)
             }
         }
         self.prev_uiid = ui_id;
@@ -161,10 +161,10 @@ impl UIContext {
     pub fn get_prev_uiid(&self) -> UIID { self.prev_uiid }
 
     /// Get the Placing for a particular widget.
-    pub fn get_placing(&self, ui_id: UIID) -> widget::Placing {
-        if ui_id as uint >= self.data.len() { widget::NoPlace }
+    pub fn get_placing(&self, ui_id: UIID) -> Option<Box<widget::Placing>> {
+        if ui_id as uint >= self.data.len() { None }
         else {
-            match self.data[ui_id as uint] { (_, ref placing) => *placing }
+            match self.data[ui_id as uint] { (_, ref placing) => placing.clone() }
         }
     }
 
