@@ -289,25 +289,25 @@ impl Show for Color {
     }
 }
 
-impl<E, D: Decoder<E>> Decodable<E, D> for Color {
+impl<E, D: Decoder<E>> Decodable<D, E> for Color {
     fn decode(dec: &mut D) -> Result<Color, E> {
         let vec = try!(dec.read_to_vec(|le_dec| le_dec.read_f32()));
 
         if vec.len() != 4 {
-            return dec.err(format!(
+            return Err(dec.error(format!(
                 "Expected a 4 element vector when decoding Color.
-                Found a vector of length {}.", vec.len()));
+                Found a vector of length {}.", vec.len()).as_slice()));
         }
 
         Ok(Color([vec[0], vec[1], vec[2], vec[3]]))
     }
 }
 
-impl<E, S: Encoder<E>> Encodable<E, D> for Color {
+impl<E, S: Encoder<E>> Encodable<S, E> for Color {
     fn encode(&self, enc: &mut S) -> Result<(), E> {
         let Color(ref vec) = *self;
 
-        enc.emit_from_vec(vec, |le_enc, elt| le_enc.emit_f32(elt))
+        enc.emit_from_vec(vec, |le_enc, elt| le_enc.emit_f32(*elt))
     }
 }
 
