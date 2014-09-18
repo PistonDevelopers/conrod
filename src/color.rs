@@ -6,7 +6,13 @@ use std::num::abs;
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
-use serialize::{Decodable, Decoder, DecoderHelpers};
+// I consulted the style guide, but there was nothing about multi-line imports.
+// This should be readable.
+use serialize::{
+    Decodable, Encodable,
+    Decoder, Encoder,
+    DecoderHelpers, EncoderHelpers
+};
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -294,5 +300,13 @@ impl<E, D: Decoder<E>> Decodable<E, D> for Color {
         }
 
         Ok(Color([vec[0], vec[1], vec[2], vec[3]]))
+    }
+}
+
+impl<E, S: Encoder<E>> Encodable<E, D> for Color {
+    fn encode(&self, enc: &mut S) -> Result<(), E> {
+        let Color(ref vec) = *self;
+
+        enc.emit_from_vec(vec, |le_enc, elt| le_enc.emit_f32(elt))
     }
 }
