@@ -8,7 +8,6 @@ use graphics::{
     RelativeTransform2d,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use ui_context::UIContext;
 
@@ -21,8 +20,7 @@ pub enum Labeling<'a> {
 }
 
 /// Draw a label using the freetype font rendering backend.
-pub fn draw(args: &RenderArgs,
-            gl: &mut Gl,
+pub fn draw(gl: &mut Gl,
             uic: &mut UIContext,
             pos: Point<f64>,
             size: FontSize,
@@ -31,7 +29,7 @@ pub fn draw(args: &RenderArgs,
     let mut x = 0;
     let mut y = 0;
     let (r, g, b, a) = color.as_tuple();
-    let context = Context::abs(args.width as f64, args.height as f64)
+    let context = Context::abs(uic.win_w, uic.win_h)
                     .trans(pos.x, pos.y + size as f64);
     for ch in text.chars() {
         let character = uic.get_character(size, ch);
@@ -60,4 +58,10 @@ pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
     let size = rect_height as u32 - 832;
     if size % 2 == 0 { size } else { size - 1u32 }
 }
+
+/// A trait used for widget types that take a label.
+pub trait Labelable<'a> {
+    fn label(self, text: &'a str, size: u32, color: Color) -> Self;
+}
+
 

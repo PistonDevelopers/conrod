@@ -310,3 +310,11 @@ impl<E, S: Encoder<E>> Encodable<E, D> for Color {
         enc.emit_from_vec(vec, |le_enc, elt| le_enc.emit_f32(elt))
     }
 }
+
+/// A trait used for "colorable" widget context types.
+pub trait Colorable {
+    fn color(self, color: Color) -> Self;
+    /// A method used for passing color as rgba.
+    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+}
+

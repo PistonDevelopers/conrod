@@ -1,10 +1,5 @@
 
 use color::Color;
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
-};
 use graphics::{
     Context,
     AddColor,
@@ -14,21 +9,16 @@ use graphics::{
     RelativeTransform2d,
 };
 use label;
-use label::{
-    FontSize,
-    Labeling,
-    NoLabel,
-    Label,
-};
+use label::FontSize;
 use mouse_state::{
     MouseState,
     Up,
     Down,
 };
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use rectangle;
+use std::default::Default;
 use utils::{
     clamp,
     compare_f64s,
@@ -43,7 +33,7 @@ use widget::NumberDialer;
 /// NumberDialer is made up of. This is used to
 /// specify which element is Highlighted or Clicked
 /// when storing State.
-#[deriving(Show, PartialEq)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Element {
     Rect,
     LabelGlyphs,
@@ -54,7 +44,7 @@ pub enum Element {
 }
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub enum State {
     Normal,
     Highlighted(Element),
@@ -62,96 +52,6 @@ pub enum State {
 }
 
 widget_fns!(NumberDialer, State, NumberDialer(Normal))
-
-/// Draw the number_dialer. When successfully pressed,
-/// or if the value is changed, the given `callback`
-/// function will be called.
-pub fn draw<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-    (args: &RenderArgs,
-     gl: &mut Gl,
-     uic: &mut UIContext,
-     ui_id: UIID,
-     pos: Point<f64>,
-     width: f64,
-     height: f64,
-     font_size: FontSize,
-     frame: Framing,
-     color: Color,
-     label: Labeling,
-     value: T,
-     min: T,
-     max: T,
-     precision: u8,
-     callback: |T|) {
-
-    let val = clamp(value, min, max);
-    let state = *get_state(uic, ui_id);
-    let mouse = uic.get_mouse_state();
-    let frame_w = match frame { Frame(frame_w, _) => frame_w, NoFrame => 0.0 };
-    let (label_string, label_w, label_h) = label_string_and_dimensions(uic, label);
-    let val_string_len = max.to_string().len() + if precision == 0 { 0u }
-                                                 else { 1u + precision as uint };
-    let mut val_string = create_val_string(val, val_string_len, precision);
-    let (val_string_w, val_string_h) = val_string_dimensions(font_size, label, &val_string);
-    /*let (rect_w, rect_h) = (val_string_w + label_w + RECT_PADDING * 2.0 + frame_w * 2.0,
-                            val_string_h + RECT_PADDING * 2.0 + frame_w * 2.0);*/
-    let l_pos = Point::new(pos.x + (width - (label_w + val_string_w)) / 2.0,
-                           pos.y + (height - font_size as f64) / 2.0,
-                           0.0);
-    let is_over_elem = is_over(pos, frame_w, mouse.pos,
-                               width, height,
-                               l_pos, label_w, label_h,
-                               val_string_w, val_string_h,
-                               val_string.len());
-    let new_state = get_new_state(is_over_elem, state, mouse);
-
-    // Draw the widget rectangle.
-    rectangle::draw(args, gl, rectangle::Normal, pos, width, height, frame, color);
-
-    // If there's a label, draw it.
-    //let l_pos = pos + Point::new(RECT_PADDING + frame_w, RECT_PADDING + frame_w, 0.0);
-    let (val_string_color, val_string_size) = match label {
-        NoLabel => (color.plain_contrast(), font_size),
-        Label(_, l_size, l_color) => {
-            label::draw(args, gl, uic, l_pos, l_size, l_color, label_string.as_slice());
-            (l_color, l_size)
-        },
-    };
-
-    // Determine new value from the initial state and the new state.
-    let new_val = match (state, new_state) {
-        (Clicked(elem), Clicked(new_elem)) => {
-            match (elem, new_elem) {
-                (ValueGlyph(idx, y), ValueGlyph(_, new_y)) => {
-                    get_new_value(val, min, max, idx, compare_f64s(new_y, y), &val_string)
-                },
-                _ => val,
-            }
-        },
-        _ => val,
-    };
-
-    // If the value has changed, create a new string for val_string.
-    if val != new_val { val_string = create_val_string(new_val, val_string_len, precision) }
-
-    // Draw the value string.
-    let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
-    draw_value_string(args, gl, uic, new_state, pos.y + frame_w, color, height, frame_w,
-                      value_glyph_slot_width(val_string_size),
-                      val_string_pos,
-                      val_string_size,
-                      val_string_color,
-                      val_string.as_slice());
-    set_state(uic, ui_id, new_state);
-
-    // Call the `callback` with the new value if the mouse is pressed/released
-    // on the widget or if the value has changed.
-    if value != new_val || match (state, new_state) {
-        (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
-        _ => false,
-    } { callback(new_val) };
-
-}
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -192,10 +92,11 @@ fn value_glyph_slot_width(size: FontSize) -> f64 {
 }
 
 /// Return the dimensions of the label.
-fn label_string_and_dimensions(uic: &mut UIContext, label: Labeling) -> (String, f64, f64) {
+fn label_string_and_dimensions(uic: &mut UIContext,
+                               label: Option<(&str, FontSize, Color)>) -> (String, f64, f64) {
     match label {
-        NoLabel => (String::new(), 0f64, 0f64),
-        Label(ref text, size, _) => {
+        None => (String::new(), 0f64, 0f64),
+        Some((ref text, size, _)) => {
             let string = text.to_string().append(": ");
             let label_width = label::width(uic, size, string.as_slice());
             (string, label_width, size as f64)
@@ -205,11 +106,11 @@ fn label_string_and_dimensions(uic: &mut UIContext, label: Labeling) -> (String,
 
 /// Return the dimensions of value string glyphs.
 fn val_string_dimensions(font_size: FontSize,
-                         label: Labeling,
+                         label: Option<(&str, FontSize, Color)>,
                          val_string: &String) -> (f64, f64) {
     let size = match label {
-        NoLabel => font_size,
-        Label(_, label_font_size, _) => label_font_size,
+        None => font_size,
+        Some((_, label_font_size, _)) => label_font_size,
     };
     let slot_w = value_glyph_slot_width(size);
     let val_string_w = slot_w * val_string.len() as f64;
@@ -217,6 +118,7 @@ fn val_string_dimensions(font_size: FontSize,
 }
 
 /// Determine if the cursor is over the number_dialer and if so, which element.
+#[inline]
 fn is_over(pos: Point<f64>,
            frame_w: f64,
            mouse_pos: Point<f64>,
@@ -258,6 +160,7 @@ fn is_over(pos: Point<f64>,
 }
 
 /// Check and return the current state of the NumberDialer.
+#[inline]
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
@@ -282,6 +185,7 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Return the new value along with it's String representation.
+#[inline]
 fn get_new_value<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 (val: T, min: T, max: T, idx: uint, y_ord: Ordering, val_string: &String) -> T {
     match y_ord {
@@ -316,16 +220,25 @@ fn get_new_value<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToStr
             
 }
 
+/*
+/// Return a suitable font size for the given pad height.
+fn get_font_size(pad_height: f64) -> FontSize {
+    clamp(if pad_height % 2.0 == 0.0 { pad_height - 4.0 }
+          else { pad_height - 5.0 }, 4.0, 256.0) as FontSize
+}
+*/
+
 /// Draw the value string glyphs.
-fn draw_value_string(args: &RenderArgs,
+#[inline]
+fn draw_value_string(win_w: f64,
+                     win_h: f64,
                      gl: &mut Gl,
                      uic: &mut UIContext,
                      state: State,
                      slot_y: f64,
                      rect_color: Color,
-                     rect_h: f64,
-                     frame_w: f64,
                      slot_w: f64,
+                     pad_h: f64,
                      pos: Point<f64>,
                      size: FontSize,
                      font_color: Color,
@@ -333,8 +246,7 @@ fn draw_value_string(args: &RenderArgs,
     let mut x = 0;
     let y = 0;
     let (font_r, font_g, font_b, font_a) = font_color.as_tuple();
-    let context = Context::abs(args.width as f64, args.height as f64)
-                    .trans(pos.x, pos.y + size as f64);
+    let context = Context::abs(win_w, win_h).trans(pos.x, pos.y + size as f64);
     let half_slot_w = slot_w / 2.0;
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
@@ -344,12 +256,8 @@ fn draw_value_string(args: &RenderArgs,
                     let context_slot_y = slot_y - (pos.y + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
-                    draw_slot_rect(gl, &context,
-                                   x as f64,
-                                   context_slot_y,
-                                   size as f64,
-                                   rect_h - frame_w * 2.0,
-                                   rect_color);
+                    draw_slot_rect(gl, &context, x as f64, context_slot_y,
+                                   size as f64, pad_h, rect_color);
                 },
                 _ => (),
             },
@@ -358,12 +266,8 @@ fn draw_value_string(args: &RenderArgs,
                     let context_slot_y = slot_y - (pos.y + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
-                    draw_slot_rect(gl, &context,
-                                   x as f64,
-                                   context_slot_y,
-                                   size as f64,
-                                   rect_h - frame_w * 2.0,
-                                   rect_color);
+                    draw_slot_rect(gl, &context, x as f64, context_slot_y,
+                                   size as f64, pad_h, rect_color);
                 },
                 _ => (),
             },
@@ -386,5 +290,152 @@ fn draw_slot_rect(gl: &mut Gl, context: &Context,
                   color: Color) {
     let (r, g, b, a) = color.as_tuple();
     context.rect(x, y, w, h).rgba(r, g, b, a).draw(gl)
+}
+
+
+/// A context on which the builder pattern can be implemented.
+pub struct NumberDialerContext<'a, T> {
+    uic: &'a mut UIContext,
+    ui_id: UIID,
+    value: T,
+    min: T,
+    max: T,
+    pos: Point<f64>,
+    width: f64,
+    height: f64,
+    precision: u8,
+    maybe_color: Option<Color>,
+    maybe_frame: Option<(f64, Color)>,
+    maybe_label: Option<(&'a str, FontSize, Color)>,
+    maybe_callback: Option<|T|:'a>,
+}
+
+pub trait NumberDialerBuilder
+<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
+    /// A number_dialer builder method to be implemented by the UIContext.
+    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
+                     precision: u8) -> NumberDialerContext<'a, T>;
+}
+
+impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+NumberDialerBuilder<'a, T> for UIContext {
+    /// A number_dialer builder method to be implemented by the UIContext.
+    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
+                     precision: u8) -> NumberDialerContext<'a, T> {
+        NumberDialerContext {
+            uic: self,
+            ui_id: ui_id,
+            value: clamp(value, min, max),
+            min: min,
+            max: max,
+            pos: Point::new(0.0, 0.0, 0.0),
+            width: 128.0,
+            height: 48.0,
+            precision: precision,
+            maybe_color: None,
+            maybe_frame: None,
+            maybe_label: None,
+            maybe_callback: None,
+        }
+    }
+}
+
+impl_callable!(NumberDialerContext, |T|:'a, T)
+impl_colorable!(NumberDialerContext, T)
+impl_frameable!(NumberDialerContext, T)
+impl_labelable!(NumberDialerContext, T)
+impl_positionable!(NumberDialerContext, T)
+impl_shapeable!(NumberDialerContext, T)
+
+impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+::draw::Drawable for NumberDialerContext<'a, T> {
+    #[inline]
+    /// Draw the number_dialer. When successfully pressed,
+    /// or if the value is changed, the given `callback`
+    /// function will be called.
+    fn draw(&mut self, gl: &mut Gl) {
+
+        let state = *get_state(self.uic, self.ui_id);
+        let mouse = self.uic.get_mouse_state();
+        let frame_w = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
+        let frame_w2 = frame_w * 2.0;
+        let pad_h = self.height - frame_w2;
+        //let font_size = get_font_size(pad_h);
+        let font_size = 24u32;
+        let (label_string, label_w, label_h) =
+            label_string_and_dimensions(self.uic, self.maybe_label);
+        let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0u }
+                                                          else { 1u + self.precision as uint };
+        let mut val_string = create_val_string(self.value, val_string_len, self.precision);
+        let (val_string_w, val_string_h) =
+            val_string_dimensions(font_size, self.maybe_label, &val_string);
+        let label_x = self.pos.x + (self.width - (label_w + val_string_w)) / 2.0;
+        let label_y = self.pos.y + (self.height - font_size as f64) / 2.0;
+        let l_pos = Point::new(label_x, label_y, 0.0);
+        let is_over_elem = is_over(self.pos, frame_w, mouse.pos,
+                                   self.width, self.height,
+                                   l_pos, label_w, label_h,
+                                   val_string_w, val_string_h,
+                                   val_string.len());
+        let new_state = get_new_state(is_over_elem, state, mouse);
+        let color = match self.maybe_color { Some(color) => color, None => Default::default() };
+
+        // Draw the widget rectangle.
+        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rectangle::Normal,
+                        self.pos, self.width, self.height, self.maybe_frame, color);
+
+        // If there's a label, draw it.
+        let (val_string_color, val_string_size) = match self.maybe_label {
+            None => (color.plain_contrast(), font_size),
+            Some((_, l_size, l_color)) => {
+                label::draw(gl, self.uic, l_pos, l_size, l_color, label_string.as_slice());
+                (l_color, l_size)
+            },
+        };
+
+        // Determine new value from the initial state and the new state.
+        let new_val = match (state, new_state) {
+            (Clicked(elem), Clicked(new_elem)) => {
+                match (elem, new_elem) {
+                    (ValueGlyph(idx, y), ValueGlyph(_, new_y)) => {
+                        get_new_value(self.value, self.min, self.max, idx,
+                                      compare_f64s(new_y, y), &val_string)
+                    }, _ => self.value,
+                }
+            }, _ => self.value,
+        };
+
+        // If the value has changed, create a new string for val_string.
+        if self.value != new_val {
+            val_string = create_val_string(new_val, val_string_len, self.precision)
+        }
+
+        // Draw the value string.
+        let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
+        draw_value_string(self.uic.win_w, self.uic.win_h, gl, self.uic, new_state,
+                          self.pos.y + frame_w, color,
+                          value_glyph_slot_width(val_string_size), pad_h,
+                          val_string_pos,
+                          val_string_size,
+                          val_string_color,
+                          val_string.as_slice());
+
+        // Call the `callback` with the new value if the mouse is pressed/released
+        // on the widget or if the value has changed.
+        if self.value != new_val || match (state, new_state) {
+            (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
+            _ => false,
+        } {
+            match self.maybe_callback {
+                Some(ref mut callback) => (*callback)(new_val),
+                None => ()
+            }
+        }
+
+        set_state(self.uic, self.ui_id, new_state,
+                  self.pos.x, self.pos.y, self.width, self.height);
+
+    }
+
 }
 

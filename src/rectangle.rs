@@ -1,10 +1,5 @@
 
 use color::Color;
-use frame::{
-    Framing,
-    Frame,
-    NoFrame,
-};
 use graphics::{
     Context,
     AddRectangle,
@@ -14,7 +9,6 @@ use graphics::{
 use label;
 use label::FontSize;
 use opengl_graphics::Gl;
-use piston::RenderArgs;
 use point::Point;
 use ui_context::UIContext;
 use utils::map_range;
@@ -30,18 +24,19 @@ pub enum State {
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
 /// other widgets.
-pub fn draw(args: &RenderArgs,
+pub fn draw(win_w: f64,
+            win_h: f64,
             gl: &mut Gl,
             state: State,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            frame: Framing,
+            frame: Option<(f64, Color)>,
             color: Color) {
-    let context = &Context::abs(args.width as f64, args.height as f64);
+    let context = &Context::abs(win_w, win_h);
     match frame {
-        Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
-        NoFrame => (),
+        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
+        None => (),
     }
     draw_normal(context, gl, state, pos, width, height, frame, color);
 }
@@ -68,17 +63,14 @@ fn draw_normal(context: &Context,
                pos: Point<f64>,
                width: f64,
                height: f64,
-               frame: Framing,
+               frame: Option<(f64, Color)>,
                color: Color) {
     let (r, g, b, a) = match state {
         Normal => color.as_tuple(),
         Highlighted => color.highlighted().as_tuple(),
         Clicked => color.clicked().as_tuple(),
     };
-    let frame_w = match frame {
-        Frame(frame_w, _) => frame_w,
-        _ => 0.0,
-    };
+    let frame_w = match frame { Some((w, _)) => w, _ => 0.0 };
     context
         .rect(pos.x + frame_w,
               pos.y + frame_w,
@@ -94,8 +86,6 @@ pub fn is_over(pos: Point<f64>,
                mouse_pos: Point<f64>,
                width: f64,
                height: f64) -> bool {
-    //let p = mouse_pos - pos;
-    //if p.x > 0f64 && p.y > 0f64 && p.x < width && p.y < height { true }
     if mouse_pos.x > pos.x
     && mouse_pos.y > pos.y
     && mouse_pos.x < pos.x + width
@@ -104,29 +94,30 @@ pub fn is_over(pos: Point<f64>,
 }
 
 /// Draw a label centered within a rect of given position and dimensions.
-pub fn draw_with_centered_label(args: &RenderArgs,
+pub fn draw_with_centered_label(win_w: f64,
+                                win_h: f64,
                                 gl: &mut Gl,
                                 uic: &mut UIContext,
                                 state: State,
                                 pos: Point<f64>,
                                 width: f64,
                                 height: f64,
-                                frame: Framing,
+                                frame: Option<(f64, Color)>,
                                 color: Color,
                                 text: &str,
                                 font_size: FontSize,
                                 text_color: Color) {
-    let context = &Context::abs(args.width as f64, args.height as f64);
+    let context = &Context::abs(win_w, win_h);
     match frame {
-        Frame(_, f_color) => draw_frame(context, gl, pos, width, height, f_color),
-        NoFrame => (),
+        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
+        None => (),
     }
     draw_normal(context, gl, state, pos, width, height, frame, color);
     let text_w = label::width(uic, font_size, text);
     let l_pos = Point::new(pos.x + (width - text_w) / 2.0,
                            pos.y + (height - font_size as f64) / 2.0,
                            0.0);
-    label::draw(args, gl, uic, l_pos, font_size, text_color, text);
+    label::draw(gl, uic, l_pos, font_size, text_color, text);
 }
 
 pub enum Corner {
