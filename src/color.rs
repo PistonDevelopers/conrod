@@ -6,6 +6,7 @@ use std::num::abs;
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
+use serialize::{Decodable, Decoder, DecoderHelpers};
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -279,5 +280,19 @@ impl Show for Color {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
         let hex = self.to_hex(); 
         fmt.pad(hex.as_slice())
+    }
+}
+
+impl<E, D: Decoder<E>> Decodable<E, D> for Color {
+    fn decode(dec: &mut D) -> Result<Color, E> {
+        let vec = try!(dec.read_to_vec(|le_dec| le_dec.read_f32()));
+
+        if vec.len() != 4 {
+            return dec.err(format!(
+                "Expected a 4 element vector when decoding Color.
+                Found a vector of length {}.", vec.len()));
+        }
+
+        Ok(Color([vec[0], vec[1], vec[2], vec[3]]))
     }
 }
