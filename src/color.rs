@@ -6,6 +6,13 @@ use std::num::abs;
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
+// I consulted the style guide, but there was nothing about multi-line imports.
+// This should be readable.
+use serialize::{
+    Decodable, Encodable,
+    Decoder, Encoder,
+    DecoderHelpers, EncoderHelpers
+};
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -279,6 +286,28 @@ impl Show for Color {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
         let hex = self.to_hex(); 
         fmt.pad(hex.as_slice())
+    }
+}
+
+impl<E, D: Decoder<E>> Decodable<D, E> for Color {
+    fn decode(dec: &mut D) -> Result<Color, E> {
+        let vec = try!(dec.read_to_vec(|le_dec| le_dec.read_f32()));
+
+        if vec.len() != 4 {
+            return Err(dec.error(format!(
+                "Expected a 4 element vector when decoding Color.
+                Found a vector of length {}.", vec.len()).as_slice()));
+        }
+
+        Ok(Color([vec[0], vec[1], vec[2], vec[3]]))
+    }
+}
+
+impl<E, S: Encoder<E>> Encodable<S, E> for Color {
+    fn encode(&self, enc: &mut S) -> Result<(), E> {
+        let Color(ref vec) = *self;
+
+        enc.emit_from_vec(vec, |le_enc, elt| le_enc.emit_f32(*elt))
     }
 }
 
