@@ -61,7 +61,57 @@ pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
 
 /// A trait used for widget types that take a label.
 pub trait Labelable<'a> {
-    fn label(self, text: &'a str, size: u32, color: Color) -> Self;
+    fn label(self, text: &'a str, size: FontSize, color: Color) -> Self;
 }
 
+
+
+
+
+
+/// A context on which the builder pattern can be implemented.
+pub struct LabelContext<'a> {
+    uic: &'a mut UIContext,
+    text: &'a str,
+    pos: Point<f64>,
+    size: FontSize,
+    maybe_color: Option<Color>,
+}
+
+impl<'a> LabelContext<'a> {
+    /// A builder method for specifying font_size.
+    pub fn size(self, size: FontSize) -> LabelContext<'a> {
+        LabelContext { size: size, ..self }
+    }
+}
+
+pub trait LabelBuilder<'a> {
+    /// A label builder method to be implemented on the UIContext.
+    fn label(&'a mut self, text: &'a str) -> LabelContext<'a>;
+}
+
+impl<'a> LabelBuilder<'a> for UIContext {
+
+    /// A label builder method to be implemented on the UIContext.
+    fn label(&'a mut self, text: &'a str) -> LabelContext<'a> {
+        LabelContext {
+            uic: self,
+            text: text,
+            pos: Point::new(0.0, 0.0, 0.0),
+            size: 24u32,
+            maybe_color: None,
+        }
+    }
+
+}
+
+impl_colorable!(LabelContext)
+impl_positionable!(LabelContext)
+
+impl<'a> ::draw::Drawable for LabelContext<'a> {
+    fn draw(&mut self, gl: &mut Gl) {
+        let color = self.maybe_color.unwrap_or(Color::black());
+        draw(gl, self.uic, self.pos, self.size, color, self.text);
+    }
+}
 
