@@ -11,10 +11,12 @@ extern crate time;
 pub use button::ButtonBuilder as Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
+pub use label::LabelBuilder as Label;
 pub use number_dialer::NumberDialerBuilder as NumberDialer;
 pub use slider::SliderBuilder as Slider;
 pub use text_box::TextBoxBuilder as TextBox;
 pub use toggle::ToggleBuilder as Toggle;
+pub use widget_matrix::WidgetMatrixBuilder as WidgetMatrix;
 pub use xy_pad::XYPadBuilder as XYPad;
 
 pub use callback::Callable;

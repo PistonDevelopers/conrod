@@ -9,8 +9,6 @@ extern crate sdl2_game_window;
 extern crate opengl_graphics;
 
 use conrod::{
-    label,
-    widget_matrix,
     Button,
     Callable,
     Color,
@@ -19,6 +17,7 @@ use conrod::{
     DropDownList,
     EnvelopeEditor,
     Frameable,
+    Label,
     Labelable,
     NumberDialer,
     Point,
@@ -28,6 +27,7 @@ use conrod::{
     TextBox,
     Toggle,
     UIContext,
+    WidgetMatrix,
     XYPad,
 };
 use graphics::{
@@ -188,14 +188,11 @@ fn draw_ui(gl: &mut Gl,
            demo: &mut DemoApp) {
 
     // Label example.
-    label::draw(
-        gl, // Open GL instance.
-        uic, // UIContext.
-        Point::new(demo.title_padding, 30f64, 0f64), // Screen position.
-        48u32, // Font size.
-        demo.bg_color.plain_contrast(),
-        "Widgets Demonstration"
-    );
+    uic.label("Widgets Demonstration")
+        .position(demo.title_padding, 30.0)
+        .size(48u32)
+        .color(demo.bg_color.plain_contrast())
+        .draw(gl);
 
     if demo.show_button {
 
@@ -312,13 +309,10 @@ fn draw_ui(gl: &mut Gl,
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
     let (cols, rows) = (8u, 8u);
-    widget_matrix::draw(
-        cols, // cols.
-        rows, // rows.
-        Point::new(300.0, 270.0, 0.0), // matrix position.
-        260.0, // width.
-        260.0, // height.
-        |num, col, row, pos, width, height| { // This is called for every widget.
+    uic.widget_matrix(cols, rows)
+        .dimensions(260.0, 260.0) // matrix width and height.
+        .position(300.0, 270.0) // matrix position.
+        .each_widget(|uic, num, col, row, pos, width, height| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -338,8 +332,7 @@ fn draw_ui(gl: &mut Gl,
                 .callback(|new_val| *demo.bool_matrix.get_mut(col).get_mut(row) = new_val)
                 .draw(gl);
 
-        }
-    );
+        });
 
     let ddl_color = match demo.selected_idx {
         Some(idx) => match demo.ddl_colors[idx].as_slice() {
@@ -388,13 +381,10 @@ fn draw_ui(gl: &mut Gl,
     // one column of two envelope_editors,
     // each with its own text_box.
     let (cols, rows) = (1u, 2u);
-    widget_matrix::draw(
-        cols, // cols.
-        rows, // rows.
-        Point::new(810.0, 115.0, 0.0), // matrix position.
-        320.0, // width.
-        425.0, // height.
-        |num, _col, _row, pos, width, height| { // This is called for every widget.
+    uic.widget_matrix(cols, rows)
+        .position(810.0, 115.0)
+        .dimensions(320.0, 425.0)
+        .each_widget(|uic, num, _col, _row, pos, width, height| { // This is called for every widget.
 
             let (ref mut env, ref mut text) = *demo.envelopes.get_mut(num);
             let text_box_height = height / 4.0;
@@ -430,8 +420,7 @@ fn draw_ui(gl: &mut Gl,
                 .line_width(2.0)
                 .draw(gl);
 
-        } // End of matrix widget callback.
-    ); 
+        }); // End of matrix widget callback.
 
 }
 

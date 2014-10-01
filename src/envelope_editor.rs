@@ -333,7 +333,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             0u | 1u => (),
             _ => {
                 let (r, g, b, a) = color.plain_contrast().as_tuple();
-                for (i, env_p) in perc_env.iter().enumerate().skip(1u) {
+                for i in range(1u, perc_env.len()) {
                     let (x_a, y_a, _) = perc_env[i - 1u];
                     let (x_b, y_b, _) = perc_env[i];
                     let p_a = Point::new(map_range(x_a, 0.0, 1.0,
