@@ -278,8 +278,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                     else {
                         break;
                     }
-                    let new_text = String::from_str(self.text.as_slice().slice_to(idx))
-                        .append(t.as_slice()).append(self.text.as_slice().slice_from(idx));
+                    let new_text = format!("{}{}{}", self.text.as_slice().slice_to(idx),
+                                           t, self.text.as_slice().slice_from(idx));
                     *self.text = new_text;
                     new_idx += t.len();
                 }
@@ -296,9 +296,9 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                                 new_cursor_x -= self.uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(rem_idx)
                                 );
-                                let new_text = String::from_str(
-                                    self.text.as_slice().slice_to(rem_idx)
-                                ).append(self.text.as_slice().slice_from(idx));
+                                let new_text = format!("{}{}",
+                                                       self.text.as_slice().slice_to(rem_idx),
+                                                       self.text.as_slice().slice_from(idx));
                                 *self.text = new_text;
                                 new_idx = rem_idx;
                             }

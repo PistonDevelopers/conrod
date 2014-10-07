@@ -11,6 +11,7 @@ extern crate time;
 pub use button::ButtonBuilder as Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
+pub use envelope_editor::EnvelopePoint;
 pub use label::LabelBuilder as Label;
 pub use number_dialer::NumberDialerBuilder as NumberDialer;
 pub use slider::SliderBuilder as Slider;

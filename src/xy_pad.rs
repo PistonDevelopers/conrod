@@ -234,7 +234,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
                                      self.max_x - self.min_x, self.width as uint);
         let y_string = val_to_string(self.y, self.max_y,
                                      self.max_y - self.min_y, self.height as uint);
-        let xy_string = x_string.append(", ").append(y_string.as_slice());
+        let xy_string = format!("{}, {}", x_string, y_string);
         let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
             match rectangle::corner(pad_pos, Point::new(vert_x, hori_y, 0.0), pad_w, pad_h) {

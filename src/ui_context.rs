@@ -138,9 +138,14 @@ impl UIContext {
                 },
             }
         } else {
-            self.data.grow_set(ui_id_idx,
-                               &(widget::NoWidget, widget::NoPlace),
-                               (default, widget::NoPlace));
+            if ui_id_idx >= self.data.len() {
+                let num_to_push = ui_id_idx - self.data.len();
+                let mut vec = Vec::from_elem(num_to_push, (widget::NoWidget, widget::NoPlace));
+                vec.push((default, widget::NoPlace));
+                self.data.extend(vec.into_iter());
+            } else {
+                *self.data.get_mut(ui_id_idx) = (default, widget::NoPlace);
+            }
             match *self.data.get_mut(ui_id_idx) {
                 (ref mut widget, _) => widget,
             }
