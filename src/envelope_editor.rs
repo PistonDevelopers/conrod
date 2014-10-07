@@ -126,8 +126,9 @@ fn is_over_and_closest(pos: Point<f64>,
                                                      pad_pos.x, pad_pos.x + pad_w),
                                            map_range(y, 0.0, 1.0,
                                                      pad_pos.y + pad_h, pad_pos.y), 0.0);
-
-                    let distance = ::std::num::abs(mouse_pos.x - p_pos.x);
+                    let distance = (mouse_pos.x - p_pos.x).powf(2.0)
+                                 + (mouse_pos.y - p_pos.y).powf(2.0);
+                    //let distance = ::std::num::abs(mouse_pos.x - p_pos.x);
                     if distance <= pt_radius.powf(2.0) {
                         return (Some(EnvPoint(i, p_pos)), Some(EnvPoint(i, p_pos)))
                     }
@@ -523,17 +524,22 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                     match (state, new_state) {
                         (Clicked(elem, m_button), Highlighted(_)) => {
                             match (elem, m_button) {
-                                (Pad, Left) => for closest_elem in is_closest_elem.iter() {
-                                    match *closest_elem {
-                                        EnvPoint(idx, p_pos) => {
-                                            // Create a new point.
-                                            let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos.x, mouse.pos.y);
-                                            let new_point = EnvelopePoint::new(new_x, new_y);
-                                            let insert_idx = if mouse.pos.x > p_pos.x { idx + 1u }
-                                                             else { idx };
-                                            self.env.insert(insert_idx, new_point);
-                                        }, _ => (),
-                                    }
+                                (Pad, Left) => {
+                                    let (new_x, new_y) = {
+                                        let mouse_x_on_pad = mouse.pos.x - pad_pos.x;
+                                        let mouse_y_on_pad = mouse.pos.y - pad_pos.y;
+                                        let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_w);
+                                        let mouse_y_clamped = clamp(mouse_y_on_pad, 0.0, pad_h);
+                                        let new_x_perc = percentage(mouse_x_clamped, 0f64, pad_w);
+                                        let new_y_perc = percentage(mouse_y_clamped, pad_h, 0f64).powf(skew);
+                                        (map_range(new_x_perc, 0.0, 1.0, min_x, max_x),
+                                         map_range(new_y_perc, 0.0, 1.0, min_y, max_y))
+                                    };
+                                    let new_point = EnvelopePoint::new(new_x, new_y);
+                                    self.env.push(new_point);
+                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Greater }
+                                                            else if a.get_x() < b.get_x() { Less }
+                                                            else { Equal });
                                 }, _ => (),
                             }
                         }, _ => (),
