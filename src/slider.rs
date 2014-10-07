@@ -125,11 +125,9 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
             let p = self.pos + Point::new(frame_w, frame_w, 0.0);
             let max_w = self.width - frame_w2;
             let w = match (is_over, state, new_state) {
-                (true, Highlighted, Clicked) | (_, Clicked, Clicked)  => {
-                    clamp(mouse.pos.x - p.x, 0f64, max_w)
-                },
-                _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_w,
-                           0f64, max_w),
+                (true, Highlighted, Clicked) | (_, Clicked, Clicked)  =>
+                     clamp(mouse.pos.x - p.x, 0f64, max_w),
+                _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_w, 0f64, max_w),
             };
             let h = self.height - frame_w2;
             let new_value = value_from_perc((w / max_w) as f32, self.min, self.max);

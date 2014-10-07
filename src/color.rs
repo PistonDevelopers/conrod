@@ -6,8 +6,6 @@ use std::num::abs;
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
-// I consulted the style guide, but there was nothing about multi-line imports.
-// This should be readable.
 use serialize::{
     Decodable, Encodable,
     Decoder, Encoder,

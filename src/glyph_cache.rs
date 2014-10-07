@@ -4,6 +4,7 @@ use label::FontSize;
 use opengl_graphics::Texture;
 use piston::AssetStore;
 use std::collections::HashMap;
+use std::collections::hashmap::{Occupied, Vacant};
 
 /// Struct used to hold rendered character data.
 pub struct Character {
@@ -35,7 +36,12 @@ impl GlyphCache {
     /// Return a reference to a `Character`. If there is not yet a `Character` for
     /// the given `FontSize` and `char`, load the `Character`.
     pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
-        match self.data.find_or_insert(size, HashMap::new()).contains_key(&ch) {
+        match {
+            match self.data.entry(size) {
+                Vacant(entry) => entry.set(HashMap::new()),
+                Occupied(entry) => entry.into_mut(),
+            }
+        }.contains_key(&ch) {
             true => &self.data[size][ch],
             false => { self.load_character(size, ch); &self.data[size][ch] }
         }

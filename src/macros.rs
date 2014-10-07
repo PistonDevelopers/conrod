@@ -19,7 +19,8 @@ macro_rules! widget_fns(
                      ui_id: ::ui_context::UIID) -> &$widget_state {
             match *get_widget(uic, ui_id) {
                 ::widget::$widget(ref state) => state,
-                _ => fail!("The Widget variant returned by UIContext is different to the requested."),
+                _ => fail!("The Widget variant returned by UIContext is different to that which \
+                           was requested (Check that there are no UIID conflicts)."),
             }
         }
 
@@ -30,7 +31,8 @@ macro_rules! widget_fns(
                      x: f64, y: f64, w: f64, h: f64) {
             match *get_widget(uic, ui_id) {
                 ::widget::$widget(ref mut state) => { *state = new_state; },
-                _ => fail!("The Widget variant returned by UIContext is different to the requested."),
+                _ => fail!("The Widget variant returned by UIContext is different to that which \
+                           was requested (Check that there are no UIID conflicts)."),
             }
             uic.set_place(ui_id, x, y, w, h);
         }

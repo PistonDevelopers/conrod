@@ -62,7 +62,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
     match (val_string.as_slice().chars().position(|ch| ch == '.'), precision) {
         (None, 0u8) => (),
         (None, _) => {
-            val_string.push_char('.');
+            val_string.push('.');
             val_string.grow(precision as uint, '0');
         },
         (Some(idx), 0u8) => {
@@ -81,7 +81,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
     // the decimal end of the string is correct, so if the lengths
     // don't match we know we must prepend the difference as '0's.
     match val_string.len().cmp(&len) {
-        Less => String::from_char(len - val_string.len(), '0').append(val_string.as_slice()),
+        Less => format!("{}{}", String::from_char(len - val_string.len(), '0'), val_string),
         _ => val_string,
     }
 }
@@ -97,7 +97,7 @@ fn label_string_and_dimensions(uic: &mut UIContext,
     match label {
         None => (String::new(), 0f64, 0f64),
         Some((ref text, size, _)) => {
-            let string = text.to_string().append(": ");
+            let string = format!("{}: ", text);
             let label_width = label::width(uic, size, string.as_slice());
             (string, label_width, size as f64)
         },

@@ -126,8 +126,8 @@ fn is_over_and_closest(pos: Point<f64>,
                                                      pad_pos.x, pad_pos.x + pad_w),
                                            map_range(y, 0.0, 1.0,
                                                      pad_pos.y + pad_h, pad_pos.y), 0.0);
-                    let distance = (mouse_pos.x - p_pos.x).powf(2.0)
-                                 + (mouse_pos.y - p_pos.y).powf(2.0);
+
+                    let distance = ::std::num::abs(mouse_pos.x - p_pos.x);
                     if distance <= pt_radius.powf(2.0) {
                         return (Some(EnvPoint(i, p_pos)), Some(EnvPoint(i, p_pos)))
                     }
@@ -381,7 +381,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         (*envelope)[idx].get_y(),
                         max_y, max_y - min_y, pad_h as uint
                     );
-                    let xy_string = x_string.append(", ").append(y_string.as_slice());
+                    let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
                     let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_w, pad_h) {
                         TopLeft => Point::new(p_pos.x, p_pos.y, 0.0),
@@ -495,6 +495,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                             }, _ => (),
                         }
                     }, _ => (),
+
                 }
 
             },
