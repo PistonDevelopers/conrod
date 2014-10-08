@@ -239,7 +239,11 @@ fn draw_ui(gl: &mut Gl,
         // Create the label for the slider.
         let pad = demo.title_padding as i16;
         let pad_string = pad.to_string();
-        let label = "Padding: ".to_string().append(pad_string.as_slice());
+        let label = {
+            let mut text = "Padding: ".to_string();
+            text.push_str(pad_string.as_slice());
+            text
+        };
 
         // Slider widget example slider(UIID, value, min, max).
         uic.slider(1u64, pad as i16, 0i16, 910i16 - 310)
