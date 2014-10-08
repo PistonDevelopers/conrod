@@ -30,6 +30,7 @@ use ui_context::{
     UIContext,
 };
 use widget::TextBox;
+use std::cmp;
 
 pub type Idx = uint;
 pub type CursorX = f64;
@@ -320,8 +321,25 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                             }
                         },
                         Return => if self.text.len() > 0u {
-                            match self.maybe_callback {
-                                Some(ref mut callback) => (*callback)(self.text),
+                            let TextBoxContext { // borrowck
+                                ref mut maybe_callback,
+                                ref mut uic,
+                                ref font_size,
+                                ref mut text,
+                                ..
+                            } = *self;
+                            match *maybe_callback {
+                                Some(ref mut callback) => {
+                                    (*callback)(*text);
+
+                                    new_idx = cmp::min(new_idx, text.len());
+                                    new_cursor_x = text.as_slice()
+                                                       .chars()
+                                                       // Add text_pos.x for padding
+                                                       .fold(text_pos.x, |acc, c| {
+                                        acc + uic.get_character_w(*font_size, c)
+                                    });
+                                },
                                 None => (),
                             }
                         },

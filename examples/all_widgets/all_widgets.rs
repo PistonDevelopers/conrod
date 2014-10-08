@@ -46,6 +46,7 @@ use piston::{
     RenderArgs,
 };
 use sdl2_game_window::WindowSDL2;
+use std::mem;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -54,6 +55,10 @@ use sdl2_game_window::WindowSDL2;
 /// parts of the GUI to offer visual feedback during interaction
 /// with the widgets.
 struct DemoApp {
+    /// Text on the top line
+    title: String,
+    /// The title currently being edited in the text box.
+    next_title: String,
     /// Background color (for demonstration of button and sliders).
     bg_color: Color,
     /// Should the button be shown (for demonstration of button).
@@ -87,6 +92,8 @@ impl DemoApp {
     /// Constructor for the Demonstration Application data.
     fn new() -> DemoApp {
         DemoApp {
+            next_title: "Press Enter".to_string(),
+            title: "Widgets Demonstration".to_string(),
             bg_color: Color::new(0.2, 0.35, 0.45, 1.0),
             show_button: false,
             toggle_label: "OFF".to_string(),
@@ -188,11 +195,29 @@ fn draw_ui(gl: &mut Gl,
            demo: &mut DemoApp) {
 
     // Label example.
-    uic.label("Widgets Demonstration")
-        .position(demo.title_padding, 30.0)
+    uic.label(demo.title.as_slice())
+        .position(310.0 + demo.title_padding, 30.0)
         .size(48u32)
         .color(demo.bg_color.plain_contrast())
         .draw(gl);
+
+    { // Borrow two fields mutably temporarily
+        let DemoApp { ref mut title, ref mut next_title, .. } = *demo;
+
+        // Draw a TextBox. text_box(UIID, &mut String, FontSize)
+        uic.text_box(99, next_title)
+            .font_size(32u32)
+            .dimensions(300.0, 50.0)
+            .position(10.0, 30.0)
+            //.frame(demo.frame_width, demo.bg_color.invert().plain_contrast())
+            .color(demo.bg_color.invert())
+            .callback(|s| {
+                // When enter is pressed, replace the title with the new value
+                // And then clear the input (by setting it to an empty string)
+                *title = mem::replace(s, String::new());
+            })
+            .draw(gl);
+    }
 
     if demo.show_button {
 
@@ -217,7 +242,7 @@ fn draw_ui(gl: &mut Gl,
         let label = "Padding: ".to_string().append(pad_string.as_slice());
 
         // Slider widget example slider(UIID, value, min, max).
-        uic.slider(1u64, pad as i16, 10i16, 910i16)
+        uic.slider(1u64, pad as i16, 0i16, 910i16 - 310)
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
             .rgba(0.5, 0.3, 0.6, 1.0)
@@ -390,7 +415,7 @@ fn draw_ui(gl: &mut Gl,
             let text_box_height = height / 4.0;
             let env_editor_height = height - text_box_height;
             let env_editor_pos = pos + Point::new(0.0, text_box_height, 0.0);
-            let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)           
+            let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)
                                 * demo.bg_color.invert().plain_contrast();
             let env_y_max = match num { 0u => 20000.0, _ => 1.0 };
             let tbox_uiid = 77u64 + (num * 2u) as u64;
