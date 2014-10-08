@@ -9,11 +9,14 @@ use mouse_state::{
     Down,
     MouseState,
 };
-use piston::{
-    Render,
-    Event,
-    Input,
-    input,
+use piston::input;
+use piston::event::{
+    GenericEvent,
+    MouseCursorEvent,
+    PressEvent,
+    ReleaseEvent,
+    RenderEvent,
+    TextEvent,
 };
 use point::Point;
 use widget;
@@ -61,47 +64,46 @@ impl UIContext {
     }
 
     /// Handle game events and update the state.
-    pub fn handle_event(&mut self, event: &Event) {
+    pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
             self.prev_event_was_render = false;
         }
-        match *event {
-            Render(args) => {
-                self.win_w = args.width as f64;
-                self.win_h = args.height as f64;
-                self.prev_event_was_render = true;
+        event.render(|args| {
+            self.win_w = args.width as f64;
+            self.win_h = args.height as f64;
+            self.prev_event_was_render = true;
+        });
+        event.mouse_cursor(|x, y| {
+            self.mouse.pos = Point::new(x, y, 0.0);
+        });
+        event.press(|button_type| {
+            match button_type {
+                input::Mouse(button) => {
+                    *match button {
+                        input::mouse::Left => &mut self.mouse.left,
+                        _/*input::mouse::Right*/ => &mut self.mouse.right,
+                        //Middle => &mut self.mouse.middle,
+                    } = Down;
+                },
+                input::Keyboard(key) => self.keys_just_pressed.push(key),
             }
-            Input(input::Move(input::MouseCursor(x, y))) => {
-                self.mouse.pos = Point::new(x, y, 0.0);
-            },
-            Input(input::Press(button_type)) => {
-                match button_type {
-                    input::Mouse(button) => {
-                        *match button {
-                            input::mouse::Left => &mut self.mouse.left,
-                            _/*input::mouse::Right*/ => &mut self.mouse.right,
-                            //Middle => &mut self.mouse.middle,
-                        } = Down;
-                    },
-                    input::Keyboard(key) => self.keys_just_pressed.push(key),
-                }
-            },
-            Input(input::Release(button_type)) => {
-                match button_type {
-                    input::Mouse(button) => {
-                        *match button {
-                            input::mouse::Left => &mut self.mouse.left,
-                            _/*input::mouse::Right*/ => &mut self.mouse.right,
-                            //Middle => &mut self.mouse.middle,
-                        } = Up;
-                    },
-                    input::Keyboard(key) => self.keys_just_released.push(key),
-                }
-            },
-            Input(input::Text(ref text)) => self.text_just_entered.push(text.clone()),
-            _ => (),
-        }
+        });
+        event.release(|button_type| {
+            match button_type {
+                input::Mouse(button) => {
+                    *match button {
+                        input::mouse::Left => &mut self.mouse.left,
+                        _/*input::mouse::Right*/ => &mut self.mouse.right,
+                        //Middle => &mut self.mouse.middle,
+                    } = Up;
+                },
+                input::Keyboard(key) => self.keys_just_released.push(key),
+            }
+        });
+        event.text(|text| {
+            self.text_just_entered.push(text.to_string())
+        });
     }
 
     /// Return the current mouse state.
@@ -191,4 +193,3 @@ impl UIContext {
     }
 
 }
-
