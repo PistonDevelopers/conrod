@@ -50,7 +50,7 @@ impl GlyphCache {
     /// Load a `Character` from a given `FontSize` and `char`.
     fn load_character(&mut self, size: FontSize, ch: char) {
         self.face.set_pixel_sizes(0, size).unwrap();
-        self.face.load_char(ch as u64, freetype::face::Default).unwrap();
+        self.face.load_char(ch as u64, freetype::face::DEFAULT).unwrap();
         let glyph = self.face.glyph().get_glyph().unwrap();
         let bitmap_glyph = glyph.to_bitmap(freetype::render_mode::Normal, None).unwrap();
         let bitmap = bitmap_glyph.bitmap();
