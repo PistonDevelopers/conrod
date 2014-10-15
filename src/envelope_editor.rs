@@ -211,8 +211,11 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     height: f64,
     maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, FontSize, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
 }
 
 impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
@@ -265,7 +268,10 @@ impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
         }
     }
 }
@@ -290,9 +296,13 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         let font_size = self.font_size;
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
-        let frame_w = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
         let pad_w = self.width - frame_w2;
         let pad_h = self.height - frame_w2;
@@ -315,18 +325,17 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         // Draw rect.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl,
                         new_state.as_rectangle_state(),
-                        self.pos, self.width, self.height, self.maybe_frame, color);
+                        self.pos, self.width, self.height, maybe_frame, color);
 
         // If there's a label, draw it.
-        match self.maybe_label {
-            None => (),
-            Some((l_text, l_size, l_color)) => {
-                let l_w = label::width(self.uic, l_size, l_text);
-                let pad_x = pad_pos.x + (pad_w - l_w) / 2.0;
-                let pad_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
-                let l_pos = Point::new(pad_x, pad_y, 0.0);
-                label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
-            },
+        if let Some(l_text) = self.maybe_label {
+            let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+            let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+            let l_w = label::width(self.uic, l_size, l_text);
+            let pad_x = pad_pos.x + (pad_w - l_w) / 2.0;
+            let pad_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
+            let l_pos = Point::new(pad_x, pad_y, 0.0);
+            label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
         };
 
         // Draw the envelope lines.

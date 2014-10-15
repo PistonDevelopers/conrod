@@ -1,6 +1,5 @@
 
 use color::Color;
-use label;
 use mouse_state::{
     MouseState,
     Up,
@@ -134,8 +133,11 @@ pub struct DropDownListContext<'a> {
     height: f64,
     maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
 }
 
 pub trait DropDownListBuilder<'a> {
@@ -158,7 +160,10 @@ impl<'a> DropDownListBuilder<'a> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
         }
     }
 }
@@ -183,14 +188,9 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
             Some(idx) if idx < self.strings.len() => { Some(idx) },
             _ => None,
         };
-        let color = match self.maybe_color {
-            Some(color) => color, None => ::std::default::Default::default(),
-        };
-        let(t_size, t_color) = match self.maybe_label {
-            Some((_, t_size, t_color)) => (t_size, t_color),
-            None => (label::auto_size_from_rect_height(self.height),
-                     color.plain_contrast()),
-        };
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
+        let t_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+        let t_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
 
         // Call the `callback` closure if mouse was released
         // on one of the DropDownMenu items.
@@ -207,20 +207,26 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
             }, _ => (),
         }
 
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
+
         match new_state {
 
             Closed(_) => {
                 let rect_state = new_state.as_rect_state();
                 let text = match sel {
-                    Some(idx) => (*self.strings)[idx].as_slice(),
+                    Some(idx) => (*self.strings)[idx][],
                     None => match self.maybe_label {
-                        Some((text, _, _)) => text,
-                        None => (*self.strings)[0u].as_slice(),
+                        Some(text) => text,
+                        None => (*self.strings)[0][],
                     },
                 };
                 rectangle::draw_with_centered_label(
                     self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state,
-                    self.pos, self.width, self.height, self.maybe_frame, color,
+                    self.pos, self.width, self.height, maybe_frame, color,
                     text, t_size, t_color
                 )
             },
@@ -258,12 +264,11 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
                             }
                         },
                     };
-                    let frame_width = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
-                    let idx_y = self.height * i as f64 - i as f64 * frame_width;
+                    let idx_y = self.height * i as f64 - i as f64 * frame_w;
                     let idx_pos = self.pos + Point::new(0.0, idx_y, 0.0);
                     rectangle::draw_with_centered_label(
                         self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state, idx_pos,
-                        self.width, self.height, self.maybe_frame, color, string.as_slice(), 
+                        self.width, self.height, maybe_frame, color, string.as_slice(), 
                         t_size, t_color
                     )
                 }

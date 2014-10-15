@@ -56,8 +56,11 @@ pub struct ButtonContext<'a> {
     width: f64,
     height: f64,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
     maybe_callback: Option<||:'a>,
 }
 
@@ -79,7 +82,10 @@ impl<'a> ButtonBuilder<'a> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
         }
     }
 
@@ -109,18 +115,25 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         match self.maybe_label {
             None => {
                 rectangle::draw(
                     self.uic.win_w, self.uic.win_h, gl, rect_state, self.pos,
-                    self.width, self.height, self.maybe_frame, color
+                    self.width, self.height, maybe_frame, color
                 )
             },
-            Some((text, size, text_color)) => {
+            Some(text) => {
+                let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
                 rectangle::draw_with_centered_label(
                     self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state,
-                    self.pos, self.width, self.height, self.maybe_frame, color,
+                    self.pos, self.width, self.height, maybe_frame, color,
                     text, size, text_color
                 )
             },

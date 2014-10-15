@@ -57,8 +57,11 @@ pub struct ToggleContext<'a> {
     height: f64,
     maybe_callback: Option<|bool|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
     value: bool,
 }
 
@@ -80,7 +83,10 @@ impl<'a> ToggleBuilder<'a> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
             value: value,
         }
     }
@@ -96,7 +102,7 @@ impl_shapeable!(ToggleContext)
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
     fn draw(&mut self, gl: &mut Gl) {
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
         let color = match self.value {
             true => color,
             false => color * Color::new(0.1, 0.1, 0.1, 1.0)
@@ -115,17 +121,24 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
                 }
             }, None => (),
         }
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         match self.maybe_label {
             None => {
                 rectangle::draw(
                     self.uic.win_w, self.uic.win_h, gl, rect_state, self.pos,
-                    self.width, self.height, self.maybe_frame, color
+                    self.width, self.height, maybe_frame, color
                 )
             },
-            Some((text, size, text_color)) => {
+            Some(text) => {
+                let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
                 rectangle::draw_with_centered_label(
                     self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state,
-                    self.pos, self.width, self.height, self.maybe_frame, color,
+                    self.pos, self.width, self.height, maybe_frame, color,
                     text, size, text_color
                 )
             },

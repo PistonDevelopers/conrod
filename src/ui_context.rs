@@ -19,6 +19,7 @@ use piston::event::{
     TextEvent,
 };
 use point::Point;
+use theme::Theme;
 use widget;
 use widget::Widget;
 
@@ -31,6 +32,7 @@ pub type UIID = u64;
 /// data relevant to the draw_widget functions.
 pub struct UIContext {
     data: Vec<(Widget, widget::Placing)>,
+    pub theme: Theme,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
@@ -48,14 +50,20 @@ pub struct UIContext {
 impl UIContext {
 
     /// Constructor for a UIContext.
-    pub fn new(font_file: &str) -> UIContext {
+    pub fn new(font_path: &str, maybe_theme_path: Option<&str>) -> UIContext {
+        let glyph_cache = GlyphCache::new(font_path);
+        let theme = match maybe_theme_path {
+            None => Theme::default(),
+            Some(path) => Theme::load(path),
+        };
         UIContext {
             data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
+            theme: theme,
             mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
             text_just_entered: Vec::with_capacity(10u),
-            glyph_cache: GlyphCache::new(font_file),
+            glyph_cache: glyph_cache,
             prev_event_was_render: false,
             win_w: 0f64,
             win_h: 0f64,

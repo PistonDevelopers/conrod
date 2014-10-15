@@ -31,14 +31,14 @@ pub fn draw(win_w: f64,
             pos: Point<f64>,
             width: f64,
             height: f64,
-            frame: Option<(f64, Color)>,
+            maybe_frame: Option<(f64, Color)>,
             color: Color) {
     let context = &Context::abs(win_w, win_h);
-    match frame {
-        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
-        None => (),
+    if let Some((_, f_color)) = maybe_frame {
+        draw_frame(context, gl, pos, width, height, f_color)
     }
-    draw_normal(context, gl, state, pos, width, height, frame, color);
+    let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
+    draw_normal(context, gl, state, pos, width, height, f_width, color);
 }
 
 /// Draw the button border.
@@ -63,19 +63,18 @@ fn draw_normal(context: &Context,
                pos: Point<f64>,
                width: f64,
                height: f64,
-               frame: Option<(f64, Color)>,
+               frame_width: f64,
                color: Color) {
     let (r, g, b, a) = match state {
         Normal => color.as_tuple(),
         Highlighted => color.highlighted().as_tuple(),
         Clicked => color.clicked().as_tuple(),
     };
-    let frame_w = match frame { Some((w, _)) => w, _ => 0.0 };
     context
-        .rect(pos.x + frame_w,
-              pos.y + frame_w,
-              width - frame_w * 2.0,
-              height - frame_w * 2.0)
+        .rect(pos.x + frame_width,
+              pos.y + frame_width,
+              width - frame_width * 2.0,
+              height - frame_width * 2.0)
         .rgba(r, g, b, a)
         .draw(gl);
 }
@@ -102,17 +101,17 @@ pub fn draw_with_centered_label(win_w: f64,
                                 pos: Point<f64>,
                                 width: f64,
                                 height: f64,
-                                frame: Option<(f64, Color)>,
+                                maybe_frame: Option<(f64, Color)>,
                                 color: Color,
                                 text: &str,
                                 font_size: FontSize,
                                 text_color: Color) {
     let context = &Context::abs(win_w, win_h);
-    match frame {
-        Some((_, f_color)) => draw_frame(context, gl, pos, width, height, f_color),
-        None => (),
+    if let Some((_, f_color)) = maybe_frame {
+        draw_frame(context, gl, pos, width, height, f_color)
     }
-    draw_normal(context, gl, state, pos, width, height, frame, color);
+    let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
+    draw_normal(context, gl, state, pos, width, height, f_width, color);
     let text_w = label::width(uic, font_size, text);
     let l_pos = Point::new(pos.x + (width - text_w) / 2.0,
                            pos.y + (height - font_size as f64) / 2.0,

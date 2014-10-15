@@ -66,8 +66,11 @@ pub struct SliderContext<'a, T> {
     height: f64,
     maybe_callback: Option<|T|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, u32, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
 }
 
 pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive> {
@@ -93,7 +96,10 @@ SliderBuilder<'a, T> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
         }
     }
 }
@@ -114,10 +120,9 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
         let new_state = get_new_state(is_over, state, mouse);
 
-        let (frame_w, frame_c) = match self.maybe_frame {
-            Some((frame_w, frame_c)) => (frame_w, frame_c), None => (0.0, Color::black()),
-        };
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
+        let frame_color = self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color);
 
         let is_horizontal = self.width > self.height;
         let (new_value, pad_pos, pad_w, pad_h) = if is_horizontal {
@@ -166,32 +171,32 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
 
         // Rectangle frame / backdrop.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
-                        self.pos, self.width, self.height, None, frame_c);
+                        self.pos, self.width, self.height, None, frame_color);
         // Slider rectangle.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
                         pad_pos, pad_w, pad_h, None, color);
 
-        match self.maybe_label {
-            None => (),
-            Some((text, size, text_color)) => {
-                let is_horizontal = self.width > self.height;
-                let l_pos = if is_horizontal {
-                    let x = pad_pos.x + (pad_h - size as f64) / 2.0;
-                    let y = pad_pos.y + (pad_h - size as f64) / 2.0;
-                    Point::new(x, y, 0f64)
-                } else {
-                    let label_w = label::width(self.uic, size, text.as_slice());
-                    let x = pad_pos.x + (pad_w - label_w) / 2.0;
-                    let y = pad_pos.y + pad_h - pad_w - frame_w;
-                    Point::new(x, y, 0f64)
-                };
-                // Draw the label.
-                label::draw(gl, self.uic, l_pos, size, text_color, text.as_slice());
-            },
+        // If there's a label, draw it.
+        if let Some(text) = self.maybe_label {
+            let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+            let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+            let is_horizontal = self.width > self.height;
+            let l_pos = if is_horizontal {
+                let x = pad_pos.x + (pad_h - size as f64) / 2.0;
+                let y = pad_pos.y + (pad_h - size as f64) / 2.0;
+                Point::new(x, y, 0f64)
+            } else {
+                let label_w = label::width(self.uic, size, text.as_slice());
+                let x = pad_pos.x + (pad_w - label_w) / 2.0;
+                let y = pad_pos.y + pad_h - pad_w - frame_w;
+                Point::new(x, y, 0f64)
+            };
+            // Draw the label.
+            label::draw(gl, self.uic, l_pos, size, text_color, text.as_slice());
         }
 
         set_state(self.uic, self.ui_id, new_state,

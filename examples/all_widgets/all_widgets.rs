@@ -146,7 +146,9 @@ fn main() {
     // Create OpenGL instance.
     let mut gl = Gl::new(piston::shader_version::opengl::OpenGL_3_2);
     // Create the UIContext and specify the name of a font that's in our "assets" directory.
-    let mut uic = UIContext::new("Dense-Regular.otf");
+    println!("pre uic");
+    let mut uic = UIContext::new("Dense-Regular.otf", None);
+    println!("post uic");
     // Create the Demonstration Application data.
     let mut demo = DemoApp::new();
 
@@ -201,8 +203,8 @@ fn draw_ui(gl: &mut Gl,
             .dimensions(90.0, 60.0)
             .position(50.0, 115.0)
             .rgba(0.4, 0.75, 0.6, 1.0)
-            .frame(demo.frame_width, Color::black())
-            .label("PRESS", 24u32, Color::black())
+            .frame(demo.frame_width)
+            .label("PRESS")
             .callback(|| demo.bg_color = Color::random())
             .draw(gl);
 
@@ -225,8 +227,9 @@ fn draw_ui(gl: &mut Gl,
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
             .rgba(0.5, 0.3, 0.6, 1.0)
-            .frame(demo.frame_width, Color::black())
-            .label(label.as_slice(), 24u32, Color::white())
+            .frame(demo.frame_width)
+            .label(label.as_slice())
+            .label_color(Color::white())
             .callback(|new_pad| demo.title_padding = new_pad as f64)
             .draw(gl);
 
@@ -240,8 +243,9 @@ fn draw_ui(gl: &mut Gl,
         .dimensions(75.0, 75.0)
         .down(20.0)
         .rgba(0.6, 0.25, 0.75, 1.0)
-        .frame(demo.frame_width, Color::black())
-        .label(label.as_slice(), 24u32, Color::white())
+        .frame(demo.frame_width)
+        .label(label.as_slice())
+        .label_color(Color::white())
         .callback(|value| {
             demo.show_button = value;
             demo.toggle_label = match value {
@@ -278,8 +282,9 @@ fn draw_ui(gl: &mut Gl,
             .dimensions(35.0, demo.v_slider_height)
             .position(50.0 + i as f64 * 60.0, 300.0)
             .color(color)
-            .frame(demo.frame_width, Color::black())
-            .label(label.as_slice(), 24u32, Color::white())
+            .frame(demo.frame_width)
+            .label(label.as_slice())
+            .label_color(Color::white())
             .callback(|color| match i {
                 0u => demo.bg_color.set_r(color),
                 1u => demo.bg_color.set_g(color),
@@ -294,8 +299,9 @@ fn draw_ui(gl: &mut Gl,
         .dimensions(260.0, 60.0)
         .position(300.0, 115.0)
         .color(demo.bg_color.invert())
-        .frame(demo.frame_width, Color::black())
-        .label("Height (pixels)", 24u32, demo.bg_color.invert().plain_contrast())
+        .frame(demo.frame_width)
+        .label("Height (pixels)")
+        .label_color(demo.bg_color.invert().plain_contrast())
         .callback(|new_height| demo.v_slider_height = new_height)
         .draw(gl);
 
@@ -304,8 +310,10 @@ fn draw_ui(gl: &mut Gl,
         .dimensions(260.0, 60.0)
         .down(20.0)
         .color(demo.bg_color.invert().plain_contrast())
-        .frame(demo.frame_width, demo.bg_color.plain_contrast())
-        .label("Frame Width (pixels)", 24u32, demo.bg_color.plain_contrast())
+        .frame(demo.frame_width)
+        .frame_color(demo.bg_color.plain_contrast())
+        .label("Frame Width (pixels)")
+        .label_color(demo.bg_color.plain_contrast())
         .callback(|new_width| demo.frame_width = new_width)
         .draw(gl);
 
@@ -332,7 +340,7 @@ fn draw_ui(gl: &mut Gl,
                 .dimensions(width, height)
                 .position(pos.x, pos.y)
                 .rgba(r, g, b, a)
-                .frame(demo.frame_width, Color::black())
+                .frame(demo.frame_width)
                 .callback(|new_val| *demo.bool_matrix.get_mut(col).get_mut(row) = new_val)
                 .draw(gl);
 
@@ -358,21 +366,24 @@ fn draw_ui(gl: &mut Gl,
         .dimensions(150.0, 40.0)
         .right_from(6u64, 50.0) // Position right from widget 6 by 50 pixels.
         .color(ddl_color)
-        .frame(demo.frame_width, ddl_color.plain_contrast())
-        .label("Colors", 24u32, ddl_color.plain_contrast())
+        .frame(demo.frame_width)
+        .frame_color(ddl_color.plain_contrast())
+        .label("Colors")
+        .label_color(ddl_color.plain_contrast())
         .callback(|selected_idx, new_idx, _string| *selected_idx = Some(new_idx))
         .draw(gl);
 
     // Draw an xy_pad.
-    let label_color = Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast();
     uic.xy_pad(76u64, // UIID
                demo.circle_pos.x, 745.0, 595.0, // x range.
                demo.circle_pos.y, 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
         .down(225.0)
         .color(ddl_color)
-        .frame(demo.frame_width, Color::white())
-        .label("Circle Position", 32u32, label_color)
+        .frame(demo.frame_width)
+        .frame_color(Color::white())
+        .label("Circle Position")
+        .label_color(Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast())
         .line_width(2.0)
         .value_font_size(18u32)
         .callback(|new_x, new_y| {
@@ -406,7 +417,8 @@ fn draw_ui(gl: &mut Gl,
                 .font_size(24u32)
                 .dimensions(width, text_box_height - 10.0)
                 .position(pos.x, pos.y)
-                .frame(demo.frame_width, demo.bg_color.invert().plain_contrast())
+                .frame(demo.frame_width)
+                .frame_color(demo.bg_color.invert().plain_contrast())
                 .color(demo.bg_color.invert())
                 .draw(gl);
 
@@ -418,8 +430,10 @@ fn draw_ui(gl: &mut Gl,
                 .position(env_editor_pos.x, env_editor_pos.y)
                 .skew_y(env_skew_y)
                 .color(demo.bg_color.invert())
-                .frame(demo.frame_width, demo.bg_color.invert().plain_contrast())
-                .label(text.as_slice(), 32u32, env_label_color)
+                .frame(demo.frame_width)
+                .frame_color(demo.bg_color.invert().plain_contrast())
+                .label(text.as_slice())
+                .label_color(env_label_color)
                 .point_radius(6.0)
                 .line_width(2.0)
                 .draw(gl);

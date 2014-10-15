@@ -61,7 +61,13 @@ pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
 
 /// A trait used for widget types that take a label.
 pub trait Labelable<'a> {
-    fn label(self, text: &'a str, size: FontSize, color: Color) -> Self;
+    fn label(self, text: &'a str) -> Self;
+    fn label_color(self, color: Color) -> Self;
+    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+    fn label_font_size(self, size: FontSize) -> Self;
+    fn small_font(self) -> Self;
+    fn medium_font(self) -> Self;
+    fn large_font(self) -> Self;
 }
 
 
