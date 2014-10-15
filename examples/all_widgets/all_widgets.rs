@@ -146,9 +146,7 @@ fn main() {
     // Create OpenGL instance.
     let mut gl = Gl::new(piston::shader_version::opengl::OpenGL_3_2);
     // Create the UIContext and specify the name of a font that's in our "assets" directory.
-    println!("pre uic");
     let mut uic = UIContext::new("Dense-Regular.otf", None);
-    println!("post uic");
     // Create the Demonstration Application data.
     let mut demo = DemoApp::new();
 
