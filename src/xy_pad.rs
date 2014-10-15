@@ -105,8 +105,11 @@ pub struct XYPadContext<'a, X, Y> {
     height: f64,
     maybe_callback: Option<|X, Y|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, FontSize, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
 }
 
 impl <'a, X, Y> XYPadContext<'a, X, Y> {
@@ -148,7 +151,10 @@ XYPadBuilder<'a, X, Y> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
         }
     }
 }
@@ -168,8 +174,12 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         // Init.
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let frame_w = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         let pad_w = self.width - frame_w2;
         let pad_h = self.height - frame_w2;
         let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
@@ -204,9 +214,9 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state, self.pos,
-                        self.width, self.height, self.maybe_frame, color);
+                        self.width, self.height, maybe_frame, color);
         let (vert_x, hori_y) = match (is_over_pad, new_state) {
             (_, Normal) | (_, Highlighted) =>
                 (pad_pos.x + map_range(new_x, self.min_x, self.max_x, pad_w, 0.0),
@@ -219,15 +229,14 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         draw_crosshair(self.uic.win_w, self.uic.win_h, gl, pad_pos, self.line_width,
                        vert_x, hori_y, pad_w, pad_h, color.plain_contrast());
         // Label.
-        match self.maybe_label {
-            None => (),
-            Some((l_text, l_size, l_color)) => {
-                let l_w = label::width(self.uic, l_size, l_text);
-                let l_x = pad_pos.x + (pad_w - l_w) / 2.0;
-                let l_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
-                let l_pos = Point::new(l_x, l_y, 0.0);
-                label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
-            },
+        if let Some(l_text) = self.maybe_label {
+            let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+            let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+            let l_w = label::width(self.uic, l_size, l_text);
+            let l_x = pad_pos.x + (pad_w - l_w) / 2.0;
+            let l_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
+            let l_pos = Point::new(l_x, l_y, 0.0);
+            label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,

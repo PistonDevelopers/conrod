@@ -1,5 +1,5 @@
 
-#![feature(macro_rules, phase)]
+#![feature(macro_rules, phase, slicing_syntax, if_let)]
 
 extern crate freetype;
 extern crate graphics;
@@ -28,6 +28,7 @@ pub use label::Labelable;
 pub use point::Point;
 pub use position::Positionable;
 pub use shape::Shapeable;
+pub use theme::Theme;
 pub use ui_context::UIContext;
 pub use widget::Widget;
 
@@ -50,6 +51,7 @@ pub mod rectangle;
 pub mod shape;
 pub mod slider;
 pub mod text_box;
+pub mod theme;
 pub mod toggle;
 pub mod ui_context;
 pub mod utils;

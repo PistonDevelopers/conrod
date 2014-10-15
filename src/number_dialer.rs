@@ -18,7 +18,6 @@ use mouse_state::{
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
-use std::default::Default;
 use utils::{
     clamp,
     compare_f64s,
@@ -91,30 +90,11 @@ fn value_glyph_slot_width(size: FontSize) -> f64 {
     (size as f64 * 0.75).floor() as f64
 }
 
-/// Return the dimensions of the label.
-fn label_string_and_dimensions(uic: &mut UIContext,
-                               label: Option<(&str, FontSize, Color)>) -> (String, f64, f64) {
-    match label {
-        None => (String::new(), 0f64, 0f64),
-        Some((ref text, size, _)) => {
-            let string = format!("{}: ", text);
-            let label_width = label::width(uic, size, string.as_slice());
-            (string, label_width, size as f64)
-        },
-    }
-}
-
 /// Return the dimensions of value string glyphs.
-fn val_string_dimensions(font_size: FontSize,
-                         label: Option<(&str, FontSize, Color)>,
-                         val_string: &String) -> (f64, f64) {
-    let size = match label {
-        None => font_size,
-        Some((_, label_font_size, _)) => label_font_size,
-    };
-    let slot_w = value_glyph_slot_width(size);
+fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
+    let slot_w = value_glyph_slot_width(font_size);
     let val_string_w = slot_w * val_string.len() as f64;
-    (val_string_w, size as f64)
+    val_string_w
 }
 
 /// Determine if the cursor is over the number_dialer and if so, which element.
@@ -305,8 +285,11 @@ pub struct NumberDialerContext<'a, T> {
     height: f64,
     precision: u8,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
-    maybe_label: Option<(&'a str, FontSize, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
     maybe_callback: Option<|T|:'a>,
 }
 
@@ -334,7 +317,10 @@ NumberDialerBuilder<'a, T> for UIContext {
             precision: precision,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
             maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
             maybe_callback: None,
         }
     }
@@ -357,18 +343,26 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let frame_w = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         let pad_h = self.height - frame_w2;
-        //let font_size = get_font_size(pad_h);
-        let font_size = 24u32;
-        let (label_string, label_w, label_h) =
-            label_string_and_dimensions(self.uic, self.maybe_label);
+        let font_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+        let label_string = match self.maybe_label {
+            Some(text) => format!("{}: ", text),
+            None => String::new(),
+        };
+        let (label_w, label_h) = match label_string.len() {
+            0u => (0f64, 0f64),
+            _ => (label::width(self.uic, font_size, label_string[]), font_size as f64),
+        };
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0u }
                                                           else { 1u + self.precision as uint };
         let mut val_string = create_val_string(self.value, val_string_len, self.precision);
-        let (val_string_w, val_string_h) =
-            val_string_dimensions(font_size, self.maybe_label, &val_string);
+        let (val_string_w, val_string_h) = (val_string_width(font_size, &val_string), font_size as f64);
         let label_x = self.pos.x + (self.width - (label_w + val_string_w)) / 2.0;
         let label_y = self.pos.y + (self.height - font_size as f64) / 2.0;
         let l_pos = Point::new(label_x, label_y, 0.0);
@@ -378,19 +372,16 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
                                    val_string_w, val_string_h,
                                    val_string.len());
         let new_state = get_new_state(is_over_elem, state, mouse);
-        let color = match self.maybe_color { Some(color) => color, None => Default::default() };
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
 
         // Draw the widget rectangle.
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rectangle::Normal,
-                        self.pos, self.width, self.height, self.maybe_frame, color);
+                        self.pos, self.width, self.height, maybe_frame, color);
 
         // If there's a label, draw it.
-        let (val_string_color, val_string_size) = match self.maybe_label {
-            None => (color.plain_contrast(), font_size),
-            Some((_, l_size, l_color)) => {
-                label::draw(gl, self.uic, l_pos, l_size, l_color, label_string.as_slice());
-                (l_color, l_size)
-            },
+        let val_string_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+        if self.maybe_label.is_some() {
+            label::draw(gl, self.uic, l_pos, font_size, val_string_color, label_string[]);
         };
 
         // Determine new value from the initial state and the new state.
@@ -414,9 +405,9 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
         let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
         draw_value_string(self.uic.win_w, self.uic.win_h, gl, self.uic, new_state,
                           self.pos.y + frame_w, color,
-                          value_glyph_slot_width(val_string_size), pad_h,
+                          value_glyph_slot_width(font_size), pad_h,
                           val_string_pos,
-                          val_string_size,
+                          font_size,
                           val_string_color,
                           val_string.as_slice());
 

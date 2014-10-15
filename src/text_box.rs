@@ -191,7 +191,8 @@ pub struct TextBoxContext<'a> {
     height: f64,
     maybe_callback: Option<|&mut String|:'a>,
     maybe_color: Option<Color>,
-    maybe_frame: Option<(f64, Color)>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
 }
 
 impl<'a> TextBoxContext<'a> {
@@ -219,6 +220,7 @@ impl<'a> TextBoxBuilder<'a> for UIContext {
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
+            maybe_frame_color: None,
         }
     }
 }
@@ -237,9 +239,13 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
         let state = *get_state(self.uic, self.ui_id);
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(::std::default::Default::default());
-        let frame_w = match self.maybe_frame { Some((w, _)) => w, None => 0.0 };
+        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            false => None,
+        };
         let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
         let pad_w = self.width - frame_w2;
         let pad_h = self.height - frame_w2;
@@ -253,7 +259,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
         let new_state = get_new_state(over_elem, state, mouse);
 
         rectangle::draw(self.uic.win_w, self.uic.win_h, gl, new_state.as_rectangle_state(),
-                        self.pos, self.width, self.height, self.maybe_frame, color);
+                        self.pos, self.width, self.height, maybe_frame, color);
         label::draw(gl, self.uic, text_pos, self.font_size,
                     color.plain_contrast(), self.text.as_slice());
 
