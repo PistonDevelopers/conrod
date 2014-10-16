@@ -7,6 +7,7 @@ use serialize::{
 };
 use std::io::File;
 use std::str;
+use ui_context::UiContext;
 
 /// A data holder for style-related data.
 #[deriving(Show, Clone, Encodable, Decodable)]
@@ -70,5 +71,14 @@ impl Theme {
         }
     }
 
+}
+
+
+/// A trait to make it easier to generically access the UIC on different widget contexts.
+pub trait Themeable {
+    /// Return a reference to the UiContext.
+    fn get_theme(&self) -> &UiContext;
+    /// Return a reference to the UiContext.
+    fn get_theme_mut(&mut self) -> &mut UiContext;
 }
 

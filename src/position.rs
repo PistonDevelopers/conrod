@@ -1,9 +1,11 @@
 
+use point::Point;
 use ui_context::UIID;
 
 /// A trait that indicates whether or not a widget
 /// builder is positionable.
 pub trait Positionable {
+    fn point(self, pos: Point) -> Self;
     fn position(self, x: f64, y: f64) -> Self;
     fn down(self, padding: f64) -> Self;
     fn up(self, padding: f64) -> Self;

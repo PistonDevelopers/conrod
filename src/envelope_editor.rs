@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use graphics::{
     AddColor,
     AddEllipse,
@@ -26,7 +27,7 @@ use rectangle::{
 };
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
 use utils::{
     clamp,
@@ -35,6 +36,10 @@ use utils::{
     val_to_string,
 };
 use widget::EnvelopeEditor;
+use vecmath::{
+    vec2_add,
+    vec2_sub
+};
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -47,9 +52,9 @@ pub enum Element {
     /// Represents an EnvelopePoint at `uint` index
     /// as well as the last mouse pos for comparison
     /// in determining new value.
-    EnvPoint(uint, Point<f64>),
+    EnvPoint(uint, (f64, f64)),
     /// Represents an EnvelopePoint's `curve` value.
-    CurvePoint(uint, Point<f64>),
+    CurvePoint(uint, (f64, f64)),
 }
 
 /// An enum to define which button is clicked.
@@ -104,37 +109,34 @@ pub trait EnvelopePoint
 /// Determine whether or not the cursor is over the EnvelopeEditor.
 /// If it is, return the element under the cursor and the closest
 /// EnvPoint to the cursor.
-fn is_over_and_closest(pos: Point<f64>,
-                       mouse_pos: Point<f64>,
-                       rect_w: f64,
-                       rect_h: f64,
-                       pad_pos: Point<f64>,
-                       pad_w: f64,
-                       pad_h: f64,
+fn is_over_and_closest(pos: Point,
+                       mouse_pos: Point,
+                       dim: Dimensions,
+                       pad_pos: Point,
+                       pad_dim: Dimensions,
                        perc_env: &Vec<(f32, f32, f32)>,
                        pt_radius: f64) -> (Option<Element>, Option<Element>) {
-    match rectangle::is_over(pos, mouse_pos, rect_w, rect_h) {
+    match rectangle::is_over(pos, mouse_pos, dim) {
         false => (None, None),
-        true => match rectangle::is_over(pad_pos, mouse_pos, pad_w, pad_h) {
+        true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => (Some(Rect), Some(Rect)),
             true => {
                 let mut closest_distance = ::std::f64::MAX_VALUE;
                 let mut closest_env_point = Pad;
                 for (i, p) in perc_env.iter().enumerate() {
                     let (x, y, _) = *p;
-                    let p_pos = Point::new(map_range(x, 0.0, 1.0,
-                                                     pad_pos.x, pad_pos.x + pad_w),
-                                           map_range(y, 0.0, 1.0,
-                                                     pad_pos.y + pad_h, pad_pos.y), 0.0);
-                    let distance = (mouse_pos.x - p_pos.x).powf(2.0)
-                                 + (mouse_pos.y - p_pos.y).powf(2.0);
+                    let p_pos = [map_range(x, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
+                                 map_range(y, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
+                    let distance = (mouse_pos[0] - p_pos[0]).powf(2.0)
+                                 + (mouse_pos[1] - p_pos[1]).powf(2.0);
                     //let distance = ::std::num::abs(mouse_pos.x - p_pos.x);
                     if distance <= pt_radius.powf(2.0) {
-                        return (Some(EnvPoint(i, p_pos)), Some(EnvPoint(i, p_pos)))
+                        return (Some(EnvPoint(i, (p_pos[0], p_pos[1]))),
+                                Some(EnvPoint(i, (p_pos[0], p_pos[1]))))
                     }
                     else if distance < closest_distance {
                         closest_distance = distance;
-                        closest_env_point = EnvPoint(i, p_pos);
+                        closest_env_point = EnvPoint(i, (p_pos[0], p_pos[1]));
                     }
                 }
                 (Some(Pad), Some(closest_env_point))
@@ -155,22 +157,22 @@ fn get_new_state(is_over_elem: Option<Element>,
         (Some(_), Clicked(p_elem, m_button), Down, Up)
         | (Some(_), Clicked(p_elem, m_button), Up, Down) => {
             match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, mouse.pos), m_button),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, mouse.pos), m_button),
+                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
                 _ => Clicked(p_elem, m_button),
             }
         },
         (None, Clicked(p_elem, m_button), Down, Up) => {
             match (p_elem, m_button) {
-                (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, mouse.pos), Left),
-                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, mouse.pos), Left),
+                (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
+                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
                 _ => Clicked(p_elem, Left),
             }
         },
         (Some(_), Highlighted(p_elem), Up, Down) => {
             match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, mouse.pos), Right),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, mouse.pos), Right),
+                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
                 _ => Clicked(p_elem, Right),
             }
         },
@@ -179,25 +181,27 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Draw a circle at the given position.
-fn draw_circle(win_w: f64,
-               win_h: f64,
-               gl: &mut Gl,
-               pos: Point<f64>,
-               color: Color,
-               radius: f64) {
+fn draw_circle(
+    win_w: f64,
+    win_h: f64,
+    graphics: &mut Gl,
+    pos: Point,
+    color: Color,
+    radius: f64
+) {
     let context = &Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
     context
-        .ellipse(pos.x, pos.y, radius * 2.0, radius * 2.0)
+        .ellipse(pos[0], pos[1], radius * 2.0, radius * 2.0)
         .rgba(r, g, b, a)
-        .draw(gl)
+        .draw(graphics)
 }
 
 
 
 /// A context on which the builder pattern can be implemented.
 pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
@@ -206,9 +210,8 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     pt_radius: f64,
     line_width: f64,
     font_size: FontSize,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -241,15 +244,15 @@ pub trait EnvelopeEditorBuilder
 <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      E: EnvelopePoint<X, Y>> {
-    /// An envelope editor builder method to be implemented by the UIContext.
+    /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
                        min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
 }
 
 impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UIContext {
-    /// An envelope editor builder method to be implemented by the UIContext.
+          E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UiContext {
+    /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
                        min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E> {
         EnvelopeEditorContext {
@@ -262,9 +265,8 @@ impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             pt_radius: 6.0, // Default envelope point radius.
             line_width: 2.0, // Default envelope line width.
             font_size: 18u32,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 256.0,
-            height: 128.0,
+            pos: [0.0, 0.0],
+            dim: [256.0, 128.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -287,7 +289,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
     #[inline]
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
         let skew = self.skew_y_range;
@@ -303,9 +305,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
-        let pad_w = self.width - frame_w2;
-        let pad_h = self.height - frame_w2;
+        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
 
         // Create a vector with each EnvelopePoint value represented as a
         // skewed percentage between 0.0 .. 1.0 .
@@ -317,25 +318,24 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 
         // Check for new state.
         let (is_over_elem, is_closest_elem) = is_over_and_closest(
-            self.pos, mouse.pos, self.width, self.height,
-            pad_pos, pad_w, pad_h, &perc_env, pt_radius
+            self.pos, mouse.pos, self.dim,
+            pad_pos, pad_dim, &perc_env, pt_radius
         );
         let new_state = get_new_state(is_over_elem, state, mouse);
 
         // Draw rect.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl,
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics,
                         new_state.as_rectangle_state(),
-                        self.pos, self.width, self.height, maybe_frame, color);
+                        self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
         if let Some(l_text) = self.maybe_label {
             let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
             let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
             let l_w = label::width(self.uic, l_size, l_text);
-            let pad_x = pad_pos.x + (pad_w - l_w) / 2.0;
-            let pad_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
-            let l_pos = Point::new(pad_x, pad_y, 0.0);
-            label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
+            let l_pos = [pad_pos[0] + (pad_dim[0] - l_w) / 2.0,
+                         pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0];
+            label::draw(graphics, self.uic, l_pos, l_size, l_color, l_text);
         };
 
         // Draw the envelope lines.
@@ -346,20 +346,16 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                 for i in range(1u, perc_env.len()) {
                     let (x_a, y_a, _) = perc_env[i - 1u];
                     let (x_b, y_b, _) = perc_env[i];
-                    let p_a = Point::new(map_range(x_a, 0.0, 1.0,
-                                                   pad_pos.x, pad_pos.x + pad_w),
-                                         map_range(y_a, 0.0, 1.0,
-                                                   pad_pos.y + pad_h, pad_pos.y), 0.0);
-                    let p_b = Point::new(map_range(x_b, 0.0, 1.0,
-                                                   pad_pos.x, pad_pos.x + pad_w),
-                                         map_range(y_b, 0.0, 1.0,
-                                                   pad_pos.y + pad_h, pad_pos.y), 0.0);
+                    let p_a = [map_range(x_a, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
+                               map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
+                    let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
+                               map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let context = Context::abs(self.uic.win_w, self.uic.win_h);
                     context
-                        .line(p_a.x, p_a.y, p_b.x, p_b.y)
+                        .line(p_a[0], p_a[1], p_b[0], p_b[1])
                         .round_border_width(self.line_width)
                         .rgba(r, g, b, a)
-                        .draw(gl);
+                        .draw(graphics);
                 }
             },
         }
@@ -382,41 +378,41 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             (_, Clicked(elem, _)) | (_, Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |uic: &mut UIContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point<f64>| {
+                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x, max_x - min_x, pad_w as uint
+                        max_x, max_x - min_x, pad_dim[0] as uint
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y, max_y - min_y, pad_h as uint
+                        max_y, max_y - min_y, pad_dim[1] as uint
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
-                    let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_w, pad_h) {
-                        TopLeft => Point::new(p_pos.x, p_pos.y, 0.0),
-                        TopRight => Point::new(p_pos.x - xy_string_w, p_pos.y, 0.0),
-                        BottomLeft => Point::new(p_pos.x, p_pos.y - font_size as f64, 0.0),
-                        BottomRight => Point::new(p_pos.x - xy_string_w, p_pos.y - font_size as f64, 0.0),
+                    let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_dim) {
+                        TopLeft => [p_pos[0], p_pos[1]],
+                        TopRight => [p_pos[0] - xy_string_w, p_pos[1]],
+                        BottomLeft => [p_pos[0], p_pos[1] - font_size as f64],
+                        BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
-                    label::draw(gl, uic, xy_string_pos,
+                    label::draw(graphics, uic, xy_string_pos,
                                 font_size, color.plain_contrast(), xy_string.as_slice());
-                    draw_circle(uic.win_w, uic.win_h, gl,
-                                p_pos - Point::new(pt_radius, pt_radius, 0.0),
+                    draw_circle(uic.win_w, uic.win_h, graphics,
+                                vec2_sub(p_pos, [pt_radius, pt_radius]),
                                 color.plain_contrast(), pt_radius);
                 };
 
                 match elem {
                     // If a point is clicked, draw that point.
                     EnvPoint(idx, p_pos) => {
-                        let pad_x_right = pad_pos.x + pad_w;
+                        let p_pos = [p_pos.val0(), p_pos.val1()];
+                        let pad_x_right = pad_pos[0] + pad_dim[0];
                         let (left_x_bound, right_x_bound) = get_x_bounds(&perc_env, idx);
-                        let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, pad_pos.x, pad_x_right);
-                        let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, pad_pos.x, pad_x_right);
-                        let p_pos_x_clamped = clamp(p_pos.x, left_pixel_bound, right_pixel_bound);
-                        let p_pos_y_clamped = clamp(p_pos.y, pad_pos.y, pad_pos.y + pad_h);
-                        draw_env_pt(self.uic, self.env, idx,
-                                    Point::new(p_pos_x_clamped, p_pos_y_clamped, 0.0));
+                        let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
+                        let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
+                        let p_pos_x_clamped = clamp(p_pos[0], left_pixel_bound, right_pixel_bound);
+                        let p_pos_y_clamped = clamp(p_pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
+                        draw_env_pt(self.uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
                         Some(idx)
                     },
                     // Otherwise, draw the closest point.
@@ -424,6 +420,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         for closest_elem in is_closest_elem.iter() {
                             match *closest_elem {
                                 EnvPoint(closest_idx, closest_env_pt) => {
+                                    let closest_env_pt = [closest_env_pt.val0(), closest_env_pt.val1()];
                                     draw_env_pt(self.uic, self.env, closest_idx, closest_env_pt);
                                 },
                                 _ => (),
@@ -442,12 +439,12 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                              idx: uint,
                              mouse_x: f64,
                              mouse_y: f64| -> (X, Y) {
-            let mouse_x_on_pad = mouse_x - pad_pos.x;
-            let mouse_y_on_pad = mouse_y - pad_pos.y;
-            let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_w);
-            let mouse_y_clamped = clamp(mouse_y_on_pad, 0.0, pad_h);
-            let new_x_perc = percentage(mouse_x_clamped, 0f64, pad_w);
-            let new_y_perc = percentage(mouse_y_clamped, pad_h, 0f64).powf(skew);
+            let mouse_x_on_pad = mouse_x - pad_pos[0];
+            let mouse_y_on_pad = mouse_y - pad_pos[1];
+            let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_dim[0]);
+            let mouse_y_clamped = clamp(mouse_y_on_pad, 0.0, pad_dim[1]);
+            let new_x_perc = percentage(mouse_x_clamped, 0f64, pad_dim[0]);
+            let new_y_perc = percentage(mouse_y_clamped, pad_dim[1], 0f64).powf(skew);
             let (left_bound, right_bound) = get_x_bounds(perc_envelope, idx);
             (map_range(if new_x_perc > right_bound { right_bound }
                        else if new_x_perc < left_bound { left_bound }
@@ -468,7 +465,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         match m_button {
                             Left => {
                                 // Adjust the point and trigger the callback.
-                                let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos.x, mouse.pos.y);
+                                let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
                                 self.env.get_mut(idx).set_x(new_x);
                                 self.env.get_mut(idx).set_y(new_y);
                                 match self.maybe_callback {
@@ -490,7 +487,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                     (Clicked(_, prev_m_button), Clicked(_, m_button)) => {
                         match (prev_m_button, m_button) {
                             (Left, Left) => {
-                                let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos.x, mouse.pos.y);
+                                let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
                                 let current_x = (*self.env)[idx].get_x();
                                 let current_y = (*self.env)[idx].get_y();
                                 if new_x != current_x || new_y != current_y {
@@ -519,7 +516,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         (Clicked(elem, m_button), Highlighted(_)) => {
                             match (elem, m_button) {
                                 (Pad, Left) => {
-                                    let (new_x, new_y) = get_new_value(&perc_env, 0u, mouse.pos.x, mouse.pos.y);
+                                    let (new_x, new_y) = get_new_value(&perc_env, 0u, mouse.pos[0], mouse.pos[1]);
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
                                 }, _ => (),
@@ -535,12 +532,12 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                             match (elem, m_button) {
                                 (Pad, Left) => {
                                     let (new_x, new_y) = {
-                                        let mouse_x_on_pad = mouse.pos.x - pad_pos.x;
-                                        let mouse_y_on_pad = mouse.pos.y - pad_pos.y;
-                                        let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_w);
-                                        let mouse_y_clamped = clamp(mouse_y_on_pad, 0.0, pad_h);
-                                        let new_x_perc = percentage(mouse_x_clamped, 0f64, pad_w);
-                                        let new_y_perc = percentage(mouse_y_clamped, pad_h, 0f64).powf(skew);
+                                        let mouse_x_on_pad = mouse.pos[0] - pad_pos[0];
+                                        let mouse_y_on_pad = mouse.pos[1] - pad_pos[1];
+                                        let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_dim[0]);
+                                        let mouse_y_clamped = clamp(mouse_y_on_pad, 0.0, pad_dim[1]);
+                                        let new_x_perc = percentage(mouse_x_clamped, 0f64, pad_dim[0]);
+                                        let new_y_perc = percentage(mouse_y_clamped, pad_dim[1], 0f64).powf(skew);
                                         (map_range(new_x_perc, 0.0, 1.0, min_x, max_x),
                                          map_range(new_y_perc, 0.0, 1.0, min_y, max_y))
                                     };
@@ -560,8 +557,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         }
 
         // Set the new state.
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

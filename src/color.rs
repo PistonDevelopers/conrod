@@ -1,5 +1,4 @@
 
-use utils::clampf32;
 use std::default::Default;
 use std::fmt::{Show, Formatter, FormatError};
 use std::num::abs;
@@ -11,6 +10,7 @@ use serialize::{
     Decoder, Encoder,
     DecoderHelpers, EncoderHelpers
 };
+use utils::clampf32;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.

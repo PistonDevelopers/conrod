@@ -7,6 +7,7 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate serialize;
 extern crate time;
+extern crate vecmath;
 
 pub use button::ButtonBuilder as Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
@@ -22,6 +23,7 @@ pub use xy_pad::XYPadBuilder as XYPad;
 
 pub use callback::Callable;
 pub use color::{Color, Colorable};
+pub use dimensions::Dimensions;
 pub use draw::Drawable;
 pub use frame::{Framing, Frame, Frameable, NoFrame};
 pub use label::Labelable;
@@ -29,7 +31,7 @@ pub use point::Point;
 pub use position::Positionable;
 pub use shape::Shapeable;
 pub use theme::Theme;
-pub use ui_context::UIContext;
+pub use ui_context::UiContext;
 pub use widget::Widget;
 
 pub mod macros;
@@ -37,6 +39,7 @@ pub mod macros;
 pub mod button;
 pub mod callback;
 pub mod color;
+pub mod dimensions;
 pub mod draw;
 pub mod drop_down_list;
 pub mod envelope_editor;

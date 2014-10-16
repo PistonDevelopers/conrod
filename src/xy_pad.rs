@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use graphics::{
     AddColor,
     AddLine,
@@ -25,12 +26,16 @@ use rectangle::{
 };
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
 use utils::{
     clamp,
     map_range,
     val_to_string,
+};
+use vecmath::{
+    vec2_add,
+    vec2_sub,
 };
 use widget::XYPad;
 
@@ -69,40 +74,41 @@ fn get_new_state(is_over: bool,
 }
 
 /// Draw the crosshair.
-fn draw_crosshair(win_w: f64,
-                  win_h: f64,
-                  gl: &mut Gl,
-                  pos: Point<f64>,
-                  line_width: f64,
-                  vert_x: f64, hori_y: f64,
-                  pad_w: f64, pad_h: f64,
-                  color: Color) {
+fn draw_crosshair(
+    win_w: f64,
+    win_h: f64,
+    graphics: &mut Gl,
+    pos: Point,
+    line_width: f64,
+    vert_x: f64, hori_y: f64,
+    pad_dim: Dimensions,
+    color: Color
+) {
     let context = &Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
     context
-        .line(vert_x, pos.y, vert_x, pos.y + pad_h)
+        .line(vert_x, pos[1], vert_x, pos[1] + pad_dim[1])
         .square_border_width(line_width)
         .rgba(r, g, b, a)
-        .draw(gl);
+        .draw(graphics);
     context
-        .line(pos.x, hori_y, pos.x + pad_w, hori_y)
+        .line(pos[0], hori_y, pos[0] + pad_dim[0], hori_y)
         .square_border_width(line_width)
         .rgba(r, g, b, a)
-        .draw(gl);
+        .draw(graphics);
 }
 
 
 /// A context on which the builder pattern can be implemented.
 pub struct XYPadContext<'a, X, Y> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     line_width: f64,
     font_size: FontSize,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|X, Y|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -125,7 +131,7 @@ impl <'a, X, Y> XYPadContext<'a, X, Y> {
 
 pub trait XYPadBuilder<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
                            Y: Num + Copy + ToPrimitive + FromPrimitive + ToString> {
-    /// A xy_pad builder method to be implemented by the UIContext.
+    /// A xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
               x_val: X, x_min: X, x_max: X,
               y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y>;
@@ -133,8 +139,8 @@ pub trait XYPadBuilder<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToStrin
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
-XYPadBuilder<'a, X, Y> for UIContext {
-    /// An xy_pad builder method to be implemented by the UIContext.
+XYPadBuilder<'a, X, Y> for UiContext {
+    /// An xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
               x_val: X, min_x: X, max_x: X,
               y_val: Y, min_y: Y, max_y: Y) -> XYPadContext<'a, X, Y> {
@@ -145,9 +151,8 @@ XYPadBuilder<'a, X, Y> for UIContext {
             y: y_val, min_y: min_y, max_y: max_y,
             line_width: 1.0,
             font_size: 18u32,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 128.0,
-            height: 128.0,
+            pos: [0.0, 0.0],
+            dim: [128.0, 128.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -169,7 +174,7 @@ impl_shapeable!(XYPadContext, X, Y)
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
 ::draw::Drawable for XYPadContext<'a, X, Y> {
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
 
         // Init.
         let state = *get_state(self.uic, self.ui_id);
@@ -180,20 +185,19 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_w = self.width - frame_w2;
-        let pad_h = self.height - frame_w2;
-        let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
-        let is_over_pad = rectangle::is_over(pad_pos, mouse.pos, pad_w, pad_h);
+        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_pos = vec2_add(self.pos, [frame_w, frame_w]);
+        let is_over_pad = rectangle::is_over(pad_pos, mouse.pos, pad_dim);
         let new_state = get_new_state(is_over_pad, state, mouse);
 
         // Determine new values.
         let (new_x, new_y) = match (is_over_pad, new_state) {
             (_, Normal) | (_, Highlighted) => (self.x, self.y),
             (_, Clicked) => {
-                let temp_x = clamp(mouse.pos.x, pad_pos.x, pad_pos.x + pad_w);
-                let temp_y = clamp(mouse.pos.y, pad_pos.y, pad_pos.y + pad_h);
-                (map_range(temp_x - self.pos.x, pad_w, 0.0, self.min_x, self.max_x),
-                 map_range(temp_y - self.pos.y, pad_h, 0.0, self.min_y, self.max_y))
+                let temp_x = clamp(mouse.pos[0], pad_pos[0], pad_pos[0] + pad_dim[0]);
+                let temp_y = clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
+                (map_range(temp_x - self.pos[0], pad_dim[0], 0.0, self.min_x, self.max_x),
+                 map_range(temp_y - self.pos[1], pad_dim[1], 0.0, self.min_y, self.max_y))
             }
         };
 
@@ -215,49 +219,48 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         // Draw.
         let rect_state = new_state.as_rectangle_state();
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state, self.pos,
-                        self.width, self.height, maybe_frame, color);
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rect_state, self.pos,
+                        self.dim, maybe_frame, color);
         let (vert_x, hori_y) = match (is_over_pad, new_state) {
             (_, Normal) | (_, Highlighted) =>
-                (pad_pos.x + map_range(new_x, self.min_x, self.max_x, pad_w, 0.0),
-                 pad_pos.y + map_range(new_y, self.min_y, self.max_y, pad_h, 0.0)),
+                (pad_pos[0] + map_range(new_x, self.min_x, self.max_x, pad_dim[0], 0.0),
+                 pad_pos[1] + map_range(new_y, self.min_y, self.max_y, pad_dim[1], 0.0)),
             (_, Clicked) =>
-                (clamp(mouse.pos.x, pad_pos.x, pad_pos.x + pad_w),
-                 clamp(mouse.pos.y, pad_pos.y, pad_pos.y + pad_h)),
+                (clamp(mouse.pos[0], pad_pos[0], pad_pos[0] + pad_dim[0]),
+                 clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1])),
         };
         // Crosshair.
-        draw_crosshair(self.uic.win_w, self.uic.win_h, gl, pad_pos, self.line_width,
-                       vert_x, hori_y, pad_w, pad_h, color.plain_contrast());
+        draw_crosshair(self.uic.win_w, self.uic.win_h, graphics, pad_pos, self.line_width,
+                       vert_x, hori_y, pad_dim, color.plain_contrast());
         // Label.
         if let Some(l_text) = self.maybe_label {
             let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
             let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
             let l_w = label::width(self.uic, l_size, l_text);
-            let l_x = pad_pos.x + (pad_w - l_w) / 2.0;
-            let l_y = pad_pos.y + (pad_h - l_size as f64) / 2.0;
-            let l_pos = Point::new(l_x, l_y, 0.0);
-            label::draw(gl, self.uic, l_pos, l_size, l_color, l_text);
+            let l_x = pad_pos[0] + (pad_dim[0] - l_w) / 2.0;
+            let l_y = pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0;
+            let l_pos = [l_x, l_y];
+            label::draw(graphics, self.uic, l_pos, l_size, l_color, l_text);
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
-                                     self.max_x - self.min_x, self.width as uint);
+                                     self.max_x - self.min_x, self.dim[0] as uint);
         let y_string = val_to_string(self.y, self.max_y,
-                                     self.max_y - self.min_y, self.height as uint);
+                                     self.max_y - self.min_y, self.dim[1] as uint);
         let xy_string = format!("{}, {}", x_string, y_string);
         let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
-            match rectangle::corner(pad_pos, Point::new(vert_x, hori_y, 0.0), pad_w, pad_h) {
-                TopLeft => Point::new(vert_x, hori_y, 0.0),
-                TopRight => Point::new(vert_x - xy_string_w, hori_y, 0.0),
-                BottomLeft => Point::new(vert_x, hori_y - self.font_size as f64, 0.0),
-                BottomRight => Point::new(vert_x - xy_string_w, hori_y - self.font_size as f64, 0.0),
+            match rectangle::corner(pad_pos, [vert_x, hori_y], pad_dim) {
+                TopLeft => [vert_x, hori_y],
+                TopRight => [vert_x - xy_string_w, hori_y],
+                BottomLeft => [vert_x, hori_y - self.font_size as f64],
+                BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
             }
         };
-        label::draw(gl, self.uic, xy_string_pos, self.font_size,
+        label::draw(graphics, self.uic, xy_string_pos, self.font_size,
                     color.plain_contrast(), xy_string.as_slice());
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

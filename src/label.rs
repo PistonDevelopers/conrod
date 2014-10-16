@@ -9,7 +9,7 @@ use graphics::{
 };
 use opengl_graphics::Gl;
 use point::Point;
-use ui_context::UIContext;
+use ui_context::UiContext;
 
 pub type FontSize = u32;
 
@@ -20,24 +20,26 @@ pub enum Labeling<'a> {
 }
 
 /// Draw a label using the freetype font rendering backend.
-pub fn draw(gl: &mut Gl,
-            uic: &mut UIContext,
-            pos: Point<f64>,
-            size: FontSize,
-            color: Color,
-            text: &str) {
+pub fn draw(
+    graphics: &mut Gl,
+    uic: &mut UiContext,
+    pos: Point,
+    size: FontSize,
+    color: Color,
+    text: &str
+) {
     let mut x = 0;
     let mut y = 0;
     let (r, g, b, a) = color.as_tuple();
     let context = Context::abs(uic.win_w, uic.win_h)
-                    .trans(pos.x, pos.y + size as f64);
+                    .trans(pos[0], pos[1] + size as f64);
     for ch in text.chars() {
         let character = uic.get_character(size, ch);
         context.trans((x + character.bitmap_glyph.left()) as f64,
                       (y - character.bitmap_glyph.top()) as f64)
                         .image(&character.texture)
                         .rgba(r, g, b, a)
-                        .draw(gl);
+                        .draw(graphics);
         x += (character.glyph.advance().x >> 16) as i32;
         y += (character.glyph.advance().y >> 16) as i32;
     }
@@ -45,7 +47,7 @@ pub fn draw(gl: &mut Gl,
 
 /// Determine the pixel width of the final text bitmap.
 #[inline]
-pub fn width(uic: &mut UIContext, size: FontSize, text: &str) -> f64 {
+pub fn width(uic: &mut UiContext, size: FontSize, text: &str) -> f64 {
     text.chars().fold(0u32, |a, ch| {
         let character = uic.get_character(size, ch);
         a + (character.glyph.advance().x >> 16) as u32
@@ -77,9 +79,9 @@ pub trait Labelable<'a> {
 
 /// A context on which the builder pattern can be implemented.
 pub struct LabelContext<'a> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     text: &'a str,
-    pos: Point<f64>,
+    pos: Point,
     size: FontSize,
     maybe_color: Option<Color>,
 }
@@ -92,18 +94,18 @@ impl<'a> LabelContext<'a> {
 }
 
 pub trait LabelBuilder<'a> {
-    /// A label builder method to be implemented on the UIContext.
+    /// A label builder method to be implemented on the UiContext.
     fn label(&'a mut self, text: &'a str) -> LabelContext<'a>;
 }
 
-impl<'a> LabelBuilder<'a> for UIContext {
+impl<'a> LabelBuilder<'a> for UiContext {
 
-    /// A label builder method to be implemented on the UIContext.
+    /// A label builder method to be implemented on the UiContext.
     fn label(&'a mut self, text: &'a str) -> LabelContext<'a> {
         LabelContext {
             uic: self,
             text: text,
-            pos: Point::new(0.0, 0.0, 0.0),
+            pos: [0.0, 0.0],
             size: 24u32,
             maybe_color: None,
         }
@@ -115,9 +117,9 @@ impl_colorable!(LabelContext)
 impl_positionable!(LabelContext)
 
 impl<'a> ::draw::Drawable for LabelContext<'a> {
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
         let color = self.maybe_color.unwrap_or(Color::black());
-        draw(gl, self.uic, self.pos, self.size, color, self.text);
+        draw(graphics, self.uic, self.pos, self.size, color, self.text);
     }
 }
 

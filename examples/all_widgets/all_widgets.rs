@@ -7,6 +7,7 @@ extern crate graphics;
 extern crate piston;
 extern crate sdl2_game_window;
 extern crate opengl_graphics;
+extern crate vecmath;
 
 use conrod::{
     Button,
@@ -26,7 +27,7 @@ use conrod::{
     Shapeable,
     TextBox,
     Toggle,
-    UIContext,
+    UiContext,
     WidgetMatrix,
     XYPad,
 };
@@ -46,6 +47,7 @@ use piston::{
     RenderArgs,
 };
 use sdl2_game_window::WindowSDL2;
+use vecmath::vec2_add;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -78,9 +80,9 @@ struct DemoApp {
     selected_idx: Option<uint>,
     /// Co-ordinates for a little circle used to demonstrate the
     /// xy_pad.
-    circle_pos: Point<f64>,
+    circle_pos: Point,
     /// Envelope for demonstration of EnvelopeEditor.
-    envelopes: Vec<(Vec<Point<f32>>, String)>,
+    envelopes: Vec<(Vec<Point>, String)>,
 }
 
 impl DemoApp {
@@ -107,16 +109,16 @@ impl DemoApp {
                               "Green".to_string(),
                               "Blue".to_string()],
             selected_idx: None,
-            circle_pos: Point::new(700.0, 200.0, 0.0),
-            envelopes: vec![(vec![ Point::new(0.0, 0.0, 0.0),
-                                   Point::new(0.1, 17000.0, 0.0),
-                                   Point::new(0.25, 8000.0, 0.0),
-                                   Point::new(0.5, 2000.0, 0.0),
-                                   Point::new(1.0, 0.0, 0.0), ], "Envelope A".to_string()),
-                            (vec![ Point::new(0.0, 0.85, 0.0),
-                                   Point::new(0.3, 0.2, 0.0),
-                                   Point::new(0.6, 0.6, 0.0),
-                                   Point::new(1.0, 0.0, 0.0), ], "Envelope B".to_string())],
+            circle_pos: [700.0, 200.0],
+            envelopes: vec![(vec![ [0.0, 0.0],
+                                   [0.1, 17000.0],
+                                   [0.25, 8000.0],
+                                   [0.5, 2000.0],
+                                   [1.0, 0.0], ], "Envelope A".to_string()),
+                            (vec![ [0.0, 0.85],
+                                   [0.3, 0.2],
+                                   [0.6, 0.6],
+                                   [1.0, 0.0], ], "Envelope B".to_string())],
         }
     }
 }
@@ -145,8 +147,8 @@ fn main() {
     let mut event_iter = EventIterator::new(&mut window, &event_settings);
     // Create OpenGL instance.
     let mut gl = Gl::new(piston::shader_version::opengl::OpenGL_3_2);
-    // Create the UIContext and specify the name of a font that's in our "assets" directory.
-    let mut uic = UIContext::new("Dense-Regular.otf", None);
+    // Create the UiContext and specify the name of a font that's in our "assets" directory.
+    let mut uic = UiContext::new("Dense-Regular.otf", None);
     // Create the Demonstration Application data.
     let mut demo = DemoApp::new();
 
@@ -160,7 +162,7 @@ fn main() {
 /// Match the game event.
 fn handle_event(event: &Event,
                 gl: &mut Gl,
-                uic: &mut UIContext,
+                uic: &mut UiContext,
                 demo: &mut DemoApp) {
     uic.handle_event(event);
     match *event {
@@ -184,7 +186,7 @@ fn draw_background(args: &RenderArgs, gl: &mut Gl, bg_color: &Color) {
 
 /// Draw the User Interface.
 fn draw_ui(gl: &mut Gl,
-           uic: &mut UIContext,
+           uic: &mut UiContext,
            demo: &mut DemoApp) {
 
     // Label example.
@@ -322,7 +324,7 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
-        .each_widget(|uic, num, col, row, pos, width, height| { // This is called for every widget.
+        .each_widget(|uic, num, col, row, pos, dim| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -335,8 +337,8 @@ fn draw_ui(gl: &mut Gl,
             // Now draw the widgets with the given callback.
             let val = demo.bool_matrix[col][row];
             uic.toggle(8u64 + num as u64, val)
-                .dimensions(width, height)
-                .position(pos.x, pos.y)
+                .dim(dim)
+                .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
                 .callback(|new_val| *demo.bool_matrix.get_mut(col).get_mut(row) = new_val)
@@ -373,8 +375,8 @@ fn draw_ui(gl: &mut Gl,
 
     // Draw an xy_pad.
     uic.xy_pad(76u64, // UIID
-               demo.circle_pos.x, 745.0, 595.0, // x range.
-               demo.circle_pos.y, 320.0, 170.0) // y range.
+               demo.circle_pos[0], 745.0, 595.0, // x range.
+               demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
         .down(225.0)
         .color(ddl_color)
@@ -385,8 +387,8 @@ fn draw_ui(gl: &mut Gl,
         .line_width(2.0)
         .value_font_size(18u32)
         .callback(|new_x, new_y| {
-            demo.circle_pos.x = new_x;
-            demo.circle_pos.y = new_y;
+            demo.circle_pos[0] = new_x;
+            demo.circle_pos[1] = new_y;
         })
         .draw(gl);
 
@@ -397,12 +399,12 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
-        .each_widget(|uic, num, _col, _row, pos, width, height| { // This is called for every widget.
+        .each_widget(|uic, num, _col, _row, pos, dim| { // This is called for every widget.
 
             let (ref mut env, ref mut text) = *demo.envelopes.get_mut(num);
-            let text_box_height = height / 4.0;
-            let env_editor_height = height - text_box_height;
-            let env_editor_pos = pos + Point::new(0.0, text_box_height, 0.0);
+            let text_box_height = dim[1] / 4.0;
+            let env_editor_height = dim[1] - text_box_height;
+            let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
             let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)
                                 * demo.bg_color.invert().plain_contrast();
             let env_y_max = match num { 0u => 20000.0, _ => 1.0 };
@@ -413,8 +415,8 @@ fn draw_ui(gl: &mut Gl,
             // Draw a TextBox. text_box(UIID, &mut String, FontSize)
             uic.text_box(tbox_uiid, text)
                 .font_size(24u32)
-                .dimensions(width, text_box_height - 10.0)
-                .position(pos.x, pos.y)
+                .dimensions(dim[0], text_box_height - 10.0)
+                .point(pos)
                 .frame(demo.frame_width)
                 .frame_color(demo.bg_color.invert().plain_contrast())
                 .color(demo.bg_color.invert())
@@ -424,8 +426,8 @@ fn draw_ui(gl: &mut Gl,
             uic.envelope_editor(env_uiid, // UIID
                                 env, // vector of `E: EnvelopePoint`s.
                                 0.0, 1.0, 0.0, env_y_max) // x_min, x_max, y_min, y_max.
-                .dimensions(width, env_editor_height - 10.0)
-                .position(env_editor_pos.x, env_editor_pos.y)
+                .dimensions(dim[0], env_editor_height - 10.0)
+                .point(env_editor_pos)
                 .skew_y(env_skew_y)
                 .color(demo.bg_color.invert())
                 .frame(demo.frame_width)
@@ -444,12 +446,12 @@ fn draw_ui(gl: &mut Gl,
 fn draw_circle(win_w: f64,
                win_h: f64,
                gl: &mut Gl,
-               pos: Point<f64>,
+               pos: Point,
                color: Color) {
     let context = &Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
     context
-        .ellipse(pos.x, pos.y, 30.0, 30.0)
+        .ellipse(pos[0], pos[1], 30.0, 30.0)
         .rgba(r, g, b, a)
         .draw(gl)
 }
