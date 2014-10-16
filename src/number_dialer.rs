@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use graphics::{
     Context,
     AddColor,
@@ -24,8 +25,9 @@ use utils::{
 };
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
+use vecmath::vec2_add;
 use widget::NumberDialer;
 
 /// Represents the specific elements that the
@@ -99,36 +101,34 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
 
 /// Determine if the cursor is over the number_dialer and if so, which element.
 #[inline]
-fn is_over(pos: Point<f64>,
+fn is_over(pos: Point,
            frame_w: f64,
-           mouse_pos: Point<f64>,
-           rect_w: f64,
-           rect_h: f64,
-           l_pos: Point<f64>,
-           label_w: f64,
-           label_h: f64,
+           mouse_pos: Point,
+           dim: Dimensions,
+           label_pos: Point,
+           label_dim: Dimensions,
            val_string_w: f64,
            val_string_h: f64,
            val_string_len: uint) -> Option<Element> {
-    match rectangle::is_over(pos, mouse_pos, rect_w, rect_h) {
+    match rectangle::is_over(pos, mouse_pos, dim) {
         false => None,
         true => {
-            match rectangle::is_over(l_pos, mouse_pos, label_w, label_h) {
+            match rectangle::is_over(label_pos, mouse_pos, label_dim) {
                 true => Some(LabelGlyphs),
                 false => {
                     let frame_w2 = frame_w * 2.0;
-                    let slot_rect_pos = Point::new(l_pos.x + label_w, pos.y + frame_w, 0.0);
+                    let slot_rect_pos = [label_pos[0] + label_dim[0], pos[1] + frame_w];
                     match rectangle::is_over(slot_rect_pos, mouse_pos,
-                                             val_string_w, rect_h - frame_w2) {
+                                             [val_string_w, dim[1] - frame_w2]) {
                         false => Some(Rect),
                         true => {
                             let slot_w = value_glyph_slot_width(val_string_h as u32);
                             let mut slot_pos = slot_rect_pos;
                             for i in range(0u, val_string_len) {
-                                if rectangle::is_over(slot_pos, mouse_pos, slot_w, rect_h) {
-                                    return Some(ValueGlyph(i, mouse_pos.y))
+                                if rectangle::is_over(slot_pos, mouse_pos, [slot_w, dim[1]]) {
+                                    return Some(ValueGlyph(i, mouse_pos[1]))
                                 }
-                                slot_pos.x += slot_w;
+                                slot_pos[0] += slot_w;
                             }
                             Some(Rect)
                         },
@@ -150,13 +150,13 @@ fn get_new_state(is_over_elem: Option<Element>,
         (Some(elem), Highlighted(_), Down) => Clicked(elem),
         (Some(_), Clicked(p_elem), Down) => {
             match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos.y)),
+                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
                 _ => Clicked(p_elem),
             }
         },
         (None, Clicked(p_elem), Down) => {
             match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos.y)),
+                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
                 _ => Clicked(p_elem),
             }
         },
@@ -210,43 +210,45 @@ fn get_font_size(pad_height: f64) -> FontSize {
 
 /// Draw the value string glyphs.
 #[inline]
-fn draw_value_string(win_w: f64,
-                     win_h: f64,
-                     gl: &mut Gl,
-                     uic: &mut UIContext,
-                     state: State,
-                     slot_y: f64,
-                     rect_color: Color,
-                     slot_w: f64,
-                     pad_h: f64,
-                     pos: Point<f64>,
-                     size: FontSize,
-                     font_color: Color,
-                     string: &str) {
+fn draw_value_string(
+    win_w: f64,
+    win_h: f64,
+    graphics: &mut Gl,
+    uic: &mut UiContext,
+    state: State,
+    slot_y: f64,
+    rect_color: Color,
+    slot_w: f64,
+    pad_h: f64,
+    pos: Point,
+    size: FontSize,
+    font_color: Color,
+    string: &str
+) {
     let mut x = 0;
     let y = 0;
     let (font_r, font_g, font_b, font_a) = font_color.as_tuple();
-    let context = Context::abs(win_w, win_h).trans(pos.x, pos.y + size as f64);
+    let context = Context::abs(win_w, win_h).trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
             Highlighted(elem) => match elem {
                 ValueGlyph(idx, _) => {
-                    let context_slot_y = slot_y - (pos.y + size as f64);
+                    let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
-                    draw_slot_rect(gl, &context, x as f64, context_slot_y,
+                    draw_slot_rect(graphics, &context, x as f64, context_slot_y,
                                    size as f64, pad_h, rect_color);
                 },
                 _ => (),
             },
             Clicked(elem) => match elem {
                 ValueGlyph(idx, _) => {
-                    let context_slot_y = slot_y - (pos.y + size as f64);
+                    let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
-                    draw_slot_rect(gl, &context, x as f64, context_slot_y,
+                    draw_slot_rect(graphics, &context, x as f64, context_slot_y,
                                    size as f64, pad_h, rect_color);
                 },
                 _ => (),
@@ -258,31 +260,34 @@ fn draw_value_string(win_w: f64,
                       (y - character.bitmap_glyph.top()) as f64)
                         .image(&character.texture)
                         .rgba(font_r, font_g, font_b, font_a)
-                        .draw(gl);
+                        .draw(graphics);
         x += slot_w as i32;
     }
 }
 
 /// Draw the slot behind the value.
 #[inline]
-fn draw_slot_rect(gl: &mut Gl, context: &Context,
-                  x: f64, y: f64, w: f64, h: f64,
-                  color: Color) {
+fn draw_slot_rect(
+    graphics: &mut Gl,
+    context: &Context,
+    x: f64, y: f64,
+    w: f64, h: f64,
+    color: Color
+) {
     let (r, g, b, a) = color.as_tuple();
-    context.rect(x, y, w, h).rgba(r, g, b, a).draw(gl)
+    context.rect(x, y, w, h).rgba(r, g, b, a).draw(graphics)
 }
 
 
 /// A context on which the builder pattern can be implemented.
 pub struct NumberDialerContext<'a, T> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     value: T,
     min: T,
     max: T,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     precision: u8,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -295,14 +300,14 @@ pub struct NumberDialerContext<'a, T> {
 
 pub trait NumberDialerBuilder
 <'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
-    /// A number_dialer builder method to be implemented by the UIContext.
+    /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
                      precision: u8) -> NumberDialerContext<'a, T>;
 }
 
 impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-NumberDialerBuilder<'a, T> for UIContext {
-    /// A number_dialer builder method to be implemented by the UIContext.
+NumberDialerBuilder<'a, T> for UiContext {
+    /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
                      precision: u8) -> NumberDialerContext<'a, T> {
         NumberDialerContext {
@@ -311,9 +316,8 @@ NumberDialerBuilder<'a, T> for UIContext {
             value: clamp(value, min, max),
             min: min,
             max: max,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 128.0,
-            height: 48.0,
+            pos: [0.0, 0.0],
+            dim: [128.0, 48.0],
             precision: precision,
             maybe_color: None,
             maybe_frame: None,
@@ -339,7 +343,7 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`
     /// function will be called.
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
@@ -349,39 +353,37 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_h = self.height - frame_w2;
+        let pad_h = self.dim[1] - frame_w2;
         let font_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
         let label_string = match self.maybe_label {
             Some(text) => format!("{}: ", text),
             None => String::new(),
         };
-        let (label_w, label_h) = match label_string.len() {
-            0u => (0f64, 0f64),
-            _ => (label::width(self.uic, font_size, label_string[]), font_size as f64),
+        let label_dim = match label_string.len() {
+            0u => [0.0, 0.0],
+            _ => [label::width(self.uic, font_size, label_string[]), font_size as f64],
         };
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0u }
                                                           else { 1u + self.precision as uint };
         let mut val_string = create_val_string(self.value, val_string_len, self.precision);
         let (val_string_w, val_string_h) = (val_string_width(font_size, &val_string), font_size as f64);
-        let label_x = self.pos.x + (self.width - (label_w + val_string_w)) / 2.0;
-        let label_y = self.pos.y + (self.height - font_size as f64) / 2.0;
-        let l_pos = Point::new(label_x, label_y, 0.0);
-        let is_over_elem = is_over(self.pos, frame_w, mouse.pos,
-                                   self.width, self.height,
-                                   l_pos, label_w, label_h,
-                                   val_string_w, val_string_h,
+        let label_x = self.pos[0] + (self.dim[0] - (label_dim[0] + val_string_w)) / 2.0;
+        let label_y = self.pos[1] + (self.dim[1] - font_size as f64) / 2.0;
+        let label_pos = [label_x, label_y];
+        let is_over_elem = is_over(self.pos, frame_w, mouse.pos, self.dim,
+                                   label_pos, label_dim, val_string_w, val_string_h,
                                    val_string.len());
         let new_state = get_new_state(is_over_elem, state, mouse);
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
 
         // Draw the widget rectangle.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rectangle::Normal,
-                        self.pos, self.width, self.height, maybe_frame, color);
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rectangle::Normal,
+                        self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
         let val_string_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
         if self.maybe_label.is_some() {
-            label::draw(gl, self.uic, l_pos, font_size, val_string_color, label_string[]);
+            label::draw(graphics, self.uic, label_pos, font_size, val_string_color, label_string[]);
         };
 
         // Determine new value from the initial state and the new state.
@@ -402,9 +404,9 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
         }
 
         // Draw the value string.
-        let val_string_pos = l_pos + Point::new(label_w, 0.0, 0.0);
-        draw_value_string(self.uic.win_w, self.uic.win_h, gl, self.uic, new_state,
-                          self.pos.y + frame_w, color,
+        let val_string_pos = vec2_add(label_pos, [label_dim[0], 0.0]);
+        draw_value_string(self.uic.win_w, self.uic.win_h, graphics, self.uic, new_state,
+                          self.pos[1] + frame_w, color,
                           value_glyph_slot_width(font_size), pad_h,
                           val_string_pos,
                           font_size,
@@ -423,8 +425,7 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
             }
         }
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 

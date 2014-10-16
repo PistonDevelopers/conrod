@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use mouse_state::{
     MouseState,
     Up,
@@ -10,7 +11,7 @@ use point::Point;
 use rectangle;
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
 use widget::Toggle;
 
@@ -50,11 +51,10 @@ fn get_new_state(is_over: bool,
 
 /// A context on which the builder pattern can be implemented.
 pub struct ToggleContext<'a> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|bool|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -66,20 +66,19 @@ pub struct ToggleContext<'a> {
 }
 
 pub trait ToggleBuilder<'a> {
-    /// A builder method to be implemented by the UIContext.
+    /// A builder method to be implemented by the UiContext.
     fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a>;
 }
 
-impl<'a> ToggleBuilder<'a> for UIContext {
+impl<'a> ToggleBuilder<'a> for UiContext {
 
     /// Create a toggle context to be built upon.
     fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a> {
         ToggleContext {
             uic: self,
             ui_id: ui_id,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 64.0,
-            height: 64.0,
+            pos: [0.0, 0.0],
+            dim: [64.0, 64.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -101,7 +100,7 @@ impl_positionable!(ToggleContext)
 impl_shapeable!(ToggleContext)
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
         let color = match self.value {
             true => color,
@@ -109,7 +108,7 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
         };
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
         let rect_state = new_state.as_rectangle_state();
         match self.maybe_callback {
@@ -129,23 +128,22 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
         match self.maybe_label {
             None => {
                 rectangle::draw(
-                    self.uic.win_w, self.uic.win_h, gl, rect_state, self.pos,
-                    self.width, self.height, maybe_frame, color
+                    self.uic.win_w, self.uic.win_h, graphics, rect_state, self.pos,
+                    self.dim, maybe_frame, color
                 )
             },
             Some(text) => {
                 let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
                 let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
                 rectangle::draw_with_centered_label(
-                    self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state,
-                    self.pos, self.width, self.height, maybe_frame, color,
+                    self.uic.win_w, self.uic.win_h, graphics, self.uic, rect_state,
+                    self.pos, self.dim, maybe_frame, color,
                     text, size, text_color
                 )
             },
         }
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

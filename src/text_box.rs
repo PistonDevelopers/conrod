@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use graphics::{
     AddColor,
     AddLine,
@@ -27,7 +28,11 @@ use std::num::abs;
 use time::precise_time_s;
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
+};
+use vecmath::{
+    vec2_add,
+    vec2_sub,
 };
 use widget::TextBox;
 use std::cmp;
@@ -83,24 +88,22 @@ widget_fns!(TextBox, State, TextBox(State(Normal, Uncaptured)))
 static TEXT_PADDING: f64 = 5f64;
 
 /// Check if cursor is over the pad and if so, which
-fn over_elem(uic: &mut UIContext,
-             pos: Point<f64>,
-             mouse_pos: Point<f64>,
-             rect_w: f64,
-             rect_h: f64,
-             pad_pos: Point<f64>,
-             pad_w: f64,
-             pad_h: f64,
-             text_pos: Point<f64>,
+fn over_elem(uic: &mut UiContext,
+             pos: Point,
+             mouse_pos: Point,
+             rect_dim: Dimensions,
+             pad_pos: Point,
+             pad_dim: Dimensions,
+             text_pos: Point,
              text_w: f64,
              font_size: FontSize,
              text: &str) -> Element {
-    match rectangle::is_over(pos, mouse_pos, rect_w, rect_h) {
+    match rectangle::is_over(pos, mouse_pos, rect_dim) {
         false => Nill,
-        true => match rectangle::is_over(pad_pos, mouse_pos, pad_w, pad_h) {
+        true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => Rect,
             true => {
-                let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos.x, text_w, font_size, text);
+                let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
                 Text(idx, cursor_x)
             },
         },
@@ -108,13 +111,13 @@ fn over_elem(uic: &mut UIContext,
 }
 
 /// Check which character is closest to the mouse cursor.
-fn closest_idx(uic: &mut UIContext,
-               mouse_pos: Point<f64>,
+fn closest_idx(uic: &mut UiContext,
+               mouse_pos: Point,
                text_x: f64,
                text_w: f64,
                font_size: FontSize,
                text: &str) -> (Idx, f64) {
-    if mouse_pos.x <= text_x { return (0u, text_x) }
+    if mouse_pos[0] <= text_x { return (0u, text_x) }
     let mut x = text_x;
     let mut prev_x = x;
     let mut left_x = text_x;
@@ -123,7 +126,7 @@ fn closest_idx(uic: &mut UIContext,
         let char_w = (character.glyph.advance().x >> 16) as f64;
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
-        if mouse_pos.x > left_x && mouse_pos.x < right_x { return (i, prev_x) }
+        if mouse_pos[0] > left_x && mouse_pos[0] < right_x { return (i, prev_x) }
         prev_x = x;
         left_x = right_x;
     }
@@ -162,33 +165,34 @@ fn get_new_state(over_elem: Element,
 }
 
 /// Draw the text cursor.
-fn draw_cursor(win_w: f64,
-               win_h: f64,
-               gl: &mut Gl,
-               color: Color,
-               cursor_x: f64,
-               pad_pos_y: f64,
-               pad_h: f64) {
+fn draw_cursor(
+    win_w: f64,
+    win_h: f64,
+    graphics: &mut Gl,
+    color: Color,
+    cursor_x: f64,
+    pad_pos_y: f64,
+    pad_h: f64
+) {
     let context = Context::abs(win_w, win_h);
     let (r, g, b, a) = color.plain_contrast().as_tuple();
     context
         .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)
         .round_border_width(1f64)
         .rgba(r, g, b, abs(a * (precise_time_s() * 2.5).sin() as f32))
-        .draw(gl);
+        .draw(graphics);
 }
 
 
 
 /// A context on which the builder pattern can be implemented.
 pub struct TextBoxContext<'a> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     text: &'a mut String,
     font_size: u32,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|&mut String|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -202,11 +206,11 @@ impl<'a> TextBoxContext<'a> {
 }
 
 pub trait TextBoxBuilder<'a> {
-    /// An text box builder method to be implemented by the UIContext.
+    /// An text box builder method to be implemented by the UiContext.
     fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a>;
 }
 
-impl<'a> TextBoxBuilder<'a> for UIContext {
+impl<'a> TextBoxBuilder<'a> for UiContext {
     /// Initialise a TextBoxContext.
     fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a> {
         TextBoxContext {
@@ -214,9 +218,8 @@ impl<'a> TextBoxBuilder<'a> for UIContext {
             ui_id: ui_id,
             text: text,
             font_size: 24u32, // Default font_size.
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 192.0,
-            height: 48.0,
+            pos: [0.0, 0.0],
+            dim: [192.0, 48.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -234,7 +237,7 @@ impl_shapeable!(TextBoxContext)
 
 impl<'a> ::draw::Drawable for TextBoxContext<'a> {
     #[inline]
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
         let mouse = self.uic.get_mouse_state();
         let state = *get_state(self.uic, self.ui_id);
 
@@ -246,28 +249,27 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = self.pos + Point::new(frame_w, frame_w, 0.0);
-        let pad_w = self.width - frame_w2;
-        let pad_h = self.height - frame_w2;
-        let text_x = pad_pos.x + TEXT_PADDING;
-        let text_y = pad_pos.y + (pad_h - self.font_size as f64) / 2.0;
-        let text_pos = Point::new(text_x, text_y, 0.0);
+        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let text_x = pad_pos[0] + TEXT_PADDING;
+        let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
+        let text_pos = [text_x, text_y];
         let text_w = label::width(self.uic, self.font_size, self.text.as_slice());
-        let over_elem = over_elem(self.uic, self.pos, mouse.pos, self.width, self.height,
-                                  pad_pos, pad_w, pad_h, text_pos, text_w,
+        let over_elem = over_elem(self.uic, self.pos, mouse.pos, self.dim,
+                                  pad_pos, pad_dim, text_pos, text_w,
                                   self.font_size, self.text.as_slice());
         let new_state = get_new_state(over_elem, state, mouse);
 
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, new_state.as_rectangle_state(),
-                        self.pos, self.width, self.height, maybe_frame, color);
-        label::draw(gl, self.uic, text_pos, self.font_size,
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, new_state.as_rectangle_state(),
+                        self.pos, self.dim, maybe_frame, color);
+        label::draw(graphics, self.uic, text_pos, self.font_size,
                     color.plain_contrast(), self.text.as_slice());
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Uncaptured => new_state,
             Captured(idx, cursor_x) => {
-                draw_cursor(self.uic.win_w, self.uic.win_h, gl, color,
-                            cursor_x, pad_pos.y, pad_h);
+                draw_cursor(self.uic.win_w, self.uic.win_h, graphics, color,
+                            cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
                 let mut new_cursor_x = cursor_x;
 
@@ -279,7 +281,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                         let c = self.uic.get_character(self.font_size, ch);
                         entered_text_width += (c.glyph.advance().x >> 16) as f64;
                     }
-                    if new_cursor_x + entered_text_width < pad_pos.x + pad_w - TEXT_PADDING {
+                    if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
                         new_cursor_x += entered_text_width;
                     }
                     else {
@@ -342,7 +344,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                                     new_cursor_x = text.as_slice()
                                                        .chars()
                                                        // Add text_pos.x for padding
-                                                       .fold(text_pos.x, |acc, c| {
+                                                       .fold(text_pos[0], |acc, c| {
                                         acc + uic.get_character_w(*font_size, c)
                                     });
                                 },
@@ -357,8 +359,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             },
         }};
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

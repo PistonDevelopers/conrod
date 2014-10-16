@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use mouse_state::{
     MouseState,
     Up,
@@ -10,8 +11,9 @@ use point::Point;
 use rectangle;
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
+use vecmath::vec2_add;
 use widget::DropDownList;
 
 /// Tuple / Callback params.
@@ -56,24 +58,23 @@ impl State {
 widget_fns!(DropDownList, State, DropDownList(Closed(Normal)))
 
 /// Is the cursor currently over the 
-fn is_over(pos: Point<f64>,
-           mouse_pos: Point<f64>,
-           width: f64,
-           height: f64,
+fn is_over(pos: Point,
+           mouse_pos: Point,
+           dim: Dimensions,
            state: State,
            len: Len) -> Option<Idx> {
     match state {
         Closed(_) => {
-            match rectangle::is_over(pos, mouse_pos, width, height) {
+            match rectangle::is_over(pos, mouse_pos, dim) {
                 false => None,
                 true => Some(0u),
             }
         },
         Open(_) => {
-            let total_h = height * len as f64;
-            match rectangle::is_over(pos, mouse_pos, width, total_h) {
+            let total_h = dim[1] * len as f64;
+            match rectangle::is_over(pos, mouse_pos, [dim[0], total_h]) {
                 false => None,
-                true => Some((((mouse_pos.y - pos.y) / total_h) * len as f64) as uint),
+                true => Some((((mouse_pos[1] - pos[1]) / total_h) * len as f64) as uint),
             }
         },
     }
@@ -124,13 +125,12 @@ fn get_new_state(is_over_idx: Option<Idx>,
 
 /// A context on which the builder pattern can be implemented.
 pub struct DropDownListContext<'a> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -141,12 +141,12 @@ pub struct DropDownListContext<'a> {
 }
 
 pub trait DropDownListBuilder<'a> {
-    /// A dropdownlist builder method to be implemented by the UIContext.
+    /// A dropdownlist builder method to be implemented by the UiContext.
     fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
                       selected: &'a mut Option<Idx>) -> DropDownListContext<'a>;
 }
 
-impl<'a> DropDownListBuilder<'a> for UIContext {
+impl<'a> DropDownListBuilder<'a> for UiContext {
     fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
                       selected: &'a mut Option<Idx>) -> DropDownListContext<'a> {
         DropDownListContext {
@@ -154,9 +154,8 @@ impl<'a> DropDownListBuilder<'a> for UIContext {
             ui_id: ui_id,
             strings: strings,
             selected: selected,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 128.0,
-            height: 32.0,
+            pos: [0.0, 0.0],
+            dim: [128.0, 32.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -176,12 +175,11 @@ impl_positionable!(DropDownListContext)
 impl_shapeable!(DropDownListContext)
 
 impl<'a> ::draw::Drawable for DropDownListContext<'a> {
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let is_over_idx = is_over(self.pos, mouse.pos, self.width, self.height,
-                                  state, self.strings.len());
+        let is_over_idx = is_over(self.pos, mouse.pos, self.dim, state, self.strings.len());
         let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
 
         let sel = match *self.selected {
@@ -225,8 +223,8 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
                     },
                 };
                 rectangle::draw_with_centered_label(
-                    self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state,
-                    self.pos, self.width, self.height, maybe_frame, color,
+                    self.uic.win_w, self.uic.win_h, graphics, self.uic, rect_state,
+                    self.pos, self.dim, maybe_frame, color,
                     text, t_size, t_color
                 )
             },
@@ -264,11 +262,11 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
                             }
                         },
                     };
-                    let idx_y = self.height * i as f64 - i as f64 * frame_w;
-                    let idx_pos = self.pos + Point::new(0.0, idx_y, 0.0);
+                    let idx_y = self.dim[1] * i as f64 - i as f64 * frame_w;
+                    let idx_pos = vec2_add(self.pos, [0.0, idx_y]);
                     rectangle::draw_with_centered_label(
-                        self.uic.win_w, self.uic.win_h, gl, self.uic, rect_state, idx_pos,
-                        self.width, self.height, maybe_frame, color, string.as_slice(), 
+                        self.uic.win_w, self.uic.win_h, graphics, self.uic, rect_state, idx_pos,
+                        self.dim, maybe_frame, color, string.as_slice(), 
                         t_size, t_color
                     )
                 }
@@ -276,8 +274,7 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
 
         }
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

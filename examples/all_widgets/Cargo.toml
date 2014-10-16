@@ -29,3 +29,7 @@ git = "https://github.com/PistonDevelopers/graphics.git"
 
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 
+[dependencies.vecmath]
+
+git = "https://github.com/PistonDevelopers/vecmath.git"
+

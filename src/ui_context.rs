@@ -1,4 +1,5 @@
 
+use dimensions::Dimensions;
 use glyph_cache::{
     GlyphCache,
     Character,
@@ -24,13 +25,13 @@ use widget;
 use widget::Widget;
 
 /// User Interface Identifier. Each unique `widget::draw` call
-/// should pass it's own unique UIID so that UIContext can keep
+/// should pass it's own unique UIID so that UiContext can keep
 /// track of it's state.
 pub type UIID = u64;
 
-/// UIContext retains the state of all widgets and
+/// UiContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
-pub struct UIContext {
+pub struct UiContext {
     data: Vec<(Widget, widget::Placing)>,
     pub theme: Theme,
     pub mouse: MouseState,
@@ -47,19 +48,19 @@ pub struct UIContext {
     prev_uiid: u64,
 }
 
-impl UIContext {
+impl UiContext {
 
-    /// Constructor for a UIContext.
-    pub fn new(font_path: &str, maybe_theme_path: Option<&str>) -> UIContext {
+    /// Constructor for a UiContext.
+    pub fn new(font_path: &str, maybe_theme_path: Option<&str>) -> UiContext {
         let glyph_cache = GlyphCache::new(font_path);
         let theme = match maybe_theme_path {
             None => Theme::default(),
             Some(path) => Theme::load(path),
         };
-        UIContext {
+        UiContext {
             data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
             theme: theme,
-            mouse: MouseState::new(Point::new(0f64, 0f64, 0f64), Up, Up, Up),
+            mouse: MouseState::new([0f64, 0f64], Up, Up, Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
             text_just_entered: Vec::with_capacity(10u),
@@ -83,7 +84,7 @@ impl UIContext {
             self.prev_event_was_render = true;
         });
         event.mouse_cursor(|x, y| {
-            self.mouse.pos = Point::new(x, y, 0.0);
+            self.mouse.pos = [x, y];
         });
         event.press(|button_type| {
             match button_type {
@@ -116,7 +117,7 @@ impl UIContext {
 
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> MouseState {
-        self.mouse.clone()
+        self.mouse
     }
 
     /// Return the vector of recently pressed keys.
@@ -163,10 +164,10 @@ impl UIContext {
     }
 
     /// Set the Placing for a particular widget.
-    pub fn set_place(&mut self, ui_id: UIID, x: f64, y: f64, w: f64, h: f64) {
+    pub fn set_place(&mut self, ui_id: UIID, pos: Point, dim: Dimensions) {
         match *self.data.get_mut(ui_id as uint) {
             (_, ref mut placing) => {
-                *placing = widget::Place(x, y, w, h)
+                *placing = widget::Place(pos[0], pos[1], dim[0], dim[1])
             }
         }
         self.prev_uiid = ui_id;
@@ -201,3 +202,8 @@ impl UIContext {
     }
 
 }
+
+
+
+
+

@@ -1,5 +1,6 @@
 
 use color::Color;
+use dimensions::Dimensions;
 use label;
 use mouse_state::{
     MouseState,
@@ -11,7 +12,7 @@ use point::Point;
 use rectangle;
 use ui_context::{
     UIID,
-    UIContext,
+    UiContext,
 };
 use utils::{
     clamp,
@@ -19,6 +20,7 @@ use utils::{
     value_from_perc,
 };
 use widget::Slider;
+use vecmath::vec2_add;
 
 /// Represents the state of the Button widget.
 #[deriving(PartialEq, Clone)]
@@ -56,14 +58,13 @@ fn get_new_state(is_over: bool,
 
 /// A context on which the builder pattern can be implemented.
 pub struct SliderContext<'a, T> {
-    uic: &'a mut UIContext,
+    uic: &'a mut UiContext,
     ui_id: UIID,
     value: T,
     min: T,
     max: T,
-    pos: Point<f64>,
-    width: f64,
-    height: f64,
+    pos: Point,
+    dim: Dimensions,
     maybe_callback: Option<|T|:'a>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -74,14 +75,14 @@ pub struct SliderContext<'a, T> {
 }
 
 pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive> {
-    /// A slider builder method to be implemented by the UIContext.
+    /// A slider builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
               value: T, min: T, max: T) -> SliderContext<'a, T>;
 }
 
 impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
-SliderBuilder<'a, T> for UIContext {
-    /// A button builder method to be implemented by the UIContext.
+SliderBuilder<'a, T> for UiContext {
+    /// A button builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
               value: T, min: T, max: T) -> SliderContext<'a, T> {
         SliderContext {
@@ -90,9 +91,8 @@ SliderBuilder<'a, T> for UIContext {
             value: value,
             min: min,
             max: max,
-            pos: Point::new(0.0, 0.0, 0.0),
-            width: 192.0,
-            height: 48.0,
+            pos: [0.0, 0.0],
+            dim: [192.0, 48.0],
             maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
@@ -113,50 +113,50 @@ impl_shapeable!(SliderContext, T)
 
 impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for SliderContext<'a, T> {
-    fn draw(&mut self, gl: &mut Gl) {
+    fn draw(&mut self, graphics: &mut Gl) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
-        let is_over = rectangle::is_over(self.pos, mouse.pos, self.width, self.height);
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 
         let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let frame_color = self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color);
 
-        let is_horizontal = self.width > self.height;
-        let (new_value, pad_pos, pad_w, pad_h) = if is_horizontal {
+        let is_horizontal = self.dim[0] > self.dim[1];
+        let (new_value, pad_pos, pad_dim) = if is_horizontal {
             // Horizontal.
-            let p = self.pos + Point::new(frame_w, frame_w, 0.0);
-            let max_w = self.width - frame_w2;
+            let p = vec2_add(self.pos, [frame_w, frame_w]);
+            let max_w = self.dim[0] - frame_w2;
             let w = match (is_over, state, new_state) {
                 (true, Highlighted, Clicked) | (_, Clicked, Clicked)  =>
-                     clamp(mouse.pos.x - p.x, 0f64, max_w),
+                     clamp(mouse.pos[0] - p[0], 0f64, max_w),
                 _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_w, 0f64, max_w),
             };
-            let h = self.height - frame_w2;
+            let h = self.dim[1] - frame_w2;
             let new_value = value_from_perc((w / max_w) as f32, self.min, self.max);
-            (new_value, p, w, h)
+            (new_value, p, [w, h])
         } else {
             // Vertical.
-            let max_h = self.height - frame_w2;
-            let corner = self.pos + Point::new(frame_w, frame_w, 0.0);
-            let y_max = corner.y + max_h;
+            let max_h = self.dim[1] - frame_w2;
+            let corner = vec2_add(self.pos, [frame_w, frame_w]);
+            let y_max = corner[1] + max_h;
             let (h, p) = match (is_over, state, new_state) {
                 (true, Highlighted, Clicked) | (_, Clicked, Clicked) => {
-                    let p = Point::new(corner.x, clamp(mouse.pos.y, corner.y, y_max), 0.0);
-                    let h = clamp(max_h - (p.y - corner.y), 0.0, max_h);
+                    let p = [corner[0], clamp(mouse.pos[1], corner[1], y_max)];
+                    let h = clamp(max_h - (p[1] - corner[1]), 0.0, max_h);
                     (h, p)
                 },
                 _ => {
                     let h = clamp(percentage(self.value, self.min, self.max) as f64 * max_h, 0.0, max_h);
-                    let p = Point::new(corner.x, corner.y + max_h - h, 0.0);
+                    let p = [corner[0], corner[1] + max_h - h];
                     (h, p)
                 },
             };
-            let w = self.width - frame_w2;
+            let w = self.dim[0] - frame_w2;
             let new_value = value_from_perc((h / max_h) as f32, self.min, self.max);
-            (new_value, p, w, h)
+            (new_value, p, [w, h])
         };
 
         // Callback.
@@ -174,33 +174,32 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
 
         // Rectangle frame / backdrop.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
-                        self.pos, self.width, self.height, None, frame_color);
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rect_state,
+                        self.pos, self.dim, None, frame_color);
         // Slider rectangle.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, gl, rect_state,
-                        pad_pos, pad_w, pad_h, None, color);
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rect_state,
+                        pad_pos, pad_dim, None, color);
 
         // If there's a label, draw it.
         if let Some(text) = self.maybe_label {
             let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
             let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
-            let is_horizontal = self.width > self.height;
+            let is_horizontal = self.dim[0] > self.dim[1];
             let l_pos = if is_horizontal {
-                let x = pad_pos.x + (pad_h - size as f64) / 2.0;
-                let y = pad_pos.y + (pad_h - size as f64) / 2.0;
-                Point::new(x, y, 0f64)
+                let x = pad_pos[0] + (pad_dim[1] - size as f64) / 2.0;
+                let y = pad_pos[1] + (pad_dim[1] - size as f64) / 2.0;
+                [x, y]
             } else {
                 let label_w = label::width(self.uic, size, text.as_slice());
-                let x = pad_pos.x + (pad_w - label_w) / 2.0;
-                let y = pad_pos.y + pad_h - pad_w - frame_w;
-                Point::new(x, y, 0f64)
+                let x = pad_pos[0] + (pad_dim[0] - label_w) / 2.0;
+                let y = pad_pos[1] + pad_dim[1] - pad_dim[0] - frame_w;
+                [x, y]
             };
             // Draw the label.
-            label::draw(gl, self.uic, l_pos, size, text_color, text.as_slice());
+            label::draw(graphics, self.uic, l_pos, size, text_color, text.as_slice());
         }
 
-        set_state(self.uic, self.ui_id, new_state,
-                  self.pos.x, self.pos.y, self.width, self.height);
+        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }
