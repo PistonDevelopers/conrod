@@ -1,7 +1,6 @@
 
-#![feature(phase)]
+#![feature(if_let)]
 
-#[phase(plugin, link)]
 extern crate conrod;
 extern crate graphics;
 extern crate piston;
@@ -10,6 +9,7 @@ extern crate opengl_graphics;
 extern crate vecmath;
 
 use conrod::{
+    Background,
     Button,
     Callable,
     Color,
@@ -39,12 +39,10 @@ use graphics::{
 };
 use opengl_graphics::Gl;
 use piston::{
-    Event,
     WindowSettings,
     EventIterator,
     EventSettings,
     Render,
-    RenderArgs,
 };
 use sdl2_game_window::WindowSDL2;
 use vecmath::vec2_add;
@@ -153,41 +151,22 @@ fn main() {
     let mut demo = DemoApp::new();
 
     // Main program loop begins.
-    for e in event_iter {
-        handle_event(&e, &mut gl, &mut uic, &mut demo);
+    for event in event_iter {
+        uic.handle_event(&event);
+        if let Render(_) = event {
+            draw_ui(&mut gl, &mut uic, &mut demo)
+        }
     }
 
-}
-
-/// Match the game event.
-fn handle_event(event: &Event,
-                gl: &mut Gl,
-                uic: &mut UiContext,
-                demo: &mut DemoApp) {
-    uic.handle_event(event);
-    match *event {
-        Render(ref args) => {
-            draw_background(args, gl, &demo.bg_color);
-            draw_ui(gl, uic, demo);
-        },
-        _ => (),
-    }
-}
-
-/// Draw the window background.
-fn draw_background(args: &RenderArgs, gl: &mut Gl, bg_color: &Color) {
-    // Set up a context to draw into.
-    let context = &Context::abs(args.width as f64, args.height as f64);
-    // Return the individual  elements of the background color.
-    let (r, g, b, a) = bg_color.as_tuple();
-    // Draw the background.
-    context.rgba(r, g, b, a).draw(gl);
 }
 
 /// Draw the User Interface.
 fn draw_ui(gl: &mut Gl,
            uic: &mut UiContext,
            demo: &mut DemoApp) {
+
+    // Draw the background.
+    uic.background().color(demo.bg_color).draw(gl);
 
     // Label example.
     uic.label("Widget Demonstration")

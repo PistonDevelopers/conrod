@@ -2,9 +2,9 @@
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
-    Context,
     AddRectangle,
     AddColor,
+    Context,
     Draw,
 };
 use label;

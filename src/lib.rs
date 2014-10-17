@@ -9,6 +9,7 @@ extern crate serialize;
 extern crate time;
 extern crate vecmath;
 
+pub use background::BackgroundBuilder as Background;
 pub use button::ButtonBuilder as Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
@@ -36,6 +37,7 @@ pub use widget::Widget;
 
 pub mod macros;
 
+pub mod background;
 pub mod button;
 pub mod callback;
 pub mod color;
