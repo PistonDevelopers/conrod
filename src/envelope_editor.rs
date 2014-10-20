@@ -1,4 +1,4 @@
-
+use std::fmt::Show;
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
@@ -285,8 +285,8 @@ impl_labelable!(EnvelopeEditorContext, X, Y, E)
 impl_positionable!(EnvelopeEditorContext, X, Y, E)
 impl_shapeable!(EnvelopeEditorContext, X, Y, E)
 
-impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
+         Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
          E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
     #[inline]
     fn draw(&mut self, graphics: &mut Gl) {
