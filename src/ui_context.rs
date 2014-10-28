@@ -10,8 +10,8 @@ use mouse_state::{
     Down,
     MouseState,
 };
-use piston::input;
-use piston::event::{
+use input;
+use event::{
     GenericEvent,
     MouseCursorEvent,
     PressEvent,
@@ -51,7 +51,7 @@ pub struct UiContext {
 impl UiContext {
 
     /// Constructor for a UiContext.
-    pub fn new(font_path: &str, maybe_theme_path: Option<&str>) -> UiContext {
+    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> UiContext {
         let glyph_cache = GlyphCache::new(font_path);
         let theme = match maybe_theme_path {
             None => Theme::default(),

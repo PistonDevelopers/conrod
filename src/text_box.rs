@@ -16,7 +16,7 @@ use mouse_state::{
     Down,
 };
 use opengl_graphics::Gl;
-use piston::input::keyboard::{
+use input::keyboard::{
     Backspace,
     Left,
     Right,

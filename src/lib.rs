@@ -1,10 +1,11 @@
 
 #![feature(macro_rules, phase, slicing_syntax, if_let)]
 
+extern crate input;
+extern crate event;
 extern crate freetype;
 extern crate graphics;
 extern crate opengl_graphics;
-extern crate piston;
 extern crate serialize;
 extern crate time;
 extern crate vecmath;
