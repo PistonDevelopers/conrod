@@ -1,10 +1,11 @@
 
 #![feature(if_let)]
 
+extern crate shader_version;
+extern crate event;
 extern crate conrod;
 extern crate graphics;
-extern crate piston;
-extern crate sdl2_game_window;
+extern crate sdl2_window;
 extern crate opengl_graphics;
 extern crate vecmath;
 
@@ -38,13 +39,13 @@ use graphics::{
     Draw,
 };
 use opengl_graphics::Gl;
-use piston::{
+use event::{
     WindowSettings,
     EventIterator,
     EventSettings,
     Render,
 };
-use sdl2_game_window::WindowSDL2;
+use sdl2_window::Sdl2Window;
 use vecmath::vec2_add;
 
 /// This struct holds all of the variables used to demonstrate
@@ -124,8 +125,8 @@ impl DemoApp {
 fn main() {
 
     // Create a SDL2 window.
-    let mut window = WindowSDL2::new(
-        piston::shader_version::opengl::OpenGL_3_2,
+    let mut window = Sdl2Window::new(
+        shader_version::opengl::OpenGL_3_2,
         WindowSettings {
             title: "Hello Conrod".to_string(),
             size: [1180, 580],
@@ -144,9 +145,9 @@ fn main() {
     // Create GameIterator to begin the event iteration loop.
     let mut event_iter = EventIterator::new(&mut window, &event_settings);
     // Create OpenGL instance.
-    let mut gl = Gl::new(piston::shader_version::opengl::OpenGL_3_2);
+    let mut gl = Gl::new(shader_version::opengl::OpenGL_3_2);
     // Create the UiContext and specify the name of a font that's in our "assets" directory.
-    let mut uic = UiContext::new("Dense-Regular.otf", None);
+    let mut uic = UiContext::new(&Path::new("./assets/Dense-Regular.otf"), None);
     // Create the Demonstration Application data.
     let mut demo = DemoApp::new();
 

@@ -2,7 +2,6 @@
 use freetype;
 use label::FontSize;
 use opengl_graphics::Texture;
-use piston::AssetStore;
 use std::collections::HashMap;
 use std::collections::hashmap::{Occupied, Vacant};
 
@@ -22,10 +21,8 @@ pub struct GlyphCache {
 impl GlyphCache {
 
     /// Constructor for a GlyphCache.
-    pub fn new(font_file: &str) -> GlyphCache {
+    pub fn new(font: &Path) -> GlyphCache {
         let freetype = freetype::Library::init().unwrap();
-        let asset_store = AssetStore::from_folder("../assets");
-        let font = asset_store.path(font_file).unwrap();
         let font_str = match font.as_str() {
             Some(font_str) => font_str,
             None => fail!("GlyphCache::new() : Failed to return `font.as_str()`."),

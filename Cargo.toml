@@ -12,9 +12,13 @@ authors = [
 name = "conrod"
 path = "./src/lib.rs"
 
-[dependencies.piston]
+[dependencies.input]
 
-git = "https://github.com/PistonDevelopers/piston"
+git = "https://github.com/PistonDevelopers/input/"
+
+[dependencies.event]
+
+git = "https://github.com/PistonDevelopers/event"
 
 [dependencies.graphics]
 
