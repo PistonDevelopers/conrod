@@ -1,0 +1,30 @@
+digraph example3 {
+    N0[label="conrod"];
+    N1[label="vecmath"];
+    N2[label="event"];
+    N3[label="opengl_graphics"];
+    N4[label="freetype-rs"];
+    N5[label="input"];
+    N6[label="graphics"];
+    N7[label="gl_generator"];
+    N8[label="rust-xml"];
+    N9[label="khronos_api"];
+    N10[label="image"];
+    N11[label="gl"];
+    N12[label="shader_version"];
+    N0 -> N2[label=""];
+    N0 -> N3[label=""];
+    N0 -> N4[label=""];
+    N0 -> N5[label=""];
+    N0 -> N1[label=""];
+    N0 -> N6[label=""];
+    N7 -> N8[label=""];
+    N7 -> N9[label=""];
+    N2 -> N5[label=""];
+    N6 -> N1[label=""];
+    N11 -> N7[label=""];
+    N3 -> N6[label=""];
+    N3 -> N12[label=""];
+    N3 -> N11[label=""];
+    N3 -> N10[label=""];
+}
