@@ -50,3 +50,7 @@ And then build and run the examples like this:
     cargo build
     ./target/all_widgets
 
+## Dependencies
+
+![dependencies](./Cargo.png)
+
