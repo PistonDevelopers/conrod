@@ -46,17 +46,17 @@ impl Theme {
     pub fn load(path: &str) -> Theme {
         let contents = match File::open(&Path::new(path)).read_to_end() {
             Ok(buf) => buf,
-            Err(e) => fail!("Failed to load Theme correctly: {}", e),
+            Err(e) => panic!("Failed to load Theme correctly: {}", e),
         };
         let contents_str = match str::from_utf8(contents.as_slice()) {
             Some(string) => string,
-            None => fail!("Failed to load Theme!"),
+            None => panic!("Failed to load Theme!"),
         };
         let json_object = json::from_str(contents_str);
         let mut decoder = json::Decoder::new(json_object.unwrap());
         let theme: Theme = match Decodable::decode(&mut decoder) {
             Ok(lib) => lib,
-            Err(e) => fail!("Failed to load Theme correctly: {}", e),
+            Err(e) => panic!("Failed to load Theme correctly: {}", e),
         };
         theme
     }
@@ -67,7 +67,7 @@ impl Theme {
         let mut file = File::create(&Path::new(path));
         match file.write(json_string.as_slice()) {
             Ok(()) => (),
-            Err(e) => fail!("Theme failed to save correctly: {}", e),
+            Err(e) => panic!("Theme failed to save correctly: {}", e),
         }
     }
 

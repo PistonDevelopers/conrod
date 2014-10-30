@@ -25,11 +25,11 @@ impl GlyphCache {
         let freetype = freetype::Library::init().unwrap();
         let font_str = match font.as_str() {
             Some(font_str) => font_str,
-            None => fail!("GlyphCache::new() : Failed to return `font.as_str()`."),
+            None => panic!("GlyphCache::new() : Failed to return `font.as_str()`."),
         };
         let face = match freetype.new_face(font_str, 0) {
             Ok(face) => face,
-            Err(err) => fail!("GlyphCache::new() : {}", err),
+            Err(err) => panic!("GlyphCache::new() : {}", err),
         };
         GlyphCache {
             face: face,
