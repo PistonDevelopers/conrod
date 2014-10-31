@@ -134,17 +134,17 @@ impl UiContext {
     pub fn get_widget(&mut self, ui_id: UIID, default: Widget) -> &mut Widget {
         let ui_id_idx = ui_id as uint;
         if self.data.len() > ui_id_idx {
-            match *self.data.get_mut(ui_id_idx) {
-                (widget::NoWidget, _) => {
-                    match *self.data.get_mut(ui_id_idx) {
-                        (ref mut widget, _) => {
+            match &mut self.data[ui_id_idx] {
+                &(widget::NoWidget, _) => {
+                    match &mut self.data[ui_id_idx] {
+                        &(ref mut widget, _) => {
                             *widget = default; widget
                         }
                     }
                 },
                 _ => {
-                    match *self.data.get_mut(ui_id_idx) {
-                        (ref mut widget, _) => widget
+                    match &mut self.data[ui_id_idx] {
+                        &(ref mut widget, _) => widget
                     }
                 },
             }
@@ -155,18 +155,18 @@ impl UiContext {
                 vec.push((default, widget::NoPlace));
                 self.data.extend(vec.into_iter());
             } else {
-                *self.data.get_mut(ui_id_idx) = (default, widget::NoPlace);
+                self.data[ui_id_idx] = (default, widget::NoPlace);
             }
-            match *self.data.get_mut(ui_id_idx) {
-                (ref mut widget, _) => widget,
+            match &mut self.data[ui_id_idx] {
+                &(ref mut widget, _) => widget,
             }
         }
     }
 
     /// Set the Placing for a particular widget.
     pub fn set_place(&mut self, ui_id: UIID, pos: Point, dim: Dimensions) {
-        match *self.data.get_mut(ui_id as uint) {
-            (_, ref mut placing) => {
+        match &mut self.data[ui_id as uint] {
+            &(_, ref mut placing) => {
                 *placing = widget::Place(pos[0], pos[1], dim[0], dim[1])
             }
         }
