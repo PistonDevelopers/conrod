@@ -466,8 +466,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                             Left => {
                                 // Adjust the point and trigger the callback.
                                 let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
-                                self.env.get_mut(idx).set_x(new_x);
-                                self.env.get_mut(idx).set_y(new_y);
+                                self.env[idx].set_x(new_x);
+                                self.env[idx].set_y(new_y);
                                 match self.maybe_callback {
                                     Some(ref mut callback) => (*callback)(self.env, idx),
                                     None => (),
@@ -492,8 +492,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                                 let current_y = (*self.env)[idx].get_y();
                                 if new_x != current_x || new_y != current_y {
                                     // Adjust the point and trigger the callback.
-                                    self.env.get_mut(idx).set_x(new_x);
-                                    self.env.get_mut(idx).set_y(new_y);
+                                    self.env[idx].set_x(new_x);
+                                    self.env[idx].set_y(new_y);
                                     match self.maybe_callback {
                                         Some(ref mut callback) => (*callback)(self.env, idx),
                                         None => (),

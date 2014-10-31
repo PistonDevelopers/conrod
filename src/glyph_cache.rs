@@ -61,7 +61,7 @@ impl GlyphCache {
         let texture = Texture::from_memory_alpha(bitmap.buffer(),
                                                  bitmap.width() as u32,
                                                  bitmap.rows() as u32).unwrap();
-        self.data.get_mut(&size).insert(ch, Character {
+        self.data[size].insert(ch, Character {
             glyph: glyph,
             bitmap_glyph: bitmap_glyph,
             texture: texture,

@@ -321,7 +321,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(|new_val| *demo.bool_matrix.get_mut(col).get_mut(row) = new_val)
+                .callback(|new_val| demo.bool_matrix[col][row] = new_val)
                 .draw(gl);
 
         });
@@ -381,7 +381,7 @@ fn draw_ui(gl: &mut Gl,
         .dimensions(320.0, 425.0)
         .each_widget(|uic, num, _col, _row, pos, dim| { // This is called for every widget.
 
-            let (ref mut env, ref mut text) = *demo.envelopes.get_mut(num);
+            let &(ref mut env, ref mut text) = &mut demo.envelopes[num];
             let text_box_height = dim[1] / 4.0;
             let env_editor_height = dim[1] - text_box_height;
             let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
