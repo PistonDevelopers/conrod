@@ -3,6 +3,7 @@ use dimensions::Dimensions;
 use glyph_cache::{
     GlyphCache,
     Character,
+    TextureConstructor,
 };
 use label::FontSize;
 use mouse_state::{
@@ -31,14 +32,14 @@ pub type UIID = u64;
 
 /// UiContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
-pub struct UiContext {
+pub struct UiContext<T> {
     data: Vec<(Widget, widget::Placing)>,
     pub theme: Theme,
     pub mouse: MouseState,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
     pub text_just_entered: Vec<String>,
-    glyph_cache: GlyphCache,
+    glyph_cache: GlyphCache<T>,
     prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,
@@ -48,10 +49,10 @@ pub struct UiContext {
     prev_uiid: u64,
 }
 
-impl UiContext {
+impl<T> UiContext<T> {
 
     /// Constructor for a UiContext.
-    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> UiContext {
+    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> UiContext<T> {
         let glyph_cache = GlyphCache::new(font_path);
         let theme = match maybe_theme_path {
             None => Theme::default(),
@@ -70,6 +71,17 @@ impl UiContext {
             win_h: 0f64,
             prev_uiid: 0u64,
         }
+    }
+
+    /// Calls closure with a texture constructor enabled.
+    /// This is required to render characters.
+    pub fn with_texture_constructor<'a>(&mut self, texture_constructor: TextureConstructor<'a, T>, f: |&mut UiContext<T>|) {
+        use std::mem::transmute;
+
+        self.glyph_cache.texture_constructor = 
+            Some(unsafe { transmute(texture_constructor) });
+        f(self);
+        self.glyph_cache.texture_constructor = None;
     }
 
     /// Handle game events and update the state.
@@ -185,12 +197,20 @@ impl UiContext {
     }
 
     /// Return a reference to a `Character` from the GlyphCache.
-    pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
+    pub fn get_character(
+        &mut self, 
+        size: FontSize, 
+        ch: char
+    ) -> &Character<T> {
         self.glyph_cache.get_character(size, ch)
     }
 
     /// Return the width of a 'Character'.
-    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
+    pub fn get_character_w(
+        &mut self, 
+        size: FontSize, 
+        ch: char
+    ) -> f64 {
         (self.get_character(size, ch).glyph.advance().x >> 16) as f64
     }
 

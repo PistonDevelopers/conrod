@@ -1,9 +1,9 @@
 
-use opengl_graphics::Gl;
+use graphics::{ BackEnd, ImageSize };
 
 /// A trait to be implemented for all
 /// drawable widget contexts.
-pub trait Drawable {
-    fn draw(&mut self, graphics: &mut Gl);
+pub trait Drawable<I: ImageSize> {
+    fn draw<B: BackEnd<I>>(&mut self, graphics: &mut B);
 }
 

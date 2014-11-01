@@ -1,7 +1,7 @@
 
+use graphics::{ BackEnd, ImageSize };
 use color::Color;
 use dimensions::Dimensions;
-use opengl_graphics::Gl;
 use mouse_state::{
     MouseState,
     Up,
@@ -50,8 +50,8 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct ButtonContext<'a> {
-    uic: &'a mut UiContext,
+pub struct ButtonContext<'a, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
@@ -64,15 +64,15 @@ pub struct ButtonContext<'a> {
     maybe_callback: Option<||:'a>,
 }
 
-pub trait ButtonBuilder<'a> {
+pub trait ButtonBuilder<'a, T> {
     /// A button builder method to be implemented by the UiContext.
-    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a>;
+    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a, T>;
 }
 
-impl<'a> ButtonBuilder<'a> for UiContext {
+impl<'a, T> ButtonBuilder<'a, T> for UiContext<T> {
 
     /// Create a button context to be built upon.
-    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a> {
+    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a, T> {
         ButtonContext {
             uic: self,
             ui_id: ui_id,
@@ -90,15 +90,15 @@ impl<'a> ButtonBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ButtonContext, ||:'a)
-impl_colorable!(ButtonContext)
-impl_frameable!(ButtonContext)
-impl_labelable!(ButtonContext)
-impl_positionable!(ButtonContext)
-impl_shapeable!(ButtonContext)
+impl_callable!(ButtonContext, ||:'a, T)
+impl_colorable!(ButtonContext, T)
+impl_frameable!(ButtonContext, T)
+impl_labelable!(ButtonContext, T)
+impl_positionable!(ButtonContext, T)
+impl_shapeable!(ButtonContext, T)
 
-impl<'a> ::draw::Drawable for ButtonContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a, T: ImageSize> ::draw::Drawable<T> for ButtonContext<'a, T> {
+    fn draw<B: BackEnd<T>>(&mut self, graphics: &mut B) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();

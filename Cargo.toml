@@ -24,10 +24,6 @@ git = "https://github.com/PistonDevelopers/event"
 
 git = "https://github.com/PistonDevelopers/graphics.git"
 
-[dependencies.opengl_graphics]
-
-git = "https://github.com/PistonDevelopers/opengl_graphics.git"
-
 [dependencies.freetype-rs]
 
 git = "https://github.com/PistonDevelopers/freetype-rs.git"

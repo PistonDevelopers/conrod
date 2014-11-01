@@ -4,12 +4,13 @@ use dimensions::Dimensions;
 use graphics::{
     AddRectangle,
     AddColor,
+    BackEnd,
     Context,
     Draw,
+    ImageSize,
 };
 use label;
 use label::FontSize;
-use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
 use utils::map_range;
@@ -25,10 +26,10 @@ pub enum State {
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
 /// other widgets.
-pub fn draw(
+pub fn draw<B: BackEnd<I>, I: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -44,9 +45,9 @@ pub fn draw(
 }
 
 /// Draw the button border.
-fn draw_frame(
+fn draw_frame<B: BackEnd<I>, I: ImageSize>(
     context: &Context,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     dim: Dimensions,
     color: Color
@@ -60,9 +61,9 @@ fn draw_frame(
 
 /// Draw the rectangle while considering frame
 /// width for position and dimensions.
-fn draw_normal(
+fn draw_normal<B: BackEnd<I>, I: ImageSize>(
     context: &Context,
-    graphics: &mut Gl,
+    graphics: &mut B,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -96,11 +97,11 @@ pub fn is_over(pos: Point,
 }
 
 /// Draw a label centered within a rect of given position and dimensions.
-pub fn draw_with_centered_label(
+pub fn draw_with_centered_label<B: BackEnd<T>, T: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
-    uic: &mut UiContext,
+    graphics: &mut B,
+    uic: &mut UiContext<T>,
     state: State,
     pos: Point,
     dim: Dimensions,

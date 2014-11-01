@@ -38,7 +38,7 @@ use graphics::{
     Context,
     Draw,
 };
-use opengl_graphics::Gl;
+use opengl_graphics::{ Gl, Texture };
 use event::{
     WindowSettings,
     EventIterator,
@@ -163,7 +163,7 @@ fn main() {
 
 /// Draw the User Interface.
 fn draw_ui(gl: &mut Gl,
-           uic: &mut UiContext,
+           uic: &mut UiContext<Texture>,
            demo: &mut DemoApp) {
 
     // Draw the background.
