@@ -11,12 +11,12 @@ pub struct Character<T> {
     pub texture: T,
 }
 
-pub type TextureConstructor<T> = |buffer: &[u8], width: u32, height: u32|: 'static -> T;
+pub type TextureConstructor<'a, T> = |buffer: &[u8], width: u32, height: u32|: 'a -> T;
 
 /// A struct used for caching rendered font.
 pub struct GlyphCache<T> {
     pub face: freetype::Face,
-    pub texture_constructor: Option<TextureConstructor<T>>,
+    pub texture_constructor: Option<TextureConstructor<'static, T>>,
     data: HashMap<FontSize, HashMap<char, Character<T>>>,
 }
 

@@ -75,8 +75,11 @@ impl<T> UiContext<T> {
 
     /// Calls closure with a texture constructor enabled.
     /// This is required to render characters.
-    pub fn with_texture_constructor(&mut self, texture_constructor: TextureConstructor<T>, f: |&mut UiContext<T>|) {
-        self.glyph_cache.texture_constructor = Some(texture_constructor);
+    pub fn with_texture_constructor<'a>(&mut self, texture_constructor: TextureConstructor<'a, T>, f: |&mut UiContext<T>|) {
+        use std::mem::transmute;
+
+        self.glyph_cache.texture_constructor = 
+            Some(unsafe { transmute(texture_constructor) });
         f(self);
         self.glyph_cache.texture_constructor = None;
     }
