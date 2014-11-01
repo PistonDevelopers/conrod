@@ -1,4 +1,5 @@
 
+use graphics::{ BackEnd, ImageSize };
 use color::Color;
 use dimensions::Dimensions;
 use mouse_state::{
@@ -6,7 +7,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -124,8 +124,8 @@ fn get_new_state(is_over_idx: Option<Idx>,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct DropDownListContext<'a> {
-    uic: &'a mut UiContext,
+pub struct DropDownListContext<'a, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
@@ -140,15 +140,15 @@ pub struct DropDownListContext<'a> {
     maybe_label_font_size: Option<u32>,
 }
 
-pub trait DropDownListBuilder<'a> {
+pub trait DropDownListBuilder<'a, T> {
     /// A dropdownlist builder method to be implemented by the UiContext.
     fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
-                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a>;
+                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a, T>;
 }
 
-impl<'a> DropDownListBuilder<'a> for UiContext {
+impl<'a, T> DropDownListBuilder<'a, T> for UiContext<T> {
     fn drop_down_list(&'a mut self, ui_id: UIID, strings: &'a mut Vec<String>,
-                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a> {
+                      selected: &'a mut Option<Idx>) -> DropDownListContext<'a, T> {
         DropDownListContext {
             uic: self,
             ui_id: ui_id,
@@ -167,15 +167,15 @@ impl<'a> DropDownListBuilder<'a> for UiContext {
     }
 }
 
-impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a)
-impl_colorable!(DropDownListContext)
-impl_frameable!(DropDownListContext)
-impl_labelable!(DropDownListContext)
-impl_positionable!(DropDownListContext)
-impl_shapeable!(DropDownListContext)
+impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a, T)
+impl_colorable!(DropDownListContext, T)
+impl_frameable!(DropDownListContext, T)
+impl_labelable!(DropDownListContext, T)
+impl_positionable!(DropDownListContext, T)
+impl_shapeable!(DropDownListContext, T)
 
-impl<'a> ::draw::Drawable for DropDownListContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a, T: ImageSize> ::draw::Drawable<T> for DropDownListContext<'a, T> {
+    fn draw<B: BackEnd<T>>(&mut self, graphics: &mut B) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();

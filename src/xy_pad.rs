@@ -2,6 +2,8 @@
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
+    BackEnd,
+    ImageSize,
     AddColor,
     AddLine,
     AddSquareBorder,
@@ -15,7 +17,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
@@ -74,10 +75,10 @@ fn get_new_state(is_over: bool,
 }
 
 /// Draw the crosshair.
-fn draw_crosshair(
+fn draw_crosshair<B: BackEnd<I>, I: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     line_width: f64,
     vert_x: f64, hori_y: f64,
@@ -100,8 +101,8 @@ fn draw_crosshair(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct XYPadContext<'a, X, Y> {
-    uic: &'a mut UiContext,
+pub struct XYPadContext<'a, X, Y, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
@@ -118,32 +119,32 @@ pub struct XYPadContext<'a, X, Y> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl <'a, X, Y> XYPadContext<'a, X, Y> {
+impl <'a, X, Y, T> XYPadContext<'a, X, Y, T> {
     #[inline]
-    pub fn line_width(self, width: f64) -> XYPadContext<'a, X, Y> {
+    pub fn line_width(self, width: f64) -> XYPadContext<'a, X, Y, T> {
         XYPadContext { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> XYPadContext<'a, X, Y> {
+    pub fn value_font_size(self, size: FontSize) -> XYPadContext<'a, X, Y, T> {
         XYPadContext { font_size: size, ..self }
     }
 }
 
 pub trait XYPadBuilder<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-                           Y: Num + Copy + ToPrimitive + FromPrimitive + ToString> {
+                           Y: Num + Copy + ToPrimitive + FromPrimitive + ToString, T> {
     /// A xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
               x_val: X, x_min: X, x_max: X,
-              y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y>;
+              y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y, T>;
 }
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
-XYPadBuilder<'a, X, Y> for UiContext {
+         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString, T>
+XYPadBuilder<'a, X, Y, T> for UiContext<T> {
     /// An xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
               x_val: X, min_x: X, max_x: X,
-              y_val: Y, min_y: Y, max_y: Y) -> XYPadContext<'a, X, Y> {
+              y_val: Y, min_y: Y, max_y: Y) -> XYPadContext<'a, X, Y, T> {
         XYPadContext {
             uic: self,
             ui_id: ui_id,
@@ -164,17 +165,21 @@ XYPadBuilder<'a, X, Y> for UiContext {
     }
 }
 
-impl_callable!(XYPadContext, |X, Y|:'a, X, Y)
-impl_colorable!(XYPadContext, X, Y)
-impl_frameable!(XYPadContext, X, Y)
-impl_labelable!(XYPadContext, X, Y)
-impl_positionable!(XYPadContext, X, Y)
-impl_shapeable!(XYPadContext, X, Y)
+impl_callable!(XYPadContext, |X, Y|:'a, X, Y, T)
+impl_colorable!(XYPadContext, X, Y, T)
+impl_frameable!(XYPadContext, X, Y, T)
+impl_labelable!(XYPadContext, X, Y, T)
+impl_positionable!(XYPadContext, X, Y, T)
+impl_shapeable!(XYPadContext, X, Y, T)
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
-::draw::Drawable for XYPadContext<'a, X, Y> {
-    fn draw(&mut self, graphics: &mut Gl) {
+         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString,
+         T: ImageSize>
+::draw::Drawable<T> for XYPadContext<'a, X, Y, T> {
+    fn draw<B: BackEnd<T>>(
+        &mut self, 
+        graphics: &mut B
+    ) {
 
         // Init.
         let state = *get_state(self.uic, self.ui_id);

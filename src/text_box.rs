@@ -5,8 +5,10 @@ use graphics::{
     AddColor,
     AddLine,
     AddRoundBorder,
+    BackEnd,
     Context,
     Draw,
+    ImageSize,
 };
 use label;
 use label::FontSize;
@@ -15,7 +17,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use input::keyboard::{
     Backspace,
     Left,
@@ -88,7 +89,7 @@ widget_fns!(TextBox, State, TextBox(State(Normal, Uncaptured)))
 static TEXT_PADDING: f64 = 5f64;
 
 /// Check if cursor is over the pad and if so, which
-fn over_elem(uic: &mut UiContext,
+fn over_elem<T>(uic: &mut UiContext<T>,
              pos: Point,
              mouse_pos: Point,
              rect_dim: Dimensions,
@@ -111,7 +112,7 @@ fn over_elem(uic: &mut UiContext,
 }
 
 /// Check which character is closest to the mouse cursor.
-fn closest_idx(uic: &mut UiContext,
+fn closest_idx<T>(uic: &mut UiContext<T>,
                mouse_pos: Point,
                text_x: f64,
                text_w: f64,
@@ -165,10 +166,10 @@ fn get_new_state(over_elem: Element,
 }
 
 /// Draw the text cursor.
-fn draw_cursor(
+fn draw_cursor<B: BackEnd<I>, I: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     color: Color,
     cursor_x: f64,
     pad_pos_y: f64,
@@ -186,8 +187,8 @@ fn draw_cursor(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct TextBoxContext<'a> {
-    uic: &'a mut UiContext,
+pub struct TextBoxContext<'a, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     text: &'a mut String,
     font_size: u32,
@@ -199,20 +200,20 @@ pub struct TextBoxContext<'a> {
     maybe_frame_color: Option<Color>,
 }
 
-impl<'a> TextBoxContext<'a> {
-    pub fn font_size(self, font_size: FontSize) -> TextBoxContext<'a> {
+impl<'a, T> TextBoxContext<'a, T> {
+    pub fn font_size(self, font_size: FontSize) -> TextBoxContext<'a, T> {
         TextBoxContext { font_size: font_size, ..self }
     }
 }
 
-pub trait TextBoxBuilder<'a> {
+pub trait TextBoxBuilder<'a, T> {
     /// An text box builder method to be implemented by the UiContext.
-    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a>;
+    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a, T>;
 }
 
-impl<'a> TextBoxBuilder<'a> for UiContext {
+impl<'a, T> TextBoxBuilder<'a, T> for UiContext<T> {
     /// Initialise a TextBoxContext.
-    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a> {
+    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a, T> {
         TextBoxContext {
             uic: self,
             ui_id: ui_id,
@@ -229,15 +230,15 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, |&mut String|:'a)
-impl_colorable!(TextBoxContext)
-impl_frameable!(TextBoxContext)
-impl_positionable!(TextBoxContext)
-impl_shapeable!(TextBoxContext)
+impl_callable!(TextBoxContext, |&mut String|:'a, T)
+impl_colorable!(TextBoxContext, T)
+impl_frameable!(TextBoxContext, T)
+impl_positionable!(TextBoxContext, T)
+impl_shapeable!(TextBoxContext, T)
 
-impl<'a> ::draw::Drawable for TextBoxContext<'a> {
+impl<'a, T: ImageSize> ::draw::Drawable<T> for TextBoxContext<'a, T> {
     #[inline]
-    fn draw(&mut self, graphics: &mut Gl) {
+    fn draw<B: BackEnd<T>>(&mut self, graphics: &mut B) {
         let mouse = self.uic.get_mouse_state();
         let state = *get_state(self.uic, self.ui_id);
 

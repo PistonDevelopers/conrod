@@ -6,7 +6,9 @@ use graphics::{
     AddColor,
     AddRectangle,
     AddImage,
+    BackEnd,
     Draw,
+    ImageSize,
     RelativeTransform2d,
 };
 use label;
@@ -16,7 +18,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use utils::{
@@ -210,11 +211,11 @@ fn get_font_size(pad_height: f64) -> FontSize {
 
 /// Draw the value string glyphs.
 #[inline]
-fn draw_value_string(
+fn draw_value_string<B: BackEnd<T>, T: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
-    uic: &mut UiContext,
+    graphics: &mut B,
+    uic: &mut UiContext<T>,
     state: State,
     slot_y: f64,
     rect_color: Color,
@@ -267,8 +268,8 @@ fn draw_value_string(
 
 /// Draw the slot behind the value.
 #[inline]
-fn draw_slot_rect(
-    graphics: &mut Gl,
+fn draw_slot_rect<B: BackEnd<I>, I: ImageSize>(
+    graphics: &mut B,
     context: &Context,
     x: f64, y: f64,
     w: f64, h: f64,
@@ -280,8 +281,8 @@ fn draw_slot_rect(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct NumberDialerContext<'a, T> {
-    uic: &'a mut UiContext,
+pub struct NumberDialerContext<'a, T, U: 'a> {
+    uic: &'a mut UiContext<U>,
     ui_id: UIID,
     value: T,
     min: T,
@@ -299,17 +300,17 @@ pub struct NumberDialerContext<'a, T> {
 }
 
 pub trait NumberDialerBuilder
-<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
+<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString, U> {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-                     precision: u8) -> NumberDialerContext<'a, T>;
+                     precision: u8) -> NumberDialerContext<'a, T, U>;
 }
 
-impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-NumberDialerBuilder<'a, T> for UiContext {
+impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString, U>
+NumberDialerBuilder<'a, T, U> for UiContext<U> {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-                     precision: u8) -> NumberDialerContext<'a, T> {
+                     precision: u8) -> NumberDialerContext<'a, T, U> {
         NumberDialerContext {
             uic: self,
             ui_id: ui_id,
@@ -330,20 +331,20 @@ NumberDialerBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(NumberDialerContext, |T|:'a, T)
-impl_colorable!(NumberDialerContext, T)
-impl_frameable!(NumberDialerContext, T)
-impl_labelable!(NumberDialerContext, T)
-impl_positionable!(NumberDialerContext, T)
-impl_shapeable!(NumberDialerContext, T)
+impl_callable!(NumberDialerContext, |T|:'a, T, U)
+impl_colorable!(NumberDialerContext, T, U)
+impl_frameable!(NumberDialerContext, T, U)
+impl_labelable!(NumberDialerContext, T, U)
+impl_positionable!(NumberDialerContext, T, U)
+impl_shapeable!(NumberDialerContext, T, U)
 
-impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
-::draw::Drawable for NumberDialerContext<'a, T> {
+impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString, U: ImageSize>
+::draw::Drawable<U> for NumberDialerContext<'a, T, U> {
     #[inline]
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`
     /// function will be called.
-    fn draw(&mut self, graphics: &mut Gl) {
+    fn draw<B: BackEnd<U>>(&mut self, graphics: &mut B) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();

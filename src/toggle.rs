@@ -1,4 +1,5 @@
 
+use graphics::{ BackEnd, ImageSize };
 use color::Color;
 use dimensions::Dimensions;
 use mouse_state::{
@@ -6,7 +7,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -50,8 +50,8 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct ToggleContext<'a> {
-    uic: &'a mut UiContext,
+pub struct ToggleContext<'a, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
@@ -65,15 +65,15 @@ pub struct ToggleContext<'a> {
     value: bool,
 }
 
-pub trait ToggleBuilder<'a> {
+pub trait ToggleBuilder<'a, T> {
     /// A builder method to be implemented by the UiContext.
-    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a>;
+    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a, T>;
 }
 
-impl<'a> ToggleBuilder<'a> for UiContext {
+impl<'a, T> ToggleBuilder<'a, T> for UiContext<T> {
 
     /// Create a toggle context to be built upon.
-    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a> {
+    fn toggle(&'a mut self, ui_id: UIID, value: bool) -> ToggleContext<'a, T> {
         ToggleContext {
             uic: self,
             ui_id: ui_id,
@@ -92,15 +92,15 @@ impl<'a> ToggleBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ToggleContext, |bool|:'a)
-impl_colorable!(ToggleContext)
-impl_frameable!(ToggleContext)
-impl_labelable!(ToggleContext)
-impl_positionable!(ToggleContext)
-impl_shapeable!(ToggleContext)
+impl_callable!(ToggleContext, |bool|:'a, T)
+impl_colorable!(ToggleContext, T)
+impl_frameable!(ToggleContext, T)
+impl_labelable!(ToggleContext, T)
+impl_positionable!(ToggleContext, T)
+impl_shapeable!(ToggleContext, T)
 
-impl<'a> ::draw::Drawable for ToggleContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a, T: ImageSize> ::draw::Drawable<T> for ToggleContext<'a, T> {
+    fn draw<B: BackEnd<T>>(&mut self, graphics: &mut B) {
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
         let color = match self.value {
             true => color,

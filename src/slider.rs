@@ -1,4 +1,5 @@
 
+use graphics::{ BackEnd, ImageSize };
 use color::Color;
 use dimensions::Dimensions;
 use label;
@@ -7,7 +8,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -57,8 +57,8 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct SliderContext<'a, T> {
-    uic: &'a mut UiContext,
+pub struct SliderContext<'a, T, U: 'a> {
+    uic: &'a mut UiContext<U>,
     ui_id: UIID,
     value: T,
     min: T,
@@ -74,17 +74,17 @@ pub struct SliderContext<'a, T> {
     maybe_label_font_size: Option<u32>,
 }
 
-pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive> {
+pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive, U> {
     /// A slider builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
-              value: T, min: T, max: T) -> SliderContext<'a, T>;
+              value: T, min: T, max: T) -> SliderContext<'a, T, U>;
 }
 
-impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
-SliderBuilder<'a, T> for UiContext {
+impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive, U>
+SliderBuilder<'a, T, U> for UiContext<U> {
     /// A button builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
-              value: T, min: T, max: T) -> SliderContext<'a, T> {
+              value: T, min: T, max: T) -> SliderContext<'a, T, U> {
         SliderContext {
             uic: self,
             ui_id: ui_id,
@@ -104,16 +104,16 @@ SliderBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(SliderContext, |T|:'a, T)
-impl_colorable!(SliderContext, T)
-impl_frameable!(SliderContext, T)
-impl_labelable!(SliderContext, T)
-impl_positionable!(SliderContext, T)
-impl_shapeable!(SliderContext, T)
+impl_callable!(SliderContext, |T|:'a, T, U)
+impl_colorable!(SliderContext, T, U)
+impl_frameable!(SliderContext, T, U)
+impl_labelable!(SliderContext, T, U)
+impl_positionable!(SliderContext, T, U)
+impl_shapeable!(SliderContext, T, U)
 
-impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
-::draw::Drawable for SliderContext<'a, T> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive, U: ImageSize>
+::draw::Drawable<U> for SliderContext<'a, T, U> {
+    fn draw<B: BackEnd<U>>(&mut self, graphics: &mut B) {
 
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();

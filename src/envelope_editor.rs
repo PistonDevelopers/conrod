@@ -6,8 +6,10 @@ use graphics::{
     AddEllipse,
     AddLine,
     AddRoundBorder,
+    BackEnd,
     Context,
     Draw,
+    ImageSize,
 };
 use label;
 use label::FontSize;
@@ -16,7 +18,6 @@ use mouse_state::{
     Up,
     Down,
 };
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
@@ -181,10 +182,10 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Draw a circle at the given position.
-fn draw_circle(
+fn draw_circle<B: BackEnd<I>, I: ImageSize>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     color: Color,
     radius: f64
@@ -200,8 +201,8 @@ fn draw_circle(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
-    uic: &'a mut UiContext,
+pub struct EnvelopeEditorContext<'a, X, Y, E:'a, T: 'a> {
+    uic: &'a mut UiContext<T>,
     ui_id: UIID,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
@@ -221,21 +222,21 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
+impl<'a, X, Y, E, T> EnvelopeEditorContext<'a, X, Y, E, T> {
     #[inline]
-    pub fn point_radius(self, radius: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+    pub fn point_radius(self, radius: f64) -> EnvelopeEditorContext<'a, X, Y, E, T> {
         EnvelopeEditorContext { pt_radius: radius, ..self }
     }
     #[inline]
-    pub fn line_width(self, width: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
+    pub fn line_width(self, width: f64) -> EnvelopeEditorContext<'a, X, Y, E, T> {
         EnvelopeEditorContext { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditorContext<'a, X, Y, E> {
+    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditorContext<'a, X, Y, E, T> {
         EnvelopeEditorContext { font_size: size, ..self }
     }
     #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditorContext<'a, X, Y, E> {
+    pub fn skew_y(self, skew: f32) -> EnvelopeEditorContext<'a, X, Y, E, T> {
         EnvelopeEditorContext { skew_y_range: skew, ..self }
     }
 }
@@ -243,18 +244,18 @@ impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
 pub trait EnvelopeEditorBuilder
 <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     E: EnvelopePoint<X, Y>> {
+     E: EnvelopePoint<X, Y>, T> {
     /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
+                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E, T>;
 }
 
 impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UiContext {
+          E: EnvelopePoint<X, Y>, T> EnvelopeEditorBuilder<'a, X, Y, E, T> for UiContext<T> {
     /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E> {
+                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E, T> {
         EnvelopeEditorContext {
             uic: self,
             ui_id: ui_id,
@@ -278,18 +279,19 @@ impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E)
-impl_colorable!(EnvelopeEditorContext, X, Y, E)
-impl_frameable!(EnvelopeEditorContext, X, Y, E)
-impl_labelable!(EnvelopeEditorContext, X, Y, E)
-impl_positionable!(EnvelopeEditorContext, X, Y, E)
-impl_shapeable!(EnvelopeEditorContext, X, Y, E)
+impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E, T)
+impl_colorable!(EnvelopeEditorContext, X, Y, E, T)
+impl_frameable!(EnvelopeEditorContext, X, Y, E, T)
+impl_labelable!(EnvelopeEditorContext, X, Y, E, T)
+impl_positionable!(EnvelopeEditorContext, X, Y, E, T)
+impl_shapeable!(EnvelopeEditorContext, X, Y, E, T)
 
 impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
          Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
-         E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
+         E: EnvelopePoint<X, Y>,
+         T: ImageSize> ::draw::Drawable<T> for EnvelopeEditorContext<'a, X, Y, E, T> {
     #[inline]
-    fn draw(&mut self, graphics: &mut Gl) {
+    fn draw<B: BackEnd<T>>(&mut self, graphics: &mut B) {
         let state = *get_state(self.uic, self.ui_id);
         let mouse = self.uic.get_mouse_state();
         let skew = self.skew_y_range;
@@ -378,7 +380,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
             (_, Clicked(elem, _)) | (_, Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
+                let draw_env_pt = |uic: &mut UiContext<T>, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
                         max_x, max_x - min_x, pad_dim[0] as uint
