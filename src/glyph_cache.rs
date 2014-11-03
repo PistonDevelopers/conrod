@@ -1,5 +1,7 @@
 
+use error::{ConrodResult, FreetypeError};
 use freetype;
+use freetype::error::MissingFontField;
 use label::FontSize;
 use opengl_graphics::Texture;
 use std::collections::HashMap;
@@ -21,20 +23,23 @@ pub struct GlyphCache {
 impl GlyphCache {
 
     /// Constructor for a GlyphCache.
-    pub fn new(font: &Path) -> GlyphCache {
-        let freetype = freetype::Library::init().unwrap();
+    pub fn new(font: &Path) -> ConrodResult<GlyphCache> {
+        let freetype = match freetype::Library::init() {
+            Ok(freetype) => freetype,
+            Err(why) => return Err(FreetypeError(why)),
+        };
         let font_str = match font.as_str() {
             Some(font_str) => font_str,
-            None => panic!("GlyphCache::new() : Failed to return `font.as_str()`."),
+            None => return Err(FreetypeError(MissingFontField)),
         };
         let face = match freetype.new_face(font_str, 0) {
             Ok(face) => face,
-            Err(err) => panic!("GlyphCache::new() : {}", err),
+            Err(why) => return Err(FreetypeError(why)),
         };
-        GlyphCache {
+        Ok(GlyphCache {
             face: face,
             data: HashMap::new(),
-        }
+        })
     }
 
     /// Return a reference to a `Character`. If there is not yet a `Character` for

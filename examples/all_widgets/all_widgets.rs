@@ -147,7 +147,7 @@ fn main() {
     // Create OpenGL instance.
     let mut gl = Gl::new(shader_version::opengl::OpenGL_3_2);
     // Create the UiContext and specify the name of a font that's in our "assets" directory.
-    let mut uic = UiContext::new(&Path::new("./assets/Dense-Regular.otf"), None);
+    let mut uic = UiContext::new(&Path::new("./assets/Dense-Regular.otf"), None).unwrap();
     // Create the Demonstration Application data.
     let mut demo = DemoApp::new();
 
