@@ -46,6 +46,7 @@ pub mod dimensions;
 pub mod draw;
 pub mod drop_down_list;
 pub mod envelope_editor;
+pub mod error;
 pub mod frame;
 pub mod glyph_cache;
 pub mod label;

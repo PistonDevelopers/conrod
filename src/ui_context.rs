@@ -1,5 +1,6 @@
 
 use dimensions::Dimensions;
+use error::ConrodResult;
 use glyph_cache::{
     GlyphCache,
     Character,
@@ -51,13 +52,13 @@ pub struct UiContext {
 impl UiContext {
 
     /// Constructor for a UiContext.
-    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> UiContext {
-        let glyph_cache = GlyphCache::new(font_path);
+    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> ConrodResult<UiContext> {
+        let glyph_cache = try!(GlyphCache::new(font_path));
         let theme = match maybe_theme_path {
             None => Theme::default(),
             Some(path) => Theme::load(path),
         };
-        UiContext {
+        Ok(UiContext {
             data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
             theme: theme,
             mouse: MouseState::new([0f64, 0f64], Up, Up, Up),
@@ -69,7 +70,7 @@ impl UiContext {
             win_w: 0f64,
             win_h: 0f64,
             prev_uiid: 0u64,
-        }
+        })
     }
 
     /// Handle game events and update the state.
