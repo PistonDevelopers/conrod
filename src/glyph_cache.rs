@@ -5,7 +5,7 @@ use freetype::error::MissingFontField;
 use label::FontSize;
 use opengl_graphics::Texture;
 use std::collections::HashMap;
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 
 /// Struct used to hold rendered character data.
 pub struct Character {
