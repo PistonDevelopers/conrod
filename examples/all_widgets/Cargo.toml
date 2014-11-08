@@ -29,3 +29,6 @@ git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 
 git = "https://github.com/PistonDevelopers/vecmath.git"
 
+[dependencies.current]
+
+git = "https://github.com/PistonDevelopers/current"
