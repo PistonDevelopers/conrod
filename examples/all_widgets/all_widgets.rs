@@ -8,6 +8,7 @@ extern crate graphics;
 extern crate sdl2_window;
 extern crate opengl_graphics;
 extern crate vecmath;
+extern crate current;
 
 use conrod::{
     Background,
@@ -41,12 +42,15 @@ use graphics::{
 use opengl_graphics::Gl;
 use event::{
     WindowSettings,
-    EventIterator,
-    EventSettings,
+    Events,
+    Ups,
+    MaxFps,
     Render,
 };
 use sdl2_window::Sdl2Window;
 use vecmath::vec2_add;
+use std::cell::RefCell;
+use current::Set;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -125,7 +129,7 @@ impl DemoApp {
 fn main() {
 
     // Create a SDL2 window.
-    let mut window = Sdl2Window::new(
+    let window = Sdl2Window::new(
         shader_version::opengl::OpenGL_3_2,
         WindowSettings {
             title: "Hello Conrod".to_string(),
@@ -135,15 +139,9 @@ fn main() {
             samples: 4,
         }
     );
-
-    // Some settings for how the game should be run.
-    let event_settings = EventSettings {
-        updates_per_second: 180,
-        max_frames_per_second: 60
-    };
-
+    let window_ref = RefCell::new(window);
     // Create GameIterator to begin the event iteration loop.
-    let mut event_iter = EventIterator::new(&mut window, &event_settings);
+    let mut event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
     // Create OpenGL instance.
     let mut gl = Gl::new(shader_version::opengl::OpenGL_3_2);
     // Create the UiContext and specify the name of a font that's in our "assets" directory.
