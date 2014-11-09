@@ -62,12 +62,12 @@ impl Theme {
     }
 
     /// Save a theme to file.
-    pub fn save(&self, path: &str) {
+    pub fn save(&self, path: &str) -> Result<(), String> {
         let json_string = json::Encoder::buffer_encode(self);
         let mut file = File::create(&Path::new(path));
         match file.write(json_string.as_slice()) {
-            Ok(()) => (),
-            Err(e) => panic!("Theme failed to save correctly: {}", e),
+            Ok(()) => Ok(()),
+            Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
         }
     }
 
