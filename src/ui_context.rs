@@ -56,7 +56,7 @@ impl UiContext {
         let glyph_cache = try!(GlyphCache::new(font_path));
         let theme = match maybe_theme_path {
             None => Theme::default(),
-            Some(path) => Theme::load(path),
+            Some(path) => Theme::load(path).ok().unwrap_or(Theme::default()),
         };
         Ok(UiContext {
             data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
