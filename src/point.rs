@@ -1,19 +1,20 @@
 
 use envelope_editor::EnvelopePoint;
+use graphics::vecmath::Scalar;
 
 /// General use 2D spatial point.
-pub type Point = [f64, ..2];
+pub type Point = [Scalar, ..2];
 
-impl EnvelopePoint<f64, f64> for Point {
+impl EnvelopePoint<Scalar, Scalar> for Point {
     /// Return the X value.
-    fn get_x(&self) -> f64 { self[0] }
+    fn get_x(&self) -> Scalar { self[0] }
     /// Return the Y value.
-    fn get_y(&self) -> f64 { self[1] }
+    fn get_y(&self) -> Scalar { self[1] }
     /// Return the X value.
-    fn set_x(&mut self, x: f64) { self[0] = x }
+    fn set_x(&mut self, x: Scalar) { self[0] = x }
     /// Return the Y value.
-    fn set_y(&mut self, y: f64) { self[1] = y }
+    fn set_y(&mut self, y: Scalar) { self[1] = y }
     /// Create a new Envelope Point.
-    fn new(x: f64, y: f64) -> Point { [x, y] }
+    fn new(x: Scalar, y: Scalar) -> Point { [x, y] }
 }
 
