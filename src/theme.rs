@@ -43,20 +43,20 @@ impl Theme {
     }
 
     /// Load a theme from file.
-    pub fn load(path: &str) -> Theme {
+    pub fn load(path: &str) -> Result<Theme, String> {
         let contents = match File::open(&Path::new(path)).read_to_end() {
-            Ok(buf) => buf,
-            Err(e) => panic!("Failed to load Theme correctly: {}", e),
+            Ok(buf) => Ok(buf),
+            Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
         };
-        let contents_str = match str::from_utf8(contents.as_slice()) {
-            Some(string) => string,
-            None => panic!("Failed to load Theme!"),
-        };
-        let json_object = json::from_str(contents_str);
-        let mut decoder = json::Decoder::new(json_object.unwrap());
-        let theme: Theme = match Decodable::decode(&mut decoder) {
-            Ok(lib) => lib,
-            Err(e) => panic!("Failed to load Theme correctly: {}", e),
+        let contents_str = contents.ok();
+        let json_object = contents_str.and_then(|s| json::from_str(str::from_utf8(s.as_slice()).unwrap()).ok());
+        let mut decoder = json_object.map(|j| json::Decoder::new(j));
+        let theme = match decoder {
+            Some(ref mut d) => match Decodable::decode(d) {
+                Ok(lib) => Ok(lib),
+                Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
+            },
+            None => Err(String::from_str("Failed to load Theme correctly")),
         };
         theme
     }
