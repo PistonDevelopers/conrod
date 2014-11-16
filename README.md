@@ -8,6 +8,8 @@ Here's a demo!
 
 You can find the example project that was used for that video [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/all_widgets/all_widgets.rs).
 
+[How to contribute](https://github.com/PistonDevelopers/piston/blob/master/CONTRIBUTING.md)
+
 Current State
 -------------
 
