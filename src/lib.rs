@@ -27,7 +27,7 @@ pub use callback::Callable;
 pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;
-pub use frame::{Framing, Frame, Frameable, NoFrame};
+pub use frame::{Framing, Frameable};
 pub use label::Labelable;
 pub use point::Point;
 pub use position::Positionable;

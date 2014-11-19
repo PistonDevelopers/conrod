@@ -70,9 +70,9 @@ fn draw_normal(
     color: Color
 ) {
     let (r, g, b, a) = match state {
-        Normal => color.as_tuple(),
-        Highlighted => color.highlighted().as_tuple(),
-        Clicked => color.clicked().as_tuple(),
+        State::Normal => color.as_tuple(),
+        State::Highlighted => color.highlighted().as_tuple(),
+        State::Clicked => color.clicked().as_tuple(),
     };
     context
         .rect(pos[0] + frame_width,
@@ -134,9 +134,9 @@ pub fn corner(rect_p: Point, p: Point, dim: Dimensions) -> Corner {
     let y_temp = p[1] - rect_p[1];
     let x_perc = map_range(x_temp, 0.0, dim[0], 0f64, 1.0);
     let y_perc = map_range(y_temp, dim[1], 0.0, 0f64, 1.0);
-    if      x_perc <= 0.5 && y_perc <= 0.5 { BottomLeft }
-    else if x_perc >  0.5 && y_perc <= 0.5 { BottomRight }
-    else if x_perc <= 0.5 && y_perc >  0.5 { TopLeft }
-    else                                   { TopRight }
+    if      x_perc <= 0.5 && y_perc <= 0.5 { Corner::BottomLeft }
+    else if x_perc >  0.5 && y_perc <= 0.5 { Corner::BottomRight }
+    else if x_perc <= 0.5 && y_perc >  0.5 { Corner::TopLeft }
+    else                                   { Corner::TopRight }
 }
 

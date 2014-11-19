@@ -1,4 +1,5 @@
 use std::fmt::Show;
+use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
@@ -13,17 +14,13 @@ use label;
 use label::FontSize;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
+    Corner
 };
 use ui_context::{
     UIID,
@@ -35,7 +32,7 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::EnvelopeEditor;
+use widget::Widget::EnvelopeEditor;
 use vecmath::{
     vec2_add,
     vec2_sub
@@ -76,20 +73,20 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &Normal => rectangle::Normal,
-            &Highlighted(_) => rectangle::Highlighted,
-            &Clicked(_, _) => rectangle::Clicked,
+            &State::Normal => rectangle::State::Normal,
+            &State::Highlighted(_) => rectangle::State::Highlighted,
+            &State::Clicked(_, _) => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(EnvelopeEditor, State, EnvelopeEditor(Normal))
+widget_fns!(EnvelopeEditor, State, EnvelopeEditor(State::Normal))
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
 pub trait EnvelopePoint
-<X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
- Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> {
+<X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+ Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> {
     /// Return the X value.
     fn get_x(&self) -> X;
     /// Return the Y value.
@@ -119,10 +116,10 @@ fn is_over_and_closest(pos: Point,
     match rectangle::is_over(pos, mouse_pos, dim) {
         false => (None, None),
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
-            false => (Some(Rect), Some(Rect)),
+            false => (Some(Element::Rect), Some(Element::Rect)),
             true => {
                 let mut closest_distance = ::std::f64::MAX_VALUE;
-                let mut closest_env_point = Pad;
+                let mut closest_env_point = Element::Pad;
                 for (i, p) in perc_env.iter().enumerate() {
                     let (x, y, _) = *p;
                     let p_pos = [map_range(x, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
@@ -131,15 +128,15 @@ fn is_over_and_closest(pos: Point,
                                  + (mouse_pos[1] - p_pos[1]).powf(2.0);
                     //let distance = ::std::num::abs(mouse_pos.x - p_pos.x);
                     if distance <= pt_radius.powf(2.0) {
-                        return (Some(EnvPoint(i, (p_pos[0], p_pos[1]))),
-                                Some(EnvPoint(i, (p_pos[0], p_pos[1]))))
+                        return (Some(Element::EnvPoint(i, (p_pos[0], p_pos[1]))),
+                                Some(Element::EnvPoint(i, (p_pos[0], p_pos[1]))))
                     }
                     else if distance < closest_distance {
                         closest_distance = distance;
-                        closest_env_point = EnvPoint(i, (p_pos[0], p_pos[1]));
+                        closest_env_point = Element::EnvPoint(i, (p_pos[0], p_pos[1]));
                     }
                 }
-                (Some(Pad), Some(closest_env_point))
+                (Some(Element::Pad), Some(closest_env_point))
             },
         },
     }
@@ -151,32 +148,32 @@ fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
     match (is_over_elem, prev, mouse.left, mouse.right) {
-        (Some(_), Normal, Down, Up) => Normal,
-        (Some(elem), _, Up, Up) => Highlighted(elem),
-        (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),
-        (Some(_), Clicked(p_elem, m_button), Down, Up)
-        | (Some(_), Clicked(p_elem, m_button), Up, Down) => {
+        (Some(_), State::Normal, MouseButtonState::Down, MouseButtonState::Up) => State::Normal,
+        (Some(elem), _, MouseButtonState::Up, MouseButtonState::Up) => State::Highlighted(elem),
+        (Some(elem), State::Highlighted(_), MouseButtonState::Down, MouseButtonState::Up) => State::Clicked(elem, MouseButton::Left),
+        (Some(_), State::Clicked(p_elem, m_button), MouseButtonState::Down, MouseButtonState::Up)
+        | (Some(_), State::Clicked(p_elem, m_button), MouseButtonState::Up, MouseButtonState::Down) => {
             match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
-                _ => Clicked(p_elem, m_button),
+                Element::EnvPoint(idx, _) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                Element::CurvePoint(idx, _) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                _ => State::Clicked(p_elem, m_button),
             }
         },
-        (None, Clicked(p_elem, m_button), Down, Up) => {
+        (None, State::Clicked(p_elem, m_button), MouseButtonState::Down, MouseButtonState::Up) => {
             match (p_elem, m_button) {
-                (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
-                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
-                _ => Clicked(p_elem, Left),
+                (Element::EnvPoint(idx, _), MouseButton::Left) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Left),
+                (Element::CurvePoint(idx, _), MouseButton::Left) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Left),
+                _ => State::Clicked(p_elem, MouseButton::Left),
             }
         },
-        (Some(_), Highlighted(p_elem), Up, Down) => {
+        (Some(_), State::Highlighted(p_elem), MouseButtonState::Up, MouseButtonState::Down) => {
             match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
-                _ => Clicked(p_elem, Right),
+                Element::EnvPoint(idx, _) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Right),
+                Element::CurvePoint(idx, _) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Right),
+                _ => State::Clicked(p_elem, MouseButton::Right),
             }
         },
-        _ => Normal,
+        _ => State::Normal,
     }
 }
 
@@ -241,16 +238,16 @@ impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
 }
 
 pub trait EnvelopeEditorBuilder
-<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+     Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
      E: EnvelopePoint<X, Y>> {
     /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
                        min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
 }
 
-impl <'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UiContext {
     /// An envelope editor builder method to be implemented by the UiContext.
     fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
@@ -285,8 +282,8 @@ impl_labelable!(EnvelopeEditorContext, X, Y, E)
 impl_positionable!(EnvelopeEditorContext, X, Y, E)
 impl_shapeable!(EnvelopeEditorContext, X, Y, E)
 
-impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
+impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
+         Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
          E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
     #[inline]
     fn draw(&mut self, graphics: &mut Gl) {
@@ -375,7 +372,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
         // return the idx if it is currently clicked.
         let is_clicked_env_point = match (state, new_state) {
 
-            (_, Clicked(elem, _)) | (_, Highlighted(elem)) => {
+            (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
                 let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
@@ -390,10 +387,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
                     let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_dim) {
-                        TopLeft => [p_pos[0], p_pos[1]],
-                        TopRight => [p_pos[0] - xy_string_w, p_pos[1]],
-                        BottomLeft => [p_pos[0], p_pos[1] - font_size as f64],
-                        BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
+                        Corner::TopLeft => [p_pos[0], p_pos[1]],
+                        Corner::TopRight => [p_pos[0] - xy_string_w, p_pos[1]],
+                        Corner::BottomLeft => [p_pos[0], p_pos[1] - font_size as f64],
+                        Corner::BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
                     label::draw(graphics, uic, xy_string_pos,
                                 font_size, color.plain_contrast(), xy_string.as_slice());
@@ -404,7 +401,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
 
                 match elem {
                     // If a point is clicked, draw that point.
-                    EnvPoint(idx, p_pos) => {
+                    Element::EnvPoint(idx, p_pos) => {
                         let p_pos = [p_pos.val0(), p_pos.val1()];
                         let pad_x_right = pad_pos[0] + pad_dim[0];
                         let (left_x_bound, right_x_bound) = get_x_bounds(&perc_env, idx);
@@ -416,10 +413,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                         Some(idx)
                     },
                     // Otherwise, draw the closest point.
-                    Pad => {
+                    Element::Pad => {
                         for closest_elem in is_closest_elem.iter() {
                             match *closest_elem {
-                                EnvPoint(closest_idx, closest_env_pt) => {
+                                Element::EnvPoint(closest_idx, closest_env_pt) => {
                                     let closest_env_pt = [closest_env_pt.val0(), closest_env_pt.val1()];
                                     draw_env_pt(self.uic, self.env, closest_idx, closest_env_pt);
                                 },
@@ -461,9 +458,9 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                 // Call the `callback` closure if mouse was released
                 // on one of the DropDownMenu items.
                 match (state, new_state) {
-                    (Clicked(_, m_button), Highlighted(_)) | (Clicked(_, m_button), Normal) => {
+                    (State::Clicked(_, m_button), State::Highlighted(_)) | (State::Clicked(_, m_button), State::Normal) => {
                         match m_button {
-                            Left => {
+                            MouseButton::Left => {
                                 // Adjust the point and trigger the callback.
                                 let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
                                 self.env[idx].set_x(new_x);
@@ -473,7 +470,7 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                                     None => (),
                                 }
                             },
-                            Right => {
+                            MouseButton::Right => {
                                 // Delete the point and trigger the callback.
                                 self.env.remove(idx);
                                 match self.maybe_callback {
@@ -484,9 +481,9 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                         }
                     },
 
-                    (Clicked(_, prev_m_button), Clicked(_, m_button)) => {
+                    (State::Clicked(_, prev_m_button), State::Clicked(_, m_button)) => {
                         match (prev_m_button, m_button) {
-                            (Left, Left) => {
+                            (MouseButton::Left, MouseButton::Left) => {
                                 let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
                                 let current_x = (*self.env)[idx].get_x();
                                 let current_y = (*self.env)[idx].get_y();
@@ -513,9 +510,9 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                 // and the mouse was clicked, add a point.
                 if self.env.len() == 0u {
                     match (state, new_state) {
-                        (Clicked(elem, m_button), Highlighted(_)) => {
+                        (State::Clicked(elem, m_button), State::Highlighted(_)) => {
                             match (elem, m_button) {
-                                (Pad, Left) => {
+                                (Element::Pad, MouseButton::Left) => {
                                     let (new_x, new_y) = get_new_value(&perc_env, 0u, mouse.pos[0], mouse.pos[1]);
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
@@ -528,9 +525,9 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + S
                 else {
                     // Check if a new point should be created.
                     match (state, new_state) {
-                        (Clicked(elem, m_button), Highlighted(_)) => {
+                        (State::Clicked(elem, m_button), State::Highlighted(_)) => {
                             match (elem, m_button) {
-                                (Pad, Left) => {
+                                (Element::Pad, MouseButton::Left) => {
                                     let (new_x, new_y) = {
                                         let mouse_x_on_pad = mouse.pos[0] - pad_pos[0];
                                         let mouse_y_on_pad = mouse.pos[1] - pad_pos[1];

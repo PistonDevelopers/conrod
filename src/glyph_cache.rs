@@ -1,5 +1,5 @@
 
-use error::{ConrodResult, FreetypeError};
+use error::{ConrodResult, Error};
 use freetype::ffi;
 use freetype;
 use freetype::error::MissingFontField;
@@ -27,15 +27,15 @@ impl GlyphCache {
     pub fn new(font: &Path) -> ConrodResult<GlyphCache> {
         let freetype = match freetype::Library::init() {
             Ok(freetype) => freetype,
-            Err(why) => return Err(FreetypeError(why)),
+            Err(why) => return Err(Error::FreetypeError(why)),
         };
         let font_str = match font.as_str() {
             Some(font_str) => font_str,
-            None => return Err(FreetypeError(MissingFontField)),
+            None => return Err(Error::FreetypeError(MissingFontField)),
         };
         let face = match freetype.new_face(font_str, 0) {
             Ok(face) => face,
-            Err(why) => return Err(FreetypeError(why)),
+            Err(why) => return Err(Error::FreetypeError(why)),
         };
         Ok(GlyphCache {
             face: face,

@@ -7,8 +7,7 @@ use glyph_cache::{
 };
 use label::FontSize;
 use mouse_state::{
-    Up,
-    Down,
+    MouseButtonState,
     MouseState,
 };
 use input;
@@ -59,9 +58,9 @@ impl UiContext {
             Some(path) => Theme::load(path).ok().unwrap_or(Theme::default()),
         };
         Ok(UiContext {
-            data: Vec::from_elem(512, (widget::NoWidget, widget::NoPlace)),
+            data: Vec::from_elem(512, (widget::Widget::NoWidget, widget::Placing::NoPlace)),
             theme: theme,
-            mouse: MouseState::new([0f64, 0f64], Up, Up, Up),
+            mouse: MouseState::new([0f64, 0f64], MouseButtonState::Up, MouseButtonState::Up, MouseButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
             text_just_entered: Vec::with_capacity(10u),
@@ -94,7 +93,7 @@ impl UiContext {
                         input::mouse::Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
-                    } = Down;
+                    } = MouseButtonState::Down;
                 },
                 input::Keyboard(key) => self.keys_just_pressed.push(key),
             }
@@ -106,7 +105,7 @@ impl UiContext {
                         input::mouse::Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
-                    } = Up;
+                    } = MouseButtonState::Up;
                 },
                 input::Keyboard(key) => self.keys_just_released.push(key),
             }
@@ -136,7 +135,7 @@ impl UiContext {
         let ui_id_idx = ui_id as uint;
         if self.data.len() > ui_id_idx {
             match &mut self.data[ui_id_idx] {
-                &(widget::NoWidget, _) => {
+                &(widget::Widget::NoWidget, _) => {
                     match &mut self.data[ui_id_idx] {
                         &(ref mut widget, _) => {
                             *widget = default; widget
@@ -152,11 +151,11 @@ impl UiContext {
         } else {
             if ui_id_idx >= self.data.len() {
                 let num_to_push = ui_id_idx - self.data.len();
-                let mut vec = Vec::from_elem(num_to_push, (widget::NoWidget, widget::NoPlace));
-                vec.push((default, widget::NoPlace));
+                let mut vec = Vec::from_elem(num_to_push, (widget::Widget::NoWidget, widget::Placing::NoPlace));
+                vec.push((default, widget::Placing::NoPlace));
                 self.data.extend(vec.into_iter());
             } else {
-                self.data[ui_id_idx] = (default, widget::NoPlace);
+                self.data[ui_id_idx] = (default, widget::Placing::NoPlace);
             }
             match &mut self.data[ui_id_idx] {
                 &(ref mut widget, _) => widget,
@@ -168,7 +167,7 @@ impl UiContext {
     pub fn set_place(&mut self, ui_id: UIID, pos: Point, dim: Dimensions) {
         match &mut self.data[ui_id as uint] {
             &(_, ref mut placing) => {
-                *placing = widget::Place(pos[0], pos[1], dim[0], dim[1])
+                *placing = widget::Placing::Place(pos[0], pos[1], dim[0], dim[1])
             }
         }
         self.prev_uiid = ui_id;
@@ -179,7 +178,7 @@ impl UiContext {
 
     /// Get the Placing for a particular widget.
     pub fn get_placing(&self, ui_id: UIID) -> widget::Placing {
-        if ui_id as uint >= self.data.len() { widget::NoPlace }
+        if ui_id as uint >= self.data.len() { widget::Placing::NoPlace }
         else {
             match self.data[ui_id as uint] { (_, ref placing) => *placing }
         }
