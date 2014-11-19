@@ -1,7 +1,6 @@
-
+use std::num::Float;
 use std::default::Default;
 use std::fmt::{Show, Formatter, FormatError};
-use std::num::abs;
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
@@ -169,9 +168,9 @@ impl Color {
 
     /// Return an inverted version of the color.
     pub fn invert(&self) -> Color {
-        let r = abs(1f32 - self.r());
-        let g = abs(1f32 - self.g());
-        let b = abs(1f32 - self.b());
+        let r = (1f32 - self.r()).abs();
+        let g = (1f32 - self.g()).abs();
+        let b = (1f32 - self.b()).abs();
         Color::new(r, g, b, self.a())
     }
 

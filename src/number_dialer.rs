@@ -1,4 +1,5 @@
-
+use std::num::Float;
+use std::num::Primitive;
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
@@ -13,8 +14,7 @@ use label;
 use label::FontSize;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
@@ -28,7 +28,7 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::NumberDialer;
+use widget::Widget::NumberDialer;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -52,7 +52,7 @@ pub enum State {
     Clicked(Element),
 }
 
-widget_fns!(NumberDialer, State, NumberDialer(Normal))
+widget_fns!(NumberDialer, State, NumberDialer(State::Normal))
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -114,23 +114,23 @@ fn is_over(pos: Point,
         false => None,
         true => {
             match rectangle::is_over(label_pos, mouse_pos, label_dim) {
-                true => Some(LabelGlyphs),
+                true => Some(Element::LabelGlyphs),
                 false => {
                     let frame_w2 = frame_w * 2.0;
                     let slot_rect_pos = [label_pos[0] + label_dim[0], pos[1] + frame_w];
                     match rectangle::is_over(slot_rect_pos, mouse_pos,
                                              [val_string_w, dim[1] - frame_w2]) {
-                        false => Some(Rect),
+                        false => Some(Element::Rect),
                         true => {
                             let slot_w = value_glyph_slot_width(val_string_h as u32);
                             let mut slot_pos = slot_rect_pos;
                             for i in range(0u, val_string_len) {
                                 if rectangle::is_over(slot_pos, mouse_pos, [slot_w, dim[1]]) {
-                                    return Some(ValueGlyph(i, mouse_pos[1]))
+                                    return Some(Element::ValueGlyph(i, mouse_pos[1]))
                                 }
                                 slot_pos[0] += slot_w;
                             }
-                            Some(Rect)
+                            Some(Element::Rect)
                         },
                     }
                 },
@@ -145,28 +145,28 @@ fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
     match (is_over_elem, prev, mouse.left) {
-        (Some(_), Normal, Down) => Normal,
-        (Some(elem), _, Up) => Highlighted(elem),
-        (Some(elem), Highlighted(_), Down) => Clicked(elem),
-        (Some(_), Clicked(p_elem), Down) => {
+        (Some(_), State::Normal, MouseButtonState::Down) => State::Normal,
+        (Some(elem), _, MouseButtonState::Up) => State::Highlighted(elem),
+        (Some(elem), State::Highlighted(_), MouseButtonState::Down) => State::Clicked(elem),
+        (Some(_), State::Clicked(p_elem), MouseButtonState::Down) => {
             match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
-                _ => Clicked(p_elem),
+                Element::ValueGlyph(idx, _) => State::Clicked(Element::ValueGlyph(idx, mouse.pos[1])),
+                _ => State::Clicked(p_elem),
             }
         },
-        (None, Clicked(p_elem), Down) => {
+        (None, State::Clicked(p_elem), MouseButtonState::Down) => {
             match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
-                _ => Clicked(p_elem),
+                Element::ValueGlyph(idx, _) => State::Clicked(Element::ValueGlyph(idx, mouse.pos[1])),
+                _ => State::Clicked(p_elem),
             }
         },
-        _ => Normal,
+        _ => State::Normal,
     }
 }
 
 /// Return the new value along with it's String representation.
 #[inline]
-fn get_new_value<T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+fn get_new_value<T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 (val: T, min: T, max: T, idx: uint, y_ord: Ordering, val_string: &String) -> T {
     match y_ord {
         Equal => val,
@@ -233,8 +233,8 @@ fn draw_value_string(
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
-            Highlighted(elem) => match elem {
-                ValueGlyph(idx, _) => {
+            State::Highlighted(elem) => match elem {
+                Element::ValueGlyph(idx, _) => {
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
@@ -243,8 +243,8 @@ fn draw_value_string(
                 },
                 _ => (),
             },
-            Clicked(elem) => match elem {
-                ValueGlyph(idx, _) => {
+            State::Clicked(elem) => match elem {
+                Element::ValueGlyph(idx, _) => {
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
@@ -299,13 +299,13 @@ pub struct NumberDialerContext<'a, T> {
 }
 
 pub trait NumberDialerBuilder
-<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
+<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
                      precision: u8) -> NumberDialerContext<'a, T>;
 }
 
-impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 NumberDialerBuilder<'a, T> for UiContext {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
@@ -337,7 +337,7 @@ impl_labelable!(NumberDialerContext, T)
 impl_positionable!(NumberDialerContext, T)
 impl_shapeable!(NumberDialerContext, T)
 
-impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 ::draw::Drawable for NumberDialerContext<'a, T> {
     #[inline]
     /// Draw the number_dialer. When successfully pressed,
@@ -377,7 +377,7 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
         let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
 
         // Draw the widget rectangle.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rectangle::Normal,
+        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rectangle::State::Normal,
                         self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
@@ -388,9 +388,9 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 
         // Determine new value from the initial state and the new state.
         let new_val = match (state, new_state) {
-            (Clicked(elem), Clicked(new_elem)) => {
+            (State::Clicked(elem), State::Clicked(new_elem)) => {
                 match (elem, new_elem) {
-                    (ValueGlyph(idx, y), ValueGlyph(_, new_y)) => {
+                    (Element::ValueGlyph(idx, y), Element::ValueGlyph(_, new_y)) => {
                         get_new_value(self.value, self.min, self.max, idx,
                                       compare_f64s(new_y, y), &val_string)
                     }, _ => self.value,
@@ -416,7 +416,7 @@ impl<'a, T: Num + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
         // Call the `callback` with the new value if the mouse is pressed/released
         // on the widget or if the value has changed.
         if self.value != new_val || match (state, new_state) {
-            (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
+            (State::Highlighted(_), State::Clicked(_)) | (State::Clicked(_), State::Highlighted(_)) => true,
             _ => false,
         } {
             match self.maybe_callback {

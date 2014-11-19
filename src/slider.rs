@@ -1,11 +1,10 @@
-
+use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
 use label;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
@@ -19,7 +18,7 @@ use utils::{
     percentage,
     value_from_perc,
 };
-use widget::Slider;
+use widget::Widget::Slider;
 use vecmath::vec2_add;
 
 /// Represents the state of the Button widget.
@@ -34,25 +33,25 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &Normal => rectangle::Normal,
-            &Highlighted => rectangle::Highlighted,
-            &Clicked => rectangle::Clicked,
+            &State::Normal => rectangle::State::Normal,
+            &State::Highlighted => rectangle::State::Highlighted,
+            &State::Clicked => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(Slider, State, Slider(Normal))
+widget_fns!(Slider, State, Slider(State::Normal))
 
 /// Check the current state of the slider.
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
     match (is_over, prev, mouse) {
-        (true, Normal, MouseState { left: Down, .. }) => Normal,
-        (true, _, MouseState { left: Down, .. }) => Clicked,
-        (true, _, MouseState { left: Up, .. }) => Highlighted,
-        (false, Clicked, MouseState { left: Down, .. }) => Clicked,
-        _ => Normal,
+        (true, State::Normal, MouseState { left: MouseButtonState::Down, .. }) => State::Normal,
+        (true, _, MouseState { left: MouseButtonState::Down, .. }) => State::Clicked,
+        (true, _, MouseState { left: MouseButtonState::Up, .. }) => State::Highlighted,
+        (false, State::Clicked, MouseState { left: MouseButtonState::Down, .. }) => State::Clicked,
+        _ => State::Normal,
     }
 }
 
@@ -74,13 +73,13 @@ pub struct SliderContext<'a, T> {
     maybe_label_font_size: Option<u32>,
 }
 
-pub trait SliderBuilder<'a, T: Num + Copy + FromPrimitive + ToPrimitive> {
+pub trait SliderBuilder<'a, T: Float + Copy + FromPrimitive + ToPrimitive> {
     /// A slider builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
               value: T, min: T, max: T) -> SliderContext<'a, T>;
 }
 
-impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
+impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 SliderBuilder<'a, T> for UiContext {
     /// A button builder method to be implemented by the UiContext.
     fn slider(&'a mut self, ui_id: UIID,
@@ -111,7 +110,7 @@ impl_labelable!(SliderContext, T)
 impl_positionable!(SliderContext, T)
 impl_shapeable!(SliderContext, T)
 
-impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
+impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for SliderContext<'a, T> {
     fn draw(&mut self, graphics: &mut Gl) {
 
@@ -130,7 +129,7 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
             let p = vec2_add(self.pos, [frame_w, frame_w]);
             let max_w = self.dim[0] - frame_w2;
             let w = match (is_over, state, new_state) {
-                (true, Highlighted, Clicked) | (_, Clicked, Clicked)  =>
+                (true, State::Highlighted, State::Clicked) | (_, State::Clicked, State::Clicked)  =>
                      clamp(mouse.pos[0] - p[0], 0f64, max_w),
                 _ => clamp(percentage(self.value, self.min, self.max) as f64 * max_w, 0f64, max_w),
             };
@@ -143,7 +142,7 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
             let corner = vec2_add(self.pos, [frame_w, frame_w]);
             let y_max = corner[1] + max_h;
             let (h, p) = match (is_over, state, new_state) {
-                (true, Highlighted, Clicked) | (_, Clicked, Clicked) => {
+                (true, State::Highlighted, State::Clicked) | (_, State::Clicked, State::Clicked) => {
                     let p = [corner[0], clamp(mouse.pos[1], corner[1], y_max)];
                     let h = clamp(max_h - (p[1] - corner[1]), 0.0, max_h);
                     (h, p)
@@ -163,7 +162,7 @@ impl<'a, T: Num + Copy + FromPrimitive + ToPrimitive>
         match self.maybe_callback {
             Some(ref mut callback) => {
                 if self.value != new_value || match (state, new_state) {
-                    (Highlighted, Clicked) | (Clicked, Highlighted) => true,
+                    (State::Highlighted, State::Clicked) | (State::Clicked, State::Highlighted) => true,
                     _ => false,
                 } { (*callback)(new_value) }
             }, None => (),

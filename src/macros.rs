@@ -18,7 +18,7 @@ macro_rules! widget_fns(
         fn get_state(uic: &mut ::ui_context::UiContext,
                      ui_id: ::ui_context::UIID) -> &$widget_state {
             match *get_widget(uic, ui_id) {
-                ::widget::$widget(ref state) => state,
+                ::widget::Widget::$widget(ref state) => state,
                 _ => panic!("The Widget variant returned by UiContext is different to that which \
                            was requested (Check that there are no UIID conflicts)."),
             }
@@ -31,7 +31,7 @@ macro_rules! widget_fns(
                      pos: ::point::Point,
                      dim: ::dimensions::Dimensions) {
             match *get_widget(uic, ui_id) {
-                ::widget::$widget(ref mut state) => { *state = new_state; },
+                ::widget::Widget::$widget(ref mut state) => { *state = new_state; },
                 _ => panic!("The Widget variant returned by UiContext is different to that which \
                            was requested (Check that there are no UIID conflicts)."),
             }

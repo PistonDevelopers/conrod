@@ -1,4 +1,4 @@
-
+use std::num::FloatMath;
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
@@ -12,8 +12,7 @@ use label;
 use label::FontSize;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use input::keyboard::{
@@ -24,7 +23,7 @@ use input::keyboard::{
 };
 use point::Point;
 use rectangle;
-use std::num::abs;
+use std::num::Float;
 use time::precise_time_s;
 use ui_context::{
     UIID,
@@ -34,7 +33,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::TextBox;
+use widget::Widget::TextBox;
 use std::cmp;
 
 pub type Idx = uint;
@@ -72,18 +71,18 @@ impl State {
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
             &State(state, capturing) => match capturing {
-                Captured(_, _) => rectangle::Normal,
-                Uncaptured => match state {
-                    Normal => rectangle::Normal,
-                    Highlighted(_) => rectangle::Highlighted,
-                    Clicked(_) => rectangle::Clicked,
+                Capturing::Captured(_, _) => rectangle::State::Normal,
+                Capturing::Uncaptured => match state {
+                    DrawState::Normal => rectangle::State::Normal,
+                    DrawState::Highlighted(_) => rectangle::State::Highlighted,
+                    DrawState::Clicked(_) => rectangle::State::Clicked,
                 },
             }
         }
     }
 }
 
-widget_fns!(TextBox, State, TextBox(State(Normal, Uncaptured)))
+widget_fns!(TextBox, State, TextBox(State(DrawState::Normal, Capturing::Uncaptured)))
 
 static TEXT_PADDING: f64 = 5f64;
 
@@ -99,12 +98,12 @@ fn over_elem(uic: &mut UiContext,
              font_size: FontSize,
              text: &str) -> Element {
     match rectangle::is_over(pos, mouse_pos, rect_dim) {
-        false => Nill,
+        false => Element::Nill,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
-            false => Rect,
+            false => Element::Rect,
             true => {
                 let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
-                Text(idx, cursor_x)
+                Element::Text(idx, cursor_x)
             },
         },
     }
@@ -138,26 +137,26 @@ fn get_new_state(over_elem: Element,
                  prev_box_state: State,
                  mouse: MouseState) -> State {
     match prev_box_state {
-        State(prev, Uncaptured) => {
+        State(prev, Capturing::Uncaptured) => {
             match (over_elem, prev, mouse.left) {
-                (_, Normal, Down) => State(Normal, Uncaptured),
-                (Nill, Normal, Up) | (Nill, Highlighted(_), Up) => State(Normal, Uncaptured),
-                (_, Normal, Up) | (_, Highlighted(_), Up) => State(Highlighted(over_elem), Uncaptured),
-                (_, Highlighted(p_elem), Down) | (_, Clicked(p_elem), Down) =>
-                    State(Clicked(p_elem), Uncaptured),
-                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
-                (Nill, _, _) => State(Normal, Uncaptured),
+                (_, DrawState::Normal, MouseButtonState::Down) => State(DrawState::Normal, Capturing::Uncaptured),
+                (Element::Nill, DrawState::Normal, MouseButtonState::Up) | (Element::Nill, DrawState::Highlighted(_), MouseButtonState::Up) => State(DrawState::Normal, Capturing::Uncaptured),
+                (_, DrawState::Normal, MouseButtonState::Up) | (_, DrawState::Highlighted(_), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Uncaptured),
+                (_, DrawState::Highlighted(p_elem), MouseButtonState::Down) | (_, DrawState::Clicked(p_elem), MouseButtonState::Down) =>
+                    State(DrawState::Clicked(p_elem), Capturing::Uncaptured),
+                (Element::Text(idx, x), DrawState::Clicked(Element::Text(_, _)), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Captured(idx, x)),
+                (Element::Nill, _, _) => State(DrawState::Normal, Capturing::Uncaptured),
                 _ => prev_box_state,
             }
         },
-        State(prev, Captured(p_idx, p_x)) => {
+        State(prev, Capturing::Captured(p_idx, p_x)) => {
             match (over_elem, prev, mouse.left) {
-                (Nill, Clicked(Nill), Up) => State(Normal, Uncaptured),
-                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
-                (_, Normal, Up) | (_, Highlighted(_), Up) | (_, Clicked(_), Up)  =>
-                    State(Highlighted(over_elem), Captured(p_idx, p_x)),
-                (_, Highlighted(p_elem), Down) | (_, Clicked(p_elem), Down) =>
-                    State(Clicked(p_elem), Captured(p_idx, p_x)),
+                (Element::Nill, DrawState::Clicked(Element::Nill), MouseButtonState::Up) => State(DrawState::Normal, Capturing::Uncaptured),
+                (Element::Text(idx, x), DrawState::Clicked(Element::Text(_, _)), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Captured(idx, x)),
+                (_, DrawState::Normal, MouseButtonState::Up) | (_, DrawState::Highlighted(_), MouseButtonState::Up) | (_, DrawState::Clicked(_), MouseButtonState::Up)  =>
+                    State(DrawState::Highlighted(over_elem), Capturing::Captured(p_idx, p_x)),
+                (_, DrawState::Highlighted(p_elem), MouseButtonState::Down) | (_, DrawState::Clicked(p_elem), MouseButtonState::Down) =>
+                    State(DrawState::Clicked(p_elem), Capturing::Captured(p_idx, p_x)),
                 _ => prev_box_state,
             }
         },
@@ -179,7 +178,7 @@ fn draw_cursor(
     context
         .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)
         .round_border_width(1f64)
-        .rgba(r, g, b, abs(a * (precise_time_s() * 2.5).sin() as f32))
+        .rgba(r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs())
         .draw(graphics);
 }
 
@@ -266,8 +265,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                     color.plain_contrast(), self.text.as_slice());
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
-            Uncaptured => new_state,
-            Captured(idx, cursor_x) => {
+            Capturing::Uncaptured => new_state,
+            Capturing::Captured(idx, cursor_x) => {
                 draw_cursor(self.uic.win_w, self.uic.win_h, graphics, color,
                             cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
@@ -355,7 +354,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                     }
                 }
 
-                State(w_state, Captured(new_idx, new_cursor_x))
+                State(w_state, Capturing::Captured(new_idx, new_cursor_x))
             },
         }};
 

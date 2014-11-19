@@ -1,8 +1,8 @@
-
+use std::num::Float;
 use std::num::pow;
 
 /// Clamp a value between a given min and max.
-pub fn clamp<T: Num + PartialOrd>(n: T, min: T, max: T) -> T {
+pub fn clamp<T: Float + PartialOrd>(n: T, min: T, max: T) -> T {
     if n < min { min } else if n > max { max } else { n }
 }
 
@@ -19,7 +19,7 @@ pub fn compare_f64s(a: f64, b: f64) -> Ordering {
 }
 
 /// Get value percentage between max and min.
-pub fn percentage<T: Num + Copy + FromPrimitive + ToPrimitive>
+pub fn percentage<T: Float + Copy + FromPrimitive + ToPrimitive>
     (value: T, min: T, max: T) -> f32 {
     let v = value.to_f32().unwrap();
     let mn = min.to_f32().unwrap();
@@ -28,14 +28,14 @@ pub fn percentage<T: Num + Copy + FromPrimitive + ToPrimitive>
 }
 
 /// Adjust the value to the given percentage.
-pub fn value_from_perc<T: Num + Copy + FromPrimitive + ToPrimitive>
+pub fn value_from_perc<T: Float + Copy + FromPrimitive + ToPrimitive>
     (perc: f32, min: T, max: T) -> T {
     min + FromPrimitive::from_f32((max - min).to_f32().unwrap() * perc).unwrap()
 }
 
 /// Map a value from a given range to a new given range.
-pub fn map_range<X: Num + Copy + FromPrimitive + ToPrimitive,
-                 Y: Num + Copy + FromPrimitive + ToPrimitive>
+pub fn map_range<X: Float + Copy + FromPrimitive + ToPrimitive,
+                 Y: Float + Copy + FromPrimitive + ToPrimitive>
 (val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y {
     let (val_f, in_min_f, in_max_f, out_min_f, out_max_f) = (
         val.to_f64().unwrap(),

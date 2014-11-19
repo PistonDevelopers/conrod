@@ -1,10 +1,8 @@
-
 use color::Color;
 use dimensions::Dimensions;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
@@ -14,7 +12,7 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::DropDownList;
+use widget::Widget::DropDownList;
 
 /// Tuple / Callback params.
 pub type Idx = uint;
@@ -39,9 +37,9 @@ impl DrawState {
     /// Translate the DropDownList's DrawState to the equivalent rectangle::State.
     fn as_rect_state(&self) -> rectangle::State {
         match self {
-            &Normal => rectangle::Normal,
-            &Highlighted(_, _) => rectangle::Highlighted,
-            &Clicked(_, _) => rectangle::Clicked,
+            &DrawState::Normal => rectangle::State::Normal,
+            &DrawState::Highlighted(_, _) => rectangle::State::Highlighted,
+            &DrawState::Clicked(_, _) => rectangle::State::Clicked,
         }
     }
 }
@@ -50,12 +48,12 @@ impl State {
     /// Translate the DropDownList's State to the equivalent rectangle::State.
     fn as_rect_state(&self) -> rectangle::State {
         match self {
-            &Open(draw_state) | &Closed(draw_state) => draw_state.as_rect_state(),
+            &State::Open(draw_state) | &State::Closed(draw_state) => draw_state.as_rect_state(),
         }
     }
 }
 
-widget_fns!(DropDownList, State, DropDownList(Closed(Normal)))
+widget_fns!(DropDownList, State, DropDownList(State::Closed(DrawState::Normal)))
 
 /// Is the cursor currently over the 
 fn is_over(pos: Point,
@@ -64,13 +62,13 @@ fn is_over(pos: Point,
            state: State,
            len: Len) -> Option<Idx> {
     match state {
-        Closed(_) => {
+        State::Closed(_) => {
             match rectangle::is_over(pos, mouse_pos, dim) {
                 false => None,
                 true => Some(0u),
             }
         },
-        Open(_) => {
+        State::Open(_) => {
             let total_h = dim[1] * len as f64;
             match rectangle::is_over(pos, mouse_pos, [dim[0], total_h]) {
                 false => None,
@@ -87,35 +85,35 @@ fn get_new_state(is_over_idx: Option<Idx>,
                  state: State,
                  mouse: MouseState) -> State {
     match state {
-        Closed(draw_state) => {
+        State::Closed(draw_state) => {
             match is_over_idx {
                 Some(_) => {
                     match (draw_state, mouse.left) {
-                        (Normal, Down) => Closed(Normal),
-                        (Normal, Up) | (Highlighted(_, _), Up) => Closed(Highlighted(0u, len)),
-                        (Highlighted(_, _), Down) => Closed(Clicked(0u, len)),
-                        (Clicked(_, _), Down) => Closed(Clicked(0u, len)),
-                        (Clicked(_, _), Up) => Open(Normal),
+                        (DrawState::Normal, MouseButtonState::Down) => State::Closed(DrawState::Normal),
+                        (DrawState::Normal, MouseButtonState::Up) | (DrawState::Highlighted(_, _), MouseButtonState::Up) => State::Closed(DrawState::Highlighted(0u, len)),
+                        (DrawState::Highlighted(_, _), MouseButtonState::Down) => State::Closed(DrawState::Clicked(0u, len)),
+                        (DrawState::Clicked(_, _), MouseButtonState::Down) => State::Closed(DrawState::Clicked(0u, len)),
+                        (DrawState::Clicked(_, _), MouseButtonState::Up) => State::Open(DrawState::Normal),
                     }
                 },
-                None => Closed(Normal),
+                None => State::Closed(DrawState::Normal),
             }
         },
-        Open(draw_state) => {
+        State::Open(draw_state) => {
             match is_over_idx {
                 Some(idx) => {
                     match (draw_state, mouse.left) {
-                        (Normal, Down) => Open(Normal),
-                        (Normal, Up) | (Highlighted(_, _), Up) => Open(Highlighted(idx, len)),
-                        (Highlighted(_, _), Down) => Open(Clicked(idx, len)),
-                        (Clicked(p_idx, _), Down) => Open(Clicked(p_idx, len)),
-                        (Clicked(_, _), Up) => Closed(Normal),
+                        (DrawState::Normal, MouseButtonState::Down) => State::Open(DrawState::Normal),
+                        (DrawState::Normal, MouseButtonState::Up) | (DrawState::Highlighted(_, _), MouseButtonState::Up) => State::Open(DrawState::Highlighted(idx, len)),
+                        (DrawState::Highlighted(_, _), MouseButtonState::Down) => State::Open(DrawState::Clicked(idx, len)),
+                        (DrawState::Clicked(p_idx, _), MouseButtonState::Down) => State::Open(DrawState::Clicked(p_idx, len)),
+                        (DrawState::Clicked(_, _), MouseButtonState::Up) => State::Closed(DrawState::Normal),
                     }
                 },
                 None => {
                     match (draw_state, mouse.left) {
-                        (Highlighted(p_idx, _), Up) => Open(Highlighted(p_idx, len)),
-                        _ => Closed(Normal),
+                        (DrawState::Highlighted(p_idx, _), MouseButtonState::Up) => State::Open(DrawState::Highlighted(p_idx, len)),
+                        _ => State::Closed(DrawState::Normal),
                     }
                 },
             }
@@ -193,9 +191,9 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
         // Call the `callback` closure if mouse was released
         // on one of the DropDownMenu items.
         match (state, new_state) {
-            (Open(o_d_state), Closed(c_d_state)) => {
+            (State::Open(o_d_state), State::Closed(c_d_state)) => {
                 match (o_d_state, c_d_state) {
-                    (Clicked(idx, _), Normal) => {
+                    (DrawState::Clicked(idx, _), DrawState::Normal) => {
                         match self.maybe_callback {
                             Some(ref mut callback) => (*callback)(self.selected, idx, (*self.strings)[idx].clone()),
                             None => (),
@@ -213,7 +211,7 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
 
         match new_state {
 
-            Closed(_) => {
+            State::Closed(_) => {
                 let rect_state = new_state.as_rect_state();
                 let text = match sel {
                     Some(idx) => (*self.strings)[idx][],
@@ -229,34 +227,34 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
                 )
             },
 
-            Open(draw_state) => {
+            State::Open(draw_state) => {
                 for (i, string) in self.strings.iter().enumerate() {
                     let rect_state = match sel {
                         None => {
                             match draw_state {
-                                Normal => rectangle::Normal,
-                                Highlighted(idx, _) => {
-                                    if i == idx { rectangle::Highlighted }
-                                    else { rectangle::Normal }
+                                DrawState::Normal => rectangle::State::Normal,
+                                DrawState::Highlighted(idx, _) => {
+                                    if i == idx { rectangle::State::Highlighted }
+                                    else { rectangle::State::Normal }
                                 },
-                                Clicked(idx, _) => {
-                                    if i == idx { rectangle::Clicked }
-                                    else { rectangle::Normal }
+                                DrawState::Clicked(idx, _) => {
+                                    if i == idx { rectangle::State::Clicked }
+                                    else { rectangle::State::Normal }
                                 },
                             }
                         },
                         Some(sel_idx) => {
-                            if sel_idx == i { rectangle::Clicked }
+                            if sel_idx == i { rectangle::State::Clicked }
                             else {
                                 match draw_state {
-                                    Normal => rectangle::Normal,
-                                    Highlighted(idx, _) => {
-                                        if i == idx { rectangle::Highlighted }
-                                        else { rectangle::Normal }
+                                    DrawState::Normal => rectangle::State::Normal,
+                                    DrawState::Highlighted(idx, _) => {
+                                        if i == idx { rectangle::State::Highlighted }
+                                        else { rectangle::State::Normal }
                                     },
-                                    Clicked(idx, _) => {
-                                        if i == idx { rectangle::Clicked }
-                                        else { rectangle::Normal }
+                                    DrawState::Clicked(idx, _) => {
+                                        if i == idx { rectangle::State::Clicked }
+                                        else { rectangle::State::Normal }
                                     },
                                 }
                             }

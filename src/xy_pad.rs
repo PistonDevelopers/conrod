@@ -1,4 +1,4 @@
-
+use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
 use graphics::{
@@ -12,17 +12,13 @@ use label;
 use label::FontSize;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
+    Corner
 };
 use ui_context::{
     UIID,
@@ -37,7 +33,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::XYPad;
+use widget::Widget::XYPad;
 
 /// Represents the state of the xy_pad widget.
 #[deriving(Show, PartialEq, Clone)]
@@ -51,25 +47,25 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &Normal => rectangle::Normal,
-            &Highlighted => rectangle::Highlighted,
-            &Clicked => rectangle::Clicked,
+            &State::Normal => rectangle::State::Normal,
+            &State::Highlighted => rectangle::State::Highlighted,
+            &State::Clicked => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(XYPad, State, XYPad(Normal))
+widget_fns!(XYPad, State, XYPad(State::Normal))
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
     match (is_over, prev, mouse.left) {
-        (true, Normal, Down) => Normal,
-        (true, _, Down) => Clicked,
-        (true, _, Up) => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _ => Normal,
+        (true, State::Normal, MouseButtonState::Down) => State::Normal,
+        (true, _, MouseButtonState::Down) => State::Clicked,
+        (true, _, MouseButtonState::Up) => State::Highlighted,
+        (false, State::Clicked, MouseButtonState::Down) => State::Clicked,
+        _ => State::Normal,
     }
 }
 
@@ -129,16 +125,16 @@ impl <'a, X, Y> XYPadContext<'a, X, Y> {
     }
 }
 
-pub trait XYPadBuilder<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-                           Y: Num + Copy + ToPrimitive + FromPrimitive + ToString> {
+pub trait XYPadBuilder<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
+                           Y: Float + Copy + ToPrimitive + FromPrimitive + ToString> {
     /// A xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
               x_val: X, x_min: X, x_max: X,
               y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y>;
 }
 
-impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
+impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
+         Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
 XYPadBuilder<'a, X, Y> for UiContext {
     /// An xy_pad builder method to be implemented by the UiContext.
     fn xy_pad(&'a mut self, ui_id: UIID,
@@ -171,8 +167,8 @@ impl_labelable!(XYPadContext, X, Y)
 impl_positionable!(XYPadContext, X, Y)
 impl_shapeable!(XYPadContext, X, Y)
 
-impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Num + Copy + ToPrimitive + FromPrimitive + ToString>
+impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
+         Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
 ::draw::Drawable for XYPadContext<'a, X, Y> {
     fn draw(&mut self, graphics: &mut Gl) {
 
@@ -192,8 +188,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
 
         // Determine new values.
         let (new_x, new_y) = match (is_over_pad, new_state) {
-            (_, Normal) | (_, Highlighted) => (self.x, self.y),
-            (_, Clicked) => {
+            (_, State::Normal) | (_, State::Highlighted) => (self.x, self.y),
+            (_, State::Clicked) => {
                 let temp_x = clamp(mouse.pos[0], pad_pos[0], pad_pos[0] + pad_dim[0]);
                 let temp_y = clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
                 (map_range(temp_x - self.pos[0], pad_dim[0], 0.0, self.min_x, self.max_x),
@@ -207,8 +203,8 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
                 if self.x != new_x || self.y != new_y { (*callback)(new_x, new_y) }
                 else {
                     match (state, new_state) {
-                        (Highlighted, Clicked)
-                        | (Clicked, Highlighted) => (*callback)(new_x, new_y),
+                        (State::Highlighted, State::Clicked)
+                        | (State::Clicked, State::Highlighted) => (*callback)(new_x, new_y),
                         _ => (),
                     }
                 }
@@ -222,10 +218,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rect_state, self.pos,
                         self.dim, maybe_frame, color);
         let (vert_x, hori_y) = match (is_over_pad, new_state) {
-            (_, Normal) | (_, Highlighted) =>
+            (_, State::Normal) | (_, State::Highlighted) =>
                 (pad_pos[0] + map_range(new_x, self.min_x, self.max_x, pad_dim[0], 0.0),
                  pad_pos[1] + map_range(new_y, self.min_y, self.max_y, pad_dim[1], 0.0)),
-            (_, Clicked) =>
+            (_, State::Clicked) =>
                 (clamp(mouse.pos[0], pad_pos[0], pad_pos[0] + pad_dim[0]),
                  clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1])),
         };
@@ -251,10 +247,10 @@ impl<'a, X: Num + Copy + ToPrimitive + FromPrimitive + ToString,
         let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
             match rectangle::corner(pad_pos, [vert_x, hori_y], pad_dim) {
-                TopLeft => [vert_x, hori_y],
-                TopRight => [vert_x - xy_string_w, hori_y],
-                BottomLeft => [vert_x, hori_y - self.font_size as f64],
-                BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
+                Corner::TopLeft => [vert_x, hori_y],
+                Corner::TopRight => [vert_x - xy_string_w, hori_y],
+                Corner::BottomLeft => [vert_x, hori_y - self.font_size as f64],
+                Corner::BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
             }
         };
         label::draw(graphics, self.uic, xy_string_pos, self.font_size,

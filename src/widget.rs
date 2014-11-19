@@ -19,26 +19,26 @@ pub enum Placing {
 impl Placing {
     pub fn down(&self, padding: f64) -> (f64, f64) {
         match self {
-            &Place(x, y, _, h) => (x, y + h + padding),
-            &NoPlace => (0.0, 0.0),
+            &Placing::Place(x, y, _, h) => (x, y + h + padding),
+            &Placing::NoPlace => (0.0, 0.0),
         }
     }
     pub fn up(&self, padding: f64) -> (f64, f64) {
         match self {
-            &Place(x, y, _, _) => (x, y - padding),
-            &NoPlace => (0.0, 0.0),
+            &Placing::Place(x, y, _, _) => (x, y - padding),
+            &Placing::NoPlace => (0.0, 0.0),
         }
     }
     pub fn left(&self, padding: f64) -> (f64, f64) {
         match self {
-            &Place(x, y, _, _) => (x - padding, y),
-            &NoPlace => (0.0, 0.0),
+            &Placing::Place(x, y, _, _) => (x - padding, y),
+            &Placing::NoPlace => (0.0, 0.0),
         }
     }
     pub fn right(&self, padding: f64) -> (f64, f64) {
         match self {
-            &Place(x, y, w, _) => (x + w + padding, y),
-            &NoPlace => (0.0, 0.0),
+            &Placing::Place(x, y, w, _) => (x + w + padding, y),
+            &Placing::NoPlace => (0.0, 0.0),
         }
     }
 }

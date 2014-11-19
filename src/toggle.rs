@@ -3,8 +3,7 @@ use color::Color;
 use dimensions::Dimensions;
 use mouse_state::{
     MouseState,
-    Up,
-    Down,
+    MouseButtonState
 };
 use opengl_graphics::Gl;
 use point::Point;
@@ -13,7 +12,7 @@ use ui_context::{
     UIID,
     UiContext,
 };
-use widget::Toggle;
+use widget::Widget::Toggle;
 
 /// Represents the state of the Toggle widget.
 #[deriving(PartialEq, Clone)]
@@ -27,25 +26,25 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &Normal => rectangle::Normal,
-            &Highlighted => rectangle::Highlighted,
-            &Clicked => rectangle::Clicked,
+            &State::Normal => rectangle::State::Normal,
+            &State::Highlighted => rectangle::State::Highlighted,
+            &State::Clicked => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(Toggle, State, Toggle(Normal))
+widget_fns!(Toggle, State, Toggle(State::Normal))
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
     match (is_over, prev, mouse.left) {
-        (true, Normal, Down) => Normal,
-        (true, _, Down) => Clicked,
-        (true, _, Up) => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _ => Normal,
+        (true, State::Normal, MouseButtonState::Down) => State::Normal,
+        (true, _, MouseButtonState::Down) => State::Clicked,
+        (true, _, MouseButtonState::Up) => State::Highlighted,
+        (false, State::Clicked, MouseButtonState::Down) => State::Clicked,
+        _ => State::Normal,
     }
 }
 
@@ -114,7 +113,7 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
         match self.maybe_callback {
             Some(ref mut callback) => {
                 match (is_over, state, new_state) {
-                    (true, Clicked, Highlighted) =>
+                    (true, State::Clicked, State::Highlighted) =>
                         (*callback)(match self.value { true => false, false => true }),
                     _ => (),
                 }
