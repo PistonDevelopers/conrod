@@ -1,6 +1,6 @@
 use std::num::Float;
 use std::default::Default;
-use std::fmt::{Show, Formatter, FormatError};
+use std::fmt::{Show, Formatter, Error};
 use std::rand::random;
 use std::ascii::OwnedAsciiExt;
 use serialize::hex::ToHex;
@@ -280,7 +280,7 @@ impl Mul<Color, Color> for Color {
 }
 
 impl Show for Color {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), FormatError> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         let hex = self.to_hex(); 
         fmt.pad(hex.as_slice())
     }
