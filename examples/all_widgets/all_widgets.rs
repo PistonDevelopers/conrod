@@ -43,9 +43,9 @@ use opengl_graphics::Gl;
 use event::{
     WindowSettings,
     Events,
+    Event,
     Ups,
     MaxFps,
-    Render,
 };
 use sdl2_window::Sdl2Window;
 use vecmath::vec2_add;
@@ -152,9 +152,10 @@ fn main() {
     // Main program loop begins.
     for event in event_iter {
         uic.handle_event(&event);
-        if let Render(_) = event {
-            draw_ui(&mut gl, &mut uic, &mut demo)
-        }
+        match event {
+            Event::Render(_) => draw_ui(&mut gl, &mut uic, &mut demo),
+            _ => {}
+        };
     }
 
 }
@@ -201,7 +202,7 @@ fn draw_ui(gl: &mut Gl,
         };
 
         // Slider widget example slider(UIID, value, min, max).
-        uic.slider(1u64, pad as i16, 10, 910)
+        uic.slider(1u64, pad as f32, 10.0, 910.0)
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
             .rgba(0.5, 0.3, 0.6, 1.0)
@@ -433,4 +434,3 @@ fn draw_circle(win_w: f64,
         .rgba(r, g, b, a)
         .draw(gl)
 }
-
