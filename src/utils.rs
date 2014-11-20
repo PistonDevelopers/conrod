@@ -1,5 +1,5 @@
 use std::num::Float;
-use std::num::pow;
+use std::num::Int;
 
 /// Clamp a value between a given min and max.
 pub fn clamp<T: Float + PartialOrd>(n: T, min: T, max: T) -> T {
@@ -72,7 +72,7 @@ pub fn val_to_string<T: ToString + ToPrimitive>
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.
             let mut n = 1u;
-            while pow(10u, n) < pixel_range { n += 1u }
+            while 10u.pow(n) < pixel_range { n += 1u }
             let precision = n;
 
             // Truncate the length to the pixel precision as
