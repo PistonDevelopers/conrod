@@ -340,8 +340,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                                     (*callback)(*text);
 
                                     new_idx = cmp::min(new_idx, text.len());
-                                    new_cursor_x = text.as_slice()
-                                                       .chars()
+                                    let text = &*text;
+                                    new_cursor_x = text.chars()
                                                        // Add text_pos.x for padding
                                                        .fold(text_pos[0], |acc, c| {
                                         acc + uic.get_character_w(*font_size, c)
