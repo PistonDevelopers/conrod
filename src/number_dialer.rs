@@ -8,7 +8,7 @@ use graphics::{
     AddRectangle,
     AddImage,
     Draw,
-    RelativeTransform2d,
+    RelativeTransform,
 };
 use label;
 use label::FontSize;
@@ -197,7 +197,7 @@ fn get_new_value<T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToS
             FromPrimitive::from_f64(new_val_f).unwrap()
         },
     }
-            
+
 }
 
 /*

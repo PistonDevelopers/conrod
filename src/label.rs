@@ -5,7 +5,7 @@ use graphics::{
     AddColor,
     AddImage,
     Draw,
-    RelativeTransform2d,
+    RelativeTransform,
 };
 use opengl_graphics::Gl;
 use point::Point;
