@@ -1,10 +1,7 @@
 
 use color::Color;
 use dimensions::Dimensions;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -39,12 +36,14 @@ widget_fns!(Toggle, State, Toggle(State::Normal))
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::State::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left) {
-        (true, State::Normal, MouseButtonState::Down) => State::Normal,
-        (true, _, MouseButtonState::Down) => State::Clicked,
-        (true, _, MouseButtonState::Up) => State::Highlighted,
-        (false, State::Clicked, MouseButtonState::Down) => State::Clicked,
-        _ => State::Normal,
+        (true,  Normal,  Down) => Normal,
+        (true,  _,       Down) => Clicked,
+        (true,  _,       Up)   => Highlighted,
+        (false, Clicked, Down) => Clicked,
+        _                      => Normal,
     }
 }
 

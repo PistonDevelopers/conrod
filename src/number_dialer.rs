@@ -12,10 +12,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -144,23 +141,26 @@ fn is_over(pos: Point,
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::Element::ValueGlyph;
+    use self::State::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left) {
-        (Some(_), State::Normal, MouseButtonState::Down) => State::Normal,
-        (Some(elem), _, MouseButtonState::Up) => State::Highlighted(elem),
-        (Some(elem), State::Highlighted(_), MouseButtonState::Down) => State::Clicked(elem),
-        (Some(_), State::Clicked(p_elem), MouseButtonState::Down) => {
+        (Some(_),    Normal,          Down) => Normal,
+        (Some(elem), _,               Up)   => Highlighted(elem),
+        (Some(elem), Highlighted(_),  Down) => Clicked(elem),
+        (Some(_),    Clicked(p_elem), Down) => {
             match p_elem {
-                Element::ValueGlyph(idx, _) => State::Clicked(Element::ValueGlyph(idx, mouse.pos[1])),
-                _ => State::Clicked(p_elem),
+                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
+                _                  => Clicked(p_elem),
             }
         },
-        (None, State::Clicked(p_elem), MouseButtonState::Down) => {
+        (None,       Clicked(p_elem), Down) => {
             match p_elem {
-                Element::ValueGlyph(idx, _) => State::Clicked(Element::ValueGlyph(idx, mouse.pos[1])),
-                _ => State::Clicked(p_elem),
+                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.pos[1])),
+                _                  => Clicked(p_elem),
             }
         },
-        _ => State::Normal,
+        _                                   => Normal,
     }
 }
 

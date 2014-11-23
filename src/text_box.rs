@@ -10,10 +10,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use input::keyboard::{
     Backspace,
@@ -136,28 +133,35 @@ fn closest_idx(uic: &mut UiContext,
 fn get_new_state(over_elem: Element,
                  prev_box_state: State,
                  mouse: MouseState) -> State {
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::Capturing::{Uncaptured, Captured};
+    use self::DrawState::{Normal, Highlighted, Clicked};
+    use self::Element::{Nill, Text};
     match prev_box_state {
-        State(prev, Capturing::Uncaptured) => {
+        State(prev, Uncaptured) => {
             match (over_elem, prev, mouse.left) {
-                (_, DrawState::Normal, MouseButtonState::Down) => State(DrawState::Normal, Capturing::Uncaptured),
-                (Element::Nill, DrawState::Normal, MouseButtonState::Up) | (Element::Nill, DrawState::Highlighted(_), MouseButtonState::Up) => State(DrawState::Normal, Capturing::Uncaptured),
-                (_, DrawState::Normal, MouseButtonState::Up) | (_, DrawState::Highlighted(_), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Uncaptured),
-                (_, DrawState::Highlighted(p_elem), MouseButtonState::Down) | (_, DrawState::Clicked(p_elem), MouseButtonState::Down) =>
-                    State(DrawState::Clicked(p_elem), Capturing::Uncaptured),
-                (Element::Text(idx, x), DrawState::Clicked(Element::Text(_, _)), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Captured(idx, x)),
-                (Element::Nill, _, _) => State(DrawState::Normal, Capturing::Uncaptured),
-                _ => prev_box_state,
+                (_, Normal, Down)                       => State(Normal, Uncaptured),
+                (Nill, Normal, Up)                      |
+                (Nill, Highlighted(_), Up)              => State(Normal, Uncaptured),
+                (_, Normal, Up)                         |
+                (_, Highlighted(_), Up)                 => State(Highlighted(over_elem), Uncaptured),
+                (_, Highlighted(p_elem), Down)          |
+                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Uncaptured),
+                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
+                (Nill, _, _)                            => State(Normal, Uncaptured),
+                _                                       => prev_box_state,
             }
         },
-        State(prev, Capturing::Captured(p_idx, p_x)) => {
+        State(prev, Captured(p_idx, p_x)) => {
             match (over_elem, prev, mouse.left) {
-                (Element::Nill, DrawState::Clicked(Element::Nill), MouseButtonState::Up) => State(DrawState::Normal, Capturing::Uncaptured),
-                (Element::Text(idx, x), DrawState::Clicked(Element::Text(_, _)), MouseButtonState::Up) => State(DrawState::Highlighted(over_elem), Capturing::Captured(idx, x)),
-                (_, DrawState::Normal, MouseButtonState::Up) | (_, DrawState::Highlighted(_), MouseButtonState::Up) | (_, DrawState::Clicked(_), MouseButtonState::Up)  =>
-                    State(DrawState::Highlighted(over_elem), Capturing::Captured(p_idx, p_x)),
-                (_, DrawState::Highlighted(p_elem), MouseButtonState::Down) | (_, DrawState::Clicked(p_elem), MouseButtonState::Down) =>
-                    State(DrawState::Clicked(p_elem), Capturing::Captured(p_idx, p_x)),
-                _ => prev_box_state,
+                (Nill, Clicked(Nill), Up)               => State(Normal, Uncaptured),
+                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
+                (_, Normal, Up)                         |
+                (_, Highlighted(_), Up)                 |
+                (_, Clicked(_), Up)                     => State(Highlighted(over_elem), Captured(p_idx, p_x)),
+                (_, Highlighted(p_elem), Down)          |
+                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Captured(p_idx, p_x)),
+                _                                       => prev_box_state,
             }
         },
     }
