@@ -430,4 +430,3 @@ impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
     }
 
 }
-
