@@ -147,33 +147,37 @@ fn is_over_and_closest(pos: Point,
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
+    use Element::{EnvPoint, CurvePoint};
+    use MouseButton::{Left, Right};
+    use MouseButtonState::{Down, Up};
+    use State::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left, mouse.right) {
-        (Some(_), State::Normal, MouseButtonState::Down, MouseButtonState::Up) => State::Normal,
-        (Some(elem), _, MouseButtonState::Up, MouseButtonState::Up) => State::Highlighted(elem),
-        (Some(elem), State::Highlighted(_), MouseButtonState::Down, MouseButtonState::Up) => State::Clicked(elem, MouseButton::Left),
-        (Some(_), State::Clicked(p_elem, m_button), MouseButtonState::Down, MouseButtonState::Up)
-        | (Some(_), State::Clicked(p_elem, m_button), MouseButtonState::Up, MouseButtonState::Down) => {
+        (Some(_), Normal, Down, Up) => Normal,
+        (Some(elem), _, Up, Up) => Highlighted(elem),
+        (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),
+        (Some(_), Clicked(p_elem, m_button), Down, Up) |
+        (Some(_), Clicked(p_elem, m_button), Up, Down) => {
             match p_elem {
-                Element::EnvPoint(idx, _) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
-                Element::CurvePoint(idx, _) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
-                _ => State::Clicked(p_elem, m_button),
+                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                _ => Clicked(p_elem, m_button),
             }
         },
-        (None, State::Clicked(p_elem, m_button), MouseButtonState::Down, MouseButtonState::Up) => {
+        (None, Clicked(p_elem, m_button), Down, Up) => {
             match (p_elem, m_button) {
-                (Element::EnvPoint(idx, _), MouseButton::Left) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Left),
-                (Element::CurvePoint(idx, _), MouseButton::Left) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Left),
-                _ => State::Clicked(p_elem, MouseButton::Left),
+                (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
+                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
+                _ => Clicked(p_elem, Left),
             }
         },
-        (Some(_), State::Highlighted(p_elem), MouseButtonState::Up, MouseButtonState::Down) => {
+        (Some(_), Highlighted(p_elem), Up, Down) => {
             match p_elem {
-                Element::EnvPoint(idx, _) => State::Clicked(Element::EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Right),
-                Element::CurvePoint(idx, _) => State::Clicked(Element::CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), MouseButton::Right),
-                _ => State::Clicked(p_elem, MouseButton::Right),
+                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
+                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Right),
+                _ => Clicked(p_elem, Right),
             }
         },
-        _ => State::Normal,
+        _ => Normal,
     }
 }
 

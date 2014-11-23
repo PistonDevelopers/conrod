@@ -84,36 +84,40 @@ fn get_new_state(is_over_idx: Option<Idx>,
                  len: Len,
                  state: State,
                  mouse: MouseState) -> State {
+    use DrawState::{Normal, Closed, Highlighted};
+    use MouseButtonState::{Down, Up};
     match state {
         State::Closed(draw_state) => {
             match is_over_idx {
                 Some(_) => {
                     match (draw_state, mouse.left) {
-                        (DrawState::Normal, MouseButtonState::Down) => State::Closed(DrawState::Normal),
-                        (DrawState::Normal, MouseButtonState::Up) | (DrawState::Highlighted(_, _), MouseButtonState::Up) => State::Closed(DrawState::Highlighted(0u, len)),
-                        (DrawState::Highlighted(_, _), MouseButtonState::Down) => State::Closed(DrawState::Clicked(0u, len)),
-                        (DrawState::Clicked(_, _), MouseButtonState::Down) => State::Closed(DrawState::Clicked(0u, len)),
-                        (DrawState::Clicked(_, _), MouseButtonState::Up) => State::Open(DrawState::Normal),
+                        (Normal,            Down) => State::Closed(Normal),
+                        (Normal,            Up)   |
+                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0u, len)),
+                        (Highlighted(_, _), Down) => State::Closed(Clicked(0u, len)),
+                        (Clicked(_, _),     Down) => State::Closed(Clicked(0u, len)),
+                        (Clicked(_, _),     Up)   => State::Open(Normal),
                     }
                 },
-                None => State::Closed(DrawState::Normal),
+                None => State::Closed(Normal),
             }
         },
         State::Open(draw_state) => {
             match is_over_idx {
                 Some(idx) => {
                     match (draw_state, mouse.left) {
-                        (DrawState::Normal, MouseButtonState::Down) => State::Open(DrawState::Normal),
-                        (DrawState::Normal, MouseButtonState::Up) | (DrawState::Highlighted(_, _), MouseButtonState::Up) => State::Open(DrawState::Highlighted(idx, len)),
-                        (DrawState::Highlighted(_, _), MouseButtonState::Down) => State::Open(DrawState::Clicked(idx, len)),
-                        (DrawState::Clicked(p_idx, _), MouseButtonState::Down) => State::Open(DrawState::Clicked(p_idx, len)),
-                        (DrawState::Clicked(_, _), MouseButtonState::Up) => State::Closed(DrawState::Normal),
+                        (Normal,            Down) => State::Open(Normal),
+                        (Normal,            Up)   |
+                        (Highlighted(_, _), Up)   => State::Open(Highlighted(idx, len)),
+                        (Highlighted(_, _), Down) => State::Open(Clicked(idx, len)),
+                        (Clicked(p_idx, _), Down) => State::Open(Clicked(p_idx, len)),
+                        (Clicked(_, _),     Up)   => State::Closed(Normal),
                     }
                 },
                 None => {
                     match (draw_state, mouse.left) {
-                        (DrawState::Highlighted(p_idx, _), MouseButtonState::Up) => State::Open(DrawState::Highlighted(p_idx, len)),
-                        _ => State::Closed(DrawState::Normal),
+                        (Highlighted(p_idx, _), Up) => State::Open(Highlighted(p_idx, len)),
+                        _ => State::Closed(Normal),
                     }
                 },
             }

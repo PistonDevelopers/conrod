@@ -46,12 +46,14 @@ widget_fns!(Slider, State, Slider(State::Normal))
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
-    match (is_over, prev, mouse) {
-        (true, State::Normal, MouseState { left: MouseButtonState::Down, .. }) => State::Normal,
-        (true, _, MouseState { left: MouseButtonState::Down, .. }) => State::Clicked,
-        (true, _, MouseState { left: MouseButtonState::Up, .. }) => State::Highlighted,
-        (false, State::Clicked, MouseState { left: MouseButtonState::Down, .. }) => State::Clicked,
-        _ => State::Normal,
+    use MouseButtonState::{Down, Up};
+    use State::{Normal, Highlighted, Clicked};
+    match (is_over, prev, mouse.left) {
+        (true,  Normal,  Down) => Normal,
+        (true,  _,       Down) => Clicked,
+        (true,  _,       Up)   => Highlighted,
+        (false, Clicked, Down) => Clicked,
+        _ => Normal,
     }
 }
 

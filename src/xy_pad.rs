@@ -60,12 +60,14 @@ widget_fns!(XYPad, State, XYPad(State::Normal))
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
+    use MouseButtonState::{Down, Up};
+    use State::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left) {
-        (true, State::Normal, MouseButtonState::Down) => State::Normal,
-        (true, _, MouseButtonState::Down) => State::Clicked,
-        (true, _, MouseButtonState::Up) => State::Highlighted,
-        (false, State::Clicked, MouseButtonState::Down) => State::Clicked,
-        _ => State::Normal,
+        (true,  Normal,  Down) => Normal,
+        (true,  _,       Down) => Clicked,
+        (true,  _,       Up)   => Highlighted,
+        (false, Clicked, Down) => Clicked,
+        _                      => Normal,
     }
 }
 
