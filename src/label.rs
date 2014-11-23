@@ -122,4 +122,3 @@ impl<'a> ::draw::Drawable for LabelContext<'a> {
         draw(graphics, self.uic, self.pos, self.size, color, self.text);
     }
 }
-

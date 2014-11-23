@@ -1,7 +1,7 @@
 
 use dimensions::Dimensions;
 use error::ConrodResult;
-use glyph_cache::{
+use opengl_graphics::glyph_cache::{
     GlyphCache,
     Character,
 };
@@ -202,4 +202,3 @@ impl UiContext {
     }
 
 }
-
