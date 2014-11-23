@@ -10,10 +10,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use input::keyboard::{
     Backspace,
@@ -136,10 +133,10 @@ fn closest_idx(uic: &mut UiContext,
 fn get_new_state(over_elem: Element,
                  prev_box_state: State,
                  mouse: MouseState) -> State {
-    use Capturing::{UnCaptured, Captured};
-    use DrawState::{Normal, Highlighted, Clicked};
-    use Element::{Nill, Text};
-    use MouseButtonState::{Down, Up};
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::Capturing::{Uncaptured, Captured};
+    use self::DrawState::{Normal, Highlighted, Clicked};
+    use self::Element::{Nill, Text};
     match prev_box_state {
         State(prev, Uncaptured) => {
             match (over_elem, prev, mouse.left) {

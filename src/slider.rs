@@ -2,10 +2,7 @@ use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
 use label;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -46,8 +43,8 @@ widget_fns!(Slider, State, Slider(State::Normal))
 fn get_new_state(is_over: bool,
                  prev: State,
                  mouse: MouseState) -> State {
-    use MouseButtonState::{Down, Up};
-    use State::{Normal, Highlighted, Clicked};
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::State::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left) {
         (true,  Normal,  Down) => Normal,
         (true,  _,       Down) => Clicked,

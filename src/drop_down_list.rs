@@ -1,9 +1,6 @@
 use color::Color;
 use dimensions::Dimensions;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -84,8 +81,8 @@ fn get_new_state(is_over_idx: Option<Idx>,
                  len: Len,
                  state: State,
                  mouse: MouseState) -> State {
-    use DrawState::{Normal, Closed, Highlighted};
-    use MouseButtonState::{Down, Up};
+    use self::DrawState::{Normal, Clicked, Highlighted};
+    use mouse_state::MouseButtonState::{Down, Up};
     match state {
         State::Closed(draw_state) => {
             match is_over_idx {

@@ -12,10 +12,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::{
-    MouseState,
-    MouseButtonState
-};
+use mouse_state::MouseState;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -147,10 +144,10 @@ fn is_over_and_closest(pos: Point,
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: MouseState) -> State {
-    use Element::{EnvPoint, CurvePoint};
-    use MouseButton::{Left, Right};
-    use MouseButtonState::{Down, Up};
-    use State::{Normal, Highlighted, Clicked};
+    use mouse_state::MouseButtonState::{Down, Up};
+    use self::Element::{EnvPoint, CurvePoint};
+    use self::MouseButton::{Left, Right};
+    use self::State::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left, mouse.right) {
         (Some(_), Normal, Down, Up) => Normal,
         (Some(elem), _, Up, Up) => Highlighted(elem),
