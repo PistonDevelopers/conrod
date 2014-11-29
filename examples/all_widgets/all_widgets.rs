@@ -153,7 +153,11 @@ fn main() {
     for event in event_iter {
         uic.handle_event(&event);
         match event {
-            Event::Render(_) => draw_ui(&mut gl, &mut uic, &mut demo),
+            Event::Render(args) => {
+                gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
+                    draw_ui(gl, &mut uic, &mut demo);
+                });
+            }
             _ => {}
         };
     }
