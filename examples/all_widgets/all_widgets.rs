@@ -28,6 +28,7 @@ use conrod::{
     Slider,
     Shapeable,
     TextBox,
+    Theme,
     Toggle,
     UiContext,
     WidgetMatrix,
@@ -40,6 +41,7 @@ use graphics::{
     Draw,
 };
 use opengl_graphics::Gl;
+use opengl_graphics::glyph_cache::GlyphCache;
 use event::{
     WindowSettings,
     Events,
@@ -127,8 +129,6 @@ impl DemoApp {
 }
 
 fn main() {
-
-    // Create a SDL2 window.
     let window = Sdl2Window::new(
         shader_version::opengl::OpenGL_3_2,
         WindowSettings {
@@ -140,16 +140,15 @@ fn main() {
         }
     );
     let window_ref = RefCell::new(window);
-    // Create GameIterator to begin the event iteration loop.
     let mut event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
-    // Create OpenGL instance.
     let mut gl = Gl::new(shader_version::opengl::OpenGL_3_2);
-    // Create the UiContext and specify the name of a font that's in our "assets" directory.
-    let mut uic = UiContext::new(&Path::new("./assets/Dense-Regular.otf"), None).unwrap();
-    // Create the Demonstration Application data.
+
+    let font_path = Path::new("./assets/Dense-Regular.otf");
+    let theme = Theme::default();
+    let glyph_cache = GlyphCache::new(&font_path).unwrap();
+    let mut uic = UiContext::new(glyph_cache, theme);
     let mut demo = DemoApp::new();
 
-    // Main program loop begins.
     for event in event_iter {
         uic.handle_event(&event);
         match event {
@@ -161,7 +160,6 @@ fn main() {
             _ => {}
         };
     }
-
 }
 
 /// Draw the User Interface.

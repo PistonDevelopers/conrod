@@ -1,6 +1,5 @@
 
 use dimensions::Dimensions;
-use error::ConrodResult;
 use opengl_graphics::glyph_cache::{
     GlyphCache,
     Character,
@@ -51,13 +50,8 @@ pub struct UiContext {
 impl UiContext {
 
     /// Constructor for a UiContext.
-    pub fn new(font_path: &Path, maybe_theme_path: Option<&str>) -> ConrodResult<UiContext> {
-        let glyph_cache = try!(GlyphCache::new(font_path));
-        let theme = match maybe_theme_path {
-            None => Theme::default(),
-            Some(path) => Theme::load(path).ok().unwrap_or(Theme::default()),
-        };
-        Ok(UiContext {
+    pub fn new(glyph_cache: GlyphCache, theme: Theme) -> UiContext {
+        UiContext {
             data: Vec::from_elem(512, (widget::Widget::NoWidget, widget::Placing::NoPlace)),
             theme: theme,
             mouse: MouseState::new([0f64, 0f64], MouseButtonState::Up, MouseButtonState::Up, MouseButtonState::Up),
@@ -69,7 +63,7 @@ impl UiContext {
             win_w: 0f64,
             win_h: 0f64,
             prev_uiid: 0u64,
-        })
+        }
     }
 
     /// Handle game events and update the state.
