@@ -34,12 +34,6 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use graphics::{
-    AddColor,
-    AddEllipse,
-    Context,
-    Draw,
-};
 use opengl_graphics::Gl;
 use opengl_graphics::glyph_cache::GlyphCache;
 use event::{
@@ -429,10 +423,8 @@ fn draw_circle(win_w: f64,
                gl: &mut Gl,
                pos: Point,
                color: Color) {
-    let context = &Context::abs(win_w, win_h);
+    let context = &graphics::Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
-    context
-        .ellipse(pos[0], pos[1], 30.0, 30.0)
-        .rgba(r, g, b, a)
-        .draw(gl)
+    graphics::Ellipse::new([r, g, b, a])
+        .draw([pos[0], pos[1], 30.0, 30.0], context, gl);
 }

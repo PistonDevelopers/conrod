@@ -1,12 +1,9 @@
 use std::num::FloatMath;
 use color::Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::{
-    AddColor,
-    AddLine,
-    AddRoundBorder,
     Context,
-    Draw,
 };
 use label;
 use label::FontSize;
@@ -179,14 +176,9 @@ fn draw_cursor(
 ) {
     let context = Context::abs(win_w, win_h);
     let (r, g, b, a) = color.plain_contrast().as_tuple();
-    context
-        .line(cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h)
-        .round_border_width(1f64)
-        .rgba(r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs())
-        .draw(graphics);
+    graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
+        .draw([cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h], &context, graphics);
 }
-
-
 
 /// A context on which the builder pattern can be implemented.
 pub struct TextBoxContext<'a> {
