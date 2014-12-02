@@ -2,12 +2,9 @@ use std::num::Float;
 use std::num::Primitive;
 use color::Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::{
     Context,
-    AddColor,
-    AddRectangle,
-    AddImage,
-    Draw,
     RelativeTransform,
 };
 use label;
@@ -230,6 +227,7 @@ fn draw_value_string(
     let (font_r, font_g, font_b, font_a) = font_color.as_tuple();
     let context = Context::abs(win_w, win_h).trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
+    let image = graphics::Image::colored([font_r, font_g, font_b, font_a]);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -256,11 +254,11 @@ fn draw_value_string(
             _ => (),
         };
         let x_shift = half_slot_w - (character.glyph.advance().x >> 16) as f64 / 2.0;
-        context.trans((x + character.bitmap_glyph.left() + x_shift as i32) as f64,
-                      (y - character.bitmap_glyph.top()) as f64)
-                        .image(&character.texture)
-                        .rgba(font_r, font_g, font_b, font_a)
-                        .draw(graphics);
+        let d = context.trans(
+                (x + character.bitmap_glyph.left() + x_shift as i32) as f64,
+                (y - character.bitmap_glyph.top()) as f64
+            );
+        image.draw(&character.texture, &d, graphics);
         x += slot_w as i32;
     }
 }
@@ -275,7 +273,8 @@ fn draw_slot_rect(
     color: Color
 ) {
     let (r, g, b, a) = color.as_tuple();
-    context.rect(x, y, w, h).rgba(r, g, b, a).draw(graphics)
+    graphics::Rectangle::new([r, g, b, a])
+        .draw([x, y, w, h], context, graphics);
 }
 
 

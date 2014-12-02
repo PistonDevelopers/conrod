@@ -1,11 +1,9 @@
 
 use color::Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::{
-    AddRectangle,
-    AddColor,
     Context,
-    Draw,
 };
 use label;
 use label::FontSize;
@@ -52,10 +50,8 @@ fn draw_frame(
     color: Color
 ) {
     let (r, g, b, a) = color.as_tuple();
-    context
-        .rect(pos[0], pos[1], dim[0], dim[1])
-        .rgba(r, g, b, a)
-        .draw(graphics);
+    graphics::Rectangle::new([r, g, b, a])
+        .draw([pos[0], pos[1], dim[0], dim[1]], context, graphics);
 }
 
 /// Draw the rectangle while considering frame
@@ -74,13 +70,13 @@ fn draw_normal(
         State::Highlighted => color.highlighted().as_tuple(),
         State::Clicked => color.clicked().as_tuple(),
     };
-    context
-        .rect(pos[0] + frame_width,
-              pos[1] + frame_width,
-              dim[0] - frame_width * 2.0,
-              dim[1] - frame_width * 2.0)
-        .rgba(r, g, b, a)
-        .draw(graphics);
+    graphics::Rectangle::new([r, g, b, a])
+        .draw([pos[0] + frame_width,
+            pos[1] + frame_width,
+            dim[0] - frame_width * 2.0,
+            dim[1] - frame_width * 2.0],
+        context,
+        graphics);
 }
 
 /// Return whether or not the widget has been hit by a mouse_press.

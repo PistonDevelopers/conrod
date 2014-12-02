@@ -1,10 +1,8 @@
 
 use color::Color;
+use graphics;
 use graphics::{
     Context,
-    AddColor,
-    AddImage,
-    Draw,
     RelativeTransform,
 };
 use opengl_graphics::Gl;
@@ -33,13 +31,12 @@ pub fn draw(
     let (r, g, b, a) = color.as_tuple();
     let context = Context::abs(uic.win_w, uic.win_h)
                     .trans(pos[0], pos[1] + size as f64);
+    let image = graphics::Image::colored([r, g, b, a]);
     for ch in text.chars() {
         let character = uic.get_character(size, ch);
-        context.trans((x + character.bitmap_glyph.left()) as f64,
-                      (y - character.bitmap_glyph.top()) as f64)
-                        .image(&character.texture)
-                        .rgba(r, g, b, a)
-                        .draw(graphics);
+        let d = context.trans((x + character.bitmap_glyph.left()) as f64,
+                              (y - character.bitmap_glyph.top()) as f64);
+        image.draw(&character.texture, &d, graphics);
         x += (character.glyph.advance().x >> 16) as i32;
         y += (character.glyph.advance().y >> 16) as i32;
     }

@@ -2,13 +2,9 @@ use std::fmt::Show;
 use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::{
-    AddColor,
-    AddEllipse,
-    AddLine,
-    AddRoundBorder,
     Context,
-    Draw,
 };
 use label;
 use label::FontSize;
@@ -189,10 +185,8 @@ fn draw_circle(
 ) {
     let context = &Context::abs(win_w, win_h);
     let (r, g, b, a) = color.as_tuple();
-    context
-        .ellipse(pos[0], pos[1], radius * 2.0, radius * 2.0)
-        .rgba(r, g, b, a)
-        .draw(graphics)
+    graphics::Ellipse::new([r, g, b, a])
+        .draw([pos[0], pos[1], 2.0 * radius, 2.0 * radius], context, graphics);
 }
 
 
@@ -341,6 +335,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             0u | 1u => (),
             _ => {
                 let (r, g, b, a) = color.plain_contrast().as_tuple();
+                let line = graphics::Line::round([r, g, b, a], 0.5 * self.line_width);
                 for i in range(1u, perc_env.len()) {
                     let (x_a, y_a, _) = perc_env[i - 1u];
                     let (x_b, y_b, _) = perc_env[i];
@@ -349,11 +344,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                     let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let context = Context::abs(self.uic.win_w, self.uic.win_h);
-                    context
-                        .line(p_a[0], p_a[1], p_b[0], p_b[1])
-                        .round_border_width(self.line_width)
-                        .rgba(r, g, b, a)
-                        .draw(graphics);
+                    line.draw([p_a[0], p_a[1], p_b[0], p_b[1]], &context, graphics);
                 }
             },
         }

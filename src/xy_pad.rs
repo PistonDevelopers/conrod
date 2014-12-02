@@ -1,12 +1,9 @@
 use std::num::Float;
 use color::Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::{
-    AddColor,
-    AddLine,
-    AddSquareBorder,
     Context,
-    Draw,
 };
 use label;
 use label::FontSize;
@@ -80,17 +77,10 @@ fn draw_crosshair(
     color: Color
 ) {
     let context = &Context::abs(win_w, win_h);
-    let (r, g, b, a) = color.as_tuple();
-    context
-        .line(vert_x, pos[1], vert_x, pos[1] + pad_dim[1])
-        .square_border_width(line_width)
-        .rgba(r, g, b, a)
-        .draw(graphics);
-    context
-        .line(pos[0], hori_y, pos[0] + pad_dim[0], hori_y)
-        .square_border_width(line_width)
-        .rgba(r, g, b, a)
-        .draw(graphics);
+    let Color(col) = color;
+    let line = graphics::Line::new(col, 0.5 * line_width);
+    line.draw([vert_x, pos[1], vert_x, pos[1] + pad_dim[1]], context, graphics);
+    line.draw([pos[0], hori_y, pos[0] + pad_dim[0], hori_y], context, graphics);
 }
 
 
