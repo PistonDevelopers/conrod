@@ -186,7 +186,9 @@ impl UiContext {
 
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
-        self.glyph_cache.get_character(size, ch)
+        use graphics::character::CharacterCache;        
+
+        self.glyph_cache.character(size, ch)
     }
 
     /// Return the width of a 'Character'.
