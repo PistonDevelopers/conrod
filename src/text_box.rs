@@ -116,7 +116,7 @@ fn closest_idx(uic: &mut UiContext,
     let mut left_x = text_x;
     for (i, ch) in text.chars().enumerate() {
         let character = uic.get_character(font_size, ch);
-        let char_w = (character.glyph.advance().x >> 16) as f64;
+        let char_w = character.width();
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
         if mouse_pos[0] > left_x && mouse_pos[0] < right_x { return (i, prev_x) }
@@ -274,7 +274,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                     let mut entered_text_width = 0f64;
                     for ch in t.as_slice().chars() {
                         let c = self.uic.get_character(self.font_size, ch);
-                        entered_text_width += (c.glyph.advance().x >> 16) as f64;
+                        entered_text_width += c.width();
                     }
                     if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
                         new_cursor_x += entered_text_width;

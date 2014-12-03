@@ -34,11 +34,11 @@ pub fn draw(
     let image = graphics::Image::colored([r, g, b, a]);
     for ch in text.chars() {
         let character = uic.get_character(size, ch);
-        let d = context.trans((x + character.bitmap_glyph.left()) as f64,
-                              (y - character.bitmap_glyph.top()) as f64);
+        let d = context.trans(x as f64 + character.left(),
+                              y as f64 - character.top());
         image.draw(&character.texture, &d, graphics);
-        x += (character.glyph.advance().x >> 16) as i32;
-        y += (character.glyph.advance().y >> 16) as i32;
+        x += character.width() as i32;
+        y += character.height() as i32;
     }
 }
 
@@ -47,7 +47,7 @@ pub fn draw(
 pub fn width(uic: &mut UiContext, size: FontSize, text: &str) -> f64 {
     text.chars().fold(0u32, |a, ch| {
         let character = uic.get_character(size, ch);
-        a + (character.glyph.advance().x >> 16) as u32
+        a + character.width() as u32
     }) as f64
 }
 

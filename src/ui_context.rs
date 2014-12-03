@@ -191,7 +191,7 @@ impl UiContext {
 
     /// Return the width of a 'Character'.
     pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
-        (self.get_character(size, ch).glyph.advance().x >> 16) as f64
+        self.get_character(size, ch).width()
     }
 
     /// Flush all stored keys.
