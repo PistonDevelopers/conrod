@@ -1,10 +1,5 @@
 
 use color::Color;
-use graphics;
-use graphics::{
-    Context,
-    RelativeTransform,
-};
 use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
@@ -15,31 +10,6 @@ pub type FontSize = u32;
 pub enum Labeling<'a> {
     Label(&'a str, FontSize, Color),
     NoLabel,
-}
-
-/// Draw a label using the freetype font rendering backend.
-pub fn draw(
-    graphics: &mut Gl,
-    uic: &mut UiContext,
-    pos: Point,
-    size: FontSize,
-    color: Color,
-    text: &str
-) {
-    let mut x = 0;
-    let mut y = 0;
-    let (r, g, b, a) = color.as_tuple();
-    let context = Context::abs(uic.win_w, uic.win_h)
-                    .trans(pos[0], pos[1] + size as f64);
-    let image = graphics::Image::colored([r, g, b, a]);
-    for ch in text.chars() {
-        let character = uic.get_character(size, ch);
-        let d = context.trans(x as f64 + character.left(),
-                              y as f64 - character.top());
-        image.draw(&character.texture, &d, graphics);
-        x += character.width() as i32;
-        y += character.height() as i32;
-    }
 }
 
 /// Determine the pixel width of the final text bitmap.
@@ -116,6 +86,6 @@ impl_positionable!(LabelContext)
 impl<'a> ::draw::Drawable for LabelContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
         let color = self.maybe_color.unwrap_or(Color::black());
-        draw(graphics, self.uic, self.pos, self.size, color, self.text);
+        self.uic.draw_text(graphics, self.pos, self.size, color, self.text);
     }
 }

@@ -114,7 +114,7 @@ pub fn draw_with_centered_label(
     draw_normal(context, graphics, state, pos, dim, f_width, color);
     let text_w = label::width(uic, font_size, text);
     let l_pos = [pos[0] + (dim[0] - text_w) / 2.0, pos[1] + (dim[1] - font_size as f64) / 2.0];
-    label::draw(graphics, uic, l_pos, font_size, text_color, text);
+    uic.draw_text(graphics, l_pos, font_size, text_color, text);
 }
 
 pub enum Corner {

@@ -327,7 +327,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             let l_w = label::width(self.uic, l_size, l_text);
             let l_pos = [pad_pos[0] + (pad_dim[0] - l_w) / 2.0,
                          pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0];
-            label::draw(graphics, self.uic, l_pos, l_size, l_color, l_text);
+            self.uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
         };
 
         // Draw the envelope lines.
@@ -384,7 +384,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                         Corner::BottomLeft => [p_pos[0], p_pos[1] - font_size as f64],
                         Corner::BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
-                    label::draw(graphics, uic, xy_string_pos,
+                    uic.draw_text(graphics, xy_string_pos,
                                 font_size, color.plain_contrast(), xy_string.as_slice());
                     draw_circle(uic.win_w, uic.win_h, graphics,
                                 vec2_sub(p_pos, [pt_radius, pt_radius]),

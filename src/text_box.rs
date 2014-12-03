@@ -257,8 +257,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
 
         rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
-        label::draw(graphics, self.uic, text_pos, self.font_size,
-                    color.plain_contrast(), self.text.as_slice());
+        self.uic.draw_text(graphics, text_pos, self.font_size,
+                           color.plain_contrast(), self.text.as_slice());
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Capturing::Uncaptured => new_state,

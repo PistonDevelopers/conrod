@@ -194,7 +194,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
                 [x, y]
             };
             // Draw the label.
-            label::draw(graphics, self.uic, l_pos, size, text_color, text.as_slice());
+            self.uic.draw_text(graphics, l_pos, size, text_color, text.as_slice());
         }
 
         set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);

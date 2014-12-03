@@ -225,7 +225,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
             let l_x = pad_pos[0] + (pad_dim[0] - l_w) / 2.0;
             let l_y = pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0;
             let l_pos = [l_x, l_y];
-            label::draw(graphics, self.uic, l_pos, l_size, l_color, l_text);
+            self.uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
@@ -242,7 +242,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
                 Corner::BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
             }
         };
-        label::draw(graphics, self.uic, xy_string_pos, self.font_size,
+        self.uic.draw_text(graphics, xy_string_pos, self.font_size,
                     color.plain_contrast(), xy_string.as_slice());
 
         set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);

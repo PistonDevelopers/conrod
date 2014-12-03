@@ -1,9 +1,10 @@
-
+use Color;
 use dimensions::Dimensions;
 use opengl_graphics::glyph_cache::{
     GlyphCache,
     Character,
 };
+use opengl_graphics::Gl;
 use label::FontSize;
 use mouse_state::{
     MouseButtonState,
@@ -201,6 +202,30 @@ impl UiContext {
         self.keys_just_pressed.clear();
         self.keys_just_released.clear();
         self.text_just_entered.clear();
+    }
+
+    /// Draws text
+    pub fn draw_text(
+        &mut self,
+        graphics: &mut Gl,
+        pos: Point,
+        size: FontSize,
+        color: Color,
+        text: &str
+    ) {
+        use graphics::Context;
+        use graphics::text::Text;
+        use graphics::RelativeTransform;
+
+        let (r, g, b, a) = color.as_tuple();
+        let context = Context::abs(self.win_w, self.win_h)
+                        .trans(pos[0], pos[1] + size as f64);
+        Text::colored([r, g, b, a], size).draw(
+            text,
+            &mut self.glyph_cache,
+            &context,
+            graphics
+        );
     }
 
 }

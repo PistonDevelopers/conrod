@@ -382,7 +382,7 @@ impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
         // If there's a label, draw it.
         let val_string_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
         if self.maybe_label.is_some() {
-            label::draw(graphics, self.uic, label_pos, font_size, val_string_color, label_string[]);
+            self.uic.draw_text(graphics, label_pos, font_size, val_string_color, label_string[]);
         };
 
         // Determine new value from the initial state and the new state.
