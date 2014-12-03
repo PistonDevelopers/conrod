@@ -9,7 +9,7 @@ use label;
 use label::FontSize;
 use mouse_state::MouseState;
 use opengl_graphics::Gl;
-use input::keyboard::{
+use input::keyboard::Key::{
     Backspace,
     Left,
     Right,
