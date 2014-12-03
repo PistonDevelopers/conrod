@@ -81,27 +81,33 @@ impl UiContext {
             self.mouse.pos = [x, y];
         });
         event.press(|button_type| {
+            use input::Button;
+            use input::mouse::Button::Left;
+
             match button_type {
-                input::Mouse(button) => {
+                Button::Mouse(button) => {
                     *match button {
-                        input::mouse::Left => &mut self.mouse.left,
+                        Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
                     } = MouseButtonState::Down;
                 },
-                input::Keyboard(key) => self.keys_just_pressed.push(key),
+                Button::Keyboard(key) => self.keys_just_pressed.push(key),
             }
         });
         event.release(|button_type| {
+            use input::Button;
+            use input::mouse::Button::Left;
+
             match button_type {
-                input::Mouse(button) => {
+                Button::Mouse(button) => {
                     *match button {
-                        input::mouse::Left => &mut self.mouse.left,
+                        Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
                     } = MouseButtonState::Up;
                 },
-                input::Keyboard(key) => self.keys_just_released.push(key),
+                Button::Keyboard(key) => self.keys_just_released.push(key),
             }
         });
         event.text(|text| {

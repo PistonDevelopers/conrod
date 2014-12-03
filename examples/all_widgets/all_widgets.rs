@@ -123,8 +123,9 @@ impl DemoApp {
 }
 
 fn main() {
+    let opengl = shader_version::opengl::OpenGL::OpenGL_3_2;
     let window = Sdl2Window::new(
-        shader_version::opengl::OpenGL_3_2,
+        opengl,
         WindowSettings {
             title: "Hello Conrod".to_string(),
             size: [1180, 580],
@@ -135,7 +136,7 @@ fn main() {
     );
     let window_ref = RefCell::new(window);
     let mut event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
-    let mut gl = Gl::new(shader_version::opengl::OpenGL_3_2);
+    let mut gl = Gl::new(opengl);
 
     let font_path = Path::new("./assets/Dense-Regular.otf");
     let theme = Theme::default();
