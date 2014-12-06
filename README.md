@@ -48,9 +48,7 @@ Build the conrod lib like this:
 
 And then build and run the examples like this:
 
-    cd examples/all_widgets
-    cargo build
-    ./target/all_widgets
+    cargo run --example all_widgets
 
 ## Dependencies
 
