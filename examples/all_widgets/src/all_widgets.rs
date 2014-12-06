@@ -138,7 +138,7 @@ fn main() {
     let mut event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
     let mut gl = Gl::new(opengl);
 
-    let font_path = Path::new("./assets/Dense-Regular.otf");
+    let font_path = Path::new("../../assets/Dense-Regular.otf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let mut uic = UiContext::new(glyph_cache, theme);

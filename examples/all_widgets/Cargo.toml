@@ -1,0 +1,20 @@
+[package]
+
+name = "all_widgets"
+version = "0.0.0"
+authors = [
+    "Mitchell Nordine <mitchell.nordine@gmail.com>",
+    "Sven Nilsen <bvssvni@gmail.com>"
+]
+
+[[bin]]
+
+name = "all_widgets"
+
+[dependencies.conrod]
+
+git = "https://github.com/PistonDevelopers/conrod/"
+
+[dependencies.sdl2_window]
+
+git = "https://github.com/PistonDevelopers/sdl2_window.git"
