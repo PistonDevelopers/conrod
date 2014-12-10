@@ -1,5 +1,5 @@
 
-#![feature(macro_rules, phase, slicing_syntax, if_let)]
+#![feature(macro_rules, phase, slicing_syntax)]
 
 extern crate input;
 extern crate event;
