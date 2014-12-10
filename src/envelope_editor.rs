@@ -184,8 +184,8 @@ fn draw_circle(
     radius: f64
 ) {
     let context = &Context::abs(win_w, win_h);
-    let (r, g, b, a) = color.as_tuple();
-    graphics::Ellipse::new([r, g, b, a])
+    let Color(col) = color;
+    graphics::Ellipse::new(col)
         .draw([pos[0], pos[1], 2.0 * radius, 2.0 * radius], context, graphics);
 }
 
@@ -334,8 +334,8 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         match self.env.len() {
             0u | 1u => (),
             _ => {
-                let (r, g, b, a) = color.plain_contrast().as_tuple();
-                let line = graphics::Line::round([r, g, b, a], 0.5 * self.line_width);
+                let Color(col) = color.plain_contrast();
+                let line = graphics::Line::round(col, 0.5 * self.line_width);
                 for i in range(1u, perc_env.len()) {
                     let (x_a, y_a, _) = perc_env[i - 1u];
                     let (x_b, y_b, _) = perc_env[i];

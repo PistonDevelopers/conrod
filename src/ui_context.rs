@@ -217,10 +217,10 @@ impl UiContext {
         use graphics::text::Text;
         use graphics::RelativeTransform;
 
-        let (r, g, b, a) = color.as_tuple();
+        let Color(col) = color;
         let context = Context::abs(self.win_w, self.win_h)
                         .trans(pos[0], pos[1] + size as f64);
-        Text::colored([r, g, b, a], size).draw(
+        Text::colored(col, size).draw(
             text,
             &mut self.glyph_cache,
             &context,

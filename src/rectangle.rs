@@ -49,8 +49,8 @@ fn draw_frame(
     dim: Dimensions,
     color: Color
 ) {
-    let (r, g, b, a) = color.as_tuple();
-    graphics::Rectangle::new([r, g, b, a])
+    let Color(col) = color;
+    graphics::Rectangle::new(col)
         .draw([pos[0], pos[1], dim[0], dim[1]], context, graphics);
 }
 
@@ -65,12 +65,12 @@ fn draw_normal(
     frame_width: f64,
     color: Color
 ) {
-    let (r, g, b, a) = match state {
-        State::Normal => color.as_tuple(),
-        State::Highlighted => color.highlighted().as_tuple(),
-        State::Clicked => color.clicked().as_tuple(),
+    let Color(col) = match state {
+        State::Normal => color,
+        State::Highlighted => color.highlighted(),
+        State::Clicked => color.clicked(),
     };
-    graphics::Rectangle::new([r, g, b, a])
+    graphics::Rectangle::new(col)
         .draw([pos[0] + frame_width,
             pos[1] + frame_width,
             dim[0] - frame_width * 2.0,

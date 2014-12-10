@@ -93,12 +93,6 @@ impl Color {
         vec![self.r(), self.g(), self.b(), self.a()]
     }
 
-    /// Return color as a tuple.
-    pub fn as_tuple(&self) -> (f32, f32, f32, f32) {
-        let &Color(c) = self;
-        (c[0], c[1], c[2], c[3])
-    }
-
     /// Clamp the Color's values between 0f32 and 1f32.
     fn clamp(c: Color) -> Color {
         Color([

@@ -175,7 +175,7 @@ fn draw_cursor(
     pad_h: f64
 ) {
     let context = Context::abs(win_w, win_h);
-    let (r, g, b, a) = color.plain_contrast().as_tuple();
+    let Color([r, g, b, a]) = color.plain_contrast();
     graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw([cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h], &context, graphics);
 }
