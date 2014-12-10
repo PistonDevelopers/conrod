@@ -29,8 +29,9 @@ impl_colorable!(BackgroundContext)
 
 impl<'a> Drawable for BackgroundContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
-        let (r, g, b, a) = self.maybe_color.unwrap_or(self.uic.theme.background_color).as_tuple();
-        graphics::clear([r, g, b, a], graphics);
+        let Color(col) = self.maybe_color
+            .unwrap_or(self.uic.theme.background_color);
+        graphics::clear(col, graphics);
     }
 }
 

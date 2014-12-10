@@ -224,10 +224,10 @@ fn draw_value_string(
 ) {
     let mut x = 0.0;
     let y = 0.0;
-    let (font_r, font_g, font_b, font_a) = font_color.as_tuple();
+    let Color(font_col) = font_color;
     let context = Context::abs(win_w, win_h).trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
-    let image = graphics::Image::colored([font_r, font_g, font_b, font_a]);
+    let image = graphics::Image::colored(font_col);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -272,8 +272,8 @@ fn draw_slot_rect(
     w: f64, h: f64,
     color: Color
 ) {
-    let (r, g, b, a) = color.as_tuple();
-    graphics::Rectangle::new([r, g, b, a])
+    let Color(col) = color;
+    graphics::Rectangle::new(col)
         .draw([x, y, w, h], context, graphics);
 }
 
