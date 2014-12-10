@@ -1,6 +1,4 @@
 
-#![feature(if_let)]
-
 extern crate shader_version;
 extern crate event;
 extern crate conrod;
@@ -123,7 +121,7 @@ impl DemoApp {
 }
 
 fn main() {
-    let opengl = shader_version::opengl::OpenGL::OpenGL_3_2;
+    let opengl = shader_version::OpenGL::_3_2;
     let window = Sdl2Window::new(
         opengl,
         WindowSettings {
