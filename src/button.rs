@@ -12,7 +12,7 @@ use ui_context::{
 use widget::Widget;
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq, Clone)]
+#[deriving(PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted,

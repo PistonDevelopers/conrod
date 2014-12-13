@@ -83,7 +83,7 @@ impl UiContext {
         });
         event.press(|button_type| {
             use input::Button;
-            use input::mouse::Button::Left;
+            use input::MouseButton::Left;
 
             match button_type {
                 Button::Mouse(button) => {
@@ -98,7 +98,7 @@ impl UiContext {
         });
         event.release(|button_type| {
             use input::Button;
-            use input::mouse::Button::Left;
+            use input::MouseButton::Left;
 
             match button_type {
                 Button::Mouse(button) => {

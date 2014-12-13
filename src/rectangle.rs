@@ -13,7 +13,7 @@ use ui_context::UiContext;
 use utils::map_range;
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq, Show)]
+#[deriving(PartialEq, Show, Copy)]
 pub enum State {
     Normal,
     Highlighted,

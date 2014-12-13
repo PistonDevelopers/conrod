@@ -19,7 +19,7 @@ use widget::Widget::Slider;
 use vecmath::vec2_add;
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq, Clone)]
+#[deriving(PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted,
