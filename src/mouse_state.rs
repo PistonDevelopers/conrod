@@ -2,13 +2,14 @@
 use point::Point;
 
 /// Represents the current state of a mouse button.
-#[deriving(Show, Clone)]
+#[deriving(Show, Clone, Copy)]
 pub enum MouseButtonState {
     Up,
     Down,
 }
 
 /// Represents the current state of the Mouse.
+#[deriving(Copy)]
 pub struct MouseState {
     pub pos: Point,
     pub left: MouseButtonState,

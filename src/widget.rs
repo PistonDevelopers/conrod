@@ -10,7 +10,7 @@ use xy_pad;
 
 /// Represents the placement of the widget including
 /// x / y position, width and height.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum Placing {
     Place(f64, f64, f64, f64), // (x, y, w, h)
     NoPlace,

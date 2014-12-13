@@ -30,7 +30,7 @@ use vecmath::{
 use widget::Widget::XYPad;
 
 /// Represents the state of the xy_pad widget.
-#[deriving(Show, PartialEq, Clone)]
+#[deriving(Show, PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted,
