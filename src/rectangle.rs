@@ -117,6 +117,7 @@ pub fn draw_with_centered_label(
     uic.draw_text(graphics, l_pos, font_size, text_color, text);
 }
 
+#[deriving(Copy)]
 pub enum Corner {
     TopLeft,
     TopRight,

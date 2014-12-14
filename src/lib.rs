@@ -1,5 +1,6 @@
 
 #![feature(macro_rules, phase, slicing_syntax)]
+#![deny(missing_copy_implementations)]
 
 extern crate input;
 extern crate event;
