@@ -45,7 +45,7 @@ impl Placing {
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
-#[deriving(Clone)]
+#[deriving(Copy, Clone)]
 pub enum Widget {
     NoWidget,
     Button(button::State),
