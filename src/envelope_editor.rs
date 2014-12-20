@@ -73,7 +73,7 @@ impl State {
     }
 }
 
-widget_fns!(EnvelopeEditor, State, EnvelopeEditor(State::Normal))
+widget_fns!(EnvelopeEditor, State, EnvelopeEditor(State::Normal));
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
@@ -270,12 +270,12 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E)
-impl_colorable!(EnvelopeEditorContext, X, Y, E)
-impl_frameable!(EnvelopeEditorContext, X, Y, E)
-impl_labelable!(EnvelopeEditorContext, X, Y, E)
-impl_positionable!(EnvelopeEditorContext, X, Y, E)
-impl_shapeable!(EnvelopeEditorContext, X, Y, E)
+impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E);
+impl_colorable!(EnvelopeEditorContext, X, Y, E);
+impl_frameable!(EnvelopeEditorContext, X, Y, E);
+impl_labelable!(EnvelopeEditorContext, X, Y, E);
+impl_positionable!(EnvelopeEditorContext, X, Y, E);
+impl_shapeable!(EnvelopeEditorContext, X, Y, E);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
@@ -550,4 +550,3 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
     }
 }
-

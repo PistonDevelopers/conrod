@@ -25,7 +25,7 @@ impl BackgroundBuilder for UiContext {
     }
 }
 
-impl_colorable!(BackgroundContext)
+impl_colorable!(BackgroundContext);
 
 impl<'a> Drawable for BackgroundContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
@@ -34,4 +34,3 @@ impl<'a> Drawable for BackgroundContext<'a> {
         graphics::clear(col, graphics);
     }
 }
-

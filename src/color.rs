@@ -223,7 +223,7 @@ impl Default for Color {
 }
 
 impl Add<Color, Color> for Color {
-    fn add(&self, rhs: &Color) -> Color {
+    fn add(self, rhs: Color) -> Color {
         Color::clamp(
             Color([
                 self.r() + rhs.r(), 
@@ -236,7 +236,7 @@ impl Add<Color, Color> for Color {
 }
 
 impl Sub<Color, Color> for Color {
-    fn sub(&self, rhs: &Color) -> Color {
+    fn sub(self, rhs: Color) -> Color {
         Color::clamp(
             Color([
                 self.r() - rhs.r(), 
@@ -249,7 +249,7 @@ impl Sub<Color, Color> for Color {
 }
 
 impl Div<Color, Color> for Color {
-    fn div(&self, rhs: &Color) -> Color {
+    fn div(self, rhs: Color) -> Color {
         Color::clamp(
             Color([
                 self.r() / rhs.r(), 
@@ -262,7 +262,7 @@ impl Div<Color, Color> for Color {
 }
 
 impl Mul<Color, Color> for Color {
-    fn mul(&self, rhs: &Color) -> Color {
+    fn mul(self, rhs: Color) -> Color {
         Color::clamp(
             Color([
                 self.r() * rhs.r(), 
@@ -309,4 +309,3 @@ pub trait Colorable {
     /// A method used for passing color as rgba.
     fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
 }
-

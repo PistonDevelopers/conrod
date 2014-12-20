@@ -50,7 +50,7 @@ impl State {
     }
 }
 
-widget_fns!(DropDownList, State, DropDownList(State::Closed(DrawState::Normal)))
+widget_fns!(DropDownList, State, DropDownList(State::Closed(DrawState::Normal)));
 
 /// Is the cursor currently over the 
 fn is_over(pos: Point,
@@ -166,12 +166,12 @@ impl<'a> DropDownListBuilder<'a> for UiContext {
     }
 }
 
-impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a)
-impl_colorable!(DropDownListContext)
-impl_frameable!(DropDownListContext)
-impl_labelable!(DropDownListContext)
-impl_positionable!(DropDownListContext)
-impl_shapeable!(DropDownListContext)
+impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a);
+impl_colorable!(DropDownListContext);
+impl_frameable!(DropDownListContext);
+impl_labelable!(DropDownListContext);
+impl_positionable!(DropDownListContext);
+impl_shapeable!(DropDownListContext);
 
 impl<'a> ::draw::Drawable for DropDownListContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
@@ -277,4 +277,3 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
 
     }
 }
-

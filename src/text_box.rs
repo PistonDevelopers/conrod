@@ -76,7 +76,7 @@ impl State {
     }
 }
 
-widget_fns!(TextBox, State, TextBox(State(DrawState::Normal, Capturing::Uncaptured)))
+widget_fns!(TextBox, State, TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
 
 static TEXT_PADDING: f64 = 5f64;
 
@@ -224,11 +224,11 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, |&mut String|:'a)
-impl_colorable!(TextBoxContext)
-impl_frameable!(TextBoxContext)
-impl_positionable!(TextBoxContext)
-impl_shapeable!(TextBoxContext)
+impl_callable!(TextBoxContext, |&mut String|:'a);
+impl_colorable!(TextBoxContext);
+impl_frameable!(TextBoxContext);
+impl_positionable!(TextBoxContext);
+impl_shapeable!(TextBoxContext);
 
 impl<'a> ::draw::Drawable for TextBoxContext<'a> {
     #[inline]
@@ -358,6 +358,3 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
 
     }
 }
-
-
-

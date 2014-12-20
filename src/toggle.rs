@@ -30,7 +30,7 @@ impl State {
     }
 }
 
-widget_fns!(Toggle, State, Toggle(State::Normal))
+widget_fns!(Toggle, State, Toggle(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -90,12 +90,12 @@ impl<'a> ToggleBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ToggleContext, |bool|:'a)
-impl_colorable!(ToggleContext)
-impl_frameable!(ToggleContext)
-impl_labelable!(ToggleContext)
-impl_positionable!(ToggleContext)
-impl_shapeable!(ToggleContext)
+impl_callable!(ToggleContext, |bool|:'a);
+impl_colorable!(ToggleContext);
+impl_frameable!(ToggleContext);
+impl_labelable!(ToggleContext);
+impl_positionable!(ToggleContext);
+impl_shapeable!(ToggleContext);
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
@@ -145,4 +145,3 @@ impl<'a> ::draw::Drawable for ToggleContext<'a> {
 
     }
 }
-
