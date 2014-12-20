@@ -37,7 +37,7 @@ impl State {
     }
 }
 
-widget_fns!(Slider, State, Slider(State::Normal))
+widget_fns!(Slider, State, Slider(State::Normal));
 
 /// Check the current state of the slider.
 fn get_new_state(is_over: bool,
@@ -102,12 +102,12 @@ SliderBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(SliderContext, |T|:'a, T)
-impl_colorable!(SliderContext, T)
-impl_frameable!(SliderContext, T)
-impl_labelable!(SliderContext, T)
-impl_positionable!(SliderContext, T)
-impl_shapeable!(SliderContext, T)
+impl_callable!(SliderContext, |T|:'a, T);
+impl_colorable!(SliderContext, T);
+impl_frameable!(SliderContext, T);
+impl_labelable!(SliderContext, T);
+impl_positionable!(SliderContext, T);
+impl_shapeable!(SliderContext, T);
 
 impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for SliderContext<'a, T> {
@@ -201,4 +201,3 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 
     }
 }
-

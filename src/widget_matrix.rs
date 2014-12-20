@@ -104,6 +104,5 @@ impl<'a> WidgetMatrixBuilder<'a> for UiContext {
     }
 }
 
-impl_positionable!(WidgetMatrixContext)
-impl_shapeable!(WidgetMatrixContext)
-
+impl_positionable!(WidgetMatrixContext);
+impl_shapeable!(WidgetMatrixContext);

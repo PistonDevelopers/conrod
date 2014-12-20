@@ -46,7 +46,7 @@ pub enum State {
     Clicked(Element),
 }
 
-widget_fns!(NumberDialer, State, NumberDialer(State::Normal))
+widget_fns!(NumberDialer, State, NumberDialer(State::Normal));
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -329,12 +329,12 @@ NumberDialerBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(NumberDialerContext, |T|:'a, T)
-impl_colorable!(NumberDialerContext, T)
-impl_frameable!(NumberDialerContext, T)
-impl_labelable!(NumberDialerContext, T)
-impl_positionable!(NumberDialerContext, T)
-impl_shapeable!(NumberDialerContext, T)
+impl_callable!(NumberDialerContext, |T|:'a, T);
+impl_colorable!(NumberDialerContext, T);
+impl_frameable!(NumberDialerContext, T);
+impl_labelable!(NumberDialerContext, T);
+impl_positionable!(NumberDialerContext, T);
+impl_shapeable!(NumberDialerContext, T);
 
 impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
 ::draw::Drawable for NumberDialerContext<'a, T> {

@@ -48,7 +48,7 @@ impl State {
     }
 }
 
-widget_fns!(XYPad, State, XYPad(State::Normal))
+widget_fns!(XYPad, State, XYPad(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -149,12 +149,12 @@ XYPadBuilder<'a, X, Y> for UiContext {
     }
 }
 
-impl_callable!(XYPadContext, |X, Y|:'a, X, Y)
-impl_colorable!(XYPadContext, X, Y)
-impl_frameable!(XYPadContext, X, Y)
-impl_labelable!(XYPadContext, X, Y)
-impl_positionable!(XYPadContext, X, Y)
-impl_shapeable!(XYPadContext, X, Y)
+impl_callable!(XYPadContext, |X, Y|:'a, X, Y);
+impl_colorable!(XYPadContext, X, Y);
+impl_frameable!(XYPadContext, X, Y);
+impl_labelable!(XYPadContext, X, Y);
+impl_positionable!(XYPadContext, X, Y);
+impl_shapeable!(XYPadContext, X, Y);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
@@ -249,5 +249,3 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
 
     }
 }
-
-

@@ -39,7 +39,7 @@ macro_rules! widget_fns(
         }
 
     )
-)
+);
 
 /// Simplify implementation of the `Colorable` trait.
 macro_rules! impl_callable(
@@ -51,7 +51,7 @@ macro_rules! impl_callable(
             }
         }
     )
-)
+);
 
 /// Simplify implementation of the `Colorable` trait.
 macro_rules! impl_colorable(
@@ -67,7 +67,7 @@ macro_rules! impl_colorable(
             }
         }
     )
-)
+);
 
 /// Simplify implementation of the `Frameable` trait.
 macro_rules! impl_frameable(
@@ -87,7 +87,7 @@ macro_rules! impl_frameable(
             }
         }
     )
-)
+);
 
 /// Simplify implementation of the `Labelable` trait.
 macro_rules! impl_labelable(
@@ -126,7 +126,7 @@ macro_rules! impl_labelable(
             }
         }
     )
-)
+);
 
 /// Simplify implementation of the `Positionable` trait.
 macro_rules! impl_positionable(
@@ -187,7 +187,7 @@ macro_rules! impl_positionable(
 
         }
     )
-)
+);
 
 /// Simplify implementation of the `Shapeable` trait.
 macro_rules! impl_shapeable(
@@ -211,6 +211,4 @@ macro_rules! impl_shapeable(
             }
         }
     )
-)
-
-
+);
