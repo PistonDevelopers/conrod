@@ -8,7 +8,7 @@ env:
     global:
         - secure: W/pxVmgtzNXIQNPOm9lsIjSr2nEHGVD8uOGV0be4kdz0bUXCjFDe1j45VVDnXPoJZDrnv7TO0etn3yT7hpuiZGAT40Ovn7LVq7gqtTAoP2U7vbURN55g0MU9dSIAOUdfclAMZez9HgOHWC0P3Tg6bNkNrW5B5wwpmaFVyYwiQkE=
 before_script:
-    - rustc -v
+    - rustc -V
     - cargo -V
 install:
     # SDL2
