@@ -352,10 +352,10 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         // Determine the left and right X bounds for a point.
         let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: uint| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0u && envelope_perc.len() - 1u > idx {
-                (*envelope_perc)[idx + 1u].val0()
+                (*envelope_perc)[idx + 1u].0
             } else { 1.0 };
             let left_bound = if envelope_perc.len() > 0u && idx > 0u {
-                (*envelope_perc)[idx - 1u].val0()
+                (*envelope_perc)[idx - 1u].0
             } else { 0.0 };
             (left_bound, right_bound)
         };
@@ -394,7 +394,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                 match elem {
                     // If a point is clicked, draw that point.
                     Element::EnvPoint(idx, p_pos) => {
-                        let p_pos = [p_pos.val0(), p_pos.val1()];
+                        let p_pos = [p_pos.0, p_pos.1];
                         let pad_x_right = pad_pos[0] + pad_dim[0];
                         let (left_x_bound, right_x_bound) = get_x_bounds(&perc_env, idx);
                         let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
@@ -409,7 +409,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                         for closest_elem in is_closest_elem.iter() {
                             match *closest_elem {
                                 Element::EnvPoint(closest_idx, closest_env_pt) => {
-                                    let closest_env_pt = [closest_env_pt.val0(), closest_env_pt.val1()];
+                                    let closest_env_pt = [closest_env_pt.0, closest_env_pt.1];
                                     draw_env_pt(self.uic, self.env, closest_idx, closest_env_pt);
                                 },
                                 _ => (),
