@@ -1,6 +1,6 @@
 use color::Color;
 use dimensions::Dimensions;
-use mouse_state::MouseState;
+use mouse::Mouse;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -52,7 +52,7 @@ impl State {
 
 widget_fns!(DropDownList, State, DropDownList(State::Closed(DrawState::Normal)));
 
-/// Is the cursor currently over the 
+/// Is the cursor currently over the
 fn is_over(pos: Point,
            mouse_pos: Point,
            dim: Dimensions,
@@ -80,9 +80,9 @@ fn is_over(pos: Point,
 fn get_new_state(is_over_idx: Option<Idx>,
                  len: Len,
                  state: State,
-                 mouse: MouseState) -> State {
+                 mouse: Mouse) -> State {
     use self::DrawState::{Normal, Clicked, Highlighted};
-    use mouse_state::MouseButtonState::{Down, Up};
+    use mouse::ButtonState::{Down, Up};
     match state {
         State::Closed(draw_state) => {
             match is_over_idx {
@@ -265,7 +265,7 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
                     let idx_pos = vec2_add(self.pos, [0.0, idx_y]);
                     rectangle::draw_with_centered_label(
                         self.uic.win_w, self.uic.win_h, graphics, self.uic, rect_state, idx_pos,
-                        self.dim, maybe_frame, color, string.as_slice(), 
+                        self.dim, maybe_frame, color, string.as_slice(),
                         t_size, t_color
                     )
                 }

@@ -6,9 +6,9 @@ use opengl_graphics::glyph_cache::{
 };
 use opengl_graphics::Gl;
 use label::FontSize;
-use mouse_state::{
-    MouseButtonState,
-    MouseState,
+use mouse::{
+    ButtonState,
+    Mouse,
 };
 use input;
 use event::{
@@ -34,7 +34,7 @@ pub type UIID = u64;
 pub struct UiContext {
     data: Vec<(Widget, widget::Placing)>,
     pub theme: Theme,
-    pub mouse: MouseState,
+    pub mouse: Mouse,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
     pub text_just_entered: Vec<String>,
@@ -55,7 +55,7 @@ impl UiContext {
         UiContext {
             data: Vec::from_elem(512, (widget::Widget::NoWidget, widget::Placing::NoPlace)),
             theme: theme,
-            mouse: MouseState::new([0f64, 0f64], MouseButtonState::Up, MouseButtonState::Up, MouseButtonState::Up),
+            mouse: Mouse::new([0f64, 0f64], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10u),
             keys_just_released: Vec::with_capacity(10u),
             text_just_entered: Vec::with_capacity(10u),
@@ -91,7 +91,7 @@ impl UiContext {
                         Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
-                    } = MouseButtonState::Down;
+                    } = ButtonState::Down;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
             }
@@ -106,7 +106,7 @@ impl UiContext {
                         Left => &mut self.mouse.left,
                         _/*input::mouse::Right*/ => &mut self.mouse.right,
                         //Middle => &mut self.mouse.middle,
-                    } = MouseButtonState::Up;
+                    } = ButtonState::Up;
                 },
                 Button::Keyboard(key) => self.keys_just_released.push(key),
             }
@@ -117,7 +117,7 @@ impl UiContext {
     }
 
     /// Return the current mouse state.
-    pub fn get_mouse_state(&self) -> MouseState {
+    pub fn get_mouse_state(&self) -> Mouse {
         self.mouse
     }
 
@@ -187,7 +187,7 @@ impl UiContext {
 
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
-        use graphics::character::CharacterCache;        
+        use graphics::character::CharacterCache;
 
         self.glyph_cache.character(size, ch)
     }

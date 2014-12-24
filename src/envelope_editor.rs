@@ -8,7 +8,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::MouseState;
+use mouse::Mouse;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -139,8 +139,8 @@ fn is_over_and_closest(pos: Point,
 /// state and the mouse position.
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
-                 mouse: MouseState) -> State {
-    use mouse_state::MouseButtonState::{Down, Up};
+                 mouse: Mouse) -> State {
+    use mouse::ButtonState::{Down, Up};
     use self::Element::{EnvPoint, CurvePoint};
     use self::MouseButton::{Left, Right};
     use self::State::{Normal, Highlighted, Clicked};
