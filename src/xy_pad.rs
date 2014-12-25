@@ -7,7 +7,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::MouseState;
+use mouse::Mouse;
 use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
@@ -53,8 +53,8 @@ widget_fns!(XYPad, State, XYPad(State::Normal));
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
                  prev: State,
-                 mouse: MouseState) -> State {
-    use mouse_state::MouseButtonState::{Down, Up};
+                 mouse: Mouse) -> State {
+    use mouse::ButtonState::{Down, Up};
     use self::State::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left) {
         (true,  Normal,  Down) => Normal,

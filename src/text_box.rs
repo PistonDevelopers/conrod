@@ -7,7 +7,7 @@ use graphics::{
 };
 use label;
 use label::FontSize;
-use mouse_state::MouseState;
+use mouse::Mouse;
 use opengl_graphics::Gl;
 use input::keyboard::Key::{
     Backspace,
@@ -129,8 +129,8 @@ fn closest_idx(uic: &mut UiContext,
 /// Check and return the current state of the TextBox.
 fn get_new_state(over_elem: Element,
                  prev_box_state: State,
-                 mouse: MouseState) -> State {
-    use mouse_state::MouseButtonState::{Down, Up};
+                 mouse: Mouse) -> State {
+    use mouse::ButtonState::{Down, Up};
     use self::Capturing::{Uncaptured, Captured};
     use self::DrawState::{Normal, Highlighted, Clicked};
     use self::Element::{Nill, Text};

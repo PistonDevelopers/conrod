@@ -49,7 +49,7 @@ pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod frame;
 pub mod label;
-pub mod mouse_state;
+pub mod mouse;
 pub mod number_dialer;
 pub mod point;
 pub mod position;
