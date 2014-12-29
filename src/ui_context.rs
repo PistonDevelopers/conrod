@@ -216,10 +216,11 @@ impl UiContext {
         use graphics::Context;
         use graphics::text::Text;
         use graphics::RelativeTransform;
+        use std::num::Float;
 
         let Color(col) = color;
         let context = Context::abs(self.win_w, self.win_h)
-                        .trans(pos[0], pos[1] + size as f64);
+                        .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
         Text::colored(col, size).draw(
             text,
             &mut self.glyph_cache,
