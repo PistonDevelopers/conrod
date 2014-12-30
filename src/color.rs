@@ -2,7 +2,7 @@ use std::num::Float;
 use std::default::Default;
 use std::fmt::{Show, Formatter, Error};
 use std::rand::random;
-use std::ascii::OwnedAsciiExt;
+use std::ascii::AsciiExt;
 use serialize::hex::ToHex;
 use serialize::{
     Decodable, Encodable,
@@ -199,7 +199,7 @@ impl Color {
     pub fn to_hex(&self) -> String {
         let vals = self.to_32_bit();
         // Hex colors are always uppercased
-        let hex = vals.as_slice().to_hex().into_ascii_upper();
+        let hex = vals.as_slice().to_hex().to_ascii_uppercase();
         format!("#{}", hex.as_slice())
     }
 }
