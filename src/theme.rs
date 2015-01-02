@@ -1,6 +1,6 @@
 
 use color::Color;
-use serialize::{
+use rustc_serialize::{
     json,
     Encodable,
     Decodable
@@ -10,7 +10,7 @@ use std::str;
 use ui_context::UiContext;
 
 /// A data holder for style-related data.
-#[deriving(Show, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     pub name: String,
     pub background_color: Color,
@@ -49,7 +49,7 @@ impl Theme {
             Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
         };
         let contents_str = contents.ok();
-        let json_object = contents_str.and_then(|s| json::from_str(str::from_utf8(s.as_slice()).unwrap()).ok());
+        let json_object = contents_str.and_then(|s| json::Json::from_str(str::from_utf8(s.as_slice()).unwrap()).ok());
         let mut decoder = json_object.map(|j| json::Decoder::new(j));
         let theme = match decoder {
             Some(ref mut d) => match Decodable::decode(d) {

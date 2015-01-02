@@ -7,7 +7,7 @@ extern crate event;
 extern crate freetype;
 extern crate graphics;
 extern crate opengl_graphics;
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate time;
 extern crate vecmath;
 

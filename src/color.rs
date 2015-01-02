@@ -3,8 +3,8 @@ use std::default::Default;
 use std::fmt::{Show, Formatter, Error};
 use std::rand::random;
 use std::ascii::AsciiExt;
-use serialize::hex::ToHex;
-use serialize::{
+use rustc_serialize::hex::ToHex;
+use rustc_serialize::{
     Decodable, Encodable,
     Decoder, Encoder,
     DecoderHelpers, EncoderHelpers
