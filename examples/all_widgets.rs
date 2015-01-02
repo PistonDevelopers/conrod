@@ -6,7 +6,7 @@ extern crate graphics;
 extern crate sdl2_window;
 extern crate opengl_graphics;
 extern crate vecmath;
-extern crate current;
+extern crate quack;
 
 use conrod::{
     Background,
@@ -44,7 +44,7 @@ use event::{
 use sdl2_window::Sdl2Window;
 use vecmath::vec2_add;
 use std::cell::RefCell;
-use current::Set;
+use quack::Set;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some

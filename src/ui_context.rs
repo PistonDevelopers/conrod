@@ -1,3 +1,4 @@
+use std::iter::repeat;
 use Color;
 use dimensions::Dimensions;
 use opengl_graphics::glyph_cache::{
@@ -53,7 +54,7 @@ impl UiContext {
     /// Constructor for a UiContext.
     pub fn new(glyph_cache: GlyphCache, theme: Theme) -> UiContext {
         UiContext {
-            data: Vec::from_elem(512, (widget::Widget::NoWidget, widget::Placing::NoPlace)),
+            data: repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(512).collect(),
             theme: theme,
             mouse: Mouse::new([0f64, 0f64], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10u),
@@ -152,7 +153,7 @@ impl UiContext {
         } else {
             if ui_id_idx >= self.data.len() {
                 let num_to_push = ui_id_idx - self.data.len();
-                let mut vec = Vec::from_elem(num_to_push, (widget::Widget::NoWidget, widget::Placing::NoPlace));
+                let mut vec: Vec<(widget::Widget, widget::Placing)> = repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(num_to_push).collect();
                 vec.push((default, widget::Placing::NoPlace));
                 self.data.extend(vec.into_iter());
             } else {
