@@ -1,5 +1,6 @@
 use std::num::Float;
 use std::num::Primitive;
+use std::iter::repeat;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -58,7 +59,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
         (None, 0u8) => (),
         (None, _) => {
             val_string.push('.');
-            val_string.grow(precision as uint, '0');
+            val_string.extend(repeat('0').take(precision as uint));
         },
         (Some(idx), 0u8) => {
             val_string.truncate(idx);
@@ -68,7 +69,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
             match len.cmp(&desired_len) {
                 Greater => val_string.truncate(desired_len),
                 Equal => (),
-                Less => val_string.grow(desired_len - len, '0'),
+                Less => val_string.extend(repeat('0').take(desired_len - len)),
             }
         },
     }
@@ -76,7 +77,7 @@ fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
     // the decimal end of the string is correct, so if the lengths
     // don't match we know we must prepend the difference as '0's.
     match val_string.len().cmp(&len) {
-        Less => format!("{}{}", String::from_char(len - val_string.len(), '0'), val_string),
+        Less => format!("{}{}", repeat('0').take(len - val_string.len()).collect::<String>(), val_string),
         _ => val_string,
     }
 }
