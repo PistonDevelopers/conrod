@@ -69,9 +69,9 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
         (Some(idx), _) => {
             let (len, desired_len) = (val_string.len(), idx + precision as usize + 1us);
             match len.cmp(&desired_len) {
-                Greater => val_string.truncate(desired_len),
-                Equal => (),
-                Less => val_string.extend(repeat('0').take(desired_len - len)),
+                Ordering::Greater => val_string.truncate(desired_len),
+                Ordering::Equal => (),
+                Ordering::Less => val_string.extend(repeat('0').take(desired_len - len)),
             }
         },
     }
@@ -79,7 +79,7 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
     // the decimal end of the string is correct, so if the lengths
     // don't match we know we must prepend the difference as '0's.
     match val_string.len().cmp(&len) {
-        Less => format!("{}{}", repeat('0').take(len - val_string.len()).collect::<String>(), val_string),
+        Ordering::Less => format!("{}{}", repeat('0').take(len - val_string.len()).collect::<String>(), val_string),
         _ => val_string,
     }
 }
@@ -169,7 +169,7 @@ fn get_new_state(is_over_elem: Option<Element>,
 fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 (val: T, min: T, max: T, idx: usize, y_ord: Ordering, val_string: &String) -> T {
     match y_ord {
-        Equal => val,
+        Ordering::Equal => val,
         _ => {
             let decimal_pos = val_string.as_slice().chars().position(|ch| ch == '.');
             let val_f = val.to_f64().unwrap();
@@ -179,8 +179,8 @@ fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
                 None => {
                     let power = val_string.len() - idx - 1us;
                     match y_ord {
-                        Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
-                        Greater => clamp(val_f - (10f32).powf(power as f32) as f64, min_f, max_f),
+                        Ordering::Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
+                        Ordering::Greater => clamp(val_f - (10f32).powf(power as f32) as f64, min_f, max_f),
                         _ => val_f,
                     }
                 },
@@ -188,8 +188,8 @@ fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
                     let mut power = dec_idx as isize - idx as isize - 1;
                     if power < -1 { power += 1; }
                     match y_ord {
-                        Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
-                        Greater => clamp(val_f - (10f32).powf(power as f32) as f64, min_f, max_f),
+                        Ordering::Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
+                        Ordering::Greater => clamp(val_f - (10f32).powf(power as f32) as f64, min_f, max_f),
                         _ => val_f,
                     }
                 },
