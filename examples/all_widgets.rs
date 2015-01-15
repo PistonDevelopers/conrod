@@ -179,7 +179,7 @@ fn draw_ui(gl: &mut Gl,
             .rgba(0.4, 0.75, 0.6, 1.0)
             .frame(demo.frame_width)
             .label("PRESS")
-            .callback(|| demo.bg_color = Color::random())
+            .callback(Box::new(|| demo.bg_color = Color::random()))
             .draw(gl);
 
     }
@@ -204,7 +204,7 @@ fn draw_ui(gl: &mut Gl,
             .frame(demo.frame_width)
             .label(label.as_slice())
             .label_color(Color::white())
-            .callback(|new_pad| demo.title_padding = new_pad as f64)
+            .callback(Box::new(|new_pad| demo.title_padding = new_pad as f64))
             .draw(gl);
 
     }
@@ -220,13 +220,13 @@ fn draw_ui(gl: &mut Gl,
         .frame(demo.frame_width)
         .label(label.as_slice())
         .label_color(Color::white())
-        .callback(|value| {
+        .callback(Box::new(|value| {
             demo.show_button = value;
             demo.toggle_label = match value {
                 true => "ON".to_string(),
                 false => "OFF".to_string()
             }
-        })
+        }))
         .draw(gl);
 
     // Let's draw a slider for each color element.
@@ -259,11 +259,11 @@ fn draw_ui(gl: &mut Gl,
             .frame(demo.frame_width)
             .label(label.as_slice())
             .label_color(Color::white())
-            .callback(|color| match i {
+            .callback(Box::new(|color| match i {
                 0u => demo.bg_color.set_r(color),
                 1u => demo.bg_color.set_g(color),
                 _ => demo.bg_color.set_b(color),
-            })
+            }))
             .draw(gl);
 
     }
@@ -276,7 +276,7 @@ fn draw_ui(gl: &mut Gl,
         .frame(demo.frame_width)
         .label("Height (pixels)")
         .label_color(demo.bg_color.invert().plain_contrast())
-        .callback(|new_height| demo.v_slider_height = new_height)
+        .callback(Box::new(|new_height| demo.v_slider_height = new_height))
         .draw(gl);
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
@@ -288,7 +288,7 @@ fn draw_ui(gl: &mut Gl,
         .frame_color(demo.bg_color.plain_contrast())
         .label("Frame Width (pixels)")
         .label_color(demo.bg_color.plain_contrast())
-        .callback(|new_width| demo.frame_width = new_width)
+        .callback(Box::new(|new_width| demo.frame_width = new_width))
         .draw(gl);
 
 
@@ -315,7 +315,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(|new_val| demo.bool_matrix[col][row] = new_val)
+                .callback(Box::new(|new_val| demo.bool_matrix[col][row] = new_val))
                 .draw(gl);
 
         });
@@ -344,7 +344,7 @@ fn draw_ui(gl: &mut Gl,
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
-        .callback(|selected_idx, new_idx, _string| *selected_idx = Some(new_idx))
+        .callback(Box::new(|selected_idx, new_idx, _string| *selected_idx = Some(new_idx)))
         .draw(gl);
 
     // Draw an xy_pad.
@@ -360,10 +360,10 @@ fn draw_ui(gl: &mut Gl,
         .label_color(Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast())
         .line_width(2.0)
         .value_font_size(18u32)
-        .callback(|new_x, new_y| {
+        .callback(Box::new(|new_x, new_y| {
             demo.circle_pos[0] = new_x;
             demo.circle_pos[1] = new_y;
-        })
+        }))
         .draw(gl);
 
     // Let's use the widget matrix to draw
