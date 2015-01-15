@@ -3,7 +3,7 @@ use envelope_editor::EnvelopePoint;
 use graphics::vecmath::Scalar;
 
 /// General use 2D spatial point.
-pub type Point = [Scalar, ..2];
+pub type Point = [Scalar; 2];
 
 impl EnvelopePoint<Scalar, Scalar> for Point {
     /// Return the X value.

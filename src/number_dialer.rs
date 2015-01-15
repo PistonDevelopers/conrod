@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
 use std::num::Float;
-use std::num::Primitive;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 use std::iter::repeat;
 use color::Color;
 use dimensions::Dimensions;
@@ -164,7 +166,7 @@ fn get_new_state(is_over_elem: Option<Element>,
 
 /// Return the new value along with it's String representation.
 #[inline]
-fn get_new_value<T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 (val: T, min: T, max: T, idx: uint, y_ord: Ordering, val_string: &String) -> T {
     match y_ord {
         Equal => val,
@@ -295,17 +297,18 @@ pub struct NumberDialerContext<'a, T> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    maybe_callback: Option<|T|:'a>,
+    // maybe_callback: Option<|T|:'a>,
+    maybe_callback: Option<Box<Fn(T) + 'a>>,
 }
 
 pub trait NumberDialerBuilder
-<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString> {
+<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString> {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
                      precision: u8) -> NumberDialerContext<'a, T>;
 }
 
-impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 NumberDialerBuilder<'a, T> for UiContext {
     /// A number_dialer builder method to be implemented by the UiContext.
     fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
@@ -330,14 +333,14 @@ NumberDialerBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(NumberDialerContext, |T|:'a, T);
+impl_callable!(NumberDialerContext, Fn(T), T);
 impl_colorable!(NumberDialerContext, T);
 impl_frameable!(NumberDialerContext, T);
 impl_labelable!(NumberDialerContext, T);
 impl_positionable!(NumberDialerContext, T);
 impl_shapeable!(NumberDialerContext, T);
 
-impl<'a, T: Float + Copy + Primitive + FromPrimitive + ToPrimitive + ToString>
+impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 ::draw::Drawable for NumberDialerContext<'a, T> {
     #[inline]
     /// Draw the number_dialer. When successfully pressed,

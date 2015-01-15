@@ -53,7 +53,7 @@ pub struct ToggleContext<'a> {
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|bool|:'a>,
+    maybe_callback: Option<Box<Fn(bool) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -90,12 +90,12 @@ impl<'a> ToggleBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ToggleContext, |bool|:'a);
-impl_colorable!(ToggleContext);
-impl_frameable!(ToggleContext);
-impl_labelable!(ToggleContext);
-impl_positionable!(ToggleContext);
-impl_shapeable!(ToggleContext);
+impl_callable!(ToggleContext, Fn(bool),);
+impl_colorable!(ToggleContext,);
+impl_frameable!(ToggleContext,);
+impl_labelable!(ToggleContext,);
+impl_positionable!(ToggleContext,);
+impl_shapeable!(ToggleContext,);
 
 impl<'a> ::draw::Drawable for ToggleContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {

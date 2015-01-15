@@ -3,7 +3,7 @@ use color::Color;
 use rustc_serialize::{
     json,
     Encodable,
-    Decodable
+    Decodable,
 };
 use std::io::File;
 use std::str;
@@ -63,7 +63,7 @@ impl Theme {
 
     /// Save a theme to file.
     pub fn save(&self, path: &str) -> Result<(), String> {
-        let json_string = json::Encoder::buffer_encode(self);
+        let json_string = json::encode(self);
         let mut file = File::create(&Path::new(path));
         match file.write(json_string.as_slice()) {
             Ok(()) => Ok(()),

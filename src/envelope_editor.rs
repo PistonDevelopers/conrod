@@ -1,5 +1,8 @@
+use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::fmt::Show;
 use std::num::Float;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -204,7 +207,8 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
+    // maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
+    maybe_callback: Option<Box<Fn(&mut Vec<E>, uint) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -270,7 +274,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E);
+impl_callable!(EnvelopeEditorContext, Fn(&mut Vec<E>, uint), X, Y, E);
 impl_colorable!(EnvelopeEditorContext, X, Y, E);
 impl_frameable!(EnvelopeEditorContext, X, Y, E);
 impl_labelable!(EnvelopeEditorContext, X, Y, E);
@@ -297,8 +301,8 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
-        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_pos = vec2_add(self.pos, [frame_w; 2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
 
         // Create a vector with each EnvelopePoint value represented as a
         // skewed percentage between 0.0 .. 1.0 .

@@ -1,5 +1,8 @@
+use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::num::Float;
 use std::num::Int;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 
 /// Clamp a value between a given min and max.
 pub fn clamp<T: Float + PartialOrd>(n: T, min: T, max: T) -> T {

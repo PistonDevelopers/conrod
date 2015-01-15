@@ -59,7 +59,8 @@ pub struct ButtonContext<'a> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    maybe_callback: Option<||:'a>,
+    // maybe_callback: Option<|uint|-> bool:'a>,
+    maybe_callback: Option<Box<Fn() + 'a>>,
 }
 
 pub trait ButtonBuilder<'a> {
@@ -88,12 +89,12 @@ impl<'a> ButtonBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ButtonContext, ||:'a);
-impl_colorable!(ButtonContext);
-impl_frameable!(ButtonContext);
-impl_labelable!(ButtonContext);
-impl_positionable!(ButtonContext);
-impl_shapeable!(ButtonContext);
+impl_callable!(ButtonContext, Fn(),);
+impl_colorable!(ButtonContext,);
+impl_frameable!(ButtonContext,);
+impl_labelable!(ButtonContext,);
+impl_positionable!(ButtonContext,);
+impl_shapeable!(ButtonContext,);
 
 impl<'a> ::draw::Drawable for ButtonContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {

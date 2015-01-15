@@ -1,4 +1,3 @@
-use std::num::FloatMath;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -188,7 +187,8 @@ pub struct TextBoxContext<'a> {
     font_size: u32,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|&mut String|:'a>,
+    // maybe_callback: Option<|&mut String|:'a>,
+    maybe_callback: Option<Box<Fn(&mut String) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -224,11 +224,11 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, |&mut String|:'a);
-impl_colorable!(TextBoxContext);
-impl_frameable!(TextBoxContext);
-impl_positionable!(TextBoxContext);
-impl_shapeable!(TextBoxContext);
+impl_callable!(TextBoxContext, Fn(&mut String),);
+impl_colorable!(TextBoxContext,);
+impl_frameable!(TextBoxContext,);
+impl_positionable!(TextBoxContext,);
+impl_shapeable!(TextBoxContext,);
 
 impl<'a> ::draw::Drawable for TextBoxContext<'a> {
     #[inline]
@@ -244,8 +244,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
-        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_pos = vec2_add(self.pos, [frame_w; 2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
         let text_x = pad_pos[0] + TEXT_PADDING;
         let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
         let text_pos = [text_x, text_y];

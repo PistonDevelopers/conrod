@@ -1,6 +1,4 @@
 
-#![macro_escape]
-
 /// Simplify implementation of BoilerPlate widget module functions.
 macro_rules! widget_fns(
     ($widget:ident, $widget_state:ident, $default:expr) => (
@@ -43,10 +41,10 @@ macro_rules! widget_fns(
 
 /// Simplify implementation of the `Colorable` trait.
 macro_rules! impl_callable(
-    ($context:ident, $cb:ty $(, $t:ident)*) => (
-        impl<'a $(, $t)*> ::callback::Callable<$cb> for $context<'a $(, $t)*> {
+    ($context:ident, $cb:ty, $($t:ident),*) => (
+        impl<'a $(, $t)*> ::callback::Callable<Box<$cb + 'a>> for $context<'a $(, $t)*> {
             #[inline]
-            fn callback(self, callback: $cb) -> $context<'a $(, $t)*> {
+            fn callback(self, callback: Box<$cb + 'a>) -> $context<'a $(, $t)*> {
                 $context { maybe_callback: Some(callback), ..self }
             }
         }
@@ -55,7 +53,7 @@ macro_rules! impl_callable(
 
 /// Simplify implementation of the `Colorable` trait.
 macro_rules! impl_colorable(
-    ($context:ident $(, $t:ident)*) => (
+    ($context:ident, $($t:ident),*) => (
         impl<'a $(, $t)*> ::color::Colorable for $context<'a $(, $t)*> {
             #[inline]
             fn color(self, color: Color) -> $context<'a $(, $t)*> {
@@ -71,7 +69,7 @@ macro_rules! impl_colorable(
 
 /// Simplify implementation of the `Frameable` trait.
 macro_rules! impl_frameable(
-    ($context:ident $(, $t:ident)*) => (
+    ($context:ident, $($t:ident),*) => (
         impl<'a $(, $t)*> ::frame::Frameable for $context<'a $(, $t)*> {
             #[inline]
             fn frame(self, width: f64) -> $context<'a $(, $t)*> {
@@ -91,7 +89,7 @@ macro_rules! impl_frameable(
 
 /// Simplify implementation of the `Labelable` trait.
 macro_rules! impl_labelable(
-    ($context:ident $(, $t:ident)*) => (
+    ($context:ident, $($t:ident),*) => (
         impl<'a $(, $t)*> ::label::Labelable<'a> for $context<'a $(, $t)*> {
             #[inline]
             fn label(self, text: &'a str) -> $context<'a $(, $t)*> {
@@ -130,7 +128,7 @@ macro_rules! impl_labelable(
 
 /// Simplify implementation of the `Positionable` trait.
 macro_rules! impl_positionable(
-    ($context:ident $(, $t:ident)*) => (
+    ($context:ident, $($t:ident),*) => (
         impl<'a $(,$t)*> ::position::Positionable for $context<'a $(,$t)*> {
 
             #[inline]
@@ -191,7 +189,7 @@ macro_rules! impl_positionable(
 
 /// Simplify implementation of the `Shapeable` trait.
 macro_rules! impl_shapeable(
-    ($context:ident $(, $t:ident)*) => (
+    ($context:ident, $($t:ident),*) => (
         impl<'a $(, $t)*> ::shape::Shapeable for $context<'a $(, $t)*> {
             #[inline]
             fn dimensions(self, width: f64, height: f64) -> $context<'a $(, $t)*> {

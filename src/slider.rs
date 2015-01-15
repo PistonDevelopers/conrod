@@ -1,4 +1,6 @@
 use std::num::Float;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 use color::Color;
 use dimensions::Dimensions;
 use label;
@@ -63,7 +65,8 @@ pub struct SliderContext<'a, T> {
     max: T,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|T|:'a>,
+    // maybe_callback: Option<|T|:'a>,
+    maybe_callback: Option<Box<Fn(T) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -102,7 +105,7 @@ SliderBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(SliderContext, |T|:'a, T);
+impl_callable!(SliderContext, Fn(T), T);
 impl_colorable!(SliderContext, T);
 impl_frameable!(SliderContext, T);
 impl_labelable!(SliderContext, T);
