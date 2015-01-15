@@ -364,7 +364,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
         };
         let label_dim = match label_string.len() {
             0us => [0.0, 0.0],
-            _ => [label::width(self.uic, font_size, label_string[]), font_size as f64],
+            _ => [label::width(self.uic, font_size, &label_string[]), font_size as f64],
         };
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0us }
                                                           else { 1us + self.precision as usize };
@@ -386,7 +386,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
         // If there's a label, draw it.
         let val_string_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
         if self.maybe_label.is_some() {
-            self.uic.draw_text(graphics, label_pos, font_size, val_string_color, label_string[]);
+            self.uic.draw_text(graphics, label_pos, font_size, val_string_color, &label_string[]);
         };
 
         // Determine new value from the initial state and the new state.

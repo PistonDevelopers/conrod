@@ -286,7 +286,6 @@ impl Show for Color {
     }
 }
 
-#[old_impl_check]
 impl Decodable for Color {
     fn decode<D: Decoder>(dec: &mut D) -> Result<Color, D::Error> {
         let vec = try!(dec.read_to_vec(|le_dec| le_dec.read_f32()));
@@ -301,7 +300,6 @@ impl Decodable for Color {
     }
 }
 
-#[old_impl_check]
 impl Encodable for Color {
     fn encode<S: Encoder>(&self, enc: &mut S) -> Result<(), S::Error> {
         let Color(ref vec) = *self;

@@ -137,16 +137,16 @@ impl UiContext {
         let ui_id_idx = ui_id as usize;
         if self.data.len() > ui_id_idx {
             match &mut self.data[ui_id_idx] {
-                &(widget::Widget::NoWidget, _) => {
+                &mut (widget::Widget::NoWidget, _) => {
                     match &mut self.data[ui_id_idx] {
-                        &(ref mut widget, _) => {
+                        &mut (ref mut widget, _) => {
                             *widget = default; widget
                         }
                     }
                 },
                 _ => {
                     match &mut self.data[ui_id_idx] {
-                        &(ref mut widget, _) => widget
+                        &mut (ref mut widget, _) => widget
                     }
                 },
             }
@@ -160,7 +160,7 @@ impl UiContext {
                 self.data[ui_id_idx] = (default, widget::Placing::NoPlace);
             }
             match &mut self.data[ui_id_idx] {
-                &(ref mut widget, _) => widget,
+                &mut (ref mut widget, _) => widget,
             }
         }
     }
@@ -168,7 +168,7 @@ impl UiContext {
     /// Set the Placing for a particular widget.
     pub fn set_place(&mut self, ui_id: UIID, pos: Point, dim: Dimensions) {
         match &mut self.data[ui_id as usize] {
-            &(_, ref mut placing) => {
+            &mut (_, ref mut placing) => {
                 *placing = widget::Placing::Place(pos[0], pos[1], dim[0], dim[1])
             }
         }

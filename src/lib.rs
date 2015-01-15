@@ -1,5 +1,5 @@
 
-#![feature(old_impl_check, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
 
 extern crate input;

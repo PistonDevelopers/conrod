@@ -5,6 +5,7 @@ use rustc_serialize::{
     Encodable,
     Decodable,
 };
+use std::error::Error;
 use std::io::File;
 use std::str;
 use ui_context::UiContext;
@@ -54,7 +55,7 @@ impl Theme {
         let theme = match decoder {
             Some(ref mut d) => match Decodable::decode(d) {
                 Ok(lib) => Ok(lib),
-                Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
+                Err(e) => Err(format!("Failed to load Theme correctly: {}", e.description())),
             },
             None => Err(String::from_str("Failed to load Theme correctly")),
         };
@@ -65,7 +66,7 @@ impl Theme {
     pub fn save(&self, path: &str) -> Result<(), String> {
         let json_string = json::encode(self);
         let mut file = File::create(&Path::new(path));
-        match file.write(json_string.as_slice()) {
+        match file.write(json_string.as_slice().as_bytes()) {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
         }

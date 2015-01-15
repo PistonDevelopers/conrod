@@ -216,10 +216,10 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
             State::Closed(_) => {
                 let rect_state = new_state.as_rect_state();
                 let text = match sel {
-                    Some(idx) => (*self.strings)[idx][],
+                    Some(idx) => &(*self.strings)[idx][],
                     None => match self.maybe_label {
                         Some(text) => text,
-                        None => (*self.strings)[0][],
+                        None => &(*self.strings)[0][],
                     },
                 };
                 rectangle::draw_with_centered_label(
