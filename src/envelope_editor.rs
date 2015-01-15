@@ -354,7 +354,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         }
 
         // Determine the left and right X bounds for a point.
-        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
+        let get_x_bounds = |&: envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0us && envelope_perc.len() - 1us > idx {
                 (*envelope_perc)[idx + 1us].0
             } else { 1.0 };
@@ -371,7 +371,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
+                let draw_env_pt = |&: uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
                         max_x, max_x - min_x, pad_dim[0] as usize
@@ -428,7 +428,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         };
 
         // Determine new values.
-        let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
+        let get_new_value = |&: perc_envelope: &Vec<(f32, f32, f32)>,
                              idx: usize,
                              mouse_x: f64,
                              mouse_y: f64| -> (X, Y) {
