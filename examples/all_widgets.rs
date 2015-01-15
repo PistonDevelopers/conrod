@@ -298,7 +298,7 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
-        .each_widget(|uic, num, col, row, pos, dim| { // This is called for every widget.
+        .each_widget(|&: uic: &mut UiContext, num: usize, col: usize, row: usize, pos, dim| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -315,7 +315,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(Box::new(|new_val| demo.bool_matrix[col][row] = new_val))
+                .callback(Box::new(|&mut: new_val: bool| demo.bool_matrix[col][row] = new_val))
                 .draw(gl);
 
         });
@@ -373,9 +373,9 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
-        .each_widget(|uic, num, _col, _row, pos, dim| { // This is called for every widget.
+        .each_widget(|&mut: uic: &mut UiContext, num, _col, _row, pos, dim: [f64; 2]| { // This is called for every widget.
 
-            let &(ref mut env, ref mut text) = &mut demo.envelopes[num];
+            let &mut (ref mut env, ref mut text) = &mut demo.envelopes[num];
             let text_box_height = dim[1] / 4.0;
             let env_editor_height = dim[1] - text_box_height;
             let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
