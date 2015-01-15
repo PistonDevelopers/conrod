@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{self, Less, Equal, Greater};
+use std::cmp::Ordering;
 use std::fmt::Show;
 use std::num::Float;
 use std::num::ToPrimitive;
@@ -536,9 +536,9 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                                     };
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
-                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Greater }
-                                                            else if a.get_x() < b.get_x() { Less }
-                                                            else { Equal });
+                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
+                                                            else if a.get_x() < b.get_x() { Ordering::Less }
+                                                            else { Ordering::Equal });
                                 }, _ => (),
                             }
                         }, _ => (),
