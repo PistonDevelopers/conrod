@@ -10,7 +10,7 @@ use xy_pad;
 
 /// Represents the placement of the widget including
 /// x / y position, width and height.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Placing {
     Place(f64, f64, f64, f64), // (x, y, w, h)
     NoPlace,
@@ -45,7 +45,7 @@ impl Placing {
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 pub enum Widget {
     NoWidget,
     Button(button::State),

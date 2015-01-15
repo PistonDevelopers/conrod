@@ -11,7 +11,7 @@ use std::str;
 use ui_context::UiContext;
 
 /// A data holder for style-related data.
-#[deriving(Show, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Show, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     pub name: String,
     pub background_color: Color,
