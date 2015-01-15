@@ -371,7 +371,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |&: uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
+                let mut draw_env_pt = |&mut: uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
                         max_x, max_x - min_x, pad_dim[0] as usize
