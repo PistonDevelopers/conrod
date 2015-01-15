@@ -67,7 +67,7 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
             val_string.truncate(idx);
         },
         (Some(idx), _) => {
-            let (len, desired_len) = (val_string.len(), idx + precision as usize + 1u);
+            let (len, desired_len) = (val_string.len(), idx + precision as usize + 1us);
             match len.cmp(&desired_len) {
                 Greater => val_string.truncate(desired_len),
                 Equal => (),
@@ -121,7 +121,7 @@ fn is_over(pos: Point,
                         true => {
                             let slot_w = value_glyph_slot_width(val_string_h as u32);
                             let mut slot_pos = slot_rect_pos;
-                            for i in range(0u, val_string_len) {
+                            for i in range(0us, val_string_len) {
                                 if rectangle::is_over(slot_pos, mouse_pos, [slot_w, dim[1]]) {
                                     return Some(Element::ValueGlyph(i, mouse_pos[1]))
                                 }
@@ -177,7 +177,7 @@ fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             let max_f = max.to_f64().unwrap();
             let new_val_f = match decimal_pos {
                 None => {
-                    let power = val_string.len() - idx - 1u;
+                    let power = val_string.len() - idx - 1us;
                     match y_ord {
                         Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
                         Greater => clamp(val_f - (10f32).powf(power as f32) as f64, min_f, max_f),
@@ -363,11 +363,11 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             None => String::new(),
         };
         let label_dim = match label_string.len() {
-            0u => [0.0, 0.0],
+            0us => [0.0, 0.0],
             _ => [label::width(self.uic, font_size, label_string[]), font_size as f64],
         };
-        let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0u }
-                                                          else { 1u + self.precision as usize };
+        let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0us }
+                                                          else { 1us + self.precision as usize };
         let mut val_string = create_val_string(self.value, val_string_len, self.precision);
         let (val_string_w, val_string_h) = (val_string_width(font_size, &val_string), font_size as f64);
         let label_x = self.pos[0] + (self.dim[0] - (label_dim[0] + val_string_w)) / 2.0;

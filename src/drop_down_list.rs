@@ -62,7 +62,7 @@ fn is_over(pos: Point,
         State::Closed(_) => {
             match rectangle::is_over(pos, mouse_pos, dim) {
                 false => None,
-                true => Some(0u),
+                true => Some(0us),
             }
         },
         State::Open(_) => {
@@ -90,9 +90,9 @@ fn get_new_state(is_over_idx: Option<Idx>,
                     match (draw_state, mouse.left) {
                         (Normal,            Down) => State::Closed(Normal),
                         (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0u, len)),
-                        (Highlighted(_, _), Down) => State::Closed(Clicked(0u, len)),
-                        (Clicked(_, _),     Down) => State::Closed(Clicked(0u, len)),
+                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0us, len)),
+                        (Highlighted(_, _), Down) => State::Closed(Clicked(0us, len)),
+                        (Clicked(_, _),     Down) => State::Closed(Clicked(0us, len)),
                         (Clicked(_, _),     Up)   => State::Open(Normal),
                     }
                 },

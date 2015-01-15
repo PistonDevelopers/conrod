@@ -336,12 +336,12 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
         // Draw the envelope lines.
         match self.env.len() {
-            0u | 1u => (),
+            0us | 1us => (),
             _ => {
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
-                for i in range(1u, perc_env.len()) {
-                    let (x_a, y_a, _) = perc_env[i - 1u];
+                for i in range(1us, perc_env.len()) {
+                    let (x_a, y_a, _) = perc_env[i - 1us];
                     let (x_b, y_b, _) = perc_env[i];
                     let p_a = [map_range(x_a, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
@@ -355,11 +355,11 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
         // Determine the left and right X bounds for a point.
         let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
-            let right_bound = if envelope_perc.len() > 0u && envelope_perc.len() - 1u > idx {
-                (*envelope_perc)[idx + 1u].0
+            let right_bound = if envelope_perc.len() > 0us && envelope_perc.len() - 1us > idx {
+                (*envelope_perc)[idx + 1us].0
             } else { 1.0 };
-            let left_bound = if envelope_perc.len() > 0u && idx > 0u {
-                (*envelope_perc)[idx - 1u].0
+            let left_bound = if envelope_perc.len() > 0us && idx > 0us {
+                (*envelope_perc)[idx - 1us].0
             } else { 0.0 };
             (left_bound, right_bound)
         };
@@ -504,12 +504,12 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
                 // Check if a there are no points. If there are
                 // and the mouse was clicked, add a point.
-                if self.env.len() == 0u {
+                if self.env.len() == 0us {
                     match (state, new_state) {
                         (State::Clicked(elem, m_button), State::Highlighted(_)) => {
                             match (elem, m_button) {
                                 (Element::Pad, MouseButton::Left) => {
-                                    let (new_x, new_y) = get_new_value(&perc_env, 0u, mouse.pos[0], mouse.pos[1]);
+                                    let (new_x, new_y) = get_new_value(&perc_env, 0us, mouse.pos[0], mouse.pos[1]);
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
                                 }, _ => (),

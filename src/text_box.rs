@@ -109,7 +109,7 @@ fn closest_idx(uic: &mut UiContext,
                text_w: f64,
                font_size: FontSize,
                text: &str) -> (Idx, f64) {
-    if mouse_pos[0] <= text_x { return (0u, text_x) }
+    if mouse_pos[0] <= text_x { return (0us, text_x) }
     let mut x = text_x;
     let mut prev_x = x;
     let mut left_x = text_x;
@@ -293,10 +293,10 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                 for key in pressed_keys.iter() {
                     match *key {
                         Backspace => {
-                            if self.text.len() > 0u
+                            if self.text.len() > 0us
                             && self.text.len() >= idx
-                            && idx > 0u {
-                                let rem_idx = idx - 1u;
+                            && idx > 0us {
+                                let rem_idx = idx - 1us;
                                 new_cursor_x -= self.uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(rem_idx)
                                 );
@@ -310,9 +310,9 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                         Left => {
                             if idx > 0 {
                                 new_cursor_x -= self.uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(idx - 1u)
+                                    self.font_size, self.text.as_slice().char_at(idx - 1us)
                                 );
-                                new_idx -= 1u;
+                                new_idx -= 1us;
                             }
                         },
                         Right => {
@@ -320,10 +320,10 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                                 new_cursor_x += self.uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(idx)
                                 );
-                                new_idx += 1u;
+                                new_idx += 1us;
                             }
                         },
-                        Return => if self.text.len() > 0u {
+                        Return => if self.text.len() > 0us {
                             let TextBoxContext { // borrowck
                                 ref mut maybe_callback,
                                 ref mut uic,

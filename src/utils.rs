@@ -70,18 +70,18 @@ pub fn val_to_string<T: ToString + ToPrimitive>
                 pow_ten = (10f64).powf(n);
                 n += 1.0
             }
-            let min_string_len = n as usize + 1u;
+            let min_string_len = n as usize + 1us;
 
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.
-            let mut n = 1u;
-            while 10u.pow(n) < pixel_range { n += 1u }
+            let mut n = 1us;
+            while 10us.pow(n) < pixel_range { n += 1us }
             let precision = n;
 
             // Truncate the length to the pixel precision as
             // long as this doesn't cause it to be smaller
             // than the necessary decimal place.
-            let mut truncate_len = min_string_len + (precision - 1u);
+            let mut truncate_len = min_string_len + (precision - 1us);
             if idx + precision < truncate_len { truncate_len = idx + precision }
             if s.len() > truncate_len { s.truncate(truncate_len) }
             s

@@ -39,9 +39,9 @@ impl<'a> WidgetMatrixContext<'a> {
     pub fn each_widget(&'a mut self, callback: Box<Fn(&mut UiContext, WidgetNum, ColNum, RowNum, Point, Dimensions)>) {
         let widget_w = self.dim[0] / self.cols as f64;
         let widget_h = self.dim[1] / self.rows as f64;
-        let mut widget_num = 0u;
-        for col in range(0u, self.cols) {
-            for row in range(0u, self.rows) {
+        let mut widget_num = 0us;
+        for col in range(0us, self.cols) {
+            for row in range(0us, self.rows) {
                 callback(
                     self.uic,
                     widget_num,
@@ -52,7 +52,7 @@ impl<'a> WidgetMatrixContext<'a> {
                     [widget_w - self.cell_pad_w * 2.0,
                      widget_h - self.cell_pad_h * 2.0],
                 );
-                widget_num += 1u;
+                widget_num += 1us;
             }
         }
     }
