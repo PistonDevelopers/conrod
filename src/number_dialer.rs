@@ -185,7 +185,7 @@ fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
                     }
                 },
                 Some(dec_idx) => {
-                    let mut power = dec_idx as int - idx as int - 1;
+                    let mut power = dec_idx as isize - idx as isize - 1;
                     if power < -1 { power += 1; }
                     match y_ord {
                         Less => clamp(val_f + (10f32).powf(power as f32) as f64, min_f, max_f),
