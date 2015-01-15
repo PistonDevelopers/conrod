@@ -36,7 +36,7 @@ impl<'a> WidgetMatrixContext<'a> {
 
     /// The callback called for each widget in the matrix.
     /// This should be called following all builder methods.
-    pub fn each_widget(&'a mut self, callback: Box<Fn(&mut UiContext, WidgetNum, ColNum, RowNum, Point, Dimensions)>) {
+    pub fn each_widget(&'a mut self, mut callback: Box<FnMut(&mut UiContext, WidgetNum, ColNum, RowNum, Point, Dimensions)>) {
         let widget_w = self.dim[0] / self.cols as f64;
         let widget_h = self.dim[1] / self.rows as f64;
         let mut widget_num = 0us;
