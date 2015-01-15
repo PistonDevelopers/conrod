@@ -298,7 +298,7 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
-        .each_widget(|&: uic: &mut UiContext, num: usize, col: usize, row: usize, pos, dim| { // This is called for every widget.
+        .each_widget(Box::new(|&: uic: &mut UiContext, num, col, row, pos, dim| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -318,7 +318,7 @@ fn draw_ui(gl: &mut Gl,
                 .callback(Box::new(|&mut: new_val: bool| demo.bool_matrix[col][row] = new_val))
                 .draw(gl);
 
-        });
+        }));
 
     let ddl_color = match demo.selected_idx {
         Some(idx) => match demo.ddl_colors[idx].as_slice() {
@@ -373,7 +373,7 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
-        .each_widget(|&mut: uic: &mut UiContext, num, _col, _row, pos, dim: [f64; 2]| { // This is called for every widget.
+        .each_widget(Box::new(|&mut: uic: &mut UiContext, num, _col, _row, pos, dim| { // This is called for every widget.
 
             let &mut (ref mut env, ref mut text) = &mut demo.envelopes[num];
             let text_box_height = dim[1] / 4.0;
@@ -412,7 +412,7 @@ fn draw_ui(gl: &mut Gl,
                 .line_width(2.0)
                 .draw(gl);
 
-        }); // End of matrix widget callback.
+        })); // End of matrix widget callback.
 
 }
 
