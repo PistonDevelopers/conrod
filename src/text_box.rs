@@ -29,7 +29,7 @@ use vecmath::{
 use widget::Widget::TextBox;
 use std::cmp;
 
-pub type Idx = uint;
+pub type Idx = usize;
 pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.

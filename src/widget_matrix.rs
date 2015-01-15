@@ -4,9 +4,9 @@ use point::Point;
 use ui_context::UiContext;
 
 /// Callback params.
-pub type WidgetNum = uint;
-pub type ColNum = uint;
-pub type RowNum = uint;
+pub type WidgetNum = usize;
+pub type ColNum = usize;
+pub type RowNum = usize;
 pub type Width = f64;
 pub type Height = f64;
 pub type PosX = f64;
@@ -19,8 +19,8 @@ pub type PosY = f64;
 /// should be drawn.
 pub struct WidgetMatrixContext<'a> {
     uic: &'a mut UiContext,
-    cols: uint,
-    rows: uint,
+    cols: usize,
+    rows: usize,
     pos: Point,
     dim: Dimensions,
     cell_pad_w: f64,
@@ -73,10 +73,10 @@ impl<'a> WidgetMatrixContext<'a> {
 /*
 /// A struct used for iterating over the cells of a WidgetMatrix.
 pub struct CellIterator {
-    row: uint,
-    col: uint,
-    rows: uint,
-    cols: uint,
+    row: usize,
+    col: usize,
+    rows: usize,
+    cols: usize,
 }
 
 impl Iterator for CellIterator {
@@ -85,13 +85,13 @@ impl Iterator for CellIterator {
 
 pub trait WidgetMatrixBuilder<'a> {
     /// A widget matrix builder method to be implemented by the UiContext.
-    fn widget_matrix(&'a mut self, cols: uint, rows: uint) -> WidgetMatrixContext<'a>;
+    fn widget_matrix(&'a mut self, cols: usize, rows: usize) -> WidgetMatrixContext<'a>;
 }
 
 impl<'a> WidgetMatrixBuilder<'a> for UiContext {
 
     /// Create a widget matrix context.
-    fn widget_matrix(&'a mut self, cols: uint, rows: uint) -> WidgetMatrixContext<'a> {
+    fn widget_matrix(&'a mut self, cols: usize, rows: usize) -> WidgetMatrixContext<'a> {
         WidgetMatrixContext {
             uic: self,
             cols: cols,

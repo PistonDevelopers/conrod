@@ -59,7 +59,7 @@ pub struct ButtonContext<'a> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    // maybe_callback: Option<|uint|-> bool:'a>,
+    // maybe_callback: Option<|usize|-> bool:'a>,
     maybe_callback: Option<Box<Fn() + 'a>>,
 }
 

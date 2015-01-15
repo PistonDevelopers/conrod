@@ -35,10 +35,10 @@ use widget::Widget::NumberDialer;
 pub enum Element {
     Rect,
     LabelGlyphs,
-    /// Represents a value glyph slot at `uint` index
+    /// Represents a value glyph slot at `usize` index
     /// as well as the last mouse.pos.y for comparison
     /// in determining new value.
-    ValueGlyph(uint, f64)
+    ValueGlyph(usize, f64)
 }
 
 /// Represents the state of the Button widget.
@@ -54,20 +54,20 @@ widget_fns!(NumberDialer, State, NumberDialer(State::Normal));
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
 /// one is given.
-fn create_val_string<T: ToString>(val: T, len: uint, precision: u8) -> String {
+fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
     let mut val_string = val.to_string();
     // First check we have the correct number of decimal places.
     match (val_string.as_slice().chars().position(|ch| ch == '.'), precision) {
         (None, 0u8) => (),
         (None, _) => {
             val_string.push('.');
-            val_string.extend(repeat('0').take(precision as uint));
+            val_string.extend(repeat('0').take(precision as usize));
         },
         (Some(idx), 0u8) => {
             val_string.truncate(idx);
         },
         (Some(idx), _) => {
-            let (len, desired_len) = (val_string.len(), idx + precision as uint + 1u);
+            let (len, desired_len) = (val_string.len(), idx + precision as usize + 1u);
             match len.cmp(&desired_len) {
                 Greater => val_string.truncate(desired_len),
                 Equal => (),
@@ -106,7 +106,7 @@ fn is_over(pos: Point,
            label_dim: Dimensions,
            val_string_w: f64,
            val_string_h: f64,
-           val_string_len: uint) -> Option<Element> {
+           val_string_len: usize) -> Option<Element> {
     match rectangle::is_over(pos, mouse_pos, dim) {
         false => None,
         true => {
@@ -167,7 +167,7 @@ fn get_new_state(is_over_elem: Option<Element>,
 /// Return the new value along with it's String representation.
 #[inline]
 fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-(val: T, min: T, max: T, idx: uint, y_ord: Ordering, val_string: &String) -> T {
+(val: T, min: T, max: T, idx: usize, y_ord: Ordering, val_string: &String) -> T {
     match y_ord {
         Equal => val,
         _ => {
@@ -367,7 +367,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             _ => [label::width(self.uic, font_size, label_string[]), font_size as f64],
         };
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0u }
-                                                          else { 1u + self.precision as uint };
+                                                          else { 1u + self.precision as usize };
         let mut val_string = create_val_string(self.value, val_string_len, self.precision);
         let (val_string_w, val_string_h) = (val_string_width(font_size, &val_string), font_size as f64);
         let label_x = self.pos[0] + (self.dim[0] - (label_dim[0] + val_string_w)) / 2.0;

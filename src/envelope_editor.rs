@@ -42,12 +42,12 @@ use vecmath::{
 pub enum Element {
     Rect,
     Pad,
-    /// Represents an EnvelopePoint at `uint` index
+    /// Represents an EnvelopePoint at `usize` index
     /// as well as the last mouse pos for comparison
     /// in determining new value.
-    EnvPoint(uint, (f64, f64)),
+    EnvPoint(usize, (f64, f64)),
     /// Represents an EnvelopePoint's `curve` value.
-    CurvePoint(uint, (f64, f64)),
+    CurvePoint(usize, (f64, f64)),
 }
 
 /// An enum to define which button is clicked.
@@ -207,8 +207,8 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
-    maybe_callback: Option<Box<Fn(&mut Vec<E>, uint) + 'a>>,
+    // maybe_callback: Option<|&mut Vec<E>, usize|:'a>,
+    maybe_callback: Option<Box<Fn(&mut Vec<E>, usize) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -274,7 +274,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, Fn(&mut Vec<E>, uint), X, Y, E);
+impl_callable!(EnvelopeEditorContext, Fn(&mut Vec<E>, usize), X, Y, E);
 impl_colorable!(EnvelopeEditorContext, X, Y, E);
 impl_frameable!(EnvelopeEditorContext, X, Y, E);
 impl_labelable!(EnvelopeEditorContext, X, Y, E);
@@ -354,7 +354,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         }
 
         // Determine the left and right X bounds for a point.
-        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: uint| -> (f32, f32) {
+        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0u && envelope_perc.len() - 1u > idx {
                 (*envelope_perc)[idx + 1u].0
             } else { 1.0 };
@@ -371,14 +371,14 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
+                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x, max_x - min_x, pad_dim[0] as uint
+                        max_x, max_x - min_x, pad_dim[0] as usize
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y, max_y - min_y, pad_dim[1] as uint
+                        max_y, max_y - min_y, pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
@@ -429,7 +429,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
         // Determine new values.
         let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
-                             idx: uint,
+                             idx: usize,
                              mouse_x: f64,
                              mouse_y: f64| -> (X, Y) {
             let mouse_x_on_pad = mouse_x - pad_pos[0];

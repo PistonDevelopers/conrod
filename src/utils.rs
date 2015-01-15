@@ -54,7 +54,7 @@ pub fn map_range<X: Float + Copy + FromPrimitive + ToPrimitive,
 
 /// Get a suitable string from the value, its max and the pixel range.
 pub fn val_to_string<T: ToString + ToPrimitive>
-(val: T, max: T, val_rng: T, pixel_range: uint) -> String {
+(val: T, max: T, val_rng: T, pixel_range: usize) -> String {
     let mut s = val.to_string();
     let decimal = s.as_slice().chars().position(|ch| ch == '.');
     match decimal {
@@ -70,7 +70,7 @@ pub fn val_to_string<T: ToString + ToPrimitive>
                 pow_ten = (10f64).powf(n);
                 n += 1.0
             }
-            let min_string_len = n as uint + 1u;
+            let min_string_len = n as usize + 1u;
 
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.

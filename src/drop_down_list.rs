@@ -12,8 +12,8 @@ use vecmath::vec2_add;
 use widget::Widget::DropDownList;
 
 /// Tuple / Callback params.
-pub type Idx = uint;
-pub type Len = uint;
+pub type Idx = usize;
+pub type Len = usize;
 
 /// Represents the state of the menu.
 #[deriving(PartialEq, Clone, Copy)]
@@ -69,7 +69,7 @@ fn is_over(pos: Point,
             let total_h = dim[1] * len as f64;
             match rectangle::is_over(pos, mouse_pos, [dim[0], total_h]) {
                 false => None,
-                true => Some((((mouse_pos[1] - pos[1]) / total_h) * len as f64) as uint),
+                true => Some((((mouse_pos[1] - pos[1]) / total_h) * len as f64) as usize),
             }
         },
     }

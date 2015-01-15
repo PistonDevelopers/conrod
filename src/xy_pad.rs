@@ -232,9 +232,9 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
-                                     self.max_x - self.min_x, self.dim[0] as uint);
+                                     self.max_x - self.min_x, self.dim[0] as usize);
         let y_string = val_to_string(self.y, self.max_y,
-                                     self.max_y - self.min_y, self.dim[1] as uint);
+                                     self.max_y - self.min_y, self.dim[1] as usize);
         let xy_string = format!("{}, {}", x_string, y_string);
         let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
