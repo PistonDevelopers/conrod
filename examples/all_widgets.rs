@@ -298,7 +298,7 @@ fn draw_ui(gl: &mut Gl,
     uic.widget_matrix(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
-        .each_widget(Box::new(|&: uic: &mut UiContext, num, col, row, pos, dim| { // This is called for every widget.
+        .each_widget(Box::new(|&mut: uic: &mut UiContext, num, col, row, pos, dim| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
