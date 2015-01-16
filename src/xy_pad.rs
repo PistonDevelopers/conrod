@@ -1,4 +1,6 @@
 use std::num::Float;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -30,7 +32,7 @@ use vecmath::{
 use widget::Widget::XYPad;
 
 /// Represents the state of the xy_pad widget.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted,
@@ -94,7 +96,8 @@ pub struct XYPadContext<'a, X, Y> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|X, Y|:'a>,
+    // maybe_callback: Option<|X, Y|:'a>,
+    maybe_callback: Option<Box<FnMut(X, Y) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -149,7 +152,7 @@ XYPadBuilder<'a, X, Y> for UiContext {
     }
 }
 
-impl_callable!(XYPadContext, |X, Y|:'a, X, Y);
+impl_callable!(XYPadContext, FnMut(X, Y), X, Y);
 impl_colorable!(XYPadContext, X, Y);
 impl_frameable!(XYPadContext, X, Y);
 impl_labelable!(XYPadContext, X, Y);
@@ -170,7 +173,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
         let pad_pos = vec2_add(self.pos, [frame_w, frame_w]);
         let is_over_pad = rectangle::is_over(pad_pos, mouse.pos, pad_dim);
         let new_state = get_new_state(is_over_pad, state, mouse);
@@ -229,9 +232,9 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
-                                     self.max_x - self.min_x, self.dim[0] as uint);
+                                     self.max_x - self.min_x, self.dim[0] as usize);
         let y_string = val_to_string(self.y, self.max_y,
-                                     self.max_y - self.min_y, self.dim[1] as uint);
+                                     self.max_y - self.min_y, self.dim[1] as usize);
         let xy_string = format!("{}, {}", x_string, y_string);
         let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {

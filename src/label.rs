@@ -80,8 +80,8 @@ impl<'a> LabelBuilder<'a> for UiContext {
 
 }
 
-impl_colorable!(LabelContext);
-impl_positionable!(LabelContext);
+impl_colorable!(LabelContext,);
+impl_positionable!(LabelContext,);
 
 impl<'a> ::draw::Drawable for LabelContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {

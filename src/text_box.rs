@@ -1,4 +1,3 @@
-use std::num::FloatMath;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -30,15 +29,15 @@ use vecmath::{
 use widget::Widget::TextBox;
 use std::cmp;
 
-pub type Idx = uint;
+pub type Idx = usize;
 pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub struct State(DrawState, Capturing);
 
 /// Represents the next tier of state.
-#[deriving(Show, PartialEq, Clone,Copy)]
+#[derive(Show, PartialEq, Clone,Copy)]
 pub enum DrawState {
     Normal,
     Highlighted(Element),
@@ -46,14 +45,14 @@ pub enum DrawState {
 }
 
 /// Whether the textbox is currently captured or not.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum Capturing {
     Uncaptured,
     Captured(Idx, CursorX),
 }
 
 /// Represents an element of the TextBox widget.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum Element {
     Nill,
     Rect,
@@ -110,7 +109,7 @@ fn closest_idx(uic: &mut UiContext,
                text_w: f64,
                font_size: FontSize,
                text: &str) -> (Idx, f64) {
-    if mouse_pos[0] <= text_x { return (0u, text_x) }
+    if mouse_pos[0] <= text_x { return (0us, text_x) }
     let mut x = text_x;
     let mut prev_x = x;
     let mut left_x = text_x;
@@ -188,7 +187,8 @@ pub struct TextBoxContext<'a> {
     font_size: u32,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|&mut String|:'a>,
+    // maybe_callback: Option<|&mut String|:'a>,
+    maybe_callback: Option<Box<FnMut(&mut String) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -224,11 +224,11 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, |&mut String|:'a);
-impl_colorable!(TextBoxContext);
-impl_frameable!(TextBoxContext);
-impl_positionable!(TextBoxContext);
-impl_shapeable!(TextBoxContext);
+impl_callable!(TextBoxContext, FnMut(&mut String),);
+impl_colorable!(TextBoxContext,);
+impl_frameable!(TextBoxContext,);
+impl_positionable!(TextBoxContext,);
+impl_shapeable!(TextBoxContext,);
 
 impl<'a> ::draw::Drawable for TextBoxContext<'a> {
     #[inline]
@@ -244,8 +244,8 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
-        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_pos = vec2_add(self.pos, [frame_w; 2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
         let text_x = pad_pos[0] + TEXT_PADDING;
         let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
         let text_pos = [text_x, text_y];
@@ -293,10 +293,10 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                 for key in pressed_keys.iter() {
                     match *key {
                         Backspace => {
-                            if self.text.len() > 0u
+                            if self.text.len() > 0us
                             && self.text.len() >= idx
-                            && idx > 0u {
-                                let rem_idx = idx - 1u;
+                            && idx > 0us {
+                                let rem_idx = idx - 1us;
                                 new_cursor_x -= self.uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(rem_idx)
                                 );
@@ -310,9 +310,9 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                         Left => {
                             if idx > 0 {
                                 new_cursor_x -= self.uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(idx - 1u)
+                                    self.font_size, self.text.as_slice().char_at(idx - 1us)
                                 );
-                                new_idx -= 1u;
+                                new_idx -= 1us;
                             }
                         },
                         Right => {
@@ -320,10 +320,10 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                                 new_cursor_x += self.uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(idx)
                                 );
-                                new_idx += 1u;
+                                new_idx += 1us;
                             }
                         },
-                        Return => if self.text.len() > 0u {
+                        Return => if self.text.len() > 0us {
                             let TextBoxContext { // borrowck
                                 ref mut maybe_callback,
                                 ref mut uic,

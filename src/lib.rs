@@ -1,5 +1,5 @@
 
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
 
 extern crate input;
@@ -37,6 +37,7 @@ pub use theme::Theme;
 pub use ui_context::UiContext;
 pub use widget::Widget;
 
+#[macro_use]
 pub mod macros;
 
 pub mod background;

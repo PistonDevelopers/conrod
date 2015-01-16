@@ -3,14 +3,15 @@ use color::Color;
 use rustc_serialize::{
     json,
     Encodable,
-    Decodable
+    Decodable,
 };
+use std::error::Error;
 use std::io::File;
 use std::str;
 use ui_context::UiContext;
 
 /// A data holder for style-related data.
-#[deriving(Show, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Show, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     pub name: String,
     pub background_color: Color,
@@ -54,7 +55,7 @@ impl Theme {
         let theme = match decoder {
             Some(ref mut d) => match Decodable::decode(d) {
                 Ok(lib) => Ok(lib),
-                Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
+                Err(e) => Err(format!("Failed to load Theme correctly: {}", e.description())),
             },
             None => Err(String::from_str("Failed to load Theme correctly")),
         };
@@ -63,9 +64,9 @@ impl Theme {
 
     /// Save a theme to file.
     pub fn save(&self, path: &str) -> Result<(), String> {
-        let json_string = json::Encoder::buffer_encode(self);
+        let json_string = json::encode(self);
         let mut file = File::create(&Path::new(path));
-        match file.write(json_string.as_slice()) {
+        match file.write(json_string.as_slice().as_bytes()) {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
         }

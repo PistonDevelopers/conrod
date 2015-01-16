@@ -13,7 +13,7 @@ use ui_context::UiContext;
 use utils::map_range;
 
 /// Represents the state of the Button widget.
-#[deriving(PartialEq, Show, Copy)]
+#[derive(PartialEq, Show, Copy)]
 pub enum State {
     Normal,
     Highlighted,
@@ -117,7 +117,7 @@ pub fn draw_with_centered_label(
     uic.draw_text(graphics, l_pos, font_size, text_color, text);
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Corner {
     TopLeft,
     TopRight,

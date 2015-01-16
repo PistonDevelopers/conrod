@@ -1,5 +1,8 @@
+use std::cmp::Ordering;
 use std::fmt::Show;
 use std::num::Float;
+use std::num::ToPrimitive;
+use std::num::FromPrimitive;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
@@ -35,27 +38,27 @@ use vecmath::{
 /// EnvelopeEditor is made up of. This is used to
 /// specify which element is Highlighted or Clicked
 /// when storing State.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum Element {
     Rect,
     Pad,
-    /// Represents an EnvelopePoint at `uint` index
+    /// Represents an EnvelopePoint at `usize` index
     /// as well as the last mouse pos for comparison
     /// in determining new value.
-    EnvPoint(uint, (f64, f64)),
+    EnvPoint(usize, (f64, f64)),
     /// Represents an EnvelopePoint's `curve` value.
-    CurvePoint(uint, (f64, f64)),
+    CurvePoint(usize, (f64, f64)),
 }
 
 /// An enum to define which button is clicked.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum MouseButton {
     Left,
     Right,
 }
 
 /// Represents the state of the xy_pad widget.
-#[deriving(Show, PartialEq, Clone, Copy)]
+#[derive(Show, PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted(Element),
@@ -204,7 +207,8 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|&mut Vec<E>, uint|:'a>,
+    // maybe_callback: Option<|&mut Vec<E>, usize|:'a>,
+    maybe_callback: Option<Box<FnMut(&mut Vec<E>, usize) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -270,7 +274,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, |&mut Vec<E>, uint|:'a, X, Y, E);
+impl_callable!(EnvelopeEditorContext, FnMut(&mut Vec<E>, usize), X, Y, E);
 impl_colorable!(EnvelopeEditorContext, X, Y, E);
 impl_frameable!(EnvelopeEditorContext, X, Y, E);
 impl_labelable!(EnvelopeEditorContext, X, Y, E);
@@ -297,8 +301,8 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
             false => None,
         };
-        let pad_pos = vec2_add(self.pos, [frame_w, ..2]);
-        let pad_dim = vec2_sub(self.dim, [frame_w2, ..2]);
+        let pad_pos = vec2_add(self.pos, [frame_w; 2]);
+        let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
 
         // Create a vector with each EnvelopePoint value represented as a
         // skewed percentage between 0.0 .. 1.0 .
@@ -332,12 +336,12 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
         // Draw the envelope lines.
         match self.env.len() {
-            0u | 1u => (),
+            0us | 1us => (),
             _ => {
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
-                for i in range(1u, perc_env.len()) {
-                    let (x_a, y_a, _) = perc_env[i - 1u];
+                for i in range(1us, perc_env.len()) {
+                    let (x_a, y_a, _) = perc_env[i - 1us];
                     let (x_b, y_b, _) = perc_env[i];
                     let p_a = [map_range(x_a, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
@@ -350,12 +354,12 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         }
 
         // Determine the left and right X bounds for a point.
-        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: uint| -> (f32, f32) {
-            let right_bound = if envelope_perc.len() > 0u && envelope_perc.len() - 1u > idx {
-                (*envelope_perc)[idx + 1u].0
+        let get_x_bounds = |&: envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
+            let right_bound = if envelope_perc.len() > 0us && envelope_perc.len() - 1us > idx {
+                (*envelope_perc)[idx + 1us].0
             } else { 1.0 };
-            let left_bound = if envelope_perc.len() > 0u && idx > 0u {
-                (*envelope_perc)[idx - 1u].0
+            let left_bound = if envelope_perc.len() > 0us && idx > 0us {
+                (*envelope_perc)[idx - 1us].0
             } else { 0.0 };
             (left_bound, right_bound)
         };
@@ -367,14 +371,14 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let draw_env_pt = |uic: &mut UiContext, envelope: &mut Vec<E>, idx: uint, p_pos: Point| {
+                let mut draw_env_pt = |&mut: uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x, max_x - min_x, pad_dim[0] as uint
+                        max_x, max_x - min_x, pad_dim[0] as usize
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y, max_y - min_y, pad_dim[1] as uint
+                        max_y, max_y - min_y, pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
@@ -424,8 +428,8 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
         };
 
         // Determine new values.
-        let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
-                             idx: uint,
+        let get_new_value = |&: perc_envelope: &Vec<(f32, f32, f32)>,
+                             idx: usize,
                              mouse_x: f64,
                              mouse_y: f64| -> (X, Y) {
             let mouse_x_on_pad = mouse_x - pad_pos[0];
@@ -500,12 +504,12 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
 
                 // Check if a there are no points. If there are
                 // and the mouse was clicked, add a point.
-                if self.env.len() == 0u {
+                if self.env.len() == 0us {
                     match (state, new_state) {
                         (State::Clicked(elem, m_button), State::Highlighted(_)) => {
                             match (elem, m_button) {
                                 (Element::Pad, MouseButton::Left) => {
-                                    let (new_x, new_y) = get_new_value(&perc_env, 0u, mouse.pos[0], mouse.pos[1]);
+                                    let (new_x, new_y) = get_new_value(&perc_env, 0us, mouse.pos[0], mouse.pos[1]);
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
                                 }, _ => (),
@@ -532,9 +536,9 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
                                     };
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
-                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Greater }
-                                                            else if a.get_x() < b.get_x() { Less }
-                                                            else { Equal });
+                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
+                                                            else if a.get_x() < b.get_x() { Ordering::Less }
+                                                            else { Ordering::Equal });
                                 }, _ => (),
                             }
                         }, _ => (),

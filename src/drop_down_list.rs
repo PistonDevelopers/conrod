@@ -12,18 +12,18 @@ use vecmath::vec2_add;
 use widget::Widget::DropDownList;
 
 /// Tuple / Callback params.
-pub type Idx = uint;
-pub type Len = uint;
+pub type Idx = usize;
+pub type Len = usize;
 
 /// Represents the state of the menu.
-#[deriving(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum State {
     Closed(DrawState),
     Open(DrawState),
 }
 
 /// Represents the state of the DropDownList widget.
-#[deriving(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum DrawState {
     Normal,
     Highlighted(Idx, Len),
@@ -62,14 +62,14 @@ fn is_over(pos: Point,
         State::Closed(_) => {
             match rectangle::is_over(pos, mouse_pos, dim) {
                 false => None,
-                true => Some(0u),
+                true => Some(0us),
             }
         },
         State::Open(_) => {
             let total_h = dim[1] * len as f64;
             match rectangle::is_over(pos, mouse_pos, [dim[0], total_h]) {
                 false => None,
-                true => Some((((mouse_pos[1] - pos[1]) / total_h) * len as f64) as uint),
+                true => Some((((mouse_pos[1] - pos[1]) / total_h) * len as f64) as usize),
             }
         },
     }
@@ -90,9 +90,9 @@ fn get_new_state(is_over_idx: Option<Idx>,
                     match (draw_state, mouse.left) {
                         (Normal,            Down) => State::Closed(Normal),
                         (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0u, len)),
-                        (Highlighted(_, _), Down) => State::Closed(Clicked(0u, len)),
-                        (Clicked(_, _),     Down) => State::Closed(Clicked(0u, len)),
+                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0us, len)),
+                        (Highlighted(_, _), Down) => State::Closed(Clicked(0us, len)),
+                        (Clicked(_, _),     Down) => State::Closed(Clicked(0us, len)),
                         (Clicked(_, _),     Up)   => State::Open(Normal),
                     }
                 },
@@ -130,7 +130,8 @@ pub struct DropDownListContext<'a> {
     selected: &'a mut Option<Idx>,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
+    // maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
+    maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -166,12 +167,12 @@ impl<'a> DropDownListBuilder<'a> for UiContext {
     }
 }
 
-impl_callable!(DropDownListContext, |&mut Option<Idx>, Idx, String|:'a);
-impl_colorable!(DropDownListContext);
-impl_frameable!(DropDownListContext);
-impl_labelable!(DropDownListContext);
-impl_positionable!(DropDownListContext);
-impl_shapeable!(DropDownListContext);
+impl_callable!(DropDownListContext, FnMut(&mut Option<Idx>, Idx, String),);
+impl_colorable!(DropDownListContext,);
+impl_frameable!(DropDownListContext,);
+impl_labelable!(DropDownListContext,);
+impl_positionable!(DropDownListContext,);
+impl_shapeable!(DropDownListContext,);
 
 impl<'a> ::draw::Drawable for DropDownListContext<'a> {
     fn draw(&mut self, graphics: &mut Gl) {
@@ -215,10 +216,10 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
             State::Closed(_) => {
                 let rect_state = new_state.as_rect_state();
                 let text = match sel {
-                    Some(idx) => (*self.strings)[idx][],
+                    Some(idx) => &(*self.strings)[idx][],
                     None => match self.maybe_label {
                         Some(text) => text,
-                        None => (*self.strings)[0][],
+                        None => &(*self.strings)[0][],
                     },
                 };
                 rectangle::draw_with_centered_label(
