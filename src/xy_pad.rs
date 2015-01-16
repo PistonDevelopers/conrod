@@ -97,7 +97,7 @@ pub struct XYPadContext<'a, X, Y> {
     pos: Point,
     dim: Dimensions,
     // maybe_callback: Option<|X, Y|:'a>,
-    maybe_callback: Option<Box<Fn(X, Y) + 'a>>,
+    maybe_callback: Option<Box<FnMut(X, Y) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -152,7 +152,7 @@ XYPadBuilder<'a, X, Y> for UiContext {
     }
 }
 
-impl_callable!(XYPadContext, Fn(X, Y), X, Y);
+impl_callable!(XYPadContext, FnMut(X, Y), X, Y);
 impl_colorable!(XYPadContext, X, Y);
 impl_frameable!(XYPadContext, X, Y);
 impl_labelable!(XYPadContext, X, Y);

@@ -131,7 +131,7 @@ pub struct DropDownListContext<'a> {
     pos: Point,
     dim: Dimensions,
     // maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
-    maybe_callback: Option<Box<Fn(&mut Option<Idx>, Idx, String) + 'a>>,
+    maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -167,7 +167,7 @@ impl<'a> DropDownListBuilder<'a> for UiContext {
     }
 }
 
-impl_callable!(DropDownListContext, Fn(&mut Option<Idx>, Idx, String),);
+impl_callable!(DropDownListContext, FnMut(&mut Option<Idx>, Idx, String),);
 impl_colorable!(DropDownListContext,);
 impl_frameable!(DropDownListContext,);
 impl_labelable!(DropDownListContext,);

@@ -208,7 +208,7 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     pos: Point,
     dim: Dimensions,
     // maybe_callback: Option<|&mut Vec<E>, usize|:'a>,
-    maybe_callback: Option<Box<Fn(&mut Vec<E>, usize) + 'a>>,
+    maybe_callback: Option<Box<FnMut(&mut Vec<E>, usize) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -274,7 +274,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, Fn(&mut Vec<E>, usize), X, Y, E);
+impl_callable!(EnvelopeEditorContext, FnMut(&mut Vec<E>, usize), X, Y, E);
 impl_colorable!(EnvelopeEditorContext, X, Y, E);
 impl_frameable!(EnvelopeEditorContext, X, Y, E);
 impl_labelable!(EnvelopeEditorContext, X, Y, E);

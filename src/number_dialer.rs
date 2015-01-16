@@ -298,7 +298,7 @@ pub struct NumberDialerContext<'a, T> {
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
     // maybe_callback: Option<|T|:'a>,
-    maybe_callback: Option<Box<Fn(T) + 'a>>,
+    maybe_callback: Option<Box<FnMut(T) + 'a>>,
 }
 
 pub trait NumberDialerBuilder
@@ -333,7 +333,7 @@ NumberDialerBuilder<'a, T> for UiContext {
     }
 }
 
-impl_callable!(NumberDialerContext, Fn(T), T);
+impl_callable!(NumberDialerContext, FnMut(T), T);
 impl_colorable!(NumberDialerContext, T);
 impl_frameable!(NumberDialerContext, T);
 impl_labelable!(NumberDialerContext, T);

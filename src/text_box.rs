@@ -188,7 +188,7 @@ pub struct TextBoxContext<'a> {
     pos: Point,
     dim: Dimensions,
     // maybe_callback: Option<|&mut String|:'a>,
-    maybe_callback: Option<Box<Fn(&mut String) + 'a>>,
+    maybe_callback: Option<Box<FnMut(&mut String) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -224,7 +224,7 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, Fn(&mut String),);
+impl_callable!(TextBoxContext, FnMut(&mut String),);
 impl_colorable!(TextBoxContext,);
 impl_frameable!(TextBoxContext,);
 impl_positionable!(TextBoxContext,);

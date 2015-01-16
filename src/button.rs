@@ -60,7 +60,7 @@ pub struct ButtonContext<'a> {
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
     // maybe_callback: Option<|usize|-> bool:'a>,
-    maybe_callback: Option<Box<Fn() + 'a>>,
+    maybe_callback: Option<Box<FnMut() + 'a>>,
 }
 
 pub trait ButtonBuilder<'a> {
@@ -89,7 +89,7 @@ impl<'a> ButtonBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ButtonContext, Fn(),);
+impl_callable!(ButtonContext, FnMut(),);
 impl_colorable!(ButtonContext,);
 impl_frameable!(ButtonContext,);
 impl_labelable!(ButtonContext,);

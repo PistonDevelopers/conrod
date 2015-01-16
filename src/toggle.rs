@@ -53,7 +53,7 @@ pub struct ToggleContext<'a> {
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<Box<Fn(bool) + 'a>>,
+    maybe_callback: Option<Box<FnMut(bool) + 'a>>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -90,7 +90,7 @@ impl<'a> ToggleBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ToggleContext, Fn(bool),);
+impl_callable!(ToggleContext, FnMut(bool),);
 impl_colorable!(ToggleContext,);
 impl_frameable!(ToggleContext,);
 impl_labelable!(ToggleContext,);
