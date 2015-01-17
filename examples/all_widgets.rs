@@ -228,7 +228,7 @@ fn draw_ui(gl: &mut Gl,
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
-    for i in range(0u, 3) {
+    for i in 0..3 {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
