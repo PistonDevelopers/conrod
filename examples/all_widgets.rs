@@ -144,14 +144,11 @@ fn main() {
 
     for event in event_iter {
         uic.handle_event(&event);
-        match event {
-            Event::Render(args) => {
-                gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
-                    draw_ui(gl, &mut uic, &mut demo);
-                });
-            }
-            _ => {}
-        };
+        if let Event::Render(args) = event {
+            gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
+                draw_ui(gl, &mut uic, &mut demo);
+            });
+        }
     }
 }
 
@@ -231,7 +228,7 @@ fn draw_ui(gl: &mut Gl,
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
-    for i in range(0u, 3) {
+    for i in 0..3 {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
