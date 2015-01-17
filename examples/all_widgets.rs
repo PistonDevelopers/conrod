@@ -144,14 +144,11 @@ fn main() {
 
     for event in event_iter {
         uic.handle_event(&event);
-        match event {
-            Event::Render(args) => {
-                gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
-                    draw_ui(gl, &mut uic, &mut demo);
-                });
-            }
-            _ => {}
-        };
+        if let Event::Render(args) = event {
+            gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
+                draw_ui(gl, &mut uic, &mut demo);
+            });
+        }
     }
 }
 
