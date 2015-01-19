@@ -2,6 +2,7 @@
 #![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
 
+#[macro_use] extern crate bitflags;
 extern crate input;
 extern crate event;
 extern crate freetype;

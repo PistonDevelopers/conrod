@@ -46,3 +46,7 @@ git = "https://github.com/PistonDevelopers/sdl2_window.git"
 
 [dev-dependencies.shader_version]
 git = "https://github.com/pistondevelopers/shader_version"
+
+[dependencies]
+time = "*"
+bitflags = "0.1"
