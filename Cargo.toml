@@ -32,6 +32,10 @@ git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 
 git = "https://github.com/PistonDevelopers/freetype-rs.git"
 
+[dependencies.quack]
+
+git = "https://github.com/PistonDevelopers/quack"
+
 [dependencies.rustc-serialize]
 
 version = "*"
