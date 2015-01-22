@@ -340,7 +340,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString +
             _ => {
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
-                for i in range(1us, perc_env.len()) {
+                for i in 1us..perc_env.len() {
                     let (x_a, y_a, _) = perc_env[i - 1us];
                     let (x_b, y_b, _) = perc_env[i];
                     let p_a = [map_range(x_a, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
