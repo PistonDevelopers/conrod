@@ -11,11 +11,12 @@ use rustc_serialize::{
     DecoderHelpers, EncoderHelpers
 };
 use utils::clampf32;
+use internal;
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
 #[derive(Copy)]
-pub struct Color(pub [f32; 4]);
+pub struct Color(pub internal::Color);
 
 impl Color {
 

@@ -2,8 +2,7 @@
 use envelope_editor::EnvelopePoint;
 use graphics::vecmath::Scalar;
 
-/// General use 2D spatial point.
-pub type Point = [Scalar; 2];
+pub use internal::Point;
 
 impl EnvelopePoint<Scalar, Scalar> for Point {
     /// Return the X value.
@@ -17,4 +16,3 @@ impl EnvelopePoint<Scalar, Scalar> for Point {
     /// Create a new Envelope Point.
     fn new(x: Scalar, y: Scalar) -> Point { [x, y] }
 }
-

@@ -6,7 +6,7 @@ use graphics::{
     Context,
 };
 use label;
-use label::FontSize;
+use internal::FontSize;
 use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
@@ -136,4 +136,3 @@ pub fn corner(rect_p: Point, p: Point, dim: Dimensions) -> Corner {
     else if x_perc <= 0.5 && y_perc >  0.5 { Corner::TopLeft }
     else                                   { Corner::TopRight }
 }
-
