@@ -90,11 +90,6 @@ impl Color {
         Color([1f32, 1f32, 1f32, 1f32])
     }
 
-    /// Return color as a vector.
-    pub fn as_vec(&self) -> Vec<f32> {
-        vec![self.r(), self.g(), self.b(), self.a()]
-    }
-
     /// Clamp the Color's values between 0f32 and 1f32.
     fn clamp(c: Color) -> Color {
         Color([
