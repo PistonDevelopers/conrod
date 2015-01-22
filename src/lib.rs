@@ -9,7 +9,7 @@ extern crate freetype;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate "rustc-serialize" as rustc_serialize;
-extern crate time;
+extern crate clock_ticks;
 extern crate vecmath;
 
 pub use background::BackgroundBuilder as Background;
