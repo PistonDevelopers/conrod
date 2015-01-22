@@ -17,7 +17,7 @@ use input::keyboard::Key::{
 use point::Point;
 use rectangle;
 use std::num::Float;
-use time::precise_time_s;
+use clock_ticks::precise_time_s;
 use ui_context::{
     UIID,
     UiContext,
