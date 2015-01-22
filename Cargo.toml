@@ -6,6 +6,12 @@ authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
 ]
+keywords = ["ui", "widgets", "immediate-mode", "piston"]
+description = "An easy-to-use, immediate-mode, 2D GUI library"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
 
 [lib]
 
@@ -13,44 +19,42 @@ name = "conrod"
 path = "./src/lib.rs"
 
 [dependencies.pistoncore-input]
-
 git = "https://github.com/PistonDevelopers/input/"
+#version = "0.0.5"
 
 [dependencies.pistoncore-event]
-
 git = "https://github.com/PistonDevelopers/event"
+#version = "0.0.5"
 
 [dependencies.piston2d-graphics]
-
 git = "https://github.com/PistonDevelopers/graphics.git"
+#version = "0.0.5"
 
 [dependencies.piston2d-opengl_graphics]
-
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+#version = "0.0.3"
 
 [dependencies.freetype-rs]
-
 git = "https://github.com/PistonDevelopers/freetype-rs.git"
+#version = "0.0.3"
 
 [dependencies.quack]
-
 git = "https://github.com/PistonDevelopers/quack"
-
-[dependencies.rustc-serialize]
-
-version = "*"
+#version = "0.0.2"
 
 [dependencies.vecmath]
-
 git = "https://github.com/PistonDevelopers/vecmath.git"
+#version = "0.0.3"
 
 [dev-dependencies.pistoncore-sdl2_window]
-
 git = "https://github.com/PistonDevelopers/sdl2_window.git"
+#version = "0.0.0"
 
 [dev-dependencies.shader_version]
 git = "https://github.com/pistondevelopers/shader_version"
+#version = "0.0.1"
 
 [dependencies]
 time = "*"
 bitflags = "0.1"
+rustc-serialize = "*"
