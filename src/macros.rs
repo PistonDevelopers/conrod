@@ -132,7 +132,7 @@ macro_rules! impl_positionable(
         impl<'a $(,$t)*> ::position::Positionable for $context<'a $(,$t)*> {
 
             #[inline]
-            fn point(self, pos: Point) -> $context<'a $(,$t)*> {
+            fn point(self, pos: ::internal::Point) -> $context<'a $(,$t)*> {
                 $context { pos: pos, ..self }
             }
 
