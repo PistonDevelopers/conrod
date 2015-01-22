@@ -40,8 +40,8 @@ impl<'a> WidgetMatrixContext<'a> {
         let widget_w = self.dim[0] / self.cols as f64;
         let widget_h = self.dim[1] / self.rows as f64;
         let mut widget_num = 0us;
-        for col in range(0us, self.cols) {
-            for row in range(0us, self.rows) {
+        for col in 0us..self.cols {
+            for row in 0us..self.rows {
                 callback(
                     self.uic,
                     widget_num,
