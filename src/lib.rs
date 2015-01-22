@@ -1,6 +1,7 @@
 
 #![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
+#![allow(unstable)]
 
 #[macro_use] extern crate bitflags;
 extern crate input;
@@ -11,6 +12,7 @@ extern crate opengl_graphics;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate clock_ticks;
 extern crate vecmath;
+extern crate quack;
 
 pub use background::BackgroundBuilder as Background;
 pub use button::ButtonBuilder as Button;
@@ -41,6 +43,7 @@ pub use widget::Widget;
 #[macro_use]
 pub mod macros;
 
+pub mod internal;
 pub mod background;
 pub mod button;
 pub mod callback;

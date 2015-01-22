@@ -18,7 +18,7 @@ use conrod::{
     DropDownList,
     EnvelopeEditor,
     Frameable,
-    Label,
+    // Label,
     Labelable,
     NumberDialer,
     Point,
@@ -32,6 +32,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
+use conrod::label::{ FontSize, Position, Label };
 use opengl_graphics::Gl;
 use opengl_graphics::glyph_cache::GlyphCache;
 use event::{
@@ -160,12 +161,20 @@ fn draw_ui(gl: &mut Gl,
     // Draw the background.
     uic.background().color(demo.bg_color).draw(gl);
 
+    /*
     // Label example.
     uic.label("Widget Demonstration")
         .position(demo.title_padding, 30.0)
         .size(48u32)
         .color(demo.bg_color.plain_contrast())
         .draw(gl);
+    */
+
+    Label::new("Widget Demonstration")
+        .set(Position([demo.title_padding, 30.0]))
+        .set(FontSize(48u32))
+        .set(demo.bg_color.plain_contrast())
+        .draw(uic, gl);
 
     if demo.show_button {
 

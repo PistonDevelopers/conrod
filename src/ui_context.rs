@@ -6,7 +6,7 @@ use opengl_graphics::glyph_cache::{
     Character,
 };
 use opengl_graphics::Gl;
-use label::FontSize;
+use internal::FontSize;
 use mouse::{
     ButtonState,
     Mouse,

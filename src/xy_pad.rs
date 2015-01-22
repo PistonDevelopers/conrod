@@ -8,7 +8,7 @@ use graphics::{
     Context,
 };
 use label;
-use label::FontSize;
+use internal::FontSize;
 use mouse::Mouse;
 use opengl_graphics::Gl;
 use point::Point;
