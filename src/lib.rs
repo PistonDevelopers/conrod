@@ -29,7 +29,6 @@ pub use xy_pad::XYPadBuilder as XYPad;
 
 pub use callback::Callable;
 pub use color::{Color, Colorable};
-pub use dimensions::Dimensions;
 pub use draw::Drawable;
 pub use frame::{Framing, Frameable};
 pub use label::Labelable;
@@ -48,7 +47,6 @@ pub mod background;
 pub mod button;
 pub mod callback;
 pub mod color;
-pub mod dimensions;
 pub mod draw;
 pub mod drop_down_list;
 pub mod envelope_editor;
@@ -76,3 +74,18 @@ pub struct FontSize(pub internal::FontSize);
 /// Point property.
 #[derive(Copy)]
 pub struct Position(pub internal::Point);
+
+/// Point property.
+#[derive(Copy)]
+pub struct Dimensions(pub internal::Dimensions);
+
+/// Text property.
+#[derive(Copy)]
+pub struct Text<'a>(pub &'a str);
+
+/// Frame property.
+#[derive(Copy)]
+pub struct Frame(pub internal::Frame);
+
+#[derive(Copy)]
+pub struct MaybeColor(pub Option<internal::Color>);

@@ -1,6 +1,6 @@
 
 use color::Color;
-use dimensions::Dimensions;
+use internal::Dimensions;
 use graphics;
 use graphics::{
     Context,

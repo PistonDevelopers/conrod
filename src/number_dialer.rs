@@ -4,7 +4,7 @@ use std::num::ToPrimitive;
 use std::num::FromPrimitive;
 use std::iter::repeat;
 use color::Color;
-use dimensions::Dimensions;
+use internal::Dimensions;
 use graphics;
 use graphics::{
     Context,

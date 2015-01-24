@@ -1,15 +1,19 @@
-
+use quack::{ GetFrom, SetAt };
 use color::Color;
-use dimensions::Dimensions;
 use opengl_graphics::Gl;
 use mouse::Mouse;
-use point::Point;
 use rectangle;
 use ui_context::{
     UIID,
     UiContext,
 };
 use widget::Widget;
+use internal;
+use Dimensions;
+use Frame;
+use MaybeColor;
+use Position;
+use Text;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -51,8 +55,8 @@ fn get_new_state(is_over: bool,
 pub struct ButtonContext<'a> {
     uic: &'a mut UiContext,
     ui_id: UIID,
-    pos: Point,
-    dim: Dimensions,
+    pos: internal::Point,
+    dim: internal::Dimensions,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -139,5 +143,155 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
 
         set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
+    }
+}
+
+/////////////////////////////// NEW DESIGN /////////////////////////////////////
+
+/// A button.
+pub struct Button<'a> {
+    pos: internal::Point,
+    dim: internal::Dimensions,
+    maybe_color: Option<internal::Color>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
+}
+
+impl<'a> Button<'a> {
+    pub fn new() -> Self {
+        Button {
+            pos: [0.0, 0.0],
+            dim: [64.0, 64.0],
+            maybe_color: None,
+            maybe_frame: None,
+            maybe_frame_color: None,
+            maybe_label: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
+        }
+    }
+
+    pub fn draw(
+        &mut self, ui_id: UIID,
+        mut maybe_callback: Option<Box<FnMut() + 'a>>,
+        uic: &mut UiContext,
+        graphics: &mut Gl
+    ) {
+
+        let state = *get_state(uic, ui_id);
+        let mouse = uic.get_mouse_state();
+        let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
+        let new_state = get_new_state(is_over, state, mouse);
+
+        // Callback.
+        match (is_over, state, new_state) {
+            (true, State::Clicked, State::Highlighted) => match maybe_callback {
+                Some(ref mut callback) => (*callback)(), None => (),
+            }, _ => (),
+        }
+
+        // Draw.
+        let rect_state = new_state.as_rectangle_state();
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color.0);
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let maybe_frame = match frame_w > 0.0 {
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            false => None,
+        };
+        match self.maybe_label {
+            None => {
+                rectangle::draw(
+                    uic.win_w, uic.win_h, graphics, rect_state, self.pos,
+                    self.dim, maybe_frame, Color(color)
+                )
+            },
+            Some(text) => {
+                let text_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+                rectangle::draw_with_centered_label(
+                    uic.win_w, uic.win_h, graphics, uic, rect_state,
+                    self.pos, self.dim, maybe_frame, Color(color),
+                    text, size, text_color
+                )
+            },
+        }
+
+        set_state(uic, ui_id, new_state, self.pos, self.dim);
+
+    }
+}
+
+impl<'a> GetFrom for (Position, Button<'a>) {
+    type Property = Position;
+    type Object = Button<'a>;
+
+    fn get_from(button: &Button<'a>) -> Position {
+        Position(button.pos)
+    }
+}
+
+impl<'a> SetAt for (Position, Button<'a>) {
+    type Property = Position;
+    type Object = Button<'a>;
+
+    fn set_at(Position(pos): Position, button: &mut Button<'a>) {
+        button.pos = pos;
+    }
+}
+
+impl<'a> SetAt for (Color, Button<'a>) {
+    type Property = Color;
+    type Object = Button<'a>;
+
+    fn set_at(Color(color): Color, button: &mut Button<'a>) {
+        button.maybe_color = Some(color);
+    }
+}
+
+impl<'a> GetFrom for (MaybeColor, Button<'a>) {
+    type Property = MaybeColor;
+    type Object = Button<'a>;
+
+    fn get_from(button: &Button<'a>) -> MaybeColor {
+        MaybeColor(button.maybe_color)
+    }
+}
+
+impl<'a> GetFrom for (Dimensions, Button<'a>) {
+    type Property = Dimensions;
+    type Object = Button<'a>;
+
+    fn get_from(button: &Button<'a>) -> Dimensions {
+        Dimensions(button.dim)
+    }
+}
+
+impl<'a> SetAt for (Dimensions, Button<'a>) {
+    type Property = Dimensions;
+    type Object = Button<'a>;
+
+    fn set_at(Dimensions(dim): Dimensions, button: &mut Button<'a>) {
+        button.dim = dim;
+    }
+}
+
+impl<'a> SetAt for (Text<'a>, Button<'a>) {
+    type Property = Text<'a>;
+    type Object = Button<'a>;
+
+    fn set_at(Text(text): Text<'a>, button: &mut Button<'a>) {
+        button.maybe_label = Some(text);
+    }
+}
+
+impl<'a> SetAt for (Frame, Button<'a>) {
+    type Property = Frame;
+    type Object = Button<'a>;
+
+    fn set_at(Frame(frame): Frame, button: &mut Button<'a>) {
+        button.maybe_frame = Some(frame);
     }
 }

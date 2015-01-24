@@ -1,5 +1,5 @@
 
-use dimensions::Dimensions;
+use internal::Dimensions;
 use point::Point;
 use ui_context::UiContext;
 

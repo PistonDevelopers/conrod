@@ -6,6 +6,7 @@ use internal;
 use ui_context::UiContext;
 use Position;
 use FontSize;
+use MaybeColor;
 
 /// An enum for passing in label information to widget arguments.
 pub enum Labeling<'a> {
@@ -103,9 +104,6 @@ impl<'a> SetAt for (FontSize, Label<'a>) {
         label.size = size;
     }
 }
-
-#[derive(Copy)]
-pub struct MaybeColor(pub Option<internal::Color>);
 
 impl<'a> GetFrom for (MaybeColor, Label<'a>) {
     type Property = MaybeColor;

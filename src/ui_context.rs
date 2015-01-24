@@ -1,6 +1,6 @@
 use std::iter::repeat;
 use Color;
-use dimensions::Dimensions;
+use internal::Dimensions;
 use opengl_graphics::glyph_cache::{
     GlyphCache,
     Character,

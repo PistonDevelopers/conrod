@@ -27,7 +27,7 @@ macro_rules! widget_fns(
                      ui_id: ::ui_context::UIID,
                      new_state: $widget_state,
                      pos: ::point::Point,
-                     dim: ::dimensions::Dimensions) {
+                     dim: ::internal::Dimensions) {
             match *get_widget(uic, ui_id) {
                 ::widget::Widget::$widget(ref mut state) => { *state = new_state; },
                 _ => panic!("The Widget variant returned by UiContext is different to that which \
@@ -196,7 +196,7 @@ macro_rules! impl_shapeable(
                 $context { dim: [width, height], ..self }
             }
             #[inline]
-            fn dim(self, dim: ::dimensions::Dimensions) -> $context<'a $(, $t)*> {
+            fn dim(self, dim: ::internal::Dimensions) -> $context<'a $(, $t)*> {
                 $context { dim: dim, ..self }
             }
             #[inline]

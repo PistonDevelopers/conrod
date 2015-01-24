@@ -1,5 +1,5 @@
 use color::Color;
-use dimensions::Dimensions;
+use internal::Dimensions;
 use mouse::Mouse;
 use opengl_graphics::Gl;
 use point::Point;
