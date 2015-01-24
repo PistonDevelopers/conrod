@@ -8,6 +8,7 @@ use rustc_serialize::{
 use std::error::Error;
 use std::io::File;
 use std::str;
+use std::borrow::ToOwned;
 use ui_context::UiContext;
 
 /// A data holder for style-related data.
@@ -64,9 +65,12 @@ impl Theme {
 
     /// Save a theme to file.
     pub fn save(&self, path: &str) -> Result<(), String> {
-        let json_string = json::encode(self);
+        let json_string = match json::encode(self) {
+                Ok(x) => x,
+                Err(e) => return Err(e.description().to_owned())
+            };
         let mut file = File::create(&Path::new(path));
-        match file.write(json_string.as_slice().as_bytes()) {
+        match file.write(json_string.as_bytes()) {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
         }
