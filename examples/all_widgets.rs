@@ -168,7 +168,7 @@ fn draw_ui(gl: &mut Gl,
 
     Label::new("Widget Demonstration")
         .set(Position([demo.title_padding, 30.0]))
-        .set(FontSize(48u32))
+        .set(FontSize::Value(48u32))
         .set(demo.bg_color.plain_contrast())
         .draw(uic, gl);
 

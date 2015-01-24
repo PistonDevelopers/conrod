@@ -1,4 +1,4 @@
-use quack::{ GetFrom, SetAt };
+use quack::{ GetFrom, SetAt, Get };
 use graphics;
 use color::Color;
 use opengl_graphics::Gl;
@@ -7,6 +7,7 @@ use ui_context::UiContext;
 use Position;
 use FontSize;
 use MaybeColor;
+use Text;
 
 /// An enum for passing in label information to widget arguments.
 pub enum Labeling<'a> {
@@ -48,7 +49,7 @@ pub trait Labelable<'a> {
 pub struct Label<'a> {
     text: &'a str,
     pos: internal::Point,
-    size: internal::FontSize,
+    size: FontSize,
     maybe_color: Option<internal::Color>,
 }
 
@@ -58,14 +59,16 @@ impl<'a> Label<'a> {
         Label {
             text: text,
             pos: [0.0, 0.0],
-            size: 24u32,
+            size: FontSize::Medium,
             maybe_color: None,
         }
     }
 
     pub fn draw(&self, uic: &mut UiContext, back_end: &mut Gl) {
         let color = self.maybe_color.unwrap_or(graphics::color::BLACK);
-        uic.draw_text(back_end, self.pos, self.size, Color(color), self.text);
+        let size: FontSize = self.get();
+        let size = size.size(&uic.theme);
+        uic.draw_text(back_end, self.pos, size, Color(color), self.text);
     }
 }
 
@@ -92,7 +95,7 @@ impl<'a> GetFrom for (FontSize, Label<'a>) {
     type Object = Label<'a>;
 
     fn get_from(label: &Label<'a>) -> FontSize {
-        FontSize(label.size)
+        label.size
     }
 }
 
@@ -100,7 +103,7 @@ impl<'a> SetAt for (FontSize, Label<'a>) {
     type Property = FontSize;
     type Object = Label<'a>;
 
-    fn set_at(FontSize(size): FontSize, label: &mut Label<'a>) {
+    fn set_at(size: FontSize, label: &mut Label<'a>) {
         label.size = size;
     }
 }
@@ -131,9 +134,6 @@ impl<'a> SetAt for (Color, Label<'a>) {
         label.maybe_color = Some(color);
     }
 }
-
-#[derive(Copy)]
-pub struct Text<'a>(pub &'a str);
 
 impl<'a> GetFrom for (Text<'a>, Label<'a>) {
     type Property = Text<'a>;

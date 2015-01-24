@@ -1,4 +1,4 @@
-use quack::{ GetFrom, SetAt };
+use quack::{ GetFrom, SetAt, Get, Set };
 use color::Color;
 use opengl_graphics::Gl;
 use mouse::Mouse;
@@ -10,8 +10,10 @@ use ui_context::{
 use widget::Widget;
 use internal;
 use Dimensions;
+use FontSize;
 use Frame;
 use MaybeColor;
+use Label;
 use Position;
 use Text;
 
@@ -60,9 +62,7 @@ pub struct Button<'a> {
     maybe_color: Option<internal::Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
-    maybe_label: Option<&'a str>,
-    maybe_label_color: Option<Color>,
-    maybe_label_font_size: Option<u32>,
+    maybe_label: Option<Label<'a>>,
 }
 
 impl<'a> Button<'a> {
@@ -74,8 +74,6 @@ impl<'a> Button<'a> {
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_label: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
         }
     }
 
@@ -113,13 +111,21 @@ impl<'a> Button<'a> {
                     self.dim, maybe_frame, Color(color)
                 )
             },
-            Some(text) => {
-                let text_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
-                let size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+            Some(label) => {
+                use vecmath::vec2_add as add;
+
+                let Text(text) = label.get();
+                let MaybeColor(maybe_color) = label.get();
+                let size: FontSize = label.get();
+                let Position(label_pos) = label.get();
+
+                let text_color = maybe_color.unwrap_or(uic.theme.label_color.0);
+                let size = size.size(&uic.theme);
+                let pos = add(self.pos, label_pos);
                 rectangle::draw_with_centered_label(
                     uic.win_w, uic.win_h, graphics, uic, rect_state,
-                    self.pos, self.dim, maybe_frame, Color(color),
-                    text, size, text_color
+                    pos, self.dim, maybe_frame, Color(color),
+                    text, size, Color(text_color)
                 )
             },
         }
@@ -188,7 +194,19 @@ impl<'a> SetAt for (Text<'a>, Button<'a>) {
     type Object = Button<'a>;
 
     fn set_at(Text(text): Text<'a>, button: &mut Button<'a>) {
-        button.maybe_label = Some(text);
+        button.maybe_label = match button.maybe_label {
+            None => Some(Label::new(text)),
+            Some(x) => Some(x.set(Text(text)))
+        };
+    }
+}
+
+impl<'a> SetAt for (Label<'a>, Button<'a>) {
+    type Property = Label<'a>;
+    type Object = Button<'a>;
+
+    fn set_at(label: Label<'a>, button: &mut Button<'a>) {
+        button.maybe_label = Some(label);
     }
 }
 

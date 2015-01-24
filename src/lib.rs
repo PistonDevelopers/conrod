@@ -68,8 +68,25 @@ pub mod widget;
 pub mod widget_matrix;
 pub mod xy_pad;
 
+/// Font size property.
 #[derive(Copy)]
-pub struct FontSize(pub internal::FontSize);
+pub enum FontSize {
+    Value(internal::FontSize),
+    Small,
+    Medium,
+    Large
+}
+
+impl FontSize {
+    pub fn size(&self, theme: &Theme) -> internal::FontSize {
+        match self {
+            &FontSize::Value(x) => x,
+            &FontSize::Small => theme.font_size_small,
+            &FontSize::Medium => theme.font_size_medium,
+            &FontSize::Large => theme.font_size_large,
+        }
+    }
+}
 
 /// Point property.
 #[derive(Copy)]
