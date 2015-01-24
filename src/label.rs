@@ -40,53 +40,6 @@ pub trait Labelable<'a> {
     fn large_font(self) -> Self;
 }
 
-/// A context on which the builder pattern can be implemented.
-pub struct LabelContext<'a> {
-    uic: &'a mut UiContext,
-    text: &'a str,
-    pos: internal::Point,
-    size: internal::FontSize,
-    maybe_color: Option<Color>,
-}
-
-impl<'a> LabelContext<'a> {
-    /// A builder method for specifying font_size.
-    pub fn size(self, size: internal::FontSize) -> LabelContext<'a> {
-        LabelContext { size: size, ..self }
-    }
-}
-
-pub trait LabelBuilder<'a> {
-    /// A label builder method to be implemented on the UiContext.
-    fn label(&'a mut self, text: &'a str) -> LabelContext<'a>;
-}
-
-impl<'a> LabelBuilder<'a> for UiContext {
-
-    /// A label builder method to be implemented on the UiContext.
-    fn label(&'a mut self, text: &'a str) -> LabelContext<'a> {
-        LabelContext {
-            uic: self,
-            text: text,
-            pos: [0.0, 0.0],
-            size: 24u32,
-            maybe_color: None,
-        }
-    }
-
-}
-
-impl_colorable!(LabelContext,);
-impl_positionable!(LabelContext,);
-
-impl<'a> ::draw::Drawable for LabelContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
-        let color = self.maybe_color.unwrap_or(Color::black());
-        self.uic.draw_text(graphics, self.pos, self.size, color, self.text);
-    }
-}
-
-
 ////////////////////// NEW DESIGN //////////////////////////////////////////////
 
 /// A label.

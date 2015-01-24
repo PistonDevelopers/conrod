@@ -17,13 +17,13 @@ use conrod::{
     Drawable,
     DropDownList,
     EnvelopeEditor,
-    Frameable,
-    // Label,
-    Position,
     FontSize,
+    Frameable,
+    Label,
     Labelable,
     NumberDialer,
     Point,
+    Position,
     Positionable,
     Slider,
     Shapeable,
@@ -34,7 +34,6 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::label::{ Label };
 use opengl_graphics::Gl;
 use opengl_graphics::glyph_cache::GlyphCache;
 use event::{
