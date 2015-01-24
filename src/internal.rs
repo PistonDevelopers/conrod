@@ -1,5 +1,5 @@
 
-use graphics::vecmath::Scalar;
+pub use graphics::vecmath::Scalar;
 
 /// General use 2D spatial point.
 pub type Point = [Scalar; 2];

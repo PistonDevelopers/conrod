@@ -1,10 +1,12 @@
+use quack::{ GetFrom };
+
 use std::cmp::Ordering;
 use std::num::Float;
 use std::num::ToPrimitive;
 use std::num::FromPrimitive;
 use std::iter::repeat;
 use color::Color;
-use internal::Dimensions;
+use internal;
 use graphics;
 use graphics::{
     Context,
@@ -26,6 +28,8 @@ use ui_context::{
 };
 use vecmath::vec2_add;
 use widget::Widget::NumberDialer;
+use Dimensions;
+use Position;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -101,9 +105,9 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
 fn is_over(pos: Point,
            frame_w: f64,
            mouse_pos: Point,
-           dim: Dimensions,
+           dim: internal::Dimensions,
            label_pos: Point,
-           label_dim: Dimensions,
+           label_dim: internal::Dimensions,
            val_string_w: f64,
            val_string_h: f64,
            val_string_len: usize) -> Option<Element> {
@@ -289,7 +293,7 @@ pub struct NumberDialerContext<'a, T> {
     min: T,
     max: T,
     pos: Point,
-    dim: Dimensions,
+    dim: internal::Dimensions,
     precision: u8,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
@@ -432,4 +436,22 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 
     }
 
+}
+
+impl<'a, T> GetFrom for (Dimensions, NumberDialerContext<'a, T>) {
+    type Property = Dimensions;
+    type Object = NumberDialerContext<'a, T>;
+
+    fn get_from(number_dialer: &NumberDialerContext<'a, T>) -> Dimensions {
+        Dimensions(number_dialer.dim)
+    }
+}
+
+impl<'a, T> GetFrom for (Position, NumberDialerContext<'a, T>) {
+    type Property = Position;
+    type Object = NumberDialerContext<'a, T>;
+
+    fn get_from(number_dialer: &NumberDialerContext<'a, T>) -> Position {
+        Position(number_dialer.pos)
+    }
 }

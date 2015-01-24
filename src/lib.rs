@@ -16,7 +16,7 @@ extern crate quack;
 
 pub use background::Background;
 pub use button::Button;
-pub use drop_down_list::DropDownListBuilder as DropDownList;
+pub use drop_down_list::DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
 pub use label::Label;
@@ -38,6 +38,8 @@ pub use shape::Shapeable;
 pub use theme::Theme;
 pub use ui_context::UiContext;
 pub use widget::Widget;
+
+use quack::{ GetFrom, Get };
 
 #[macro_use]
 pub mod macros;
@@ -92,6 +94,19 @@ impl FontSize {
 #[derive(Copy)]
 pub struct Position(pub internal::Point);
 
+impl Position {
+    /// Creates position to the right of another widget.
+    pub fn right_from<T>(widget: &T, offset: internal::Scalar) -> Self
+        where
+            (Position, T): GetFrom<Property = Position, Object = T>,
+            (Dimensions, T): GetFrom<Property = Dimensions, Object = T>,
+    {
+        let Position(pos) = widget.get();
+        let Dimensions(dim) = widget.get();
+        Position([pos[0] + dim[0] + offset, pos[1]])
+    }
+}
+
 /// Point property.
 #[derive(Copy)]
 pub struct Dimensions(pub internal::Dimensions);
@@ -103,6 +118,10 @@ pub struct Text<'a>(pub &'a str);
 /// Frame property.
 #[derive(Copy)]
 pub struct Frame(pub internal::Frame);
+
+/// Frame color property.
+#[derive(Copy)]
+pub struct FrameColor(pub internal::Color);
 
 #[derive(Copy)]
 pub struct MaybeColor(pub Option<internal::Color>);

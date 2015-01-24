@@ -8,6 +8,7 @@ use Position;
 use FontSize;
 use MaybeColor;
 use Text;
+use Theme;
 
 /// An enum for passing in label information to widget arguments.
 pub enum Labeling<'a> {
@@ -62,6 +63,14 @@ impl<'a> Label<'a> {
             size: FontSize::Medium,
             maybe_color: None,
         }
+    }
+
+    pub fn font_size(&self, theme: &Theme) -> internal::FontSize {
+        self.size.size(theme)
+    }
+
+    pub fn color(&self, theme: &Theme) -> internal::Color {
+        self.maybe_color.unwrap_or(theme.label_color.0)
     }
 
     pub fn draw(&self, uic: &mut UiContext, back_end: &mut Gl) {

@@ -21,6 +21,7 @@ use conrod::{
     EnvelopeEditor,
     FontSize,
     Frame,
+    FrameColor,
     Frameable,
     Label,
     Labelable,
@@ -282,16 +283,18 @@ fn draw_ui(gl: &mut Gl,
 
     }
 
+    /*
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
-    uic.number_dialer(6u64, demo.v_slider_height, 25.0, 250.0, 1u8)
+    let mut height_pixels = uic.number_dialer(6u64, demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
         .position(300.0, 115.0)
         .color(demo.bg_color.invert())
         .frame(demo.frame_width)
         .label("Height (pixels)")
         .label_color(demo.bg_color.invert().plain_contrast())
-        .callback(Box::new(|new_height| demo.v_slider_height = new_height))
-        .draw(gl);
+        .callback(Box::new(|new_height| demo.v_slider_height = new_height));
+    height_pixels.draw(gl);
+    */
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
     uic.number_dialer(7u64, demo.frame_width, 0.0, 15.0, 2u8)
@@ -350,16 +353,19 @@ fn draw_ui(gl: &mut Gl,
     draw_circle(uic.win_w, uic.win_h, gl, demo.circle_pos, ddl_color);
 
     // A demonstration using drop_down_list.
-    uic.drop_down_list(75u64, &mut demo.ddl_colors, &mut demo.selected_idx)
-        .dimensions(150.0, 40.0)
-        .right_from(6u64, 50.0) // Position right from widget 6 by 50 pixels.
-        .color(ddl_color)
-        .frame(demo.frame_width)
-        .frame_color(ddl_color.plain_contrast())
-        .label("Colors")
-        .label_color(ddl_color.plain_contrast())
-        .callback(Box::new(|selected_idx, new_idx, _string| *selected_idx = Some(new_idx)))
-        .draw(gl);
+    DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
+        .set(Dimensions([150.0, 40.0]))
+        // .set(Position::right_from(&height_pixels, 50.0)) // Position right from widget 6 by 50 pixels.
+        .set(Position([600.0, 40.0]))
+        .set(ddl_color)
+        .set(Frame(demo.frame_width))
+        .set(FrameColor(ddl_color.plain_contrast().0))
+        .set(Label::new("Colors").set(ddl_color.plain_contrast()))
+        .draw(75u64,
+            Some(Box::new(|&mut: selected_idx, new_idx, _string| {
+                *selected_idx = Some(new_idx)
+            })),
+            uic, gl);
 
     // Draw an xy_pad.
     uic.xy_pad(76u64, // UIID
