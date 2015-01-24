@@ -57,4 +57,3 @@ pub enum Widget {
     Toggle(toggle::State),
     XYPad(xy_pad::State),
 }
-

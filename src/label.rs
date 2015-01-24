@@ -46,7 +46,7 @@ pub trait Labelable<'a> {
 ////////////////////// NEW DESIGN //////////////////////////////////////////////
 
 /// A label.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct Label<'a> {
     text: &'a str,
     pos: internal::Point,

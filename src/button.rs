@@ -79,7 +79,7 @@ impl<'a> Button<'a> {
 
     pub fn draw(
         &self, ui_id: UIID,
-        mut maybe_callback: Option<Box<FnMut() + 'a>>,
+        mut maybe_callback: Option<Box<FnMut()>>,
         uic: &mut UiContext,
         graphics: &mut Gl
     ) {

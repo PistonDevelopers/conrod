@@ -165,7 +165,7 @@ impl<'a> DropDownList<'a> {
     pub fn draw(
         &mut self,
         ui_id: UIID,
-        mut maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>,
+        mut maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String)>>,
         uic: &mut UiContext,
         graphics: &mut Gl
     ) {

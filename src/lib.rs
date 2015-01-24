@@ -20,7 +20,7 @@ pub use drop_down_list::DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
 pub use label::Label;
-pub use number_dialer::NumberDialerBuilder as NumberDialer;
+pub use number_dialer::NumberDialer;
 pub use slider::SliderBuilder as Slider;
 pub use text_box::TextBoxBuilder as TextBox;
 pub use toggle::ToggleBuilder as Toggle;
@@ -71,7 +71,7 @@ pub mod widget_matrix;
 pub mod xy_pad;
 
 /// Font size property.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub enum FontSize {
     Value(internal::FontSize),
     Small,
@@ -104,6 +104,17 @@ impl Position {
         let Position(pos) = widget.get();
         let Dimensions(dim) = widget.get();
         Position([pos[0] + dim[0] + offset, pos[1]])
+    }
+
+    /// Creates a position below another widget.
+    pub fn down<T>(widget: &T, offset: internal::Scalar) -> Self
+        where
+            (Position, T): GetFrom<Property = Position, Object = T>,
+            (Dimensions, T): GetFrom<Property = Dimensions, Object = T>,
+    {
+        let Position(pos) = widget.get();
+        let Dimensions(dim) = widget.get();
+        Position([pos[0], pos[1] + dim[1] + offset])
     }
 }
 

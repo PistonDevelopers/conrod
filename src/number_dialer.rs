@@ -1,4 +1,4 @@
-use quack::{ GetFrom };
+use quack::{ GetFrom, SetAt, Get };
 
 use std::cmp::Ordering;
 use std::num::Float;
@@ -27,9 +27,13 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::Widget::NumberDialer;
+use widget::Widget;
 use Dimensions;
+use Frame;
+use FrameColor;
+use Label;
 use Position;
+use Text;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -53,7 +57,7 @@ pub enum State {
     Clicked(Element),
 }
 
-widget_fns!(NumberDialer, State, NumberDialer(State::Normal));
+widget_fns!(NumberDialer, State, Widget::NumberDialer(State::Normal));
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -284,42 +288,31 @@ fn draw_slot_rect(
         .draw([x, y, w, h], context, graphics);
 }
 
+///////////////////////////// NEW DESIGN ///////////////////////////////////////
 
-/// A context on which the builder pattern can be implemented.
-pub struct NumberDialerContext<'a, T> {
-    uic: &'a mut UiContext,
-    ui_id: UIID,
+/// A number dialer.
+pub struct NumberDialer<'a, T> {
     value: T,
     min: T,
     max: T,
     pos: Point,
     dim: internal::Dimensions,
     precision: u8,
-    maybe_color: Option<Color>,
+    maybe_color: Option<internal::Color>,
     maybe_frame: Option<f64>,
-    maybe_frame_color: Option<Color>,
-    maybe_label: Option<&'a str>,
-    maybe_label_color: Option<Color>,
-    maybe_label_font_size: Option<u32>,
-    // maybe_callback: Option<|T|:'a>,
-    maybe_callback: Option<Box<FnMut(T) + 'a>>,
+    maybe_frame_color: Option<internal::Color>,
+    maybe_label: Option<Label<'a>>,
 }
 
-pub trait NumberDialerBuilder
-<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString> {
-    /// A number_dialer builder method to be implemented by the UiContext.
-    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-                     precision: u8) -> NumberDialerContext<'a, T>;
-}
-
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-NumberDialerBuilder<'a, T> for UiContext {
-    /// A number_dialer builder method to be implemented by the UiContext.
-    fn number_dialer(&'a mut self, ui_id: UIID, value: T, min: T, max: T,
-                     precision: u8) -> NumberDialerContext<'a, T> {
-        NumberDialerContext {
-            uic: self,
-            ui_id: ui_id,
+impl<'a, T: Float> NumberDialer<'a, T> {
+    /// Creates a new number dialer.
+    pub fn new(
+        value: T,
+        min: T,
+        max: T,
+        precision: u8
+    ) -> NumberDialer<'a, T> {
+        NumberDialer {
             value: clamp(value, min, max),
             min: min,
             max: max,
@@ -330,46 +323,51 @@ NumberDialerBuilder<'a, T> for UiContext {
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_label: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-            maybe_callback: None,
         }
     }
 }
 
-impl_callable!(NumberDialerContext, FnMut(T), T);
-impl_colorable!(NumberDialerContext, T);
-impl_frameable!(NumberDialerContext, T);
-impl_labelable!(NumberDialerContext, T);
-impl_positionable!(NumberDialerContext, T);
-impl_shapeable!(NumberDialerContext, T);
-
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-::draw::Drawable for NumberDialerContext<'a, T> {
-    #[inline]
+impl<'a, T> NumberDialer<'a, T>
+    where
+        T: Float + FromPrimitive + ToString
+{
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`
     /// function will be called.
-    fn draw(&mut self, graphics: &mut Gl) {
+    pub fn draw(
+        &mut self,
+        ui_id: UIID,
+        mut maybe_callback: Option<Box<FnMut(T)>>,
+        uic: &mut UiContext,
+        graphics: &mut Gl
+    ) {
 
-        let state = *get_state(self.uic, self.ui_id);
-        let mouse = self.uic.get_mouse_state();
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let state = *get_state(uic, ui_id);
+        let mouse = uic.get_mouse_state();
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color
+                .map(|x| Color(x))
+                .unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         let pad_h = self.dim[1] - frame_w2;
-        let font_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+        let font_size = self.maybe_label
+            .map(|x| x.font_size(&uic.theme))
+            .unwrap_or(uic.theme.font_size_medium);
         let label_string = match self.maybe_label {
-            Some(text) => format!("{}: ", text),
+            Some(label) => {
+                let Text(text) = label.get();
+                format!("{}: ", text)
+            }
             None => String::new(),
         };
         let label_dim = match label_string.len() {
             0us => [0.0, 0.0],
-            _ => [label::width(self.uic, font_size, &label_string[]), font_size as f64],
+            _ => [label::width(uic, font_size, &label_string[]), font_size as f64],
         };
+        // TODO: `.to_string` allocates, but only the length is needed. Needs optimization.
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0us }
                                                           else { 1us + self.precision as usize };
         let mut val_string = create_val_string(self.value, val_string_len, self.precision);
@@ -381,16 +379,20 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
                                    label_pos, label_dim, val_string_w, val_string_h,
                                    val_string.len());
         let new_state = get_new_state(is_over_elem, state, mouse);
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
+        let color = self.maybe_color
+            .unwrap_or(uic.theme.shape_color.0);
 
         // Draw the widget rectangle.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rectangle::State::Normal,
-                        self.pos, self.dim, maybe_frame, color);
+        rectangle::draw(uic.win_w, uic.win_h, graphics, rectangle::State::Normal,
+                        self.pos, self.dim, maybe_frame, Color(color));
 
         // If there's a label, draw it.
-        let val_string_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
+        let val_string_color = self.maybe_label
+                .map(|x| x.color(&uic.theme))
+                .unwrap_or(uic.theme.label_color.0);
         if self.maybe_label.is_some() {
-            self.uic.draw_text(graphics, label_pos, font_size, val_string_color, &label_string[]);
+            uic.draw_text(graphics, label_pos, font_size,
+                Color(val_string_color), &label_string[]);
         };
 
         // Determine new value from the initial state and the new state.
@@ -412,12 +414,12 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 
         // Draw the value string.
         let val_string_pos = vec2_add(label_pos, [label_dim[0], 0.0]);
-        draw_value_string(self.uic.win_w, self.uic.win_h, graphics, self.uic, new_state,
-                          self.pos[1] + frame_w, color,
+        draw_value_string(uic.win_w, uic.win_h, graphics, uic, new_state,
+                          self.pos[1] + frame_w, Color(color),
                           value_glyph_slot_width(font_size), pad_h,
                           val_string_pos,
                           font_size,
-                          val_string_color,
+                          Color(val_string_color),
                           val_string.as_slice());
 
         // Call the `callback` with the new value if the mouse is pressed/released
@@ -426,32 +428,91 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             (State::Highlighted(_), State::Clicked(_)) | (State::Clicked(_), State::Highlighted(_)) => true,
             _ => false,
         } {
-            match self.maybe_callback {
+            match maybe_callback {
                 Some(ref mut callback) => (*callback)(new_val),
                 None => ()
             }
         }
 
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, ui_id, new_state, self.pos, self.dim);
 
     }
-
 }
 
-impl<'a, T> GetFrom for (Dimensions, NumberDialerContext<'a, T>) {
-    type Property = Dimensions;
-    type Object = NumberDialerContext<'a, T>;
+impl<'a, T> GetFrom for (Position, NumberDialer<'a, T>) {
+    type Property = Position;
+    type Object = NumberDialer<'a, T>;
 
-    fn get_from(number_dialer: &NumberDialerContext<'a, T>) -> Dimensions {
+    fn get_from(number_dialer: &NumberDialer<'a, T>) -> Position {
+        Position(number_dialer.pos)
+    }
+}
+
+impl<'a, T> SetAt for (Position, NumberDialer<'a, T>) {
+    type Property = Position;
+    type Object = NumberDialer<'a, T>;
+
+    fn set_at(Position(pos): Position, number_dialer: &mut NumberDialer<'a, T>) {
+        number_dialer.pos = pos;
+    }
+}
+
+impl<'a, T> GetFrom for (Dimensions, NumberDialer<'a, T>) {
+    type Property = Dimensions;
+    type Object = NumberDialer<'a, T>;
+
+    fn get_from(number_dialer: &NumberDialer<'a, T>) -> Dimensions {
         Dimensions(number_dialer.dim)
     }
 }
 
-impl<'a, T> GetFrom for (Position, NumberDialerContext<'a, T>) {
-    type Property = Position;
-    type Object = NumberDialerContext<'a, T>;
+impl<'a, T> SetAt for (Dimensions, NumberDialer<'a, T>) {
+    type Property = Dimensions;
+    type Object = NumberDialer<'a, T>;
 
-    fn get_from(number_dialer: &NumberDialerContext<'a, T>) -> Position {
-        Position(number_dialer.pos)
+    fn set_at(
+        Dimensions(dim): Dimensions,
+        number_dialer: &mut NumberDialer<'a, T>
+    ) {
+        number_dialer.dim = dim;
+    }
+}
+
+impl<'a, T> SetAt for (FrameColor, NumberDialer<'a, T>) {
+    type Property = FrameColor;
+    type Object = NumberDialer<'a, T>;
+
+    fn set_at(
+        FrameColor(color): FrameColor,
+        number_dialer: &mut NumberDialer<'a, T>
+    ) {
+        number_dialer.maybe_frame_color = Some(color);
+    }
+}
+
+impl<'a, T> SetAt for (Color, NumberDialer<'a, T>) {
+    type Property = Color;
+    type Object = NumberDialer<'a, T>;
+
+    fn set_at(Color(color): Color, number_dialer: &mut NumberDialer<'a, T>) {
+        number_dialer.maybe_color = Some(color);
+    }
+}
+
+impl<'a, T> SetAt for (Label<'a>, NumberDialer<'a, T>) {
+    type Property = Label<'a>;
+    type Object = NumberDialer<'a, T>;
+
+    fn set_at(label: Label<'a>, number_dialer: &mut NumberDialer<'a, T>) {
+        number_dialer.maybe_label = Some(label);
+    }
+}
+
+impl<'a, T> SetAt for (Frame, NumberDialer<'a, T>) {
+    type Property = Frame;
+    type Object = NumberDialer<'a, T>;
+
+    fn set_at(Frame(frame): Frame, number_dialer: &mut NumberDialer<'a, T>) {
+        number_dialer.maybe_frame = Some(frame);
     }
 }

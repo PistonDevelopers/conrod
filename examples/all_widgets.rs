@@ -176,18 +176,6 @@ fn draw_ui(gl: &mut Gl,
     if demo.show_button {
 
         // Button widget example button(UIID).
-
-        /*
-        uic.button(0u64)
-            .dimensions(90.0, 60.0)
-            .position(50.0, 115.0)
-            .rgba(0.4, 0.75, 0.6, 1.0)
-            .frame(demo.frame_width)
-            .label("PRESS")
-            .callback(Box::new(|| demo.bg_color = Color::random()))
-            .draw(gl);
-        */
-
         Button::new()
             .set(Dimensions([90.0, 60.0]))
             .set(Position([50.0, 115.0]))
@@ -221,7 +209,6 @@ fn draw_ui(gl: &mut Gl,
             .label_color(Color::white())
             .callback(Box::new(|new_pad| demo.title_padding = new_pad as f64))
             .draw(gl);
-
     }
 
     // Clone the label toggle to be drawn.
@@ -283,31 +270,30 @@ fn draw_ui(gl: &mut Gl,
 
     }
 
-    /*
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
-    let mut height_pixels = uic.number_dialer(6u64, demo.v_slider_height, 25.0, 250.0, 1u8)
-        .dimensions(260.0, 60.0)
-        .position(300.0, 115.0)
-        .color(demo.bg_color.invert())
-        .frame(demo.frame_width)
-        .label("Height (pixels)")
-        .label_color(demo.bg_color.invert().plain_contrast())
-        .callback(Box::new(|new_height| demo.v_slider_height = new_height));
-    height_pixels.draw(gl);
-    */
+    let mut height_pixels = NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1u8)
+        .set(Dimensions([260.0, 60.0]))
+        .set(Position([300.0, 115.0]))
+        .set(demo.bg_color.invert())
+        .set(Frame(demo.frame_width))
+        .set(Label::new("Height (pixels)")
+            .set(demo.bg_color.invert().plain_contrast()));
+    height_pixels.draw(6u64,
+        Some(Box::new(|&mut: new_height| demo.v_slider_height = new_height)),
+        uic, gl);
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
-    uic.number_dialer(7u64, demo.frame_width, 0.0, 15.0, 2u8)
-        .dimensions(260.0, 60.0)
-        .down(20.0)
-        .color(demo.bg_color.invert().plain_contrast())
-        .frame(demo.frame_width)
-        .frame_color(demo.bg_color.plain_contrast())
-        .label("Frame Width (pixels)")
-        .label_color(demo.bg_color.plain_contrast())
-        .callback(Box::new(|new_width| demo.frame_width = new_width))
-        .draw(gl);
-
+    let mut frame_pixels = NumberDialer::new(demo.frame_width, 0.0, 15.0, 2u8)
+        .set(Dimensions([260.0, 60.0]))
+        .set(Position::down(&height_pixels, 20.0))
+        .set(demo.bg_color.invert().plain_contrast())
+        .set(Frame(demo.frame_width))
+        .set(FrameColor(demo.bg_color.plain_contrast().0))
+        .set(Label::new("Frame Width (pixels)")
+            .set(demo.bg_color.plain_contrast()));
+    frame_pixels.draw(7u64,
+        Some(Box::new(|&mut: new_width| demo.frame_width = new_width)),
+        uic, gl);
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
@@ -355,8 +341,8 @@ fn draw_ui(gl: &mut Gl,
     // A demonstration using drop_down_list.
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .set(Dimensions([150.0, 40.0]))
-        // .set(Position::right_from(&height_pixels, 50.0)) // Position right from widget 6 by 50 pixels.
-        .set(Position([600.0, 40.0]))
+        // Position right from widget 6 by 50 pixels.
+        .set(Position::right_from(&height_pixels, 50.0))
         .set(ddl_color)
         .set(Frame(demo.frame_width))
         .set(FrameColor(ddl_color.plain_contrast().0))
@@ -434,7 +420,6 @@ fn draw_ui(gl: &mut Gl,
                 .draw(gl);
 
         })); // End of matrix widget callback.
-
 }
 
 /// Draw a circle controlled by the XYPad.
