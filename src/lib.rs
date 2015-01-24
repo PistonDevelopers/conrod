@@ -15,7 +15,7 @@ extern crate vecmath;
 extern crate quack;
 
 pub use background::BackgroundBuilder as Background;
-pub use button::ButtonBuilder as Button;
+pub use button::Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
