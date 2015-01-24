@@ -80,7 +80,7 @@ struct DemoApp {
     ddl_colors: Vec<String>,
     /// We also need an Option<idx> to indicate whether or not an
     /// item is selected.
-    selected_idx: Option<uint>,
+    selected_idx: Option<usize>,
     /// Co-ordinates for a little circle used to demonstrate the
     /// xy_pad.
     circle_pos: Point,
@@ -308,7 +308,7 @@ fn draw_ui(gl: &mut Gl,
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
-    let (cols, rows) = (8u, 8u);
+    let (cols, rows) = (8us, 8us);
     uic.widget_matrix(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
@@ -329,7 +329,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(Box::new(|&mut: new_val: bool| {/*demo.bool_matrix[col][row] = new_val*/;}))
+                .callback(Box::new(|&mut: new_val: bool| { demo.bool_matrix[col][row] = new_val; }))
                 .draw(gl);
 
         }));
@@ -396,10 +396,10 @@ fn draw_ui(gl: &mut Gl,
             let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
             let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)
                                 * demo.bg_color.invert().plain_contrast();
-            let env_y_max = match num { 0u => 20000.0, _ => 1.0 };
-            let tbox_uiid = 77u64 + (num * 2u) as u64;
+            let env_y_max = match num { 0us => 20000.0, _ => 1.0 };
+            let tbox_uiid = 77u64 + (num * 2us) as u64;
             let env_uiid = tbox_uiid + 1u64;
-            let env_skew_y = match num { 0u => 3.0, _ => 1.0 };
+            let env_skew_y = match num { 0us => 3.0, _ => 1.0 };
 
             // Draw a TextBox. text_box(UIID, &mut String, FontSize)
             uic.text_box(tbox_uiid, text)
