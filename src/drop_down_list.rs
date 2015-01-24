@@ -9,7 +9,7 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::Widget::DropDownList;
+use widget::Widget;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -50,7 +50,8 @@ impl State {
     }
 }
 
-widget_fns!(DropDownList, State, DropDownList(State::Closed(DrawState::Normal)));
+widget_fns!(DropDownList, State,
+    Widget::DropDownList(State::Closed(DrawState::Normal)));
 
 /// Is the cursor currently over the
 fn is_over(pos: Point,
@@ -277,4 +278,20 @@ impl<'a> ::draw::Drawable for DropDownListContext<'a> {
         set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
+}
+
+///////////////////////////////// NEW DESIGN ///////////////////////////////////
+
+pub struct DropDownList<'a> {
+    strings: &'a mut Vec<String>,
+    selected: &'a mut Option<Idx>,
+    pos: Point,
+    dim: Dimensions,
+    maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>,
+    maybe_color: Option<Color>,
+    maybe_frame: Option<f64>,
+    maybe_frame_color: Option<Color>,
+    maybe_label: Option<&'a str>,
+    maybe_label_color: Option<Color>,
+    maybe_label_font_size: Option<u32>,
 }
