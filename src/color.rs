@@ -1,6 +1,6 @@
 use std::num::Float;
 use std::default::Default;
-use std::fmt::{Show, Formatter, Error};
+use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Add, Sub, Mul, Div};
 use std::rand::random;
 use std::ascii::AsciiExt;
@@ -275,7 +275,7 @@ impl Mul<Color> for Color {
     }
 }
 
-impl Show for Color {
+impl Debug for Color {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         let hex = self.to_hex();
         fmt.pad(hex.as_slice())
