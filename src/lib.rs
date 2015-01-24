@@ -69,3 +69,10 @@ pub mod utils;
 pub mod widget;
 pub mod widget_matrix;
 pub mod xy_pad;
+
+#[derive(Copy)]
+pub struct FontSize(pub internal::FontSize);
+
+/// Point property.
+#[derive(Copy)]
+pub struct Position(pub internal::Point);

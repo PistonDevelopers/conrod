@@ -19,6 +19,8 @@ use conrod::{
     EnvelopeEditor,
     Frameable,
     // Label,
+    Position,
+    FontSize,
     Labelable,
     NumberDialer,
     Point,
@@ -32,7 +34,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::label::{ FontSize, Position, Label };
+use conrod::label::{ Label };
 use opengl_graphics::Gl;
 use opengl_graphics::glyph_cache::GlyphCache;
 use event::{

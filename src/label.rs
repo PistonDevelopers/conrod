@@ -4,6 +4,8 @@ use color::Color;
 use opengl_graphics::Gl;
 use internal;
 use ui_context::UiContext;
+use Position;
+use FontSize;
 
 /// An enum for passing in label information to widget arguments.
 pub enum Labeling<'a> {
@@ -113,10 +115,6 @@ impl<'a> Label<'a> {
     }
 }
 
-/// Point property.
-#[derive(Copy)]
-pub struct Position(pub internal::Point);
-
 impl<'a> GetFrom for (Position, Label<'a>) {
     type Property = Position;
     type Object = Label<'a>;
@@ -134,9 +132,6 @@ impl<'a> SetAt for (Position, Label<'a>) {
         label.pos = pos;
     }
 }
-
-#[derive(Copy)]
-pub struct FontSize(pub internal::FontSize);
 
 impl<'a> GetFrom for (FontSize, Label<'a>) {
     type Property = FontSize;
