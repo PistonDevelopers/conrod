@@ -164,7 +164,7 @@ fn draw_ui(gl: &mut Gl,
            demo: &mut DemoApp) {
 
     // Draw the background.
-    uic.background().color(demo.bg_color).draw(gl);
+    Background::new().set(demo.bg_color).draw(uic, gl);
 
     Label::new("Widget Demonstration")
         .set(Position([demo.title_padding, 30.0]))

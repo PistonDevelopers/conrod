@@ -14,7 +14,7 @@ extern crate clock_ticks;
 extern crate vecmath;
 extern crate quack;
 
-pub use background::BackgroundBuilder as Background;
+pub use background::Background;
 pub use button::Button;
 pub use drop_down_list::DropDownListBuilder as DropDownList;
 pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;

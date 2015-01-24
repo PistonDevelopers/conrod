@@ -1,36 +1,47 @@
+use quack::{ GetFrom, SetAt };
 
 use color::Color;
-use draw::Drawable;
 use graphics;
 use opengl_graphics::Gl;
 use ui_context::UiContext;
+use internal;
+use MaybeColor;
 
-/// The context from which we'll draw the background.
-pub struct BackgroundContext<'a> {
-    uic: &'a mut UiContext,
-    maybe_color: Option<Color>,
+/// A background.
+#[derive(Copy)]
+pub struct Background {
+    maybe_color: Option<internal::Color>,
 }
 
-/// A trait to be implemented for the UiContext.
-pub trait BackgroundBuilder {
-    fn background<'a>(&'a mut self) -> BackgroundContext<'a>;
-}
-
-impl BackgroundBuilder for UiContext {
-    fn background<'a>(&'a mut self) -> BackgroundContext<'a> {
-        BackgroundContext {
-            uic: self,
-            maybe_color: None,
+impl Background {
+    /// Creates a new background.
+    pub fn new() -> Background {
+        Background {
+            maybe_color: None
         }
+    }
+
+    pub fn draw(&self, uic: &UiContext, graphics: &mut Gl) {
+        let col = self.maybe_color
+            .unwrap_or(uic.theme.background_color.0);
+        graphics::clear(col, graphics);
     }
 }
 
-impl_colorable!(BackgroundContext,);
+impl SetAt for (Color, Background) {
+    type Property = Color;
+    type Object = Background;
 
-impl<'a> Drawable for BackgroundContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
-        let Color(col) = self.maybe_color
-            .unwrap_or(self.uic.theme.background_color);
-        graphics::clear(col, graphics);
+    fn set_at(Color(color): Color, background: &mut Background) {
+        background.maybe_color = Some(color);
+    }
+}
+
+impl GetFrom for (MaybeColor, Background) {
+    type Property = MaybeColor;
+    type Object = Background;
+
+    fn get_from(background: &Background) -> MaybeColor {
+        MaybeColor(background.maybe_color)
     }
 }
