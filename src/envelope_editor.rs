@@ -281,8 +281,8 @@ impl_labelable!(EnvelopeEditorContext, X, Y, E);
 impl_positionable!(EnvelopeEditorContext, X, Y, E);
 impl_shapeable!(EnvelopeEditorContext, X, Y, E);
 
-impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
-         Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString + Show,
+impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
+         Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
     #[inline]
     fn draw(&mut self, graphics: &mut Gl) {

@@ -228,25 +228,25 @@ fn draw_ui(gl: &mut Gl,
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
-    for i in 0..3 {
+    for i in 0us..3 {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
-            0u => Color::new(0.75f32, 0.3f32, 0.3f32, 1f32),
-            1u => Color::new(0.3f32, 0.75f32, 0.3f32, 1f32),
+            0us => Color::new(0.75f32, 0.3f32, 0.3f32, 1f32),
+            1us => Color::new(0.3f32, 0.75f32, 0.3f32, 1f32),
             _  => Color::new(0.3f32, 0.3f32, 0.75f32, 1f32),
         };
 
         // Grab the value of the color element.
         let value = match i {
-            0u => demo.bg_color.r(),
-            1u => demo.bg_color.g(),
+            0us => demo.bg_color.r(),
+            1us => demo.bg_color.g(),
             _  => demo.bg_color.b(),
         };
 
         // Create the label to be drawn with the slider.
         let mut label = value.to_string();
-        if label.len() > 4u { label.truncate(4u); }
+        if label.len() > 4us { label.truncate(4us); }
 
         // Slider widget examples. slider(UIID, value, min, max)
         uic.slider(3u64 + i as u64, value, 0.0, 1.0)
@@ -257,8 +257,8 @@ fn draw_ui(gl: &mut Gl,
             .label(label.as_slice())
             .label_color(Color::white())
             .callback(Box::new(|color| match i {
-                0u => demo.bg_color.set_r(color),
-                1u => demo.bg_color.set_g(color),
+                0us => demo.bg_color.set_r(color),
+                1us => demo.bg_color.set_g(color),
                 _ => demo.bg_color.set_b(color),
             }))
             .draw(gl);
@@ -366,11 +366,12 @@ fn draw_ui(gl: &mut Gl,
     // Let's use the widget matrix to draw
     // one column of two envelope_editors,
     // each with its own text_box.
-    let (cols, rows) = (1u, 2u);
+    let (cols, rows) = (1us, 2us);
     uic.widget_matrix(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
         .each_widget(Box::new(|&mut: uic: &mut UiContext, num, _col, _row, pos, dim| { // This is called for every widget.
+            use conrod::draw::Drawable;
 
             let &mut (ref mut env, ref mut text) = &mut demo.envelopes[num];
             let text_box_height = dim[1] / 4.0;
@@ -396,7 +397,7 @@ fn draw_ui(gl: &mut Gl,
             // Draw an EnvelopeEditor.
             uic.envelope_editor(env_uiid, // UIID
                                 env, // vector of `E: EnvelopePoint`s.
-                                0.0, 1.0, 0.0, env_y_max) // x_min, x_max, y_min, y_max.
+                                0.0f64, 1.0f64, 0.0f64, env_y_max) // x_min, x_max, y_min, y_max.
                 .dimensions(dim[0], env_editor_height - 10.0)
                 .point(env_editor_pos)
                 .skew_y(env_skew_y)
