@@ -11,7 +11,7 @@ extern crate quack;
 
 use conrod::{
     Background,
-    // Button,
+    Button,
     Callable,
     Color,
     Colorable,
@@ -38,7 +38,6 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::button::{ Button };
 use opengl_graphics::Gl;
 use opengl_graphics::glyph_cache::GlyphCache;
 use event::{
