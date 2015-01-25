@@ -21,7 +21,7 @@ pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
 pub use label::Label;
 pub use number_dialer::NumberDialer;
-pub use slider::SliderBuilder as Slider;
+pub use slider::Slider;
 pub use text_box::TextBoxBuilder as TextBox;
 pub use toggle::ToggleBuilder as Toggle;
 pub use widget_matrix::WidgetMatrixBuilder as WidgetMatrix;

@@ -200,15 +200,16 @@ fn draw_ui(gl: &mut Gl,
         };
 
         // Slider widget example slider(UIID, value, min, max).
-        uic.slider(1u64, pad as f32, 10.0, 910.0)
-            .dimensions(200.0, 50.0)
-            .position(50.0, 115.0)
-            .rgba(0.5, 0.3, 0.6, 1.0)
-            .frame(demo.frame_width)
-            .label(label.as_slice())
-            .label_color(Color::white())
-            .callback(Box::new(|new_pad| demo.title_padding = new_pad as f64))
-            .draw(gl);
+        Slider::new(pad as f32, 10.0, 910.0)
+            .set(Dimensions([200.0, 50.0]))
+            .set(Position([50.0, 115.0]))
+            .set(Color([0.5, 0.3, 0.6, 1.0]))
+            .set(Frame(demo.frame_width))
+            .set(Label::new(label.as_slice())
+                .set(Color::white()))
+            .draw(1u64,
+                Some(Box::new(|new_pad| demo.title_padding = new_pad as f64)),
+                uic, gl);
     }
 
     // Clone the label toggle to be drawn.
@@ -254,19 +255,20 @@ fn draw_ui(gl: &mut Gl,
         if label.len() > 4us { label.truncate(4us); }
 
         // Slider widget examples. slider(UIID, value, min, max)
-        uic.slider(3u64 + i as u64, value, 0.0, 1.0)
-            .dimensions(35.0, demo.v_slider_height)
-            .position(50.0 + i as f64 * 60.0, 300.0)
-            .color(color)
-            .frame(demo.frame_width)
-            .label(label.as_slice())
-            .label_color(Color::white())
-            .callback(Box::new(|color| match i {
-                0us => demo.bg_color.set_r(color),
-                1us => demo.bg_color.set_g(color),
-                _ => demo.bg_color.set_b(color),
-            }))
-            .draw(gl);
+        Slider::new(value, 0.0, 1.0)
+            .set(Dimensions([35.0, demo.v_slider_height]))
+            .set(Position([50.0 + i as f64 * 60.0, 300.0]))
+            .set(color)
+            .set(Frame(demo.frame_width))
+            .set(Label::new(label.as_slice())
+                .set(Color::white()))
+            .draw(3u64 + i as u64,
+                Some(Box::new(|color| match i {
+                    0us => demo.bg_color.set_r(color),
+                    1us => demo.bg_color.set_g(color),
+                    _ => demo.bg_color.set_b(color),
+                })),
+                uic, gl);
 
     }
 
