@@ -25,10 +25,13 @@ use conrod::{
     Frameable,
     Label,
     Labelable,
+    LineWidth,
     NumberDialer,
     Point,
+    PointRadius,
     Position,
     Positionable,
+    SkewY,
     Slider,
     Shapeable,
     Text,
@@ -406,20 +409,22 @@ fn draw_ui(gl: &mut Gl,
                 .draw(gl);
 
             // Draw an EnvelopeEditor.
-            uic.envelope_editor(env_uiid, // UIID
+            EnvelopeEditor::new(
                                 env, // vector of `E: EnvelopePoint`s.
                                 0.0f64, 1.0f64, 0.0f64, env_y_max) // x_min, x_max, y_min, y_max.
-                .dimensions(dim[0], env_editor_height - 10.0)
-                .point(env_editor_pos)
-                .skew_y(env_skew_y)
-                .color(demo.bg_color.invert())
-                .frame(demo.frame_width)
-                .frame_color(demo.bg_color.invert().plain_contrast())
-                .label(text.as_slice())
-                .label_color(env_label_color)
-                .point_radius(6.0)
-                .line_width(2.0)
-                .draw(gl);
+                .set(Dimensions([dim[0], env_editor_height - 10.0]))
+                .set(Position(env_editor_pos))
+                .set(SkewY(env_skew_y))
+                .set(demo.bg_color.invert())
+                .set(Frame(demo.frame_width))
+                .set(FrameColor(demo.bg_color.invert().plain_contrast().0))
+                .set(Label::new(text.as_slice())
+                    .set(env_label_color))
+                .set(PointRadius(6.0))
+                .set(LineWidth(2.0))
+                .draw(env_uiid,
+                    None,
+                    uic, gl);
 
         })); // End of matrix widget callback.
 }

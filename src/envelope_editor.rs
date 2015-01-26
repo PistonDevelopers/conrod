@@ -1,9 +1,10 @@
+use quack::{ GetFrom, SetAt, Get };
 use std::cmp::Ordering;
 use std::num::Float;
 use std::num::ToPrimitive;
 use std::num::FromPrimitive;
 use color::Color;
-use internal::Dimensions;
+use internal;
 use graphics;
 use graphics::{
     Context,
@@ -27,11 +28,20 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::Widget::EnvelopeEditor;
+use widget::Widget;
 use vecmath::{
     vec2_add,
     vec2_sub
 };
+use Label;
+use Text;
+use Position;
+use Dimensions;
+use Frame;
+use FrameColor;
+use SkewY;
+use PointRadius;
+use LineWidth;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -75,7 +85,7 @@ impl State {
     }
 }
 
-widget_fns!(EnvelopeEditor, State, EnvelopeEditor(State::Normal));
+widget_fns!(EnvelopeEditor, State, Widget::EnvelopeEditor(State::Normal));
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
@@ -103,9 +113,9 @@ pub trait EnvelopePoint
 /// EnvPoint to the cursor.
 fn is_over_and_closest(pos: Point,
                        mouse_pos: Point,
-                       dim: Dimensions,
+                       dim: internal::Dimensions,
                        pad_pos: Point,
-                       pad_dim: Dimensions,
+                       pad_dim: internal::Dimensions,
                        perc_env: &Vec<(f32, f32, f32)>,
                        pt_radius: f64) -> (Option<Element>, Option<Element>) {
     match rectangle::is_over(pos, mouse_pos, dim) {
@@ -191,68 +201,34 @@ fn draw_circle(
         .draw([pos[0], pos[1], 2.0 * radius, 2.0 * radius], context, graphics);
 }
 
+////////////////////////// NEW DESIGN //////////////////////////////////////////
 
-
-/// A context on which the builder pattern can be implemented.
-pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
-    uic: &'a mut UiContext,
-    ui_id: UIID,
+pub struct EnvelopeEditor<'a, X, Y, E:'a> {
     env: &'a mut Vec<E>,
-    skew_y_range: f32,
+    skew_y_range: internal::Skew,
     min_x: X, max_x: X,
     min_y: Y, max_y: Y,
-    pt_radius: f64,
-    line_width: f64,
+    pt_radius: internal::PointRadius,
+    line_width: internal::LineWidth,
     font_size: FontSize,
     pos: Point,
-    dim: Dimensions,
-    // maybe_callback: Option<|&mut Vec<E>, usize|:'a>,
-    maybe_callback: Option<Box<FnMut(&mut Vec<E>, usize) + 'a>>,
-    maybe_color: Option<Color>,
-    maybe_frame: Option<f64>,
-    maybe_frame_color: Option<Color>,
-    maybe_label: Option<&'a str>,
-    maybe_label_color: Option<Color>,
-    maybe_label_font_size: Option<u32>,
+    dim: internal::Dimensions,
+    maybe_color: Option<internal::Color>,
+    maybe_frame: Option<internal::Frame>,
+    maybe_frame_color: Option<internal::Color>,
+    maybe_label: Option<Label<'a>>,
 }
 
-impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    pub fn point_radius(self, radius: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { pt_radius: radius, ..self }
-    }
-    #[inline]
-    pub fn line_width(self, width: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { line_width: width, ..self }
-    }
-    #[inline]
-    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { font_size: size, ..self }
-    }
-    #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { skew_y_range: skew, ..self }
-    }
-}
-
-pub trait EnvelopeEditorBuilder
-<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     E: EnvelopePoint<X, Y>> {
-    /// An envelope editor builder method to be implemented by the UiContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
-}
-
-impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UiContext {
-    /// An envelope editor builder method to be implemented by the UiContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext {
-            uic: self,
-            ui_id: ui_id,
+impl<'a, X, Y, E: 'a> EnvelopeEditor<'a, X, Y, E> {
+    /// Creates a new envelope editor.
+    pub fn new(
+        env: &'a mut Vec<E>,
+        min_x: X,
+        max_x: X,
+        min_y: Y,
+        max_y: Y
+    ) -> Self {
+        EnvelopeEditor {
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).
             min_x: min_x, max_x: max_x,
@@ -262,42 +238,43 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             font_size: 18u32,
             pos: [0.0, 0.0],
             dim: [256.0, 128.0],
-            maybe_callback: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_label: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
         }
     }
 }
 
-impl_callable!(EnvelopeEditorContext, FnMut(&mut Vec<E>, usize), X, Y, E);
-impl_colorable!(EnvelopeEditorContext, X, Y, E);
-impl_frameable!(EnvelopeEditorContext, X, Y, E);
-impl_labelable!(EnvelopeEditorContext, X, Y, E);
-impl_positionable!(EnvelopeEditorContext, X, Y, E);
-impl_shapeable!(EnvelopeEditorContext, X, Y, E);
 
-impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
-    #[inline]
-    fn draw(&mut self, graphics: &mut Gl) {
-        let state = *get_state(self.uic, self.ui_id);
-        let mouse = self.uic.get_mouse_state();
+impl<'a, X, Y, E: 'a> EnvelopeEditor<'a, X, Y, E>
+    where
+        X: Float + FromPrimitive + ToString,
+        Y: Float + FromPrimitive + ToString,
+        E: EnvelopePoint<X, Y>,
+{
+    pub fn draw(
+        &mut self,
+        ui_id: UIID,
+        mut maybe_callback: Option<Box<FnMut(&mut Vec<E>, usize) + 'a>>,
+        uic: &mut UiContext,
+        graphics: &mut Gl
+    ) {
+        let state = *get_state(uic, ui_id);
+        let mouse = uic.get_mouse_state();
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
         let pt_radius = self.pt_radius;
         let font_size = self.font_size;
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color.0);
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color
+                .map(|x| Color(x))
+                .unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         let pad_pos = vec2_add(self.pos, [frame_w; 2]);
@@ -319,25 +296,30 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         let new_state = get_new_state(is_over_elem, state, mouse);
 
         // Draw rect.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics,
+        rectangle::draw(uic.win_w, uic.win_h, graphics,
                         new_state.as_rectangle_state(),
-                        self.pos, self.dim, maybe_frame, color);
+                        self.pos, self.dim, maybe_frame, Color(color));
 
         // If there's a label, draw it.
-        if let Some(l_text) = self.maybe_label {
-            let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
-            let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
-            let l_w = label::width(self.uic, l_size, l_text);
+        if let Some(label) = self.maybe_label {
+            let Text(l_text) = label.get();
+            let l_size = self.maybe_label
+                .map(|x| x.font_size(&uic.theme))
+                .unwrap_or(uic.theme.font_size_medium);
+            let l_color = self.maybe_label
+                .map(|x| x.color(&uic.theme))
+                .unwrap_or(uic.theme.label_color.0);
+            let l_w = label::width(uic, l_size, l_text);
             let l_pos = [pad_pos[0] + (pad_dim[0] - l_w) / 2.0,
                          pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0];
-            self.uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
+            uic.draw_text(graphics, l_pos, l_size, Color(l_color), l_text);
         };
 
         // Draw the envelope lines.
         match self.env.len() {
             0us | 1us => (),
             _ => {
-                let Color(col) = color.plain_contrast();
+                let Color(col) = Color(color).plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
                 for i in 1us..perc_env.len() {
                     let (x_a, y_a, _) = perc_env[i - 1us];
@@ -346,7 +328,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
-                    let context = Context::abs(self.uic.win_w, self.uic.win_h);
+                    let context = Context::abs(uic.win_w, uic.win_h);
                     line.draw([p_a[0], p_a[1], p_b[0], p_b[1]], &context, graphics);
                 }
             },
@@ -388,10 +370,10 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         Corner::BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
                     uic.draw_text(graphics, xy_string_pos,
-                                font_size, color.plain_contrast(), xy_string.as_slice());
+                                font_size, Color(color).plain_contrast(), xy_string.as_slice());
                     draw_circle(uic.win_w, uic.win_h, graphics,
                                 vec2_sub(p_pos, [pt_radius, pt_radius]),
-                                color.plain_contrast(), pt_radius);
+                                Color(color).plain_contrast(), pt_radius);
                 };
 
                 match elem {
@@ -404,7 +386,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
                         let p_pos_x_clamped = clamp(p_pos[0], left_pixel_bound, right_pixel_bound);
                         let p_pos_y_clamped = clamp(p_pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
-                        draw_env_pt(self.uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
+                        draw_env_pt(uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
                         Some(idx)
                     },
                     // Otherwise, draw the closest point.
@@ -413,7 +395,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                             match *closest_elem {
                                 Element::EnvPoint(closest_idx, closest_env_pt) => {
                                     let closest_env_pt = [closest_env_pt.0, closest_env_pt.1];
-                                    draw_env_pt(self.uic, self.env, closest_idx, closest_env_pt);
+                                    draw_env_pt(uic, self.env, closest_idx, closest_env_pt);
                                 },
                                 _ => (),
                             }
@@ -460,7 +442,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                                 let (new_x, new_y) = get_new_value(&perc_env, idx, mouse.pos[0], mouse.pos[1]);
                                 self.env[idx].set_x(new_x);
                                 self.env[idx].set_y(new_y);
-                                match self.maybe_callback {
+                                match maybe_callback {
                                     Some(ref mut callback) => (*callback)(self.env, idx),
                                     None => (),
                                 }
@@ -468,7 +450,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                             MouseButton::Right => {
                                 // Delete the point and trigger the callback.
                                 self.env.remove(idx);
-                                match self.maybe_callback {
+                                match maybe_callback {
                                     Some(ref mut callback) => (*callback)(self.env, idx),
                                     None => (),
                                 }
@@ -486,7 +468,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                                     // Adjust the point and trigger the callback.
                                     self.env[idx].set_x(new_x);
                                     self.env[idx].set_y(new_y);
-                                    match self.maybe_callback {
+                                    match maybe_callback {
                                         Some(ref mut callback) => (*callback)(self.env, idx),
                                         None => (),
                                     }
@@ -549,7 +531,161 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         }
 
         // Set the new state.
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, ui_id, new_state, self.pos, self.dim);
 
+    }
+}
+
+
+impl<'a, X, Y, E: 'a> GetFrom for (Position, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Position;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> Position {
+        Position(envelope_editor.pos)
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (Position, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Position;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        Position(pos): Position,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.pos = pos;
+    }
+}
+
+impl<'a, X, Y, E: 'a> GetFrom for (Dimensions, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Dimensions;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> Dimensions {
+        Dimensions(envelope_editor.dim)
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (Dimensions, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Dimensions;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        Dimensions(dim): Dimensions,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.dim = dim;
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (Color, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Color;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        Color(color): Color,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.maybe_color = Some(color);
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (Frame, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Frame;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        Frame(frame): Frame,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.maybe_frame = Some(frame);
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (FrameColor, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = FrameColor;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        FrameColor(color): FrameColor,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.maybe_frame_color = Some(color);
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (Label<'a>, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = Label<'a>;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        label: Label<'a>,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.maybe_label = Some(label);
+    }
+}
+
+impl<'a, X, Y, E: 'a> GetFrom for (SkewY, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = SkewY;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> SkewY {
+        SkewY(envelope_editor.skew_y_range)
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (SkewY, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = SkewY;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        SkewY(skew_y): SkewY,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.skew_y_range = skew_y;
+    }
+}
+
+impl<'a, X, Y, E: 'a> GetFrom for (PointRadius, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = PointRadius;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> PointRadius {
+        PointRadius(envelope_editor.pt_radius)
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (PointRadius, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = PointRadius;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        PointRadius(pt_radius): PointRadius,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.pt_radius = pt_radius;
+    }
+}
+
+impl<'a, X, Y, E: 'a> GetFrom for (LineWidth, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = LineWidth;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> LineWidth {
+        LineWidth(envelope_editor.line_width)
+    }
+}
+
+impl<'a, X, Y, E: 'a> SetAt for (LineWidth, EnvelopeEditor<'a, X, Y, E>) {
+    type Property = LineWidth;
+    type Object = EnvelopeEditor<'a, X, Y, E>;
+
+    fn set_at(
+        LineWidth(line_width): LineWidth,
+        envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
+    ) {
+        envelope_editor.line_width = line_width;
     }
 }

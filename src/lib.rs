@@ -17,7 +17,7 @@ extern crate quack;
 pub use background::Background;
 pub use button::Button;
 pub use drop_down_list::DropDownList;
-pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
+pub use envelope_editor::EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
 pub use label::Label;
 pub use number_dialer::NumberDialer;
@@ -136,3 +136,12 @@ pub struct FrameColor(pub internal::Color);
 
 #[derive(Copy)]
 pub struct MaybeColor(pub Option<internal::Color>);
+
+#[derive(Copy)]
+pub struct SkewY(pub internal::Skew);
+
+#[derive(Copy)]
+pub struct PointRadius(pub internal::PointRadius);
+
+#[derive(Copy)]
+pub struct LineWidth(pub internal::LineWidth);

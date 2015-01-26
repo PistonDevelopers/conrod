@@ -15,3 +15,12 @@ pub type Dimensions = [f64; 2];
 
 /// The frame type.
 pub type Frame = f64;
+
+/// The skew Y type.
+pub type Skew = f32;
+
+/// The point radius type.
+pub type PointRadius = f64;
+
+/// The line width type.
+pub type LineWidth = f64;
