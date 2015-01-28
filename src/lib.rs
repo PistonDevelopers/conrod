@@ -39,7 +39,7 @@ pub use theme::Theme;
 pub use ui_context::UiContext;
 pub use widget::Widget;
 
-use quack::{ GetFrom, Get };
+use quack::{ GetFrom, Get, Pair };
 
 #[macro_use]
 pub mod macros;
@@ -98,8 +98,8 @@ impl Position {
     /// Creates position to the right of another widget.
     pub fn right_from<T>(widget: &T, offset: internal::Scalar) -> Self
         where
-            (Position, T): GetFrom<Property = Position, Object = T>,
-            (Dimensions, T): GetFrom<Property = Dimensions, Object = T>,
+            (Position, T): Pair<Data = Position, Object = T> + GetFrom,
+            (Dimensions, T): Pair<Data = Dimensions, Object = T> + GetFrom,
     {
         let Position(pos) = widget.get();
         let Dimensions(dim) = widget.get();
@@ -109,8 +109,8 @@ impl Position {
     /// Creates a position below another widget.
     pub fn down<T>(widget: &T, offset: internal::Scalar) -> Self
         where
-            (Position, T): GetFrom<Property = Position, Object = T>,
-            (Dimensions, T): GetFrom<Property = Dimensions, Object = T>,
+            (Position, T): Pair<Data = Position, Object = T> + GetFrom,
+            (Dimensions, T): Pair<Data = Dimensions, Object = T> + GetFrom,
     {
         let Position(pos) = widget.get();
         let Dimensions(dim) = widget.get();

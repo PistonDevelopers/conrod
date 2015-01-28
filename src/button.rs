@@ -136,63 +136,42 @@ impl<'a> Button<'a> {
 }
 
 impl<'a> GetFrom for (Position, Button<'a>) {
-    type Property = Position;
-    type Object = Button<'a>;
-
     fn get_from(button: &Button<'a>) -> Position {
         Position(button.pos)
     }
 }
 
 impl<'a> SetAt for (Position, Button<'a>) {
-    type Property = Position;
-    type Object = Button<'a>;
-
     fn set_at(Position(pos): Position, button: &mut Button<'a>) {
         button.pos = pos;
     }
 }
 
 impl<'a> SetAt for (Color, Button<'a>) {
-    type Property = Color;
-    type Object = Button<'a>;
-
     fn set_at(Color(color): Color, button: &mut Button<'a>) {
         button.maybe_color = Some(color);
     }
 }
 
 impl<'a> GetFrom for (MaybeColor, Button<'a>) {
-    type Property = MaybeColor;
-    type Object = Button<'a>;
-
     fn get_from(button: &Button<'a>) -> MaybeColor {
         MaybeColor(button.maybe_color)
     }
 }
 
 impl<'a> GetFrom for (Dimensions, Button<'a>) {
-    type Property = Dimensions;
-    type Object = Button<'a>;
-
     fn get_from(button: &Button<'a>) -> Dimensions {
         Dimensions(button.dim)
     }
 }
 
 impl<'a> SetAt for (Dimensions, Button<'a>) {
-    type Property = Dimensions;
-    type Object = Button<'a>;
-
     fn set_at(Dimensions(dim): Dimensions, button: &mut Button<'a>) {
         button.dim = dim;
     }
 }
 
 impl<'a> SetAt for (Text<'a>, Button<'a>) {
-    type Property = Text<'a>;
-    type Object = Button<'a>;
-
     fn set_at(Text(text): Text<'a>, button: &mut Button<'a>) {
         button.maybe_label = match button.maybe_label {
             None => Some(Label::new(text)),
@@ -202,18 +181,12 @@ impl<'a> SetAt for (Text<'a>, Button<'a>) {
 }
 
 impl<'a> SetAt for (Label<'a>, Button<'a>) {
-    type Property = Label<'a>;
-    type Object = Button<'a>;
-
     fn set_at(label: Label<'a>, button: &mut Button<'a>) {
         button.maybe_label = Some(label);
     }
 }
 
 impl<'a> SetAt for (Frame, Button<'a>) {
-    type Property = Frame;
-    type Object = Button<'a>;
-
     fn set_at(Frame(frame): Frame, button: &mut Button<'a>) {
         button.maybe_frame = Some(frame);
     }

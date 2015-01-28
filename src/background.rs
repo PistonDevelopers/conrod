@@ -29,18 +29,12 @@ impl Background {
 }
 
 impl SetAt for (Color, Background) {
-    type Property = Color;
-    type Object = Background;
-
     fn set_at(Color(color): Color, background: &mut Background) {
         background.maybe_color = Some(color);
     }
 }
 
 impl GetFrom for (MaybeColor, Background) {
-    type Property = MaybeColor;
-    type Object = Background;
-
     fn get_from(background: &Background) -> MaybeColor {
         MaybeColor(background.maybe_color)
     }

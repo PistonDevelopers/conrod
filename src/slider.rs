@@ -199,18 +199,12 @@ impl<'a, T> Slider<'a, T>
 }
 
 impl<'a, T> GetFrom for (Position, Slider<'a, T>) {
-    type Property = Position;
-    type Object = Slider<'a, T>;
-
     fn get_from(slider: &Slider<'a, T>) -> Position {
         Position(slider.pos)
     }
 }
 
 impl<'a, T> SetAt for (Position, Slider<'a, T>) {
-    type Property = Position;
-    type Object = Slider<'a, T>;
-
     fn set_at(Position(pos): Position, slider: &mut Slider<'a, T>) {
         slider.pos = pos;
     }
@@ -218,45 +212,30 @@ impl<'a, T> SetAt for (Position, Slider<'a, T>) {
 
 
 impl<'a, T> GetFrom for (Dimensions, Slider<'a, T>) {
-    type Property = Dimensions;
-    type Object = Slider<'a, T>;
-
     fn get_from(slider: &Slider<'a, T>) -> Dimensions {
         Dimensions(slider.dim)
     }
 }
 
 impl<'a, T> SetAt for (Dimensions, Slider<'a, T>) {
-    type Property = Dimensions;
-    type Object = Slider<'a, T>;
-
     fn set_at(Dimensions(dim): Dimensions, slider: &mut Slider<'a, T>) {
         slider.dim = dim;
     }
 }
 
 impl<'a, T> SetAt for (Color, Slider<'a, T>) {
-    type Property = Color;
-    type Object = Slider<'a, T>;
-
     fn set_at(color: Color, slider: &mut Slider<'a, T>) {
         slider.maybe_color = Some(color);
     }
 }
 
 impl<'a, T> SetAt for (Frame, Slider<'a, T>) {
-    type Property = Frame;
-    type Object = Slider<'a, T>;
-
     fn set_at(Frame(frame): Frame, slider: &mut Slider<'a, T>) {
         slider.maybe_frame = Some(frame);
     }
 }
 
 impl<'a, T> SetAt for (Label<'a>, Slider<'a, T>) {
-    type Property = Label<'a>;
-    type Object = Slider<'a, T>;
-
     fn set_at(label: Label<'a>, slider: &mut Slider<'a, T>) {
         slider.maybe_label = Some(label);
     }

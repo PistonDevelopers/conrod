@@ -284,36 +284,24 @@ impl<'a> DropDownList<'a> {
 }
 
 impl<'a> GetFrom for (Position, DropDownList<'a>) {
-    type Property = Position;
-    type Object = DropDownList<'a>;
-
     fn get_from(drop_down_list: &DropDownList<'a>) -> Position {
         Position(drop_down_list.pos)
     }
 }
 
 impl<'a> SetAt for (Position, DropDownList<'a>) {
-    type Property = Position;
-    type Object = DropDownList<'a>;
-
     fn set_at(Position(pos): Position, drop_down_list: &mut DropDownList<'a>) {
         drop_down_list.pos = pos;
     }
 }
 
 impl<'a> GetFrom for (Dimensions, DropDownList<'a>) {
-    type Property = Dimensions;
-    type Object = DropDownList<'a>;
-
     fn get_from(drop_down_list: &DropDownList<'a>) -> Dimensions {
         Dimensions(drop_down_list.dim)
     }
 }
 
 impl<'a> SetAt for (Dimensions, DropDownList<'a>) {
-    type Property = Dimensions;
-    type Object = DropDownList<'a>;
-
     fn set_at(
         Dimensions(dim): Dimensions,
         drop_down_list: &mut DropDownList<'a>
@@ -323,18 +311,12 @@ impl<'a> SetAt for (Dimensions, DropDownList<'a>) {
 }
 
 impl<'a> SetAt for (Color, DropDownList<'a>) {
-    type Property = Color;
-    type Object = DropDownList<'a>;
-
     fn set_at(Color(color): Color, drop_down_list: &mut DropDownList<'a>) {
         drop_down_list.maybe_color = Some(color);
     }
 }
 
 impl<'a> SetAt for (Text<'a>, DropDownList<'a>) {
-    type Property = Text<'a>;
-    type Object = DropDownList<'a>;
-
     fn set_at(Text(text): Text<'a>, drop_down_list: &mut DropDownList<'a>) {
         drop_down_list.maybe_label = match drop_down_list.maybe_label {
             None => Some(Label::new(text)),
@@ -344,27 +326,18 @@ impl<'a> SetAt for (Text<'a>, DropDownList<'a>) {
 }
 
 impl<'a> SetAt for (Label<'a>, DropDownList<'a>) {
-    type Property = Label<'a>;
-    type Object = DropDownList<'a>;
-
     fn set_at(label: Label<'a>, drop_down_list: &mut DropDownList<'a>) {
         drop_down_list.maybe_label = Some(label);
     }
 }
 
 impl<'a> SetAt for (Frame, DropDownList<'a>) {
-    type Property = Frame;
-    type Object = DropDownList<'a>;
-
     fn set_at(Frame(frame): Frame, drop_down_list: &mut DropDownList<'a>) {
         drop_down_list.maybe_frame = Some(frame);
     }
 }
 
 impl<'a> SetAt for (FrameColor, DropDownList<'a>) {
-    type Property = FrameColor;
-    type Object = DropDownList<'a>;
-
     fn set_at(
         FrameColor(color): FrameColor,
         drop_down_list: &mut DropDownList<'a>

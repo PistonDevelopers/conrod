@@ -82,81 +82,54 @@ impl<'a> Label<'a> {
 }
 
 impl<'a> GetFrom for (Position, Label<'a>) {
-    type Property = Position;
-    type Object = Label<'a>;
-
     fn get_from(label: &Label<'a>) -> Position {
         Position(label.pos)
     }
 }
 
 impl<'a> SetAt for (Position, Label<'a>) {
-    type Property = Position;
-    type Object = Label<'a>;
-
     fn set_at(Position(pos): Position, label: &mut Label<'a>) {
         label.pos = pos;
     }
 }
 
 impl<'a> GetFrom for (FontSize, Label<'a>) {
-    type Property = FontSize;
-    type Object = Label<'a>;
-
     fn get_from(label: &Label<'a>) -> FontSize {
         label.size
     }
 }
 
 impl<'a> SetAt for (FontSize, Label<'a>) {
-    type Property = FontSize;
-    type Object = Label<'a>;
-
     fn set_at(size: FontSize, label: &mut Label<'a>) {
         label.size = size;
     }
 }
 
 impl<'a> GetFrom for (MaybeColor, Label<'a>) {
-    type Property = MaybeColor;
-    type Object = Label<'a>;
-
     fn get_from(label: &Label<'a>) -> MaybeColor {
         MaybeColor(label.maybe_color)
     }
 }
 
 impl<'a> SetAt for (MaybeColor, Label<'a>) {
-    type Property = MaybeColor;
-    type Object = Label<'a>;
-
     fn set_at(MaybeColor(maybe_color): MaybeColor, label: &mut Label<'a>) {
         label.maybe_color = maybe_color;
     }
 }
 
 impl<'a> SetAt for (Color, Label<'a>) {
-    type Property = Color;
-    type Object = Label<'a>;
-
     fn set_at(Color(color): Color, label: &mut Label<'a>) {
         label.maybe_color = Some(color);
     }
 }
 
 impl<'a> GetFrom for (Text<'a>, Label<'a>) {
-    type Property = Text<'a>;
-    type Object = Label<'a>;
-
     fn get_from(label: &Label<'a>) -> Text<'a> {
         Text(label.text)
     }
 }
 
 impl<'a> SetAt for (Text<'a>, Label<'a>) {
-    type Property = Text<'a>;
-    type Object = Label<'a>;
-
     fn set_at(Text(text): Text<'a>, label: &mut Label<'a>) {
         label.text = text;
     }
