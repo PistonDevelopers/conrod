@@ -136,18 +136,21 @@ impl<'a> Button<'a> {
 }
 
 impl<'a> GetFrom for (Position, Button<'a>) {
+    #[inline(always)]
     fn get_from(button: &Button<'a>) -> Position {
         Position(button.pos)
     }
 }
 
 impl<'a> SetAt for (Position, Button<'a>) {
+    #[inline(always)]
     fn set_at(Position(pos): Position, button: &mut Button<'a>) {
         button.pos = pos;
     }
 }
 
 impl<'a> SetAt for (Color, Button<'a>) {
+    #[inline(always)]
     fn set_at(Color(color): Color, button: &mut Button<'a>) {
         button.maybe_color = Some(color);
     }
@@ -160,18 +163,21 @@ impl<'a> GetFrom for (MaybeColor, Button<'a>) {
 }
 
 impl<'a> GetFrom for (Dimensions, Button<'a>) {
+    #[inline(always)]
     fn get_from(button: &Button<'a>) -> Dimensions {
         Dimensions(button.dim)
     }
 }
 
 impl<'a> SetAt for (Dimensions, Button<'a>) {
+    #[inline(always)]
     fn set_at(Dimensions(dim): Dimensions, button: &mut Button<'a>) {
         button.dim = dim;
     }
 }
 
 impl<'a> SetAt for (Text<'a>, Button<'a>) {
+    #[inline(always)]
     fn set_at(Text(text): Text<'a>, button: &mut Button<'a>) {
         button.maybe_label = match button.maybe_label {
             None => Some(Label::new(text)),
@@ -181,12 +187,14 @@ impl<'a> SetAt for (Text<'a>, Button<'a>) {
 }
 
 impl<'a> SetAt for (Label<'a>, Button<'a>) {
+    #[inline(always)]
     fn set_at(label: Label<'a>, button: &mut Button<'a>) {
         button.maybe_label = Some(label);
     }
 }
 
 impl<'a> SetAt for (Frame, Button<'a>) {
+    #[inline(always)]
     fn set_at(Frame(frame): Frame, button: &mut Button<'a>) {
         button.maybe_frame = Some(frame);
     }

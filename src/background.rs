@@ -29,12 +29,14 @@ impl Background {
 }
 
 impl SetAt for (Color, Background) {
+    #[inline(always)]
     fn set_at(Color(color): Color, background: &mut Background) {
         background.maybe_color = Some(color);
     }
 }
 
 impl GetFrom for (MaybeColor, Background) {
+    #[inline(always)]
     fn get_from(background: &Background) -> MaybeColor {
         MaybeColor(background.maybe_color)
     }

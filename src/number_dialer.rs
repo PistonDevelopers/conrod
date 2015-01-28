@@ -440,24 +440,28 @@ impl<'a, T> NumberDialer<'a, T>
 }
 
 impl<'a, T> GetFrom for (Position, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn get_from(number_dialer: &NumberDialer<'a, T>) -> Position {
         Position(number_dialer.pos)
     }
 }
 
 impl<'a, T> SetAt for (Position, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(Position(pos): Position, number_dialer: &mut NumberDialer<'a, T>) {
         number_dialer.pos = pos;
     }
 }
 
 impl<'a, T> GetFrom for (Dimensions, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn get_from(number_dialer: &NumberDialer<'a, T>) -> Dimensions {
         Dimensions(number_dialer.dim)
     }
 }
 
 impl<'a, T> SetAt for (Dimensions, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(
         Dimensions(dim): Dimensions,
         number_dialer: &mut NumberDialer<'a, T>
@@ -467,6 +471,7 @@ impl<'a, T> SetAt for (Dimensions, NumberDialer<'a, T>) {
 }
 
 impl<'a, T> SetAt for (FrameColor, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(
         FrameColor(color): FrameColor,
         number_dialer: &mut NumberDialer<'a, T>
@@ -476,18 +481,21 @@ impl<'a, T> SetAt for (FrameColor, NumberDialer<'a, T>) {
 }
 
 impl<'a, T> SetAt for (Color, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(Color(color): Color, number_dialer: &mut NumberDialer<'a, T>) {
         number_dialer.maybe_color = Some(color);
     }
 }
 
 impl<'a, T> SetAt for (Label<'a>, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(label: Label<'a>, number_dialer: &mut NumberDialer<'a, T>) {
         number_dialer.maybe_label = Some(label);
     }
 }
 
 impl<'a, T> SetAt for (Frame, NumberDialer<'a, T>) {
+    #[inline(always)]
     fn set_at(Frame(frame): Frame, number_dialer: &mut NumberDialer<'a, T>) {
         number_dialer.maybe_frame = Some(frame);
     }

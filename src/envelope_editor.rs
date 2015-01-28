@@ -538,12 +538,14 @@ impl<'a, X, Y, E: 'a> EnvelopeEditor<'a, X, Y, E>
 
 
 impl<'a, X, Y, E: 'a> GetFrom for (Position, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> Position {
         Position(envelope_editor.pos)
     }
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (Position, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         Position(pos): Position,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -553,12 +555,14 @@ impl<'a, X, Y, E: 'a> SetAt for (Position, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> GetFrom for (Dimensions, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> Dimensions {
         Dimensions(envelope_editor.dim)
     }
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (Dimensions, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         Dimensions(dim): Dimensions,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -568,6 +572,7 @@ impl<'a, X, Y, E: 'a> SetAt for (Dimensions, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (Color, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         Color(color): Color,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -577,6 +582,7 @@ impl<'a, X, Y, E: 'a> SetAt for (Color, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (Frame, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         Frame(frame): Frame,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -586,6 +592,7 @@ impl<'a, X, Y, E: 'a> SetAt for (Frame, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (FrameColor, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         FrameColor(color): FrameColor,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -595,6 +602,7 @@ impl<'a, X, Y, E: 'a> SetAt for (FrameColor, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (Label<'a>, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         label: Label<'a>,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -604,12 +612,14 @@ impl<'a, X, Y, E: 'a> SetAt for (Label<'a>, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> GetFrom for (SkewY, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> SkewY {
         SkewY(envelope_editor.skew_y_range)
     }
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (SkewY, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         SkewY(skew_y): SkewY,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -619,12 +629,14 @@ impl<'a, X, Y, E: 'a> SetAt for (SkewY, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> GetFrom for (PointRadius, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> PointRadius {
         PointRadius(envelope_editor.pt_radius)
     }
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (PointRadius, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         PointRadius(pt_radius): PointRadius,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
@@ -634,12 +646,14 @@ impl<'a, X, Y, E: 'a> SetAt for (PointRadius, EnvelopeEditor<'a, X, Y, E>) {
 }
 
 impl<'a, X, Y, E: 'a> GetFrom for (LineWidth, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn get_from(envelope_editor: &EnvelopeEditor<'a, X, Y, E>) -> LineWidth {
         LineWidth(envelope_editor.line_width)
     }
 }
 
 impl<'a, X, Y, E: 'a> SetAt for (LineWidth, EnvelopeEditor<'a, X, Y, E>) {
+    #[inline(always)]
     fn set_at(
         LineWidth(line_width): LineWidth,
         envelope_editor: &mut EnvelopeEditor<'a, X, Y, E>
