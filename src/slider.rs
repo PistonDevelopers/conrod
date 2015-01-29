@@ -22,6 +22,9 @@ use vecmath::vec2_add;
 use Callback;
 use FrameColor;
 use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -110,10 +113,12 @@ quack! {
         }
         fn (val: FrameColor) { slider.maybe_frame_color = Some(val.0) }
         fn (val: FrameWidth) { slider.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { slider.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { slider.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { slider.maybe_label_font_size = Some(val.0) }
     action:
 }
 
-impl_labelable!(Slider, T);
 impl_positionable!(Slider, T);
 impl_shapeable!(Slider, T);
 

@@ -39,45 +39,6 @@ macro_rules! widget_fns(
     )
 );
 
-/// Simplify implementation of the `Labelable` trait.
-macro_rules! impl_labelable(
-    ($context:ident, $($t:ident),*) => (
-        impl<'a $(, $t)*> ::label::Labelable<'a> for $context<'a $(, $t)*> {
-            #[inline]
-            fn label(self, text: &'a str) -> $context<'a $(, $t)*> {
-                $context { maybe_label: Some(text), ..self }
-            }
-            #[inline]
-            fn label_color(self, color: ::color::Color) -> $context<'a $(, $t)*> {
-                $context { maybe_label_color: Some(color), ..self }
-            }
-            #[inline]
-            fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a $(, $t)*> {
-                $context { maybe_label_color: Some(Color::new(r, g, b, a)), ..self }
-            }
-            #[inline]
-            fn label_font_size(self, size: u32) -> $context<'a $(, $t)*> {
-                $context { maybe_label_font_size: Some(size), ..self }
-            }
-            #[inline]
-            fn small_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
-                let size = uic.theme.font_size_small;
-                $context { maybe_label_font_size: Some(size), ..self }
-            }
-            #[inline]
-            fn medium_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
-                let size = uic.theme.font_size_medium;
-                $context { maybe_label_font_size: Some(size), ..self }
-            }
-            #[inline]
-            fn large_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
-                let size = uic.theme.font_size_large;
-                $context { maybe_label_font_size: Some(size), ..self }
-            }
-        }
-    )
-);
-
 /// Simplify implementation of the `Positionable` trait.
 macro_rules! impl_positionable(
     ($context:ident, $($t:ident),*) => (
