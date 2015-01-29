@@ -10,6 +10,7 @@ use ui_context::{
 };
 use vecmath::vec2_add;
 use widget::Widget;
+use Callback;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -164,10 +165,12 @@ quack! {
     get:
     set:
         fn (val: Color) { list.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {
+            list.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(DropDownList, FnMut(&mut Option<Idx>, Idx, String),);
 impl_frameable!(DropDownList,);
 impl_labelable!(DropDownList,);
 impl_positionable!(DropDownList,);

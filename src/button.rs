@@ -10,6 +10,7 @@ use ui_context::{
     UiContext,
 };
 use widget::Widget;
+use Callback;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -87,10 +88,12 @@ quack! {
     get:
     set:
         fn (val: Color) { button.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut() + 'a>>) {
+            button.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(Button, FnMut(),);
 impl_frameable!(Button,);
 impl_labelable!(Button,);
 impl_positionable!(Button,);

@@ -10,6 +10,7 @@ use ui_context::{
     UiContext,
 };
 use widget::Widget;
+use Callback;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -88,10 +89,12 @@ quack! {
     get:
     set:
         fn (val: Color) { toggle.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(bool) + 'a>>) {
+            toggle.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(Toggle, FnMut(bool),);
 impl_frameable!(Toggle,);
 impl_labelable!(Toggle,);
 impl_positionable!(Toggle,);
