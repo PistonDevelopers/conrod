@@ -1,4 +1,4 @@
-use quack::{ GetFrom, SetAt, Get, Set };
+use quack::{ Get, Set };
 use color::Color;
 use opengl_graphics::Gl;
 use mouse::Mouse;
@@ -135,67 +135,24 @@ impl<'a> Button<'a> {
     }
 }
 
-impl<'a> GetFrom for (Position, Button<'a>) {
-    #[inline(always)]
-    fn get_from(button: &Button<'a>) -> Position {
-        Position(button.pos)
-    }
-}
-
-impl<'a> SetAt for (Position, Button<'a>) {
-    #[inline(always)]
-    fn set_at(Position(pos): Position, button: &mut Button<'a>) {
-        button.pos = pos;
-    }
-}
-
-impl<'a> SetAt for (Color, Button<'a>) {
-    #[inline(always)]
-    fn set_at(Color(color): Color, button: &mut Button<'a>) {
-        button.maybe_color = Some(color);
-    }
-}
-
-impl<'a> GetFrom for (MaybeColor, Button<'a>) {
-    fn get_from(button: &Button<'a>) -> MaybeColor {
-        MaybeColor(button.maybe_color)
-    }
-}
-
-impl<'a> GetFrom for (Dimensions, Button<'a>) {
-    #[inline(always)]
-    fn get_from(button: &Button<'a>) -> Dimensions {
-        Dimensions(button.dim)
-    }
-}
-
-impl<'a> SetAt for (Dimensions, Button<'a>) {
-    #[inline(always)]
-    fn set_at(Dimensions(dim): Dimensions, button: &mut Button<'a>) {
-        button.dim = dim;
-    }
-}
-
-impl<'a> SetAt for (Text<'a>, Button<'a>) {
-    #[inline(always)]
-    fn set_at(Text(text): Text<'a>, button: &mut Button<'a>) {
-        button.maybe_label = match button.maybe_label {
-            None => Some(Label::new(text)),
-            Some(x) => Some(x.set(Text(text)))
-        };
-    }
-}
-
-impl<'a> SetAt for (Label<'a>, Button<'a>) {
-    #[inline(always)]
-    fn set_at(label: Label<'a>, button: &mut Button<'a>) {
-        button.maybe_label = Some(label);
-    }
-}
-
-impl<'a> SetAt for (Frame, Button<'a>) {
-    #[inline(always)]
-    fn set_at(Frame(frame): Frame, button: &mut Button<'a>) {
-        button.maybe_frame = Some(frame);
-    }
+quack! {
+    button: Button['a]
+    get:
+        fn () -> Position { Position(button.pos) }
+        fn () -> MaybeColor { MaybeColor(button.maybe_color) }
+        fn () -> Dimensions { Dimensions(button.dim) }
+    set:
+        fn (val: Position) { button.pos = val.0 }
+        fn (val: Color) { button.maybe_color = Some(val.0) }
+        fn (val: Dimensions) { button.dim = val.0 }
+        fn (val: Text<'a>) {
+            let text = val.0;
+            button.maybe_label = match button.maybe_label {
+                None => Some(Label::new(text)),
+                Some(x) => Some(x.set(Text(text)))
+            };
+        }
+        fn (val: Label<'a>) { button.maybe_label = Some(val) }
+        fn (val: Frame) { button.maybe_frame = Some(val.0) }
+    action:
 }

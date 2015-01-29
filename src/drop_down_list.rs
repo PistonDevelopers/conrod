@@ -1,4 +1,4 @@
-use quack::{ GetFrom, SetAt, Get, Set };
+use quack::{ Get, Set };
 use color::Color;
 use internal;
 use mouse::Mouse;
@@ -283,74 +283,24 @@ impl<'a> DropDownList<'a> {
     }
 }
 
-impl<'a> GetFrom for (Position, DropDownList<'a>) {
-    #[inline(always)]
-    fn get_from(drop_down_list: &DropDownList<'a>) -> Position {
-        Position(drop_down_list.pos)
-    }
-}
-
-impl<'a> SetAt for (Position, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(Position(pos): Position, drop_down_list: &mut DropDownList<'a>) {
-        drop_down_list.pos = pos;
-    }
-}
-
-impl<'a> GetFrom for (Dimensions, DropDownList<'a>) {
-    #[inline(always)]
-    fn get_from(drop_down_list: &DropDownList<'a>) -> Dimensions {
-        Dimensions(drop_down_list.dim)
-    }
-}
-
-impl<'a> SetAt for (Dimensions, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(
-        Dimensions(dim): Dimensions,
-        drop_down_list: &mut DropDownList<'a>
-    ) {
-        drop_down_list.dim = dim;
-    }
-}
-
-impl<'a> SetAt for (Color, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(Color(color): Color, drop_down_list: &mut DropDownList<'a>) {
-        drop_down_list.maybe_color = Some(color);
-    }
-}
-
-impl<'a> SetAt for (Text<'a>, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(Text(text): Text<'a>, drop_down_list: &mut DropDownList<'a>) {
-        drop_down_list.maybe_label = match drop_down_list.maybe_label {
-            None => Some(Label::new(text)),
-            Some(x) => Some(x.set(Text(text)))
-        };
-    }
-}
-
-impl<'a> SetAt for (Label<'a>, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(label: Label<'a>, drop_down_list: &mut DropDownList<'a>) {
-        drop_down_list.maybe_label = Some(label);
-    }
-}
-
-impl<'a> SetAt for (Frame, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(Frame(frame): Frame, drop_down_list: &mut DropDownList<'a>) {
-        drop_down_list.maybe_frame = Some(frame);
-    }
-}
-
-impl<'a> SetAt for (FrameColor, DropDownList<'a>) {
-    #[inline(always)]
-    fn set_at(
-        FrameColor(color): FrameColor,
-        drop_down_list: &mut DropDownList<'a>
-    ) {
-        drop_down_list.maybe_frame_color = Some(color);
-    }
+quack! {
+    list: DropDownList['a]
+    get:
+        fn () -> Position { Position(list.pos) }
+        fn () -> Dimensions { Dimensions(list.dim) }
+    set:
+        fn (val: Position) { list.pos = val.0 }
+        fn (val: Dimensions) { list.dim = val.0 }
+        fn (val: Color) { list.maybe_color = Some(val.0) }
+        fn (val: Text<'a>) {
+            let text = val.0;
+            list.maybe_label = match list.maybe_label {
+                None => Some(Label::new(text)),
+                Some(x) => Some(x.set(Text(text)))
+            };
+        }
+        fn (val: Label<'a>) { list.maybe_label = Some(val) }
+        fn (val: Frame) { list.maybe_frame = Some(val.0) }
+        fn (val: FrameColor) { list.maybe_frame_color = Some(val.0) }
+    action:
 }

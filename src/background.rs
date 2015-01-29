@@ -1,4 +1,3 @@
-use quack::{ GetFrom, SetAt };
 
 use color::Color;
 use graphics;
@@ -28,16 +27,11 @@ impl Background {
     }
 }
 
-impl SetAt for (Color, Background) {
-    #[inline(always)]
-    fn set_at(Color(color): Color, background: &mut Background) {
-        background.maybe_color = Some(color);
-    }
-}
-
-impl GetFrom for (MaybeColor, Background) {
-    #[inline(always)]
-    fn get_from(background: &Background) -> MaybeColor {
-        MaybeColor(background.maybe_color)
-    }
+quack! {
+    bg: Background[]
+    get:
+        fn () -> MaybeColor { MaybeColor(bg.maybe_color) }
+    set:
+        fn (val: Color) { bg.maybe_color = Some(val.0) }
+    action:
 }

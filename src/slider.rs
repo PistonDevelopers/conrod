@@ -1,4 +1,4 @@
-use quack::{ GetFrom, SetAt, Get };
+use quack::Get;
 use std::num::Float;
 use std::num::FromPrimitive;
 use color::Color;
@@ -198,52 +198,16 @@ impl<'a, T> Slider<'a, T>
     }
 }
 
-impl<'a, T> GetFrom for (Position, Slider<'a, T>) {
-    #[inline(always)]
-    fn get_from(slider: &Slider<'a, T>) -> Position {
-        Position(slider.pos)
-    }
-}
-
-impl<'a, T> SetAt for (Position, Slider<'a, T>) {
-    #[inline(always)]
-    fn set_at(Position(pos): Position, slider: &mut Slider<'a, T>) {
-        slider.pos = pos;
-    }
-}
-
-
-impl<'a, T> GetFrom for (Dimensions, Slider<'a, T>) {
-    #[inline(always)]
-    fn get_from(slider: &Slider<'a, T>) -> Dimensions {
-        Dimensions(slider.dim)
-    }
-}
-
-impl<'a, T> SetAt for (Dimensions, Slider<'a, T>) {
-    #[inline(always)]
-    fn set_at(Dimensions(dim): Dimensions, slider: &mut Slider<'a, T>) {
-        slider.dim = dim;
-    }
-}
-
-impl<'a, T> SetAt for (Color, Slider<'a, T>) {
-    #[inline(always)]
-    fn set_at(color: Color, slider: &mut Slider<'a, T>) {
-        slider.maybe_color = Some(color);
-    }
-}
-
-impl<'a, T> SetAt for (Frame, Slider<'a, T>) {
-    #[inline(always)]
-    fn set_at(Frame(frame): Frame, slider: &mut Slider<'a, T>) {
-        slider.maybe_frame = Some(frame);
-    }
-}
-
-impl<'a, T> SetAt for (Label<'a>, Slider<'a, T>) {
-    #[inline(always)]
-    fn set_at(label: Label<'a>, slider: &mut Slider<'a, T>) {
-        slider.maybe_label = Some(label);
-    }
+quack! {
+    slider: Slider['a, T]
+    get:
+        fn () -> Position { Position(slider.pos) }
+        fn () -> Dimensions { Dimensions(slider.dim) }
+    set:
+        fn (val: Position) { slider.pos = val.0 }
+        fn (val: Dimensions) { slider.dim = val.0 }
+        fn (val: Color) { slider.maybe_color = Some(val) }
+        fn (val: Frame) { slider.maybe_frame = Some(val.0) }
+        fn (val: Label<'a>) { slider.maybe_label = Some(val) }
+    action:
 }
