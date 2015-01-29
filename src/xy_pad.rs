@@ -29,7 +29,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget::XYPad;
+use widget::Widget;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Show, PartialEq, Clone, Copy)]
@@ -50,7 +50,7 @@ impl State {
     }
 }
 
-widget_fns!(XYPad, State, XYPad(State::Normal));
+widget_fns!(XYPad, State, Widget::XYPad(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -87,8 +87,7 @@ fn draw_crosshair(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct XYPadContext<'a, X, Y> {
-    uic: &'a mut UiContext,
+pub struct XYPad<'a, X, Y> {
     ui_id: UIID,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
@@ -106,34 +105,25 @@ pub struct XYPadContext<'a, X, Y> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl <'a, X, Y> XYPadContext<'a, X, Y> {
+impl <'a, X, Y> XYPad<'a, X, Y> {
     #[inline]
-    pub fn line_width(self, width: f64) -> XYPadContext<'a, X, Y> {
-        XYPadContext { line_width: width, ..self }
+    pub fn line_width(self, width: f64) -> XYPad<'a, X, Y> {
+        XYPad { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> XYPadContext<'a, X, Y> {
-        XYPadContext { font_size: size, ..self }
+    pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y> {
+        XYPad { font_size: size, ..self }
     }
-}
-
-pub trait XYPadBuilder<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
-                           Y: Float + Copy + ToPrimitive + FromPrimitive + ToString> {
-    /// A xy_pad builder method to be implemented by the UiContext.
-    fn xy_pad(&'a mut self, ui_id: UIID,
-              x_val: X, x_min: X, x_max: X,
-              y_val: Y, y_min: Y, y_max: Y) -> XYPadContext<'a, X, Y>;
 }
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
-XYPadBuilder<'a, X, Y> for UiContext {
+XYPad<'a, X, Y> {
     /// An xy_pad builder method to be implemented by the UiContext.
-    fn xy_pad(&'a mut self, ui_id: UIID,
+    pub fn new(ui_id: UIID,
               x_val: X, min_x: X, max_x: X,
-              y_val: Y, min_y: Y, max_y: Y) -> XYPadContext<'a, X, Y> {
-        XYPadContext {
-            uic: self,
+              y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y> {
+        XYPad {
             ui_id: ui_id,
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
@@ -152,25 +142,25 @@ XYPadBuilder<'a, X, Y> for UiContext {
     }
 }
 
-impl_callable!(XYPadContext, FnMut(X, Y), X, Y);
-impl_colorable!(XYPadContext, X, Y);
-impl_frameable!(XYPadContext, X, Y);
-impl_labelable!(XYPadContext, X, Y);
-impl_positionable!(XYPadContext, X, Y);
-impl_shapeable!(XYPadContext, X, Y);
+impl_callable!(XYPad, FnMut(X, Y), X, Y);
+impl_colorable!(XYPad, X, Y);
+impl_frameable!(XYPad, X, Y);
+impl_labelable!(XYPad, X, Y);
+impl_positionable!(XYPad, X, Y);
+impl_shapeable!(XYPad, X, Y);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
-::draw::Drawable for XYPadContext<'a, X, Y> {
-    fn draw(&mut self, graphics: &mut Gl) {
+::draw::Drawable for XYPad<'a, X, Y> {
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
 
         // Init.
-        let state = *get_state(self.uic, self.ui_id);
-        let mouse = self.uic.get_mouse_state();
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let state = *get_state(uic, self.ui_id);
+        let mouse = uic.get_mouse_state();
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
@@ -206,8 +196,8 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, rect_state, self.pos,
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        rectangle::draw(uic.win_w, uic.win_h, graphics, rect_state, self.pos,
                         self.dim, maybe_frame, color);
         let (vert_x, hori_y) = match (is_over_pad, new_state) {
             (_, State::Normal) | (_, State::Highlighted) =>
@@ -218,17 +208,17 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
                  clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1])),
         };
         // Crosshair.
-        draw_crosshair(self.uic.win_w, self.uic.win_h, graphics, pad_pos, self.line_width,
+        draw_crosshair(uic.win_w, uic.win_h, graphics, pad_pos, self.line_width,
                        vert_x, hori_y, pad_dim, color.plain_contrast());
         // Label.
         if let Some(l_text) = self.maybe_label {
-            let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
-            let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
-            let l_w = label::width(self.uic, l_size, l_text);
+            let l_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+            let l_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+            let l_w = label::width(uic, l_size, l_text);
             let l_x = pad_pos[0] + (pad_dim[0] - l_w) / 2.0;
             let l_y = pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0;
             let l_pos = [l_x, l_y];
-            self.uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
+            uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
@@ -236,7 +226,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
         let y_string = val_to_string(self.y, self.max_y,
                                      self.max_y - self.min_y, self.dim[1] as usize);
         let xy_string = format!("{}, {}", x_string, y_string);
-        let xy_string_w = label::width(self.uic, self.font_size, xy_string.as_slice());
+        let xy_string_w = label::width(uic, self.font_size, xy_string.as_slice());
         let xy_string_pos = {
             match rectangle::corner(pad_pos, [vert_x, hori_y], pad_dim) {
                 Corner::TopLeft => [vert_x, hori_y],
@@ -245,10 +235,10 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
                 Corner::BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
             }
         };
-        self.uic.draw_text(graphics, xy_string_pos, self.font_size,
+        uic.draw_text(graphics, xy_string_pos, self.font_size,
                     color.plain_contrast(), xy_string.as_slice());
 
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

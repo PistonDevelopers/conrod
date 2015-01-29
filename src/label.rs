@@ -34,9 +34,9 @@ pub trait Labelable<'a> {
     fn label_color(self, color: Color) -> Self;
     fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
     fn label_font_size(self, size: FontSize) -> Self;
-    fn small_font(self) -> Self;
-    fn medium_font(self) -> Self;
-    fn large_font(self) -> Self;
+    fn small_font(self, uic: &UiContext) -> Self;
+    fn medium_font(self, uic: &UiContext) -> Self;
+    fn large_font(self, uic: &UiContext) -> Self;
 }
 
 
@@ -45,32 +45,25 @@ pub trait Labelable<'a> {
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct LabelContext<'a> {
-    uic: &'a mut UiContext,
+pub struct Label<'a> {
     text: &'a str,
     pos: Point,
     size: FontSize,
     maybe_color: Option<Color>,
 }
 
-impl<'a> LabelContext<'a> {
+impl<'a> Label<'a> {
     /// A builder method for specifying font_size.
-    pub fn size(self, size: FontSize) -> LabelContext<'a> {
-        LabelContext { size: size, ..self }
+    pub fn size(self, size: FontSize) -> Label<'a> {
+        Label { size: size, ..self }
     }
 }
 
-pub trait LabelBuilder<'a> {
-    /// A label builder method to be implemented on the UiContext.
-    fn label(&'a mut self, text: &'a str) -> LabelContext<'a>;
-}
-
-impl<'a> LabelBuilder<'a> for UiContext {
+impl<'a> Label<'a> {
 
     /// A label builder method to be implemented on the UiContext.
-    fn label(&'a mut self, text: &'a str) -> LabelContext<'a> {
-        LabelContext {
-            uic: self,
+    pub fn new(text: &'a str) -> Label<'a> {
+        Label {
             text: text,
             pos: [0.0, 0.0],
             size: 24u32,
@@ -80,12 +73,12 @@ impl<'a> LabelBuilder<'a> for UiContext {
 
 }
 
-impl_colorable!(LabelContext,);
-impl_positionable!(LabelContext,);
+impl_colorable!(Label,);
+impl_positionable!(Label,);
 
-impl<'a> ::draw::Drawable for LabelContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a> ::draw::Drawable for Label<'a> {
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
         let color = self.maybe_color.unwrap_or(Color::black());
-        self.uic.draw_text(graphics, self.pos, self.size, color, self.text);
+        uic.draw_text(graphics, self.pos, self.size, color, self.text);
     }
 }

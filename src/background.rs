@@ -6,31 +6,36 @@ use opengl_graphics::Gl;
 use ui_context::UiContext;
 
 /// The context from which we'll draw the background.
-pub struct BackgroundContext<'a> {
-    uic: &'a mut UiContext,
+#[derive(Copy)]
+pub struct Background {
     maybe_color: Option<Color>,
 }
 
-/// A trait to be implemented for the UiContext.
-pub trait BackgroundBuilder {
-    fn background<'a>(&'a mut self) -> BackgroundContext<'a>;
-}
-
-impl BackgroundBuilder for UiContext {
-    fn background<'a>(&'a mut self) -> BackgroundContext<'a> {
-        BackgroundContext {
-            uic: self,
+impl Background {
+    pub fn new() -> Background {
+        Background {
             maybe_color: None,
         }
     }
 }
 
-impl_colorable!(BackgroundContext,);
+// impl_colorable!(Background,);
 
-impl<'a> Drawable for BackgroundContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl ::color::Colorable for Background {
+    #[inline]
+    fn color(self, color: Color) -> Self {
+        Background { maybe_color: Some(color), ..self }
+    }
+    #[inline]
+    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        Background { maybe_color: Some(Color::new(r, g, b, a)), ..self }
+    }
+}
+
+impl Drawable for Background {
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
         let Color(col) = self.maybe_color
-            .unwrap_or(self.uic.theme.background_color);
+            .unwrap_or(uic.theme.background_color);
         graphics::clear(col, graphics);
     }
 }

@@ -26,7 +26,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget::TextBox;
+use widget::Widget;
 use std::cmp;
 
 pub type Idx = usize;
@@ -75,7 +75,7 @@ impl State {
     }
 }
 
-widget_fns!(TextBox, State, TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
+widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
 
 static TEXT_PADDING: f64 = 5f64;
 
@@ -180,8 +180,7 @@ fn draw_cursor(
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct TextBoxContext<'a> {
-    uic: &'a mut UiContext,
+pub struct TextBox<'a> {
     ui_id: UIID,
     text: &'a mut String,
     font_size: u32,
@@ -194,22 +193,16 @@ pub struct TextBoxContext<'a> {
     maybe_frame_color: Option<Color>,
 }
 
-impl<'a> TextBoxContext<'a> {
-    pub fn font_size(self, font_size: FontSize) -> TextBoxContext<'a> {
-        TextBoxContext { font_size: font_size, ..self }
+impl<'a> TextBox<'a> {
+    pub fn font_size(self, font_size: FontSize) -> TextBox<'a> {
+        TextBox { font_size: font_size, ..self }
     }
 }
 
-pub trait TextBoxBuilder<'a> {
-    /// An text box builder method to be implemented by the UiContext.
-    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a>;
-}
-
-impl<'a> TextBoxBuilder<'a> for UiContext {
+impl<'a> TextBox<'a> {
     /// Initialise a TextBoxContext.
-    fn text_box(&'a mut self, ui_id: UIID, text: &'a mut String) -> TextBoxContext<'a> {
-        TextBoxContext {
-            uic: self,
+    pub fn new(ui_id: UIID, text: &'a mut String) -> TextBox<'a> {
+        TextBox {
             ui_id: ui_id,
             text: text,
             font_size: 24u32, // Default font_size.
@@ -224,24 +217,24 @@ impl<'a> TextBoxBuilder<'a> for UiContext {
 }
 
 
-impl_callable!(TextBoxContext, FnMut(&mut String),);
-impl_colorable!(TextBoxContext,);
-impl_frameable!(TextBoxContext,);
-impl_positionable!(TextBoxContext,);
-impl_shapeable!(TextBoxContext,);
+impl_callable!(TextBox, FnMut(&mut String),);
+impl_colorable!(TextBox,);
+impl_frameable!(TextBox,);
+impl_positionable!(TextBox,);
+impl_shapeable!(TextBox,);
 
-impl<'a> ::draw::Drawable for TextBoxContext<'a> {
+impl<'a> ::draw::Drawable for TextBox<'a> {
     #[inline]
-    fn draw(&mut self, graphics: &mut Gl) {
-        let mouse = self.uic.get_mouse_state();
-        let state = *get_state(self.uic, self.ui_id);
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+        let mouse = uic.get_mouse_state();
+        let state = *get_state(uic, self.ui_id);
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         let pad_pos = vec2_add(self.pos, [frame_w; 2]);
@@ -249,31 +242,31 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
         let text_x = pad_pos[0] + TEXT_PADDING;
         let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
         let text_pos = [text_x, text_y];
-        let text_w = label::width(self.uic, self.font_size, self.text.as_slice());
-        let over_elem = over_elem(self.uic, self.pos, mouse.pos, self.dim,
+        let text_w = label::width(uic, self.font_size, self.text.as_slice());
+        let over_elem = over_elem(uic, self.pos, mouse.pos, self.dim,
                                   pad_pos, pad_dim, text_pos, text_w,
                                   self.font_size, self.text.as_slice());
         let new_state = get_new_state(over_elem, state, mouse);
 
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics, new_state.as_rectangle_state(),
+        rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
-        self.uic.draw_text(graphics, text_pos, self.font_size,
+        uic.draw_text(graphics, text_pos, self.font_size,
                            color.plain_contrast(), self.text.as_slice());
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Capturing::Uncaptured => new_state,
             Capturing::Captured(idx, cursor_x) => {
-                draw_cursor(self.uic.win_w, self.uic.win_h, graphics, color,
+                draw_cursor(uic.win_w, uic.win_h, graphics, color,
                             cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
                 let mut new_cursor_x = cursor_x;
 
                 // Check for entered text.
-                let entered_text = self.uic.get_entered_text();
+                let entered_text = uic.get_entered_text();
                 for t in entered_text.iter() {
                     let mut entered_text_width = 0f64;
                     for ch in t.as_slice().chars() {
-                        let c = self.uic.get_character(self.font_size, ch);
+                        let c = uic.get_character(self.font_size, ch);
                         entered_text_width += c.width();
                     }
                     if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
@@ -289,7 +282,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                 }
 
                 // Check for control keys.
-                let pressed_keys = self.uic.get_pressed_keys();
+                let pressed_keys = uic.get_pressed_keys();
                 for key in pressed_keys.iter() {
                     match *key {
                         Backspace => {
@@ -297,7 +290,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                             && self.text.len() >= idx
                             && idx > 0us {
                                 let rem_idx = idx - 1us;
-                                new_cursor_x -= self.uic.get_character_w(
+                                new_cursor_x -= uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(rem_idx)
                                 );
                                 let new_text = format!("{}{}",
@@ -309,7 +302,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                         },
                         Left => {
                             if idx > 0 {
-                                new_cursor_x -= self.uic.get_character_w(
+                                new_cursor_x -= uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(idx - 1us)
                                 );
                                 new_idx -= 1us;
@@ -317,16 +310,15 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
                         },
                         Right => {
                             if self.text.len() > idx {
-                                new_cursor_x += self.uic.get_character_w(
+                                new_cursor_x += uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(idx)
                                 );
                                 new_idx += 1us;
                             }
                         },
                         Return => if self.text.len() > 0us {
-                            let TextBoxContext { // borrowck
+                            let TextBox { // borrowck
                                 ref mut maybe_callback,
-                                ref mut uic,
                                 ref font_size,
                                 ref mut text,
                                 ..
@@ -354,7 +346,7 @@ impl<'a> ::draw::Drawable for TextBoxContext<'a> {
             },
         }};
 
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

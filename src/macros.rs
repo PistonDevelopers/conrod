@@ -108,18 +108,18 @@ macro_rules! impl_labelable(
                 $context { maybe_label_font_size: Some(size), ..self }
             }
             #[inline]
-            fn small_font(self) -> $context<'a $(, $t)*> {
-                let size = self.uic.theme.font_size_small;
+            fn small_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
+                let size = uic.theme.font_size_small;
                 $context { maybe_label_font_size: Some(size), ..self }
             }
             #[inline]
-            fn medium_font(self) -> $context<'a $(, $t)*> {
-                let size = self.uic.theme.font_size_medium;
+            fn medium_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
+                let size = uic.theme.font_size_medium;
                 $context { maybe_label_font_size: Some(size), ..self }
             }
             #[inline]
-            fn large_font(self) -> $context<'a $(, $t)*> {
-                let size = self.uic.theme.font_size_large;
+            fn large_font(self, uic: &UiContext) -> $context<'a $(, $t)*> {
+                let size = uic.theme.font_size_large;
                 $context { maybe_label_font_size: Some(size), ..self }
             }
         }
@@ -142,44 +142,44 @@ macro_rules! impl_positionable(
             }
 
             #[inline]
-            fn down(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).down(padding);
+            fn down(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uic.get_prev_uiid()).down(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn up(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).up(padding);
+            fn up(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uic.get_prev_uiid()).up(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn left(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).left(padding);
+            fn left(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uic.get_prev_uiid()).left(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn right(self, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(self.uic.get_prev_uiid()).right(padding);
+            fn right(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uic.get_prev_uiid()).right(padding);
                 $context { pos: [x, y], ..self }
             }
 
             #[inline]
-            fn down_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).down(padding);
+            fn down_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uiid).down(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn up_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).up(padding);
+            fn up_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uiid).up(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn left_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).left(padding);
+            fn left_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uiid).left(padding);
                 $context { pos: [x, y], ..self }
             }
             #[inline]
-            fn right_from(self, uiid: u64, padding: f64) -> $context<'a $(,$t)*> {
-                let (x, y) = self.uic.get_placing(uiid).right(padding);
+            fn right_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
+                let (x, y) = uic.get_placing(uiid).right(padding);
                 $context { pos: [x, y], ..self }
             }
 
