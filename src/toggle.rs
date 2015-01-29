@@ -17,6 +17,7 @@ use LabelText;
 use LabelColor;
 use LabelFontSize;
 use Position;
+use Size;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -93,6 +94,7 @@ impl<'a> Toggle<'a> {
 quack! {
     toggle: Toggle['a]
     get:
+        fn () -> Size { Size(toggle.dim) }
     set:
         fn (val: Color) { toggle.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(bool) + 'a>>) {
@@ -104,10 +106,9 @@ quack! {
         fn (val: LabelColor) { toggle.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { toggle.maybe_label_font_size = Some(val.0) }
         fn (val: Position) { toggle.pos = val.0 }
+        fn (val: Size) { toggle.dim = val.0 }
     action:
 }
-
-impl_shapeable!(Toggle,);
 
 impl<'a> ::draw::Drawable for Toggle<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {

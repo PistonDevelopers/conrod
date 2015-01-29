@@ -26,6 +26,7 @@ use LabelText;
 use LabelColor;
 use LabelFontSize;
 use Position;
+use Size;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -107,6 +108,7 @@ Slider<'a, T> {
 quack! {
     slider: Slider['a, T]
     get:
+        fn () -> Size { Size(slider.dim) }
     set:
         fn (val: Color) { slider.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {
@@ -118,10 +120,9 @@ quack! {
         fn (val: LabelColor) { slider.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { slider.maybe_label_font_size = Some(val.0) }
         fn (val: Position) { slider.pos = val.0 }
+        fn (val: Size) { slider.dim = val.0 }
     action:
 }
-
-impl_shapeable!(Slider, T);
 
 impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for Slider<'a, T> {

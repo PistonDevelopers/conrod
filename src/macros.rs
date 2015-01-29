@@ -38,27 +38,3 @@ macro_rules! widget_fns(
 
     )
 );
-
-/// Simplify implementation of the `Shapeable` trait.
-macro_rules! impl_shapeable(
-    ($context:ident, $($t:ident),*) => (
-        impl<'a $(, $t)*> ::shape::Shapeable for $context<'a $(, $t)*> {
-            #[inline]
-            fn dimensions(self, width: f64, height: f64) -> $context<'a $(, $t)*> {
-                $context { dim: [width, height], ..self }
-            }
-            #[inline]
-            fn dim(self, dim: ::dimensions::Dimensions) -> $context<'a $(, $t)*> {
-                $context { dim: dim, ..self }
-            }
-            #[inline]
-            fn width(self, width: f64) -> $context<'a $(, $t)*> {
-                $context { dim: [width, self.dim[1]], ..self }
-            }
-            #[inline]
-            fn height(self, height: f64) -> $context<'a $(, $t)*> {
-                $context { dim: [self.dim[0], height], ..self }
-            }
-        }
-    )
-);

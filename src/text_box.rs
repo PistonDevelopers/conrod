@@ -32,6 +32,7 @@ use Callback;
 use FrameColor;
 use FrameWidth;
 use Position;
+use Size;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -223,6 +224,7 @@ impl<'a> TextBox<'a> {
 quack! {
     tb: TextBox['a]
     get:
+        fn () -> Size { Size(tb.dim) }
     set:
         fn (val: Color) { tb.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
@@ -231,10 +233,9 @@ quack! {
         fn (val: FrameColor) { tb.maybe_frame_color = Some(val.0) }
         fn (val: FrameWidth) { tb.maybe_frame = Some(val.0) }
         fn (val: Position) { tb.pos = val.0 }
+        fn (val: Size) { tb.dim = val.0 }
     action:
 }
-
-impl_shapeable!(TextBox,);
 
 impl<'a> ::draw::Drawable for TextBox<'a> {
     #[inline]
