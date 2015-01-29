@@ -324,8 +324,15 @@ NumberDialer<'a, T> {
     }
 }
 
+quack! {
+    nd: NumberDialer['a, T]
+    get:
+    set:
+        fn (val: Color) { nd.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(NumberDialer, FnMut(T), T);
-impl_colorable!(NumberDialer, T);
 impl_frameable!(NumberDialer, T);
 impl_labelable!(NumberDialer, T);
 impl_positionable!(NumberDialer, T);

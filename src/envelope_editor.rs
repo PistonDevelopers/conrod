@@ -262,8 +262,15 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
+quack! {
+    env: EnvelopeEditor['a, X, Y, E]
+    get:
+    set:
+        fn (val: Color) { env.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(EnvelopeEditor, FnMut(&mut Vec<E>, usize), X, Y, E);
-impl_colorable!(EnvelopeEditor, X, Y, E);
 impl_frameable!(EnvelopeEditor, X, Y, E);
 impl_labelable!(EnvelopeEditor, X, Y, E);
 impl_positionable!(EnvelopeEditor, X, Y, E);

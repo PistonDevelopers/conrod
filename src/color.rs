@@ -11,6 +11,7 @@ use rustc_serialize::{
     DecoderHelpers, EncoderHelpers
 };
 use utils::clampf32;
+use piston::quack::{ Pair, Set, SetAt };
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
@@ -308,4 +309,14 @@ pub trait Colorable {
     fn color(self, color: Color) -> Self;
     /// A method used for passing color as rgba.
     fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+}
+
+impl<T> Colorable for T
+    where
+        (Color, T): Pair<Data = Color, Object = T> + SetAt
+{
+    fn color(self, color: Color) -> Self { self.set(color) }
+    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.set(Color([r, g, b, a]))
+    }
 }

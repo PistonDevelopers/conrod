@@ -97,8 +97,15 @@ Slider<'a, T> {
     }
 }
 
+quack! {
+    slider: Slider['a, T]
+    get:
+    set:
+        fn (val: Color) { slider.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(Slider, FnMut(T), T);
-impl_colorable!(Slider, T);
 impl_frameable!(Slider, T);
 impl_labelable!(Slider, T);
 impl_positionable!(Slider, T);

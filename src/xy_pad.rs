@@ -142,8 +142,15 @@ XYPad<'a, X, Y> {
     }
 }
 
+quack! {
+    xy_pad: XYPad['a, X, Y]
+    get:
+    set:
+        fn (val: Color) { xy_pad.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(XYPad, FnMut(X, Y), X, Y);
-impl_colorable!(XYPad, X, Y);
 impl_frameable!(XYPad, X, Y);
 impl_labelable!(XYPad, X, Y);
 impl_positionable!(XYPad, X, Y);

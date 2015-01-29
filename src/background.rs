@@ -19,17 +19,12 @@ impl Background {
     }
 }
 
-// impl_colorable!(Background,);
-
-impl ::color::Colorable for Background {
-    #[inline]
-    fn color(self, color: Color) -> Self {
-        Background { maybe_color: Some(color), ..self }
-    }
-    #[inline]
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        Background { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-    }
+quack! {
+    bg: Background[]
+    get:
+    set:
+        fn (val: Color) { bg.maybe_color = Some(val) }
+    action:
 }
 
 impl Drawable for Background {

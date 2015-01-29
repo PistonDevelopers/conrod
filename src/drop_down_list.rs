@@ -159,8 +159,15 @@ impl<'a> DropDownList<'a> {
     }
 }
 
+quack! {
+    list: DropDownList['a]
+    get:
+    set:
+        fn (val: Color) { list.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(DropDownList, FnMut(&mut Option<Idx>, Idx, String),);
-impl_colorable!(DropDownList,);
 impl_frameable!(DropDownList,);
 impl_labelable!(DropDownList,);
 impl_positionable!(DropDownList,);

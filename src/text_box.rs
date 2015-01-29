@@ -216,9 +216,15 @@ impl<'a> TextBox<'a> {
     }
 }
 
+quack! {
+    tb: TextBox['a]
+    get:
+    set:
+        fn (val: Color) { tb.maybe_color = Some(val) }
+    action:
+}
 
 impl_callable!(TextBox, FnMut(&mut String),);
-impl_colorable!(TextBox,);
 impl_frameable!(TextBox,);
 impl_positionable!(TextBox,);
 impl_shapeable!(TextBox,);
