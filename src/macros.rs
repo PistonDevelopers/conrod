@@ -39,26 +39,6 @@ macro_rules! widget_fns(
     )
 );
 
-/// Simplify implementation of the `Frameable` trait.
-macro_rules! impl_frameable(
-    ($context:ident, $($t:ident),*) => (
-        impl<'a $(, $t)*> ::frame::Frameable for $context<'a $(, $t)*> {
-            #[inline]
-            fn frame(self, width: f64) -> $context<'a $(, $t)*> {
-                $context { maybe_frame: Some(width), ..self }
-            }
-            #[inline]
-            fn frame_color(self, color: ::color::Color) -> $context<'a $(, $t)*> {
-                $context { maybe_frame_color: Some(color), ..self }
-            }
-            #[inline]
-            fn frame_rgba(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a $(, $t)*> {
-                $context { maybe_frame_color: Some(::color::Color::new(r, g, b, a)), ..self }
-            }
-        }
-    )
-);
-
 /// Simplify implementation of the `Labelable` trait.
 macro_rules! impl_labelable(
     ($context:ident, $($t:ident),*) => (

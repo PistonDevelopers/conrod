@@ -31,6 +31,8 @@ use vecmath::{
 };
 use widget::Widget;
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Show, PartialEq, Clone, Copy)]
@@ -151,10 +153,11 @@ quack! {
         fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {
             xy_pad.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { xy_pad.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { xy_pad.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(XYPad, X, Y);
 impl_labelable!(XYPad, X, Y);
 impl_positionable!(XYPad, X, Y);
 impl_shapeable!(XYPad, X, Y);

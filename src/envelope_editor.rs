@@ -33,6 +33,8 @@ use vecmath::{
     vec2_sub
 };
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -271,10 +273,11 @@ quack! {
         fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {
             env.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { env.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { env.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(EnvelopeEditor, X, Y, E);
 impl_labelable!(EnvelopeEditor, X, Y, E);
 impl_positionable!(EnvelopeEditor, X, Y, E);
 impl_shapeable!(EnvelopeEditor, X, Y, E);

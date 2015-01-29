@@ -29,7 +29,7 @@ pub use callback::{ Callable, Callback };
 pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;
-pub use frame::{Framing, Frameable};
+pub use frame::{Framing, Frameable, FrameColor, FrameWidth};
 pub use label::Labelable;
 pub use point::Point;
 pub use position::Positionable;

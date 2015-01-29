@@ -11,6 +11,8 @@ use ui_context::{
 use vecmath::vec2_add;
 use widget::Widget;
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -168,10 +170,11 @@ quack! {
         fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {
             list.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { list.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { list.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(DropDownList,);
 impl_labelable!(DropDownList,);
 impl_positionable!(DropDownList,);
 impl_shapeable!(DropDownList,);
