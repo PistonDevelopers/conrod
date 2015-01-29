@@ -233,8 +233,8 @@ fn draw_value_string(
     font_color: Color,
     string: &str
 ) {
-    let mut x = 0.0;
-    let y = 0.0;
+    let mut x = 0.0f64;
+    let y = 0.0f64;
     let Color(font_col) = font_color;
     let context = Context::abs(win_w, win_h).trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;

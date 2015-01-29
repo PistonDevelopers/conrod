@@ -6,7 +6,7 @@ use rustc_serialize::{
     Decodable,
 };
 use std::error::Error;
-use std::io::File;
+use std::old_io::File;
 use std::str;
 use std::borrow::ToOwned;
 use ui_context::UiContext;
@@ -70,7 +70,7 @@ impl Theme {
                 Err(e) => return Err(e.description().to_owned())
             };
         let mut file = File::create(&Path::new(path));
-        match file.write(json_string.as_bytes()) {
+        match file.write_all(json_string.as_bytes()) {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
         }
@@ -86,4 +86,3 @@ pub trait Themeable {
     /// Return a reference to the UiContext.
     fn get_theme_mut(&mut self) -> &mut UiContext;
 }
-

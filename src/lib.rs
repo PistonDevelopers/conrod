@@ -3,7 +3,8 @@
 #![deny(missing_copy_implementations)]
 #![allow(unstable)]
 
-#[macro_use] extern crate bitflags;
+#[macro_use]
+extern crate bitflags;
 extern crate input;
 extern crate event;
 extern crate freetype;
@@ -12,6 +13,7 @@ extern crate opengl_graphics;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate clock_ticks;
 extern crate vecmath;
+#[macro_use]
 extern crate quack;
 
 pub use background::Background;
