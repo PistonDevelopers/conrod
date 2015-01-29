@@ -32,7 +32,7 @@ pub use draw::Drawable;
 pub use frame::{Framing, Frameable, FrameColor, FrameWidth};
 pub use label::{Labelable, LabelText, LabelColor, LabelFontSize};
 pub use point::Point;
-pub use position::Positionable;
+pub use position::{Positionable, Position};
 pub use shape::Shapeable;
 pub use theme::Theme;
 pub use ui_context::UiContext;

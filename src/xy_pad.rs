@@ -36,6 +36,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Show, PartialEq, Clone, Copy)]
@@ -161,10 +162,10 @@ quack! {
         fn (val: LabelText<'a>) { xy_pad.maybe_label = Some(val.0) }
         fn (val: LabelColor) { xy_pad.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { xy_pad.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { xy_pad.pos = val.0 }
     action:
 }
 
-impl_positionable!(XYPad, X, Y);
 impl_shapeable!(XYPad, X, Y);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,

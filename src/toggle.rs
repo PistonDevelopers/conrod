@@ -16,6 +16,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -102,10 +103,10 @@ quack! {
         fn (val: LabelText<'a>) { toggle.maybe_label = Some(val.0) }
         fn (val: LabelColor) { toggle.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { toggle.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { toggle.pos = val.0 }
     action:
 }
 
-impl_positionable!(Toggle,);
 impl_shapeable!(Toggle,);
 
 impl<'a> ::draw::Drawable for Toggle<'a> {

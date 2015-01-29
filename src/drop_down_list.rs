@@ -16,6 +16,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -178,10 +179,10 @@ quack! {
         fn (val: LabelText<'a>) { list.maybe_label = Some(val.0) }
         fn (val: LabelColor) { list.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { list.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { list.pos = val.0 }
     action:
 }
 
-impl_positionable!(DropDownList,);
 impl_shapeable!(DropDownList,);
 
 impl<'a> ::draw::Drawable for DropDownList<'a> {

@@ -38,6 +38,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -281,10 +282,10 @@ quack! {
         fn (val: LabelText<'a>) { env.maybe_label = Some(val.0) }
         fn (val: LabelColor) { env.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { env.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { env.pos = val.0 }
     action:
 }
 
-impl_positionable!(EnvelopeEditor, X, Y, E);
 impl_shapeable!(EnvelopeEditor, X, Y, E);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,

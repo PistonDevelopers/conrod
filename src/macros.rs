@@ -39,67 +39,6 @@ macro_rules! widget_fns(
     )
 );
 
-/// Simplify implementation of the `Positionable` trait.
-macro_rules! impl_positionable(
-    ($context:ident, $($t:ident),*) => (
-        impl<'a $(,$t)*> ::position::Positionable for $context<'a $(,$t)*> {
-
-            #[inline]
-            fn point(self, pos: Point) -> $context<'a $(,$t)*> {
-                $context { pos: pos, ..self }
-            }
-
-            #[inline]
-            fn position(self, x: f64, y: f64) -> $context<'a $(,$t)*> {
-                $context { pos: [x, y], ..self }
-            }
-
-            #[inline]
-            fn down(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uic.get_prev_uiid()).down(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn up(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uic.get_prev_uiid()).up(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn left(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uic.get_prev_uiid()).left(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn right(self, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uic.get_prev_uiid()).right(padding);
-                $context { pos: [x, y], ..self }
-            }
-
-            #[inline]
-            fn down_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uiid).down(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn up_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uiid).up(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn left_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uiid).left(padding);
-                $context { pos: [x, y], ..self }
-            }
-            #[inline]
-            fn right_from(self, uiid: u64, padding: f64, uic: &UiContext) -> $context<'a $(,$t)*> {
-                let (x, y) = uic.get_placing(uiid).right(padding);
-                $context { pos: [x, y], ..self }
-            }
-
-        }
-    )
-);
-
 /// Simplify implementation of the `Shapeable` trait.
 macro_rules! impl_shapeable(
     ($context:ident, $($t:ident),*) => (
