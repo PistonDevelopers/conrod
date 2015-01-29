@@ -29,6 +29,9 @@ use widget::Widget;
 use Callback;
 use FrameColor;
 use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -337,10 +340,12 @@ quack! {
         }
         fn (val: FrameColor) { nd.maybe_frame_color = Some(val.0) }
         fn (val: FrameWidth) { nd.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { nd.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { nd.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { nd.maybe_label_font_size = Some(val.0) }
     action:
 }
 
-impl_labelable!(NumberDialer, T);
 impl_positionable!(NumberDialer, T);
 impl_shapeable!(NumberDialer, T);
 

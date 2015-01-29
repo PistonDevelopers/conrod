@@ -13,6 +13,9 @@ use widget::Widget;
 use Callback;
 use FrameColor;
 use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -172,10 +175,12 @@ quack! {
         }
         fn (val: FrameColor) { list.maybe_frame_color = Some(val.0) }
         fn (val: FrameWidth) { list.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { list.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { list.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { list.maybe_label_font_size = Some(val.0) }
     action:
 }
 
-impl_labelable!(DropDownList,);
 impl_positionable!(DropDownList,);
 impl_shapeable!(DropDownList,);
 

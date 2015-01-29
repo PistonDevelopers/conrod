@@ -1,4 +1,4 @@
-
+use piston::quack::{ Pair, Set, SetAt };
 use color::Color;
 use opengl_graphics::Gl;
 use point::Point;
@@ -39,9 +39,52 @@ pub trait Labelable<'a> {
     fn large_font(self, uic: &UiContext) -> Self;
 }
 
+/// Label text property.
+#[derive(Copy)]
+pub struct LabelText<'a>(pub &'a str);
 
+/// Label color property.
+#[derive(Copy)]
+pub struct LabelColor(pub Color);
 
+/// Label font size property.
+#[derive(Copy)]
+pub struct LabelFontSize(pub FontSize);
 
+impl<'a, T: 'a> Labelable<'a> for T
+    where
+        (LabelText<'a>, T): Pair<Data = LabelText<'a>, Object = T> + SetAt,
+        (LabelColor, T): Pair<Data = LabelColor, Object = T> + SetAt,
+        (LabelFontSize, T): Pair<Data = LabelFontSize, Object = T> + SetAt
+{
+    fn label(self, text: &'a str) -> Self {
+        self.set(LabelText(text))
+    }
+
+    fn label_color(self, color: Color) -> Self {
+        self.set(LabelColor(color))
+    }
+
+    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.set(LabelColor(Color([r, g, b, a])))
+    }
+
+    fn label_font_size(self, size: FontSize) -> Self {
+        self.set(LabelFontSize(size))
+    }
+
+    fn small_font(self, uic: &UiContext) -> Self {
+        self.set(LabelFontSize(uic.theme.font_size_small))
+    }
+
+    fn medium_font(self, uic: &UiContext) -> Self {
+        self.set(LabelFontSize(uic.theme.font_size_medium))
+    }
+
+    fn large_font(self, uic: &UiContext) -> Self {
+        self.set(LabelFontSize(uic.theme.font_size_large))
+    }
+}
 
 
 /// A context on which the builder pattern can be implemented.

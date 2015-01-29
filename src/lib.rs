@@ -30,7 +30,7 @@ pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;
 pub use frame::{Framing, Frameable, FrameColor, FrameWidth};
-pub use label::Labelable;
+pub use label::{Labelable, LabelText, LabelColor, LabelFontSize};
 pub use point::Point;
 pub use position::Positionable;
 pub use shape::Shapeable;
