@@ -82,8 +82,15 @@ impl<'a> Button<'a> {
 
 }
 
+quack! {
+    button: Button['a]
+    get:
+    set:
+        fn (val: Color) { button.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(Button, FnMut(),);
-impl_colorable!(Button,);
 impl_frameable!(Button,);
 impl_labelable!(Button,);
 impl_positionable!(Button,);

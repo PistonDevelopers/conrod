@@ -73,7 +73,14 @@ impl<'a> Label<'a> {
 
 }
 
-impl_colorable!(Label,);
+quack! {
+    label: Label['a]
+    get:
+    set:
+        fn (val: Color) { label.maybe_color = Some(val) }
+    action:
+}
+
 impl_positionable!(Label,);
 
 impl<'a> ::draw::Drawable for Label<'a> {

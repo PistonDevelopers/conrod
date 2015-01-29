@@ -83,8 +83,15 @@ impl<'a> Toggle<'a> {
 
 }
 
+quack! {
+    toggle: Toggle['a]
+    get:
+    set:
+        fn (val: Color) { toggle.maybe_color = Some(val) }
+    action:
+}
+
 impl_callable!(Toggle, FnMut(bool),);
-impl_colorable!(Toggle,);
 impl_frameable!(Toggle,);
 impl_labelable!(Toggle,);
 impl_positionable!(Toggle,);

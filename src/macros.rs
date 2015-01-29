@@ -51,22 +51,6 @@ macro_rules! impl_callable(
     )
 );
 
-/// Simplify implementation of the `Colorable` trait.
-macro_rules! impl_colorable(
-    ($context:ident, $($t:ident),*) => (
-        impl<'a $(, $t)*> ::color::Colorable for $context<'a $(, $t)*> {
-            #[inline]
-            fn color(self, color: Color) -> $context<'a $(, $t)*> {
-                $context { maybe_color: Some(color), ..self }
-            }
-            #[inline]
-            fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> $context<'a $(, $t)*> {
-                $context { maybe_color: Some(Color::new(r, g, b, a)), ..self }
-            }
-        }
-    )
-);
-
 /// Simplify implementation of the `Frameable` trait.
 macro_rules! impl_frameable(
     ($context:ident, $($t:ident),*) => (

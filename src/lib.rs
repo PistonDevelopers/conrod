@@ -4,7 +4,7 @@
 #![feature(core, collections, io, path, std_misc, rand)]
 
 #[macro_use] extern crate bitflags;
-extern crate piston;
+#[macro_use] extern crate piston;
 extern crate freetype;
 extern crate graphics;
 extern crate opengl_graphics;
