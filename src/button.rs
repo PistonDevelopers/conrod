@@ -48,8 +48,7 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct ButtonContext<'a> {
-    uic: &'a mut UiContext,
+pub struct Button<'a> {
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
@@ -63,17 +62,11 @@ pub struct ButtonContext<'a> {
     maybe_callback: Option<Box<FnMut() + 'a>>,
 }
 
-pub trait ButtonBuilder<'a> {
-    /// A button builder method to be implemented by the UiContext.
-    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a>;
-}
-
-impl<'a> ButtonBuilder<'a> for UiContext {
+impl<'a> Button<'a> {
 
     /// Create a button context to be built upon.
-    fn button(&'a mut self, ui_id: UIID) -> ButtonContext<'a> {
-        ButtonContext {
-            uic: self,
+    pub fn new(ui_id: UIID) -> Button<'a> {
+        Button {
             ui_id: ui_id,
             pos: [0.0, 0.0],
             dim: [64.0, 64.0],
@@ -89,18 +82,18 @@ impl<'a> ButtonBuilder<'a> for UiContext {
 
 }
 
-impl_callable!(ButtonContext, FnMut(),);
-impl_colorable!(ButtonContext,);
-impl_frameable!(ButtonContext,);
-impl_labelable!(ButtonContext,);
-impl_positionable!(ButtonContext,);
-impl_shapeable!(ButtonContext,);
+impl_callable!(Button, FnMut(),);
+impl_colorable!(Button,);
+impl_frameable!(Button,);
+impl_labelable!(Button,);
+impl_positionable!(Button,);
+impl_shapeable!(Button,);
 
-impl<'a> ::draw::Drawable for ButtonContext<'a> {
-    fn draw(&mut self, graphics: &mut Gl) {
+impl<'a> ::draw::Drawable for Button<'a> {
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
 
-        let state = *get_state(self.uic, self.ui_id);
-        let mouse = self.uic.get_mouse_state();
+        let state = *get_state(uic, self.ui_id);
+        let mouse = uic.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 
@@ -113,31 +106,31 @@ impl<'a> ::draw::Drawable for ButtonContext<'a> {
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         match self.maybe_label {
             None => {
                 rectangle::draw(
-                    self.uic.win_w, self.uic.win_h, graphics, rect_state, self.pos,
+                    uic.win_w, uic.win_h, graphics, rect_state, self.pos,
                     self.dim, maybe_frame, color
                 )
             },
             Some(text) => {
-                let text_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
-                let size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
+                let text_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
                 rectangle::draw_with_centered_label(
-                    self.uic.win_w, self.uic.win_h, graphics, self.uic, rect_state,
+                    uic.win_w, uic.win_h, graphics, uic, rect_state,
                     self.pos, self.dim, maybe_frame, color,
                     text, size, text_color
                 )
             },
         }
 
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

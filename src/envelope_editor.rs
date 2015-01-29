@@ -28,7 +28,7 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::Widget::EnvelopeEditor;
+use widget::Widget;
 use vecmath::{
     vec2_add,
     vec2_sub
@@ -76,7 +76,7 @@ impl State {
     }
 }
 
-widget_fns!(EnvelopeEditor, State, EnvelopeEditor(State::Normal));
+widget_fns!(EnvelopeEditor, State, Widget::EnvelopeEditor(State::Normal));
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
@@ -195,8 +195,7 @@ fn draw_circle(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
-    uic: &'a mut UiContext,
+pub struct EnvelopeEditor<'a, X, Y, E:'a> {
     ui_id: UIID,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
@@ -217,42 +216,32 @@ pub struct EnvelopeEditorContext<'a, X, Y, E:'a> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a, X, Y, E> EnvelopeEditorContext<'a, X, Y, E> {
+impl<'a, X, Y, E> EnvelopeEditor<'a, X, Y, E> {
     #[inline]
-    pub fn point_radius(self, radius: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { pt_radius: radius, ..self }
+    pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, X, Y, E> {
+        EnvelopeEditor { pt_radius: radius, ..self }
     }
     #[inline]
-    pub fn line_width(self, width: f64) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { line_width: width, ..self }
+    pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, X, Y, E> {
+        EnvelopeEditor { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { font_size: size, ..self }
+    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, X, Y, E> {
+        EnvelopeEditor { font_size: size, ..self }
     }
     #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext { skew_y_range: skew, ..self }
+    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, X, Y, E> {
+        EnvelopeEditor { skew_y_range: skew, ..self }
     }
-}
-
-pub trait EnvelopeEditorBuilder
-<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-     E: EnvelopePoint<X, Y>> {
-    /// An envelope editor builder method to be implemented by the UiContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E>;
 }
 
 impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
           Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          E: EnvelopePoint<X, Y>> EnvelopeEditorBuilder<'a, X, Y, E> for UiContext {
+          E: EnvelopePoint<X, Y>> EnvelopeEditor<'a, X, Y, E> {
     /// An envelope editor builder method to be implemented by the UiContext.
-    fn envelope_editor(&'a mut self, ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditorContext<'a, X, Y, E> {
-        EnvelopeEditorContext {
-            uic: self,
+    pub fn new(ui_id: UIID, env: &'a mut Vec<E>,
+                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditor<'a, X, Y, E> {
+        EnvelopeEditor {
             ui_id: ui_id,
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).
@@ -274,31 +263,31 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditorContext, FnMut(&mut Vec<E>, usize), X, Y, E);
-impl_colorable!(EnvelopeEditorContext, X, Y, E);
-impl_frameable!(EnvelopeEditorContext, X, Y, E);
-impl_labelable!(EnvelopeEditorContext, X, Y, E);
-impl_positionable!(EnvelopeEditorContext, X, Y, E);
-impl_shapeable!(EnvelopeEditorContext, X, Y, E);
+impl_callable!(EnvelopeEditor, FnMut(&mut Vec<E>, usize), X, Y, E);
+impl_colorable!(EnvelopeEditor, X, Y, E);
+impl_frameable!(EnvelopeEditor, X, Y, E);
+impl_labelable!(EnvelopeEditor, X, Y, E);
+impl_positionable!(EnvelopeEditor, X, Y, E);
+impl_shapeable!(EnvelopeEditor, X, Y, E);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditorContext<'a, X, Y, E> {
+         E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E> {
     #[inline]
-    fn draw(&mut self, graphics: &mut Gl) {
-        let state = *get_state(self.uic, self.ui_id);
-        let mouse = self.uic.get_mouse_state();
+    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+        let state = *get_state(uic, self.ui_id);
+        let mouse = uic.get_mouse_state();
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
         let pt_radius = self.pt_radius;
         let font_size = self.font_size;
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(self.uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(self.uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(self.uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
             false => None,
         };
         let pad_pos = vec2_add(self.pos, [frame_w; 2]);
@@ -320,18 +309,18 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         let new_state = get_new_state(is_over_elem, state, mouse);
 
         // Draw rect.
-        rectangle::draw(self.uic.win_w, self.uic.win_h, graphics,
+        rectangle::draw(uic.win_w, uic.win_h, graphics,
                         new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
         if let Some(l_text) = self.maybe_label {
-            let l_size = self.maybe_label_font_size.unwrap_or(self.uic.theme.font_size_medium);
-            let l_color = self.maybe_label_color.unwrap_or(self.uic.theme.label_color);
-            let l_w = label::width(self.uic, l_size, l_text);
+            let l_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+            let l_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+            let l_w = label::width(uic, l_size, l_text);
             let l_pos = [pad_pos[0] + (pad_dim[0] - l_w) / 2.0,
                          pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0];
-            self.uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
+            uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
         };
 
         // Draw the envelope lines.
@@ -347,7 +336,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
-                    let context = Context::abs(self.uic.win_w, self.uic.win_h);
+                    let context = Context::abs(uic.win_w, uic.win_h);
                     line.draw([p_a[0], p_a[1], p_b[0], p_b[1]], &context, graphics);
                 }
             },
@@ -405,7 +394,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                         let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
                         let p_pos_x_clamped = clamp(p_pos[0], left_pixel_bound, right_pixel_bound);
                         let p_pos_y_clamped = clamp(p_pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
-                        draw_env_pt(self.uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
+                        draw_env_pt(uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
                         Some(idx)
                     },
                     // Otherwise, draw the closest point.
@@ -414,7 +403,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
                             match *closest_elem {
                                 Element::EnvPoint(closest_idx, closest_env_pt) => {
                                     let closest_env_pt = [closest_env_pt.0, closest_env_pt.1];
-                                    draw_env_pt(self.uic, self.env, closest_idx, closest_env_pt);
+                                    draw_env_pt(uic, self.env, closest_idx, closest_env_pt);
                                 },
                                 _ => (),
                             }
@@ -550,7 +539,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         }
 
         // Set the new state.
-        set_state(self.uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
 
     }
 }

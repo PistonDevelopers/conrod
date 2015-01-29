@@ -1,6 +1,7 @@
 
 #![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
+#![allow(unstable)]
 
 #[macro_use] extern crate bitflags;
 extern crate input;
@@ -12,18 +13,18 @@ extern crate "rustc-serialize" as rustc_serialize;
 extern crate clock_ticks;
 extern crate vecmath;
 
-pub use background::BackgroundBuilder as Background;
-pub use button::ButtonBuilder as Button;
-pub use drop_down_list::DropDownListBuilder as DropDownList;
-pub use envelope_editor::EnvelopeEditorBuilder as EnvelopeEditor;
+pub use background::Background;
+pub use button::Button;
+pub use drop_down_list::DropDownList;
+pub use envelope_editor::EnvelopeEditor;
 pub use envelope_editor::EnvelopePoint;
-pub use label::LabelBuilder as Label;
-pub use number_dialer::NumberDialerBuilder as NumberDialer;
-pub use slider::SliderBuilder as Slider;
-pub use text_box::TextBoxBuilder as TextBox;
-pub use toggle::ToggleBuilder as Toggle;
-pub use widget_matrix::WidgetMatrixBuilder as WidgetMatrix;
-pub use xy_pad::XYPadBuilder as XYPad;
+pub use label::Label;
+pub use number_dialer::NumberDialer;
+pub use slider::Slider;
+pub use text_box::TextBox;
+pub use toggle::Toggle;
+pub use widget_matrix::WidgetMatrix;
+pub use xy_pad::XYPad;
 
 pub use callback::Callable;
 pub use color::{Color, Colorable};
