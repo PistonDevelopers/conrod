@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::fmt::Show;
 use std::num::Float;
 use std::num::ToPrimitive;
 use std::num::FromPrimitive;

@@ -18,13 +18,9 @@ homepage = "https://github.com/pistondevelopers/conrod"
 name = "conrod"
 path = "./src/lib.rs"
 
-[dependencies.pistoncore-input]
-git = "https://github.com/PistonDevelopers/input/"
-#version = "0.0.5"
-
-[dependencies.pistoncore-event]
-git = "https://github.com/PistonDevelopers/event"
-#version = "0.0.5"
+[dependencies.piston]
+git = "https://github.com/PistonDevelopers/piston/"
+#version = "0.0.0"
 
 [dependencies.piston2d-graphics]
 git = "https://github.com/PistonDevelopers/graphics.git"
@@ -38,10 +34,6 @@ git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 git = "https://github.com/PistonDevelopers/freetype-rs.git"
 #version = "0.0.3"
 
-[dependencies.quack]
-git = "https://github.com/PistonDevelopers/quack"
-#version = "0.0.2"
-
 [dependencies.vecmath]
 git = "https://github.com/PistonDevelopers/vecmath.git"
 #version = "0.0.3"
@@ -49,10 +41,6 @@ git = "https://github.com/PistonDevelopers/vecmath.git"
 [dev-dependencies.pistoncore-sdl2_window]
 git = "https://github.com/PistonDevelopers/sdl2_window.git"
 #version = "0.0.0"
-
-[dev-dependencies.shader_version]
-git = "https://github.com/pistondevelopers/shader_version"
-#version = "0.0.1"
 
 [dependencies.clock_ticks]
 git = "https://github.com/tomaka/clock_ticks"

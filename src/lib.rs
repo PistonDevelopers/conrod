@@ -4,8 +4,7 @@
 #![allow(unstable)]
 
 #[macro_use] extern crate bitflags;
-extern crate input;
-extern crate event;
+extern crate piston;
 extern crate freetype;
 extern crate graphics;
 extern crate opengl_graphics;
