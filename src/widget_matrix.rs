@@ -2,6 +2,7 @@
 use dimensions::Dimensions;
 use point::Point;
 use Position;
+use Size;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -100,28 +101,9 @@ impl WidgetMatrix {
 quack! {
     wm: WidgetMatrix[]
     get:
+        fn () -> Size { Size(wm.pos) }
     set:
         fn (val: Position) { wm.pos = val.0 }
+        fn (val: Size) { wm.dim = val.0 }
     action:
-}
-
-// impl_shapeable!(WidgetMatrix,);
-
-impl ::shape::Shapeable for WidgetMatrix {
-    #[inline]
-    fn dimensions(self, width: f64, height: f64) -> WidgetMatrix {
-        WidgetMatrix { dim: [width, height], ..self }
-    }
-    #[inline]
-    fn dim(self, dim: ::dimensions::Dimensions) -> WidgetMatrix {
-        WidgetMatrix { dim: dim, ..self }
-    }
-    #[inline]
-    fn width(self, width: f64) -> WidgetMatrix {
-        WidgetMatrix { dim: [width, self.dim[1]], ..self }
-    }
-    #[inline]
-    fn height(self, height: f64) -> WidgetMatrix {
-        WidgetMatrix { dim: [self.dim[0], height], ..self }
-    }
 }

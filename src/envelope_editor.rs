@@ -39,6 +39,7 @@ use LabelText;
 use LabelColor;
 use LabelFontSize;
 use Position;
+use Size;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -272,6 +273,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 quack! {
     env: EnvelopeEditor['a, X, Y, E]
     get:
+        fn () -> Size { Size(env.dim) }
     set:
         fn (val: Color) { env.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {
@@ -283,10 +285,9 @@ quack! {
         fn (val: LabelColor) { env.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { env.maybe_label_font_size = Some(val.0) }
         fn (val: Position) { env.pos = val.0 }
+        fn (val: Size) { env.dim = val.0 }
     action:
 }
-
-impl_shapeable!(EnvelopeEditor, X, Y, E);
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,

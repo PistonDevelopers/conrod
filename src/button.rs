@@ -17,6 +17,7 @@ use LabelText;
 use LabelColor;
 use LabelFontSize;
 use Position;
+use Size;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -92,6 +93,7 @@ impl<'a> Button<'a> {
 quack! {
     button: Button['a]
     get:
+        fn () -> Size { Size(button.dim) }
     set:
         fn (val: Color) { button.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut() + 'a>>) {
@@ -103,10 +105,9 @@ quack! {
         fn (val: LabelColor) { button.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { button.maybe_label_font_size = Some(val.0) }
         fn (val: Position) { button.pos = val.0 }
+        fn (val: Size) { button.dim = val.0 }
     action:
 }
-
-impl_shapeable!(Button,);
 
 impl<'a> ::draw::Drawable for Button<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
