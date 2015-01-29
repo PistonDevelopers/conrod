@@ -20,6 +20,8 @@ use utils::{
 use widget::Widget;
 use vecmath::vec2_add;
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -106,10 +108,11 @@ quack! {
         fn (val: Callback<Box<FnMut(T) + 'a>>) {
             slider.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { slider.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { slider.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(Slider, T);
 impl_labelable!(Slider, T);
 impl_positionable!(Slider, T);
 impl_shapeable!(Slider, T);

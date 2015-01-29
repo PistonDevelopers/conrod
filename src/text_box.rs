@@ -29,6 +29,8 @@ use vecmath::{
 use widget::Widget;
 use std::cmp;
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -225,10 +227,11 @@ quack! {
         fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
             tb.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { tb.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { tb.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(TextBox,);
 impl_positionable!(TextBox,);
 impl_shapeable!(TextBox,);
 

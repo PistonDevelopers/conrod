@@ -11,6 +11,8 @@ use ui_context::{
 };
 use widget::Widget;
 use Callback;
+use FrameColor;
+use FrameWidth;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -91,10 +93,11 @@ quack! {
         fn (val: Callback<Box<FnMut() + 'a>>) {
             button.maybe_callback = Some(val.0)
         }
+        fn (val: FrameColor) { button.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { button.maybe_frame = Some(val.0) }
     action:
 }
 
-impl_frameable!(Button,);
 impl_labelable!(Button,);
 impl_positionable!(Button,);
 impl_shapeable!(Button,);
