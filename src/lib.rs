@@ -25,7 +25,7 @@ pub use toggle::Toggle;
 pub use widget_matrix::WidgetMatrix;
 pub use xy_pad::XYPad;
 
-pub use callback::Callable;
+pub use callback::{ Callable, Callback };
 pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;

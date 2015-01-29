@@ -30,6 +30,7 @@ use vecmath::{
     vec2_sub,
 };
 use widget::Widget;
+use Callback;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Show, PartialEq, Clone, Copy)]
@@ -147,10 +148,12 @@ quack! {
     get:
     set:
         fn (val: Color) { xy_pad.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {
+            xy_pad.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(XYPad, FnMut(X, Y), X, Y);
 impl_frameable!(XYPad, X, Y);
 impl_labelable!(XYPad, X, Y);
 impl_positionable!(XYPad, X, Y);

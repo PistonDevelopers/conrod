@@ -26,6 +26,7 @@ use ui_context::{
 };
 use vecmath::vec2_add;
 use widget::Widget;
+use Callback;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -329,10 +330,12 @@ quack! {
     get:
     set:
         fn (val: Color) { nd.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(T) + 'a>>) {
+            nd.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(NumberDialer, FnMut(T), T);
 impl_frameable!(NumberDialer, T);
 impl_labelable!(NumberDialer, T);
 impl_positionable!(NumberDialer, T);

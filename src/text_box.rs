@@ -28,6 +28,7 @@ use vecmath::{
 };
 use widget::Widget;
 use std::cmp;
+use Callback;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -221,10 +222,12 @@ quack! {
     get:
     set:
         fn (val: Color) { tb.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
+            tb.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(TextBox, FnMut(&mut String),);
 impl_frameable!(TextBox,);
 impl_positionable!(TextBox,);
 impl_shapeable!(TextBox,);

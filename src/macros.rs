@@ -39,18 +39,6 @@ macro_rules! widget_fns(
     )
 );
 
-/// Simplify implementation of the `Colorable` trait.
-macro_rules! impl_callable(
-    ($context:ident, $cb:ty, $($t:ident),*) => (
-        impl<'a $(, $t)*> ::callback::Callable<Box<$cb + 'a>> for $context<'a $(, $t)*> {
-            #[inline]
-            fn callback(self, callback: Box<$cb + 'a>) -> $context<'a $(, $t)*> {
-                $context { maybe_callback: Some(callback), ..self }
-            }
-        }
-    )
-);
-
 /// Simplify implementation of the `Frameable` trait.
 macro_rules! impl_frameable(
     ($context:ident, $($t:ident),*) => (

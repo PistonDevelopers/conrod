@@ -19,6 +19,7 @@ use utils::{
 };
 use widget::Widget;
 use vecmath::vec2_add;
+use Callback;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -102,10 +103,12 @@ quack! {
     get:
     set:
         fn (val: Color) { slider.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(T) + 'a>>) {
+            slider.maybe_callback = Some(val.0)
+        }
     action:
 }
 
-impl_callable!(Slider, FnMut(T), T);
 impl_frameable!(Slider, T);
 impl_labelable!(Slider, T);
 impl_positionable!(Slider, T);
