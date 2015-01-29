@@ -236,7 +236,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
             }
         };
         uic.draw_text(graphics, xy_string_pos, self.font_size,
-                    color.plain_contrast(), xy_string.as_slice());
+                    color.plain_contrast(), &xy_string[]);
 
         set_state(uic, self.ui_id, new_state, self.pos, self.dim);
 

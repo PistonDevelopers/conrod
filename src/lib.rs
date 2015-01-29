@@ -1,7 +1,7 @@
 
 #![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
-#![allow(unstable)]
+#![feature(core, collections, io, path, std_misc, rand)]
 
 #[macro_use] extern crate bitflags;
 extern crate piston;
