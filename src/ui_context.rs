@@ -11,8 +11,8 @@ use mouse::{
     ButtonState,
     Mouse,
 };
-use input;
-use event::{
+use piston::input;
+use piston::event::{
     GenericEvent,
     MouseCursorEvent,
     PressEvent,
@@ -83,8 +83,8 @@ impl UiContext {
             self.mouse.pos = [x, y];
         });
         event.press(|button_type| {
-            use input::Button;
-            use input::MouseButton::Left;
+            use piston::input::Button;
+            use piston::input::MouseButton::Left;
 
             match button_type {
                 Button::Mouse(button) => {
@@ -98,8 +98,8 @@ impl UiContext {
             }
         });
         event.release(|button_type| {
-            use input::Button;
-            use input::MouseButton::Left;
+            use piston::input::Button;
+            use piston::input::MouseButton::Left;
 
             match button_type {
                 Button::Mouse(button) => {

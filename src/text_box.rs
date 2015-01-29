@@ -8,7 +8,7 @@ use label;
 use label::FontSize;
 use mouse::Mouse;
 use opengl_graphics::Gl;
-use input::keyboard::Key::{
+use piston::input::keyboard::Key::{
     Backspace,
     Left,
     Right,

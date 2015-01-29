@@ -1,12 +1,10 @@
 
-extern crate shader_version;
-extern crate event;
+extern crate piston;
 extern crate conrod;
 extern crate graphics;
 extern crate sdl2_window;
 extern crate opengl_graphics;
 extern crate vecmath;
-extern crate quack;
 
 use conrod::{
     Background,
@@ -32,19 +30,19 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use opengl_graphics::Gl;
+use opengl_graphics::{ Gl, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use event::{
-    WindowSettings,
+use piston::event::{
     Events,
     Event,
     Ups,
     MaxFps,
 };
+use piston::window::WindowSettings;
 use sdl2_window::Sdl2Window;
 use vecmath::vec2_add;
 use std::cell::RefCell;
-use quack::Set;
+use piston::Set;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -121,7 +119,7 @@ impl DemoApp {
 }
 
 fn main() {
-    let opengl = shader_version::OpenGL::_3_2;
+    let opengl = OpenGL::_3_2;
     let window = Sdl2Window::new(
         opengl,
         WindowSettings {
