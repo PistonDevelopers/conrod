@@ -1,7 +1,7 @@
 
 use dimensions::Dimensions;
 use point::Point;
-use ui_context::UiContext;
+use Position;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -97,62 +97,12 @@ impl WidgetMatrix {
     }
 }
 
-// impl_positionable!(WidgetMatrix,);
-
-impl ::position::Positionable for WidgetMatrix {
-
-    #[inline]
-    fn point(self, pos: Point) -> WidgetMatrix {
-        WidgetMatrix { pos: pos, ..self }
-    }
-
-    #[inline]
-    fn position(self, x: f64, y: f64) -> WidgetMatrix {
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-
-    #[inline]
-    fn down(self, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).down(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn up(self, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).up(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn left(self, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).left(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn right(self, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).right(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-
-    #[inline]
-    fn down_from(self, uiid: u64, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uiid).down(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn up_from(self, uiid: u64, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uiid).up(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn left_from(self, uiid: u64, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uiid).left(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-    #[inline]
-    fn right_from(self, uiid: u64, padding: f64, uic: &UiContext) -> WidgetMatrix {
-        let (x, y) = uic.get_placing(uiid).right(padding);
-        WidgetMatrix { pos: [x, y], ..self }
-    }
-
+quack! {
+    wm: WidgetMatrix[]
+    get:
+    set:
+        fn (val: Position) { wm.pos = val.0 }
+    action:
 }
 
 // impl_shapeable!(WidgetMatrix,);

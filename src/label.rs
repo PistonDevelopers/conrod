@@ -3,6 +3,7 @@ use color::Color;
 use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
+use Position;
 
 pub type FontSize = u32;
 
@@ -121,10 +122,9 @@ quack! {
     get:
     set:
         fn (val: Color) { label.maybe_color = Some(val) }
+        fn (val: Position) { label.pos = val.0 }
     action:
 }
-
-impl_positionable!(Label,);
 
 impl<'a> ::draw::Drawable for Label<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {

@@ -25,6 +25,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -116,10 +117,10 @@ quack! {
         fn (val: LabelText<'a>) { slider.maybe_label = Some(val.0) }
         fn (val: LabelColor) { slider.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { slider.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { slider.pos = val.0 }
     action:
 }
 
-impl_positionable!(Slider, T);
 impl_shapeable!(Slider, T);
 
 impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>

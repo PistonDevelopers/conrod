@@ -31,6 +31,7 @@ use std::cmp;
 use Callback;
 use FrameColor;
 use FrameWidth;
+use Position;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -229,10 +230,10 @@ quack! {
         }
         fn (val: FrameColor) { tb.maybe_frame_color = Some(val.0) }
         fn (val: FrameWidth) { tb.maybe_frame = Some(val.0) }
+        fn (val: Position) { tb.pos = val.0 }
     action:
 }
 
-impl_positionable!(TextBox,);
 impl_shapeable!(TextBox,);
 
 impl<'a> ::draw::Drawable for TextBox<'a> {

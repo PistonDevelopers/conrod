@@ -16,6 +16,7 @@ use FrameWidth;
 use LabelText;
 use LabelColor;
 use LabelFontSize;
+use Position;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -101,10 +102,10 @@ quack! {
         fn (val: LabelText<'a>) { button.maybe_label = Some(val.0) }
         fn (val: LabelColor) { button.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) { button.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { button.pos = val.0 }
     action:
 }
 
-impl_positionable!(Button,);
 impl_shapeable!(Button,);
 
 impl<'a> ::draw::Drawable for Button<'a> {
