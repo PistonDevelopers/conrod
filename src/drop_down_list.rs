@@ -10,6 +10,14 @@ use ui_context::{
 };
 use vecmath::vec2_add;
 use widget::Widget;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -159,12 +167,24 @@ impl<'a> DropDownList<'a> {
     }
 }
 
-impl_callable!(DropDownList, FnMut(&mut Option<Idx>, Idx, String),);
-impl_colorable!(DropDownList,);
-impl_frameable!(DropDownList,);
-impl_labelable!(DropDownList,);
-impl_positionable!(DropDownList,);
-impl_shapeable!(DropDownList,);
+quack! {
+    list: DropDownList['a]
+    get:
+        fn () -> Size { Size(list.dim) }
+    set:
+        fn (val: Color) { list.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {
+            list.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { list.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { list.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { list.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { list.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { list.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { list.pos = val.0 }
+        fn (val: Size) { list.dim = val.0 }
+    action:
+}
 
 impl<'a> ::draw::Drawable for DropDownList<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {

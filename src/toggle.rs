@@ -10,6 +10,14 @@ use ui_context::{
     UiContext,
 };
 use widget::Widget;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -83,12 +91,24 @@ impl<'a> Toggle<'a> {
 
 }
 
-impl_callable!(Toggle, FnMut(bool),);
-impl_colorable!(Toggle,);
-impl_frameable!(Toggle,);
-impl_labelable!(Toggle,);
-impl_positionable!(Toggle,);
-impl_shapeable!(Toggle,);
+quack! {
+    toggle: Toggle['a]
+    get:
+        fn () -> Size { Size(toggle.dim) }
+    set:
+        fn (val: Color) { toggle.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(bool) + 'a>>) {
+            toggle.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { toggle.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { toggle.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { toggle.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { toggle.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { toggle.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { toggle.pos = val.0 }
+        fn (val: Size) { toggle.dim = val.0 }
+    action:
+}
 
 impl<'a> ::draw::Drawable for Toggle<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {

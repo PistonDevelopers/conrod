@@ -32,6 +32,14 @@ use vecmath::{
     vec2_add,
     vec2_sub
 };
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -262,12 +270,24 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
     }
 }
 
-impl_callable!(EnvelopeEditor, FnMut(&mut Vec<E>, usize), X, Y, E);
-impl_colorable!(EnvelopeEditor, X, Y, E);
-impl_frameable!(EnvelopeEditor, X, Y, E);
-impl_labelable!(EnvelopeEditor, X, Y, E);
-impl_positionable!(EnvelopeEditor, X, Y, E);
-impl_shapeable!(EnvelopeEditor, X, Y, E);
+quack! {
+    env: EnvelopeEditor['a, X, Y, E]
+    get:
+        fn () -> Size { Size(env.dim) }
+    set:
+        fn (val: Color) { env.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {
+            env.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { env.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { env.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { env.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { env.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { env.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { env.pos = val.0 }
+        fn (val: Size) { env.dim = val.0 }
+    action:
+}
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,

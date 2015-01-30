@@ -26,6 +26,14 @@ use ui_context::{
 };
 use vecmath::vec2_add;
 use widget::Widget;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -324,12 +332,24 @@ NumberDialer<'a, T> {
     }
 }
 
-impl_callable!(NumberDialer, FnMut(T), T);
-impl_colorable!(NumberDialer, T);
-impl_frameable!(NumberDialer, T);
-impl_labelable!(NumberDialer, T);
-impl_positionable!(NumberDialer, T);
-impl_shapeable!(NumberDialer, T);
+quack! {
+    nd: NumberDialer['a, T]
+    get:
+        fn () -> Size { Size(nd.dim) }
+    set:
+        fn (val: Color) { nd.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(T) + 'a>>) {
+            nd.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { nd.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { nd.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { nd.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { nd.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { nd.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { nd.pos = val.0 }
+        fn (val: Size) { nd.dim = val.0 }
+    action:
+}
 
 impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
 ::draw::Drawable for NumberDialer<'a, T> {

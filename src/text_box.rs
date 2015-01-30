@@ -28,6 +28,11 @@ use vecmath::{
 };
 use widget::Widget;
 use std::cmp;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use Position;
+use Size;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -216,12 +221,21 @@ impl<'a> TextBox<'a> {
     }
 }
 
-
-impl_callable!(TextBox, FnMut(&mut String),);
-impl_colorable!(TextBox,);
-impl_frameable!(TextBox,);
-impl_positionable!(TextBox,);
-impl_shapeable!(TextBox,);
+quack! {
+    tb: TextBox['a]
+    get:
+        fn () -> Size { Size(tb.dim) }
+    set:
+        fn (val: Color) { tb.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
+            tb.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { tb.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { tb.maybe_frame = Some(val.0) }
+        fn (val: Position) { tb.pos = val.0 }
+        fn (val: Size) { tb.dim = val.0 }
+    action:
+}
 
 impl<'a> ::draw::Drawable for TextBox<'a> {
     #[inline]

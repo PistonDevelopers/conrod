@@ -10,6 +10,14 @@ use ui_context::{
     UiContext,
 };
 use widget::Widget;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -82,12 +90,24 @@ impl<'a> Button<'a> {
 
 }
 
-impl_callable!(Button, FnMut(),);
-impl_colorable!(Button,);
-impl_frameable!(Button,);
-impl_labelable!(Button,);
-impl_positionable!(Button,);
-impl_shapeable!(Button,);
+quack! {
+    button: Button['a]
+    get:
+        fn () -> Size { Size(button.dim) }
+    set:
+        fn (val: Color) { button.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut() + 'a>>) {
+            button.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { button.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { button.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { button.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { button.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { button.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { button.pos = val.0 }
+        fn (val: Size) { button.dim = val.0 }
+    action:
+}
 
 impl<'a> ::draw::Drawable for Button<'a> {
     fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {

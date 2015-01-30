@@ -30,6 +30,14 @@ use vecmath::{
     vec2_sub,
 };
 use widget::Widget;
+use Callback;
+use FrameColor;
+use FrameWidth;
+use LabelText;
+use LabelColor;
+use LabelFontSize;
+use Position;
+use Size;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Show, PartialEq, Clone, Copy)]
@@ -142,12 +150,24 @@ XYPad<'a, X, Y> {
     }
 }
 
-impl_callable!(XYPad, FnMut(X, Y), X, Y);
-impl_colorable!(XYPad, X, Y);
-impl_frameable!(XYPad, X, Y);
-impl_labelable!(XYPad, X, Y);
-impl_positionable!(XYPad, X, Y);
-impl_shapeable!(XYPad, X, Y);
+quack! {
+    xy_pad: XYPad['a, X, Y]
+    get:
+        fn () -> Size { Size(xy_pad.dim) }
+    set:
+        fn (val: Color) { xy_pad.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {
+            xy_pad.maybe_callback = Some(val.0)
+        }
+        fn (val: FrameColor) { xy_pad.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) { xy_pad.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) { xy_pad.maybe_label = Some(val.0) }
+        fn (val: LabelColor) { xy_pad.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) { xy_pad.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) { xy_pad.pos = val.0 }
+        fn (val: Size) { xy_pad.dim = val.0 }
+    action:
+}
 
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
