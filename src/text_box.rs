@@ -20,6 +20,7 @@ use rectangle;
 use std::num::Float;
 use clock_ticks::precise_time_s;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -231,6 +232,7 @@ quack! {
                 Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
             )
         }
+        fn () -> Id { Id(tb.ui_id) }
     set:
         fn (val: Color) { tb.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {

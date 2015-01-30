@@ -22,6 +22,7 @@ use utils::{
     compare_f64s,
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -344,6 +345,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::NumberDialer(State::Normal))
         }
+        fn () -> Id { Id(nd.ui_id) }
     set:
         fn (val: Color) { nd.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {

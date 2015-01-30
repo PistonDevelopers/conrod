@@ -4,6 +4,7 @@ use mouse::Mouse;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -177,6 +178,7 @@ quack! {
                 Widget::DropDownList(State::Closed(DrawState::Normal))
             )
         }
+        fn () -> Id { Id(list.ui_id) }
     set:
         fn (val: Color) { list.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {

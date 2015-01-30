@@ -7,6 +7,7 @@ use rectangle;
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -99,6 +100,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::Toggle(State::Normal))
         }
+        fn () -> Id { Id(toggle.ui_id) }
     set:
         fn (val: Color) { toggle.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(bool) + 'a>>) {

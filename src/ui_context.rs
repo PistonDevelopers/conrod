@@ -238,3 +238,7 @@ impl<C> UiContext<C> {
         }
     }
 }
+
+/// Id property.
+#[derive(Copy)]
+pub struct Id(pub UIID);

@@ -5,6 +5,7 @@ use mouse::Mouse;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -98,6 +99,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::Button(State::Normal))
         }
+        fn () -> Id { Id(button.ui_id) }
     set:
         fn (val: Color) { button.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut() + 'a>>) {

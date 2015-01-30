@@ -18,6 +18,7 @@ use rectangle::{
     Corner
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -158,6 +159,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::XYPad(State::Normal))
         }
+        fn () -> Id { Id(xy_pad.ui_id) }
     set:
         fn (val: Color) { xy_pad.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {

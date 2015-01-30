@@ -19,6 +19,7 @@ use rectangle::{
     Corner
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -278,6 +279,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
         }
+        fn () -> Id { Id(env.ui_id) }
     set:
         fn (val: Color) { env.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {

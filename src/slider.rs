@@ -10,6 +10,7 @@ use graphics::character::CharacterCache;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -113,6 +114,7 @@ quack! {
         fn () -> DefaultWidgetState {
             DefaultWidgetState(Widget::Slider(State::Normal))
         }
+        fn () -> Id { Id(slider.ui_id) }
     set:
         fn (val: Color) { slider.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {
