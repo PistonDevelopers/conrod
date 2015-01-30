@@ -2,12 +2,13 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
+    BackEnd,
     Context,
 };
+use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use piston::input::keyboard::Key::{
     Backspace,
     Left,
@@ -85,7 +86,7 @@ widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::
 static TEXT_PADDING: f64 = 5f64;
 
 /// Check if cursor is over the pad and if so, which
-fn over_elem(uic: &mut UiContext,
+fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
              pos: Point,
              mouse_pos: Point,
              rect_dim: Dimensions,
@@ -108,7 +109,7 @@ fn over_elem(uic: &mut UiContext,
 }
 
 /// Check which character is closest to the mouse cursor.
-fn closest_idx(uic: &mut UiContext,
+fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
                mouse_pos: Point,
                text_x: f64,
                text_w: f64,
@@ -169,10 +170,10 @@ fn get_new_state(over_elem: Element,
 }
 
 /// Draw the text cursor.
-fn draw_cursor(
+fn draw_cursor<B: BackEnd>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     color: Color,
     cursor_x: f64,
     pad_pos_y: f64,
@@ -239,7 +240,11 @@ quack! {
 
 impl<'a> ::draw::Drawable for TextBox<'a> {
     #[inline]
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
         let mouse = uic.get_mouse_state();
         let state = *get_state(uic, self.ui_id);
 

@@ -5,9 +5,7 @@
 
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate piston;
-extern crate freetype;
 extern crate graphics;
-extern crate opengl_graphics;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate clock_ticks;
 extern crate vecmath;

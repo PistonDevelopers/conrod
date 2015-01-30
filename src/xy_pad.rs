@@ -5,12 +5,13 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
+    BackEnd,
     Context,
 };
+use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
@@ -76,10 +77,10 @@ fn get_new_state(is_over: bool,
 }
 
 /// Draw the crosshair.
-fn draw_crosshair(
+fn draw_crosshair<B: BackEnd>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     line_width: f64,
     vert_x: f64, hori_y: f64,
@@ -172,7 +173,11 @@ quack! {
 impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
 ::draw::Drawable for XYPad<'a, X, Y> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
 
         // Init.
         let state = *get_state(uic, self.ui_id);

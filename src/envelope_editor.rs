@@ -6,12 +6,13 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
+    BackEnd,
     Context,
 };
+use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use rectangle::{
@@ -185,10 +186,10 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Draw a circle at the given position.
-fn draw_circle(
+fn draw_circle<B: BackEnd>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     color: Color,
     radius: f64
@@ -293,7 +294,11 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
          E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E> {
     #[inline]
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
         let state = *get_state(uic, self.ui_id);
         let mouse = uic.get_mouse_state();
         let skew = self.skew_y_range;
@@ -379,7 +384,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let mut draw_env_pt = |&mut: uic: &mut UiContext, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
+                let mut draw_env_pt = |&mut: uic: &mut UiContext<C>, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
                         max_x, max_x - min_x, pad_dim[0] as usize

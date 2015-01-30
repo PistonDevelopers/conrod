@@ -9,14 +9,14 @@ use graphics::vecmath::Scalar;
 pub trait Positionable {
     fn point(self, pos: Point) -> Self;
     fn position(self, x: f64, y: f64) -> Self;
-    fn down(self, padding: f64, uic: &UiContext) -> Self;
-    fn up(self, padding: f64, uic: &UiContext) -> Self;
-    fn left(self, padding: f64, uic: &UiContext) -> Self;
-    fn right(self, padding: f64, uic: &UiContext) -> Self;
-    fn down_from(self, ui_id: UIID, padding: f64, uic: &UiContext) -> Self;
-    fn up_from(self, ui_id: UIID, padding: f64, uic: &UiContext) -> Self;
-    fn left_from(self, ui_id: UIID, padding: f64, uic: &UiContext) -> Self;
-    fn right_from(self, ui_id: UIID, padding: f64, uic: &UiContext) -> Self;
+    fn down<C>(self, padding: f64, uic: &UiContext<C>) -> Self;
+    fn up<C>(self, padding: f64, uic: &UiContext<C>) -> Self;
+    fn left<C>(self, padding: f64, uic: &UiContext<C>) -> Self;
+    fn right<C>(self, padding: f64, uic: &UiContext<C>) -> Self;
+    fn down_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self;
+    fn up_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self;
+    fn left_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self;
+    fn right_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self;
 }
 
 /// Position property.
@@ -39,43 +39,43 @@ impl<T> Positionable for T
     }
 
     #[inline]
-    fn down(self, padding: f64, uic: &UiContext) -> Self {
+    fn down<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uic.get_prev_uiid()).down(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn up(self, padding: f64, uic: &UiContext) -> Self {
+    fn up<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uic.get_prev_uiid()).up(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn left(self, padding: f64, uic: &UiContext) -> Self {
+    fn left<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uic.get_prev_uiid()).left(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn right(self, padding: f64, uic: &UiContext) -> Self {
+    fn right<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uic.get_prev_uiid()).right(padding);
         self.set(Position([x, y]))
     }
 
     #[inline]
-    fn down_from(self, uiid: u64, padding: f64, uic: &UiContext) -> Self {
+    fn down_from<C>(self, uiid: u64, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uiid).down(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn up_from(self, uiid: u64, padding: f64, uic: &UiContext) -> Self {
+    fn up_from<C>(self, uiid: u64, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uiid).up(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn left_from(self, uiid: u64, padding: f64, uic: &UiContext) -> Self {
+    fn left_from<C>(self, uiid: u64, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uiid).left(padding);
         self.set(Position([x, y]))
     }
     #[inline]
-    fn right_from(self, uiid: u64, padding: f64, uic: &UiContext) -> Self {
+    fn right_from<C>(self, uiid: u64, padding: f64, uic: &UiContext<C>) -> Self {
         let (x, y) = uic.get_placing(uiid).right(padding);
         self.set(Position([x, y]))
     }

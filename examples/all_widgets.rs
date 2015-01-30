@@ -47,6 +47,8 @@ use vecmath::vec2_add;
 use std::cell::RefCell;
 use piston::Set;
 
+type Ui = UiContext<GlyphCache>;
+
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
 /// of these seem strange, that's because they are! Most of
@@ -155,7 +157,7 @@ fn main() {
 
 /// Draw the User Interface.
 fn draw_ui(gl: &mut Gl,
-           uic: &mut UiContext,
+           uic: &mut Ui,
            demo: &mut DemoApp) {
 
     // Draw the background.

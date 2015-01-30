@@ -2,9 +2,10 @@
 use color::Color;
 use dimensions::Dimensions;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use ui_context::{
     UIID,
     UiContext,
@@ -111,7 +112,11 @@ quack! {
 }
 
 impl<'a> ::draw::Drawable for Toggle<'a> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
         let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
         let color = match self.value {
             true => color,

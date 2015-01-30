@@ -2,7 +2,8 @@
 use color::Color;
 use draw::Drawable;
 use graphics;
-use opengl_graphics::Gl;
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use ui_context::UiContext;
 
 /// The context from which we'll draw the background.
@@ -28,7 +29,11 @@ quack! {
 }
 
 impl Drawable for Background {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
         let Color(col) = self.maybe_color
             .unwrap_or(uic.theme.background_color);
         graphics::clear(col, graphics);
