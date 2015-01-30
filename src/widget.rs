@@ -58,3 +58,6 @@ pub enum Widget {
     XYPad(xy_pad::State),
 }
 
+/// Default widget state property.
+#[derive(Copy)]
+pub struct DefaultWidgetState(pub Widget);

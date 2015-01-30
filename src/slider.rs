@@ -18,7 +18,7 @@ use utils::{
     percentage,
     value_from_perc,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use vecmath::vec2_add;
 use Callback;
 use FrameColor;
@@ -110,6 +110,9 @@ quack! {
     slider: Slider['a, T]
     get:
         fn () -> Size { Size(slider.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Slider(State::Normal))
+        }
     set:
         fn (val: Color) { slider.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {

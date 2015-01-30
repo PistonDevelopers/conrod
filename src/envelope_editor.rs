@@ -28,7 +28,7 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use vecmath::{
     vec2_add,
     vec2_sub
@@ -275,6 +275,9 @@ quack! {
     env: EnvelopeEditor['a, X, Y, E]
     get:
         fn () -> Size { Size(env.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
+        }
     set:
         fn (val: Color) { env.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {

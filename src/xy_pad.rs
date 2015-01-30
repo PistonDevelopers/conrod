@@ -30,7 +30,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -155,6 +155,9 @@ quack! {
     xy_pad: XYPad['a, X, Y]
     get:
         fn () -> Size { Size(xy_pad.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::XYPad(State::Normal))
+        }
     set:
         fn (val: Color) { xy_pad.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {

@@ -10,7 +10,7 @@ use ui_context::{
     UIID,
     UiContext,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -96,6 +96,9 @@ quack! {
     toggle: Toggle['a]
     get:
         fn () -> Size { Size(toggle.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Toggle(State::Normal))
+        }
     set:
         fn (val: Color) { toggle.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(bool) + 'a>>) {

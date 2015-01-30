@@ -10,7 +10,7 @@ use ui_context::{
 use vecmath::vec2_add;
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -172,6 +172,11 @@ quack! {
     list: DropDownList['a]
     get:
         fn () -> Size { Size(list.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(
+                Widget::DropDownList(State::Closed(DrawState::Normal))
+            )
+        }
     set:
         fn (val: Color) { list.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {

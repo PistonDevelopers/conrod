@@ -26,7 +26,7 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -341,6 +341,9 @@ quack! {
     nd: NumberDialer['a, T]
     get:
         fn () -> Size { Size(nd.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::NumberDialer(State::Normal))
+        }
     set:
         fn (val: Color) { nd.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {

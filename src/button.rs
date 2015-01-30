@@ -8,7 +8,7 @@ use ui_context::{
     UIID,
     UiContext,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
 use Callback;
@@ -95,6 +95,9 @@ quack! {
     button: Button['a]
     get:
         fn () -> Size { Size(button.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Button(State::Normal))
+        }
     set:
         fn (val: Color) { button.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut() + 'a>>) {

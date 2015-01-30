@@ -27,7 +27,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use std::cmp;
 use Callback;
 use FrameColor;
@@ -226,6 +226,11 @@ quack! {
     tb: TextBox['a]
     get:
         fn () -> Size { Size(tb.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(
+                Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
+            )
+        }
     set:
         fn (val: Color) { tb.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
