@@ -30,14 +30,18 @@ macro_rules! widget_fns(
         fn set_state<C>(
             uic: &mut ::ui_context::UiContext<C>,
             ui_id: ::ui_context::UIID,
-            new_state: $widget_state,
+            new_state: ::widget::Widget,
             pos: ::point::Point,
             dim: ::dimensions::Dimensions
         ) {
             match *get_widget(uic, ui_id) {
-                ::widget::Widget::$widget(ref mut state) => { *state = new_state; },
-                _ => panic!("The Widget variant returned by UiContext is different to that which \
-                           was requested (Check that there are no UIID conflicts)."),
+                ref mut state => {
+                    if !state.matches(&new_state) {
+                        panic!("The Widget variant returned by UiContext is different to that which \
+                                   was requested (Check that there are no UIID conflicts).");
+                    }
+                    *state = new_state;
+                }
             }
             uic.set_place(ui_id, pos, dim);
         }

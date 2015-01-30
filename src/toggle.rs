@@ -164,7 +164,7 @@ impl<'a> ::draw::Drawable for Toggle<'a> {
             },
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Toggle(new_state), self.pos, self.dim);
 
     }
 }

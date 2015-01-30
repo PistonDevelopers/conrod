@@ -568,7 +568,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         }
 
         // Set the new state.
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::EnvelopeEditor(new_state), self.pos, self.dim);
 
     }
 }

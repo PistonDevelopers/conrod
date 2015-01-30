@@ -298,7 +298,7 @@ impl<'a> ::draw::Drawable for DropDownList<'a> {
 
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
 
     }
 }

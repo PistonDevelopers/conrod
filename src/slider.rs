@@ -222,7 +222,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
             uic.draw_text(graphics, l_pos, size, text_color, text.as_slice());
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
 
     }
 }

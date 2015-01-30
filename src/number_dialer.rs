@@ -453,7 +453,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             }
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
 
     }
 

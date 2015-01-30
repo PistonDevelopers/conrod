@@ -58,6 +58,23 @@ pub enum Widget {
     XYPad(xy_pad::State),
 }
 
+impl Widget {
+    pub fn matches(&self, other: &Widget) -> bool {
+        match (self, other) {
+            (&Widget::NoWidget, &Widget::NoWidget) => true,
+            (&Widget::Button(_), &Widget::Button(_)) => true,
+            (&Widget::DropDownList(_), &Widget::DropDownList(_)) => true,
+            (&Widget::EnvelopeEditor(_), &Widget::EnvelopeEditor(_)) => true,
+            (&Widget::NumberDialer(_), &Widget::NumberDialer(_)) => true,
+            (&Widget::Slider(_), &Widget::Slider(_)) => true,
+            (&Widget::TextBox(_), &Widget::TextBox(_)) => true,
+            (&Widget::Toggle(_), &Widget::Toggle(_)) => true,
+            (&Widget::XYPad(_), &Widget::XYPad(_)) => true,
+            _ => false
+        }
+    }
+}
+
 /// Default widget state property.
 #[derive(Copy)]
 pub struct DefaultWidgetState(pub Widget);

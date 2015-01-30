@@ -160,7 +160,7 @@ impl<'a> ::draw::Drawable for Button<'a> {
             },
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
 
     }
 }
