@@ -1,11 +1,8 @@
 use std::iter::repeat;
 use Color;
 use dimensions::Dimensions;
-use opengl_graphics::glyph_cache::{
-    GlyphCache,
-    Character,
-};
-use opengl_graphics::Gl;
+use graphics::BackEnd;
+use graphics::character::{ Character, CharacterCache };
 use label::FontSize;
 use mouse::{
     ButtonState,
@@ -32,14 +29,14 @@ pub type UIID = u64;
 
 /// UiContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
-pub struct UiContext {
+pub struct UiContext<C> {
     data: Vec<(Widget, widget::Placing)>,
     pub theme: Theme,
     pub mouse: Mouse,
     pub keys_just_pressed: Vec<input::keyboard::Key>,
     pub keys_just_released: Vec<input::keyboard::Key>,
     pub text_just_entered: Vec<String>,
-    glyph_cache: GlyphCache,
+    glyph_cache: C,
     prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,
@@ -49,10 +46,13 @@ pub struct UiContext {
     prev_uiid: u64,
 }
 
-impl UiContext {
+impl<C> UiContext<C>
+    where
+        C: CharacterCache
+{
 
     /// Constructor for a UiContext.
-    pub fn new(glyph_cache: GlyphCache, theme: Theme) -> UiContext {
+    pub fn new(glyph_cache: C, theme: Theme) -> UiContext<C> {
         UiContext {
             data: repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(512).collect(),
             theme: theme,
@@ -117,6 +117,58 @@ impl UiContext {
         });
     }
 
+    /// Return a reference to a `Character` from the GlyphCache.
+    pub fn get_character(
+        &mut self,
+        size: FontSize,
+        ch: char
+    ) -> &Character<<C as CharacterCache>::Texture> {
+        self.glyph_cache.character(size, ch)
+    }
+
+    /// Return the width of a 'Character'.
+    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
+        self.get_character(size, ch).width()
+    }
+
+    /// Flush all stored keys.
+    pub fn flush_input(&mut self) {
+        self.keys_just_pressed.clear();
+        self.keys_just_released.clear();
+        self.text_just_entered.clear();
+    }
+
+    /// Draws text
+    pub fn draw_text<B>(
+        &mut self,
+        graphics: &mut B,
+        pos: Point,
+        size: FontSize,
+        color: Color,
+        text: &str
+    )
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>
+    {
+        use graphics::Context;
+        use graphics::text::Text;
+        use graphics::RelativeTransform;
+        use std::num::Float;
+
+        let Color(col) = color;
+        let context = Context::abs(self.win_w, self.win_h)
+                        .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
+        Text::colored(col, size).draw(
+            text,
+            &mut self.glyph_cache,
+            &context,
+            graphics
+        );
+    }
+
+}
+
+impl<C> UiContext<C> {
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> Mouse {
         self.mouse
@@ -185,49 +237,4 @@ impl UiContext {
             match self.data[ui_id as usize] { (_, ref placing) => *placing }
         }
     }
-
-    /// Return a reference to a `Character` from the GlyphCache.
-    pub fn get_character(&mut self, size: FontSize, ch: char) -> &Character {
-        use graphics::character::CharacterCache;
-
-        self.glyph_cache.character(size, ch)
-    }
-
-    /// Return the width of a 'Character'.
-    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
-        self.get_character(size, ch).width()
-    }
-
-    /// Flush all stored keys.
-    pub fn flush_input(&mut self) {
-        self.keys_just_pressed.clear();
-        self.keys_just_released.clear();
-        self.text_just_entered.clear();
-    }
-
-    /// Draws text
-    pub fn draw_text(
-        &mut self,
-        graphics: &mut Gl,
-        pos: Point,
-        size: FontSize,
-        color: Color,
-        text: &str
-    ) {
-        use graphics::Context;
-        use graphics::text::Text;
-        use graphics::RelativeTransform;
-        use std::num::Float;
-
-        let Color(col) = color;
-        let context = Context::abs(self.win_w, self.win_h)
-                        .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
-        Text::colored(col, size).draw(
-            text,
-            &mut self.glyph_cache,
-            &context,
-            graphics
-        );
-    }
-
 }

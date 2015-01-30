@@ -5,7 +5,8 @@ use color::Color;
 use dimensions::Dimensions;
 use label;
 use mouse::Mouse;
-use opengl_graphics::Gl;
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -126,7 +127,11 @@ quack! {
 
 impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
 ::draw::Drawable for Slider<'a, T> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
 
         let state = *get_state(uic, self.ui_id);
         let mouse = uic.get_mouse_state();

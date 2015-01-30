@@ -1,7 +1,6 @@
 
 use color::Color;
 use dimensions::Dimensions;
-use opengl_graphics::Gl;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
@@ -10,6 +9,8 @@ use ui_context::{
     UiContext,
 };
 use widget::Widget;
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -110,7 +111,11 @@ quack! {
 }
 
 impl<'a> ::draw::Drawable for Button<'a> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
 
         let state = *get_state(uic, self.ui_id);
         let mouse = uic.get_mouse_state();

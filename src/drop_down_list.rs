@@ -1,7 +1,6 @@
 use color::Color;
 use dimensions::Dimensions;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use ui_context::{
@@ -9,6 +8,8 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use widget::Widget;
 use Callback;
 use FrameColor;
@@ -187,7 +188,11 @@ quack! {
 }
 
 impl<'a> ::draw::Drawable for DropDownList<'a> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
 
         let state = *get_state(uic, self.ui_id);
         let mouse = uic.get_mouse_state();

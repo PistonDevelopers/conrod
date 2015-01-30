@@ -1,6 +1,7 @@
 use piston::quack::{ Pair, Set, SetAt };
+use graphics::BackEnd;
+use graphics::character::CharacterCache;
 use color::Color;
-use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
 use Position;
@@ -15,7 +16,7 @@ pub enum Labeling<'a> {
 
 /// Determine the pixel width of the final text bitmap.
 #[inline]
-pub fn width(uic: &mut UiContext, size: FontSize, text: &str) -> f64 {
+pub fn width<C: CharacterCache>(uic: &mut UiContext<C>, size: FontSize, text: &str) -> f64 {
     text.chars().fold(0u32, |a, ch| {
         let character = uic.get_character(size, ch);
         a + character.width() as u32
@@ -35,9 +36,9 @@ pub trait Labelable<'a> {
     fn label_color(self, color: Color) -> Self;
     fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
     fn label_font_size(self, size: FontSize) -> Self;
-    fn small_font(self, uic: &UiContext) -> Self;
-    fn medium_font(self, uic: &UiContext) -> Self;
-    fn large_font(self, uic: &UiContext) -> Self;
+    fn small_font<C>(self, uic: &UiContext<C>) -> Self;
+    fn medium_font<C>(self, uic: &UiContext<C>) -> Self;
+    fn large_font<C>(self, uic: &UiContext<C>) -> Self;
 }
 
 /// Label text property.
@@ -74,15 +75,15 @@ impl<'a, T: 'a> Labelable<'a> for T
         self.set(LabelFontSize(size))
     }
 
-    fn small_font(self, uic: &UiContext) -> Self {
+    fn small_font<C>(self, uic: &UiContext<C>) -> Self {
         self.set(LabelFontSize(uic.theme.font_size_small))
     }
 
-    fn medium_font(self, uic: &UiContext) -> Self {
+    fn medium_font<C>(self, uic: &UiContext<C>) -> Self {
         self.set(LabelFontSize(uic.theme.font_size_medium))
     }
 
-    fn large_font(self, uic: &UiContext) -> Self {
+    fn large_font<C>(self, uic: &UiContext<C>) -> Self {
         self.set(LabelFontSize(uic.theme.font_size_large))
     }
 }
@@ -127,7 +128,11 @@ quack! {
 }
 
 impl<'a> ::draw::Drawable for Label<'a> {
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
         let color = self.maybe_color.unwrap_or(Color::black());
         uic.draw_text(graphics, self.pos, self.size, color, self.text);
     }

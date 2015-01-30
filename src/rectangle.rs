@@ -3,11 +3,12 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
+    BackEnd,
     Context,
 };
+use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
-use opengl_graphics::Gl;
 use point::Point;
 use ui_context::UiContext;
 use utils::map_range;
@@ -23,10 +24,10 @@ pub enum State {
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
 /// other widgets.
-pub fn draw(
+pub fn draw<B: BackEnd>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
+    graphics: &mut B,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -42,9 +43,9 @@ pub fn draw(
 }
 
 /// Draw the button border.
-fn draw_frame(
+fn draw_frame<B: BackEnd>(
     context: &Context,
-    graphics: &mut Gl,
+    graphics: &mut B,
     pos: Point,
     dim: Dimensions,
     color: Color
@@ -56,9 +57,9 @@ fn draw_frame(
 
 /// Draw the rectangle while considering frame
 /// width for position and dimensions.
-fn draw_normal(
+fn draw_normal<B: BackEnd>(
     context: &Context,
-    graphics: &mut Gl,
+    graphics: &mut B,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -92,11 +93,11 @@ pub fn is_over(pos: Point,
 }
 
 /// Draw a label centered within a rect of given position and dimensions.
-pub fn draw_with_centered_label(
+pub fn draw_with_centered_label<B, C>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
-    uic: &mut UiContext,
+    graphics: &mut B,
+    uic: &mut UiContext<C>,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -105,7 +106,11 @@ pub fn draw_with_centered_label(
     text: &str,
     font_size: FontSize,
     text_color: Color
-) {
+)
+    where
+        B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+        C: CharacterCache
+{
     let context = &Context::abs(win_w, win_h);
     if let Some((_, f_color)) = maybe_frame {
         draw_frame(context, graphics, pos, dim, f_color)
@@ -136,4 +141,3 @@ pub fn corner(rect_p: Point, p: Point, dim: Dimensions) -> Corner {
     else if x_perc <= 0.5 && y_perc >  0.5 { Corner::TopLeft }
     else                                   { Corner::TopRight }
 }
-

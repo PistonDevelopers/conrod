@@ -7,13 +7,14 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
+    BackEnd,
     Context,
     RelativeTransform,
 };
+use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
 use mouse::Mouse;
-use opengl_graphics::Gl;
 use point::Point;
 use rectangle;
 use utils::{
@@ -218,11 +219,11 @@ fn get_font_size(pad_height: f64) -> FontSize {
 
 /// Draw the value string glyphs.
 #[inline]
-fn draw_value_string(
+fn draw_value_string<B, C: CharacterCache>(
     win_w: f64,
     win_h: f64,
-    graphics: &mut Gl,
-    uic: &mut UiContext,
+    graphics: &mut B,
+    uic: &mut UiContext<C>,
     state: State,
     slot_y: f64,
     rect_color: Color,
@@ -232,7 +233,11 @@ fn draw_value_string(
     size: FontSize,
     font_color: Color,
     string: &str
-) {
+)
+    where
+        B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+        C: CharacterCache
+{
     let mut x = 0.0f64;
     let y = 0.0f64;
     let Color(font_col) = font_color;
@@ -276,8 +281,8 @@ fn draw_value_string(
 
 /// Draw the slot behind the value.
 #[inline]
-fn draw_slot_rect(
-    graphics: &mut Gl,
+fn draw_slot_rect<B: BackEnd>(
+    graphics: &mut B,
     context: &Context,
     x: f64, y: f64,
     w: f64, h: f64,
@@ -357,7 +362,11 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`
     /// function will be called.
-    fn draw(&mut self, uic: &mut UiContext, graphics: &mut Gl) {
+    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+        where
+            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            C: CharacterCache
+    {
 
         let state = *get_state(uic, self.ui_id);
         let mouse = uic.get_mouse_state();
