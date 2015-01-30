@@ -10,6 +10,7 @@ use graphics::character::CharacterCache;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -18,7 +19,7 @@ use utils::{
     percentage,
     value_from_perc,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use vecmath::vec2_add;
 use Callback;
 use FrameColor;
@@ -110,6 +111,10 @@ quack! {
     slider: Slider['a, T]
     get:
         fn () -> Size { Size(slider.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Slider(State::Normal))
+        }
+        fn () -> Id { Id(slider.ui_id) }
     set:
         fn (val: Color) { slider.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {
@@ -217,7 +222,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
             uic.draw_text(graphics, l_pos, size, text_color, text.as_slice());
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
 
     }
 }

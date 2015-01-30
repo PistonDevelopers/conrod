@@ -22,11 +22,12 @@ use utils::{
     compare_f64s,
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
 use vecmath::vec2_add;
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -341,6 +342,10 @@ quack! {
     nd: NumberDialer['a, T]
     get:
         fn () -> Size { Size(nd.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::NumberDialer(State::Normal))
+        }
+        fn () -> Id { Id(nd.ui_id) }
     set:
         fn (val: Color) { nd.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(T) + 'a>>) {
@@ -448,7 +453,7 @@ impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
             }
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
 
     }
 

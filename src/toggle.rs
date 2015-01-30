@@ -7,10 +7,11 @@ use rectangle;
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -96,6 +97,10 @@ quack! {
     toggle: Toggle['a]
     get:
         fn () -> Size { Size(toggle.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Toggle(State::Normal))
+        }
+        fn () -> Id { Id(toggle.ui_id) }
     set:
         fn (val: Color) { toggle.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(bool) + 'a>>) {
@@ -159,7 +164,7 @@ impl<'a> ::draw::Drawable for Toggle<'a> {
             },
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Toggle(new_state), self.pos, self.dim);
 
     }
 }

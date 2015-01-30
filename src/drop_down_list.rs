@@ -4,13 +4,14 @@ use mouse::Mouse;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
 use vecmath::vec2_add;
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -172,6 +173,12 @@ quack! {
     list: DropDownList['a]
     get:
         fn () -> Size { Size(list.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(
+                Widget::DropDownList(State::Closed(DrawState::Normal))
+            )
+        }
+        fn () -> Id { Id(list.ui_id) }
     set:
         fn (val: Color) { list.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) {
@@ -291,7 +298,7 @@ impl<'a> ::draw::Drawable for DropDownList<'a> {
 
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
 
     }
 }

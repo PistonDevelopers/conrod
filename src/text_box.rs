@@ -20,6 +20,7 @@ use rectangle;
 use std::num::Float;
 use clock_ticks::precise_time_s;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -27,7 +28,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use std::cmp;
 use Callback;
 use FrameColor;
@@ -226,6 +227,12 @@ quack! {
     tb: TextBox['a]
     get:
         fn () -> Size { Size(tb.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(
+                Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
+            )
+        }
+        fn () -> Id { Id(tb.ui_id) }
     set:
         fn (val: Color) { tb.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
@@ -365,7 +372,7 @@ impl<'a> ::draw::Drawable for TextBox<'a> {
             },
         }};
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
 
     }
 }

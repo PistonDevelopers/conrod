@@ -5,10 +5,11 @@ use mouse::Mouse;
 use point::Point;
 use rectangle;
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use graphics::BackEnd;
 use graphics::character::CharacterCache;
 use Callback;
@@ -95,6 +96,10 @@ quack! {
     button: Button['a]
     get:
         fn () -> Size { Size(button.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::Button(State::Normal))
+        }
+        fn () -> Id { Id(button.ui_id) }
     set:
         fn (val: Color) { button.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut() + 'a>>) {
@@ -155,7 +160,7 @@ impl<'a> ::draw::Drawable for Button<'a> {
             },
         }
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
 
     }
 }

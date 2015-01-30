@@ -18,6 +18,7 @@ use rectangle::{
     Corner
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -30,7 +31,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use Callback;
 use FrameColor;
 use FrameWidth;
@@ -155,6 +156,10 @@ quack! {
     xy_pad: XYPad['a, X, Y]
     get:
         fn () -> Size { Size(xy_pad.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::XYPad(State::Normal))
+        }
+        fn () -> Id { Id(xy_pad.ui_id) }
     set:
         fn (val: Color) { xy_pad.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {
@@ -263,7 +268,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
         uic.draw_text(graphics, xy_string_pos, self.font_size,
                     color.plain_contrast(), &xy_string[]);
 
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::XYPad(new_state), self.pos, self.dim);
 
     }
 }

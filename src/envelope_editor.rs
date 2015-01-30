@@ -19,6 +19,7 @@ use rectangle::{
     Corner
 };
 use ui_context::{
+    Id,
     UIID,
     UiContext,
 };
@@ -28,7 +29,7 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::Widget;
+use widget::{ DefaultWidgetState, Widget };
 use vecmath::{
     vec2_add,
     vec2_sub
@@ -275,6 +276,10 @@ quack! {
     env: EnvelopeEditor['a, X, Y, E]
     get:
         fn () -> Size { Size(env.dim) }
+        fn () -> DefaultWidgetState {
+            DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
+        }
+        fn () -> Id { Id(env.ui_id) }
     set:
         fn (val: Color) { env.maybe_color = Some(val) }
         fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {
@@ -563,7 +568,7 @@ impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
         }
 
         // Set the new state.
-        set_state(uic, self.ui_id, new_state, self.pos, self.dim);
+        set_state(uic, self.ui_id, Widget::EnvelopeEditor(new_state), self.pos, self.dim);
 
     }
 }
