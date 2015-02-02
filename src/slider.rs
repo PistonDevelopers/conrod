@@ -110,23 +110,23 @@ Slider<'a, T> {
 quack! {
     slider: Slider['a, T]
     get:
-        fn () -> Size { Size(slider.dim) }
-        fn () -> DefaultWidgetState {
+        fn () -> Size [] { Size(slider.dim) }
+        fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::Slider(State::Normal))
         }
-        fn () -> Id { Id(slider.ui_id) }
+        fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: Color) { slider.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(T) + 'a>>) {
+        fn (val: Color) [] { slider.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(T) + 'a>>) [] {
             slider.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) { slider.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) { slider.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) { slider.maybe_label = Some(val.0) }
-        fn (val: LabelColor) { slider.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) { slider.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) { slider.pos = val.0 }
-        fn (val: Size) { slider.dim = val.0 }
+        fn (val: FrameColor) [] { slider.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [] { slider.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) [] { slider.maybe_label = Some(val.0) }
+        fn (val: LabelColor) [] { slider.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) [] { slider.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) [] { slider.pos = val.0 }
+        fn (val: Size) [] { slider.dim = val.0 }
     action:
 }
 

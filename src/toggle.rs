@@ -96,23 +96,25 @@ impl<'a> Toggle<'a> {
 quack! {
     toggle: Toggle['a]
     get:
-        fn () -> Size { Size(toggle.dim) }
-        fn () -> DefaultWidgetState {
+        fn () -> Size [] { Size(toggle.dim) }
+        fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::Toggle(State::Normal))
         }
-        fn () -> Id { Id(toggle.ui_id) }
+        fn () -> Id [] { Id(toggle.ui_id) }
     set:
-        fn (val: Color) { toggle.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(bool) + 'a>>) {
+        fn (val: Color) [] { toggle.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(bool) + 'a>>) [] {
             toggle.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) { toggle.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) { toggle.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) { toggle.maybe_label = Some(val.0) }
-        fn (val: LabelColor) { toggle.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) { toggle.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) { toggle.pos = val.0 }
-        fn (val: Size) { toggle.dim = val.0 }
+        fn (val: FrameColor) [] { toggle.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [] { toggle.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) [] { toggle.maybe_label = Some(val.0) }
+        fn (val: LabelColor) [] { toggle.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) [] {
+            toggle.maybe_label_font_size = Some(val.0)
+        }
+        fn (val: Position) [] { toggle.pos = val.0 }
+        fn (val: Size) [] { toggle.dim = val.0 }
     action:
 }
 

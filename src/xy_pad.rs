@@ -155,23 +155,23 @@ XYPad<'a, X, Y> {
 quack! {
     xy_pad: XYPad['a, X, Y]
     get:
-        fn () -> Size { Size(xy_pad.dim) }
-        fn () -> DefaultWidgetState {
+        fn () -> Size [] { Size(xy_pad.dim) }
+        fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::XYPad(State::Normal))
         }
-        fn () -> Id { Id(xy_pad.ui_id) }
+        fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: Color) { xy_pad.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(X, Y) + 'a>>) {
+        fn (val: Color) [] { xy_pad.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(X, Y) + 'a>>) [] {
             xy_pad.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) { xy_pad.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) { xy_pad.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) { xy_pad.maybe_label = Some(val.0) }
-        fn (val: LabelColor) { xy_pad.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) { xy_pad.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) { xy_pad.pos = val.0 }
-        fn (val: Size) { xy_pad.dim = val.0 }
+        fn (val: FrameColor) [] { xy_pad.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [] { xy_pad.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) [] { xy_pad.maybe_label = Some(val.0) }
+        fn (val: LabelColor) [] { xy_pad.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) [] { xy_pad.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) [] { xy_pad.pos = val.0 }
+        fn (val: Size) [] { xy_pad.dim = val.0 }
     action:
 }
 

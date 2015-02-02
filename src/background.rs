@@ -24,7 +24,7 @@ quack! {
     bg: Background[]
     get:
     set:
-        fn (val: Color) { bg.maybe_color = Some(val) }
+        fn (val: Color) [] { bg.maybe_color = Some(val) }
     action:
 }
 

@@ -122,8 +122,8 @@ quack! {
     label: Label['a]
     get:
     set:
-        fn (val: Color) { label.maybe_color = Some(val) }
-        fn (val: Position) { label.pos = val.0 }
+        fn (val: Color) [] { label.maybe_color = Some(val) }
+        fn (val: Position) [] { label.pos = val.0 }
     action:
 }
 

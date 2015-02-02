@@ -275,23 +275,23 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 quack! {
     env: EnvelopeEditor['a, X, Y, E]
     get:
-        fn () -> Size { Size(env.dim) }
-        fn () -> DefaultWidgetState {
+        fn () -> Size [] { Size(env.dim) }
+        fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
         }
-        fn () -> Id { Id(env.ui_id) }
+        fn () -> Id [] { Id(env.ui_id) }
     set:
-        fn (val: Color) { env.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) {
+        fn (val: Color) [] { env.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) [] {
             env.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) { env.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) { env.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) { env.maybe_label = Some(val.0) }
-        fn (val: LabelColor) { env.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) { env.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) { env.pos = val.0 }
-        fn (val: Size) { env.dim = val.0 }
+        fn (val: FrameColor) [] { env.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [] { env.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) [] { env.maybe_label = Some(val.0) }
+        fn (val: LabelColor) [] { env.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) [] { env.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) [] { env.pos = val.0 }
+        fn (val: Size) [] { env.dim = val.0 }
     action:
 }
 
