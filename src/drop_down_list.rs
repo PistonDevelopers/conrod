@@ -62,7 +62,7 @@ impl State {
 
 widget_fns!(DropDownList, State, Widget::DropDownList(State::Closed(DrawState::Normal)));
 
-/// Is the cursor currently over the
+/// Is the cursor currently over the widget? If so which item?
 fn is_over(pos: Point,
            mouse_pos: Point,
            dim: Dimensions,
