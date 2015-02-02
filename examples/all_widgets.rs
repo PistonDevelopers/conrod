@@ -315,7 +315,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(Box::new(|&mut: _new_val: bool| {/*demo.bool_matrix[col][row] = new_val*/;}))
+                .callback(Box::new(|&mut: new_val: bool| demo.bool_matrix[col][row] = new_val))
                 .draw(uic, gl);
 
         }));
