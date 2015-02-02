@@ -12,7 +12,7 @@ use std::borrow::ToOwned;
 use ui_context::UiContext;
 
 /// A data holder for style-related data.
-#[derive(Show, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     pub name: String,
     pub background_color: Color,

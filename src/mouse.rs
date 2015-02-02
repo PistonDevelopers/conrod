@@ -2,7 +2,7 @@
 use point::Point;
 
 /// Represents the current state of a mouse button.
-#[derive(Show, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ButtonState {
     Up,
     Down,
