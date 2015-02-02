@@ -226,22 +226,22 @@ impl<'a> TextBox<'a> {
 quack! {
     tb: TextBox['a]
     get:
-        fn () -> Size { Size(tb.dim) }
-        fn () -> DefaultWidgetState {
+        fn () -> Size [] { Size(tb.dim) }
+        fn () -> DefaultWidgetState [] {
             DefaultWidgetState(
                 Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
             )
         }
-        fn () -> Id { Id(tb.ui_id) }
+        fn () -> Id [] { Id(tb.ui_id) }
     set:
-        fn (val: Color) { tb.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(&mut String) + 'a>>) {
+        fn (val: Color) [] { tb.maybe_color = Some(val) }
+        fn (val: Callback<Box<FnMut(&mut String) + 'a>>) [] {
             tb.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) { tb.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) { tb.maybe_frame = Some(val.0) }
-        fn (val: Position) { tb.pos = val.0 }
-        fn (val: Size) { tb.dim = val.0 }
+        fn (val: FrameColor) [] { tb.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [] { tb.maybe_frame = Some(val.0) }
+        fn (val: Position) [] { tb.pos = val.0 }
+        fn (val: Size) [] { tb.dim = val.0 }
     action:
 }
 

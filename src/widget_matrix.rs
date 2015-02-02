@@ -101,9 +101,9 @@ impl WidgetMatrix {
 quack! {
     wm: WidgetMatrix[]
     get:
-        fn () -> Size { Size(wm.pos) }
+        fn () -> Size [] { Size(wm.pos) }
     set:
-        fn (val: Position) { wm.pos = val.0 }
-        fn (val: Size) { wm.dim = val.0 }
+        fn (val: Position) [] { wm.pos = val.0 }
+        fn (val: Size) [] { wm.dim = val.0 }
     action:
 }
