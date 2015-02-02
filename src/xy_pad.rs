@@ -42,7 +42,7 @@ use Position;
 use Size;
 
 /// Represents the state of the xy_pad widget.
-#[derive(Show, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted,

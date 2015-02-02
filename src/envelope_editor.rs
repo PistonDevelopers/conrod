@@ -47,7 +47,7 @@ use Size;
 /// EnvelopeEditor is made up of. This is used to
 /// specify which element is Highlighted or Clicked
 /// when storing State.
-#[derive(Show, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Element {
     Rect,
     Pad,
@@ -60,14 +60,14 @@ pub enum Element {
 }
 
 /// An enum to define which button is clicked.
-#[derive(Show, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MouseButton {
     Left,
     Right,
 }
 
 /// Represents the state of the xy_pad widget.
-#[derive(Show, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum State {
     Normal,
     Highlighted(Element),

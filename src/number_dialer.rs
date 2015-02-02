@@ -41,7 +41,7 @@ use Size;
 /// NumberDialer is made up of. This is used to
 /// specify which element is Highlighted or Clicked
 /// when storing State.
-#[derive(Show, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Element {
     Rect,
     LabelGlyphs,
