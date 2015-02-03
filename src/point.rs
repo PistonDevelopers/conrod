@@ -5,7 +5,9 @@ use graphics::vecmath::Scalar;
 /// General use 2D spatial point.
 pub type Point = [Scalar; 2];
 
-impl EnvelopePoint<Scalar, Scalar> for Point {
+impl EnvelopePoint for Point {
+    type X = Scalar;
+    type Y = Scalar;
     /// Return the X value.
     fn get_x(&self) -> Scalar { self[0] }
     /// Return the Y value.

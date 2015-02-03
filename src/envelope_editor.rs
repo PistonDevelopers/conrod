@@ -89,23 +89,23 @@ widget_fns!(EnvelopeEditor, State, Widget::EnvelopeEditor(State::Normal));
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
-pub trait EnvelopePoint
-<X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
- Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString> {
+pub trait EnvelopePoint {
+    type X: Float + ToPrimitive + FromPrimitive + ToString;
+    type Y: Float + ToPrimitive + FromPrimitive + ToString;
     /// Return the X value.
-    fn get_x(&self) -> X;
+    fn get_x(&self) -> <Self as EnvelopePoint>::X;
     /// Return the Y value.
-    fn get_y(&self) -> Y;
+    fn get_y(&self) -> <Self as EnvelopePoint>::Y;
     /// Set the X value.
-    fn set_x(&mut self, _x: X);
+    fn set_x(&mut self, _x: <Self as EnvelopePoint>::X);
     /// Set the Y value.
-    fn set_y(&mut self, _y: Y);
+    fn set_y(&mut self, _y: <Self as EnvelopePoint>::Y);
     /// Return the bezier curve depth (-1. to 1.) for the next interpolation.
     fn get_curve(&self) -> f32 { 1.0 }
     /// Set the bezier curve depth (-1. to 1.) for the next interpolation.
     fn set_curve(&mut self, _curve: f32) {}
     /// Create a new EnvPoint.
-    fn new(_x: X, _y: Y) -> Self;
+    fn new(_x: <Self as EnvelopePoint>::X, _y: <Self as EnvelopePoint>::Y) -> Self;
 }
 
 /// Determine whether or not the cursor is over the EnvelopeEditor.
@@ -203,12 +203,12 @@ fn draw_circle<B: BackEnd>(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct EnvelopeEditor<'a, X, Y, E:'a, F> {
+pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
     ui_id: UIID,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
-    min_x: X, max_x: X,
-    min_y: Y, max_y: Y,
+    min_x: <E as EnvelopePoint>::X, max_x: <E as EnvelopePoint>::X,
+    min_y: <E as EnvelopePoint>::Y, max_y: <E as EnvelopePoint>::Y,
     pt_radius: f64,
     line_width: f64,
     font_size: FontSize,
@@ -223,29 +223,33 @@ pub struct EnvelopeEditor<'a, X, Y, E:'a, F> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a, X, Y, E, F> EnvelopeEditor<'a, X, Y, E, F> {
+impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     #[inline]
-    pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, X, Y, E, F> {
+    pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { pt_radius: radius, ..self }
     }
     #[inline]
-    pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, X, Y, E, F> {
+    pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, X, Y, E, F> {
+    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { font_size: size, ..self }
     }
     #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, X, Y, E, F> {
+    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { skew_y_range: skew, ..self }
     }
 }
 
-impl <'a, X, Y, E, F> EnvelopeEditor<'a, X, Y, E, F> {
+impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     /// An envelope editor builder method to be implemented by the UiContext.
-    pub fn new(ui_id: UIID, env: &'a mut Vec<E>,
-               min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditor<'a, X, Y, E, F> {
+    pub fn new(ui_id: UIID,
+               env: &'a mut Vec<E>,
+               min_x: <E as EnvelopePoint>::X,
+               max_x: <E as EnvelopePoint>::X,
+               min_y: <E as EnvelopePoint>::Y,
+               max_y: <E as EnvelopePoint>::Y) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor {
             ui_id: ui_id,
             env: env,
@@ -269,33 +273,33 @@ impl <'a, X, Y, E, F> EnvelopeEditor<'a, X, Y, E, F> {
 }
 
 quack! {
-    env: EnvelopeEditor['a, X, Y, E, F]
+    env: EnvelopeEditor['a, E, F]
     get:
-        fn () -> Size [] { Size(env.dim) }
-        fn () -> DefaultWidgetState [] {
+        fn () -> Size [where E: EnvelopePoint] { Size(env.dim) }
+        fn () -> DefaultWidgetState [where E: EnvelopePoint] {
             DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
         }
-        fn () -> Id [] { Id(env.ui_id) }
+        fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: Color) [] { env.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(&mut Vec<E>, usize) + 'a] {
+        fn (val: Color) [where E: EnvelopePoint] { env.maybe_color = Some(val) }
+        fn (val: Callback<F>) [where E: EnvelopePoint, F: FnMut(&mut Vec<E>, usize) + 'a] {
             env.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) [] { env.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { env.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { env.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { env.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { env.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [] { env.pos = val.0 }
-        fn (val: Size) [] { env.dim = val.0 }
+        fn (val: FrameColor) [where E: EnvelopePoint] { env.maybe_frame_color = Some(val.0) }
+        fn (val: FrameWidth) [where E: EnvelopePoint] { env.maybe_frame = Some(val.0) }
+        fn (val: LabelText<'a>) [where E: EnvelopePoint] { env.maybe_label = Some(val.0) }
+        fn (val: LabelColor) [where E: EnvelopePoint] { env.maybe_label_color = Some(val.0) }
+        fn (val: LabelFontSize) [where E: EnvelopePoint] { env.maybe_label_font_size = Some(val.0) }
+        fn (val: Position) [where E: EnvelopePoint] { env.pos = val.0 }
+        fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
     action:
 }
 
-impl<'a, X, Y, E, F> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E, F>
+impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
     where
-        X: Float + ToPrimitive + FromPrimitive + ToString,
-        Y: Float + ToPrimitive + FromPrimitive + ToString,
-        E: EnvelopePoint<X, Y>,
+        E: EnvelopePoint,
+        <E as EnvelopePoint>::X: Float,
+        <E as EnvelopePoint>::Y: Float,
         F: FnMut(&mut Vec<E>, usize) + 'a
 {
     #[inline]
@@ -389,7 +393,10 @@ impl<'a, X, Y, E, F> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E, F>
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let mut draw_env_pt = |&mut: uic: &mut UiContext<C>, envelope: &mut Vec<E>, idx: usize, p_pos: Point| {
+                let mut draw_env_pt = |&mut: uic: &mut UiContext<C>,
+                                             envelope: &mut Vec<E>,
+                                             idx: usize,
+                                             p_pos: Point| {
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
                         max_x, max_x - min_x, pad_dim[0] as usize
@@ -449,7 +456,7 @@ impl<'a, X, Y, E, F> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E, F>
         let get_new_value = |&: perc_envelope: &Vec<(f32, f32, f32)>,
                              idx: usize,
                              mouse_x: f64,
-                             mouse_y: f64| -> (X, Y) {
+                             mouse_y: f64| -> (<E as EnvelopePoint>::X, <E as EnvelopePoint>::Y) {
             let mouse_x_on_pad = mouse_x - pad_pos[0];
             let mouse_y_on_pad = mouse_y - pad_pos[1];
             let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_dim[0]);
