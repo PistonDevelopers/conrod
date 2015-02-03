@@ -97,7 +97,7 @@ fn draw_crosshair<B: BackEnd>(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct XYPad<'a, X, Y> {
+pub struct XYPad<'a, X, Y, F> {
     ui_id: UIID,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
@@ -105,8 +105,7 @@ pub struct XYPad<'a, X, Y> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|X, Y|:'a>,
-    maybe_callback: Option<Box<FnMut(X, Y) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -115,24 +114,22 @@ pub struct XYPad<'a, X, Y> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl <'a, X, Y> XYPad<'a, X, Y> {
+impl <'a, X, Y, F> XYPad<'a, X, Y, F> {
     #[inline]
-    pub fn line_width(self, width: f64) -> XYPad<'a, X, Y> {
+    pub fn line_width(self, width: f64) -> XYPad<'a, X, Y, F> {
         XYPad { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y> {
+    pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y, F> {
         XYPad { font_size: size, ..self }
     }
 }
 
-impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
-XYPad<'a, X, Y> {
+impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     /// An xy_pad builder method to be implemented by the UiContext.
     pub fn new(ui_id: UIID,
               x_val: X, min_x: X, max_x: X,
-              y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y> {
+              y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
         XYPad {
             ui_id: ui_id,
             x: x_val, min_x: min_x, max_x: max_x,
@@ -153,7 +150,7 @@ XYPad<'a, X, Y> {
 }
 
 quack! {
-    xy_pad: XYPad['a, X, Y]
+    xy_pad: XYPad['a, X, Y, F]
     get:
         fn () -> Size [] { Size(xy_pad.dim) }
         fn () -> DefaultWidgetState [] {
@@ -162,7 +159,7 @@ quack! {
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
         fn (val: Color) [] { xy_pad.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(X, Y) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(X, Y) + 'a] {
             xy_pad.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { xy_pad.maybe_frame_color = Some(val.0) }
@@ -175,9 +172,13 @@ quack! {
     action:
 }
 
-impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + ToString,
-         Y: Float + Copy + ToPrimitive + FromPrimitive + ToString>
-::draw::Drawable for XYPad<'a, X, Y> {
+impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
+    where
+        X: Float + ToPrimitive + FromPrimitive + ToString,
+        Y: Float + ToPrimitive + FromPrimitive + ToString,
+        F: FnMut(X, Y) + 'a
+{
+
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
             B: BackEnd<Texture = <C as CharacterCache>::Texture>,

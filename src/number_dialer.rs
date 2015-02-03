@@ -148,9 +148,7 @@ fn is_over(pos: Point,
 
 /// Check and return the current state of the NumberDialer.
 #[inline]
-fn get_new_state(is_over_elem: Option<Element>,
-                 prev: State,
-                 mouse: Mouse) -> State {
+fn get_new_state(is_over_elem: Option<Element>, prev: State, mouse: Mouse) -> State {
     use mouse::ButtonState::{Down, Up};
     use self::Element::ValueGlyph;
     use self::State::{Normal, Highlighted, Clicked};
@@ -176,8 +174,10 @@ fn get_new_state(is_over_elem: Option<Element>,
 
 /// Return the new value along with it's String representation.
 #[inline]
-fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-(val: T, min: T, max: T, idx: usize, y_ord: Ordering, val_string: &String) -> T {
+fn get_new_value<T>(val: T, min: T, max: T, idx: usize, y_ord: Ordering, val_string: &String) -> T
+    where
+        T: Float + FromPrimitive + ToPrimitive + ToString
+{
     match y_ord {
         Ordering::Equal => val,
         _ => {
@@ -209,14 +209,6 @@ fn get_new_value<T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
     }
 
 }
-
-/*
-/// Return a suitable font size for the given pad height.
-fn get_font_size(pad_height: f64) -> FontSize {
-    clamp(if pad_height % 2.0 == 0.0 { pad_height - 4.0 }
-          else { pad_height - 5.0 }, 4.0, 256.0) as FontSize
-}
-*/
 
 /// Draw the value string glyphs.
 #[inline]
@@ -296,7 +288,7 @@ fn draw_slot_rect<B: BackEnd>(
 
 
 /// A context on which the builder pattern can be implemented.
-pub struct NumberDialer<'a, T> {
+pub struct NumberDialer<'a, T, F> {
     ui_id: UIID,
     value: T,
     min: T,
@@ -310,15 +302,12 @@ pub struct NumberDialer<'a, T> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    // maybe_callback: Option<|T|:'a>,
-    maybe_callback: Option<Box<FnMut(T) + 'a>>,
+    maybe_callback: Option<F>,
 }
 
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-NumberDialer<'a, T> {
+impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     /// A number_dialer builder method to be implemented by the UiContext.
-    pub fn new(ui_id: UIID, value: T, min: T, max: T,
-                     precision: u8) -> NumberDialer<'a, T> {
+    pub fn new(ui_id: UIID, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
             ui_id: ui_id,
             value: clamp(value, min, max),
@@ -339,7 +328,7 @@ NumberDialer<'a, T> {
 }
 
 quack! {
-    nd: NumberDialer['a, T]
+    nd: NumberDialer['a, T, F]
     get:
         fn () -> Size [] { Size(nd.dim) }
         fn () -> DefaultWidgetState [] {
@@ -348,7 +337,7 @@ quack! {
         fn () -> Id [] { Id(nd.ui_id) }
     set:
         fn (val: Color) [] { nd.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(T) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
             nd.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { nd.maybe_frame_color = Some(val.0) }
@@ -361,8 +350,11 @@ quack! {
     action:
 }
 
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive + ToString>
-::draw::Drawable for NumberDialer<'a, T> {
+impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
+    where
+        T: Float + FromPrimitive + ToPrimitive + ToString,
+        F: FnMut(T) + 'a
+{
     #[inline]
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`

@@ -177,7 +177,7 @@ fn draw_ui(gl: &mut Gl,
             .rgba(0.4, 0.75, 0.6, 1.0)
             .frame(demo.frame_width)
             .label("PRESS")
-            .callback(box |&mut:| demo.bg_color = Color::random())
+            .callback(|&mut:| demo.bg_color = Color::random())
             .draw(uic, gl);
 
     }
@@ -202,7 +202,7 @@ fn draw_ui(gl: &mut Gl,
             .frame(demo.frame_width)
             .label(label.as_slice())
             .label_color(Color::white())
-            .callback(box |&mut: new_pad: f32| demo.title_padding = new_pad as f64)
+            .callback(|&mut: new_pad: f32| demo.title_padding = new_pad as f64)
             .draw(uic, gl);
 
     }
@@ -218,7 +218,7 @@ fn draw_ui(gl: &mut Gl,
         .frame(demo.frame_width)
         .label(label.as_slice())
         .label_color(Color::white())
-        .callback(box |&mut: value| {
+        .callback(|&mut: value| {
             demo.show_button = value;
             demo.toggle_label = match value {
                 true => "ON".to_string(),
@@ -257,7 +257,7 @@ fn draw_ui(gl: &mut Gl,
             .frame(demo.frame_width)
             .label(label.as_slice())
             .label_color(Color::white())
-            .callback(box |&mut: color| match i {
+            .callback(|&mut: color| match i {
                 0us => demo.bg_color.set_r(color),
                 1us => demo.bg_color.set_g(color),
                 _ => demo.bg_color.set_b(color),
@@ -274,7 +274,7 @@ fn draw_ui(gl: &mut Gl,
         .frame(demo.frame_width)
         .label("Height (pixels)")
         .label_color(demo.bg_color.invert().plain_contrast())
-        .callback(box |&mut: new_height| demo.v_slider_height = new_height)
+        .callback(|&mut: new_height| demo.v_slider_height = new_height)
         .draw(uic, gl);
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
@@ -286,7 +286,7 @@ fn draw_ui(gl: &mut Gl,
         .frame_color(demo.bg_color.plain_contrast())
         .label("Frame Width (pixels)")
         .label_color(demo.bg_color.plain_contrast())
-        .callback(box |&mut: new_width| demo.frame_width = new_width)
+        .callback(|&mut: new_width| demo.frame_width = new_width)
         .draw(uic, gl);
 
 
@@ -296,7 +296,7 @@ fn draw_ui(gl: &mut Gl,
     WidgetMatrix::new(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
-        .each_widget(box |&mut: num, col, row, pos, dim| { // This is called for every widget.
+        .each_widget(|&mut: num, col, row, pos, dim| { // This is called for every widget.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -313,7 +313,7 @@ fn draw_ui(gl: &mut Gl,
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(box |&mut: new_val: bool| demo.bool_matrix[col][row] = new_val)
+                .callback(|&mut: new_val: bool| demo.bool_matrix[col][row] = new_val)
                 .draw(uic, gl);
 
         });
@@ -342,7 +342,7 @@ fn draw_ui(gl: &mut Gl,
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
-        .callback(box |&mut: selected_idx: &mut Option<usize>, new_idx, _string| {
+        .callback(|&mut: selected_idx: &mut Option<usize>, new_idx, _string| {
             *selected_idx = Some(new_idx)
         })
         .draw(uic, gl);
@@ -360,7 +360,7 @@ fn draw_ui(gl: &mut Gl,
         .label_color(Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast())
         .line_width(2.0)
         .value_font_size(18u32)
-        .callback(box |&mut: new_x, new_y| {
+        .callback(|&mut: new_x, new_y| {
             demo.circle_pos[0] = new_x;
             demo.circle_pos[1] = new_y;
         })
@@ -373,7 +373,7 @@ fn draw_ui(gl: &mut Gl,
     WidgetMatrix::new(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
-        .each_widget(box |&mut: num, _col, _row, pos, dim| { // This is called for every widget.
+        .each_widget(|&mut: num, _col, _row, pos, dim| { // This is called for every widget.
             use conrod::draw::Drawable;
 
             let &mut (ref mut env, ref mut text) = &mut demo.envelopes[num];
@@ -395,6 +395,7 @@ fn draw_ui(gl: &mut Gl,
                 .frame(demo.frame_width)
                 .frame_color(demo.bg_color.invert().plain_contrast())
                 .color(demo.bg_color.invert())
+                .callback(|&mut: _string: &mut String|{})
                 .draw(uic, gl);
 
             // Draw an EnvelopeEditor.
@@ -411,6 +412,7 @@ fn draw_ui(gl: &mut Gl,
                 .label_color(env_label_color)
                 .point_radius(6.0)
                 .line_width(2.0)
+                .callback(|&mut: _points: &mut Vec<Point>, _idx: usize|{})
                 .draw(uic, gl);
 
         }); // End of matrix widget callback.

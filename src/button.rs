@@ -58,7 +58,7 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct Button<'a> {
+pub struct Button<'a, F> {
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
@@ -68,14 +68,13 @@ pub struct Button<'a> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    // maybe_callback: Option<|usize|-> bool:'a>,
-    maybe_callback: Option<Box<FnMut() + 'a>>,
+    maybe_callback: Option<F>,
 }
 
-impl<'a> Button<'a> {
+impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
-    pub fn new(ui_id: UIID) -> Button<'a> {
+    pub fn new(ui_id: UIID) -> Button<'a, F> {
         Button {
             ui_id: ui_id,
             pos: [0.0, 0.0],
@@ -93,7 +92,7 @@ impl<'a> Button<'a> {
 }
 
 quack! {
-    button: Button['a]
+    button: Button['a, F]
     get:
         fn () -> Size [] { Size(button.dim) }
         fn () -> DefaultWidgetState [] {
@@ -102,7 +101,7 @@ quack! {
         fn () -> Id [] { Id(button.ui_id) }
     set:
         fn (val: Color) [] { button.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut() + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut() + 'a] {
             button.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { button.maybe_frame_color = Some(val.0) }
@@ -115,7 +114,11 @@ quack! {
     action:
 }
 
-impl<'a> ::draw::Drawable for Button<'a> {
+impl<'a, F> ::draw::Drawable for Button<'a, F>
+    where
+        F: FnMut() + 'a
+{
+
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
             B: BackEnd<Texture = <C as CharacterCache>::Texture>,

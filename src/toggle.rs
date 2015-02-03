@@ -58,11 +58,11 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct Toggle<'a> {
+pub struct Toggle<'a, F> {
     ui_id: UIID,
     pos: Point,
     dim: Dimensions,
-    maybe_callback: Option<Box<FnMut(bool) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -72,10 +72,10 @@ pub struct Toggle<'a> {
     value: bool,
 }
 
-impl<'a> Toggle<'a> {
+impl<'a, F> Toggle<'a, F> {
 
     /// Create a toggle context to be built upon.
-    pub fn new(ui_id: UIID, value: bool) -> Toggle<'a> {
+    pub fn new(ui_id: UIID, value: bool) -> Toggle<'a, F> {
         Toggle {
             ui_id: ui_id,
             pos: [0.0, 0.0],
@@ -94,7 +94,7 @@ impl<'a> Toggle<'a> {
 }
 
 quack! {
-    toggle: Toggle['a]
+    toggle: Toggle['a, F]
     get:
         fn () -> Size [] { Size(toggle.dim) }
         fn () -> DefaultWidgetState [] {
@@ -103,7 +103,7 @@ quack! {
         fn () -> Id [] { Id(toggle.ui_id) }
     set:
         fn (val: Color) [] { toggle.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(bool) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(bool) + 'a] {
             toggle.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { toggle.maybe_frame_color = Some(val.0) }
@@ -118,7 +118,7 @@ quack! {
     action:
 }
 
-impl<'a> ::draw::Drawable for Toggle<'a> {
+impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
             B: BackEnd<Texture = <C as CharacterCache>::Texture>,
