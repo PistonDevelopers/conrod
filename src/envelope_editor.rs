@@ -202,9 +202,8 @@ fn draw_circle<B: BackEnd>(
 }
 
 
-
 /// A context on which the builder pattern can be implemented.
-pub struct EnvelopeEditor<'a, X, Y, E:'a> {
+pub struct EnvelopeEditor<'a, X, Y, E:'a, F> {
     ui_id: UIID,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
@@ -215,8 +214,7 @@ pub struct EnvelopeEditor<'a, X, Y, E:'a> {
     font_size: FontSize,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|&mut Vec<E>, usize|:'a>,
-    maybe_callback: Option<Box<FnMut(&mut Vec<E>, usize) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -225,31 +223,29 @@ pub struct EnvelopeEditor<'a, X, Y, E:'a> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a, X, Y, E> EnvelopeEditor<'a, X, Y, E> {
+impl<'a, X, Y, E, F> EnvelopeEditor<'a, X, Y, E, F> {
     #[inline]
-    pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, X, Y, E> {
+    pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, X, Y, E, F> {
         EnvelopeEditor { pt_radius: radius, ..self }
     }
     #[inline]
-    pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, X, Y, E> {
+    pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, X, Y, E, F> {
         EnvelopeEditor { line_width: width, ..self }
     }
     #[inline]
-    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, X, Y, E> {
+    pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, X, Y, E, F> {
         EnvelopeEditor { font_size: size, ..self }
     }
     #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, X, Y, E> {
+    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, X, Y, E, F> {
         EnvelopeEditor { skew_y_range: skew, ..self }
     }
 }
 
-impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-          E: EnvelopePoint<X, Y>> EnvelopeEditor<'a, X, Y, E> {
+impl <'a, X, Y, E, F> EnvelopeEditor<'a, X, Y, E, F> {
     /// An envelope editor builder method to be implemented by the UiContext.
     pub fn new(ui_id: UIID, env: &'a mut Vec<E>,
-                       min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditor<'a, X, Y, E> {
+               min_x: X, max_x: X, min_y: Y, max_y: Y) -> EnvelopeEditor<'a, X, Y, E, F> {
         EnvelopeEditor {
             ui_id: ui_id,
             env: env,
@@ -273,7 +269,7 @@ impl <'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
 }
 
 quack! {
-    env: EnvelopeEditor['a, X, Y, E]
+    env: EnvelopeEditor['a, X, Y, E, F]
     get:
         fn () -> Size [] { Size(env.dim) }
         fn () -> DefaultWidgetState [] {
@@ -282,7 +278,7 @@ quack! {
         fn () -> Id [] { Id(env.ui_id) }
     set:
         fn (val: Color) [] { env.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(&mut Vec<E>, usize) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(&mut Vec<E>, usize) + 'a] {
             env.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { env.maybe_frame_color = Some(val.0) }
@@ -295,9 +291,13 @@ quack! {
     action:
 }
 
-impl<'a, X: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         Y: Float + Copy + ToPrimitive + FromPrimitive + PartialOrd + ToString,
-         E: EnvelopePoint<X, Y>> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E> {
+impl<'a, X, Y, E, F> ::draw::Drawable for EnvelopeEditor<'a, X, Y, E, F>
+    where
+        X: Float + ToPrimitive + FromPrimitive + ToString,
+        Y: Float + ToPrimitive + FromPrimitive + ToString,
+        E: EnvelopePoint<X, Y>,
+        F: FnMut(&mut Vec<E>, usize) + 'a
+{
     #[inline]
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where

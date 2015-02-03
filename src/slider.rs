@@ -67,15 +67,14 @@ fn get_new_state(is_over: bool,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct Slider<'a, T> {
+pub struct Slider<'a, T, F> {
     ui_id: UIID,
     value: T,
     min: T,
     max: T,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|T|:'a>,
-    maybe_callback: Option<Box<FnMut(T) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -84,11 +83,9 @@ pub struct Slider<'a, T> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
-Slider<'a, T> {
+impl<'a, T, F> Slider<'a, T, F> {
     /// A button builder method to be implemented by the UiContext.
-    pub fn new(ui_id: UIID,
-              value: T, min: T, max: T) -> Slider<'a, T> {
+    pub fn new(ui_id: UIID, value: T, min: T, max: T) -> Slider<'a, T, F> {
         Slider {
             ui_id: ui_id,
             value: value,
@@ -108,7 +105,7 @@ Slider<'a, T> {
 }
 
 quack! {
-    slider: Slider['a, T]
+    slider: Slider['a, T, F]
     get:
         fn () -> Size [] { Size(slider.dim) }
         fn () -> DefaultWidgetState [] {
@@ -117,7 +114,7 @@ quack! {
         fn () -> Id [] { Id(slider.ui_id) }
     set:
         fn (val: Color) [] { slider.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(T) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
             slider.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { slider.maybe_frame_color = Some(val.0) }
@@ -130,8 +127,12 @@ quack! {
     action:
 }
 
-impl<'a, T: Float + Copy + FromPrimitive + ToPrimitive>
-::draw::Drawable for Slider<'a, T> {
+impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
+    where
+        T: Float + FromPrimitive + ToPrimitive,
+        F: FnMut(T) + 'a
+{
+
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
             B: BackEnd<Texture = <C as CharacterCache>::Texture>,

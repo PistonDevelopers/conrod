@@ -133,14 +133,13 @@ fn get_new_state(is_over_idx: Option<Idx>,
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct DropDownList<'a> {
+pub struct DropDownList<'a, F> {
     ui_id: UIID,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|&mut Option<Idx>, Idx, String|:'a>,
-    maybe_callback: Option<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -149,9 +148,10 @@ pub struct DropDownList<'a> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl<'a> DropDownList<'a> {
-    pub fn new(ui_id: UIID, strings: &'a mut Vec<String>,
-                      selected: &'a mut Option<Idx>) -> DropDownList<'a> {
+impl<'a, F> DropDownList<'a, F> {
+    pub fn new(ui_id: UIID,
+               strings: &'a mut Vec<String>,
+               selected: &'a mut Option<Idx>) -> DropDownList<'a, F> {
         DropDownList {
             ui_id: ui_id,
             strings: strings,
@@ -170,7 +170,7 @@ impl<'a> DropDownList<'a> {
 }
 
 quack! {
-    list: DropDownList['a]
+    list: DropDownList['a, F]
     get:
         fn () -> Size [] { Size(list.dim) }
         fn () -> DefaultWidgetState [] {
@@ -181,7 +181,7 @@ quack! {
         fn () -> Id [] { Id(list.ui_id) }
     set:
         fn (val: Color) [] { list.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(&mut Option<Idx>, Idx, String) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(&mut Option<Idx>, Idx, String) + 'a] {
             list.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { list.maybe_frame_color = Some(val.0) }
@@ -194,7 +194,11 @@ quack! {
     action:
 }
 
-impl<'a> ::draw::Drawable for DropDownList<'a> {
+impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
+    where
+        F: FnMut(&mut Option<Idx>, Idx, String) + 'a
+{
+
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
             B: BackEnd<Texture = <C as CharacterCache>::Texture>,

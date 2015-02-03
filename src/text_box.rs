@@ -187,28 +187,27 @@ fn draw_cursor<B: BackEnd>(
 }
 
 /// A context on which the builder pattern can be implemented.
-pub struct TextBox<'a> {
+pub struct TextBox<'a, F> {
     ui_id: UIID,
     text: &'a mut String,
     font_size: u32,
     pos: Point,
     dim: Dimensions,
-    // maybe_callback: Option<|&mut String|:'a>,
-    maybe_callback: Option<Box<FnMut(&mut String) + 'a>>,
+    maybe_callback: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
 }
 
-impl<'a> TextBox<'a> {
-    pub fn font_size(self, font_size: FontSize) -> TextBox<'a> {
+impl<'a, F> TextBox<'a, F> {
+    pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
         TextBox { font_size: font_size, ..self }
     }
 }
 
-impl<'a> TextBox<'a> {
+impl<'a, F> TextBox<'a, F> {
     /// Initialise a TextBoxContext.
-    pub fn new(ui_id: UIID, text: &'a mut String) -> TextBox<'a> {
+    pub fn new(ui_id: UIID, text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
             ui_id: ui_id,
             text: text,
@@ -224,7 +223,7 @@ impl<'a> TextBox<'a> {
 }
 
 quack! {
-    tb: TextBox['a]
+    tb: TextBox['a, F]
     get:
         fn () -> Size [] { Size(tb.dim) }
         fn () -> DefaultWidgetState [] {
@@ -235,7 +234,7 @@ quack! {
         fn () -> Id [] { Id(tb.ui_id) }
     set:
         fn (val: Color) [] { tb.maybe_color = Some(val) }
-        fn (val: Callback<Box<FnMut(&mut String) + 'a>>) [] {
+        fn (val: Callback<F>) [where F: FnMut(&mut String) + 'a] {
             tb.maybe_callback = Some(val.0)
         }
         fn (val: FrameColor) [] { tb.maybe_frame_color = Some(val.0) }
@@ -245,7 +244,11 @@ quack! {
     action:
 }
 
-impl<'a> ::draw::Drawable for TextBox<'a> {
+impl<'a, F> ::draw::Drawable for TextBox<'a, F>
+    where
+        F: FnMut(&mut String) + 'a
+{
+
     #[inline]
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
