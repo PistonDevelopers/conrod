@@ -1,13 +1,14 @@
 
 #![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
-#![feature(core, collections, io, path, std_misc, rand)]
+#![feature(core, collections, io, path, std_misc)]
 
 #[macro_use] extern crate bitflags;
-#[macro_use] extern crate piston;
-extern crate graphics;
-extern crate "rustc-serialize" as rustc_serialize;
 extern crate clock_ticks;
+extern crate graphics;
+#[macro_use] extern crate piston;
+extern crate rand;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate vecmath;
 
 pub use background::Background;
