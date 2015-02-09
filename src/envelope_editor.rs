@@ -376,7 +376,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         }
 
         // Determine the left and right X bounds for a point.
-        let get_x_bounds = |&: envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
+        let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0us && envelope_perc.len() - 1us > idx {
                 (*envelope_perc)[idx + 1us].0
             } else { 1.0 };
@@ -393,17 +393,27 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let mut draw_env_pt = |&mut: uic: &mut UiContext<C>,
-                                             envelope: &mut Vec<E>,
-                                             idx: usize,
-                                             p_pos: Point| {
+                let mut draw_env_pt = |uic: &mut UiContext<C>,
+                                       envelope: &mut Vec<E>,
+                                       idx: usize,
+                                       p_pos: Point| {
+
+                    // NOTE: Temporary fix for #301.
+                    fn temp_sub<T: Float>(max: T, min: T) -> T { max - min }
+
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x, max_x - min_x, pad_dim[0] as usize
+                        max_x,
+                        //max_x - min_x,
+                        temp_sub(max_x, min_x), // NOTE: Temporary fix for #301.
+                        pad_dim[0] as usize
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y, max_y - min_y, pad_dim[1] as usize
+                        max_y,
+                        //max_y - min_y,
+                        temp_sub(max_y, min_y), // NOTE: Temporary fix for #301.
+                        pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
@@ -453,7 +463,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         };
 
         // Determine new values.
-        let get_new_value = |&: perc_envelope: &Vec<(f32, f32, f32)>,
+        let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
                              idx: usize,
                              mouse_x: f64,
                              mouse_y: f64| -> (<E as EnvelopePoint>::X, <E as EnvelopePoint>::Y) {

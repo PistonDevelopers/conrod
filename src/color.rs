@@ -1,8 +1,10 @@
+
+use piston::quack::{ Pair, Set, SetAt };
+use rand::random;
 use std::num::Float;
 use std::default::Default;
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Add, Sub, Mul, Div};
-use std::rand::random;
 use std::ascii::AsciiExt;
 use rustc_serialize::hex::ToHex;
 use rustc_serialize::{
@@ -11,7 +13,6 @@ use rustc_serialize::{
     DecoderHelpers, EncoderHelpers
 };
 use utils::clampf32;
-use piston::quack::{ Pair, Set, SetAt };
 
 /// A basic color struct for general color use
 /// made of red, green, blue and alpha elements.
