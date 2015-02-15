@@ -398,22 +398,13 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                        idx: usize,
                                        p_pos: Point| {
 
-                    // NOTE: Temporary fix for #301.
-                    fn temp_sub<T: Float>(max: T, min: T) -> T { max - min }
-
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x,
-                        //max_x - min_x,
-                        temp_sub(max_x, min_x), // NOTE: Temporary fix for #301.
-                        pad_dim[0] as usize
+                        max_x, max_x - min_x, pad_dim[0] as usize
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y,
-                        //max_y - min_y,
-                        temp_sub(max_y, min_y), // NOTE: Temporary fix for #301.
-                        pad_dim[1] as usize
+                        max_y, max_y - min_y, pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
