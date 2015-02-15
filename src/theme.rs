@@ -38,9 +38,9 @@ impl Theme {
             frame_color: Color::new(0.0, 0.0, 0.0, 1.0),
             frame_width: 1.0,
             label_color: Color::new(0.0, 0.0, 0.0, 1.0),
-            font_size_large: 32,
-            font_size_medium: 24,
-            font_size_small: 18,
+            font_size_large: 26,
+            font_size_medium: 18,
+            font_size_small: 12,
         }
     }
 

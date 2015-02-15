@@ -10,6 +10,8 @@ You can find the example project that was used for that video [here](https://git
 
 [How to contribute](https://github.com/PistonDevelopers/piston/blob/master/CONTRIBUTING.md)
 
+[Licenses of example assets](https://github.com/PistonDevelopers/conrod/issues/319)
+
 Current State
 -------------
 
