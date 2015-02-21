@@ -137,7 +137,7 @@ fn main() {
     let event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
     let mut gl = Gl::new(opengl);
 
-    let font_path = Path::new("./assets/Dense-Regular.otf");
+    let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let mut uic = UiContext::new(glyph_cache, theme);
@@ -164,7 +164,7 @@ fn draw_ui(gl: &mut Gl,
     // Label example.
     Label::new("Widget Demonstration")
         .position(demo.title_padding, 30.0)
-        .size(48u32)
+        .size(32u32)
         .color(demo.bg_color.plain_contrast())
         .draw(uic, gl);
 
@@ -251,7 +251,7 @@ fn draw_ui(gl: &mut Gl,
 
         // Slider widget examples. slider(UIID, value, min, max)
         Slider::new(3u64 + i as u64, value, 0.0, 1.0)
-            .dimensions(35.0, demo.v_slider_height)
+            .dimensions(40.0, demo.v_slider_height)
             .position(50.0 + i as f64 * 60.0, 300.0)
             .color(color)
             .frame(demo.frame_width)
