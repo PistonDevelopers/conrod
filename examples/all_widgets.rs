@@ -1,10 +1,10 @@
-#![feature(box_syntax, core, path)]
+#![feature(core, old_path)]
 
 extern crate piston;
 extern crate conrod;
 extern crate graphics;
-extern crate sdl2_window;
 extern crate opengl_graphics;
+extern crate sdl2_window;
 extern crate vecmath;
 
 use conrod::{
@@ -31,7 +31,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use opengl_graphics::{ Gl, OpenGL };
+use opengl_graphics::{Gl, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::{
     Events,
@@ -39,11 +39,11 @@ use piston::event::{
     Ups,
     MaxFps,
 };
+use piston::Set;
 use piston::window::WindowSettings;
 use sdl2_window::Sdl2Window;
-use vecmath::vec2_add;
 use std::cell::RefCell;
-use piston::Set;
+use vecmath::vec2_add;
 
 type Ui = UiContext<GlyphCache>;
 
@@ -164,14 +164,14 @@ fn draw_ui(gl: &mut Gl,
     // Label example.
     Label::new("Widget Demonstration")
         .position(demo.title_padding, 30.0)
-        .size(32u32)
+        .size(32)
         .color(demo.bg_color.plain_contrast())
         .draw(uic, gl);
 
     if demo.show_button {
 
         // Button widget example button(UIID).
-        Button::new(0u64)
+        Button::new(0)
             .dimensions(90.0, 60.0)
             .position(50.0, 115.0)
             .rgba(0.4, 0.75, 0.6, 1.0)
@@ -195,7 +195,7 @@ fn draw_ui(gl: &mut Gl,
         };
 
         // Slider widget example slider(UIID, value, min, max).
-        Slider::new(1u64, pad as f32, 10.0, 910.0)
+        Slider::new(1, pad as f32, 10.0, 910.0)
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
             .rgba(0.5, 0.3, 0.6, 1.0)
@@ -211,7 +211,7 @@ fn draw_ui(gl: &mut Gl,
     let label = demo.toggle_label.clone();
 
     // Toggle widget example toggle(UIID, value).
-    Toggle::new(2u64, demo.show_button)
+    Toggle::new(2, demo.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0, uic)
         .rgba(0.6, 0.25, 0.75, 1.0)
@@ -229,28 +229,28 @@ fn draw_ui(gl: &mut Gl,
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
-    for i in 0us..3 {
+    for i in 0..3 {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
-            0us => Color::new(0.75f32, 0.3f32, 0.3f32, 1f32),
-            1us => Color::new(0.3f32, 0.75f32, 0.3f32, 1f32),
-            _  => Color::new(0.3f32, 0.3f32, 0.75f32, 1f32),
+            0 => Color::new(0.75, 0.3, 0.3, 1.0),
+            1 => Color::new(0.3, 0.75, 0.3, 1.0),
+            _ => Color::new(0.3, 0.3, 0.75, 1.0),
         };
 
         // Grab the value of the color element.
         let value = match i {
-            0us => demo.bg_color.r(),
-            1us => demo.bg_color.g(),
-            _  => demo.bg_color.b(),
+            0 => demo.bg_color.r(),
+            1 => demo.bg_color.g(),
+            _ => demo.bg_color.b(),
         };
 
         // Create the label to be drawn with the slider.
         let mut label = value.to_string();
-        if label.len() > 4us { label.truncate(4us); }
+        if label.len() > 4 { label.truncate(4); }
 
         // Slider widget examples. slider(UIID, value, min, max)
-        Slider::new(3u64 + i as u64, value, 0.0, 1.0)
+        Slider::new(3 + i as u64, value, 0.0, 1.0)
             .dimensions(40.0, demo.v_slider_height)
             .position(50.0 + i as f64 * 60.0, 300.0)
             .color(color)
@@ -258,8 +258,8 @@ fn draw_ui(gl: &mut Gl,
             .label(label.as_slice())
             .label_color(Color::white())
             .callback(|color| match i {
-                0us => demo.bg_color.set_r(color),
-                1us => demo.bg_color.set_g(color),
+                0 => demo.bg_color.set_r(color),
+                1 => demo.bg_color.set_g(color),
                 _ => demo.bg_color.set_b(color),
             })
             .draw(uic, gl);
@@ -267,7 +267,7 @@ fn draw_ui(gl: &mut Gl,
     }
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
-    NumberDialer::new(6u64, demo.v_slider_height, 25.0, 250.0, 1u8)
+    NumberDialer::new(6, demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
         .position(300.0, 115.0)
         .color(demo.bg_color.invert())
@@ -278,7 +278,7 @@ fn draw_ui(gl: &mut Gl,
         .draw(uic, gl);
 
     // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
-    NumberDialer::new(7u64, demo.frame_width, 0.0, 15.0, 2u8)
+    NumberDialer::new(7, demo.frame_width, 0.0, 15.0, 2u8)
         .dimensions(260.0, 60.0)
         .down(20.0, uic)
         .color(demo.bg_color.invert().plain_contrast())
@@ -292,7 +292,7 @@ fn draw_ui(gl: &mut Gl,
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
-    let (cols, rows) = (8us, 8us);
+    let (cols, rows) = (8, 8);
     WidgetMatrix::new(cols, rows)
         .dimensions(260.0, 260.0) // matrix width and height.
         .position(300.0, 270.0) // matrix position.
@@ -308,7 +308,7 @@ fn draw_ui(gl: &mut Gl,
 
             // Now draw the widgets with the given callback.
             let val = demo.bool_matrix[col][row];
-            Toggle::new(8u64 + num as u64, val)
+            Toggle::new(8 + num as u64, val)
                 .dim(dim)
                 .point(pos)
                 .rgba(r, g, b, a)
@@ -334,7 +334,7 @@ fn draw_ui(gl: &mut Gl,
     draw_circle(uic.win_w, uic.win_h, gl, demo.circle_pos, ddl_color);
 
     // A demonstration using drop_down_list.
-    DropDownList::new(75u64, &mut demo.ddl_colors, &mut demo.selected_idx)
+    DropDownList::new(75, &mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
         .right_from(6u64, 50.0, uic) // Position right from widget 6 by 50 pixels.
         .color(ddl_color)
@@ -348,7 +348,7 @@ fn draw_ui(gl: &mut Gl,
         .draw(uic, gl);
 
     // Draw an xy_pad.
-    XYPad::new(76u64, // UIID
+    XYPad::new(76, // UIID
                demo.circle_pos[0], 745.0, 595.0, // x range.
                demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
@@ -369,7 +369,7 @@ fn draw_ui(gl: &mut Gl,
     // Let's use the widget matrix to draw
     // one column of two envelope_editors,
     // each with its own text_box.
-    let (cols, rows) = (1us, 2us);
+    let (cols, rows) = (1, 2);
     WidgetMatrix::new(cols, rows)
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
@@ -382,14 +382,14 @@ fn draw_ui(gl: &mut Gl,
             let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
             let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)
                                 * demo.bg_color.invert().plain_contrast();
-            let env_y_max = match num { 0us => 20000.0, _ => 1.0 };
-            let tbox_uiid = 77u64 + (num * 2us) as u64;
+            let env_y_max = match num { 0 => 20000.0, _ => 1.0 };
+            let tbox_uiid = 77 + (num * 2) as u64;
             let env_uiid = tbox_uiid + 1u64;
-            let env_skew_y = match num { 0us => 3.0, _ => 1.0 };
+            let env_skew_y = match num { 0 => 3.0, _ => 1.0 };
 
             // Draw a TextBox. text_box(UIID, &mut String, FontSize)
             TextBox::new(tbox_uiid, text)
-                .font_size(24u32)
+                .font_size(24)
                 .dimensions(dim[0], text_box_height - 10.0)
                 .point(pos)
                 .frame(demo.frame_width)
@@ -401,14 +401,14 @@ fn draw_ui(gl: &mut Gl,
             // Draw an EnvelopeEditor.
             EnvelopeEditor::new(env_uiid, // UIID
                                 env, // vector of `E: EnvelopePoint`s.
-                                0.0f64, 1.0f64, 0.0f64, env_y_max) // x_min, x_max, y_min, y_max.
+                                0.0, 1.0, 0.0, env_y_max) // x_min, x_max, y_min, y_max.
                 .dimensions(dim[0], env_editor_height - 10.0)
                 .point(env_editor_pos)
                 .skew_y(env_skew_y)
                 .color(demo.bg_color.invert())
                 .frame(demo.frame_width)
                 .frame_color(demo.bg_color.invert().plain_contrast())
-                .label(&text[])
+                .label(&text)
                 .label_color(env_label_color)
                 .point_radius(6.0)
                 .line_width(2.0)

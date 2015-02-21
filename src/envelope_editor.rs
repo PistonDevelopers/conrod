@@ -400,11 +400,15 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
 
                     let x_string = val_to_string(
                         (*envelope)[idx].get_x(),
-                        max_x, max_x - min_x, pad_dim[0] as usize
+                        max_x,
+                        max_x - min_x,
+                        pad_dim[0] as usize
                     );
                     let y_string = val_to_string(
                         (*envelope)[idx].get_y(),
-                        max_y, max_y - min_y, pad_dim[1] as usize
+                        max_y,
+                        max_y - min_y,
+                        pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
                     let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
@@ -488,7 +492,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                 self.env[idx].set_x(new_x);
                                 self.env[idx].set_y(new_y);
                                 match self.maybe_callback {
-                                    Some(ref mut callback) => (*callback)(self.env, idx),
+                                    Some(ref mut callback) => callback(self.env, idx),
                                     None => (),
                                 }
                             },
@@ -496,7 +500,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                 // Delete the point and trigger the callback.
                                 self.env.remove(idx);
                                 match self.maybe_callback {
-                                    Some(ref mut callback) => (*callback)(self.env, idx),
+                                    Some(ref mut callback) => callback(self.env, idx),
                                     None => (),
                                 }
                             },
@@ -514,7 +518,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                     self.env[idx].set_x(new_x);
                                     self.env[idx].set_y(new_y);
                                     match self.maybe_callback {
-                                        Some(ref mut callback) => (*callback)(self.env, idx),
+                                        Some(ref mut callback) => callback(self.env, idx),
                                         None => (),
                                     }
                                 }

@@ -20,27 +20,21 @@ path = "./src/lib.rs"
 
 [dependencies.piston]
 git = "https://github.com/PistonDevelopers/piston/"
-#version = "0.0.0"
 
 [dependencies.piston2d-graphics]
 git = "https://github.com/PistonDevelopers/graphics.git"
-#version = "0.0.5"
 
 [dependencies.vecmath]
 git = "https://github.com/PistonDevelopers/vecmath.git"
-#version = "0.0.3"
 
 [dev-dependencies.pistoncore-sdl2_window]
 git = "https://github.com/PistonDevelopers/sdl2_window.git"
-#version = "0.0.0"
 
 [dev-dependencies.piston2d-opengl_graphics]
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
-#version = "0.0.3"
 
 [dependencies.clock_ticks]
 git = "https://github.com/tomaka/clock_ticks"
-#version = "*"
 
 [dependencies]
 bitflags = "0.1"
