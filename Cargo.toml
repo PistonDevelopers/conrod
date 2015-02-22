@@ -27,8 +27,8 @@ git = "https://github.com/PistonDevelopers/graphics.git"
 [dependencies.vecmath]
 git = "https://github.com/PistonDevelopers/vecmath.git"
 
-[dev-dependencies.pistoncore-sdl2_window]
-git = "https://github.com/PistonDevelopers/sdl2_window.git"
+[dev-dependencies.pistoncore-glutin_window]
+git = "https://github.com/PistonDevelopers/glutin_window.git"
 
 [dev-dependencies.piston2d-opengl_graphics]
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"

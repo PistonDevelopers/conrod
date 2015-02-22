@@ -1,21 +1,28 @@
 language: rust
+
 notifications:
     irc: "irc.mozilla.org#piston-internals"
+
 os:
     - linux
     - osx
+
 env:
     global:
         - secure: W/pxVmgtzNXIQNPOm9lsIjSr2nEHGVD8uOGV0be4kdz0bUXCjFDe1j45VVDnXPoJZDrnv7TO0etn3yT7hpuiZGAT40Ovn7LVq7gqtTAoP2U7vbURN55g0MU9dSIAOUdfclAMZez9HgOHWC0P3Tg6bNkNrW5B5wwpmaFVyYwiQkE=
+
 install:
-    # SDL2
-    - curl -O http://www.libsdl.org/release/SDL2-2.0.0.tar.gz
-    - tar -xzvf SDL2-2.0.0.tar.gz
-    - (cd SDL2-2.0.0 && ./configure && make && sudo make install)
+    # # SDL2
+    # - curl -O http://www.libsdl.org/release/SDL2-2.0.0.tar.gz
+    # - tar -xzvf SDL2-2.0.0.tar.gz
+    # - (cd SDL2-2.0.0 && ./configure && make && sudo make install)
+    - sudo apt-get install libXxf86vm-dev libosmesa6-dev
+
 script:
-    - cargo build -v
-    - cargo test -v
-    - cargo doc -v
+    - cargo build --verbose
+    - cargo test --verbose
+    - cargo doc --verbose
+
 after_success:
     - cp -R target/doc doc
     - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
