@@ -64,24 +64,24 @@ pub fn val_to_string<T: ToString + ToPrimitive>
             // what power of ten both the max and range are.
             let val_rng_f = val_rng.to_f64().unwrap();
             let max_f = max.to_f64().unwrap();
-            let mut n = 0f64;
-            let mut pow_ten = 0f64;
+            let mut n: f64 = 0.0;
+            let mut pow_ten = 0.0;
             while pow_ten < val_rng_f || pow_ten < max_f {
-                pow_ten = (10f64).powf(n);
+                pow_ten = (10.0).powf(n);
                 n += 1.0
             }
-            let min_string_len = n as usize + 1us;
+            let min_string_len = n as usize + 1;
 
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.
-            let mut n = 1us;
-            while 10us.pow(n) < pixel_range { n += 1us }
+            let mut n: usize = 1;
+            while 10.pow(n) < pixel_range { n += 1 }
             let precision = n;
 
             // Truncate the length to the pixel precision as
             // long as this doesn't cause it to be smaller
             // than the necessary decimal place.
-            let mut truncate_len = min_string_len + (precision - 1us);
+            let mut truncate_len = min_string_len + (precision - 1);
             if idx + precision < truncate_len { truncate_len = idx + precision }
             if s.len() > truncate_len { s.truncate(truncate_len) }
             s

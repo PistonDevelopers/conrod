@@ -1,7 +1,6 @@
 
-#![feature(slicing_syntax)]
 #![deny(missing_copy_implementations)]
-#![feature(core, collections, io, path, std_misc)]
+#![feature(core, collections, old_io, old_path)]
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;

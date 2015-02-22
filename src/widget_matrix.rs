@@ -43,9 +43,9 @@ impl WidgetMatrix {
     {
         let widget_w = self.dim[0] / self.cols as f64;
         let widget_h = self.dim[1] / self.rows as f64;
-        let mut widget_num = 0us;
-        for col in 0us..self.cols {
-            for row in 0us..self.rows {
+        let mut widget_num = 0;
+        for col in 0..self.cols {
+            for row in 0..self.rows {
                 callback(
                     widget_num,
                     col,
@@ -55,7 +55,7 @@ impl WidgetMatrix {
                     [widget_w - self.cell_pad_w * 2.0,
                      widget_h - self.cell_pad_h * 2.0],
                 );
-                widget_num += 1us;
+                widget_num += 1;
             }
         }
     }

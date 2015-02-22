@@ -56,20 +56,20 @@ impl<C> UiContext<C>
         UiContext {
             data: repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(512).collect(),
             theme: theme,
-            mouse: Mouse::new([0f64, 0f64], ButtonState::Up, ButtonState::Up, ButtonState::Up),
-            keys_just_pressed: Vec::with_capacity(10us),
-            keys_just_released: Vec::with_capacity(10us),
-            text_just_entered: Vec::with_capacity(10us),
+            mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
+            keys_just_pressed: Vec::with_capacity(10),
+            keys_just_released: Vec::with_capacity(10),
+            text_just_entered: Vec::with_capacity(10),
             glyph_cache: glyph_cache,
             prev_event_was_render: false,
-            win_w: 0f64,
-            win_h: 0f64,
-            prev_uiid: 0u64,
+            win_w: 0.0,
+            win_h: 0.0,
+            prev_uiid: 0,
         }
     }
 
     /// Handle game events and update the state.
-    pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
+    pub fn handle_event<E: GenericEvent + ::std::fmt::Debug>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
             self.prev_event_was_render = false;
