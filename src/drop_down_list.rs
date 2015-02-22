@@ -72,7 +72,7 @@ fn is_over(pos: Point,
         State::Closed(_) => {
             match rectangle::is_over(pos, mouse_pos, dim) {
                 false => None,
-                true => Some(0us),
+                true => Some(0),
             }
         },
         State::Open(_) => {
@@ -100,9 +100,9 @@ fn get_new_state(is_over_idx: Option<Idx>,
                     match (draw_state, mouse.left) {
                         (Normal,            Down) => State::Closed(Normal),
                         (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0us, len)),
-                        (Highlighted(_, _), Down) => State::Closed(Clicked(0us, len)),
-                        (Clicked(_, _),     Down) => State::Closed(Clicked(0us, len)),
+                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0, len)),
+                        (Highlighted(_, _), Down) => State::Closed(Clicked(0, len)),
+                        (Clicked(_, _),     Down) => State::Closed(Clicked(0, len)),
                         (Clicked(_, _),     Up)   => State::Open(Normal),
                     }
                 },
@@ -244,10 +244,10 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
             State::Closed(_) => {
                 let rect_state = new_state.as_rect_state();
                 let text = match sel {
-                    Some(idx) => &(*self.strings)[idx][],
+                    Some(idx) => &(*self.strings)[idx][..],
                     None => match self.maybe_label {
                         Some(text) => text,
-                        None => &(*self.strings)[0][],
+                        None => &(*self.strings)[0][..],
                     },
                 };
                 rectangle::draw_with_centered_label(

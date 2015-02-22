@@ -116,7 +116,7 @@ fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
                text_w: f64,
                font_size: FontSize,
                text: &str) -> (Idx, f64) {
-    if mouse_pos[0] <= text_x { return (0us, text_x) }
+    if mouse_pos[0] <= text_x { return (0, text_x) }
     let mut x = text_x;
     let mut prev_x = x;
     let mut left_x = text_x;
@@ -211,7 +211,7 @@ impl<'a, F> TextBox<'a, F> {
         TextBox {
             ui_id: ui_id,
             text: text,
-            font_size: 24u32, // Default font_size.
+            font_size: 24, // Default font_size.
             pos: [0.0, 0.0],
             dim: [192.0, 48.0],
             maybe_callback: None,
@@ -293,7 +293,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                 // Check for entered text.
                 let entered_text = uic.get_entered_text();
                 for t in entered_text.iter() {
-                    let mut entered_text_width = 0f64;
+                    let mut entered_text_width = 0.0;
                     for ch in t.as_slice().chars() {
                         let c = uic.get_character(self.font_size, ch);
                         entered_text_width += c.width();
@@ -315,10 +315,10 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                 for key in pressed_keys.iter() {
                     match *key {
                         Backspace => {
-                            if self.text.len() > 0us
+                            if self.text.len() > 0
                             && self.text.len() >= idx
-                            && idx > 0us {
-                                let rem_idx = idx - 1us;
+                            && idx > 0 {
+                                let rem_idx = idx - 1;
                                 new_cursor_x -= uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(rem_idx)
                                 );
@@ -332,9 +332,9 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                         Left => {
                             if idx > 0 {
                                 new_cursor_x -= uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(idx - 1us)
+                                    self.font_size, self.text.as_slice().char_at(idx - 1)
                                 );
-                                new_idx -= 1us;
+                                new_idx -= 1;
                             }
                         },
                         Right => {
@@ -342,10 +342,10 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                                 new_cursor_x += uic.get_character_w(
                                     self.font_size, self.text.as_slice().char_at(idx)
                                 );
-                                new_idx += 1us;
+                                new_idx += 1;
                             }
                         },
-                        Return => if self.text.len() > 0us {
+                        Return => if self.text.len() > 0 {
                             let TextBox { // borrowck
                                 ref mut maybe_callback,
                                 ref font_size,

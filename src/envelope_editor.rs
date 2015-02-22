@@ -123,7 +123,7 @@ fn is_over_and_closest(pos: Point,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => (Some(Element::Rect), Some(Element::Rect)),
             true => {
-                let mut closest_distance = ::std::f64::MAX_VALUE;
+                let mut closest_distance = ::std::f64::MAX;
                 let mut closest_env_point = Element::Pad;
                 for (i, p) in perc_env.iter().enumerate() {
                     let (x, y, _) = *p;
@@ -358,12 +358,12 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
 
         // Draw the envelope lines.
         match self.env.len() {
-            0us | 1us => (),
+            0 | 1 => (),
             _ => {
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
-                for i in 1us..perc_env.len() {
-                    let (x_a, y_a, _) = perc_env[i - 1us];
+                for i in 1..perc_env.len() {
+                    let (x_a, y_a, _) = perc_env[i - 1];
                     let (x_b, y_b, _) = perc_env[i];
                     let p_a = [map_range(x_a, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
@@ -377,11 +377,11 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
 
         // Determine the left and right X bounds for a point.
         let get_x_bounds = |envelope_perc: &Vec<(f32, f32, f32)>, idx: usize| -> (f32, f32) {
-            let right_bound = if envelope_perc.len() > 0us && envelope_perc.len() - 1us > idx {
-                (*envelope_perc)[idx + 1us].0
+            let right_bound = if envelope_perc.len() > 0 && envelope_perc.len() - 1 > idx {
+                (*envelope_perc)[idx + 1].0
             } else { 1.0 };
-            let left_bound = if envelope_perc.len() > 0us && idx > 0us {
-                (*envelope_perc)[idx - 1us].0
+            let left_bound = if envelope_perc.len() > 0 && idx > 0 {
+                (*envelope_perc)[idx - 1].0
             } else { 0.0 };
             (left_bound, right_bound)
         };
@@ -534,12 +534,12 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
 
                 // Check if a there are no points. If there are
                 // and the mouse was clicked, add a point.
-                if self.env.len() == 0us {
+                if self.env.len() == 0 {
                     match (state, new_state) {
                         (State::Clicked(elem, m_button), State::Highlighted(_)) => {
                             match (elem, m_button) {
                                 (Element::Pad, MouseButton::Left) => {
-                                    let (new_x, new_y) = get_new_value(&perc_env, 0us, mouse.pos[0], mouse.pos[1]);
+                                    let (new_x, new_y) = get_new_value(&perc_env, 0, mouse.pos[0], mouse.pos[1]);
                                     let new_point = EnvelopePoint::new(new_x, new_y);
                                     self.env.push(new_point);
                                 }, _ => (),
