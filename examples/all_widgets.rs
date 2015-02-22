@@ -4,7 +4,7 @@ extern crate piston;
 extern crate conrod;
 extern crate graphics;
 extern crate opengl_graphics;
-extern crate sdl2_window;
+extern crate glutin_window;
 extern crate vecmath;
 
 use conrod::{
@@ -41,7 +41,7 @@ use piston::event::{
 };
 use piston::Set;
 use piston::window::WindowSettings;
-use sdl2_window::Sdl2Window;
+use glutin_window::GlutinWindow;
 use std::cell::RefCell;
 use vecmath::vec2_add;
 
@@ -123,7 +123,7 @@ impl DemoApp {
 
 fn main() {
     let opengl = OpenGL::_3_2;
-    let window = Sdl2Window::new(
+    let window = GlutinWindow::new(
         opengl,
         WindowSettings {
             title: "Hello Conrod".to_string(),
