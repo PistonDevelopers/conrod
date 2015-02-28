@@ -10,7 +10,7 @@ use ui_context::{
     UiContext,
 };
 use widget::{ DefaultWidgetState, Widget };
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use Callback;
 use FrameColor;
@@ -121,7 +121,7 @@ impl<'a, F> ::draw::Drawable for Button<'a, F>
 
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 

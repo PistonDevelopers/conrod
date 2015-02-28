@@ -1,7 +1,7 @@
 use std::iter::repeat;
 use Color;
 use dimensions::Dimensions;
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::{ Character, CharacterCache };
 use label::FontSize;
 use mouse::{
@@ -148,7 +148,7 @@ impl<C> UiContext<C>
         text: &str
     )
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>
+            B: Graphics<Texture = <C as CharacterCache>::Texture>
     {
         use graphics::Context;
         use graphics::text::Text;

@@ -9,7 +9,7 @@ use ui_context::{
     UiContext,
 };
 use vecmath::vec2_add;
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use widget::{ DefaultWidgetState, Widget };
 use Callback;
@@ -201,7 +201,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
 
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 

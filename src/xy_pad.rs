@@ -5,7 +5,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
-    BackEnd,
+    Graphics,
     Context,
 };
 use graphics::character::CharacterCache;
@@ -78,7 +78,7 @@ fn get_new_state(is_over: bool,
 }
 
 /// Draw the crosshair.
-fn draw_crosshair<B: BackEnd>(
+fn draw_crosshair<B: Graphics>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
@@ -181,7 +181,7 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
 
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
