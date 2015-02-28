@@ -6,7 +6,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
-    BackEnd,
+    Graphics,
     Context,
 };
 use graphics::character::CharacterCache;
@@ -187,7 +187,7 @@ fn get_new_state(is_over_elem: Option<Element>,
 }
 
 /// Draw a circle at the given position.
-fn draw_circle<B: BackEnd>(
+fn draw_circle<B: Graphics>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
@@ -305,7 +305,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
     #[inline]
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let state = *get_state(uic, self.ui_id);

@@ -5,7 +5,7 @@ use color::Color;
 use dimensions::Dimensions;
 use label;
 use mouse::Mouse;
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use point::Point;
 use rectangle;
@@ -135,7 +135,7 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
 
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 

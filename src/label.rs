@@ -1,5 +1,5 @@
 use piston::quack::{ Pair, Set, SetAt };
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use color::Color;
 use point::Point;
@@ -130,7 +130,7 @@ quack! {
 impl<'a> ::draw::Drawable for Label<'a> {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let color = self.maybe_color.unwrap_or(Color::black());

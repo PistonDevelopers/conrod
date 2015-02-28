@@ -7,7 +7,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
-    BackEnd,
+    Graphics,
     Context,
     RelativeTransform,
 };
@@ -228,7 +228,7 @@ fn draw_value_string<B, C: CharacterCache>(
     string: &str
 )
     where
-        B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+        B: Graphics<Texture = <C as CharacterCache>::Texture>,
         C: CharacterCache
 {
     let mut x = 0.0f64;
@@ -274,7 +274,7 @@ fn draw_value_string<B, C: CharacterCache>(
 
 /// Draw the slot behind the value.
 #[inline]
-fn draw_slot_rect<B: BackEnd>(
+fn draw_slot_rect<B: Graphics>(
     graphics: &mut B,
     context: &Context,
     x: f64, y: f64,
@@ -361,7 +361,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
     /// function will be called.
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 

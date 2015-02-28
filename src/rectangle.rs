@@ -3,7 +3,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
-    BackEnd,
+    Graphics,
     Context,
 };
 use graphics::character::CharacterCache;
@@ -24,7 +24,7 @@ pub enum State {
 /// Draw a basic rectangle. The primary purpose
 /// of this is to be used as a building block for
 /// other widgets.
-pub fn draw<B: BackEnd>(
+pub fn draw<B: Graphics>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
@@ -43,7 +43,7 @@ pub fn draw<B: BackEnd>(
 }
 
 /// Draw the button border.
-fn draw_frame<B: BackEnd>(
+fn draw_frame<B: Graphics>(
     context: &Context,
     graphics: &mut B,
     pos: Point,
@@ -57,7 +57,7 @@ fn draw_frame<B: BackEnd>(
 
 /// Draw the rectangle while considering frame
 /// width for position and dimensions.
-fn draw_normal<B: BackEnd>(
+fn draw_normal<B: Graphics>(
     context: &Context,
     graphics: &mut B,
     state: State,
@@ -108,7 +108,7 @@ pub fn draw_with_centered_label<B, C>(
     text_color: Color
 )
     where
-        B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+        B: Graphics<Texture = <C as CharacterCache>::Texture>,
         C: CharacterCache
 {
     let context = &Context::abs(win_w, win_h);

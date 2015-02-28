@@ -4,7 +4,7 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
-use graphics::BackEnd;
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use ui_context::{
     Id,
@@ -121,7 +121,7 @@ quack! {
 impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let color = self.maybe_color.unwrap_or(uic.theme.shape_color);

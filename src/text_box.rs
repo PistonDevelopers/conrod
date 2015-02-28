@@ -2,7 +2,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
-    BackEnd,
+    Graphics,
     Context,
 };
 use graphics::character::CharacterCache;
@@ -171,7 +171,7 @@ fn get_new_state(over_elem: Element,
 }
 
 /// Draw the text cursor.
-fn draw_cursor<B: BackEnd>(
+fn draw_cursor<B: Graphics>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
@@ -252,7 +252,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
     #[inline]
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
-            B: BackEnd<Texture = <C as CharacterCache>::Texture>,
+            B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let mouse = uic.get_mouse_state();
