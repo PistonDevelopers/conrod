@@ -31,7 +31,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use opengl_graphics::{Gl, OpenGL};
+use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::{
     Events,
@@ -135,7 +135,7 @@ fn main() {
     );
     let window_ref = RefCell::new(window);
     let event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
-    let mut gl = Gl::new(opengl);
+    let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
@@ -154,7 +154,7 @@ fn main() {
 }
 
 /// Draw the User Interface.
-fn draw_ui(gl: &mut Gl,
+fn draw_ui(gl: &mut GlGraphics,
            uic: &mut Ui,
            demo: &mut DemoApp) {
 
@@ -422,7 +422,7 @@ fn draw_ui(gl: &mut Gl,
 /// Draw a circle controlled by the XYPad.
 fn draw_circle(win_w: f64,
                win_h: f64,
-               gl: &mut Gl,
+               gl: &mut GlGraphics,
                pos: Point,
                color: Color) {
     let context = &graphics::Context::abs(win_w, win_h);
