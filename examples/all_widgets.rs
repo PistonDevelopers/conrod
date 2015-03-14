@@ -425,13 +425,12 @@ fn draw_circle(win_w: f64,
                gl: &mut GlGraphics,
                pos: Point,
                color: Color) {
-    let context = &graphics::Context::abs(win_w, win_h);
     let Color(col) = color;
     graphics::Ellipse::new(col)
         .draw(
             [pos[0], pos[1], 30.0, 30.0],
-            &context.draw_state,
-            context.transform,
+            &graphics::default_draw_state(),
+            graphics::abs_transform(win_w, win_h),
             gl
         );
 }

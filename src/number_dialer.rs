@@ -8,7 +8,6 @@ use dimensions::Dimensions;
 use graphics;
 use graphics::{
     Graphics,
-    Context,
     RelativeTransform,
 };
 use graphics::character::CharacterCache;
@@ -234,9 +233,12 @@ fn draw_value_string<B, C: CharacterCache>(
     let mut x = 0.0f64;
     let y = 0.0f64;
     let Color(font_col) = font_color;
-    let context = Context::abs(win_w, win_h).trans(pos[0], pos[1] + size as f64);
+    let draw_state = graphics::default_draw_state();
+    let transform = graphics::abs_transform(win_w, win_h)
+        .trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
     let image = graphics::Image::colored(font_col);
+    let slot_rect = graphics::Rectangle::new(rect_color.0);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -245,8 +247,12 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
-                    draw_slot_rect(graphics, &context, x as f64, context_slot_y,
-                                   size as f64, pad_h, rect_color);
+                    slot_rect.draw(
+                        [x as f64, context_slot_y, size as f64, pad_h],
+                        &draw_state,
+                        transform,
+                        graphics
+                    );
                 },
                 _ => (),
             },
@@ -255,37 +261,26 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
-                    draw_slot_rect(graphics, &context, x, context_slot_y,
-                                   size as f64, pad_h, rect_color);
+                    slot_rect.draw(
+                        [x, context_slot_y, size as f64, pad_h],
+                        &draw_state,
+                        transform,
+                        graphics
+                    );
                 },
                 _ => (),
             },
             _ => (),
         };
         let x_shift = half_slot_w - 0.5 * character.width();
-        let d = context.transform.trans(
+        let d = transform.trans(
                 x + character.left() + x_shift,
                 y - character.top()
             );
-        image.draw(&character.texture, &context.draw_state, d, graphics);
+        image.draw(&character.texture, &draw_state, d, graphics);
         x += slot_w;
     }
 }
-
-/// Draw the slot behind the value.
-#[inline]
-fn draw_slot_rect<B: Graphics>(
-    graphics: &mut B,
-    context: &Context,
-    x: f64, y: f64,
-    w: f64, h: f64,
-    color: Color
-) {
-    let Color(col) = color;
-    graphics::Rectangle::new(col)
-        .draw([x, y, w, h], &context.draw_state, context.transform, graphics);
-}
-
 
 /// A context on which the builder pattern can be implemented.
 pub struct NumberDialer<'a, T, F> {
