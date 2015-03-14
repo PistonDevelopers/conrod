@@ -91,8 +91,18 @@ fn draw_crosshair<B: Graphics>(
     let context = &Context::abs(win_w, win_h);
     let Color(col) = color;
     let line = graphics::Line::new(col, 0.5 * line_width);
-    line.draw([vert_x, pos[1], vert_x, pos[1] + pad_dim[1]], context, graphics);
-    line.draw([pos[0], hori_y, pos[0] + pad_dim[0], hori_y], context, graphics);
+    line.draw(
+        [vert_x, pos[1], vert_x, pos[1] + pad_dim[1]],
+        &context.draw_state,
+        context.transform,
+        graphics
+    );
+    line.draw(
+        [pos[0], hori_y, pos[0] + pad_dim[0], hori_y],
+        &context.draw_state,
+        context.transform,
+        graphics
+    );
 }
 
 

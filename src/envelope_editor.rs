@@ -198,9 +198,13 @@ fn draw_circle<B: Graphics>(
     let context = &Context::abs(win_w, win_h);
     let Color(col) = color;
     graphics::Ellipse::new(col)
-        .draw([pos[0], pos[1], 2.0 * radius, 2.0 * radius], context, graphics);
+        .draw(
+            [pos[0], pos[1], 2.0 * radius, 2.0 * radius],
+            &context.draw_state,
+            context.transform,
+            graphics
+        );
 }
-
 
 /// A context on which the builder pattern can be implemented.
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
@@ -370,7 +374,12 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                     let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let context = Context::abs(uic.win_w, uic.win_h);
-                    line.draw([p_a[0], p_a[1], p_b[0], p_b[1]], &context, graphics);
+                    line.draw(
+                        [p_a[0], p_a[1], p_b[0], p_b[1]],
+                        &context.draw_state,
+                        context.transform,
+                        graphics
+                    );
                 }
             },
         }

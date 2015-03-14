@@ -161,7 +161,8 @@ impl<C> UiContext<C>
         Text::colored(col, size).draw(
             text,
             &mut self.glyph_cache,
-            &context,
+            &context.draw_state,
+            context.transform,
             graphics
         );
     }

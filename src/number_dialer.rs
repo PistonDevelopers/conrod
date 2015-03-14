@@ -263,11 +263,11 @@ fn draw_value_string<B, C: CharacterCache>(
             _ => (),
         };
         let x_shift = half_slot_w - 0.5 * character.width();
-        let d = context.trans(
+        let d = context.transform.trans(
                 x + character.left() + x_shift,
                 y - character.top()
             );
-        image.draw(&character.texture, &d, graphics);
+        image.draw(&character.texture, &context.draw_state, d, graphics);
         x += slot_w;
     }
 }
@@ -283,7 +283,7 @@ fn draw_slot_rect<B: Graphics>(
 ) {
     let Color(col) = color;
     graphics::Rectangle::new(col)
-        .draw([x, y, w, h], context, graphics);
+        .draw([x, y, w, h], &context.draw_state, context.transform, graphics);
 }
 
 

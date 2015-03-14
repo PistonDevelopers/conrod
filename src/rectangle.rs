@@ -52,7 +52,12 @@ fn draw_frame<B: Graphics>(
 ) {
     let Color(col) = color;
     graphics::Rectangle::new(col)
-        .draw([pos[0], pos[1], dim[0], dim[1]], context, graphics);
+        .draw(
+            [pos[0], pos[1], dim[0], dim[1]],
+            &context.draw_state,
+            context.transform,
+            graphics
+        );
 }
 
 /// Draw the rectangle while considering frame
@@ -76,7 +81,8 @@ fn draw_normal<B: Graphics>(
             pos[1] + frame_width,
             dim[0] - frame_width * 2.0,
             dim[1] - frame_width * 2.0],
-        context,
+        &context.draw_state,
+        context.transform,
         graphics);
 }
 

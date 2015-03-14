@@ -183,7 +183,12 @@ fn draw_cursor<B: Graphics>(
     let context = Context::abs(win_w, win_h);
     let Color([r, g, b, a]) = color.plain_contrast();
     graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
-        .draw([cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h], &context, graphics);
+        .draw(
+            [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],
+            &context.draw_state,
+            context.transform,
+            graphics
+        );
 }
 
 /// A context on which the builder pattern can be implemented.
