@@ -7,7 +7,6 @@ use dimensions::Dimensions;
 use graphics;
 use graphics::{
     Graphics,
-    Context,
 };
 use graphics::character::CharacterCache;
 use label;
@@ -195,12 +194,14 @@ fn draw_circle<B: Graphics>(
     color: Color,
     radius: f64
 ) {
-    let context = &Context::abs(win_w, win_h);
-    let Color(col) = color;
-    graphics::Ellipse::new(col)
-        .draw([pos[0], pos[1], 2.0 * radius, 2.0 * radius], context, graphics);
+    graphics::Ellipse::new(color.0)
+        .draw(
+            [pos[0], pos[1], 2.0 * radius, 2.0 * radius],
+            &graphics::default_draw_state(),
+            graphics::abs_transform(win_w, win_h),
+            graphics
+        );
 }
-
 
 /// A context on which the builder pattern can be implemented.
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
@@ -362,6 +363,8 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
             _ => {
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::round(col, 0.5 * self.line_width);
+                let draw_state = graphics::default_draw_state();
+                let transform = graphics::abs_transform(uic.win_w, uic.win_h);
                 for i in 1..perc_env.len() {
                     let (x_a, y_a, _) = perc_env[i - 1];
                     let (x_b, y_b, _) = perc_env[i];
@@ -369,8 +372,12 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                map_range(y_a, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     let p_b = [map_range(x_b, 0.0, 1.0, pad_pos[0], pad_pos[0] + pad_dim[0]),
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
-                    let context = Context::abs(uic.win_w, uic.win_h);
-                    line.draw([p_a[0], p_a[1], p_b[0], p_b[1]], &context, graphics);
+                    line.draw(
+                        [p_a[0], p_a[1], p_b[0], p_b[1]],
+                        draw_state,
+                        transform,
+                        graphics
+                    );
                 }
             },
         }

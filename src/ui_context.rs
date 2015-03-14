@@ -1,6 +1,7 @@
 use std::iter::repeat;
 use Color;
 use dimensions::Dimensions;
+use graphics;
 use graphics::Graphics;
 use graphics::character::{ Character, CharacterCache };
 use label::FontSize;
@@ -150,18 +151,19 @@ impl<C> UiContext<C>
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>
     {
-        use graphics::Context;
         use graphics::text::Text;
         use graphics::RelativeTransform;
         use std::num::Float;
 
         let Color(col) = color;
-        let context = Context::abs(self.win_w, self.win_h)
+        let draw_state = graphics::default_draw_state();
+        let transform = graphics::abs_transform(self.win_w, self.win_h)
                         .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
         Text::colored(col, size).draw(
             text,
             &mut self.glyph_cache,
-            &context,
+            draw_state,
+            transform,
             graphics
         );
     }

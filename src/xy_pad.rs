@@ -4,10 +4,7 @@ use std::num::FromPrimitive;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
-use graphics::{
-    Graphics,
-    Context,
-};
+use graphics::Graphics;
 use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
@@ -88,11 +85,22 @@ fn draw_crosshair<B: Graphics>(
     pad_dim: Dimensions,
     color: Color
 ) {
-    let context = &Context::abs(win_w, win_h);
+    let draw_state = graphics::default_draw_state();
+    let transform = graphics::abs_transform(win_w, win_h);
     let Color(col) = color;
     let line = graphics::Line::new(col, 0.5 * line_width);
-    line.draw([vert_x, pos[1], vert_x, pos[1] + pad_dim[1]], context, graphics);
-    line.draw([pos[0], hori_y, pos[0] + pad_dim[0], hori_y], context, graphics);
+    line.draw(
+        [vert_x, pos[1], vert_x, pos[1] + pad_dim[1]],
+        draw_state,
+        transform,
+        graphics
+    );
+    line.draw(
+        [pos[0], hori_y, pos[0] + pad_dim[0], hori_y],
+        draw_state,
+        transform,
+        graphics
+    );
 }
 
 
