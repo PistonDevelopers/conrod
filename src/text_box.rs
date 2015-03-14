@@ -3,7 +3,6 @@ use dimensions::Dimensions;
 use graphics;
 use graphics::{
     Graphics,
-    Context,
 };
 use graphics::character::CharacterCache;
 use label;
@@ -180,13 +179,14 @@ fn draw_cursor<B: Graphics>(
     pad_pos_y: f64,
     pad_h: f64
 ) {
-    let context = Context::abs(win_w, win_h);
+    let draw_state = graphics::default_draw_state();
+    let transform = graphics::abs_transform(win_w, win_h);
     let Color([r, g, b, a]) = color.plain_contrast();
     graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw(
             [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],
-            &context.draw_state,
-            context.transform,
+            &draw_state,
+            transform,
             graphics
         );
 }
