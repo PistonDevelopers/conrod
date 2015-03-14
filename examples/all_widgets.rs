@@ -429,7 +429,7 @@ fn draw_circle(win_w: f64,
     graphics::Ellipse::new(col)
         .draw(
             [pos[0], pos[1], 30.0, 30.0],
-            &graphics::default_draw_state(),
+            graphics::default_draw_state(),
             graphics::abs_transform(win_w, win_h),
             gl
         );
