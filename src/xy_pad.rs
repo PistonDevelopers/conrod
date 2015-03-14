@@ -91,13 +91,13 @@ fn draw_crosshair<B: Graphics>(
     let line = graphics::Line::new(col, 0.5 * line_width);
     line.draw(
         [vert_x, pos[1], vert_x, pos[1] + pad_dim[1]],
-        &draw_state,
+        draw_state,
         transform,
         graphics
     );
     line.draw(
         [pos[0], hori_y, pos[0] + pad_dim[0], hori_y],
-        &draw_state,
+        draw_state,
         transform,
         graphics
     );

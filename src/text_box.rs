@@ -185,7 +185,7 @@ fn draw_cursor<B: Graphics>(
     graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw(
             [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],
-            &draw_state,
+            draw_state,
             transform,
             graphics
         );

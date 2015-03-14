@@ -249,7 +249,7 @@ fn draw_value_string<B, C: CharacterCache>(
                                      else { rect_color };
                     slot_rect.draw(
                         [x as f64, context_slot_y, size as f64, pad_h],
-                        &draw_state,
+                        draw_state,
                         transform,
                         graphics
                     );
@@ -263,7 +263,7 @@ fn draw_value_string<B, C: CharacterCache>(
                                      else { rect_color };
                     slot_rect.draw(
                         [x, context_slot_y, size as f64, pad_h],
-                        &draw_state,
+                        draw_state,
                         transform,
                         graphics
                     );
@@ -277,7 +277,7 @@ fn draw_value_string<B, C: CharacterCache>(
                 x + character.left() + x_shift,
                 y - character.top()
             );
-        image.draw(&character.texture, &draw_state, d, graphics);
+        image.draw(&character.texture, draw_state, d, graphics);
         x += slot_w;
     }
 }

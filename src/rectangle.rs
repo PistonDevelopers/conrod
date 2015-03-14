@@ -35,10 +35,10 @@ pub fn draw<B: Graphics>(
     let draw_state = graphics::default_draw_state();
     let transform = graphics::abs_transform(win_w, win_h);
     if let Some((_, f_color)) = maybe_frame {
-        draw_frame(&draw_state, transform, graphics, pos, dim, f_color)
+        draw_frame(draw_state, transform, graphics, pos, dim, f_color)
     }
     let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
-    draw_normal(&draw_state, transform, graphics, state, pos, dim, f_width, color);
+    draw_normal(draw_state, transform, graphics, state, pos, dim, f_width, color);
 }
 
 /// Draw the button border.
@@ -120,10 +120,10 @@ pub fn draw_with_centered_label<B, C>(
     let draw_state = graphics::default_draw_state();
     let transform = graphics::abs_transform(win_w, win_h);
     if let Some((_, f_color)) = maybe_frame {
-        draw_frame(&draw_state, transform, graphics, pos, dim, f_color)
+        draw_frame(draw_state, transform, graphics, pos, dim, f_color)
     }
     let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
-    draw_normal(&draw_state, transform, graphics, state, pos, dim, f_width, color);
+    draw_normal(draw_state, transform, graphics, state, pos, dim, f_width, color);
     let text_w = label::width(uic, font_size, text);
     let l_pos = [pos[0] + (dim[0] - text_w) / 2.0, pos[1] + (dim[1] - font_size as f64) / 2.0];
     uic.draw_text(graphics, l_pos, font_size, text_color, text);

@@ -374,7 +374,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                                map_range(y_b, 0.0, 1.0, pad_pos[1] + pad_dim[1], pad_pos[1])];
                     line.draw(
                         [p_a[0], p_a[1], p_b[0], p_b[1]],
-                        &draw_state,
+                        draw_state,
                         transform,
                         graphics
                     );
