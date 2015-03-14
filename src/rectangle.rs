@@ -2,10 +2,8 @@
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
-use graphics::{
-    Graphics,
-    Context,
-};
+use graphics::{ DrawState, Graphics };
+use graphics::vecmath::Matrix2d;
 use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
@@ -34,28 +32,29 @@ pub fn draw<B: Graphics>(
     maybe_frame: Option<(f64, Color)>,
     color: Color
 ) {
-    let context = &Context::abs(win_w, win_h);
+    let draw_state = graphics::default_draw_state();
+    let transform = graphics::abs_transform(win_w, win_h);
     if let Some((_, f_color)) = maybe_frame {
-        draw_frame(context, graphics, pos, dim, f_color)
+        draw_frame(&draw_state, transform, graphics, pos, dim, f_color)
     }
     let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
-    draw_normal(context, graphics, state, pos, dim, f_width, color);
+    draw_normal(&draw_state, transform, graphics, state, pos, dim, f_width, color);
 }
 
 /// Draw the button border.
 fn draw_frame<B: Graphics>(
-    context: &Context,
+    draw_state: &DrawState,
+    transform: Matrix2d,
     graphics: &mut B,
     pos: Point,
     dim: Dimensions,
     color: Color
 ) {
-    let Color(col) = color;
-    graphics::Rectangle::new(col)
+    graphics::Rectangle::new(color.0)
         .draw(
             [pos[0], pos[1], dim[0], dim[1]],
-            &context.draw_state,
-            context.transform,
+            draw_state,
+            transform,
             graphics
         );
 }
@@ -63,7 +62,8 @@ fn draw_frame<B: Graphics>(
 /// Draw the rectangle while considering frame
 /// width for position and dimensions.
 fn draw_normal<B: Graphics>(
-    context: &Context,
+    draw_state: &DrawState,
+    transform: Matrix2d,
     graphics: &mut B,
     state: State,
     pos: Point,
@@ -81,8 +81,8 @@ fn draw_normal<B: Graphics>(
             pos[1] + frame_width,
             dim[0] - frame_width * 2.0,
             dim[1] - frame_width * 2.0],
-        &context.draw_state,
-        context.transform,
+        draw_state,
+        transform,
         graphics);
 }
 
@@ -117,12 +117,13 @@ pub fn draw_with_centered_label<B, C>(
         B: Graphics<Texture = <C as CharacterCache>::Texture>,
         C: CharacterCache
 {
-    let context = &Context::abs(win_w, win_h);
+    let draw_state = graphics::default_draw_state();
+    let transform = graphics::abs_transform(win_w, win_h);
     if let Some((_, f_color)) = maybe_frame {
-        draw_frame(context, graphics, pos, dim, f_color)
+        draw_frame(&draw_state, transform, graphics, pos, dim, f_color)
     }
     let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
-    draw_normal(context, graphics, state, pos, dim, f_width, color);
+    draw_normal(&draw_state, transform, graphics, state, pos, dim, f_width, color);
     let text_w = label::width(uic, font_size, text);
     let l_pos = [pos[0] + (dim[0] - text_w) / 2.0, pos[1] + (dim[1] - font_size as f64) / 2.0];
     uic.draw_text(graphics, l_pos, font_size, text_color, text);
