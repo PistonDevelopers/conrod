@@ -299,7 +299,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                 let entered_text = uic.get_entered_text();
                 for t in entered_text.iter() {
                     let mut entered_text_width = 0.0;
-                    for ch in t.as_slice().chars() {
+                    for ch in t[..].chars() {
                         let c = uic.get_character(self.font_size, ch);
                         entered_text_width += c.width();
                     }
@@ -309,8 +309,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     else {
                         break;
                     }
-                    let new_text = format!("{}{}{}", self.text.as_slice().slice_to(idx),
-                                           t, self.text.as_slice().slice_from(idx));
+                    let new_text = format!("{}{}{}", &self.text[..idx], t, &self.text[idx..]);
                     *self.text = new_text;
                     new_idx += t.len();
                 }
@@ -325,11 +324,9 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                             && idx > 0 {
                                 let rem_idx = idx - 1;
                                 new_cursor_x -= uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(rem_idx)
+                                    self.font_size, self.text[..].char_at(rem_idx)
                                 );
-                                let new_text = format!("{}{}",
-                                                       self.text.as_slice().slice_to(rem_idx),
-                                                       self.text.as_slice().slice_from(idx));
+                                let new_text = format!("{}{}", &self.text[..rem_idx], &self.text[idx..]);
                                 *self.text = new_text;
                                 new_idx = rem_idx;
                             }
@@ -337,7 +334,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                         Left => {
                             if idx > 0 {
                                 new_cursor_x -= uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(idx - 1)
+                                    self.font_size, self.text[..].char_at(idx - 1)
                                 );
                                 new_idx -= 1;
                             }
@@ -345,7 +342,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                         Right => {
                             if self.text.len() > idx {
                                 new_cursor_x += uic.get_character_w(
-                                    self.font_size, self.text.as_slice().char_at(idx)
+                                    self.font_size, self.text[..].char_at(idx)
                                 );
                                 new_idx += 1;
                             }

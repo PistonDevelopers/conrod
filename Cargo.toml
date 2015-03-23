@@ -37,6 +37,6 @@ git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 git = "https://github.com/tomaka/clock_ticks"
 
 [dependencies]
-bitflags = "0.1"
-rand = "0.1.2"
+bitflags = "*"
+rand = "*"
 rustc-serialize = "*"

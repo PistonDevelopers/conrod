@@ -6,7 +6,8 @@ use rustc_serialize::{
     Decodable,
 };
 use std::error::Error;
-use std::old_io::File;
+use std::fs::File;
+use std::path::Path;
 use std::str;
 use std::borrow::ToOwned;
 use ui_context::UiContext;
@@ -46,19 +47,22 @@ impl Theme {
 
     /// Load a theme from file.
     pub fn load(path: &str) -> Result<Theme, String> {
-        let contents = match File::open(&Path::new(path)).read_to_end() {
-            Ok(buf) => Ok(buf),
-            Err(e) => Err(format!("Failed to load Theme correctly: {}", e)),
+        let mut file = match File::open(&Path::new(path)) {
+            Ok(file) => file,
+            Err(e) => return Err(format!("Failed to open file for Theme: {}", Error::description(&e))),
         };
-        let contents_str = contents.ok();
-        let json_object = contents_str.and_then(|s| json::Json::from_str(str::from_utf8(s.as_slice()).unwrap()).ok());
-        let mut decoder = json_object.map(|j| json::Decoder::new(j));
-        let theme = match decoder {
-            Some(ref mut d) => match Decodable::decode(d) {
-                Ok(lib) => Ok(lib),
-                Err(e) => Err(format!("Failed to load Theme correctly: {}", e.description())),
-            },
-            None => Err(String::from_str("Failed to load Theme correctly")),
+        let mut contents = Vec::new();
+        if let Err(e) = ::std::io::Read::read_to_end(&mut file, &mut contents) {
+            return Err(format!("Failed to load Theme correctly: {}", Error::description(&e)));
+        }
+        let json_object = match json::Json::from_str(str::from_utf8(&contents[..]).unwrap()) {
+            Ok(json_object) => json_object,
+            Err(e) => return Err(format!("Failed to construct json_object from str: {}", Error::description(&e))),
+        };
+        let mut decoder = json::Decoder::new(json_object);
+        let theme = match Decodable::decode(&mut decoder) {
+            Ok(theme) => Ok(theme),
+            Err(e) => Err(format!("Failed to construct Theme from json decoder: {}", Error::description(&e))),
         };
         theme
     }
@@ -66,13 +70,16 @@ impl Theme {
     /// Save a theme to file.
     pub fn save(&self, path: &str) -> Result<(), String> {
         let json_string = match json::encode(self) {
-                Ok(x) => x,
-                Err(e) => return Err(e.description().to_owned())
-            };
-        let mut file = File::create(&Path::new(path));
-        match file.write_all(json_string.as_bytes()) {
+            Ok(x) => x,
+            Err(e) => return Err(e.description().to_owned())
+        };
+        let mut file = match File::create(&Path::new(path)) {
+            Ok(file) => file,
+            Err(e) => return Err(format!("Failed to create a File at the given path: {}", Error::description(&e)))
+        };
+        match ::std::io::Write::write_all(&mut file, json_string.as_bytes()) {
             Ok(()) => Ok(()),
-            Err(e) => Err(format!("Theme failed to save correctly: {}", e)),
+            Err(e) => Err(format!("Theme failed to save correctly: {}", Error::description(&e))),
         }
     }
 
