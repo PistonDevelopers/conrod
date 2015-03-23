@@ -1,6 +1,6 @@
 
 #![deny(missing_copy_implementations)]
-#![feature(core, collections, old_io, old_path)]
+#![feature(core, str_char)]
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;

@@ -130,7 +130,7 @@ fn is_over(pos: Point,
                         true => {
                             let slot_w = value_glyph_slot_width(val_string_h as u32);
                             let mut slot_pos = slot_rect_pos;
-                            for i in range(0, val_string_len) {
+                            for i in 0..val_string_len {
                                 if rectangle::is_over(slot_pos, mouse_pos, [slot_w, dim[1]]) {
                                     return Some(Element::ValueGlyph(i, mouse_pos[1]))
                                 }
@@ -238,7 +238,6 @@ fn draw_value_string<B, C: CharacterCache>(
         .trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
     let image = graphics::Image::colored(font_col);
-    let slot_rect = graphics::Rectangle::new(rect_color.0);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -247,7 +246,7 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
-                    slot_rect.draw(
+                    graphics::Rectangle::new(rect_color.0).draw(
                         [x as f64, context_slot_y, size as f64, pad_h],
                         draw_state,
                         transform,
@@ -261,7 +260,7 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
-                    slot_rect.draw(
+                    graphics::Rectangle::new(rect_color.0).draw(
                         [x, context_slot_y, size as f64, pad_h],
                         draw_state,
                         transform,
