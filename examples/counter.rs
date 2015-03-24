@@ -1,10 +1,11 @@
-
 #![feature(old_path)]
 
 extern crate conrod;
 extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate piston;
+
+use std::old_path::*;
 
 use conrod::{
     Background,
