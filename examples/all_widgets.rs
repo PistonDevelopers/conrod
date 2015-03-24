@@ -7,6 +7,8 @@ extern crate opengl_graphics;
 extern crate glutin_window;
 extern crate vecmath;
 
+use std::old_path::*;
+
 use conrod::{
     Background,
     Button,
