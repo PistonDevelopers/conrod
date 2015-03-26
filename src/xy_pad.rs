@@ -265,7 +265,7 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
         let y_string = val_to_string(self.y, self.max_y,
                                      self.max_y - self.min_y, self.dim[1] as usize);
         let xy_string = format!("{}, {}", x_string, y_string);
-        let xy_string_w = label::width(uic, self.font_size, xy_string.as_slice());
+        let xy_string_w = label::width(uic, self.font_size, &xy_string);
         let xy_string_pos = {
             match rectangle::corner(pad_pos, [vert_x, hori_y], pad_dim) {
                 Corner::TopLeft => [vert_x, hori_y],

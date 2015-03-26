@@ -66,7 +66,7 @@ widget_fns!(NumberDialer, State, Widget::NumberDialer(State::Normal));
 fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
     let mut val_string = val.to_string();
     // First check we have the correct number of decimal places.
-    match (val_string.as_slice().chars().position(|ch| ch == '.'), precision) {
+    match (val_string.chars().position(|ch| ch == '.'), precision) {
         (None, 0) => (),
         (None, _) => {
             val_string.push('.');
@@ -180,7 +180,7 @@ fn get_new_value<T>(val: T, min: T, max: T, idx: usize, y_ord: Ordering, val_str
     match y_ord {
         Ordering::Equal => val,
         _ => {
-            let decimal_pos = val_string.as_slice().chars().position(|ch| ch == '.');
+            let decimal_pos = val_string.chars().position(|ch| ch == '.');
             let val_f = val.to_f64().unwrap();
             let min_f = min.to_f64().unwrap();
             let max_f = max.to_f64().unwrap();
@@ -425,7 +425,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
                           val_string_pos,
                           font_size,
                           val_string_color,
-                          val_string.as_slice());
+                          &val_string);
 
         // Call the `callback` with the new value if the mouse is pressed/released
         // on the widget or if the value has changed.

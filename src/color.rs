@@ -197,8 +197,8 @@ impl Color {
     pub fn to_hex(&self) -> String {
         let vals = self.to_32_bit();
         // Hex colors are always uppercased
-        let hex = vals.as_slice().to_hex().to_ascii_uppercase();
-        format!("#{}", hex.as_slice())
+        let hex = vals.to_hex().to_ascii_uppercase();
+        format!("#{}", &hex)
     }
 }
 
@@ -279,7 +279,7 @@ impl Mul<Color> for Color {
 impl Debug for Color {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         let hex = self.to_hex();
-        fmt.pad(hex.as_slice())
+        fmt.pad(&hex)
     }
 }
 
@@ -288,9 +288,9 @@ impl Decodable for Color {
         let vec = try!(dec.read_to_vec(|le_dec| le_dec.read_f32()));
 
         if vec.len() != 4 {
-            return Err(dec.error(format!(
+            return Err(dec.error(&format!(
                 "Expected a 4 element vector when decoding Color.
-                Found a vector of length {}.", vec.len()).as_slice()));
+                Found a vector of length {}.", vec.len())));
         }
 
         Ok(Color([vec[0], vec[1], vec[2], vec[3]]))

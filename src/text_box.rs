@@ -276,16 +276,16 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         let text_x = pad_pos[0] + TEXT_PADDING;
         let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
         let text_pos = [text_x, text_y];
-        let text_w = label::width(uic, self.font_size, self.text.as_slice());
+        let text_w = label::width(uic, self.font_size, &self.text);
         let over_elem = over_elem(uic, self.pos, mouse.pos, self.dim,
                                   pad_pos, pad_dim, text_pos, text_w,
-                                  self.font_size, self.text.as_slice());
+                                  self.font_size, &self.text);
         let new_state = get_new_state(over_elem, state, mouse);
 
         rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
         uic.draw_text(graphics, text_pos, self.font_size,
-                           color.plain_contrast(), self.text.as_slice());
+                           color.plain_contrast(), &self.text);
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Capturing::Uncaptured => new_state,

@@ -214,13 +214,13 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
                 let y = pad_pos[1] + (pad_dim[1] - size as f64) / 2.0;
                 [x, y]
             } else {
-                let label_w = label::width(uic, size, text.as_slice());
+                let label_w = label::width(uic, size, &text);
                 let x = pad_pos[0] + (pad_dim[0] - label_w) / 2.0;
                 let y = pad_pos[1] + pad_dim[1] - pad_dim[0] - frame_w;
                 [x, y]
             };
             // Draw the label.
-            uic.draw_text(graphics, l_pos, size, text_color, text.as_slice());
+            uic.draw_text(graphics, l_pos, size, text_color, &text);
         }
 
         set_state(uic, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);

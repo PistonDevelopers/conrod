@@ -418,7 +418,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                         pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
-                    let xy_string_w = label::width(uic, font_size, xy_string.as_slice());
+                    let xy_string_w = label::width(uic, font_size, &xy_string);
                     let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_dim) {
                         Corner::TopLeft => [p_pos[0], p_pos[1]],
                         Corner::TopRight => [p_pos[0] - xy_string_w, p_pos[1]],
@@ -426,7 +426,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                         Corner::BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
                     uic.draw_text(graphics, xy_string_pos,
-                                font_size, color.plain_contrast(), xy_string.as_slice());
+                                font_size, color.plain_contrast(), &xy_string);
                     draw_circle(uic.win_w, uic.win_h, graphics,
                                 vec2_sub(p_pos, [pt_radius, pt_radius]),
                                 color.plain_contrast(), pt_radius);

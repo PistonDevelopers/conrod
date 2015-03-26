@@ -56,7 +56,7 @@ pub fn map_range<X: Float + Copy + FromPrimitive + ToPrimitive,
 pub fn val_to_string<T: ToString + ToPrimitive>
 (val: T, max: T, val_rng: T, pixel_range: usize) -> String {
     let mut s = val.to_string();
-    let decimal = s.as_slice().chars().position(|ch| ch == '.');
+    let decimal = s.chars().position(|ch| ch == '.');
     match decimal {
         None => s,
         Some(idx) => {
@@ -88,4 +88,3 @@ pub fn val_to_string<T: ToString + ToPrimitive>
         }
     }
 }
-

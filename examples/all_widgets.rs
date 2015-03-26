@@ -192,7 +192,7 @@ fn draw_ui(gl: &mut GlGraphics,
         let pad_string = pad.to_string();
         let label = {
             let mut text = "Padding: ".to_string();
-            text.push_str(pad_string.as_slice());
+            text.push_str(&pad_string);
             text
         };
 
@@ -202,7 +202,7 @@ fn draw_ui(gl: &mut GlGraphics,
             .position(50.0, 115.0)
             .rgba(0.5, 0.3, 0.6, 1.0)
             .frame(demo.frame_width)
-            .label(label.as_slice())
+            .label(&label)
             .label_color(Color::white())
             .callback(|new_pad: f32| demo.title_padding = new_pad as f64)
             .draw(uic, gl);
@@ -218,7 +218,7 @@ fn draw_ui(gl: &mut GlGraphics,
         .down(20.0, uic)
         .rgba(0.6, 0.25, 0.75, 1.0)
         .frame(demo.frame_width)
-        .label(label.as_slice())
+        .label(&label)
         .label_color(Color::white())
         .callback(|value| {
             demo.show_button = value;
@@ -257,7 +257,7 @@ fn draw_ui(gl: &mut GlGraphics,
             .position(50.0 + i as f64 * 60.0, 300.0)
             .color(color)
             .frame(demo.frame_width)
-            .label(label.as_slice())
+            .label(&label)
             .label_color(Color::white())
             .callback(|color| match i {
                 0 => demo.bg_color.set_r(color),
@@ -321,7 +321,7 @@ fn draw_ui(gl: &mut GlGraphics,
         });
 
     let ddl_color = match demo.selected_idx {
-        Some(idx) => match demo.ddl_colors[idx].as_slice() {
+        Some(idx) => match &demo.ddl_colors[idx] {
             "Black" => Color::black(),
             "White" => Color::white(),
             "Red" => Color::new(0.75, 0.4, 0.4, 1.0),
