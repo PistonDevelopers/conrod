@@ -7,7 +7,7 @@ extern crate clock_ticks;
 extern crate graphics;
 #[macro_use] extern crate piston;
 extern crate rand;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate vecmath;
 
 pub use background::Background;
