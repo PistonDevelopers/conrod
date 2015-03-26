@@ -294,7 +294,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
                     let idx_pos = vec2_add(self.pos, [0.0, idx_y]);
                     rectangle::draw_with_centered_label(
                         uic.win_w, uic.win_h, graphics, uic, rect_state, idx_pos,
-                        self.dim, maybe_frame, color, string.as_slice(),
+                        self.dim, maybe_frame, color, &string,
                         t_size, t_color
                     )
                 }
