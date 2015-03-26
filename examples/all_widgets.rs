@@ -1,4 +1,4 @@
-#![feature(core, old_path)]
+#![feature(convert)]
 
 extern crate piston;
 extern crate conrod;
@@ -6,8 +6,6 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate glutin_window;
 extern crate vecmath;
-
-use std::old_path::*;
 
 use conrod::{
     Background,
@@ -45,6 +43,8 @@ use piston::Set;
 use piston::window::WindowSettings;
 use glutin_window::GlutinWindow;
 use std::cell::RefCell;
+use std::convert::AsRef;
+use std::path::Path;
 use vecmath::vec2_add;
 
 type Ui = UiContext<GlyphCache>;
@@ -321,7 +321,7 @@ fn draw_ui(gl: &mut GlGraphics,
         });
 
     let ddl_color = match demo.selected_idx {
-        Some(idx) => match &demo.ddl_colors[idx] {
+        Some(idx) => match demo.ddl_colors[idx].as_ref() {
             "Black" => Color::black(),
             "White" => Color::white(),
             "Red" => Color::new(0.75, 0.4, 0.4, 1.0),

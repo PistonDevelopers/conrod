@@ -1,11 +1,7 @@
-#![feature(old_path)]
-
 extern crate conrod;
 extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate piston;
-
-use std::old_path::*;
 
 use conrod::{
     Background,
@@ -31,6 +27,7 @@ use piston::event::{
 use piston::Set;
 use piston::window::WindowSettings;
 use std::cell::RefCell;
+use std::path::Path;
 
 type Ui = UiContext<GlyphCache>;
 
@@ -88,4 +85,3 @@ fn counter(gl: &mut Gl, uic: &mut Ui, count: &mut u32) {
         .draw(uic, gl)
 
 }
-
