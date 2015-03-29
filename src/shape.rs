@@ -28,12 +28,12 @@ impl<T> Shapeable for T
     }
     #[inline]
     fn width(self, width: f64) -> Self {
-        let Size([_, height]) = self.get();
-        self.set(Size([width, height]))
+        let Size(size) = self.get();
+        self.set(Size([width, size[1]]))
     }
     #[inline]
     fn height(self, height: f64) -> Self {
-        let Size([width, _]) = self.get();
-        self.set(Size([width, height]))
+        let Size(size) = self.get();
+        self.set(Size([size[0], height]))
     }
 }
