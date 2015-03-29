@@ -1,4 +1,3 @@
-
 #![deny(missing_copy_implementations)]
 #![feature(core, str_char)]
 
