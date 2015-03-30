@@ -54,7 +54,7 @@ pub enum DrawState {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Capturing {
     Uncaptured,
-    Captured(Idx, CursorX),
+    Captured(Idx),
 }
 
 /// Represents an element of the TextBox widget.
@@ -70,7 +70,7 @@ impl State {
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
             &State(state, capturing) => match capturing {
-                Capturing::Captured(_, _) => rectangle::State::Normal,
+                Capturing::Captured(_) => rectangle::State::Normal,
                 Capturing::Uncaptured => match state {
                     DrawState::Normal => rectangle::State::Normal,
                     DrawState::Highlighted(_) => rectangle::State::Highlighted,
@@ -84,6 +84,22 @@ impl State {
 widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
 
 static TEXT_PADDING: f64 = 5f64;
+
+/// Calculate the index and x position for a text box cursor.
+fn update_cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
+                          mut idx: usize,
+                          mut text_x: f64,
+                          font_size: FontSize,
+                          text: &str) -> (Idx, CursorX) {
+    if idx == 0 { return (0, text_x); }
+    let text_len = text.len();
+    if idx > text_len { idx = text_len; }
+    for (i, ch) in text.chars().enumerate() {
+        if i >= idx { break; }
+        text_x += uic.get_character(font_size, ch).width();
+    }
+    (idx, text_x)
+}
 
 /// Check if cursor is over the pad and if so, which
 fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
@@ -149,20 +165,20 @@ fn get_new_state(over_elem: Element,
                 (_, Highlighted(_), Up)                 => State(Highlighted(over_elem), Uncaptured),
                 (_, Highlighted(p_elem), Down)          |
                 (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Uncaptured),
-                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
+                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
                 (Nill, _, _)                            => State(Normal, Uncaptured),
                 _                                       => prev_box_state,
             }
         },
-        State(prev, Captured(p_idx, p_x)) => {
+        State(prev, Captured(p_idx)) => {
             match (over_elem, prev, mouse.left) {
                 (Nill, Clicked(Nill), Up)               => State(Normal, Uncaptured),
-                (Text(idx, x), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx, x)),
+                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
                 (_, Normal, Up)                         |
                 (_, Highlighted(_), Up)                 |
-                (_, Clicked(_), Up)                     => State(Highlighted(over_elem), Captured(p_idx, p_x)),
+                (_, Clicked(_), Up)                     => State(Highlighted(over_elem), Captured(p_idx)),
                 (_, Highlighted(p_elem), Down)          |
-                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Captured(p_idx, p_x)),
+                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Captured(p_idx)),
                 _                                       => prev_box_state,
             }
         },
@@ -290,7 +306,8 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
 
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Capturing::Uncaptured => new_state,
-            Capturing::Captured(idx, cursor_x) => {
+            Capturing::Captured(idx) => {
+                let (idx, cursor_x) = update_cursor_position(uic, idx, text_x, self.font_size, &self.text);
                 draw_cursor(uic.win_w, uic.win_h, graphics, color,
                             cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
@@ -374,7 +391,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     }
                 }
 
-                State(w_state, Capturing::Captured(new_idx, new_cursor_x))
+                State(w_state, Capturing::Captured(new_idx))
             },
         }};
 
