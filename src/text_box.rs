@@ -60,9 +60,10 @@ pub enum Capturing {
 /// Represents an element of the TextBox widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Element {
+    Char(Idx),
     Nill,
     Rect,
-    Text(Idx, CursorX),
+    Text(Idx, Idx),
 }
 
 impl State {
@@ -117,8 +118,8 @@ fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => Element::Rect,
             true => {
-                let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
-                Element::Text(idx, cursor_x)
+                let (idx, _) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
+                Element::Char(idx)
             },
         },
     }
@@ -154,32 +155,32 @@ fn get_new_state(over_elem: Element,
     use mouse::ButtonState::{Down, Up};
     use self::Capturing::{Uncaptured, Captured};
     use self::DrawState::{Normal, Highlighted, Clicked};
-    use self::Element::{Nill, Text};
+    use self::Element::{Nill, Char};
     match prev_box_state {
         State(prev, Uncaptured) => {
             match (over_elem, prev, mouse.left) {
-                (_, Normal, Down)                       => State(Normal, Uncaptured),
-                (Nill, Normal, Up)                      |
-                (Nill, Highlighted(_), Up)              => State(Normal, Uncaptured),
-                (_, Normal, Up)                         |
-                (_, Highlighted(_), Up)                 => State(Highlighted(over_elem), Uncaptured),
-                (_, Highlighted(p_elem), Down)          |
-                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Uncaptured),
-                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (Nill, _, _)                            => State(Normal, Uncaptured),
-                _                                       => prev_box_state,
+                (_, Normal, Down)                 => State(Normal, Uncaptured),
+                (Nill, Normal, Up)                |
+                (Nill, Highlighted(_), Up)        => State(Normal, Uncaptured),
+                (_, Normal, Up)                   |
+                (_, Highlighted(_), Up)           => State(Highlighted(over_elem), Uncaptured),
+                (_, Highlighted(p_elem), Down)    |
+                (_, Clicked(p_elem), Down)        => State(Clicked(p_elem), Uncaptured),
+                (Char(idx), Clicked(Char(_)), Up) => State(Highlighted(over_elem), Captured(idx)),
+                (Nill, _, _)                      => State(Normal, Uncaptured),
+                _                                 => prev_box_state,
             }
         },
         State(prev, Captured(p_idx)) => {
             match (over_elem, prev, mouse.left) {
-                (Nill, Clicked(Nill), Up)               => State(Normal, Uncaptured),
-                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (_, Normal, Up)                         |
-                (_, Highlighted(_), Up)                 |
-                (_, Clicked(_), Up)                     => State(Highlighted(over_elem), Captured(p_idx)),
-                (_, Highlighted(p_elem), Down)          |
-                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Captured(p_idx)),
-                _                                       => prev_box_state,
+                (Nill, Clicked(Nill), Up)         => State(Normal, Uncaptured),
+                (Char(idx), Clicked(Char(_)), Up) => State(Highlighted(over_elem), Captured(idx)),
+                (_, Normal, Up)                   |
+                (_, Highlighted(_), Up)           |
+                (_, Clicked(_), Up)               => State(Highlighted(over_elem), Captured(p_idx)),
+                (_, Highlighted(p_elem), Down)    |
+                (_, Clicked(p_elem), Down)        => State(Clicked(p_elem), Captured(p_idx)),
+                _                                 => prev_box_state,
             }
         },
     }
