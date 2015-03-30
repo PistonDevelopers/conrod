@@ -85,6 +85,27 @@ widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::
 
 static TEXT_PADDING: f64 = 5f64;
 
+// if the index is 0 return (0, the start of the text)
+// until we reach the each index we start with iterate over the characters character in the string
+//   if the
+
+
+/// Calculate the index and x position for a text box cursor.
+fn update_cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
+                          mut idx: usize,
+                          mut text_x: f64,
+                          font_size: FontSize,
+                          text: &str) -> (Idx, CursorX) {
+    if idx == 0 { return (0, text_x); }
+    let text_len = text.len();
+    if idx > text_len { idx = text_len; }
+    for (i, ch) in text.chars().enumerate() {
+        if i >= idx { break; }
+        text_x += uic.get_character(font_size, ch).width();
+    }
+    (idx, text_x)
+}
+
 /// Check if cursor is over the pad and if so, which
 fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
              pos: Point,
@@ -291,6 +312,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         let new_state = match new_state { State(w_state, capturing) => match capturing {
             Capturing::Uncaptured => new_state,
             Capturing::Captured(idx, cursor_x) => {
+                let (idx, cursor_x) = update_cursor_position(uic, idx, text_x, self.font_size, &self.text);
                 draw_cursor(uic.win_w, uic.win_h, graphics, color,
                             cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
