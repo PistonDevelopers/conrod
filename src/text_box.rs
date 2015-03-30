@@ -85,11 +85,6 @@ widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::
 
 static TEXT_PADDING: f64 = 5f64;
 
-// if the index is 0 return (0, the start of the text)
-// until we reach the each index we start with iterate over the characters character in the string
-//   if the
-
-
 /// Calculate the index and x position for a text box cursor.
 fn update_cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
                           mut idx: usize,
