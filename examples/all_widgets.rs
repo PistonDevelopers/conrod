@@ -31,17 +31,12 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use opengl_graphics::{GlGraphics, OpenGL};
+use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::{
-    Events,
-    Event,
-    Ups,
-    MaxFps,
-};
-use piston::Set;
+use piston::event::{ Events, Event };
 use piston::window::WindowSettings;
 use glutin_window::GlutinWindow;
+use std::rc::Rc;
 use std::cell::RefCell;
 use std::convert::AsRef;
 use std::path::Path;
@@ -135,8 +130,8 @@ fn main() {
             samples: 4,
         }
     );
-    let window_ref = RefCell::new(window);
-    let event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
+    let window_ref = Rc::new(RefCell::new(window));
+    let event_iter = Events::new(window_ref).ups(180).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
