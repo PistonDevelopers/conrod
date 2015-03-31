@@ -16,22 +16,17 @@ use conrod::{
     UiContext,
 };
 use glutin_window::GlutinWindow;
-use opengl_graphics::{Gl, OpenGL};
+use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::{
-    Event,
-    Events,
-    Ups,
-    MaxFps,
-};
-use piston::Set;
+use piston::event::{ Events, Event };
 use piston::window::WindowSettings;
+use std::rc::Rc;
 use std::cell::RefCell;
 use std::path::Path;
 
 type Ui = UiContext<GlyphCache>;
 
-fn main () {
+fn main() {
 
     let opengl = OpenGL::_3_2;
     let window = GlutinWindow::new(
@@ -44,15 +39,15 @@ fn main () {
             samples: 4,
         }
     );
-    let window_ref = RefCell::new(window);
-    let event_iter = Events::new(&window_ref).set(Ups(180)).set(MaxFps(60));
-    let mut gl = Gl::new(opengl);
+    let window_ref = Rc::new(RefCell::new(window));
+    let event_iter = Events::new(window_ref).ups(180).max_fps(60);
+    let mut gl = GlGraphics::new(opengl);
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let uic = &mut UiContext::new(glyph_cache, theme);
 
-    let mut count: u32 = 0;
+    let mut count = 0;
 
     for event in event_iter {
         uic.handle_event(&event);
@@ -72,7 +67,7 @@ fn main () {
 }
 
 /// Function for drawing the counter widget.
-fn counter(gl: &mut Gl, uic: &mut Ui, count: &mut u32) {
+fn counter(gl: &mut GlGraphics, uic: &mut Ui, count: &mut u32) {
 
     // Draw the value.
     Label::new(&count.to_string()).position(10.0, 10.0).draw(uic, gl);
