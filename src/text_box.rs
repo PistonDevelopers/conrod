@@ -40,21 +40,16 @@ pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct State(DrawState, Capturing);
-
-/// Represents the next tier of state.
-#[derive(Debug, PartialEq, Clone,Copy)]
-pub enum DrawState {
-    Normal,
-    Highlighted(Element),
-    Clicked(Element),
+pub enum State {
+    Capturing(Captured),
+    Uncaptured(rectangle::State),
 }
 
 /// Whether the textbox is currently captured or not.
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Capturing {
-    Uncaptured,
-    Captured(Idx),
+pub enum Captured {
+    Cursor(Idx),
+    Selection(Idx, Idx)
 }
 
 /// Represents an element of the TextBox widget.
@@ -63,35 +58,37 @@ pub enum Element {
     Char(Idx),
     Nill,
     Rect,
-    Text(Idx, Idx),
+}
+
+impl Element {
+    fn idx(&self) -> Idx {
+        match *self {
+            Element::Char(idx) => idx,
+            Element::Nill | Element::Rect => 0,
+        }
+    }
 }
 
 impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
-        match self {
-            &State(state, capturing) => match capturing {
-                Capturing::Captured(_) => rectangle::State::Normal,
-                Capturing::Uncaptured => match state {
-                    DrawState::Normal => rectangle::State::Normal,
-                    DrawState::Highlighted(_) => rectangle::State::Highlighted,
-                    DrawState::Clicked(_) => rectangle::State::Clicked,
-                },
-            }
+        match *self {
+            State::Capturing(_) => rectangle::State::Normal,
+            State::Uncaptured(state) => state,
         }
     }
 }
 
-widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
+widget_fns!(TextBox, State, Widget::TextBox(State::Uncaptured(rectangle::State::Normal)));
 
 static TEXT_PADDING: f64 = 5f64;
 
-/// Calculate the index and x position for a text box cursor.
-fn update_cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
-                          mut idx: usize,
-                          mut text_x: f64,
-                          font_size: FontSize,
-                          text: &str) -> (Idx, CursorX) {
+/// Find the position of a character in a text box.
+fn cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
+                 mut idx: usize,
+                 mut text_x: f64,
+                 font_size: FontSize,
+                 text: &str) -> (Idx, CursorX) {
     if idx == 0 { return (0, text_x); }
     let text_len = text.len();
     if idx > text_len { idx = text_len; }
@@ -149,39 +146,27 @@ fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
 }
 
 /// Check and return the current state of the TextBox.
-fn get_new_state(over_elem: Element,
-                 prev_box_state: State,
-                 mouse: Mouse) -> State {
-    use mouse::ButtonState::{Down, Up};
-    use self::Capturing::{Uncaptured, Captured};
-    use self::DrawState::{Normal, Highlighted, Clicked};
-    use self::Element::{Nill, Char};
-    match prev_box_state {
-        State(prev, Uncaptured) => {
-            match (over_elem, prev, mouse.left) {
-                (_, Normal, Down)                 => State(Normal, Uncaptured),
-                (Nill, Normal, Up)                |
-                (Nill, Highlighted(_), Up)        => State(Normal, Uncaptured),
-                (_, Normal, Up)                   |
-                (_, Highlighted(_), Up)           => State(Highlighted(over_elem), Uncaptured),
-                (_, Highlighted(p_elem), Down)    |
-                (_, Clicked(p_elem), Down)        => State(Clicked(p_elem), Uncaptured),
-                (Char(idx), Clicked(Char(_)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (Nill, _, _)                      => State(Normal, Uncaptured),
-                _                                 => prev_box_state,
-            }
+fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
+    use mouse::ButtonState::{ Down, Up };
+    use rectangle::State::{ Normal, Highlighted, Clicked };
+    use self::State::{ Capturing, Uncaptured };
+    use self::Captured::{ Cursor, Selection };
+
+    match prev_state {
+        State::Capturing(prev) => match mouse.left {
+            Down => match prev {
+                Cursor(idx) => prev_state,// move the cursor to the new position
+                Selection(start, end) => prev_state, // update the selection
+            },
+            Up => match prev {
+                // Only way for there not to be a selection
+                Cursor(_) => prev_state,
+                Selection(start, end) => prev_state,
+            },
         },
-        State(prev, Captured(p_idx)) => {
-            match (over_elem, prev, mouse.left) {
-                (Nill, Clicked(Nill), Up)         => State(Normal, Uncaptured),
-                (Char(idx), Clicked(Char(_)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (_, Normal, Up)                   |
-                (_, Highlighted(_), Up)           |
-                (_, Clicked(_), Up)               => State(Highlighted(over_elem), Captured(p_idx)),
-                (_, Highlighted(p_elem), Down)    |
-                (_, Clicked(p_elem), Down)        => State(Clicked(p_elem), Captured(p_idx)),
-                _                                 => prev_box_state,
-            }
+        State::Uncaptured(prev) => match (mouse.left) {
+            Down => Capturing(Cursor(over_elem.idx())),
+            Up => prev_state,
         },
     }
 }
@@ -243,6 +228,16 @@ impl<'a, F> TextBox<'a, F> {
             maybe_frame_color: None,
         }
     }
+
+    fn selection_rect<C: CharacterCache>
+                     (&self, uic: &mut UiContext<C>, text_x: f64, mut start: Idx, end: Idx) ->
+                     (Point, Dimensions) {
+        if start != 0 { start -= 1; }
+        let (_, pos) = cursor_position(uic, start, text_x, self.font_size, &self.text);
+        let htext: String = self.text.chars().skip(start).take(end - start).collect();
+        let htext_w = label::width(uic, self.font_size, &htext);
+        ([pos, self.pos[1]], [htext_w, self.dim[1]])
+    }
 }
 
 quack! {
@@ -251,7 +246,7 @@ quack! {
         fn () -> Size [] { Size(tb.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(
-                Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
+                Widget::TextBox(State::Uncaptured(rectangle::State::Normal))
             )
         }
         fn () -> Id [] { Id(tb.ui_id) }
@@ -302,13 +297,21 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
 
         rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
+
+        if let State::Capturing(Captured::Selection(start, end)) = new_state {
+            let (pos, dim) = self.selection_rect(uic, text_x, start, end);
+            rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
+                            pos, dim, maybe_frame, color);
+        }
+
         uic.draw_text(graphics, text_pos, self.font_size,
                            color.plain_contrast(), &self.text);
 
-        let new_state = match new_state { State(w_state, capturing) => match capturing {
-            Capturing::Uncaptured => new_state,
-            Capturing::Captured(idx) => {
-                let (idx, cursor_x) = update_cursor_position(uic, idx, text_x, self.font_size, &self.text);
+        let new_state = match new_state {
+            State::Uncaptured(_) => new_state,
+            State::Capturing(Captured::Selection(..)) => new_state,
+            State::Capturing(Captured::Cursor(idx)) => {
+                let (idx, cursor_x) = cursor_position(uic, idx, text_x, self.font_size, &self.text);
                 draw_cursor(uic.win_w, uic.win_h, graphics, color,
                             cursor_x, pad_pos[1], pad_dim[1]);
                 let mut new_idx = idx;
@@ -392,9 +395,9 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     }
                 }
 
-                State(w_state, Capturing::Captured(new_idx))
+                State::Capturing(Captured::Cursor(new_idx))
             },
-        }};
+        };
 
         set_state(uic, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
 
