@@ -40,57 +40,76 @@ pub type CursorX = f64;
 
 /// Represents the state of the text_box widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct State(DrawState, Capturing);
-
-/// Represents the next tier of state.
-#[derive(Debug, PartialEq, Clone,Copy)]
-pub enum DrawState {
-    Normal,
-    Highlighted(Element),
-    Clicked(Element),
+pub enum State {
+    Capturing(Selection),
+    Uncaptured(Uncaptured),
 }
 
-/// Whether the textbox is currently captured or not.
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Capturing {
-    Uncaptured,
-    Captured(Idx),
+pub struct Selection {
+    anchor: Anchor,
+    start: Idx,
+    end: Idx,
+}
+
+impl Selection {
+    fn from_index(idx: Idx) -> Selection {
+        Selection {anchor: Anchor::Start, start: idx, end: idx }
+    }
+
+    fn from_range(start: Idx, end: Idx) -> Selection {
+        if start < end {
+            Selection { anchor: Anchor::Start, start: start, end: end }
+        } else {
+            Selection { anchor: Anchor::End, start: end, end: start }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Anchor {
+    None,
+    Start,
+    End,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Uncaptured {
+    Highlighted,
+    Normal,
 }
 
 /// Represents an element of the TextBox widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Element {
+    Char(Idx),
     Nill,
     Rect,
-    Text(Idx, CursorX),
 }
 
 impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
-        match self {
-            &State(state, capturing) => match capturing {
-                Capturing::Captured(_) => rectangle::State::Normal,
-                Capturing::Uncaptured => match state {
-                    DrawState::Normal => rectangle::State::Normal,
-                    DrawState::Highlighted(_) => rectangle::State::Highlighted,
-                    DrawState::Clicked(_) => rectangle::State::Clicked,
-                },
+        match *self {
+            State::Capturing(_) => rectangle::State::Normal,
+            State::Uncaptured(state) => match state {
+                Uncaptured::Highlighted => rectangle::State::Highlighted,
+                Uncaptured::Normal => rectangle::State::Normal,
             }
         }
     }
 }
 
-widget_fns!(TextBox, State, Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured)));
+widget_fns!(TextBox, State, Widget::TextBox(State::Uncaptured(Uncaptured::Normal)));
 
 static TEXT_PADDING: f64 = 5f64;
 
-/// Calculate the index and x position for a text box cursor.
-fn update_cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
-                          mut idx: usize,
-                          mut text_x: f64,
-                          font_size: FontSize,
-                          text: &str) -> (Idx, CursorX) {
+/// Find the position of a character in a text box.
+fn cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
+                 mut idx: usize,
+                 mut text_x: f64,
+                 font_size: FontSize,
+                 text: &str) -> (Idx, CursorX) {
     if idx == 0 { return (0, text_x); }
     let text_len = text.len();
     if idx > text_len { idx = text_len; }
@@ -117,8 +136,8 @@ fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => Element::Rect,
             true => {
-                let (idx, cursor_x) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
-                Element::Text(idx, cursor_x)
+                let (idx, _) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
+                Element::Char(idx)
             },
         },
     }
@@ -140,7 +159,7 @@ fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
         let char_w = character.width();
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
-        if mouse_pos[0] > left_x && mouse_pos[0] < right_x { return (i, prev_x) }
+        if mouse_pos[0] > left_x && mouse_pos[0] <= right_x { return (i, prev_x) }
         prev_x = x;
         left_x = right_x;
     }
@@ -148,39 +167,52 @@ fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
 }
 
 /// Check and return the current state of the TextBox.
-fn get_new_state(over_elem: Element,
-                 prev_box_state: State,
-                 mouse: Mouse) -> State {
-    use mouse::ButtonState::{Down, Up};
-    use self::Capturing::{Uncaptured, Captured};
-    use self::DrawState::{Normal, Highlighted, Clicked};
-    use self::Element::{Nill, Text};
-    match prev_box_state {
-        State(prev, Uncaptured) => {
-            match (over_elem, prev, mouse.left) {
-                (_, Normal, Down)                       => State(Normal, Uncaptured),
-                (Nill, Normal, Up)                      |
-                (Nill, Highlighted(_), Up)              => State(Normal, Uncaptured),
-                (_, Normal, Up)                         |
-                (_, Highlighted(_), Up)                 => State(Highlighted(over_elem), Uncaptured),
-                (_, Highlighted(p_elem), Down)          |
-                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Uncaptured),
-                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (Nill, _, _)                            => State(Normal, Uncaptured),
-                _                                       => prev_box_state,
-            }
+fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
+    use mouse::ButtonState::{ Down, Up };
+    use self::State::{ Capturing, Uncaptured };
+    use self::Uncaptured::{ Normal, Highlighted };
+
+    match prev_state {
+        State::Capturing(prev) => match mouse.left {
+            Down => match over_elem {
+                Element::Nill => if prev.anchor == Anchor::None {
+                    Uncaptured(Normal)
+                } else {
+                    prev_state
+                },
+                Element::Rect =>  if prev.anchor == Anchor::None {
+                    Capturing(Selection::from_index(0))
+                } else {
+                    prev_state
+                },
+                Element::Char(idx) => match prev.anchor {
+                    Anchor::None => Capturing(Selection::from_index(idx)),
+                    Anchor::Start => Capturing(Selection::from_range(prev.start, idx)),
+                    Anchor::End => Capturing(Selection::from_range(prev.end, idx)),
+                },
+            },
+            Up => Capturing(Selection { anchor: Anchor::None, .. prev })
         },
-        State(prev, Captured(p_idx)) => {
-            match (over_elem, prev, mouse.left) {
-                (Nill, Clicked(Nill), Up)               => State(Normal, Uncaptured),
-                (Text(idx, _), Clicked(Text(_, _)), Up) => State(Highlighted(over_elem), Captured(idx)),
-                (_, Normal, Up)                         |
-                (_, Highlighted(_), Up)                 |
-                (_, Clicked(_), Up)                     => State(Highlighted(over_elem), Captured(p_idx)),
-                (_, Highlighted(p_elem), Down)          |
-                (_, Clicked(p_elem), Down)              => State(Clicked(p_elem), Captured(p_idx)),
-                _                                       => prev_box_state,
-            }
+
+        State::Uncaptured(prev) => match mouse.left {
+            Down => match over_elem {
+                Element::Nill => Uncaptured(Normal),
+                Element::Rect => match prev {
+                    Normal => prev_state,
+                    Highlighted => Capturing(Selection::from_index(0)),
+                },
+                Element::Char(idx) =>  match prev {
+                    Normal => prev_state,
+                    Highlighted => Capturing(Selection::from_index(idx)),
+                },
+            },
+            Up => match over_elem {
+                Element::Nill => Uncaptured(Normal),
+                Element::Char(_) | Element::Rect => match prev {
+                    Normal => Uncaptured(Highlighted),
+                    Highlighted => prev_state,
+                },
+            },
         },
     }
 }
@@ -242,6 +274,15 @@ impl<'a, F> TextBox<'a, F> {
             maybe_frame_color: None,
         }
     }
+
+    fn selection_rect<C: CharacterCache>
+                     (&self, uic: &mut UiContext<C>, text_x: f64, start: Idx, end: Idx) ->
+                     (Point, Dimensions) {
+        let (_, pos) = cursor_position(uic, start, text_x, self.font_size, &self.text);
+        let htext: String = self.text.chars().skip(start).take(end - start).collect();
+        let htext_w = label::width(uic, self.font_size, &htext);
+        ([pos, self.pos[1]], [htext_w, self.dim[1]])
+    }
 }
 
 quack! {
@@ -250,7 +291,7 @@ quack! {
         fn () -> Size [] { Size(tb.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(
-                Widget::TextBox(State(DrawState::Normal, Capturing::Uncaptured))
+                Widget::TextBox(State::Uncaptured(Uncaptured::Normal))
             )
         }
         fn () -> Id [] { Id(tb.ui_id) }
@@ -297,105 +338,107 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         let over_elem = over_elem(uic, self.pos, mouse.pos, self.dim,
                                   pad_pos, pad_dim, text_pos, text_w,
                                   self.font_size, &self.text);
-        let new_state = get_new_state(over_elem, state, mouse);
+        let mut new_state = get_new_state(over_elem, state, mouse);
 
         rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
-        uic.draw_text(graphics, text_pos, self.font_size,
-                           color.plain_contrast(), &self.text);
 
-        let new_state = match new_state { State(w_state, capturing) => match capturing {
-            Capturing::Uncaptured => new_state,
-            Capturing::Captured(idx) => {
-                let (idx, cursor_x) = update_cursor_position(uic, idx, text_x, self.font_size, &self.text);
-                draw_cursor(uic.win_w, uic.win_h, graphics, color,
-                            cursor_x, pad_pos[1], pad_dim[1]);
-                let mut new_idx = idx;
-                let mut new_cursor_x = cursor_x;
+        if let State::Capturing(selection) = new_state {
+            if selection.start != selection.end {
+                let (pos, dim) = self.selection_rect(uic, text_x, selection.start, selection.end);
+                rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
+                                [pos[0], pos[1] + frame_w], [dim[0], dim[1] - frame_w2],
+                                None, color.highlighted());
+            }
+        }
 
-                // Check for entered text.
-                let entered_text = uic.get_entered_text();
-                for t in entered_text.iter() {
-                    let mut entered_text_width = 0.0;
-                    for ch in t[..].chars() {
-                        let c = uic.get_character(self.font_size, ch);
-                        entered_text_width += c.width();
-                    }
-                    if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
-                        new_cursor_x += entered_text_width;
-                    }
-                    else {
-                        break;
-                    }
-                    let new_text = format!("{}{}{}", &self.text[..idx], t, &self.text[idx..]);
-                    *self.text = new_text;
-                    new_idx += t.len();
+        uic.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
+
+        if let State::Capturing(selection) = new_state {
+            if selection.start == selection.end {
+            let (idx, cursor_x) = cursor_position(uic, selection.start, text_x, self.font_size, &self.text);
+            draw_cursor(uic.win_w, uic.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
+            let mut new_idx = idx;
+            let mut new_cursor_x = cursor_x;
+
+            // Check for entered text.
+            let entered_text = uic.get_entered_text();
+            for t in entered_text.iter() {
+                let mut entered_text_width = 0.0;
+                for ch in t[..].chars() {
+                    let c = uic.get_character(self.font_size, ch);
+                    entered_text_width += c.width();
                 }
-
-                // Check for control keys.
-                let pressed_keys = uic.get_pressed_keys();
-                for key in pressed_keys.iter() {
-                    match *key {
-                        Backspace => {
-                            if self.text.len() > 0
-                            && self.text.len() >= idx
-                            && idx > 0 {
-                                let rem_idx = idx - 1;
-                                new_cursor_x -= uic.get_character_w(
-                                    self.font_size, self.text[..].char_at(rem_idx)
-                                );
-                                let new_text = format!("{}{}", &self.text[..rem_idx], &self.text[idx..]);
-                                *self.text = new_text;
-                                new_idx = rem_idx;
-                            }
-                        },
-                        Left => {
-                            if idx > 0 {
-                                new_cursor_x -= uic.get_character_w(
-                                    self.font_size, self.text[..].char_at(idx - 1)
-                                );
-                                new_idx -= 1;
-                            }
-                        },
-                        Right => {
-                            if self.text.len() > idx {
-                                new_cursor_x += uic.get_character_w(
-                                    self.font_size, self.text[..].char_at(idx)
-                                );
-                                new_idx += 1;
-                            }
-                        },
-                        Return => if self.text.len() > 0 {
-                            let TextBox { // borrowck
-                                ref mut maybe_callback,
-                                ref font_size,
-                                ref mut text,
-                                ..
-                            } = *self;
-                            match *maybe_callback {
-                                Some(ref mut callback) => {
-                                    (*callback)(*text);
-
-                                    new_idx = cmp::min(new_idx, text.len());
-                                    let text = &*text;
-                                    new_cursor_x = text.chars()
-                                                       // Add text_pos.x for padding
-                                                       .fold(text_pos[0], |acc, c| {
-                                        acc + uic.get_character_w(*font_size, c)
-                                    });
-                                },
-                                None => (),
-                            }
-                        },
-                        _ => (),
-                    }
+                if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
+                    new_cursor_x += entered_text_width;
                 }
+                else {
+                    break;
+                }
+                let new_text = format!("{}{}{}", &self.text[..idx], t, &self.text[idx..]);
+                *self.text = new_text;
+                new_idx += t.len();
+            }
 
-                State(w_state, Capturing::Captured(new_idx))
-            },
-        }};
-
+            // Check for control keys.
+            let pressed_keys = uic.get_pressed_keys();
+            for key in pressed_keys.iter() {
+                match *key {
+                    Backspace => {
+                        if self.text.len() > 0
+                        && self.text.len() >= idx
+                        && idx > 0 {
+                            let rem_idx = idx - 1;
+                            new_cursor_x -= uic.get_character_w(
+                                self.font_size, self.text[..].char_at(rem_idx)
+                            );
+                            let new_text = format!("{}{}", &self.text[..rem_idx], &self.text[idx..]);
+                            *self.text = new_text;
+                            new_idx = rem_idx;
+                        }
+                    },
+                    Left => {
+                        if idx > 0 {
+                            new_cursor_x -= uic.get_character_w(
+                                self.font_size, self.text[..].char_at(idx - 1)
+                            );
+                            new_idx -= 1;
+                        }
+                    },
+                    Right => {
+                        if self.text.len() > idx {
+                            new_cursor_x += uic.get_character_w(
+                                self.font_size, self.text[..].char_at(idx)
+                            );
+                            new_idx += 1;
+                        }
+                    },
+                    Return => if self.text.len() > 0 {
+                        let TextBox { // borrowck
+                            ref mut maybe_callback,
+                            ref font_size,
+                            ref mut text,
+                            ..
+                        } = *self;
+                        match *maybe_callback {
+                            Some(ref mut callback) => {
+                                (*callback)(*text);
+                                new_idx = cmp::min(new_idx, text.len());
+                                let text = &*text;
+                                new_cursor_x = text.chars()
+                                                   // Add text_pos.x for padding
+                                                   .fold(text_pos[0], |acc, c| {
+                                    acc + uic.get_character_w(*font_size, c)
+                                });
+                            },
+                            None => (),
+                        }
+                    },
+                    _ => (),
+                }
+            }
+            new_state = State::Capturing(Selection { start: new_idx, end: new_idx, .. selection });
+        }}
         set_state(uic, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
-
     }
 }
