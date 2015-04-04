@@ -14,6 +14,7 @@ use label;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use rectangle::{
     Corner
@@ -326,17 +327,23 @@ impl<'a, E, F> Positionable for EnvelopeEditor<'a, E, F>
     }
 }
 
+impl<'a, E, F> Shapeable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
     get:
-        fn () -> Size [where E: EnvelopePoint] { Size(env.dim) }
         fn () -> DefaultWidgetState [where E: EnvelopePoint] {
             DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
         }
         fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
     action:
 }
 */
