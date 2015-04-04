@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
 use std::iter::repeat;
 use frame::Frameable;
+use callback::Callable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
@@ -323,6 +324,13 @@ impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Callable<F> for NumberDialer<'a, T, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     nd: NumberDialer['a, T, F]
@@ -333,9 +341,6 @@ quack! {
         }
         fn () -> Id [] { Id(nd.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
-            nd.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { nd.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { nd.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { nd.maybe_label_font_size = Some(val.0) }
