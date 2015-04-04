@@ -36,9 +36,15 @@ pub trait Labelable<'a>: Sized {
         self.label_color(Color([r, g, b, a]))
     }
     fn label_font_size(self, size: FontSize) -> Self;
-    fn small_font<C>(self, uic: &UiContext<C>) -> Self;
-    fn medium_font<C>(self, uic: &UiContext<C>) -> Self;
-    fn large_font<C>(self, uic: &UiContext<C>) -> Self;
+    fn small_font<C>(self, uic: &UiContext<C>) -> Self {
+        self.label_font_size(uic.theme.font_size_small)
+    }
+    fn medium_font<C>(self, uic: &UiContext<C>) -> Self {
+        self.label_font_size(uic.theme.font_size_medium)
+    }
+    fn large_font<C>(self, uic: &UiContext<C>) -> Self {
+        self.label_font_size(uic.theme.font_size_large)
+    }
 }
 
 /// Label text property.
