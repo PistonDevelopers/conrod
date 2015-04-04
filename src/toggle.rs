@@ -1,3 +1,4 @@
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -99,6 +100,13 @@ impl<'a, F> Frameable for Toggle<'a, F> {
     }
 }
 
+impl<'a, F> Callable<F> for Toggle<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     toggle: Toggle['a, F]
@@ -109,9 +117,6 @@ quack! {
         }
         fn () -> Id [] { Id(toggle.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(bool) + 'a] {
-            toggle.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { toggle.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { toggle.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] {
