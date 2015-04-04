@@ -13,6 +13,7 @@ use graphics::character::CharacterCache;
 use label;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use rectangle::{
     Corner
@@ -315,6 +316,16 @@ impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
     }
 }
 
+impl<'a, E, F> Positionable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
@@ -325,7 +336,6 @@ quack! {
         }
         fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: Position) [where E: EnvelopePoint] { env.pos = val.0 }
         fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
     action:
 }
