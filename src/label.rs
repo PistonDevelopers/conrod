@@ -29,10 +29,12 @@ pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
 }
 
 /// A trait used for widget types that take a label.
-pub trait Labelable<'a> {
+pub trait Labelable<'a>: Sized {
     fn label(self, text: &'a str) -> Self;
     fn label_color(self, color: Color) -> Self;
-    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
+    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
+        self.label_color(Color([r, g, b, a]))
+    }
     fn label_font_size(self, size: FontSize) -> Self;
     fn small_font<C>(self, uic: &UiContext<C>) -> Self;
     fn medium_font<C>(self, uic: &UiContext<C>) -> Self;
