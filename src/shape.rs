@@ -12,7 +12,10 @@ pub trait Shapeable: Sized {
         let size = self.get_dim();
         self.dim([width, size[1]])
     }
-    fn height(self, height: f64) -> Self;
+    fn height(self, height: f64) -> Self {
+        let size = self.get_dim();
+        self.dim([size[0], height])
+    }
 }
 
 /// Size property.
