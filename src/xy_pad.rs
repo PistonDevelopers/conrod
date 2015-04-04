@@ -10,6 +10,7 @@ use graphics::character::CharacterCache;
 use label;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use rectangle::{
     Corner
@@ -188,6 +189,13 @@ impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
     }
 }
 
+impl<'a, X, Y, F> Positionable for XYPad<'a, X, Y, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
@@ -198,7 +206,6 @@ quack! {
         }
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: Position) [] { xy_pad.pos = val.0 }
         fn (val: Size) [] { xy_pad.dim = val.0 }
     action:
 }
