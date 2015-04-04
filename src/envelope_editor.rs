@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
 use callback::Callable;
 use frame::Frameable;
+use label::{ FontSize, Labelable };
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
@@ -10,7 +11,6 @@ use graphics::{
 };
 use graphics::character::CharacterCache;
 use label;
-use label::FontSize;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
@@ -295,6 +295,26 @@ impl<'a, E, F> Callable<F> for EnvelopeEditor<'a, E, F>
     }
 }
 
+impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
@@ -305,9 +325,6 @@ quack! {
         }
         fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: LabelText<'a>) [where E: EnvelopePoint] { env.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [where E: EnvelopePoint] { env.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [where E: EnvelopePoint] { env.maybe_label_font_size = Some(val.0) }
         fn (val: Position) [where E: EnvelopePoint] { env.pos = val.0 }
         fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
     action:
