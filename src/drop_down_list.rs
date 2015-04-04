@@ -1,5 +1,6 @@
 use callback::Callable;
 use frame::Frameable;
+use label::{ FontSize, Labelable };
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
@@ -184,6 +185,24 @@ impl<'a, F> Callable<F> for DropDownList<'a, F> {
     }
 }
 
+impl<'a, F> Labelable<'a> for DropDownList<'a, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
 /*
 quack! {
     list: DropDownList['a, F]
@@ -196,9 +215,6 @@ quack! {
         }
         fn () -> Id [] { Id(list.ui_id) }
     set:
-        fn (val: LabelText<'a>) [] { list.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { list.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { list.maybe_label_font_size = Some(val.0) }
         fn (val: Position) [] { list.pos = val.0 }
         fn (val: Size) [] { list.dim = val.0 }
     action:
