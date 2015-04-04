@@ -5,6 +5,7 @@ use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use widget::Widget;
@@ -106,8 +107,7 @@ impl<'a, F> Callable<F> for Button<'a, F> {
     }
 }
 
-impl<'a, F> Labelable<'a> for Button<'a, F>
-{
+impl<'a, F> Labelable<'a> for Button<'a, F> {
     fn label(mut self, text: &'a str) -> Self {
         self.maybe_label = Some(text);
         self
@@ -124,6 +124,13 @@ impl<'a, F> Labelable<'a> for Button<'a, F>
     }
 }
 
+impl<'a, F> Positionable for Button<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     button: Button['a, F]
@@ -134,7 +141,6 @@ quack! {
         }
         fn () -> Id [] { Id(button.ui_id) }
     set:
-        fn (val: Position) [] { button.pos = val.0 }
         fn (val: Size) [] { button.dim = val.0 }
     action:
 }
