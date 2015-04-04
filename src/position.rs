@@ -1,7 +1,6 @@
 use point::Point;
 use ui_context::UIID;
 use UiContext;
-use graphics::math::Scalar;
 
 /// A trait that indicates whether or not a widget
 /// builder is positionable.
@@ -43,7 +42,3 @@ pub trait Positionable: Sized {
         self.point([x, y])
     }
 }
-
-/// Position property.
-#[derive(Copy, Clone)]
-pub struct Position(pub [Scalar; 2]);
