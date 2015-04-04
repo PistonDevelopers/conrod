@@ -8,7 +8,7 @@ use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
 use point::Point;
-use ui_context::UiContext;
+use ui::Ui;
 use utils::map_range;
 
 /// Represents the state of the Button widget.
@@ -103,7 +103,7 @@ pub fn draw_with_centered_label<B, C>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
-    uic: &mut UiContext<C>,
+    ui: &mut Ui<C>,
     state: State,
     pos: Point,
     dim: Dimensions,
@@ -124,9 +124,9 @@ pub fn draw_with_centered_label<B, C>(
     }
     let f_width = if let Some((f_width, _)) = maybe_frame { f_width } else { 0.0 };
     draw_normal(draw_state, transform, graphics, state, pos, dim, f_width, color);
-    let text_w = label::width(uic, font_size, text);
+    let text_w = label::width(ui, font_size, text);
     let l_pos = [pos[0] + (dim[0] - text_w) / 2.0, pos[1] + (dim[1] - font_size as f64) / 2.0];
-    uic.draw_text(graphics, l_pos, font_size, text_color, text);
+    ui.draw_text(graphics, l_pos, font_size, text_color, text);
 }
 
 #[derive(Copy, Clone)]

@@ -10,7 +10,7 @@ use std::fs::File;
 use std::path::Path;
 use std::str;
 use std::borrow::ToOwned;
-use ui_context::UiContext;
+use ui::Ui;
 
 /// A data holder for style-related data.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
@@ -89,7 +89,7 @@ impl Theme {
 /// A trait to make it easier to generically access the UIC on different widget contexts.
 pub trait Themeable<C> {
     /// Return a reference to the UiContext.
-    fn get_theme(&self) -> &UiContext<C>;
+    fn get_theme(&self) -> &Ui<C>;
     /// Return a reference to the UiContext.
-    fn get_theme_mut(&mut self) -> &mut UiContext<C>;
+    fn get_theme_mut(&mut self) -> &mut Ui<C>;
 }

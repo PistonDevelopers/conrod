@@ -30,7 +30,7 @@ pub type UIID = u64;
 
 /// UiContext retains the state of all widgets and
 /// data relevant to the draw_widget functions.
-pub struct UiContext<C> {
+pub struct Ui<C> {
     data: Vec<(Widget, widget::Placing)>,
     pub theme: Theme,
     pub mouse: Mouse,
@@ -47,14 +47,14 @@ pub struct UiContext<C> {
     prev_uiid: u64,
 }
 
-impl<C> UiContext<C>
+impl<C> Ui<C>
     where
         C: CharacterCache
 {
 
     /// Constructor for a UiContext.
-    pub fn new(glyph_cache: C, theme: Theme) -> UiContext<C> {
-        UiContext {
+    pub fn new(glyph_cache: C, theme: Theme) -> Ui<C> {
+        Ui {
             data: repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(512).collect(),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
@@ -170,7 +170,7 @@ impl<C> UiContext<C>
 
 }
 
-impl<C> UiContext<C> {
+impl<C> Ui<C> {
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> Mouse {
         self.mouse

@@ -8,7 +8,7 @@ use point::Point;
 use position::Positionable;
 use shape::Shapeable;
 use rectangle;
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use vecmath::vec2_add;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
@@ -222,14 +222,14 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
         F: FnMut(&mut Option<Idx>, Idx, String) + 'a
 {
 
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
         let is_over_idx = is_over(self.pos, mouse.pos, self.dim, state, self.strings.len());
         let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
 
@@ -237,9 +237,9 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
             Some(idx) if idx < self.strings.len() => { Some(idx) },
             _ => None,
         };
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
-        let t_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
-        let t_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+        let t_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+        let t_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
 
         // Call the `callback` closure if mouse was released
         // on one of the DropDownMenu items.
@@ -256,9 +256,9 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
             }, _ => (),
         }
 
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
 
@@ -274,7 +274,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
                     },
                 };
                 rectangle::draw_with_centered_label(
-                    uic.win_w, uic.win_h, graphics, uic, rect_state,
+                    ui.win_w, ui.win_h, graphics, ui, rect_state,
                     self.pos, self.dim, maybe_frame, color,
                     text, t_size, t_color
                 )
@@ -316,7 +316,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
                     let idx_y = self.dim[1] * i as f64 - i as f64 * frame_w;
                     let idx_pos = vec2_add(self.pos, [0.0, idx_y]);
                     rectangle::draw_with_centered_label(
-                        uic.win_w, uic.win_h, graphics, uic, rect_state, idx_pos,
+                        ui.win_w, ui.win_h, graphics, ui, rect_state, idx_pos,
                         self.dim, maybe_frame, color, &string,
                         t_size, t_color
                     )
@@ -325,7 +325,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
 
         }
 
-        set_state(uic, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
 
     }
 }

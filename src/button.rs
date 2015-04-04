@@ -8,7 +8,7 @@ use point::Point;
 use position::Positionable;
 use shape::Shapeable;
 use rectangle;
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use widget::Widget;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
@@ -142,14 +142,14 @@ impl<'a, F> ::draw::Drawable for Button<'a, F>
         F: FnMut() + 'a
 {
 
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 
@@ -162,31 +162,31 @@ impl<'a, F> ::draw::Drawable for Button<'a, F>
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
         match self.maybe_label {
             None => {
                 rectangle::draw(
-                    uic.win_w, uic.win_h, graphics, rect_state, self.pos,
+                    ui.win_w, ui.win_h, graphics, rect_state, self.pos,
                     self.dim, maybe_frame, color
                 )
             },
             Some(text) => {
-                let text_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
-                let size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
                 rectangle::draw_with_centered_label(
-                    uic.win_w, uic.win_h, graphics, uic, rect_state,
+                    ui.win_w, ui.win_h, graphics, ui, rect_state,
                     self.pos, self.dim, maybe_frame, color,
                     text, size, text_color
                 )
             },
         }
 
-        set_state(uic, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
 
     }
 }
