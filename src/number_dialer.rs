@@ -12,6 +12,7 @@ use graphics::character::CharacterCache;
 use label;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use utils::{
     clamp,
@@ -349,6 +350,13 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
     }
 }
 
+impl<'a, T, F> Positionable for NumberDialer<'a, T, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     nd: NumberDialer['a, T, F]
@@ -359,7 +367,6 @@ quack! {
         }
         fn () -> Id [] { Id(nd.ui_id) }
     set:
-        fn (val: Position) [] { nd.pos = val.0 }
         fn (val: Size) [] { nd.dim = val.0 }
     action:
 }
