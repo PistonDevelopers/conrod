@@ -1,5 +1,5 @@
 
-use color::Color;
+use color::{ Color, Colorable };
 use draw::Drawable;
 use graphics;
 use graphics::Graphics;
@@ -17,6 +17,13 @@ impl Background {
         Background {
             maybe_color: None,
         }
+    }
+}
+
+impl Colorable for Background {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
     }
 }
 
