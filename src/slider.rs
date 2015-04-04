@@ -10,6 +10,7 @@ use graphics::Graphics;
 use graphics::character::CharacterCache;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use utils::{
@@ -144,17 +145,20 @@ impl<'a, T, F> Positionable for Slider<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Shapeable for Slider<'a, T, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     slider: Slider['a, T, F]
     get:
-        fn () -> Size [] { Size(slider.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::Slider(State::Normal))
         }
         fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: Size) [] { slider.dim = val.0 }
     action:
 }
 */
