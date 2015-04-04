@@ -6,6 +6,7 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
@@ -211,11 +212,15 @@ impl<'a, F> Positionable for DropDownList<'a, F> {
     }
 }
 
+impl<'a, F> Shapeable for DropDownList<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     list: DropDownList['a, F]
     get:
-        fn () -> Size [] { Size(list.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(
                 Widget::DropDownList(State::Closed(DrawState::Normal))
@@ -223,7 +228,6 @@ quack! {
         }
         fn () -> Id [] { Id(list.ui_id) }
     set:
-        fn (val: Size) [] { list.dim = val.0 }
     action:
 }
 */
