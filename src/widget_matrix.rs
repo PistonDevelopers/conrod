@@ -1,8 +1,6 @@
 
 use dimensions::Dimensions;
 use point::Point;
-use Position;
-use Size;
 
 /// Callback params.
 pub type WidgetNum = usize;

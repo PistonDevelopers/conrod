@@ -12,11 +12,7 @@ use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use utils::{
     clamp,
     map_range,
@@ -26,15 +22,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
