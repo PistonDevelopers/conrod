@@ -1,5 +1,5 @@
 use num::{ Float, ToPrimitive, FromPrimitive };
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use label;
 use mouse::Mouse;
@@ -90,6 +90,13 @@ impl<'a, T, F> Slider<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Colorable for Slider<'a, T, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     slider: Slider['a, T, F]
@@ -100,7 +107,6 @@ quack! {
         }
         fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: Color) [] { slider.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
             slider.maybe_callback = Some(val.0)
         }
