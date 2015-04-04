@@ -4,22 +4,10 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
-use widget::{ DefaultWidgetState, Widget };
+use ui_context::{ UIID, UiContext };
+use widget::Widget;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
