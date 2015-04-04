@@ -6,20 +6,8 @@ use point::Point;
 use rectangle;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use ui_context::{ UIID, UiContext };
+use widget::Widget;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]

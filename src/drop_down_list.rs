@@ -3,23 +3,11 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Tuple / Callback params.
 pub type Idx = usize;

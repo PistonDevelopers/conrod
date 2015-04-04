@@ -1,5 +1,5 @@
 use rand::random;
-use std::num::Float;
+use num::Float;
 use std::default::Default;
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Add, Sub, Mul, Div};

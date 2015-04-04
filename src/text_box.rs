@@ -16,24 +16,15 @@ use piston::input::keyboard::Key::{
 };
 use point::Point;
 use rectangle;
-use std::num::Float;
+use num::Float;
 use clock_ticks::precise_time_s;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::{ DefaultWidgetState, Widget };
+use widget::Widget;
 use std::cmp;
-use Callback;
-use FrameColor;
-use FrameWidth;
-use Position;
-use Size;
 
 pub type Idx = usize;
 pub type CursorX = f64;

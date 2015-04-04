@@ -153,7 +153,7 @@ impl<C> UiContext<C>
     {
         use graphics::text::Text;
         use graphics::Transformed;
-        use std::num::Float;
+        use num::Float;
 
         let Color(col) = color;
         let draw_state = graphics::default_draw_state();

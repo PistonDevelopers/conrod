@@ -15,21 +15,9 @@ use utils::{
     clamp,
     compare_f64s,
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to

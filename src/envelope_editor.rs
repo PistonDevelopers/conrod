@@ -15,30 +15,18 @@ use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use utils::{
     clamp,
     map_range,
     percentage,
     val_to_string,
 };
-use widget::{ DefaultWidgetState, Widget };
+use widget::Widget;
 use vecmath::{
     vec2_add,
     vec2_sub
 };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to

@@ -3,7 +3,6 @@ use graphics::character::CharacterCache;
 use color::Color;
 use point::Point;
 use ui_context::UiContext;
-use Position;
 
 pub type FontSize = u32;
 
