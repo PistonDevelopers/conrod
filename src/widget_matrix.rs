@@ -1,6 +1,7 @@
 
 use dimensions::Dimensions;
 use point::Point;
+use position::Positionable;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -99,13 +100,19 @@ impl WidgetMatrix {
     }
 }
 
+impl Positionable for WidgetMatrix {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     wm: WidgetMatrix[]
     get:
         fn () -> Size [] { Size(wm.pos) }
     set:
-        fn (val: Position) [] { wm.pos = val.0 }
         fn (val: Size) [] { wm.dim = val.0 }
     action:
 }
