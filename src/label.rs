@@ -74,24 +74,8 @@ impl<'a, T: 'a> Labelable<'a> for T
         self.set(LabelColor(color))
     }
 
-    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.set(LabelColor(Color([r, g, b, a])))
-    }
-
     fn label_font_size(self, size: FontSize) -> Self {
         self.set(LabelFontSize(size))
-    }
-
-    fn small_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_small))
-    }
-
-    fn medium_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_medium))
-    }
-
-    fn large_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_large))
     }
 }
 */
