@@ -1,5 +1,5 @@
 
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
@@ -81,6 +81,13 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
+impl<'a, F> Colorable for Toggle<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     toggle: Toggle['a, F]
@@ -91,7 +98,6 @@ quack! {
         }
         fn () -> Id [] { Id(toggle.ui_id) }
     set:
-        fn (val: Color) [] { toggle.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(bool) + 'a] {
             toggle.maybe_callback = Some(val.0)
         }
