@@ -1,25 +1,18 @@
-use color::Color;
+use callback::Callable;
+use frame::Frameable;
+use label::{ FontSize, Labelable };
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -169,29 +162,59 @@ impl<'a, F> DropDownList<'a, F> {
     }
 }
 
-quack! {
-    list: DropDownList['a, F]
-    get:
-        fn () -> Size [] { Size(list.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(
-                Widget::DropDownList(State::Closed(DrawState::Normal))
-            )
-        }
-        fn () -> Id [] { Id(list.ui_id) }
-    set:
-        fn (val: Color) [] { list.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(&mut Option<Idx>, Idx, String) + 'a] {
-            list.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { list.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { list.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { list.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { list.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { list.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [] { list.pos = val.0 }
-        fn (val: Size) [] { list.dim = val.0 }
-    action:
+impl<'a, F> Colorable for DropDownList<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Frameable for DropDownList<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Callable<F> for DropDownList<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, F> Labelable<'a> for DropDownList<'a, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, F> Positionable for DropDownList<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, F> Shapeable for DropDownList<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, F> ::draw::Drawable for DropDownList<'a, F>

@@ -152,8 +152,8 @@ impl<C> UiContext<C>
             B: Graphics<Texture = <C as CharacterCache>::Texture>
     {
         use graphics::text::Text;
-        use graphics::RelativeTransform;
-        use std::num::Float;
+        use graphics::Transformed;
+        use num::Float;
 
         let Color(col) = color;
         let draw_state = graphics::default_draw_state();
@@ -240,7 +240,3 @@ impl<C> UiContext<C> {
         }
     }
 }
-
-/// Id property.
-#[derive(Copy)]
-pub struct Id(pub UIID);

@@ -1,8 +1,8 @@
 
 use dimensions::Dimensions;
 use point::Point;
-use Position;
-use Size;
+use position::Positionable;
+use shape::Shapeable;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -18,7 +18,7 @@ pub type PosY = f64;
 /// it's `rows` and `cols` position, the width and height
 /// for the widget and the location at which the widget
 /// should be drawn.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct WidgetMatrix {
     cols: usize,
     rows: usize,
@@ -65,26 +65,7 @@ impl WidgetMatrix {
         WidgetMatrix { cell_pad_w: w, cell_pad_h: h, ..self }
     }
 
-    /*
-    /// Create an iterator over the matrix cells.
-    fn iter_cells(&mut self) -> CellIterator {
-    }
-    */
-
 }
-
-/*
-/// A struct used for iterating over the cells of a WidgetMatrix.
-pub struct CellIterator {
-    row: usize,
-    col: usize,
-    rows: usize,
-    cols: usize,
-}
-
-impl Iterator for CellIterator {
-    fn next
-    */
 
 impl WidgetMatrix {
 
@@ -101,12 +82,14 @@ impl WidgetMatrix {
     }
 }
 
-quack! {
-    wm: WidgetMatrix[]
-    get:
-        fn () -> Size [] { Size(wm.pos) }
-    set:
-        fn (val: Position) [] { wm.pos = val.0 }
-        fn (val: Size) [] { wm.dim = val.0 }
-    action:
+impl Positionable for WidgetMatrix {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl Shapeable for WidgetMatrix {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }

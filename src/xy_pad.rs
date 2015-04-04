@@ -1,24 +1,22 @@
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
-use color::Color;
+use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
+use frame::Frameable;
+use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use label;
-use label::FontSize;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use utils::{
     clamp,
     map_range,
@@ -28,15 +26,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -157,27 +147,59 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     }
 }
 
-quack! {
-    xy_pad: XYPad['a, X, Y, F]
-    get:
-        fn () -> Size [] { Size(xy_pad.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::XYPad(State::Normal))
-        }
-        fn () -> Id [] { Id(xy_pad.ui_id) }
-    set:
-        fn (val: Color) [] { xy_pad.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(X, Y) + 'a] {
-            xy_pad.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { xy_pad.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { xy_pad.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { xy_pad.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { xy_pad.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { xy_pad.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [] { xy_pad.pos = val.0 }
-        fn (val: Size) [] { xy_pad.dim = val.0 }
-    action:
+impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, X, Y, F> Callable<F> for XYPad<'a, X, Y, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, X, Y, F> Positionable for XYPad<'a, X, Y, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, X, Y, F> Shapeable for XYPad<'a, X, Y, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>

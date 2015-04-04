@@ -1,5 +1,5 @@
 
-use color::Color;
+use color::{ Color, Colorable };
 use draw::Drawable;
 use graphics;
 use graphics::Graphics;
@@ -7,7 +7,7 @@ use graphics::character::CharacterCache;
 use ui_context::UiContext;
 
 /// The context from which we'll draw the background.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Background {
     maybe_color: Option<Color>,
 }
@@ -20,12 +20,11 @@ impl Background {
     }
 }
 
-quack! {
-    bg: Background[]
-    get:
-    set:
-        fn (val: Color) [] { bg.maybe_color = Some(val) }
-    action:
+impl Colorable for Background {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
 }
 
 impl Drawable for Background {

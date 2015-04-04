@@ -1,7 +1,5 @@
-
-use piston::quack::{ Pair, Set, SetAt };
 use rand::random;
-use std::num::Float;
+use num::Float;
 use std::default::Default;
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Add, Sub, Mul, Div};
@@ -306,18 +304,10 @@ impl Encodable for Color {
 }
 
 /// A trait used for "colorable" widget context types.
-pub trait Colorable {
+pub trait Colorable: Sized {
     fn color(self, color: Color) -> Self;
     /// A method used for passing color as rgba.
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
-}
-
-impl<T> Colorable for T
-    where
-        (Color, T): Pair<Data = Color, Object = T> + SetAt
-{
-    fn color(self, color: Color) -> Self { self.set(color) }
     fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.set(Color([r, g, b, a]))
+        self.color(Color([r, g, b, a]))
     }
 }

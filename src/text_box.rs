@@ -1,4 +1,6 @@
-use color::Color;
+use callback::Callable;
+use frame::Frameable;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
@@ -15,25 +17,18 @@ use piston::input::keyboard::Key::{
     Return,
 };
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
-use std::num::Float;
+use num::Float;
 use clock_ticks::precise_time_s;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::{ DefaultWidgetState, Widget };
+use widget::Widget;
 use std::cmp;
-use Callback;
-use FrameColor;
-use FrameWidth;
-use Position;
-use Size;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -231,7 +226,7 @@ fn draw_cursor<B: Graphics>(
     let transform = graphics::abs_transform(win_w, win_h);
     let Color(color) = color.plain_contrast();
     let (r, g, b, a) = (color[0], color[1], color[2], color[3]);
-    graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
+    graphics::Line::new_round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw(
             [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],
             draw_state,
@@ -285,26 +280,41 @@ impl<'a, F> TextBox<'a, F> {
     }
 }
 
-quack! {
-    tb: TextBox['a, F]
-    get:
-        fn () -> Size [] { Size(tb.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(
-                Widget::TextBox(State::Uncaptured(Uncaptured::Normal))
-            )
-        }
-        fn () -> Id [] { Id(tb.ui_id) }
-    set:
-        fn (val: Color) [] { tb.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(&mut String) + 'a] {
-            tb.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { tb.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { tb.maybe_frame = Some(val.0) }
-        fn (val: Position) [] { tb.pos = val.0 }
-        fn (val: Size) [] { tb.dim = val.0 }
-    action:
+impl<'a, F> Colorable for TextBox<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Frameable for TextBox<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Callable<F> for TextBox<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, F> Positionable for TextBox<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, F> Shapeable for TextBox<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, F> ::draw::Drawable for TextBox<'a, F>

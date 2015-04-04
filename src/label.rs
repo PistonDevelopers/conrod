@@ -1,10 +1,9 @@
-use piston::quack::{ Pair, Set, SetAt };
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use color::Color;
+use color::{ Color, Colorable };
 use point::Point;
+use position::Positionable;
 use ui_context::UiContext;
-use Position;
 
 pub type FontSize = u32;
 
@@ -31,63 +30,23 @@ pub fn auto_size_from_rect_height(rect_height: f64) -> FontSize {
 }
 
 /// A trait used for widget types that take a label.
-pub trait Labelable<'a> {
+pub trait Labelable<'a>: Sized {
     fn label(self, text: &'a str) -> Self;
     fn label_color(self, color: Color) -> Self;
-    fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
-    fn label_font_size(self, size: FontSize) -> Self;
-    fn small_font<C>(self, uic: &UiContext<C>) -> Self;
-    fn medium_font<C>(self, uic: &UiContext<C>) -> Self;
-    fn large_font<C>(self, uic: &UiContext<C>) -> Self;
-}
-
-/// Label text property.
-#[derive(Copy)]
-pub struct LabelText<'a>(pub &'a str);
-
-/// Label color property.
-#[derive(Copy)]
-pub struct LabelColor(pub Color);
-
-/// Label font size property.
-#[derive(Copy)]
-pub struct LabelFontSize(pub FontSize);
-
-impl<'a, T: 'a> Labelable<'a> for T
-    where
-        (LabelText<'a>, T): Pair<Data = LabelText<'a>, Object = T> + SetAt,
-        (LabelColor, T): Pair<Data = LabelColor, Object = T> + SetAt,
-        (LabelFontSize, T): Pair<Data = LabelFontSize, Object = T> + SetAt
-{
-    fn label(self, text: &'a str) -> Self {
-        self.set(LabelText(text))
-    }
-
-    fn label_color(self, color: Color) -> Self {
-        self.set(LabelColor(color))
-    }
-
     fn label_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.set(LabelColor(Color([r, g, b, a])))
+        self.label_color(Color([r, g, b, a]))
     }
-
-    fn label_font_size(self, size: FontSize) -> Self {
-        self.set(LabelFontSize(size))
-    }
-
+    fn label_font_size(self, size: FontSize) -> Self;
     fn small_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_small))
+        self.label_font_size(uic.theme.font_size_small)
     }
-
     fn medium_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_medium))
+        self.label_font_size(uic.theme.font_size_medium)
     }
-
     fn large_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.set(LabelFontSize(uic.theme.font_size_large))
+        self.label_font_size(uic.theme.font_size_large)
     }
 }
-
 
 /// A context on which the builder pattern can be implemented.
 pub struct Label<'a> {
@@ -118,13 +77,18 @@ impl<'a> Label<'a> {
 
 }
 
-quack! {
-    label: Label['a]
-    get:
-    set:
-        fn (val: Color) [] { label.maybe_color = Some(val) }
-        fn (val: Position) [] { label.pos = val.0 }
-    action:
+impl<'a> Colorable for Label<'a> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a> Positionable for Label<'a> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
 }
 
 impl<'a> ::draw::Drawable for Label<'a> {

@@ -1,8 +1,9 @@
 use std::cmp::Ordering;
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
-use color::Color;
+use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
+use frame::Frameable;
+use label::{ FontSize, Labelable };
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
@@ -10,37 +11,26 @@ use graphics::{
 };
 use graphics::character::CharacterCache;
 use label;
-use label::FontSize;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use utils::{
     clamp,
     map_range,
     percentage,
     val_to_string,
 };
-use widget::{ DefaultWidgetState, Widget };
+use widget::Widget;
 use vecmath::{
     vec2_add,
     vec2_sub
 };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to
@@ -273,27 +263,76 @@ impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     }
 }
 
-quack! {
-    env: EnvelopeEditor['a, E, F]
-    get:
-        fn () -> Size [where E: EnvelopePoint] { Size(env.dim) }
-        fn () -> DefaultWidgetState [where E: EnvelopePoint] {
-            DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
-        }
-        fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
-    set:
-        fn (val: Color) [where E: EnvelopePoint] { env.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where E: EnvelopePoint, F: FnMut(&mut Vec<E>, usize) + 'a] {
-            env.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [where E: EnvelopePoint] { env.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [where E: EnvelopePoint] { env.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [where E: EnvelopePoint] { env.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [where E: EnvelopePoint] { env.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [where E: EnvelopePoint] { env.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [where E: EnvelopePoint] { env.pos = val.0 }
-        fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
-    action:
+impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, E, F> Callable<F> for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, E, F> Positionable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, E, F> Shapeable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
@@ -362,7 +401,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
             0 | 1 => (),
             _ => {
                 let Color(col) = color.plain_contrast();
-                let line = graphics::Line::round(col, 0.5 * self.line_width);
+                let line = graphics::Line::new_round(col, 0.5 * self.line_width);
                 let draw_state = graphics::default_draw_state();
                 let transform = graphics::abs_transform(uic.win_w, uic.win_h);
                 for i in 1..perc_env.len() {

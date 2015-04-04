@@ -1,40 +1,27 @@
 use std::cmp::Ordering;
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
+use num::{ Float, ToPrimitive, FromPrimitive };
 use std::iter::repeat;
-use color::Color;
+use frame::Frameable;
+use callback::Callable;
+use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use graphics;
-use graphics::{
-    Graphics,
-    RelativeTransform,
-};
+use graphics::{ Graphics, Transformed };
 use graphics::character::CharacterCache;
 use label;
-use label::FontSize;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use utils::{
     clamp,
     compare_f64s,
 };
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use widget::Widget;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -237,7 +224,7 @@ fn draw_value_string<B, C: CharacterCache>(
     let transform = graphics::abs_transform(win_w, win_h)
         .trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
-    let image = graphics::Image::colored(font_col);
+    let image = graphics::Image::new_colored(font_col);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -321,27 +308,59 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     }
 }
 
-quack! {
-    nd: NumberDialer['a, T, F]
-    get:
-        fn () -> Size [] { Size(nd.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::NumberDialer(State::Normal))
-        }
-        fn () -> Id [] { Id(nd.ui_id) }
-    set:
-        fn (val: Color) [] { nd.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
-            nd.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { nd.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { nd.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { nd.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { nd.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { nd.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [] { nd.pos = val.0 }
-        fn (val: Size) [] { nd.dim = val.0 }
-    action:
+impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, T, F> Callable<F> for NumberDialer<'a, T, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, T, F> Positionable for NumberDialer<'a, T, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, T, F> Shapeable for NumberDialer<'a, T, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>

@@ -1,5 +1,5 @@
 #![deny(missing_copy_implementations)]
-#![feature(core, str_char)]
+#![feature(str_char)]
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
@@ -8,6 +8,7 @@ extern crate graphics;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
+extern crate num;
 
 pub use background::Background;
 pub use button::Button;
@@ -22,15 +23,15 @@ pub use toggle::Toggle;
 pub use widget_matrix::WidgetMatrix;
 pub use xy_pad::XYPad;
 
-pub use callback::{ Callable, Callback };
+pub use callback::Callable;
 pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;
-pub use frame::{Framing, Frameable, FrameColor, FrameWidth};
-pub use label::{Labelable, LabelText, LabelColor, LabelFontSize};
+pub use frame::{Framing, Frameable};
+pub use label::Labelable;
 pub use point::Point;
-pub use position::{Positionable, Position};
-pub use shape::{Shapeable, Size};
+pub use position::Positionable;
+pub use shape::Shapeable;
 pub use theme::Theme;
 pub use ui_context::UiContext;
 pub use widget::Widget;

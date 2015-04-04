@@ -1,34 +1,25 @@
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
-use color::Color;
+use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
+use frame::Frameable;
+use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use label;
 use mouse::Mouse;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
+use ui_context::{ UIID, UiContext };
 use utils::{
     clamp,
     percentage,
     value_from_perc,
 };
-use widget::{ DefaultWidgetState, Widget };
+use widget::Widget;
 use vecmath::vec2_add;
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -104,27 +95,59 @@ impl<'a, T, F> Slider<'a, T, F> {
     }
 }
 
-quack! {
-    slider: Slider['a, T, F]
-    get:
-        fn () -> Size [] { Size(slider.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::Slider(State::Normal))
-        }
-        fn () -> Id [] { Id(slider.ui_id) }
-    set:
-        fn (val: Color) [] { slider.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
-            slider.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { slider.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { slider.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { slider.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { slider.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { slider.maybe_label_font_size = Some(val.0) }
-        fn (val: Position) [] { slider.pos = val.0 }
-        fn (val: Size) [] { slider.dim = val.0 }
-    action:
+impl<'a, T, F> Colorable for Slider<'a, T, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, T, F> Frameable for Slider<'a, T, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, T, F> Callable<F> for Slider<'a, T, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, T, F> Labelable<'a> for Slider<'a, T, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, T, F> Positionable for Slider<'a, T, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, T, F> Shapeable for Slider<'a, T, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>

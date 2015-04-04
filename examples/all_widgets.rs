@@ -1,5 +1,3 @@
-#![feature(convert)]
-
 extern crate piston;
 extern crate conrod;
 extern crate graphics;
@@ -34,7 +32,7 @@ use conrod::{
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::{ Events, Event };
-use piston::window::WindowSettings;
+use piston::window::{ WindowSettings, Size };
 use glutin_window::GlutinWindow;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -122,13 +120,12 @@ fn main() {
     let opengl = OpenGL::_3_2;
     let window = GlutinWindow::new(
         opengl,
-        WindowSettings {
-            title: "Hello Conrod".to_string(),
-            size: [1180, 580],
-            fullscreen: false,
-            exit_on_esc: true,
-            samples: 4,
-        }
+        WindowSettings::new(
+            "Hello Conrod".to_string(),
+            Size { width: 1180, height: 580 }
+        )
+        .exit_on_esc(true)
+        .samples(4)
     );
     let window_ref = Rc::new(RefCell::new(window));
     let event_iter = Events::new(window_ref).ups(180).max_fps(60);

@@ -1,25 +1,17 @@
-
-use color::Color;
+use callback::Callable;
+use frame::Frameable;
+use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use ui_context::{
-    Id,
-    UIID,
-    UiContext,
-};
-use widget::{ DefaultWidgetState, Widget };
-use Callback;
-use FrameColor;
-use FrameWidth;
-use LabelText;
-use LabelColor;
-use LabelFontSize;
-use Position;
-use Size;
+use ui_context::{ UIID, UiContext };
+use widget::Widget;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -93,29 +85,59 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
-quack! {
-    toggle: Toggle['a, F]
-    get:
-        fn () -> Size [] { Size(toggle.dim) }
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::Toggle(State::Normal))
-        }
-        fn () -> Id [] { Id(toggle.ui_id) }
-    set:
-        fn (val: Color) [] { toggle.maybe_color = Some(val) }
-        fn (val: Callback<F>) [where F: FnMut(bool) + 'a] {
-            toggle.maybe_callback = Some(val.0)
-        }
-        fn (val: FrameColor) [] { toggle.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { toggle.maybe_frame = Some(val.0) }
-        fn (val: LabelText<'a>) [] { toggle.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { toggle.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] {
-            toggle.maybe_label_font_size = Some(val.0)
-        }
-        fn (val: Position) [] { toggle.pos = val.0 }
-        fn (val: Size) [] { toggle.dim = val.0 }
-    action:
+impl<'a, F> Colorable for Toggle<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Frameable for Toggle<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Callable<F> for Toggle<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
+impl<'a, F> Labelable<'a> for Toggle<'a, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, F> Positionable for Toggle<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
+impl<'a, F> Shapeable for Toggle<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
 impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
