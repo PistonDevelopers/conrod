@@ -27,16 +27,6 @@ impl Colorable for Background {
     }
 }
 
-/*
-quack! {
-    bg: Background[]
-    get:
-    set:
-        fn (val: Color) [] { bg.maybe_color = Some(val) }
-    action:
-}
-*/
-
 impl Drawable for Background {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where

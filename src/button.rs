@@ -1,5 +1,5 @@
 
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
@@ -79,6 +79,13 @@ impl<'a, F> Button<'a, F> {
 
 }
 
+impl<'a, F> Colorable for Button<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     button: Button['a, F]
@@ -89,7 +96,6 @@ quack! {
         }
         fn () -> Id [] { Id(button.ui_id) }
     set:
-        fn (val: Color) [] { button.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut() + 'a] {
             button.maybe_callback = Some(val.0)
         }
