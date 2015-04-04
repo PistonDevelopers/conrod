@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
 use std::iter::repeat;
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::{ Graphics, Transformed };
@@ -304,6 +304,13 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     nd: NumberDialer['a, T, F]
@@ -314,7 +321,6 @@ quack! {
         }
         fn () -> Id [] { Id(nd.ui_id) }
     set:
-        fn (val: Color) [] { nd.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
             nd.maybe_callback = Some(val.0)
         }
