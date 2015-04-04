@@ -9,7 +9,7 @@ pub enum ButtonState {
 }
 
 /// Represents the current state of the Mouse.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Mouse {
     pub pos: Point,
     pub left: ButtonState,

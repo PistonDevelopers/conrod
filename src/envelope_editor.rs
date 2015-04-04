@@ -273,6 +273,7 @@ impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     }
 }
 
+/*
 quack! {
     env: EnvelopeEditor['a, E, F]
     get:
@@ -295,6 +296,7 @@ quack! {
         fn (val: Size) [where E: EnvelopePoint] { env.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
     where
@@ -362,7 +364,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
             0 | 1 => (),
             _ => {
                 let Color(col) = color.plain_contrast();
-                let line = graphics::Line::round(col, 0.5 * self.line_width);
+                let line = graphics::Line::new_round(col, 0.5 * self.line_width);
                 let draw_state = graphics::default_draw_state();
                 let transform = graphics::abs_transform(uic.win_w, uic.win_h);
                 for i in 1..perc_env.len() {

@@ -7,7 +7,7 @@ use graphics::character::CharacterCache;
 use ui_context::UiContext;
 
 /// The context from which we'll draw the background.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Background {
     maybe_color: Option<Color>,
 }
@@ -20,6 +20,7 @@ impl Background {
     }
 }
 
+/*
 quack! {
     bg: Background[]
     get:
@@ -27,6 +28,7 @@ quack! {
         fn (val: Color) [] { bg.maybe_color = Some(val) }
     action:
 }
+*/
 
 impl Drawable for Background {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)

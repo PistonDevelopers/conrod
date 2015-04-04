@@ -1,10 +1,8 @@
-use piston::quack::{ Pair, Set, SetAt };
-
 use color::Color;
 
 /// To be used as a parameter for defining the aesthetic
 /// of the widget frame.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Framing {
     /// Frame width and color.
     Frame(f64, Color),
@@ -19,13 +17,14 @@ pub trait Frameable {
 }
 
 /// Frame width property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FrameWidth(pub f64);
 
 /// Frame color property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FrameColor(pub Color);
 
+/*
 impl<T> Frameable for T
     where
         (FrameWidth, T): Pair<Data = FrameWidth, Object = T> + SetAt,
@@ -43,3 +42,4 @@ impl<T> Frameable for T
         self.set(FrameColor(Color([r, g, b, a])))
     }
 }
+*/

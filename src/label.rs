@@ -1,4 +1,3 @@
-use piston::quack::{ Pair, Set, SetAt };
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use color::Color;
@@ -42,17 +41,18 @@ pub trait Labelable<'a> {
 }
 
 /// Label text property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LabelText<'a>(pub &'a str);
 
 /// Label color property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LabelColor(pub Color);
 
 /// Label font size property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LabelFontSize(pub FontSize);
 
+/*
 impl<'a, T: 'a> Labelable<'a> for T
     where
         (LabelText<'a>, T): Pair<Data = LabelText<'a>, Object = T> + SetAt,
@@ -87,7 +87,7 @@ impl<'a, T: 'a> Labelable<'a> for T
         self.set(LabelFontSize(uic.theme.font_size_large))
     }
 }
-
+*/
 
 /// A context on which the builder pattern can be implemented.
 pub struct Label<'a> {
@@ -118,6 +118,7 @@ impl<'a> Label<'a> {
 
 }
 
+/*
 quack! {
     label: Label['a]
     get:
@@ -126,6 +127,7 @@ quack! {
         fn (val: Position) [] { label.pos = val.0 }
     action:
 }
+*/
 
 impl<'a> ::draw::Drawable for Label<'a> {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)

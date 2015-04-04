@@ -91,6 +91,7 @@ impl<'a, F> Button<'a, F> {
 
 }
 
+/*
 quack! {
     button: Button['a, F]
     get:
@@ -113,6 +114,7 @@ quack! {
         fn (val: Size) [] { button.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, F> ::draw::Drawable for Button<'a, F>
     where

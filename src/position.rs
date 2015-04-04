@@ -1,8 +1,7 @@
-use piston::quack::{ Pair, Set, SetAt };
 use point::Point;
 use ui_context::UIID;
 use UiContext;
-use graphics::vecmath::Scalar;
+use graphics::math::Scalar;
 
 /// A trait that indicates whether or not a widget
 /// builder is positionable.
@@ -20,9 +19,10 @@ pub trait Positionable {
 }
 
 /// Position property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Position(pub [Scalar; 2]);
 
+/*
 impl<T> Positionable for T
     where
         (Position, T): Pair<Data = Position, Object = T> + SetAt
@@ -80,3 +80,4 @@ impl<T> Positionable for T
         self.set(Position([x, y]))
     }
 }
+*/

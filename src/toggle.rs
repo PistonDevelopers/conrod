@@ -93,6 +93,7 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
+/*
 quack! {
     toggle: Toggle['a, F]
     get:
@@ -117,6 +118,7 @@ quack! {
         fn (val: Size) [] { toggle.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)

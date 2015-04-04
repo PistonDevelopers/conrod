@@ -1,4 +1,3 @@
-use piston::quack::{ GetFrom, Get, Pair, Set, SetAt };
 use dimensions::Dimensions;
 
 /// A trait that indicates whether or not a widget
@@ -11,9 +10,10 @@ pub trait Shapeable {
 }
 
 /// Size property.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Size(pub Dimensions);
 
+/*
 impl<T> Shapeable for T
     where
         (Size, T): Pair<Data = Size, Object = T> + SetAt + GetFrom
@@ -37,3 +37,4 @@ impl<T> Shapeable for T
         self.set(Size([size[0], height]))
     }
 }
+*/

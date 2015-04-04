@@ -231,7 +231,7 @@ fn draw_cursor<B: Graphics>(
     let transform = graphics::abs_transform(win_w, win_h);
     let Color(color) = color.plain_contrast();
     let (r, g, b, a) = (color[0], color[1], color[2], color[3]);
-    graphics::Line::round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
+    graphics::Line::new_round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw(
             [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],
             draw_state,
@@ -285,6 +285,7 @@ impl<'a, F> TextBox<'a, F> {
     }
 }
 
+/*
 quack! {
     tb: TextBox['a, F]
     get:
@@ -306,6 +307,7 @@ quack! {
         fn (val: Size) [] { tb.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, F> ::draw::Drawable for TextBox<'a, F>
     where

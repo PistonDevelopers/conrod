@@ -3,7 +3,7 @@ use color::Color;
 use dimensions::Dimensions;
 use graphics;
 use graphics::{ DrawState, Graphics };
-use graphics::vecmath::Matrix2d;
+use graphics::math::Matrix2d;
 use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
@@ -129,7 +129,7 @@ pub fn draw_with_centered_label<B, C>(
     uic.draw_text(graphics, l_pos, font_size, text_color, text);
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Corner {
     TopLeft,
     TopRight,

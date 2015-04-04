@@ -18,7 +18,7 @@ pub type PosY = f64;
 /// it's `rows` and `cols` position, the width and height
 /// for the widget and the location at which the widget
 /// should be drawn.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct WidgetMatrix {
     cols: usize,
     rows: usize,
@@ -101,6 +101,7 @@ impl WidgetMatrix {
     }
 }
 
+/*
 quack! {
     wm: WidgetMatrix[]
     get:
@@ -110,3 +111,4 @@ quack! {
         fn (val: Size) [] { wm.dim = val.0 }
     action:
 }
+*/

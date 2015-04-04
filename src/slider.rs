@@ -104,6 +104,7 @@ impl<'a, T, F> Slider<'a, T, F> {
     }
 }
 
+/*
 quack! {
     slider: Slider['a, T, F]
     get:
@@ -126,6 +127,7 @@ quack! {
         fn (val: Size) [] { slider.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
     where

@@ -6,10 +6,7 @@ use std::iter::repeat;
 use color::Color;
 use dimensions::Dimensions;
 use graphics;
-use graphics::{
-    Graphics,
-    RelativeTransform,
-};
+use graphics::{ Graphics, Transformed };
 use graphics::character::CharacterCache;
 use label;
 use label::FontSize;
@@ -237,7 +234,7 @@ fn draw_value_string<B, C: CharacterCache>(
     let transform = graphics::abs_transform(win_w, win_h)
         .trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
-    let image = graphics::Image::colored(font_col);
+    let image = graphics::Image::new_colored(font_col);
     for (i, ch) in string.chars().enumerate() {
         let character = uic.get_character(size, ch);
         match state {
@@ -321,6 +318,7 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     }
 }
 
+/*
 quack! {
     nd: NumberDialer['a, T, F]
     get:
@@ -343,6 +341,7 @@ quack! {
         fn (val: Size) [] { nd.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
     where

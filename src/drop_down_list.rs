@@ -169,6 +169,7 @@ impl<'a, F> DropDownList<'a, F> {
     }
 }
 
+/*
 quack! {
     list: DropDownList['a, F]
     get:
@@ -193,6 +194,7 @@ quack! {
         fn (val: Size) [] { list.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
     where

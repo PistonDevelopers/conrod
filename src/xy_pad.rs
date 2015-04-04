@@ -157,6 +157,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     }
 }
 
+/*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
     get:
@@ -179,6 +180,7 @@ quack! {
         fn (val: Size) [] { xy_pad.dim = val.0 }
     action:
 }
+*/
 
 impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
     where

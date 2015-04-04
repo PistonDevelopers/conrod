@@ -1,5 +1,3 @@
-
-use piston::quack::{ Pair, Set, SetAt };
 use rand::random;
 use std::num::Float;
 use std::default::Default;
@@ -312,6 +310,7 @@ pub trait Colorable {
     fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self;
 }
 
+/*
 impl<T> Colorable for T
     where
         (Color, T): Pair<Data = Color, Object = T> + SetAt
@@ -321,3 +320,4 @@ impl<T> Colorable for T
         self.set(Color([r, g, b, a]))
     }
 }
+*/
