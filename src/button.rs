@@ -1,4 +1,4 @@
-
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -98,6 +98,13 @@ impl<'a, F> Frameable for Button<'a, F> {
     }
 }
 
+impl<'a, F> Callable<F> for Button<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     button: Button['a, F]
@@ -108,9 +115,6 @@ quack! {
         }
         fn () -> Id [] { Id(button.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut() + 'a] {
-            button.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { button.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { button.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { button.maybe_label_font_size = Some(val.0) }
