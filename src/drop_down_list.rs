@@ -1,4 +1,4 @@
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
@@ -157,6 +157,13 @@ impl<'a, F> DropDownList<'a, F> {
     }
 }
 
+impl<'a, F> Colorable for DropDownList<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     list: DropDownList['a, F]
@@ -169,7 +176,6 @@ quack! {
         }
         fn () -> Id [] { Id(list.ui_id) }
     set:
-        fn (val: Color) [] { list.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(&mut Option<Idx>, Idx, String) + 'a] {
             list.maybe_callback = Some(val.0)
         }
