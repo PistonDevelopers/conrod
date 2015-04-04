@@ -1,4 +1,4 @@
-
+use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
@@ -88,6 +88,17 @@ impl<'a, F> Colorable for Toggle<'a, F> {
     }
 }
 
+impl<'a, F> Frameable for Toggle<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     toggle: Toggle['a, F]
@@ -101,8 +112,6 @@ quack! {
         fn (val: Callback<F>) [where F: FnMut(bool) + 'a] {
             toggle.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) [] { toggle.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { toggle.maybe_frame = Some(val.0) }
         fn (val: LabelText<'a>) [] { toggle.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { toggle.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] {
