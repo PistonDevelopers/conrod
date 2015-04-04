@@ -1,3 +1,4 @@
+use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
@@ -283,6 +284,17 @@ impl<'a, F> Colorable for TextBox<'a, F> {
     }
 }
 
+impl<'a, F> Frameable for TextBox<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     tb: TextBox['a, F]
@@ -298,8 +310,6 @@ quack! {
         fn (val: Callback<F>) [where F: FnMut(&mut String) + 'a] {
             tb.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) [] { tb.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { tb.maybe_frame = Some(val.0) }
         fn (val: Position) [] { tb.pos = val.0 }
         fn (val: Size) [] { tb.dim = val.0 }
     action:
