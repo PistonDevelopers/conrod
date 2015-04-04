@@ -17,6 +17,7 @@ use piston::input::keyboard::Key::{
     Return,
 };
 use point::Point;
+use position::Positionable;
 use rectangle;
 use num::Float;
 use clock_ticks::precise_time_s;
@@ -303,6 +304,13 @@ impl<'a, F> Callable<F> for TextBox<'a, F> {
     }
 }
 
+impl<'a, F> Positionable for TextBox<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     tb: TextBox['a, F]
@@ -315,7 +323,6 @@ quack! {
         }
         fn () -> Id [] { Id(tb.ui_id) }
     set:
-        fn (val: Position) [] { tb.pos = val.0 }
         fn (val: Size) [] { tb.dim = val.0 }
     action:
 }
