@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
+use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
@@ -269,6 +270,20 @@ impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
     }
 }
 
+impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
@@ -282,8 +297,6 @@ quack! {
         fn (val: Callback<F>) [where E: EnvelopePoint, F: FnMut(&mut Vec<E>, usize) + 'a] {
             env.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) [where E: EnvelopePoint] { env.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [where E: EnvelopePoint] { env.maybe_frame = Some(val.0) }
         fn (val: LabelText<'a>) [where E: EnvelopePoint] { env.maybe_label = Some(val.0) }
         fn (val: LabelColor) [where E: EnvelopePoint] { env.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [where E: EnvelopePoint] { env.maybe_label_font_size = Some(val.0) }
