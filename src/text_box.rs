@@ -1,4 +1,4 @@
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
@@ -276,6 +276,13 @@ impl<'a, F> TextBox<'a, F> {
     }
 }
 
+impl<'a, F> Colorable for TextBox<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     tb: TextBox['a, F]
@@ -288,7 +295,6 @@ quack! {
         }
         fn () -> Id [] { Id(tb.ui_id) }
     set:
-        fn (val: Color) [] { tb.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(&mut String) + 'a] {
             tb.maybe_callback = Some(val.0)
         }
