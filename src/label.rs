@@ -48,39 +48,6 @@ pub trait Labelable<'a>: Sized {
     }
 }
 
-/// Label text property.
-#[derive(Copy, Clone)]
-pub struct LabelText<'a>(pub &'a str);
-
-/// Label color property.
-#[derive(Copy, Clone)]
-pub struct LabelColor(pub Color);
-
-/// Label font size property.
-#[derive(Copy, Clone)]
-pub struct LabelFontSize(pub FontSize);
-
-/*
-impl<'a, T: 'a> Labelable<'a> for T
-    where
-        (LabelText<'a>, T): Pair<Data = LabelText<'a>, Object = T> + SetAt,
-        (LabelColor, T): Pair<Data = LabelColor, Object = T> + SetAt,
-        (LabelFontSize, T): Pair<Data = LabelFontSize, Object = T> + SetAt
-{
-    fn label(self, text: &'a str) -> Self {
-        self.set(LabelText(text))
-    }
-
-    fn label_color(self, color: Color) -> Self {
-        self.set(LabelColor(color))
-    }
-
-    fn label_font_size(self, size: FontSize) -> Self {
-        self.set(LabelFontSize(size))
-    }
-}
-*/
-
 /// A context on which the builder pattern can be implemented.
 pub struct Label<'a> {
     text: &'a str,
