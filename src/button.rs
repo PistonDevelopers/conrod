@@ -6,6 +6,7 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use widget::Widget;
@@ -131,17 +132,20 @@ impl<'a, F> Positionable for Button<'a, F> {
     }
 }
 
+impl<'a, F> Shapeable for Button<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     button: Button['a, F]
     get:
-        fn () -> Size [] { Size(button.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::Button(State::Normal))
         }
         fn () -> Id [] { Id(button.ui_id) }
     set:
-        fn (val: Size) [] { button.dim = val.0 }
     action:
 }
 */
