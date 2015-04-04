@@ -18,6 +18,7 @@ use piston::input::keyboard::Key::{
 };
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use num::Float;
 use clock_ticks::precise_time_s;
@@ -311,11 +312,15 @@ impl<'a, F> Positionable for TextBox<'a, F> {
     }
 }
 
+impl<'a, F> Shapeable for TextBox<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     tb: TextBox['a, F]
     get:
-        fn () -> Size [] { Size(tb.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(
                 Widget::TextBox(State::Uncaptured(Uncaptured::Normal))
@@ -323,7 +328,6 @@ quack! {
         }
         fn () -> Id [] { Id(tb.ui_id) }
     set:
-        fn (val: Size) [] { tb.dim = val.0 }
     action:
 }
 */
