@@ -11,6 +11,7 @@ use label;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use rectangle::{
     Corner
@@ -196,17 +197,20 @@ impl<'a, X, Y, F> Positionable for XYPad<'a, X, Y, F> {
     }
 }
 
+impl<'a, X, Y, F> Shapeable for XYPad<'a, X, Y, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
     get:
-        fn () -> Size [] { Size(xy_pad.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::XYPad(State::Normal))
         }
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: Size) [] { xy_pad.dim = val.0 }
     action:
 }
 */
