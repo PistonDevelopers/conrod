@@ -2,6 +2,7 @@ use graphics::Graphics;
 use graphics::character::CharacterCache;
 use color::{ Color, Colorable };
 use point::Point;
+use position::Positionable;
 use ui_context::UiContext;
 
 pub type FontSize = u32;
@@ -116,15 +117,12 @@ impl<'a> Colorable for Label<'a> {
     }
 }
 
-/*
-quack! {
-    label: Label['a]
-    get:
-    set:
-        fn (val: Position) [] { label.pos = val.0 }
-    action:
+impl<'a> Positionable for Label<'a> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
 }
-*/
 
 impl<'a> ::draw::Drawable for Label<'a> {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
