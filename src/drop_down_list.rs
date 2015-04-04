@@ -223,7 +223,6 @@ quack! {
         }
         fn () -> Id [] { Id(list.ui_id) }
     set:
-        fn (val: Position) [] { list.pos = val.0 }
         fn (val: Size) [] { list.dim = val.0 }
     action:
 }
