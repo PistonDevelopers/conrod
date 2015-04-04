@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -284,6 +285,16 @@ impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
     }
 }
 
+impl<'a, E, F> Callable<F> for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
@@ -294,9 +305,6 @@ quack! {
         }
         fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: Callback<F>) [where E: EnvelopePoint, F: FnMut(&mut Vec<E>, usize) + 'a] {
-            env.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [where E: EnvelopePoint] { env.maybe_label = Some(val.0) }
         fn (val: LabelColor) [where E: EnvelopePoint] { env.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [where E: EnvelopePoint] { env.maybe_label_font_size = Some(val.0) }
