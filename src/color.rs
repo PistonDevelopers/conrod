@@ -311,15 +311,3 @@ pub trait Colorable: Sized {
         self.color(Color([r, g, b, a]))
     }
 }
-
-/*
-impl<T> Colorable for T
-    where
-        (Color, T): Pair<Data = Color, Object = T> + SetAt
-{
-    fn color(self, color: Color) -> Self { self.set(color) }
-    fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.set(Color([r, g, b, a]))
-    }
-}
-*/
