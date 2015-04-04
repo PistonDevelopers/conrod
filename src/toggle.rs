@@ -5,6 +5,7 @@ use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
@@ -126,6 +127,13 @@ impl<'a, F> Labelable<'a> for Toggle<'a, F>
     }
 }
 
+impl<'a, F> Positionable for Toggle<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     toggle: Toggle['a, F]
@@ -136,7 +144,6 @@ quack! {
         }
         fn () -> Id [] { Id(toggle.ui_id) }
     set:
-        fn (val: Position) [] { toggle.pos = val.0 }
         fn (val: Size) [] { toggle.dim = val.0 }
     action:
 }
