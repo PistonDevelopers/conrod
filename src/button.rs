@@ -1,4 +1,5 @@
 
+use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
@@ -86,6 +87,17 @@ impl<'a, F> Colorable for Button<'a, F> {
     }
 }
 
+impl<'a, F> Frameable for Button<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.maybe_frame_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     button: Button['a, F]
@@ -99,8 +111,6 @@ quack! {
         fn (val: Callback<F>) [where F: FnMut() + 'a] {
             button.maybe_callback = Some(val.0)
         }
-        fn (val: FrameColor) [] { button.maybe_frame_color = Some(val.0) }
-        fn (val: FrameWidth) [] { button.maybe_frame = Some(val.0) }
         fn (val: LabelText<'a>) [] { button.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { button.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { button.maybe_label_font_size = Some(val.0) }
