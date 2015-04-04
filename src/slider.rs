@@ -9,6 +9,7 @@ use mouse::Mouse;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use utils::{
@@ -136,6 +137,13 @@ impl<'a, T, F> Labelable<'a> for Slider<'a, T, F>
     }
 }
 
+impl<'a, T, F> Positionable for Slider<'a, T, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
+        self
+    }
+}
+
 /*
 quack! {
     slider: Slider['a, T, F]
@@ -146,7 +154,6 @@ quack! {
         }
         fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: Position) [] { slider.pos = val.0 }
         fn (val: Size) [] { slider.dim = val.0 }
     action:
 }
