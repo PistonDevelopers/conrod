@@ -17,7 +17,3 @@ pub trait Shapeable: Sized {
         self.dim([size[0], height])
     }
 }
-
-/// Size property.
-#[derive(Copy, Clone)]
-pub struct Size(pub Dimensions);
