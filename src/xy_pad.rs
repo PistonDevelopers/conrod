@@ -202,19 +202,6 @@ impl<'a, X, Y, F> Shapeable for XYPad<'a, X, Y, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    xy_pad: XYPad['a, X, Y, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::XYPad(State::Normal))
-        }
-        fn () -> Id [] { Id(xy_pad.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
     where
         X: Float + ToPrimitive + FromPrimitive + ToString,

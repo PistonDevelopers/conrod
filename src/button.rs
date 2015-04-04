@@ -137,19 +137,6 @@ impl<'a, F> Shapeable for Button<'a, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    button: Button['a, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::Button(State::Normal))
-        }
-        fn () -> Id [] { Id(button.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, F> ::draw::Drawable for Button<'a, F>
     where
         F: FnMut() + 'a

@@ -363,19 +363,6 @@ impl<'a, T, F> Shapeable for NumberDialer<'a, T, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    nd: NumberDialer['a, T, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::NumberDialer(State::Normal))
-        }
-        fn () -> Id [] { Id(nd.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
     where
         T: Float + FromPrimitive + ToPrimitive + ToString,

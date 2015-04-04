@@ -65,26 +65,7 @@ impl WidgetMatrix {
         WidgetMatrix { cell_pad_w: w, cell_pad_h: h, ..self }
     }
 
-    /*
-    /// Create an iterator over the matrix cells.
-    fn iter_cells(&mut self) -> CellIterator {
-    }
-    */
-
 }
-
-/*
-/// A struct used for iterating over the cells of a WidgetMatrix.
-pub struct CellIterator {
-    row: usize,
-    col: usize,
-    rows: usize,
-    cols: usize,
-}
-
-impl Iterator for CellIterator {
-    fn next
-    */
 
 impl WidgetMatrix {
 

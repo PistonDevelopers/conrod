@@ -335,19 +335,6 @@ impl<'a, E, F> Shapeable for EnvelopeEditor<'a, E, F>
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    env: EnvelopeEditor['a, E, F]
-    get:
-        fn () -> DefaultWidgetState [where E: EnvelopePoint] {
-            DefaultWidgetState(Widget::EnvelopeEditor(State::Normal))
-        }
-        fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint,

@@ -217,21 +217,6 @@ impl<'a, F> Shapeable for DropDownList<'a, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    list: DropDownList['a, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(
-                Widget::DropDownList(State::Closed(DrawState::Normal))
-            )
-        }
-        fn () -> Id [] { Id(list.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
     where
         F: FnMut(&mut Option<Idx>, Idx, String) + 'a

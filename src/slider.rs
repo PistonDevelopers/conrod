@@ -150,19 +150,6 @@ impl<'a, T, F> Shapeable for Slider<'a, T, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    slider: Slider['a, T, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::Slider(State::Normal))
-        }
-        fn () -> Id [] { Id(slider.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
     where
         T: Float + FromPrimitive + ToPrimitive,

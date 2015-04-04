@@ -317,21 +317,6 @@ impl<'a, F> Shapeable for TextBox<'a, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    tb: TextBox['a, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(
-                Widget::TextBox(State::Uncaptured(Uncaptured::Normal))
-            )
-        }
-        fn () -> Id [] { Id(tb.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, F> ::draw::Drawable for TextBox<'a, F>
     where
         F: FnMut(&mut String) + 'a

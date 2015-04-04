@@ -140,19 +140,6 @@ impl<'a, F> Shapeable for Toggle<'a, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-/*
-quack! {
-    toggle: Toggle['a, F]
-    get:
-        fn () -> DefaultWidgetState [] {
-            DefaultWidgetState(Widget::Toggle(State::Normal))
-        }
-        fn () -> Id [] { Id(toggle.ui_id) }
-    set:
-    action:
-}
-*/
-
 impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
     fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
         where
