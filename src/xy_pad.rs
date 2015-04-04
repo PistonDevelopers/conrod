@@ -1,5 +1,5 @@
 use num::{ Float, ToPrimitive, FromPrimitive };
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::Graphics;
@@ -143,6 +143,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     }
 }
 
+impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
@@ -153,7 +160,6 @@ quack! {
         }
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: Color) [] { xy_pad.maybe_color = Some(val) }
         fn (val: Callback<F>) [where F: FnMut(X, Y) + 'a] {
             xy_pad.maybe_callback = Some(val.0)
         }
