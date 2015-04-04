@@ -8,7 +8,10 @@ pub trait Shapeable: Sized {
     fn dimensions(self, width: f64, height: f64) -> Self {
         self.dim([width, height])
     }
-    fn width(self, width: f64) -> Self;
+    fn width(self, width: f64) -> Self {
+        let size = self.get_dim();
+        self.dim([width, size[1]])
+    }
     fn height(self, height: f64) -> Self;
 }
 
