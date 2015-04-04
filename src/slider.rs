@@ -2,6 +2,7 @@ use num::{ Float, ToPrimitive, FromPrimitive };
 use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use label;
 use mouse::Mouse;
@@ -117,6 +118,24 @@ impl<'a, T, F> Callable<F> for Slider<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Labelable<'a> for Slider<'a, T, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
 /*
 quack! {
     slider: Slider['a, T, F]
@@ -127,9 +146,6 @@ quack! {
         }
         fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: LabelText<'a>) [] { slider.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { slider.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { slider.maybe_label_font_size = Some(val.0) }
         fn (val: Position) [] { slider.pos = val.0 }
         fn (val: Size) [] { slider.dim = val.0 }
     action:
