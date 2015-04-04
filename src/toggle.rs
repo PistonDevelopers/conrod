@@ -6,6 +6,7 @@ use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
@@ -134,17 +135,20 @@ impl<'a, F> Positionable for Toggle<'a, F> {
     }
 }
 
+impl<'a, F> Shapeable for Toggle<'a, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     toggle: Toggle['a, F]
     get:
-        fn () -> Size [] { Size(toggle.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::Toggle(State::Normal))
         }
         fn () -> Id [] { Id(toggle.ui_id) }
     set:
-        fn (val: Size) [] { toggle.dim = val.0 }
     action:
 }
 */
