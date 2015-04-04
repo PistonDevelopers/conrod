@@ -2,6 +2,7 @@
 use dimensions::Dimensions;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -107,13 +108,7 @@ impl Positionable for WidgetMatrix {
     }
 }
 
-/*
-quack! {
-    wm: WidgetMatrix[]
-    get:
-        fn () -> Size [] { Size(wm.pos) }
-    set:
-        fn (val: Size) [] { wm.dim = val.0 }
-    action:
+impl Shapeable for WidgetMatrix {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
-*/
