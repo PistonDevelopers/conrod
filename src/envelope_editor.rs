@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use num::{ Float, ToPrimitive, FromPrimitive };
-use color::Color;
+use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::{
@@ -259,6 +259,16 @@ impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     }
 }
 
+impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
+    where
+        E: EnvelopePoint
+{
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     env: EnvelopeEditor['a, E, F]
@@ -269,7 +279,6 @@ quack! {
         }
         fn () -> Id [where E: EnvelopePoint] { Id(env.ui_id) }
     set:
-        fn (val: Color) [where E: EnvelopePoint] { env.maybe_color = Some(val) }
         fn (val: Callback<F>) [where E: EnvelopePoint, F: FnMut(&mut Vec<E>, usize) + 'a] {
             env.maybe_callback = Some(val.0)
         }
