@@ -1,4 +1,5 @@
 use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -162,6 +163,13 @@ impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
     }
 }
 
+impl<'a, X, Y, F> Callable<F> for XYPad<'a, X, Y, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
@@ -172,9 +180,6 @@ quack! {
         }
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(X, Y) + 'a] {
-            xy_pad.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { xy_pad.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { xy_pad.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { xy_pad.maybe_label_font_size = Some(val.0) }
