@@ -1,4 +1,5 @@
 use num::{ Float, ToPrimitive, FromPrimitive };
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -109,6 +110,13 @@ impl<'a, T, F> Frameable for Slider<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Callable<F> for Slider<'a, T, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     slider: Slider['a, T, F]
@@ -119,9 +127,6 @@ quack! {
         }
         fn () -> Id [] { Id(slider.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(T) + 'a] {
-            slider.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { slider.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { slider.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { slider.maybe_label_font_size = Some(val.0) }
