@@ -1,6 +1,6 @@
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use color::Color;
+use color::{ Color, Colorable };
 use point::Point;
 use ui_context::UiContext;
 
@@ -117,12 +117,18 @@ impl<'a> Label<'a> {
 
 }
 
+impl<'a> Colorable for Label<'a> {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
+    }
+}
+
 /*
 quack! {
     label: Label['a]
     get:
     set:
-        fn (val: Color) [] { label.maybe_color = Some(val) }
         fn (val: Position) [] { label.pos = val.0 }
     action:
 }
