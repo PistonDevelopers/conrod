@@ -13,6 +13,7 @@ use label;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
+use shape::Shapeable;
 use rectangle;
 use utils::{
     clamp,
@@ -357,17 +358,20 @@ impl<'a, T, F> Positionable for NumberDialer<'a, T, F> {
     }
 }
 
+impl<'a, T, F> Shapeable for NumberDialer<'a, T, F> {
+    fn get_dim(&self) -> Dimensions { self.dim }
+    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+}
+
 /*
 quack! {
     nd: NumberDialer['a, T, F]
     get:
-        fn () -> Size [] { Size(nd.dim) }
         fn () -> DefaultWidgetState [] {
             DefaultWidgetState(Widget::NumberDialer(State::Normal))
         }
         fn () -> Id [] { Id(nd.ui_id) }
     set:
-        fn (val: Size) [] { nd.dim = val.0 }
     action:
 }
 */
