@@ -2,12 +2,12 @@ use num::{ Float, ToPrimitive, FromPrimitive };
 use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use graphics;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use label;
-use label::FontSize;
 use mouse::Mouse;
 use point::Point;
 use rectangle;
@@ -170,6 +170,24 @@ impl<'a, X, Y, F> Callable<F> for XYPad<'a, X, Y, F> {
     }
 }
 
+impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
 /*
 quack! {
     xy_pad: XYPad['a, X, Y, F]
@@ -180,9 +198,6 @@ quack! {
         }
         fn () -> Id [] { Id(xy_pad.ui_id) }
     set:
-        fn (val: LabelText<'a>) [] { xy_pad.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { xy_pad.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { xy_pad.maybe_label_font_size = Some(val.0) }
         fn (val: Position) [] { xy_pad.pos = val.0 }
         fn (val: Size) [] { xy_pad.dim = val.0 }
     action:
