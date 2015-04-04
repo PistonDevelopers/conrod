@@ -1,7 +1,5 @@
 use std::cmp::Ordering;
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
+use num::{ Float, ToPrimitive, FromPrimitive };
 use std::iter::repeat;
 use color::Color;
 use dimensions::Dimensions;

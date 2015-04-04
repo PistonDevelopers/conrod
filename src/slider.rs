@@ -1,6 +1,4 @@
-use std::num::Float;
-use std::num::ToPrimitive;
-use std::num::FromPrimitive;
+use num::{ Float, ToPrimitive, FromPrimitive };
 use color::Color;
 use dimensions::Dimensions;
 use label;

@@ -8,6 +8,7 @@ extern crate graphics;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
+extern crate num;
 
 pub use background::Background;
 pub use button::Button;
