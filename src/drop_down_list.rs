@@ -5,6 +5,7 @@ use color::{ Color, Colorable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
+use position::Positionable;
 use rectangle;
 use ui_context::{ UIID, UiContext };
 use vecmath::vec2_add;
@@ -199,6 +200,13 @@ impl<'a, F> Labelable<'a> for DropDownList<'a, F>
 
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
+impl<'a, F> Positionable for DropDownList<'a, F> {
+    fn point(mut self, pos: Point) -> Self {
+        self.pos = pos;
         self
     }
 }
