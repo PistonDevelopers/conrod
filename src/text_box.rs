@@ -1,3 +1,4 @@
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -295,6 +296,13 @@ impl<'a, F> Frameable for TextBox<'a, F> {
     }
 }
 
+impl<'a, F> Callable<F> for TextBox<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     tb: TextBox['a, F]
@@ -307,9 +315,6 @@ quack! {
         }
         fn () -> Id [] { Id(tb.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(&mut String) + 'a] {
-            tb.maybe_callback = Some(val.0)
-        }
         fn (val: Position) [] { tb.pos = val.0 }
         fn (val: Size) [] { tb.dim = val.0 }
     action:
