@@ -13,7 +13,6 @@ use conrod::{
     Label,
     Positionable,
     Theme,
-    UiContext,
 };
 use glutin_window::GlutinWindow;
 use opengl_graphics::{ GlGraphics, OpenGL };
@@ -24,7 +23,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::path::Path;
 
-type Ui = UiContext<GlyphCache>;
+type Ui = conrod::Ui<GlyphCache>;
 
 fn main() {
 
@@ -44,20 +43,20 @@ fn main() {
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let uic = &mut UiContext::new(glyph_cache, theme);
+    let ui = &mut Ui::new(glyph_cache, theme);
 
     let mut count = 0;
 
     for event in event_iter {
-        uic.handle_event(&event);
+        ui.handle_event(&event);
         if let Event::Render(args) = event {
             gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
 
                 // Draw the background.
-                Background::new().rgba(0.2, 0.25, 0.4, 1.0).draw(uic, gl);
+                Background::new().rgba(0.2, 0.25, 0.4, 1.0).draw(ui, gl);
 
                 // Draw the counter.
-                counter(gl, uic, &mut count)
+                counter(gl, ui, &mut count)
 
             });
         }
@@ -66,16 +65,16 @@ fn main() {
 }
 
 /// Function for drawing the counter widget.
-fn counter(gl: &mut GlGraphics, uic: &mut Ui, count: &mut u32) {
+fn counter(gl: &mut GlGraphics, ui: &mut Ui, count: &mut u32) {
 
     // Draw the value.
-    Label::new(&count.to_string()).position(10.0, 10.0).draw(uic, gl);
+    Label::new(&count.to_string()).position(10.0, 10.0).draw(ui, gl);
 
     // Draw the button and increment count if pressed..
     Button::new(0)
         .position(110.0, 10.0)
         .dimensions(80.0, 80.0)
         .callback(|| *count += 1)
-        .draw(uic, gl)
+        .draw(ui, gl)
 
 }

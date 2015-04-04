@@ -1,6 +1,6 @@
 use point::Point;
-use ui_context::UIID;
-use UiContext;
+use ui::UIID;
+use Ui;
 
 /// A trait that indicates whether or not a widget
 /// builder is positionable.
@@ -9,36 +9,36 @@ pub trait Positionable: Sized {
     fn position(self, x: f64, y: f64) -> Self {
         self.point([x, y])
     }
-    fn down<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).down(padding);
+    fn down<C>(self, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui.get_prev_uiid()).down(padding);
         self.point([x, y])
     }
-    fn up<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).up(padding);
+    fn up<C>(self, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui.get_prev_uiid()).up(padding);
         self.point([x, y])
     }
-    fn left<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).left(padding);
+    fn left<C>(self, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui.get_prev_uiid()).left(padding);
         self.point([x, y])
     }
-    fn right<C>(self, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(uic.get_prev_uiid()).right(padding);
+    fn right<C>(self, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui.get_prev_uiid()).right(padding);
         self.point([x, y])
     }
-    fn down_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(ui_id).down(padding);
+    fn down_from<C>(self, ui_id: UIID, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui_id).down(padding);
         self.point([x, y])
     }
-    fn up_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(ui_id).up(padding);
+    fn up_from<C>(self, ui_id: UIID, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui_id).up(padding);
         self.point([x, y])
     }
-    fn left_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(ui_id).left(padding);
+    fn left_from<C>(self, ui_id: UIID, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui_id).left(padding);
         self.point([x, y])
     }
-    fn right_from<C>(self, ui_id: UIID, padding: f64, uic: &UiContext<C>) -> Self {
-        let (x, y) = uic.get_placing(ui_id).right(padding);
+    fn right_from<C>(self, ui_id: UIID, padding: f64, ui: &Ui<C>) -> Self {
+        let (x, y) = ui.get_placing(ui_id).right(padding);
         self.point([x, y])
     }
 }

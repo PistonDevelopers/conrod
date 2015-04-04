@@ -12,7 +12,7 @@ use point::Point;
 use position::Positionable;
 use shape::Shapeable;
 use rectangle;
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use utils::{
     clamp,
     percentage,
@@ -75,7 +75,7 @@ pub struct Slider<'a, T, F> {
 }
 
 impl<'a, T, F> Slider<'a, T, F> {
-    /// A button builder method to be implemented by the UiContext.
+    /// A button builder method to be implemented by the Ui.
     pub fn new(ui_id: UIID, value: T, min: T, max: T) -> Slider<'a, T, F> {
         Slider {
             ui_id: ui_id,
@@ -156,20 +156,20 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
         F: FnMut(T) + 'a
 {
 
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
         let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
-        let frame_color = self.maybe_frame_color.unwrap_or(uic.theme.frame_color);
+        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
 
         let is_horizontal = self.dim[0] > self.dim[1];
         let (new_value, pad_pos, pad_dim) = if is_horizontal {
@@ -218,35 +218,35 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
 
         // Rectangle frame / backdrop.
-        rectangle::draw(uic.win_w, uic.win_h, graphics, rect_state,
+        rectangle::draw(ui.win_w, ui.win_h, graphics, rect_state,
                         self.pos, self.dim, None, frame_color);
         // Slider rectangle.
-        rectangle::draw(uic.win_w, uic.win_h, graphics, rect_state,
+        rectangle::draw(ui.win_w, ui.win_h, graphics, rect_state,
                         pad_pos, pad_dim, None, color);
 
         // If there's a label, draw it.
         if let Some(text) = self.maybe_label {
-            let text_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
-            let size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+            let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+            let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
             let is_horizontal = self.dim[0] > self.dim[1];
             let l_pos = if is_horizontal {
                 let x = pad_pos[0] + (pad_dim[1] - size as f64) / 2.0;
                 let y = pad_pos[1] + (pad_dim[1] - size as f64) / 2.0;
                 [x, y]
             } else {
-                let label_w = label::width(uic, size, &text);
+                let label_w = label::width(ui, size, &text);
                 let x = pad_pos[0] + (pad_dim[0] - label_w) / 2.0;
                 let y = pad_pos[1] + pad_dim[1] - pad_dim[0] - frame_w;
                 [x, y]
             };
             // Draw the label.
-            uic.draw_text(graphics, l_pos, size, text_color, &text);
+            ui.draw_text(graphics, l_pos, size, text_color, &text);
         }
 
-        set_state(uic, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
 
     }
 }

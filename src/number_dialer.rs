@@ -19,7 +19,7 @@ use utils::{
     clamp,
     compare_f64s,
 };
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use vecmath::vec2_add;
 use widget::Widget;
 
@@ -202,7 +202,7 @@ fn draw_value_string<B, C: CharacterCache>(
     win_w: f64,
     win_h: f64,
     graphics: &mut B,
-    uic: &mut UiContext<C>,
+    ui: &mut Ui<C>,
     state: State,
     slot_y: f64,
     rect_color: Color,
@@ -226,7 +226,7 @@ fn draw_value_string<B, C: CharacterCache>(
     let half_slot_w = slot_w / 2.0;
     let image = graphics::Image::new_colored(font_col);
     for (i, ch) in string.chars().enumerate() {
-        let character = uic.get_character(size, ch);
+        let character = ui.get_character(size, ch);
         match state {
             State::Highlighted(elem) => match elem {
                 Element::ValueGlyph(idx, _) => {
@@ -287,7 +287,7 @@ pub struct NumberDialer<'a, T, F> {
 }
 
 impl<'a, T: Float, F> NumberDialer<'a, T, F> {
-    /// A number_dialer builder method to be implemented by the UiContext.
+    /// A number_dialer builder method to be implemented by the Ui.
     pub fn new(ui_id: UIID, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
             ui_id: ui_id,
@@ -372,29 +372,29 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
     /// Draw the number_dialer. When successfully pressed,
     /// or if the value is changed, the given `callback`
     /// function will be called.
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
         let pad_h = self.dim[1] - frame_w2;
-        let font_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
+        let font_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
         let label_string = match self.maybe_label {
             Some(text) => format!("{}: ", text),
             None => String::new(),
         };
         let label_dim = match label_string.len() {
             0 => [0.0, 0.0],
-            _ => [label::width(uic, font_size, &label_string), font_size as f64],
+            _ => [label::width(ui, font_size, &label_string), font_size as f64],
         };
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0 }
                                                           else { 1 + self.precision as usize };
@@ -407,16 +407,16 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
                                    label_pos, label_dim, val_string_w, val_string_h,
                                    val_string.len());
         let new_state = get_new_state(is_over_elem, state, mouse);
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
 
         // Draw the widget rectangle.
-        rectangle::draw(uic.win_w, uic.win_h, graphics, rectangle::State::Normal,
+        rectangle::draw(ui.win_w, ui.win_h, graphics, rectangle::State::Normal,
                         self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
-        let val_string_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
+        let val_string_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
         if self.maybe_label.is_some() {
-            uic.draw_text(graphics, label_pos, font_size, val_string_color, &label_string);
+            ui.draw_text(graphics, label_pos, font_size, val_string_color, &label_string);
         };
 
         // Determine new value from the initial state and the new state.
@@ -438,7 +438,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
 
         // Draw the value string.
         let val_string_pos = vec2_add(label_pos, [label_dim[0], 0.0]);
-        draw_value_string(uic.win_w, uic.win_h, graphics, uic, new_state,
+        draw_value_string(ui.win_w, ui.win_h, graphics, ui, new_state,
                           self.pos[1] + frame_w, color,
                           value_glyph_slot_width(font_size), pad_h,
                           val_string_pos,
@@ -458,7 +458,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
             }
         }
 
-        set_state(uic, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
 
     }
 

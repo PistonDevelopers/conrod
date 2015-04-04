@@ -22,7 +22,7 @@ use shape::Shapeable;
 use rectangle;
 use num::Float;
 use clock_ticks::precise_time_s;
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use vecmath::{
     vec2_add,
     vec2_sub,
@@ -100,7 +100,7 @@ widget_fns!(TextBox, State, Widget::TextBox(State::Uncaptured(Uncaptured::Normal
 static TEXT_PADDING: f64 = 5f64;
 
 /// Find the position of a character in a text box.
-fn cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
+fn cursor_position<C: CharacterCache>(ui: &mut Ui<C>,
                  mut idx: usize,
                  mut text_x: f64,
                  font_size: FontSize,
@@ -110,13 +110,13 @@ fn cursor_position<C: CharacterCache>(uic: &mut UiContext<C>,
     if idx > text_len { idx = text_len; }
     for (i, ch) in text.chars().enumerate() {
         if i >= idx { break; }
-        text_x += uic.get_character(font_size, ch).width();
+        text_x += ui.get_character(font_size, ch).width();
     }
     (idx, text_x)
 }
 
 /// Check if cursor is over the pad and if so, which
-fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
+fn over_elem<C: CharacterCache>(ui: &mut Ui<C>,
              pos: Point,
              mouse_pos: Point,
              rect_dim: Dimensions,
@@ -131,7 +131,7 @@ fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
         true => match rectangle::is_over(pad_pos, mouse_pos, pad_dim) {
             false => Element::Rect,
             true => {
-                let (idx, _) = closest_idx(uic, mouse_pos, text_pos[0], text_w, font_size, text);
+                let (idx, _) = closest_idx(ui, mouse_pos, text_pos[0], text_w, font_size, text);
                 Element::Char(idx)
             },
         },
@@ -139,7 +139,7 @@ fn over_elem<C: CharacterCache>(uic: &mut UiContext<C>,
 }
 
 /// Check which character is closest to the mouse cursor.
-fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
+fn closest_idx<C: CharacterCache>(ui: &mut Ui<C>,
                mouse_pos: Point,
                text_x: f64,
                text_w: f64,
@@ -150,7 +150,7 @@ fn closest_idx<C: CharacterCache>(uic: &mut UiContext<C>,
     let mut prev_x = x;
     let mut left_x = text_x;
     for (i, ch) in text.chars().enumerate() {
-        let character = uic.get_character(font_size, ch);
+        let character = ui.get_character(font_size, ch);
         let char_w = character.width();
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
@@ -271,11 +271,11 @@ impl<'a, F> TextBox<'a, F> {
     }
 
     fn selection_rect<C: CharacterCache>
-                     (&self, uic: &mut UiContext<C>, text_x: f64, start: Idx, end: Idx) ->
+                     (&self, ui: &mut Ui<C>, text_x: f64, start: Idx, end: Idx) ->
                      (Point, Dimensions) {
-        let (_, pos) = cursor_position(uic, start, text_x, self.font_size, &self.text);
+        let (_, pos) = cursor_position(ui, start, text_x, self.font_size, &self.text);
         let htext: String = self.text.chars().skip(start).take(end - start).collect();
-        let htext_w = label::width(uic, self.font_size, &htext);
+        let htext_w = label::width(ui, self.font_size, &htext);
         ([pos, self.pos[1]], [htext_w, self.dim[1]])
     }
 }
@@ -323,20 +323,20 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
 {
 
     #[inline]
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
-        let mouse = uic.get_mouse_state();
-        let state = *get_state(uic, self.ui_id);
+        let mouse = ui.get_mouse_state();
+        let state = *get_state(ui, self.ui_id);
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
         let pad_pos = vec2_add(self.pos, [frame_w; 2]);
@@ -344,39 +344,39 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         let text_x = pad_pos[0] + TEXT_PADDING;
         let text_y = pad_pos[1] + (pad_dim[1] - self.font_size as f64) / 2.0;
         let text_pos = [text_x, text_y];
-        let text_w = label::width(uic, self.font_size, &self.text);
-        let over_elem = over_elem(uic, self.pos, mouse.pos, self.dim,
+        let text_w = label::width(ui, self.font_size, &self.text);
+        let over_elem = over_elem(ui, self.pos, mouse.pos, self.dim,
                                   pad_pos, pad_dim, text_pos, text_w,
                                   self.font_size, &self.text);
         let mut new_state = get_new_state(over_elem, state, mouse);
 
-        rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
+        rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
         if let State::Capturing(selection) = new_state {
             if selection.start != selection.end {
-                let (pos, dim) = self.selection_rect(uic, text_x, selection.start, selection.end);
-                rectangle::draw(uic.win_w, uic.win_h, graphics, new_state.as_rectangle_state(),
+                let (pos, dim) = self.selection_rect(ui, text_x, selection.start, selection.end);
+                rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                                 [pos[0], pos[1] + frame_w], [dim[0], dim[1] - frame_w2],
                                 None, color.highlighted());
             }
         }
 
-        uic.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
+        ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
 
         if let State::Capturing(selection) = new_state {
             if selection.start == selection.end {
-            let (idx, cursor_x) = cursor_position(uic, selection.start, text_x, self.font_size, &self.text);
-            draw_cursor(uic.win_w, uic.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
+            let (idx, cursor_x) = cursor_position(ui, selection.start, text_x, self.font_size, &self.text);
+            draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
             let mut new_idx = idx;
             let mut new_cursor_x = cursor_x;
 
             // Check for entered text.
-            let entered_text = uic.get_entered_text();
+            let entered_text = ui.get_entered_text();
             for t in entered_text.iter() {
                 let mut entered_text_width = 0.0;
                 for ch in t[..].chars() {
-                    let c = uic.get_character(self.font_size, ch);
+                    let c = ui.get_character(self.font_size, ch);
                     entered_text_width += c.width();
                 }
                 if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
@@ -391,7 +391,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             }
 
             // Check for control keys.
-            let pressed_keys = uic.get_pressed_keys();
+            let pressed_keys = ui.get_pressed_keys();
             for key in pressed_keys.iter() {
                 match *key {
                     Backspace => {
@@ -399,7 +399,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                         && self.text.len() >= idx
                         && idx > 0 {
                             let rem_idx = idx - 1;
-                            new_cursor_x -= uic.get_character_w(
+                            new_cursor_x -= ui.get_character_w(
                                 self.font_size, self.text[..].char_at(rem_idx)
                             );
                             let new_text = format!("{}{}", &self.text[..rem_idx], &self.text[idx..]);
@@ -409,7 +409,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     },
                     Left => {
                         if idx > 0 {
-                            new_cursor_x -= uic.get_character_w(
+                            new_cursor_x -= ui.get_character_w(
                                 self.font_size, self.text[..].char_at(idx - 1)
                             );
                             new_idx -= 1;
@@ -417,7 +417,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     },
                     Right => {
                         if self.text.len() > idx {
-                            new_cursor_x += uic.get_character_w(
+                            new_cursor_x += ui.get_character_w(
                                 self.font_size, self.text[..].char_at(idx)
                             );
                             new_idx += 1;
@@ -438,7 +438,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                                 new_cursor_x = text.chars()
                                                    // Add text_pos.x for padding
                                                    .fold(text_pos[0], |acc, c| {
-                                    acc + uic.get_character_w(*font_size, c)
+                                    acc + ui.get_character_w(*font_size, c)
                                 });
                             },
                             None => (),
@@ -449,6 +449,6 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             }
             new_state = State::Capturing(Selection { start: new_idx, end: new_idx, .. selection });
         }}
-        set_state(uic, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
     }
 }

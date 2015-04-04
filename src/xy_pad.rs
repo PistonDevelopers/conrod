@@ -16,7 +16,7 @@ use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use utils::{
     clamp,
     map_range,
@@ -124,7 +124,7 @@ impl <'a, X, Y, F> XYPad<'a, X, Y, F> {
 }
 
 impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
-    /// An xy_pad builder method to be implemented by the UiContext.
+    /// An xy_pad builder method to be implemented by the Ui.
     pub fn new(ui_id: UIID,
               x_val: X, min_x: X, max_x: X,
               y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
@@ -209,19 +209,19 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
         F: FnMut(X, Y) + 'a
 {
 
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
 
         // Init.
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
         let pad_dim = vec2_sub(self.dim, [frame_w2; 2]);
@@ -257,8 +257,8 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
 
         // Draw.
         let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
-        rectangle::draw(uic.win_w, uic.win_h, graphics, rect_state, self.pos,
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+        rectangle::draw(ui.win_w, ui.win_h, graphics, rect_state, self.pos,
                         self.dim, maybe_frame, color);
         let (vert_x, hori_y) = match (is_over_pad, new_state) {
             (_, State::Normal) | (_, State::Highlighted) =>
@@ -269,17 +269,17 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
                  clamp(mouse.pos[1], pad_pos[1], pad_pos[1] + pad_dim[1])),
         };
         // Crosshair.
-        draw_crosshair(uic.win_w, uic.win_h, graphics, pad_pos, self.line_width,
+        draw_crosshair(ui.win_w, ui.win_h, graphics, pad_pos, self.line_width,
                        vert_x, hori_y, pad_dim, color.plain_contrast());
         // Label.
         if let Some(l_text) = self.maybe_label {
-            let l_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
-            let l_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
-            let l_w = label::width(uic, l_size, l_text);
+            let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+            let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+            let l_w = label::width(ui, l_size, l_text);
             let l_x = pad_pos[0] + (pad_dim[0] - l_w) / 2.0;
             let l_y = pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0;
             let l_pos = [l_x, l_y];
-            uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
+            ui.draw_text(graphics, l_pos, l_size, l_color, l_text);
         }
         // xy value string.
         let x_string = val_to_string(self.x, self.max_x,
@@ -287,7 +287,7 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
         let y_string = val_to_string(self.y, self.max_y,
                                      self.max_y - self.min_y, self.dim[1] as usize);
         let xy_string = format!("{}, {}", x_string, y_string);
-        let xy_string_w = label::width(uic, self.font_size, &xy_string);
+        let xy_string_w = label::width(ui, self.font_size, &xy_string);
         let xy_string_pos = {
             match rectangle::corner(pad_pos, [vert_x, hori_y], pad_dim) {
                 Corner::TopLeft => [vert_x, hori_y],
@@ -296,10 +296,10 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
                 Corner::BottomRight => [vert_x - xy_string_w, hori_y - self.font_size as f64],
             }
         };
-        uic.draw_text(graphics, xy_string_pos, self.font_size,
+        ui.draw_text(graphics, xy_string_pos, self.font_size,
                     color.plain_contrast(), &xy_string);
 
-        set_state(uic, self.ui_id, Widget::XYPad(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::XYPad(new_state), self.pos, self.dim);
 
     }
 }

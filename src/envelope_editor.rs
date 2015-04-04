@@ -19,7 +19,7 @@ use rectangle;
 use rectangle::{
     Corner
 };
-use ui_context::{ UIID, UiContext };
+use ui::{ UIID, Ui };
 use utils::{
     clamp,
     map_range,
@@ -234,7 +234,7 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 }
 
 impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
-    /// An envelope editor builder method to be implemented by the UiContext.
+    /// An envelope editor builder method to be implemented by the Ui.
     pub fn new(ui_id: UIID,
                env: &'a mut Vec<E>,
                min_x: <E as EnvelopePoint>::X,
@@ -343,24 +343,24 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         F: FnMut(&mut Vec<E>, usize) + 'a
 {
     #[inline]
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
-        let state = *get_state(uic, self.ui_id);
-        let mouse = uic.get_mouse_state();
+        let state = *get_state(ui, self.ui_id);
+        let mouse = ui.get_mouse_state();
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
         let pt_radius = self.pt_radius;
         let font_size = self.font_size;
 
         // Rect.
-        let color = self.maybe_color.unwrap_or(uic.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(uic.theme.frame_width);
+        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(uic.theme.frame_color))),
+            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
             false => None,
         };
         let pad_pos = vec2_add(self.pos, [frame_w; 2]);
@@ -382,18 +382,18 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         let new_state = get_new_state(is_over_elem, state, mouse);
 
         // Draw rect.
-        rectangle::draw(uic.win_w, uic.win_h, graphics,
+        rectangle::draw(ui.win_w, ui.win_h, graphics,
                         new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
         // If there's a label, draw it.
         if let Some(l_text) = self.maybe_label {
-            let l_size = self.maybe_label_font_size.unwrap_or(uic.theme.font_size_medium);
-            let l_color = self.maybe_label_color.unwrap_or(uic.theme.label_color);
-            let l_w = label::width(uic, l_size, l_text);
+            let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+            let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+            let l_w = label::width(ui, l_size, l_text);
             let l_pos = [pad_pos[0] + (pad_dim[0] - l_w) / 2.0,
                          pad_pos[1] + (pad_dim[1] - l_size as f64) / 2.0];
-            uic.draw_text(graphics, l_pos, l_size, l_color, l_text);
+            ui.draw_text(graphics, l_pos, l_size, l_color, l_text);
         };
 
         // Draw the envelope lines.
@@ -403,7 +403,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                 let Color(col) = color.plain_contrast();
                 let line = graphics::Line::new_round(col, 0.5 * self.line_width);
                 let draw_state = graphics::default_draw_state();
-                let transform = graphics::abs_transform(uic.win_w, uic.win_h);
+                let transform = graphics::abs_transform(ui.win_w, ui.win_h);
                 for i in 1..perc_env.len() {
                     let (x_a, y_a, _) = perc_env[i - 1];
                     let (x_b, y_b, _) = perc_env[i];
@@ -439,7 +439,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
             (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
 
                 // Draw the envelope point.
-                let mut draw_env_pt = |uic: &mut UiContext<C>,
+                let mut draw_env_pt = |ui: &mut Ui<C>,
                                        envelope: &mut Vec<E>,
                                        idx: usize,
                                        p_pos: Point| {
@@ -457,16 +457,16 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                         pad_dim[1] as usize
                     );
                     let xy_string = format!("{}, {}", x_string, y_string);
-                    let xy_string_w = label::width(uic, font_size, &xy_string);
+                    let xy_string_w = label::width(ui, font_size, &xy_string);
                     let xy_string_pos = match rectangle::corner(pad_pos, p_pos, pad_dim) {
                         Corner::TopLeft => [p_pos[0], p_pos[1]],
                         Corner::TopRight => [p_pos[0] - xy_string_w, p_pos[1]],
                         Corner::BottomLeft => [p_pos[0], p_pos[1] - font_size as f64],
                         Corner::BottomRight => [p_pos[0] - xy_string_w, p_pos[1] - font_size as f64],
                     };
-                    uic.draw_text(graphics, xy_string_pos,
+                    ui.draw_text(graphics, xy_string_pos,
                                 font_size, color.plain_contrast(), &xy_string);
-                    draw_circle(uic.win_w, uic.win_h, graphics,
+                    draw_circle(ui.win_w, ui.win_h, graphics,
                                 vec2_sub(p_pos, [pt_radius, pt_radius]),
                                 color.plain_contrast(), pt_radius);
                 };
@@ -481,7 +481,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                         let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, pad_pos[0], pad_x_right);
                         let p_pos_x_clamped = clamp(p_pos[0], left_pixel_bound, right_pixel_bound);
                         let p_pos_y_clamped = clamp(p_pos[1], pad_pos[1], pad_pos[1] + pad_dim[1]);
-                        draw_env_pt(uic, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
+                        draw_env_pt(ui, self.env, idx, [p_pos_x_clamped, p_pos_y_clamped]);
                         Some(idx)
                     },
                     // Otherwise, draw the closest point.
@@ -490,7 +490,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
                             match *closest_elem {
                                 Element::EnvPoint(closest_idx, closest_env_pt) => {
                                     let closest_env_pt = [closest_env_pt.0, closest_env_pt.1];
-                                    draw_env_pt(uic, self.env, closest_idx, closest_env_pt);
+                                    draw_env_pt(ui, self.env, closest_idx, closest_env_pt);
                                 },
                                 _ => (),
                             }
@@ -626,7 +626,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         }
 
         // Set the new state.
-        set_state(uic, self.ui_id, Widget::EnvelopeEditor(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Widget::EnvelopeEditor(new_state), self.pos, self.dim);
 
     }
 }

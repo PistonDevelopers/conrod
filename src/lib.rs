@@ -33,7 +33,7 @@ pub use point::Point;
 pub use position::Positionable;
 pub use shape::Shapeable;
 pub use theme::Theme;
-pub use ui_context::UiContext;
+pub use ui::Ui;
 pub use widget::Widget;
 
 #[macro_use]
@@ -59,7 +59,7 @@ pub mod slider;
 pub mod text_box;
 pub mod theme;
 pub mod toggle;
-pub mod ui_context;
+pub mod ui;
 pub mod utils;
 pub mod widget;
 pub mod widget_matrix;

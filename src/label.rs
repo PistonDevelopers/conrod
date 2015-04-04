@@ -3,7 +3,7 @@ use graphics::character::CharacterCache;
 use color::{ Color, Colorable };
 use point::Point;
 use position::Positionable;
-use ui_context::UiContext;
+use ui::Ui;
 
 pub type FontSize = u32;
 
@@ -15,9 +15,9 @@ pub enum Labeling<'a> {
 
 /// Determine the pixel width of the final text bitmap.
 #[inline]
-pub fn width<C: CharacterCache>(uic: &mut UiContext<C>, size: FontSize, text: &str) -> f64 {
+pub fn width<C: CharacterCache>(ui: &mut Ui<C>, size: FontSize, text: &str) -> f64 {
     text.chars().fold(0u32, |a, ch| {
-        let character = uic.get_character(size, ch);
+        let character = ui.get_character(size, ch);
         a + character.width() as u32
     }) as f64
 }
@@ -37,14 +37,14 @@ pub trait Labelable<'a>: Sized {
         self.label_color(Color([r, g, b, a]))
     }
     fn label_font_size(self, size: FontSize) -> Self;
-    fn small_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.label_font_size(uic.theme.font_size_small)
+    fn small_font<C>(self, ui: &Ui<C>) -> Self {
+        self.label_font_size(ui.theme.font_size_small)
     }
-    fn medium_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.label_font_size(uic.theme.font_size_medium)
+    fn medium_font<C>(self, ui: &Ui<C>) -> Self {
+        self.label_font_size(ui.theme.font_size_medium)
     }
-    fn large_font<C>(self, uic: &UiContext<C>) -> Self {
-        self.label_font_size(uic.theme.font_size_large)
+    fn large_font<C>(self, ui: &Ui<C>) -> Self {
+        self.label_font_size(ui.theme.font_size_large)
     }
 }
 
@@ -65,7 +65,7 @@ impl<'a> Label<'a> {
 
 impl<'a> Label<'a> {
 
-    /// A label builder method to be implemented on the UiContext.
+    /// A label builder method to be implemented on the Ui.
     pub fn new(text: &'a str) -> Label<'a> {
         Label {
             text: text,
@@ -92,12 +92,12 @@ impl<'a> Positionable for Label<'a> {
 }
 
 impl<'a> ::draw::Drawable for Label<'a> {
-    fn draw<B, C>(&mut self, uic: &mut UiContext<C>, graphics: &mut B)
+    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let color = self.maybe_color.unwrap_or(Color::black());
-        uic.draw_text(graphics, self.pos, self.size, color, self.text);
+        ui.draw_text(graphics, self.pos, self.size, color, self.text);
     }
 }
