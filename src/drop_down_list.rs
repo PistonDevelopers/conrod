@@ -1,3 +1,4 @@
+use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
@@ -176,6 +177,13 @@ impl<'a, F> Frameable for DropDownList<'a, F> {
     }
 }
 
+impl<'a, F> Callable<F> for DropDownList<'a, F> {
+    fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+}
+
 /*
 quack! {
     list: DropDownList['a, F]
@@ -188,9 +196,6 @@ quack! {
         }
         fn () -> Id [] { Id(list.ui_id) }
     set:
-        fn (val: Callback<F>) [where F: FnMut(&mut Option<Idx>, Idx, String) + 'a] {
-            list.maybe_callback = Some(val.0)
-        }
         fn (val: LabelText<'a>) [] { list.maybe_label = Some(val.0) }
         fn (val: LabelColor) [] { list.maybe_label_color = Some(val.0) }
         fn (val: LabelFontSize) [] { list.maybe_label_font_size = Some(val.0) }
