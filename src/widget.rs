@@ -74,7 +74,3 @@ impl Widget {
         }
     }
 }
-
-/// Default widget state property.
-#[derive(Copy, Clone)]
-pub struct DefaultWidgetState(pub Widget);
