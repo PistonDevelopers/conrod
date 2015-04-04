@@ -1,6 +1,7 @@
 use callback::Callable;
 use frame::Frameable;
 use color::{ Color, Colorable };
+use label::{ FontSize, Labelable };
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
@@ -105,6 +106,24 @@ impl<'a, F> Callable<F> for Button<'a, F> {
     }
 }
 
+impl<'a, F> Labelable<'a> for Button<'a, F>
+{
+    fn label(mut self, text: &'a str) -> Self {
+        self.maybe_label = Some(text);
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.maybe_label_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.maybe_label_font_size = Some(size);
+        self
+    }
+}
+
 /*
 quack! {
     button: Button['a, F]
@@ -115,9 +134,6 @@ quack! {
         }
         fn () -> Id [] { Id(button.ui_id) }
     set:
-        fn (val: LabelText<'a>) [] { button.maybe_label = Some(val.0) }
-        fn (val: LabelColor) [] { button.maybe_label_color = Some(val.0) }
-        fn (val: LabelFontSize) [] { button.maybe_label_font_size = Some(val.0) }
         fn (val: Position) [] { button.pos = val.0 }
         fn (val: Size) [] { button.dim = val.0 }
     action:
