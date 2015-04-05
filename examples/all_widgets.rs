@@ -265,7 +265,7 @@ fn draw_ui(gl: &mut GlGraphics,
         .position(300.0, 115.0)
         .color(demo.bg_color.invert())
         .frame(demo.frame_width)
-        .label("Height (pixels)")
+        .label("Height (px)")
         .label_color(demo.bg_color.invert().plain_contrast())
         .callback(|new_height| demo.v_slider_height = new_height)
         .draw(ui, gl);
@@ -277,7 +277,7 @@ fn draw_ui(gl: &mut GlGraphics,
         .color(demo.bg_color.invert().plain_contrast())
         .frame(demo.frame_width)
         .frame_color(demo.bg_color.plain_contrast())
-        .label("Frame Width (pixels)")
+        .label("Frame Width (px)")
         .label_color(demo.bg_color.plain_contrast())
         .callback(|new_width| demo.frame_width = new_width)
         .draw(ui, gl);
@@ -382,7 +382,7 @@ fn draw_ui(gl: &mut GlGraphics,
 
             // Draw a TextBox. text_box(UIID, &mut String, FontSize)
             TextBox::new(tbox_uiid, text)
-                .font_size(24)
+                .font_size(20)
                 .dimensions(dim[0], text_box_height - 10.0)
                 .point(pos)
                 .frame(demo.frame_width)
