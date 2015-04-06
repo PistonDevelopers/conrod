@@ -1,5 +1,4 @@
 #![deny(missing_copy_implementations)]
-#![feature(str_char)]
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
