@@ -39,8 +39,6 @@ use std::convert::AsRef;
 use std::path::Path;
 use vecmath::vec2_add;
 
-type Ui = conrod::Ui<GlyphCache>;
-
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
 /// of these seem strange, that's because they are! Most of
@@ -133,7 +131,7 @@ fn main() {
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let mut ui = Ui::new(glyph_cache, theme);
+    let mut ui = conrod::Ui::new(glyph_cache, theme);
     let mut demo = DemoApp::new();
 
     for event in event_iter {
@@ -147,9 +145,9 @@ fn main() {
 }
 
 /// Draw the User Interface.
-fn draw_ui(gl: &mut GlGraphics,
-           ui: &mut Ui,
-           demo: &mut DemoApp) {
+fn draw_ui<'a>(gl: &mut GlGraphics,
+               ui: &mut conrod::Ui<GlyphCache<'a>>,
+               demo: &mut DemoApp) {
 
     // Draw the background.
     Background::new().color(demo.bg_color).draw(ui, gl);

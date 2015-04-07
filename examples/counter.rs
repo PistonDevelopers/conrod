@@ -23,8 +23,6 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::path::Path;
 
-type Ui = conrod::Ui<GlyphCache>;
-
 fn main() {
 
     let opengl = OpenGL::_3_2;
@@ -43,7 +41,7 @@ fn main() {
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let ui = &mut Ui::new(glyph_cache, theme);
+    let ui = &mut conrod::Ui::new(glyph_cache, theme);
 
     let mut count = 0;
 
@@ -65,7 +63,9 @@ fn main() {
 }
 
 /// Function for drawing the counter widget.
-fn counter(gl: &mut GlGraphics, ui: &mut Ui, count: &mut u32) {
+fn counter<'a>(gl: &mut GlGraphics,
+               ui: &mut conrod::Ui<GlyphCache<'a>>,
+               count: &mut u32) {
 
     // Draw the value.
     Label::new(&count.to_string()).position(10.0, 10.0).draw(ui, gl);
