@@ -27,15 +27,13 @@ use conrod::{
     Toggle,
     WidgetMatrix,
     XYPad,
+    Ui
 };
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::{ Events, Event };
+use piston::event::*;
 use piston::window::{ WindowSettings, Size };
 use glutin_window::GlutinWindow;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::convert::AsRef;
 use std::path::Path;
 use vecmath::vec2_add;
 
@@ -124,19 +122,18 @@ fn main() {
         .exit_on_esc(true)
         .samples(4)
     );
-    let window_ref = Rc::new(RefCell::new(window));
-    let event_iter = window_ref.events().ups(180).max_fps(60);
+    let event_iter = window.events().ups(180).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let mut ui = conrod::Ui::new(glyph_cache, theme);
+    let mut ui = Ui::new(glyph_cache, theme);
     let mut demo = DemoApp::new();
 
     for event in event_iter {
         ui.handle_event(&event);
-        if let Event::Render(args) = event {
+        if let Some(args) = event.render_args() {
             gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
                 draw_ui(gl, &mut ui, &mut demo);
             });
@@ -146,7 +143,7 @@ fn main() {
 
 /// Draw the User Interface.
 fn draw_ui<'a>(gl: &mut GlGraphics,
-               ui: &mut conrod::Ui<GlyphCache<'a>>,
+               ui: &mut Ui<GlyphCache<'a>>,
                demo: &mut DemoApp) {
 
     // Draw the background.
