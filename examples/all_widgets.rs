@@ -125,7 +125,7 @@ fn main() {
         .samples(4)
     );
     let window_ref = Rc::new(RefCell::new(window));
-    let event_iter = Events::new(window_ref).ups(180).max_fps(60);
+    let event_iter = window_ref.events().ups(180).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
