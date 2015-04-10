@@ -27,19 +27,15 @@ use conrod::{
     Toggle,
     WidgetMatrix,
     XYPad,
+    Ui
 };
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::{ Events, Event };
+use piston::event::*;
 use piston::window::{ WindowSettings, Size };
 use glutin_window::GlutinWindow;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::convert::AsRef;
 use std::path::Path;
 use vecmath::vec2_add;
-
-type Ui = conrod::Ui<GlyphCache>;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -126,8 +122,7 @@ fn main() {
         .exit_on_esc(true)
         .samples(4)
     );
-    let window_ref = Rc::new(RefCell::new(window));
-    let event_iter = Events::new(window_ref).ups(180).max_fps(60);
+    let event_iter = window.events().ups(180).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
@@ -138,7 +133,7 @@ fn main() {
 
     for event in event_iter {
         ui.handle_event(&event);
-        if let Event::Render(args) = event {
+        if let Some(args) = event.render_args() {
             gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
                 draw_ui(gl, &mut ui, &mut demo);
             });
@@ -147,9 +142,9 @@ fn main() {
 }
 
 /// Draw the User Interface.
-fn draw_ui(gl: &mut GlGraphics,
-           ui: &mut Ui,
-           demo: &mut DemoApp) {
+fn draw_ui<'a>(gl: &mut GlGraphics,
+               ui: &mut Ui<GlyphCache<'a>>,
+               demo: &mut DemoApp) {
 
     // Draw the background.
     Background::new().color(demo.bg_color).draw(ui, gl);
