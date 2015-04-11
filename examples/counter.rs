@@ -46,7 +46,7 @@ fn main() {
     for event in event_iter {
         ui.handle_event(&event);
         if let Some(args) = event.render_args() {
-            gl.draw([0, 0, args.width as i32, args.height as i32], |_, gl| {
+            gl.draw(args.viewport(), |_, gl| {
 
                 // Draw the background.
                 Background::new().rgba(0.2, 0.25, 0.4, 1.0).draw(ui, gl);
