@@ -29,6 +29,7 @@ use conrod::{
     XYPad,
     Ui
 };
+use conrod::color::{self, rgb, rgba, white, black, red, green, blue, purple};
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
@@ -77,7 +78,7 @@ impl DemoApp {
     /// Constructor for the Demonstration Application data.
     fn new() -> DemoApp {
         DemoApp {
-            bg_color: Color::new(0.2, 0.35, 0.45, 1.0),
+            bg_color: rgba(0.2, 0.35, 0.45, 1.0),
             show_button: false,
             toggle_label: "OFF".to_string(),
             title_padding: 50.0,
@@ -165,7 +166,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             .rgba(0.4, 0.75, 0.6, 1.0)
             .frame(demo.frame_width)
             .label("PRESS")
-            .callback(|| demo.bg_color = Color::random())
+            .callback(|| demo.bg_color = color::random())
             .draw(ui, gl);
 
     }
@@ -189,7 +190,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             .rgba(0.5, 0.3, 0.6, 1.0)
             .frame(demo.frame_width)
             .label(&label)
-            .label_color(Color::white())
+            .label_color(white())
             .callback(|new_pad: f32| demo.title_padding = new_pad as f64)
             .draw(ui, gl);
 
@@ -205,7 +206,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         .rgba(0.6, 0.25, 0.75, 1.0)
         .frame(demo.frame_width)
         .label(&label)
-        .label_color(Color::white())
+        .label_color(white())
         .callback(|value| {
             demo.show_button = value;
             demo.toggle_label = match value {
@@ -221,16 +222,16 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
-            0 => Color::new(0.75, 0.3, 0.3, 1.0),
-            1 => Color::new(0.3, 0.75, 0.3, 1.0),
-            _ => Color::new(0.3, 0.3, 0.75, 1.0),
+            0 => rgb(0.75, 0.3, 0.3),
+            1 => rgb(0.3, 0.75, 0.3),
+            _ => rgb(0.3, 0.3, 0.75),
         };
 
         // Grab the value of the color element.
         let value = match i {
-            0 => demo.bg_color.r(),
-            1 => demo.bg_color.g(),
-            _ => demo.bg_color.b(),
+            0 => demo.bg_color.red(),
+            1 => demo.bg_color.green(),
+            _ => demo.bg_color.blue(),
         };
 
         // Create the label to be drawn with the slider.
@@ -244,11 +245,11 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             .color(color)
             .frame(demo.frame_width)
             .label(&label)
-            .label_color(Color::white())
+            .label_color(white())
             .callback(|color| match i {
-                0 => demo.bg_color.set_r(color),
-                1 => demo.bg_color.set_g(color),
-                _ => demo.bg_color.set_b(color),
+                0 => demo.bg_color.set_red(color),
+                1 => demo.bg_color.set_green(color),
+                _ => demo.bg_color.set_blue(color),
             })
             .draw(ui, gl);
 
@@ -308,14 +309,14 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
     let ddl_color = match demo.selected_idx {
         Some(idx) => match demo.ddl_colors[idx].as_ref() {
-            "Black" => Color::black(),
-            "White" => Color::white(),
-            "Red" => Color::new(0.75, 0.4, 0.4, 1.0),
-            "Green" => Color::new(0.4, 0.8, 0.4, 1.0),
-            "Blue" => Color::new(0.4, 0.4, 0.8, 1.0),
-            _ => Color::new(0.75, 0.55, 0.85, 1.0),
+            "Black" => black(),
+            "White" => white(),
+            "Red"   => red(),
+            "Green" => green(),
+            "Blue"  => blue(),
+            _ => purple(),
         },
-        None => Color::new(0.75, 0.55, 0.85, 1.0),
+        None => purple(),
     };
 
     // Draw the circle that's controlled by the XYPad.
@@ -343,9 +344,9 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         .down(225.0, ui)
         .color(ddl_color)
         .frame(demo.frame_width)
-        .frame_color(Color::white())
+        .frame_color(white())
         .label("Circle Position")
-        .label_color(Color::new(1.0, 1.0, 1.0, 0.5) * ddl_color.plain_contrast())
+        .label_color(ddl_color.plain_contrast().alpha(0.5))
         .line_width(2.0)
         .value_font_size(18u32)
         .callback(|new_x, new_y| {
@@ -368,8 +369,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             let text_box_height = dim[1] / 4.0;
             let env_editor_height = dim[1] - text_box_height;
             let env_editor_pos = vec2_add(pos, [0.0, text_box_height]);
-            let env_label_color = Color::new(1.0, 1.0, 1.0, 0.5)
-                                * demo.bg_color.invert().plain_contrast();
+            let env_label_color = demo.bg_color.invert().plain_contrast().alpha(0.5);
             let env_y_max = match num { 0 => 20000.0, _ => 1.0 };
             let tbox_uiid = 77 + (num * 2) as u64;
             let env_uiid = tbox_uiid + 1u64;
@@ -413,8 +413,7 @@ fn draw_circle(win_w: f64,
                gl: &mut GlGraphics,
                pos: Point,
                color: Color) {
-    let Color(col) = color;
-    graphics::Ellipse::new(col)
+    graphics::Ellipse::new(color.to_fsa())
         .draw(
             [pos[0], pos[1], 30.0, 30.0],
             graphics::default_draw_state(),

@@ -3,7 +3,7 @@
 macro_rules! widget_fns(
     ($widget:ident, $widget_state:ident, $default:expr) => (
 
-        /// Default Widget variant.
+        /// Default Widget state.
         fn default() -> ::widget::Widget { $default }
 
         /// Get a reference to the widget associated with the given UIID.

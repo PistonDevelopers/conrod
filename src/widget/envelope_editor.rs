@@ -5,10 +5,8 @@ use frame::Frameable;
 use label::{ FontSize, Labelable };
 use color::{ Color, Colorable };
 use dimensions::Dimensions;
-use graphics;
-use graphics::{
-    Graphics,
-};
+use graphics::math::Scalar;
+use graphics::{ self, Graphics };
 use graphics::character::CharacterCache;
 use label;
 use mouse::Mouse;
@@ -95,6 +93,21 @@ pub trait EnvelopePoint {
     fn set_curve(&mut self, _curve: f32) {}
     /// Create a new EnvPoint.
     fn new(_x: <Self as EnvelopePoint>::X, _y: <Self as EnvelopePoint>::Y) -> Self;
+}
+
+impl EnvelopePoint for Point {
+    type X = Scalar;
+    type Y = Scalar;
+    /// Return the X value.
+    fn get_x(&self) -> Scalar { self[0] }
+    /// Return the Y value.
+    fn get_y(&self) -> Scalar { self[1] }
+    /// Return the X value.
+    fn set_x(&mut self, x: Scalar) { self[0] = x }
+    /// Return the Y value.
+    fn set_y(&mut self, y: Scalar) { self[1] = y }
+    /// Create a new Envelope Point.
+    fn new(x: Scalar, y: Scalar) -> Point { [x, y] }
 }
 
 /// Determine whether or not the cursor is over the EnvelopeEditor.
@@ -184,7 +197,7 @@ fn draw_circle<B: Graphics>(
     color: Color,
     radius: f64
 ) {
-    graphics::Ellipse::new(color.0)
+    graphics::Ellipse::new(color.to_fsa())
         .draw(
             [pos[0], pos[1], 2.0 * radius, 2.0 * radius],
             &graphics::default_draw_state(),
@@ -400,8 +413,8 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         match self.env.len() {
             0 | 1 => (),
             _ => {
-                let Color(col) = color.plain_contrast();
-                let line = graphics::Line::new_round(col, 0.5 * self.line_width);
+                let color = color.plain_contrast();
+                let line = graphics::Line::new_round(color.to_fsa(), 0.5 * self.line_width);
                 let draw_state = graphics::default_draw_state();
                 let transform = graphics::abs_transform(ui.win_w, ui.win_h);
                 for i in 1..perc_env.len() {

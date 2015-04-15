@@ -155,11 +155,10 @@ impl<C> Ui<C>
         use graphics::Transformed;
         use num::Float;
 
-        let Color(col) = color;
         let draw_state = graphics::default_draw_state();
         let transform = graphics::abs_transform(self.win_w, self.win_h)
                         .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
-        Text::colored(col, size).draw(
+        Text::colored(color.to_fsa(), size).draw(
             text,
             &mut self.glyph_cache,
             draw_state,

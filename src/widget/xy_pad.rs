@@ -77,8 +77,7 @@ fn draw_crosshair<B: Graphics>(
 ) {
     let draw_state = graphics::default_draw_state();
     let transform = graphics::abs_transform(win_w, win_h);
-    let Color(col) = color;
-    let line = graphics::Line::new(col, 0.5 * line_width);
+    let line = graphics::Line::new(color.to_fsa(), 0.5 * line_width);
     line.draw(
         [vert_x, pos[1], vert_x, pos[1] + pad_dim[1]],
         draw_state,

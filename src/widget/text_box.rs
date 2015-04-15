@@ -255,10 +255,10 @@ fn draw_cursor<B: Graphics>(
     pad_pos_y: f64,
     pad_h: f64
 ) {
+    use color::Rgba;
     let draw_state = graphics::default_draw_state();
     let transform = graphics::abs_transform(win_w, win_h);
-    let Color(color) = color.plain_contrast();
-    let (r, g, b, a) = (color[0], color[1], color[2], color[3]);
+    let Rgba(r, g, b, a) = color.plain_contrast().to_rgb();
     graphics::Line::new_round([r, g, b, (a * (precise_time_s() * 2.5).sin() as f32).abs()], 0.5f64)
         .draw(
             [cursor_x, pad_pos_y, cursor_x, pad_pos_y + pad_h],

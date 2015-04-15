@@ -1,5 +1,5 @@
 
-use color::Color;
+use color::{Color, black, white};
 use rustc_serialize::{
     json,
     Encodable,
@@ -34,11 +34,11 @@ impl Theme {
     pub fn default() -> Theme {
         Theme {
             name: "Demo Theme".to_string(),
-            background_color: Color::new(0.0, 0.0, 0.0, 1.0),
-            shape_color: Color::new(1.0, 1.0, 1.0, 1.0),
-            frame_color: Color::new(0.0, 0.0, 0.0, 1.0),
+            background_color: black(),
+            shape_color: white(),
+            frame_color: black(),
             frame_width: 1.0,
-            label_color: Color::new(0.0, 0.0, 0.0, 1.0),
+            label_color: black(),
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,

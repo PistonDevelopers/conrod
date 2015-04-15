@@ -219,12 +219,11 @@ fn draw_value_string<B, C: CharacterCache>(
 {
     let mut x = 0.0f64;
     let y = 0.0f64;
-    let Color(font_col) = font_color;
     let draw_state = graphics::default_draw_state();
     let transform = graphics::abs_transform(win_w, win_h)
         .trans(pos[0], pos[1] + size as f64);
     let half_slot_w = slot_w / 2.0;
-    let image = graphics::Image::new_colored(font_col);
+    let image = graphics::Image::new_colored(font_color.to_fsa());
     for (i, ch) in string.chars().enumerate() {
         let character = ui.get_character(size, ch);
         match state {
@@ -233,7 +232,7 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.highlighted() }
                                      else { rect_color };
-                    graphics::Rectangle::new(rect_color.0).draw(
+                    graphics::Rectangle::new(rect_color.to_fsa()).draw(
                         [x as f64, context_slot_y, size as f64, pad_h],
                         draw_state,
                         transform,
@@ -247,7 +246,7 @@ fn draw_value_string<B, C: CharacterCache>(
                     let context_slot_y = slot_y - (pos[1] + size as f64);
                     let rect_color = if idx == i { rect_color.clicked() }
                                      else { rect_color };
-                    graphics::Rectangle::new(rect_color.0).draw(
+                    graphics::Rectangle::new(rect_color.to_fsa()).draw(
                         [x, context_slot_y, size as f64, pad_h],
                         draw_state,
                         transform,
