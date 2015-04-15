@@ -29,11 +29,11 @@ use conrod::{
     XYPad,
     Ui
 };
-use conrod::color::{self, rgb, rgba, white, black, red, green, blue, purple};
-use opengl_graphics::{ GlGraphics, OpenGL };
+use conrod::color::{self, rgb, white, black, red, green, blue, purple};
+use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
-use piston::window::{ WindowSettings, Size };
+use piston::window::{WindowSettings, Size};
 use glutin_window::GlutinWindow;
 use std::path::Path;
 use vecmath::vec2_add;
@@ -78,7 +78,7 @@ impl DemoApp {
     /// Constructor for the Demonstration Application data.
     fn new() -> DemoApp {
         DemoApp {
-            bg_color: rgba(0.2, 0.35, 0.45, 1.0),
+            bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
             title_padding: 50.0,
@@ -163,7 +163,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         Button::new(0)
             .dimensions(90.0, 60.0)
             .position(50.0, 115.0)
-            .rgba(0.4, 0.75, 0.6, 1.0)
+            .rgb(0.4, 0.75, 0.6)
             .frame(demo.frame_width)
             .label("PRESS")
             .callback(|| demo.bg_color = color::random())
@@ -187,7 +187,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         Slider::new(1, pad as f32, 10.0, 910.0)
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
-            .rgba(0.5, 0.3, 0.6, 1.0)
+            .rgb(0.5, 0.3, 0.6)
             .frame(demo.frame_width)
             .label(&label)
             .label_color(white())
@@ -203,7 +203,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
     Toggle::new(2, demo.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0, ui)
-        .rgba(0.6, 0.25, 0.75, 1.0)
+        .rgb(0.6, 0.25, 0.75)
         .frame(demo.frame_width)
         .label(&label)
         .label_color(white())
@@ -307,6 +307,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
         });
 
+    // Translate the selected color string into a usable color.
     let ddl_color = match demo.selected_idx {
         Some(idx) => match demo.ddl_colors[idx].as_ref() {
             "Black" => black(),
@@ -320,7 +321,11 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
     };
 
     // Draw the circle that's controlled by the XYPad.
-    draw_circle(ui.win_w, ui.win_h, gl, demo.circle_pos, ddl_color);
+    graphics::Ellipse::new(ddl_color.to_fsa())
+        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
+              graphics::default_draw_state(),
+              graphics::abs_transform(ui.win_w, ui.win_h),
+              gl);
 
     // A demonstration using drop_down_list.
     DropDownList::new(75, &mut demo.ddl_colors, &mut demo.selected_idx)
@@ -355,8 +360,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         })
         .draw(ui, gl);
 
-    // Let's use the widget matrix to draw
-    // one column of two envelope_editors,
+    // Let's use the widget matrix to draw one column of two envelope_editors,
     // each with its own text_box.
     let (cols, rows) = (1, 2);
     WidgetMatrix::new(cols, rows)
@@ -407,17 +411,3 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
 }
 
-/// Draw a circle controlled by the XYPad.
-fn draw_circle(win_w: f64,
-               win_h: f64,
-               gl: &mut GlGraphics,
-               pos: Point,
-               color: Color) {
-    graphics::Ellipse::new(color.to_fsa())
-        .draw(
-            [pos[0], pos[1], 30.0, 30.0],
-            graphics::default_draw_state(),
-            graphics::abs_transform(win_w, win_h),
-            gl
-        );
-}

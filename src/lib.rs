@@ -50,7 +50,7 @@ pub mod point;
 pub mod position;
 pub mod rectangle;
 pub mod shape;
-pub mod theme;
+mod theme;
 pub mod ui;
 pub mod utils;
 pub mod widget;
