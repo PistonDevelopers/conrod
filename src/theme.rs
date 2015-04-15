@@ -85,11 +85,3 @@ impl Theme {
 
 }
 
-
-/// A trait to make it easier to generically access the UIC on different widget contexts.
-pub trait Themeable<C> {
-    /// Return a reference to the UiContext.
-    fn get_theme(&self) -> &Ui<C>;
-    /// Return a reference to the UiContext.
-    fn get_theme_mut(&mut self) -> &mut Ui<C>;
-}
