@@ -28,7 +28,6 @@ use vecmath::{
     vec2_sub,
 };
 use widget::Widget;
-use std::cmp;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -58,6 +57,38 @@ impl Selection {
         } else {
             Selection { anchor: Anchor::End, start: end, end: start }
         }
+    }
+
+    /// Ensure the selection does not go past end_limit. Returns true if the selection was
+    /// previously too large.
+    fn limit_end_to(&mut self, end_limit: usize) -> bool {
+        if self.start > end_limit {
+            self.start = end_limit;
+            self.end = end_limit;
+            return true;
+        }
+        else if self.end > end_limit {
+            self.end = end_limit;
+            return true
+        }
+        false
+    }
+
+    fn move_cursor(&mut self, by: i32) {
+        if by == 0 {
+             return;
+        }
+
+        let mut new_idx = self.start as i32 + by;
+        if new_idx < 0 {
+            new_idx = 0;
+        }
+        self.start = new_idx as Idx;
+        self.end = new_idx as Idx;
+    }
+
+    fn is_cursor(&self) -> bool {
+        self.start == self.end
     }
 }
 
@@ -101,18 +132,20 @@ static TEXT_PADDING: f64 = 5f64;
 
 /// Find the position of a character in a text box.
 fn cursor_position<C: CharacterCache>(ui: &mut Ui<C>,
-                 mut idx: usize,
+                 idx: usize,
                  mut text_x: f64,
                  font_size: FontSize,
-                 text: &str) -> (Idx, CursorX) {
-    if idx == 0 { return (0, text_x); }
-    let text_len = text.len();
-    if idx > text_len { idx = text_len; }
+                 text: &str) -> CursorX {
+    assert!(idx <= text.len());
+    if idx == 0 {
+         return text_x;
+    }
+
     for (i, ch) in text.chars().enumerate() {
         if i >= idx { break; }
         text_x += ui.get_character(font_size, ch).width();
     }
-    (idx, text_x)
+    text_x
 }
 
 /// Check if cursor is over the pad and if so, which
@@ -273,7 +306,7 @@ impl<'a, F> TextBox<'a, F> {
     fn selection_rect<C: CharacterCache>
                      (&self, ui: &mut Ui<C>, text_x: f64, start: Idx, end: Idx) ->
                      (Point, Dimensions) {
-        let (_, pos) = cursor_position(ui, start, text_x, self.font_size, &self.text);
+        let pos = cursor_position(ui, start, text_x, self.font_size, &self.text);
         let htext: String = self.text.chars().skip(start).take(end - start).collect();
         let htext_w = label::width(ui, self.font_size, &htext);
         ([pos, self.pos[1]], [htext_w, self.dim[1]])
@@ -353,8 +386,18 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
-        if let State::Capturing(selection) = new_state {
-            if selection.start != selection.end {
+        if let State::Capturing(mut selection) = new_state {
+            // Ensure the selection is still valid.
+            if selection.limit_end_to(self.text.len()) {
+                new_state = State::Capturing(selection);
+            }
+
+            // Draw the selection.
+            if selection.is_cursor() {
+                let cursor_x = cursor_position(ui, selection.start, text_x,
+                                               self.font_size, &self.text);
+                draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
+            } else {
                 let (pos, dim) = self.selection_rect(ui, text_x, selection.start, selection.end);
                 rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                                 [pos[0], pos[1] + frame_w], [dim[0], dim[1] - frame_w2],
@@ -364,30 +407,16 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
 
         ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
 
-        if let State::Capturing(selection) = new_state {
-            if selection.start == selection.end {
-            let (idx, cursor_x) = cursor_position(ui, selection.start, text_x, self.font_size, &self.text);
-            draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
-            let mut new_idx = idx;
-            let mut new_cursor_x = cursor_x;
-
+        if let State::Capturing(mut selection) = new_state {
             // Check for entered text.
-            let entered_text = ui.get_entered_text();
-            for t in entered_text.iter() {
-                let mut entered_text_width = 0.0;
-                for ch in t[..].chars() {
-                    let c = ui.get_character(self.font_size, ch);
-                    entered_text_width += c.width();
-                }
-                if new_cursor_x + entered_text_width < pad_pos[0] + pad_dim[0] - TEXT_PADDING {
-                    new_cursor_x += entered_text_width;
-                }
-                else {
-                    break;
-                }
-                let new_text = format!("{}{}{}", &self.text[..idx], t, &self.text[idx..]);
-                *self.text = new_text;
-                new_idx += t.len();
+            for text in ui.get_entered_text().iter() {
+                if text.len() == 0 { continue; }
+
+                let end: String = self.text.chars().skip(selection.end).collect();
+                self.text.truncate(selection.start);
+                self.text.push_str(&text);
+                self.text.push_str(&end);
+                selection.move_cursor(text.len() as i32);
             }
 
             // Check for control keys.
@@ -395,60 +424,46 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             for key in pressed_keys.iter() {
                 match *key {
                     Backspace => {
-                        if self.text.len() > 0
-                        && self.text.len() >= idx
-                        && idx > 0 {
-                            let rem_idx = idx - 1;
-                            new_cursor_x -= ui.get_character_w(
-                                self.font_size, self.text[..].char_at(rem_idx)
-                            );
-                            let new_text = format!("{}{}", &self.text[..rem_idx], &self.text[idx..]);
-                            *self.text = new_text;
-                            new_idx = rem_idx;
+                        if selection.is_cursor() {
+                            if selection.start > 0 {
+                                let end: String = self.text.chars().skip(selection.end).collect();
+                                self.text.truncate(selection.start - 1);
+                                self.text.push_str(&end);
+                                selection.move_cursor(-1);
+                            }
+                        } else {
+                            let end: String = self.text.chars().skip(selection.end).collect();
+                            self.text.truncate(selection.start);
+                            self.text.push_str(&end);
+                            selection.end = selection.start;
                         }
                     },
                     Left => {
-                        if idx > 0 {
-                            new_cursor_x -= ui.get_character_w(
-                                self.font_size, self.text[..].char_at(idx - 1)
-                            );
-                            new_idx -= 1;
+                        if selection.is_cursor() {
+                            selection.move_cursor(-1);
                         }
                     },
                     Right => {
-                        if self.text.len() > idx {
-                            new_cursor_x += ui.get_character_w(
-                                self.font_size, self.text[..].char_at(idx)
-                            );
-                            new_idx += 1;
+                        if selection.is_cursor() && self.text.len() > selection.end {
+                            selection.move_cursor(1);
                         }
                     },
                     Return => if self.text.len() > 0 {
                         let TextBox { // borrowck
                             ref mut maybe_callback,
-                            ref font_size,
                             ref mut text,
                             ..
                         } = *self;
                         match *maybe_callback {
-                            Some(ref mut callback) => {
-                                (*callback)(*text);
-                                new_idx = cmp::min(new_idx, text.len());
-                                let text = &*text;
-                                new_cursor_x = text.chars()
-                                                   // Add text_pos.x for padding
-                                                   .fold(text_pos[0], |acc, c| {
-                                    acc + ui.get_character_w(*font_size, c)
-                                });
-                            },
+                            Some(ref mut callback) => (*callback)(*text),
                             None => (),
                         }
                     },
                     _ => (),
                 }
             }
-            new_state = State::Capturing(Selection { start: new_idx, end: new_idx, .. selection });
-        }}
+            new_state = State::Capturing(selection);
+        }
         set_state(ui, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
     }
 }
