@@ -149,7 +149,7 @@ impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
         let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
         let color = match self.value {
             true => color,
-            false => color * Color::new(0.1, 0.1, 0.1, 1.0)
+            false => color.with_luminance(0.1),
         };
         let state = *get_state(ui, self.ui_id);
         let mouse = ui.get_mouse_state();

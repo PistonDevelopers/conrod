@@ -19,7 +19,7 @@ pub type PosY = f64;
 /// for the widget and the location at which the widget
 /// should be drawn.
 #[derive(Copy, Clone)]
-pub struct WidgetMatrix {
+pub struct Matrix {
     cols: usize,
     rows: usize,
     pos: Point,
@@ -33,7 +33,7 @@ pub struct WidgetMatrix {
 pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
 */
 
-impl WidgetMatrix {
+impl Matrix {
 
     /// The callback called for each widget in the matrix.
     /// This should be called following all builder methods.
@@ -61,17 +61,17 @@ impl WidgetMatrix {
     }
 
     /// A builder method for adding padding to the cell.
-    pub fn cell_padding(self, w: f64, h: f64) -> WidgetMatrix {
-        WidgetMatrix { cell_pad_w: w, cell_pad_h: h, ..self }
+    pub fn cell_padding(self, w: f64, h: f64) -> Matrix {
+        Matrix { cell_pad_w: w, cell_pad_h: h, ..self }
     }
 
 }
 
-impl WidgetMatrix {
+impl Matrix {
 
     /// Create a widget matrix context.
-    pub fn new(cols: usize, rows: usize) -> WidgetMatrix {
-        WidgetMatrix {
+    pub fn new(cols: usize, rows: usize) -> Matrix {
+        Matrix {
             cols: cols,
             rows: rows,
             pos: [0.0, 0.0],
@@ -82,14 +82,14 @@ impl WidgetMatrix {
     }
 }
 
-impl Positionable for WidgetMatrix {
+impl Positionable for Matrix {
     fn point(mut self, pos: Point) -> Self {
         self.pos = pos;
         self
     }
 }
 
-impl Shapeable for WidgetMatrix {
+impl Shapeable for Matrix {
     fn get_dim(&self) -> Dimensions { self.dim }
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }

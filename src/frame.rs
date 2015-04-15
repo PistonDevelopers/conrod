@@ -1,4 +1,4 @@
-use color::Color;
+use color::{rgba, Color};
 
 /// To be used as a parameter for defining the aesthetic
 /// of the widget frame.
@@ -14,6 +14,6 @@ pub trait Frameable: Sized {
     fn frame(self, width: f64) -> Self;
     fn frame_color(self, color: Color) -> Self;
     fn frame_rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
-        self.frame_color(Color([r, g, b, a]))
+        self.frame_color(rgba(r, g, b, a))
     }
 }

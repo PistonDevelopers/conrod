@@ -1,8 +1,9 @@
 use std::cmp::Ordering::{self, Less, Equal, Greater};
-use num::{ Float, ToPrimitive, FromPrimitive };
+use std::f32::consts::PI;
+use num::{ Float, NumCast, PrimInt, ToPrimitive };
 
 /// Clamp a value between a given min and max.
-pub fn clamp<T: Float + PartialOrd>(n: T, min: T, max: T) -> T {
+pub fn clamp<T: PartialOrd>(n: T, min: T, max: T) -> T {
     if n < min { min } else if n > max { max } else { n }
 }
 
@@ -18,39 +19,72 @@ pub fn compare_f64s(a: f64, b: f64) -> Ordering {
     else { Equal }
 }
 
+/// Convert turns to radians.
+pub fn turns<F: Float + NumCast>(t: F) -> F {
+    let f: F = NumCast::from(2.0 * PI).unwrap();
+    f * t
+}
+
+/// Convert degrees to radians.
+pub fn degrees<F: Float + NumCast>(d: F) -> F {
+    d * NumCast::from(PI / 180.0).unwrap()
+}
+
+/// The modulo function.
+#[inline]
+pub fn modulo<I: PrimInt>(a: I, b: I) -> I {
+    match a % b {
+        r if (r > I::zero() && b < I::zero())
+          || (r < I::zero() && b > I::zero()) => (r + b),
+        r                                         => r,
+    }
+}
+
+/// Modulo float.
+pub fn fmod(f: f32, n: i32) -> f32 {
+    let i = f.floor() as i32;
+    modulo(i, n) as f32 + f - i as f32
+}
+
+/// Return the max between to floats.
+pub fn max(a: f32, b: f32) -> f32 {
+    if a >= b { a } else { b }
+}
+
+/// Return the min between to floats.
+pub fn min(a: f32, b: f32) -> f32 {
+    if a <= b { a } else { b }
+}
+
 /// Get value percentage between max and min.
-pub fn percentage<T: Float + Copy + FromPrimitive + ToPrimitive>
-    (value: T, min: T, max: T) -> f32 {
-    let v = value.to_f32().unwrap();
-    let mn = min.to_f32().unwrap();
-    let mx = max.to_f32().unwrap();
+pub fn percentage<T: Float + NumCast>(value: T, min: T, max: T) -> f32 {
+    let v: f32 = NumCast::from(value).unwrap();
+    let mn: f32 = NumCast::from(min).unwrap();
+    let mx: f32 = NumCast::from(max).unwrap();
     (v - mn) / (mx - mn)
 }
 
 /// Adjust the value to the given percentage.
-pub fn value_from_perc<T: Float + Copy + FromPrimitive + ToPrimitive>
-    (perc: f32, min: T, max: T) -> T {
-    min + FromPrimitive::from_f32((max - min).to_f32().unwrap() * perc).unwrap()
+pub fn value_from_perc<T: Float + NumCast + ToPrimitive>(perc: f32, min: T, max: T) -> T {
+    let f: f32 = (max - min).to_f32().unwrap() * perc;
+    min + NumCast::from(f).unwrap()
 }
 
 /// Map a value from a given range to a new given range.
-pub fn map_range<X: Float + Copy + FromPrimitive + ToPrimitive,
-                 Y: Float + Copy + FromPrimitive + ToPrimitive>
+pub fn map_range<X: Float + NumCast, Y: Float + NumCast>
 (val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y {
-    let (val_f, in_min_f, in_max_f, out_min_f, out_max_f) = (
-        val.to_f64().unwrap(),
-        in_min.to_f64().unwrap(),
-        in_max.to_f64().unwrap(),
-        out_min.to_f64().unwrap(),
-        out_max.to_f64().unwrap(),
-    );
-    FromPrimitive::from_f64(
+    let val_f: f64 = NumCast::from(val).unwrap();
+    let in_min_f: f64 = NumCast::from(in_min).unwrap();
+    let in_max_f: f64 = NumCast::from(in_max).unwrap();
+    let out_min_f: f64 = NumCast::from(out_min).unwrap();
+    let out_max_f: f64 = NumCast::from(out_max).unwrap();
+    NumCast::from(
         (val_f - in_min_f) / (in_max_f - in_min_f) * (out_max_f - out_min_f) + out_min_f
     ).unwrap()
 }
 
 /// Get a suitable string from the value, its max and the pixel range.
-pub fn val_to_string<T: ToString + ToPrimitive>
+pub fn val_to_string<T: ToString + NumCast>
 (val: T, max: T, val_rng: T, pixel_range: usize) -> String {
     let mut s = val.to_string();
     let decimal = s.chars().position(|ch| ch == '.');
@@ -59,8 +93,8 @@ pub fn val_to_string<T: ToString + ToPrimitive>
         Some(idx) => {
             // Find the minimum string length by determing
             // what power of ten both the max and range are.
-            let val_rng_f = val_rng.to_f64().unwrap();
-            let max_f = max.to_f64().unwrap();
+            let val_rng_f: f64 = NumCast::from(val_rng).unwrap();
+            let max_f: f64 = NumCast::from(max).unwrap();
             let mut n: f64 = 0.0;
             let mut pow_ten = 0.0;
             while pow_ten < val_rng_f || pow_ten < max_f {
@@ -85,3 +119,4 @@ pub fn val_to_string<T: ToString + ToPrimitive>
         }
     }
 }
+

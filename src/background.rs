@@ -33,8 +33,7 @@ impl Drawable for Background {
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
-        let Color(col) = self.maybe_color
-            .unwrap_or(ui.theme.background_color);
-        graphics::clear(col, graphics);
+        let color = self.maybe_color.unwrap_or(ui.theme.background_color);
+        graphics::clear(color.to_fsa(), graphics);
     }
 }

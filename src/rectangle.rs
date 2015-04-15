@@ -50,7 +50,7 @@ fn draw_frame<B: Graphics>(
     dim: Dimensions,
     color: Color
 ) {
-    graphics::Rectangle::new(color.0)
+    graphics::Rectangle::new(color.to_fsa())
         .draw(
             [pos[0], pos[1], dim[0], dim[1]],
             draw_state,
@@ -71,12 +71,12 @@ fn draw_normal<B: Graphics>(
     frame_width: f64,
     color: Color
 ) {
-    let Color(col) = match state {
+    let color = match state {
         State::Normal => color,
         State::Highlighted => color.highlighted(),
         State::Clicked => color.clicked(),
     };
-    graphics::Rectangle::new(col)
+    graphics::Rectangle::new(color.to_fsa())
         .draw([pos[0] + frame_width,
             pos[1] + frame_width,
             dim[0] - frame_width * 2.0,

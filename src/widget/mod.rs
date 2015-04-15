@@ -1,12 +1,16 @@
 
-use button;
-use drop_down_list;
-use envelope_editor;
-use number_dialer;
-use slider;
-use text_box;
-use toggle;
-use xy_pad;
+
+pub mod button;
+pub mod drop_down_list;
+pub mod envelope_editor;
+pub mod label;
+pub mod matrix;
+pub mod number_dialer;
+pub mod slider;
+pub mod text_box;
+pub mod toggle;
+pub mod xy_pad;
+
 
 /// Represents the placement of the widget including
 /// x / y position, width and height.
