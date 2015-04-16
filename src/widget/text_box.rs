@@ -14,7 +14,7 @@ use point::Point;
 use position::Positionable;
 use rectangle;
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use vecmath::{vec2_add, vec2_sub};
 use widget::Kind;
 
@@ -257,9 +257,10 @@ fn draw_cursor<B: Graphics>(
         );
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A widget for displaying and mutating a given one-line text `String`. It's callback is
+/// triggered upon pressing of the `Enter`/`Return` key.
 pub struct TextBox<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     text: &'a mut String,
     font_size: u32,
     pos: Point,
@@ -271,14 +272,18 @@ pub struct TextBox<'a, F> {
 }
 
 impl<'a, F> TextBox<'a, F> {
+
+    /// Set the font size of the text.
     pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
         TextBox { font_size: font_size, ..self }
     }
+
 }
 
 impl<'a, F> TextBox<'a, F> {
-    /// Initialise a TextBoxContext.
-    pub fn new(ui_id: UIID, text: &'a mut String) -> TextBox<'a, F> {
+
+    /// Construct a TextBox widget.
+    pub fn new(ui_id: UiId, text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
             ui_id: ui_id,
             text: text,
@@ -300,6 +305,7 @@ impl<'a, F> TextBox<'a, F> {
         let htext_w = label::width(ui, self.font_size, &htext);
         ([pos, self.pos[1]], [htext_w, self.dim[1]])
     }
+
 }
 
 impl<'a, F> Colorable for TextBox<'a, F> {

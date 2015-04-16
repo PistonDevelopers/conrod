@@ -11,7 +11,7 @@ use point::Point;
 use position::Positionable;
 use rectangle;
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use vecmath::vec2_add;
 use widget::Kind;
 
@@ -126,9 +126,10 @@ fn get_new_state(is_over_idx: Option<Idx>,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// Displays a given `Vec<String>` as a selectable drop down menu. It's callback is triggered upon
+/// selection of a list item.
 pub struct DropDownList<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
     pos: Point,
@@ -143,7 +144,9 @@ pub struct DropDownList<'a, F> {
 }
 
 impl<'a, F> DropDownList<'a, F> {
-    pub fn new(ui_id: UIID,
+
+    /// Construct a new DropDownList.
+    pub fn new(ui_id: UiId,
                strings: &'a mut Vec<String>,
                selected: &'a mut Option<Idx>) -> DropDownList<'a, F> {
         DropDownList {
@@ -161,6 +164,7 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_label_font_size: None,
         }
     }
+
 }
 
 impl<'a, F> Colorable for DropDownList<'a, F> {

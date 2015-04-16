@@ -7,17 +7,26 @@ use std::fs::File;
 use std::path::Path;
 use std::str;
 
-/// A data holder for style-related data.
+/// A serializable collection of widget styling defaults.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
+    /// A name for the theme used for identification.
     pub name: String,
+    /// A default background for the theme.
     pub background_color: Color,
+    /// A default color for widget shapes.
     pub shape_color: Color,
+    /// A default color for widget frames.
     pub frame_color: Color,
+    /// A default width for widget frames.
     pub frame_width: f64,
+    /// A default color for widget labels.
     pub label_color: Color,
+    /// A default "large" font size.
     pub font_size_large: u32,
+    /// A default "medium" font size.
     pub font_size_medium: u32,
+    /// A default "small" font size.
     pub font_size_small: u32,
     //TODO: Add unique theme-ing for each widget.
     //i.e. maybe_slider: Option<SliderTheme>, etc
@@ -44,20 +53,24 @@ impl Theme {
     pub fn load(path: &str) -> Result<Theme, String> {
         let mut file = match File::open(&Path::new(path)) {
             Ok(file) => file,
-            Err(e) => return Err(format!("Failed to open file for Theme: {}", Error::description(&e))),
+            Err(e) => return Err(format!("Failed to open file for Theme: {}",
+                                         Error::description(&e))),
         };
         let mut contents = Vec::new();
         if let Err(e) = ::std::io::Read::read_to_end(&mut file, &mut contents) {
-            return Err(format!("Failed to load Theme correctly: {}", Error::description(&e)));
+            return Err(format!("Failed to load Theme correctly: {}",
+                               Error::description(&e)));
         }
         let json_object = match json::Json::from_str(str::from_utf8(&contents[..]).unwrap()) {
             Ok(json_object) => json_object,
-            Err(e) => return Err(format!("Failed to construct json_object from str: {}", Error::description(&e))),
+            Err(e) => return Err(format!("Failed to construct json_object from str: {}",
+                                         Error::description(&e))),
         };
         let mut decoder = json::Decoder::new(json_object);
         let theme = match Decodable::decode(&mut decoder) {
             Ok(theme) => Ok(theme),
-            Err(e) => Err(format!("Failed to construct Theme from json decoder: {}", Error::description(&e))),
+            Err(e) => Err(format!("Failed to construct Theme from json decoder: {}",
+                                  Error::description(&e))),
         };
         theme
     }
@@ -70,7 +83,8 @@ impl Theme {
         };
         let mut file = match File::create(&Path::new(path)) {
             Ok(file) => file,
-            Err(e) => return Err(format!("Failed to create a File at the given path: {}", Error::description(&e)))
+            Err(e) => return Err(format!("Failed to create a File at the given path: {}",
+                                         Error::description(&e)))
         };
         match ::std::io::Write::write_all(&mut file, json_string.as_bytes()) {
             Ok(()) => Ok(()),

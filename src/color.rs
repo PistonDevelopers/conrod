@@ -17,7 +17,9 @@ use utils::{clampf32, degrees, fmod, min, max, turns};
 /// Color supporting RGB and HSL variants.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum Color {
+    /// Red, Green, Blue, Alpha - All values' scales represented between 0.0 and 1.0.
     Rgba(f32, f32, f32, f32),
+    /// Hue, Saturation, Lightness, Alpha - all valuess scales represented between 0.0 and 1.0.
     Hsla(f32, f32, f32, f32),
 }
 /// Regional spelling alias.
@@ -319,21 +321,23 @@ pub fn hsl_to_rgb(hue: f32, saturation: f32, lightness: f32) -> (f32, f32, f32) 
 /// Linear or Radial Gradient.
 #[derive(Clone, Debug)]
 pub enum Gradient {
+    /// Takes a start and end point and then a series of color stops that indicate how to
+    /// interpolate between the start and end points.
     Linear((f64, f64), (f64, f64), Vec<(f64, Color)>),
+    /// First takes a start point and inner radius. Then takes an end point and outer radius.
+    /// It then takes a series of color stops that indicate how to interpolate between the
+    /// inner and outer circles.
     Radial((f64, f64), f64, (f64, f64), f64, Vec<(f64, Color)>),
 }
 
 
-/// Create a linear gradient. Takes a start and end point and then a series of color stops that
-/// indicate how to interpolate between the start and end points.
+/// Create a linear gradient.
 pub fn linear(start: (f64, f64), end: (f64, f64), colors: Vec<(f64, Color)>) -> Gradient {
     Gradient::Linear(start, end, colors)
 }
 
 
-/// Create a radial gradient. First takes a start point and inner radius. Then takes an end point
-/// and outer radius. It then takes a series of color stops that indicate how to interpolate
-/// between the inner and outer circles.
+/// Create a radial gradient. 
 pub fn radial(start: (f64, f64), start_r: f64,
               end: (f64, f64), end_r: f64,
               colors: Vec<(f64, Color)>) -> Gradient {
@@ -348,47 +352,79 @@ pub fn radial(start: (f64, f64), start_r: f64,
 /// aesthetically reasonable defaults for colors. Each color also comes with a light and dark
 /// version.
 
+/// Scarlet Red - Light - #EF2929
 pub fn light_red()      -> Color { rgb_bytes(239 , 41  , 41 ) }
+/// Scarlet Red - Regular - #CC0000
 pub fn red()            -> Color { rgb_bytes(204 , 0   , 0  ) }
+/// Scarlet Red - Dark - #A30000
 pub fn dark_red()       -> Color { rgb_bytes(164 , 0   , 0  ) }
 
+/// Orange - Light - #FCAF3E
 pub fn light_orange()   -> Color { rgb_bytes(252 , 175 , 62 ) }
+/// Orange - Regular - #F57900
 pub fn orange()         -> Color { rgb_bytes(245 , 121 , 0  ) }
+/// Orange - Dark - #CE5C00
 pub fn dark_orange()    -> Color { rgb_bytes(206 , 92  , 0  ) }
 
+/// Butter - Light - #FCE94F
 pub fn light_yellow()   -> Color { rgb_bytes(255 , 233 , 79 ) }
+/// Butter - Regular - #EDD400
 pub fn yellow()         -> Color { rgb_bytes(237 , 212 , 0  ) }
+/// Butter - Dark - #C4A000
 pub fn dark_yellow()    -> Color { rgb_bytes(196 , 160 , 0  ) }
 
+/// Chameleon - Light - #8AE234
 pub fn light_green()    -> Color { rgb_bytes(138 , 226 , 52 ) }
+/// Chameleon - Regular - #73D216
 pub fn green()          -> Color { rgb_bytes(115 , 210 , 22 ) }
+/// Chameleon - Dark - #4E9A06
 pub fn dark_green()     -> Color { rgb_bytes(78  , 154 , 6  ) }
 
+/// Sky Blue - Light - #729FCF
 pub fn light_blue()     -> Color { rgb_bytes(114 , 159 , 207) }
+/// Sky Blue - Regular - #3465A4
 pub fn blue()           -> Color { rgb_bytes(52  , 101 , 164) }
+/// Sky Blue - Dark - #204A87
 pub fn dark_blue()      -> Color { rgb_bytes(32  , 74  , 135) }
 
+/// Plum - Light - #AD7FA8
 pub fn light_purple()   -> Color { rgb_bytes(173 , 127 , 168) }
+/// Plum - Regular - #75507B
 pub fn purple()         -> Color { rgb_bytes(117 , 80  , 123) }
+/// Plum - Dark - #5C3566
 pub fn dark_purple()    -> Color { rgb_bytes(92  , 53  , 102) }
 
+/// Chocolate - Light - #E9B96E
 pub fn light_brown()    -> Color { rgb_bytes(233 , 185 , 110) }
+/// Chocolate - Regular - #C17D11
 pub fn brown()          -> Color { rgb_bytes(193 , 125 , 17 ) }
+/// Chocolate - Dark - #8F5902
 pub fn dark_brown()     -> Color { rgb_bytes(143 , 89  , 2  ) }
 
+/// Straight Black.
 pub fn black()          -> Color { rgb_bytes(0   , 0   , 0  ) }
+/// Straight White.
 pub fn white()          -> Color { rgb_bytes(255 , 255 , 255) }
 
+/// Alluminium - Light
 pub fn light_gray()     -> Color { rgb_bytes(238 , 238 , 236) }
+/// Alluminium - Regular
 pub fn gray()           -> Color { rgb_bytes(211 , 215 , 207) }
+/// Alluminium - Dark
 pub fn dark_gray()      -> Color { rgb_bytes(186 , 189 , 182) }
 
+/// Aluminium - Light - #EEEEEC
 pub fn light_grey()     -> Color { rgb_bytes(238 , 238 , 236) }
+/// Aluminium - Regular - #D3D7CF
 pub fn grey()           -> Color { rgb_bytes(211 , 215 , 207) }
+/// Aluminium - Dark - #BABDB6
 pub fn dark_grey()      -> Color { rgb_bytes(186 , 189 , 182) }
 
+/// Charcoal - Light - #888A85
 pub fn light_charcoal() -> Color { rgb_bytes(136 , 138 , 133) }
+/// Charcoal - Regular - #555753
 pub fn charcoal()       -> Color { rgb_bytes(85  , 87  , 83 ) }
+/// Charcoal - Dark - #2E3436
 pub fn dark_charcoal()  -> Color { rgb_bytes(46  , 52  , 54 ) }
 
 
@@ -401,25 +437,32 @@ impl ::std::fmt::Debug for Color {
 }
 
 
-/// A trait used for "colorable" widget context types.
+/// Widgets that can be colored.
 pub trait Colorable: Sized {
+
+    /// Set the color of the widget.
     fn color(self, color: Color) -> Self;
-    /// A method used for passing color as rgba.
+
+    /// Set the color of the widget from rgba values.
     fn rgba(self, r: f32, g: f32, b: f32, a: f32) -> Self {
         self.color(rgba(r, g, b, a))
     }
-    /// A method used for passing color as rgb.
+
+    /// Set the color of the widget from rgb values.
     fn rgb(self, r: f32, g: f32, b: f32) -> Self {
         self.color(rgb(r, g, b))
     }
-    /// A method used for passing color as hsla.
+
+    /// Set the color of the widget from hsla values.
     fn hsla(self, h: f32, s: f32, l: f32, a: f32) -> Self {
         self.color(hsla(h, s, l, a))
     }
-    /// A method used for passing color as hsl.
+
+    /// Set the color of the widget from hsl values.
     fn hsl(self, h: f32, s: f32, l: f32) -> Self {
         self.color(hsl(h, s, l))
     }
+
 }
 
 

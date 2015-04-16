@@ -12,7 +12,7 @@ use point::Point;
 use position::Positionable;
 use rectangle::{self, Corner};
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use utils::{clamp, map_range, val_to_string};
 use vecmath::{vec2_add, vec2_sub};
 use widget::Kind;
@@ -82,9 +82,11 @@ fn draw_crosshair<B: Graphics>(
 }
 
 
-/// A context on which the builder pattern can be implemented.
+/// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
+/// Its callback is triggered when the value is updated or if the mouse button is released while
+/// the cursor is above the rectangle.
 pub struct XYPad<'a, X, Y, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     line_width: f64,
@@ -101,19 +103,24 @@ pub struct XYPad<'a, X, Y, F> {
 }
 
 impl <'a, X, Y, F> XYPad<'a, X, Y, F> {
+
+    /// Set the width of the XYPad's crosshair lines.
     #[inline]
     pub fn line_width(self, width: f64) -> XYPad<'a, X, Y, F> {
         XYPad { line_width: width, ..self }
     }
+
+    /// Set the font size for the displayed crosshair value.
     #[inline]
     pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y, F> {
         XYPad { font_size: size, ..self }
     }
+
 }
 
 impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     /// An xy_pad builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID,
+    pub fn new(ui_id: UiId,
               x_val: X, min_x: X, max_x: X,
               y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
         XYPad {

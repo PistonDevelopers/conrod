@@ -11,7 +11,7 @@ use point::Point;
 use position::Positionable;
 use rectangle;
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use widget::Kind;
 
 /// Represents the state of the Toggle widget.
@@ -50,9 +50,11 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A pressable widget for toggling the state of a bool. Like the button widget, it's callback is
+/// triggered upon release and will return the new bool state. Note that the toggle will not
+/// mutate the bool for you, you should do this yourself within the callback closure.
 pub struct Toggle<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     pos: Point,
     dim: Dimensions,
     maybe_callback: Option<F>,
@@ -68,7 +70,7 @@ pub struct Toggle<'a, F> {
 impl<'a, F> Toggle<'a, F> {
 
     /// Create a toggle context to be built upon.
-    pub fn new(ui_id: UIID, value: bool) -> Toggle<'a, F> {
+    pub fn new(ui_id: UiId, value: bool) -> Toggle<'a, F> {
         Toggle {
             ui_id: ui_id,
             pos: [0.0, 0.0],

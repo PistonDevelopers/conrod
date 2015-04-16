@@ -159,7 +159,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
     if demo.show_button {
 
-        // Button widget example button(UIID).
+        // Button widget example button(UiId).
         Button::new(0)
             .dimensions(90.0, 60.0)
             .position(50.0, 115.0)
@@ -183,7 +183,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             text
         };
 
-        // Slider widget example slider(UIID, value, min, max).
+        // Slider widget example slider(UiId, value, min, max).
         Slider::new(1, pad as f32, 10.0, 910.0)
             .dimensions(200.0, 50.0)
             .position(50.0, 115.0)
@@ -199,7 +199,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
     // Clone the label toggle to be drawn.
     let label = demo.toggle_label.clone();
 
-    // Toggle widget example toggle(UIID, value).
+    // Toggle widget example toggle(UiId, value).
     Toggle::new(2, demo.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0, ui)
@@ -238,7 +238,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         let mut label = value.to_string();
         if label.len() > 4 { label.truncate(4); }
 
-        // Slider widget examples. slider(UIID, value, min, max)
+        // Slider widget examples. slider(UiId, value, min, max)
         Slider::new(3 + i as u64, value, 0.0, 1.0)
             .dimensions(40.0, demo.v_slider_height)
             .position(50.0 + i as f64 * 60.0, 300.0)
@@ -255,7 +255,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
 
     }
 
-    // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(UiId, value, min, max, precision)
     NumberDialer::new(6, demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
         .position(300.0, 115.0)
@@ -266,7 +266,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         .callback(|new_height| demo.v_slider_height = new_height)
         .draw(ui, gl);
 
-    // Number Dialer widget example. number_dialer(UIID, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(UiId, value, min, max, precision)
     NumberDialer::new(7, demo.frame_width, 0.0, 15.0, 2u8)
         .dimensions(260.0, 60.0)
         .down(20.0, ui)
@@ -342,7 +342,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         .draw(ui, gl);
 
     // Draw an xy_pad.
-    XYPad::new(76, // UIID
+    XYPad::new(76, // UiId
                demo.circle_pos[0], 745.0, 595.0, // x range.
                demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
@@ -367,7 +367,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
         .position(810.0, 115.0)
         .dimensions(320.0, 425.0)
         .each_widget(|num, _col, _row, pos, dim| { // This is called for every widget.
-            use conrod::draw::Drawable;
+            use conrod::Drawable;
 
             let &mut (ref mut env, ref mut text) = &mut demo.envelopes[num];
             let text_box_height = dim[1] / 4.0;
@@ -379,7 +379,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
             let env_uiid = tbox_uiid + 1u64;
             let env_skew_y = match num { 0 => 3.0, _ => 1.0 };
 
-            // Draw a TextBox. text_box(UIID, &mut String, FontSize)
+            // Draw a TextBox. text_box(UiId, &mut String, FontSize)
             TextBox::new(tbox_uiid, text)
                 .font_size(20)
                 .dimensions(dim[0], text_box_height - 10.0)
@@ -391,7 +391,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics,
                 .draw(ui, gl);
 
             // Draw an EnvelopeEditor.
-            EnvelopeEditor::new(env_uiid, // UIID
+            EnvelopeEditor::new(env_uiid, // UiId
                                 env, // vector of `E: EnvelopePoint`s.
                                 0.0, 1.0, 0.0, env_y_max) // x_min, x_max, y_min, y_max.
                 .dimensions(dim[0], env_editor_height - 10.0)

@@ -12,7 +12,7 @@ use point::Point;
 use position::Positionable;
 use rectangle;
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use utils::{clamp, percentage, value_from_perc};
 use vecmath::vec2_add;
 use widget::Kind;
@@ -53,9 +53,12 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// Linear value selection. If the slider's width is greater than it's height, it will
+/// automatically become a horizontal slider, otherwise it will be a vertical slider. Its callback
+/// is triggered if the value is updated or if the mouse button is released while the cursor is
+/// above the rectangle.
 pub struct Slider<'a, T, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     value: T,
     min: T,
     max: T,
@@ -72,7 +75,7 @@ pub struct Slider<'a, T, F> {
 
 impl<'a, T, F> Slider<'a, T, F> {
     /// A button builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID, value: T, min: T, max: T) -> Slider<'a, T, F> {
+    pub fn new(ui_id: UiId, value: T, min: T, max: T) -> Slider<'a, T, F> {
         Slider {
             ui_id: ui_id,
             value: value,

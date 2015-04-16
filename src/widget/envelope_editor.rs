@@ -14,15 +14,13 @@ use position::Positionable;
 use rectangle::{self, Corner};
 use shape::Shapeable;
 use std::cmp::Ordering;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use utils::{clamp, map_range, percentage, val_to_string};
 use vecmath::{vec2_add, vec2_sub};
 use widget::Kind;
 
-/// Represents the specific elements that the
-/// EnvelopeEditor is made up of. This is used to
-/// specify which element is Highlighted or Clicked
-/// when storing State.
+/// Represents the specific elements that the EnvelopeEditor is made up of. This is used to
+/// specify which element is Highlighted or Clicked when storing State.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Element {
     Rect,
@@ -63,10 +61,12 @@ impl State {
 
 widget_fns!(EnvelopeEditor, State, Kind::EnvelopeEditor(State::Normal));
 
-/// `EnvPoint` MUST be implemented for any type that is
-/// contained within the Envelope.
+/// `EnvPoint` must be implemented for any type that is used as a 2D point within the
+/// EnvelopeEditor.
 pub trait EnvelopePoint {
+    /// A value on the X-axis of the envelope.
     type X: Float + ToPrimitive + FromPrimitive + ToString;
+    /// A value on the Y-axis of the envelope.
     type Y: Float + ToPrimitive + FromPrimitive + ToString;
     /// Return the X value.
     fn get_x(&self) -> <Self as EnvelopePoint>::X;
@@ -99,9 +99,8 @@ impl EnvelopePoint for Point {
     fn new(x: Scalar, y: Scalar) -> Point { [x, y] }
 }
 
-/// Determine whether or not the cursor is over the EnvelopeEditor.
-/// If it is, return the element under the cursor and the closest
-/// EnvPoint to the cursor.
+/// Determine whether or not the cursor is over the EnvelopeEditor. If it is, return the element
+/// under the cursor and the closest EnvPoint to the cursor.
 fn is_over_and_closest(pos: Point,
                        mouse_pos: Point,
                        dim: Dimensions,
@@ -138,8 +137,7 @@ fn is_over_and_closest(pos: Point,
     }
 }
 
-/// Determine and return the new state from the previous
-/// state and the mouse position.
+/// Determine and return the new state from the previous state and the mouse position.
 fn get_new_state(is_over_elem: Option<Element>,
                  prev: State,
                  mouse: Mouse) -> State {
@@ -155,14 +153,17 @@ fn get_new_state(is_over_elem: Option<Element>,
         (Some(_), Clicked(p_elem, m_button), Up, Down) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
+                CurvePoint(idx, _) =>
+                    Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), m_button),
                 _ => Clicked(p_elem, m_button),
             }
         },
         (None, Clicked(p_elem, m_button), Down, Up) => {
             match (p_elem, m_button) {
-                (EnvPoint(idx, _), Left) => Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
-                (CurvePoint(idx, _), Left) => Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
+                (EnvPoint(idx, _), Left) =>
+                    Clicked(EnvPoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
+                (CurvePoint(idx, _), Left) =>
+                    Clicked(CurvePoint(idx, (mouse.pos[0], mouse.pos[1])), Left),
                 _ => Clicked(p_elem, Left),
             }
         },
@@ -195,13 +196,15 @@ fn draw_circle<B: Graphics>(
         );
 }
 
-/// A context on which the builder pattern can be implemented.
+/// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
+/// Useful for things such as oscillator/automation envelopes or any value series represented
+/// periodically.
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
-    ui_id: UIID,
+    ui_id: UiId,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
-    min_x: <E as EnvelopePoint>::X, max_x: <E as EnvelopePoint>::X,
-    min_y: <E as EnvelopePoint>::Y, max_y: <E as EnvelopePoint>::Y,
+    min_x: E::X, max_x: E::X,
+    min_y: E::Y, max_y: E::Y,
     pt_radius: f64,
     line_width: f64,
     font_size: FontSize,
@@ -217,32 +220,39 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
 }
 
 impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
+
+    /// Set the radius of the envelope point circle.
     #[inline]
     pub fn point_radius(self, radius: f64) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { pt_radius: radius, ..self }
     }
+
+    /// Set the width of the envelope lines.
     #[inline]
     pub fn line_width(self, width: f64) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { line_width: width, ..self }
     }
+
+    /// Set the font size for the displayed values.
     #[inline]
     pub fn value_font_size(self, size: FontSize) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { font_size: size, ..self }
     }
+
+    /// Set the value skewing for the envelope's y-axis. This is useful for displaying exponential
+    /// ranges such as frequency.
     #[inline]
     pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor { skew_y_range: skew, ..self }
     }
+
 }
 
 impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
-    /// An envelope editor builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID,
-               env: &'a mut Vec<E>,
-               min_x: <E as EnvelopePoint>::X,
-               max_x: <E as EnvelopePoint>::X,
-               min_y: <E as EnvelopePoint>::Y,
-               max_y: <E as EnvelopePoint>::Y) -> EnvelopeEditor<'a, E, F> {
+
+    /// Construct an EnvelopeEditor widget.
+    pub fn new(ui_id: UiId, env: &'a mut Vec<E>,
+               min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y) -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor {
             ui_id: ui_id,
             env: env,
@@ -263,6 +273,7 @@ impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
             maybe_label_font_size: None,
         }
     }
+
 }
 
 impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
@@ -340,8 +351,8 @@ impl<'a, E, F> Shapeable for EnvelopeEditor<'a, E, F>
 impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint,
-        <E as EnvelopePoint>::X: Float,
-        <E as EnvelopePoint>::Y: Float,
+        E::X: Float,
+        E::Y: Float,
         F: FnMut(&mut Vec<E>, usize) + 'a
 {
     #[inline]
@@ -509,7 +520,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         let get_new_value = |perc_envelope: &Vec<(f32, f32, f32)>,
                              idx: usize,
                              mouse_x: f64,
-                             mouse_y: f64| -> (<E as EnvelopePoint>::X, <E as EnvelopePoint>::Y) {
+                             mouse_y: f64| -> (E::X, E::Y) {
             let mouse_x_on_pad = mouse_x - pad_pos[0];
             let mouse_y_on_pad = mouse_y - pad_pos[1];
             let mouse_x_clamped = clamp(mouse_x_on_pad, 0f64, pad_dim[0]);

@@ -1,3 +1,9 @@
+//! 
+//! # Conrod
+//!
+//! An easy-to-use, immediate-mode, 2D GUI library featuring a range of useful widgets.
+//!
+
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
@@ -34,24 +40,24 @@ pub use point::Point;
 pub use position::Positionable;
 pub use shape::Shapeable;
 pub use theme::Theme;
-pub use ui::Ui;
+pub use ui::{Ui, UiId};
 
 #[macro_use]
-pub mod macros;
+mod macros;
 
-pub mod background;
-pub mod callback;
+mod background;
+mod callback;
 pub mod color;
-pub mod dimensions;
-pub mod draw;
-pub mod frame;
-pub mod label;
-pub mod mouse;
-pub mod point;
-pub mod position;
-pub mod rectangle;
-pub mod shape;
+mod dimensions;
+mod draw;
+mod frame;
+mod label;
+mod mouse;
+mod point;
+mod position;
+mod rectangle;
+mod shape;
 mod theme;
-pub mod ui;
-pub mod utils;
-pub mod widget;
+mod ui;
+mod utils;
+mod widget;

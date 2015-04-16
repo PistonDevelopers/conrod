@@ -15,7 +15,7 @@ use shape::Shapeable;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use utils::{clamp, compare_f64s};
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use vecmath::vec2_add;
 use widget::Kind;
 
@@ -263,9 +263,10 @@ fn draw_value_string<B, C: CharacterCache>(
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A widget for precision control over any digit within a value. The callback is triggered when
+/// the value is updated or if the mouse button is released while the cursor is above the widget.
 pub struct NumberDialer<'a, T, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     value: T,
     min: T,
     max: T,
@@ -283,7 +284,7 @@ pub struct NumberDialer<'a, T, F> {
 
 impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     /// A number_dialer builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
+    pub fn new(ui_id: UiId, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
             ui_id: ui_id,
             value: clamp(value, min, max),

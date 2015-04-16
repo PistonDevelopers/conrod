@@ -13,11 +13,9 @@ pub type Height = f64;
 pub type PosX = f64;
 pub type PosY = f64;
 
-/// Draw a matrix of any rectangular widget type, where the
-/// matrix will provide a callback with the widget number,
-/// it's `rows` and `cols` position, the width and height
-/// for the widget and the location at which the widget
-/// should be drawn.
+/// Draw a matrix of any rectangular widget type, where the matrix will provide a function with
+/// the widget number, it's `rows` and `cols` position, the width and height for the widget and
+/// the location at which the widget should be drawn.
 #[derive(Copy, Clone)]
 pub struct Matrix {
     cols: usize,
@@ -35,8 +33,20 @@ pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, Po
 
 impl Matrix {
 
-    /// The callback called for each widget in the matrix.
-    /// This should be called following all builder methods.
+    /// Create a widget matrix context.
+    pub fn new(cols: usize, rows: usize) -> Matrix {
+        Matrix {
+            cols: cols,
+            rows: rows,
+            pos: [0.0, 0.0],
+            dim: [256.0, 256.0],
+            cell_pad_w: 0.0,
+            cell_pad_h: 0.0,
+        }
+    }
+
+    /// The callback called for each widget in the matrix. This should be called following all
+    /// builder methods.
     pub fn each_widget<F>(&mut self, mut callback: F)
         where
             F: FnMut(WidgetNum, ColNum, RowNum, Point, Dimensions)
@@ -65,21 +75,6 @@ impl Matrix {
         Matrix { cell_pad_w: w, cell_pad_h: h, ..self }
     }
 
-}
-
-impl Matrix {
-
-    /// Create a widget matrix context.
-    pub fn new(cols: usize, rows: usize) -> Matrix {
-        Matrix {
-            cols: cols,
-            rows: rows,
-            pos: [0.0, 0.0],
-            dim: [256.0, 256.0],
-            cell_pad_w: 0.0,
-            cell_pad_h: 0.0,
-        }
-    }
 }
 
 impl Positionable for Matrix {

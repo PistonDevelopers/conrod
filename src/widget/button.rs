@@ -11,7 +11,7 @@ use point::Point;
 use position::Positionable;
 use rectangle;
 use shape::Shapeable;
-use ui::{UIID, Ui};
+use ui::{UiId, Ui};
 use widget::Kind;
 
 /// Represents the state of the Button widget.
@@ -50,9 +50,9 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A pressable button widget whose callback is triggered upon release.
 pub struct Button<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     pos: Point,
     dim: Dimensions,
     maybe_color: Option<Color>,
@@ -67,7 +67,7 @@ pub struct Button<'a, F> {
 impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
-    pub fn new(ui_id: UIID) -> Button<'a, F> {
+    pub fn new(ui_id: UiId) -> Button<'a, F> {
         Button {
             ui_id: ui_id,
             pos: [0.0, 0.0],
