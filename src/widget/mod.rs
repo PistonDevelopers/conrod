@@ -1,4 +1,5 @@
 
+use elmesque::Element;
 
 pub mod button;
 pub mod drop_down_list;
@@ -11,6 +12,67 @@ pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
 
+/// Represents some Widget type.
+#[derive(Clone)]
+pub struct Widget {
+    pub kind: Kind,
+    pub placing: Placing,
+    pub maybe_element: Option<Element>,
+}
+
+impl Widget {
+
+    /// Construct an empty Widget for a vacant widget position within the Ui.
+    pub fn empty() -> Widget {
+        Widget {
+            kind: Kind::NoWidget,
+            placing: Placing::NoPlace,
+            maybe_element: None,
+        }
+    }
+
+    /// Construct a Widget from a given kind.
+    pub fn new(kind: Kind) -> Widget {
+        Widget {
+            kind: kind,
+            placing: Placing::NoPlace,
+            maybe_element: None,
+        }
+    }
+
+}
+
+/// Algebraic widget type for storing in ui_context
+/// and for ease of state-matching.
+#[derive(Copy, Clone)]
+pub enum Kind {
+    NoWidget,
+    Button(button::State),
+    DropDownList(drop_down_list::State),
+    EnvelopeEditor(envelope_editor::State),
+    NumberDialer(number_dialer::State),
+    Slider(slider::State),
+    TextBox(text_box::State),
+    Toggle(toggle::State),
+    XYPad(xy_pad::State),
+}
+
+impl Kind {
+    pub fn matches(&self, other: &Kind) -> bool {
+        match (self, other) {
+            (&Kind::NoWidget, &Kind::NoWidget) => true,
+            (&Kind::Button(_), &Kind::Button(_)) => true,
+            (&Kind::DropDownList(_), &Kind::DropDownList(_)) => true,
+            (&Kind::EnvelopeEditor(_), &Kind::EnvelopeEditor(_)) => true,
+            (&Kind::NumberDialer(_), &Kind::NumberDialer(_)) => true,
+            (&Kind::Slider(_), &Kind::Slider(_)) => true,
+            (&Kind::TextBox(_), &Kind::TextBox(_)) => true,
+            (&Kind::Toggle(_), &Kind::Toggle(_)) => true,
+            (&Kind::XYPad(_), &Kind::XYPad(_)) => true,
+            _ => false
+        }
+    }
+}
 
 /// Represents the placement of the widget including
 /// x / y position, width and height.
@@ -47,34 +109,4 @@ impl Placing {
     }
 }
 
-/// Algebraic widget type for storing in ui_context
-/// and for ease of state-matching.
-#[derive(Copy, Clone)]
-pub enum Widget {
-    NoWidget,
-    Button(button::State),
-    DropDownList(drop_down_list::State),
-    EnvelopeEditor(envelope_editor::State),
-    NumberDialer(number_dialer::State),
-    Slider(slider::State),
-    TextBox(text_box::State),
-    Toggle(toggle::State),
-    XYPad(xy_pad::State),
-}
 
-impl Widget {
-    pub fn matches(&self, other: &Widget) -> bool {
-        match (self, other) {
-            (&Widget::NoWidget, &Widget::NoWidget) => true,
-            (&Widget::Button(_), &Widget::Button(_)) => true,
-            (&Widget::DropDownList(_), &Widget::DropDownList(_)) => true,
-            (&Widget::EnvelopeEditor(_), &Widget::EnvelopeEditor(_)) => true,
-            (&Widget::NumberDialer(_), &Widget::NumberDialer(_)) => true,
-            (&Widget::Slider(_), &Widget::Slider(_)) => true,
-            (&Widget::TextBox(_), &Widget::TextBox(_)) => true,
-            (&Widget::Toggle(_), &Widget::Toggle(_)) => true,
-            (&Widget::XYPad(_), &Widget::XYPad(_)) => true,
-            _ => false
-        }
-    }
-}

@@ -10,7 +10,6 @@ use std::fs::File;
 use std::path::Path;
 use std::str;
 use std::borrow::ToOwned;
-use ui::Ui;
 
 /// A data holder for style-related data.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]

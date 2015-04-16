@@ -18,7 +18,7 @@ use utils::{
     percentage,
     value_from_perc,
 };
-use widget::Widget;
+use widget::Kind;
 use vecmath::vec2_add;
 
 /// Represents the state of the Button widget.
@@ -40,7 +40,7 @@ impl State {
     }
 }
 
-widget_fns!(Slider, State, Widget::Slider(State::Normal));
+widget_fns!(Slider, State, Kind::Slider(State::Normal));
 
 /// Check the current state of the slider.
 fn get_new_state(is_over: bool,
@@ -246,7 +246,7 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
             ui.draw_text(graphics, l_pos, size, text_color, &text);
         }
 
-        set_state(ui, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::Slider(new_state), self.pos, self.dim);
 
     }
 }

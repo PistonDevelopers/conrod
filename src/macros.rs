@@ -4,13 +4,13 @@ macro_rules! widget_fns(
     ($widget:ident, $widget_state:ident, $default:expr) => (
 
         /// Default Widget state.
-        fn default() -> ::widget::Widget { $default }
+        fn default() -> ::widget::Kind { $default }
 
         /// Get a reference to the widget associated with the given UIID.
         fn get_widget<C>(
             ui: &mut ::ui::Ui<C>,
             ui_id: ::ui::UIID
-        ) -> &mut ::widget::Widget {
+        ) -> &mut ::widget::Kind {
             ui.get_widget(ui_id, default())
         }
 
@@ -20,8 +20,8 @@ macro_rules! widget_fns(
             ui_id: ::ui::UIID
         ) -> &$widget_state {
             match *get_widget(ui, ui_id) {
-                ::widget::Widget::$widget(ref state) => state,
-                _ => panic!("The Widget variant returned by uiontext is different to that which \
+                ::widget::Kind::$widget(ref state) => state,
+                _ => panic!("The Kind variant returned by Ui is different to that which \
                            was requested (Check that there are no UIID conflicts)."),
             }
         }
@@ -30,14 +30,14 @@ macro_rules! widget_fns(
         fn set_state<C>(
             ui: &mut ::ui::Ui<C>,
             ui_id: ::ui::UIID,
-            new_state: ::widget::Widget,
+            new_state: ::widget::Kind,
             pos: ::point::Point,
             dim: ::dimensions::Dimensions
         ) {
             match *get_widget(ui, ui_id) {
                 ref mut state => {
                     if !state.matches(&new_state) {
-                        panic!("The Widget variant returned by Ui is different to that which \
+                        panic!("The Kind variant returned by Ui is different to that which \
                                    was requested (Check that there are no UIID conflicts).");
                     }
                     *state = new_state;

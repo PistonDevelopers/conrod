@@ -11,7 +11,7 @@ use rectangle;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use ui::{ UIID, Ui };
-use widget::Widget;
+use widget::Kind;
 
 /// Represents the state of the Toggle widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -32,7 +32,7 @@ impl State {
     }
 }
 
-widget_fns!(Toggle, State, Widget::Toggle(State::Normal));
+widget_fns!(Toggle, State, Kind::Toggle(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -188,7 +188,7 @@ impl<'a, F> ::draw::Drawable for Toggle<'a, F> where F: FnMut(bool) + 'a {
             },
         }
 
-        set_state(ui, self.ui_id, Widget::Toggle(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::Toggle(new_state), self.pos, self.dim);
 
     }
 }

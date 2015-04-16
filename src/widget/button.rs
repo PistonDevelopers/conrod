@@ -1,15 +1,15 @@
 use callback::Callable;
 use frame::Frameable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
+use label::{FontSize, Labelable};
 use dimensions::Dimensions;
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
 use shape::Shapeable;
 use rectangle;
-use ui::{ UIID, Ui };
-use widget::Widget;
+use ui::{UIID, Ui};
+use widget::Kind;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 
@@ -25,14 +25,14 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &State::Normal => rectangle::State::Normal,
+            &State::Normal      => rectangle::State::Normal,
             &State::Highlighted => rectangle::State::Highlighted,
-            &State::Clicked => rectangle::State::Clicked,
+            &State::Clicked     => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(Button, State, Widget::Button(State::Normal));
+widget_fns!(Button, State, Kind::Button(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -186,7 +186,7 @@ impl<'a, F> ::draw::Drawable for Button<'a, F>
             },
         }
 
-        set_state(ui, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::Button(new_state), self.pos, self.dim);
 
     }
 }

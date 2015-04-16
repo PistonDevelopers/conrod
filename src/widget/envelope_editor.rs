@@ -24,7 +24,7 @@ use utils::{
     percentage,
     val_to_string,
 };
-use widget::Widget;
+use widget::Kind;
 use vecmath::{
     vec2_add,
     vec2_sub
@@ -72,7 +72,7 @@ impl State {
     }
 }
 
-widget_fns!(EnvelopeEditor, State, Widget::EnvelopeEditor(State::Normal));
+widget_fns!(EnvelopeEditor, State, Kind::EnvelopeEditor(State::Normal));
 
 /// `EnvPoint` MUST be implemented for any type that is
 /// contained within the Envelope.
@@ -639,7 +639,7 @@ impl<'a, E, F> ::draw::Drawable for EnvelopeEditor<'a, E, F>
         }
 
         // Set the new state.
-        set_state(ui, self.ui_id, Widget::EnvelopeEditor(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::EnvelopeEditor(new_state), self.pos, self.dim);
 
     }
 }

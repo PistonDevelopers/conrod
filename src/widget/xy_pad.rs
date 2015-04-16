@@ -26,7 +26,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::Kind;
 
 /// Represents the state of the xy_pad widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -47,7 +47,7 @@ impl State {
     }
 }
 
-widget_fns!(XYPad, State, Widget::XYPad(State::Normal));
+widget_fns!(XYPad, State, Kind::XYPad(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -298,7 +298,7 @@ impl<'a, X, Y, F> ::draw::Drawable for XYPad<'a, X, Y, F>
         ui.draw_text(graphics, xy_string_pos, self.font_size,
                     color.plain_contrast(), &xy_string);
 
-        set_state(ui, self.ui_id, Widget::XYPad(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::XYPad(new_state), self.pos, self.dim);
 
     }
 }

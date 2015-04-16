@@ -21,7 +21,7 @@ use utils::{
 };
 use ui::{ UIID, Ui };
 use vecmath::vec2_add;
-use widget::Widget;
+use widget::Kind;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -45,7 +45,7 @@ pub enum State {
     Clicked(Element),
 }
 
-widget_fns!(NumberDialer, State, Widget::NumberDialer(State::Normal));
+widget_fns!(NumberDialer, State, Kind::NumberDialer(State::Normal));
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -457,7 +457,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
             }
         }
 
-        set_state(ui, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::NumberDialer(new_state), self.pos, self.dim);
 
     }
 

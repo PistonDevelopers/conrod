@@ -27,7 +27,7 @@ use vecmath::{
     vec2_add,
     vec2_sub,
 };
-use widget::Widget;
+use widget::Kind;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -126,7 +126,7 @@ impl State {
     }
 }
 
-widget_fns!(TextBox, State, Widget::TextBox(State::Uncaptured(Uncaptured::Normal)));
+widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
 
 static TEXT_PADDING: f64 = 5f64;
 
@@ -464,6 +464,6 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             }
             new_state = State::Capturing(selection);
         }
-        set_state(ui, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::TextBox(new_state), self.pos, self.dim);
     }
 }

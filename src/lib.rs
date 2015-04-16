@@ -2,6 +2,7 @@
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
+extern crate elmesque;
 extern crate graphics;
 #[macro_use] extern crate piston;
 extern crate rand;
@@ -33,7 +34,6 @@ pub use position::Positionable;
 pub use shape::Shapeable;
 pub use theme::Theme;
 pub use ui::Ui;
-pub use widget::Widget;
 
 #[macro_use]
 pub mod macros;

@@ -12,7 +12,7 @@ use ui::{ UIID, Ui };
 use vecmath::vec2_add;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use widget::Widget;
+use widget::Kind;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -53,7 +53,7 @@ impl State {
     }
 }
 
-widget_fns!(DropDownList, State, Widget::DropDownList(State::Closed(DrawState::Normal)));
+widget_fns!(DropDownList, State, Kind::DropDownList(State::Closed(DrawState::Normal)));
 
 /// Is the cursor currently over the widget? If so which item?
 fn is_over(pos: Point,
@@ -325,7 +325,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
 
         }
 
-        set_state(ui, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::DropDownList(new_state), self.pos, self.dim);
 
     }
 }
