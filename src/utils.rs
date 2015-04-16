@@ -1,6 +1,7 @@
+
 use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::f32::consts::PI;
-use num::{ Float, NumCast, PrimInt, ToPrimitive };
+use num::{Float, NumCast, PrimInt, ToPrimitive};
 
 /// Clamp a value between a given min and max.
 pub fn clamp<T: PartialOrd>(n: T, min: T, max: T) -> T {

@@ -1,33 +1,22 @@
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
+use clock_ticks::precise_time_s;
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use graphics;
-use graphics::{
-    Graphics,
-};
+use frame::Frameable;
+use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
-use label;
-use label::FontSize;
+use label::{self, FontSize};
 use mouse::Mouse;
-use piston::input::keyboard::Key::{
-    Backspace,
-    Left,
-    Right,
-    Return,
-};
+use num::Float;
+use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use num::Float;
-use clock_ticks::precise_time_s;
-use ui::{ UIID, Ui };
-use vecmath::{
-    vec2_add,
-    vec2_sub,
-};
-use widget::Widget;
+use shape::Shapeable;
+use ui::{UiId, Ui};
+use vecmath::{vec2_add, vec2_sub};
+use widget::Kind;
 
 pub type Idx = usize;
 pub type CursorX = f64;
@@ -126,7 +115,7 @@ impl State {
     }
 }
 
-widget_fns!(TextBox, State, Widget::TextBox(State::Uncaptured(Uncaptured::Normal)));
+widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
 
 static TEXT_PADDING: f64 = 5f64;
 
@@ -268,9 +257,10 @@ fn draw_cursor<B: Graphics>(
         );
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A widget for displaying and mutating a given one-line text `String`. It's callback is
+/// triggered upon pressing of the `Enter`/`Return` key.
 pub struct TextBox<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     text: &'a mut String,
     font_size: u32,
     pos: Point,
@@ -282,14 +272,18 @@ pub struct TextBox<'a, F> {
 }
 
 impl<'a, F> TextBox<'a, F> {
+
+    /// Set the font size of the text.
     pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
         TextBox { font_size: font_size, ..self }
     }
+
 }
 
 impl<'a, F> TextBox<'a, F> {
-    /// Initialise a TextBoxContext.
-    pub fn new(ui_id: UIID, text: &'a mut String) -> TextBox<'a, F> {
+
+    /// Construct a TextBox widget.
+    pub fn new(ui_id: UiId, text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
             ui_id: ui_id,
             text: text,
@@ -311,6 +305,7 @@ impl<'a, F> TextBox<'a, F> {
         let htext_w = label::width(ui, self.font_size, &htext);
         ([pos, self.pos[1]], [htext_w, self.dim[1]])
     }
+
 }
 
 impl<'a, F> Colorable for TextBox<'a, F> {
@@ -464,6 +459,6 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             }
             new_state = State::Capturing(selection);
         }
-        set_state(ui, self.ui_id, Widget::TextBox(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::TextBox(new_state), self.pos, self.dim);
     }
 }

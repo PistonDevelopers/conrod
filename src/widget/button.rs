@@ -1,17 +1,18 @@
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
+use frame::Frameable;
+use graphics::Graphics;
+use graphics::character::CharacterCache;
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use ui::{ UIID, Ui };
-use widget::Widget;
-use graphics::Graphics;
-use graphics::character::CharacterCache;
+use shape::Shapeable;
+use ui::{UiId, Ui};
+use widget::Kind;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -25,14 +26,14 @@ impl State {
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
-            &State::Normal => rectangle::State::Normal,
+            &State::Normal      => rectangle::State::Normal,
             &State::Highlighted => rectangle::State::Highlighted,
-            &State::Clicked => rectangle::State::Clicked,
+            &State::Clicked     => rectangle::State::Clicked,
         }
     }
 }
 
-widget_fns!(Button, State, Widget::Button(State::Normal));
+widget_fns!(Button, State, Kind::Button(State::Normal));
 
 /// Check the current state of the button.
 fn get_new_state(is_over: bool,
@@ -49,9 +50,9 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A pressable button widget whose callback is triggered upon release.
 pub struct Button<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     pos: Point,
     dim: Dimensions,
     maybe_color: Option<Color>,
@@ -66,7 +67,7 @@ pub struct Button<'a, F> {
 impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
-    pub fn new(ui_id: UIID) -> Button<'a, F> {
+    pub fn new(ui_id: UiId) -> Button<'a, F> {
         Button {
             ui_id: ui_id,
             pos: [0.0, 0.0],
@@ -186,7 +187,7 @@ impl<'a, F> ::draw::Drawable for Button<'a, F>
             },
         }
 
-        set_state(ui, self.ui_id, Widget::Button(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::Button(new_state), self.pos, self.dim);
 
     }
 }

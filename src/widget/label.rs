@@ -1,12 +1,13 @@
+
+use color::{black, Color, Colorable};
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use color::{black, Color, Colorable};
 use label::FontSize;
 use point::Point;
 use position::Positionable;
 use ui::Ui;
 
-/// A context on which the builder pattern can be implemented.
+/// Displays some given text centred within a rectangle.
 pub struct Label<'a> {
     text: &'a str,
     pos: Point,
@@ -15,15 +16,17 @@ pub struct Label<'a> {
 }
 
 impl<'a> Label<'a> {
-    /// A builder method for specifying font_size.
+
+    /// Set the font size for the label.
     pub fn size(self, size: FontSize) -> Label<'a> {
         Label { size: size, ..self }
     }
+
 }
 
 impl<'a> Label<'a> {
 
-    /// A label builder method to be implemented on the Ui.
+    /// Construct a new Label widget.
     pub fn new(text: &'a str) -> Label<'a> {
         Label {
             text: text,

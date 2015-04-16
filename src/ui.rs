@@ -1,14 +1,10 @@
-use std::iter::repeat;
-use Color;
+
+use color::Color;
 use dimensions::Dimensions;
-use graphics;
-use graphics::Graphics;
-use graphics::character::{ Character, CharacterCache };
+use graphics::{self, Graphics};
+use graphics::character::{Character, CharacterCache};
 use label::FontSize;
-use mouse::{
-    ButtonState,
-    Mouse,
-};
+use mouse::{ButtonState, Mouse};
 use piston::input;
 use piston::event::{
     GenericEvent,
@@ -19,31 +15,43 @@ use piston::event::{
     TextEvent,
 };
 use point::Point;
+use std::iter::repeat;
 use theme::Theme;
-use widget;
-use widget::Widget;
+use widget::Kind as WidgetKind;
+use widget::{Placing, Widget};
 
-/// User Interface Identifier. Each unique `widget::draw` call
-/// should pass it's own unique UIID so that UiContext can keep
-/// track of it's state.
-pub type UIID = u64;
+/// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
+/// cached within the `Ui` type.
+pub type UiId = u64;
 
-/// UiContext retains the state of all widgets and
-/// data relevant to the draw_widget functions.
+/// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
+/// widget state.
+/// # Ui Handles the following:
+/// * Contains the state of all widgets which can be indexed via their UiId.
+/// * Stores rendering state for each widget until the end of each render cycle.
+/// * Contains the theme used for default styling of the widgets.
+/// * Maintains the latest user input state (for mouse and keyboard).
+/// * Maintains the latest window dimensions.
 pub struct Ui<C> {
-    data: Vec<(Widget, widget::Placing)>,
+    /// The Widget cache, storing state for all widgets.
+    widget_cache: Vec<Widget>,
+    /// The theme used to set default styling for widgets.
     pub theme: Theme,
+    /// The latest received mouse state.
     pub mouse: Mouse,
+    /// Keys that have been pressed since the end of the last render cycle.
     pub keys_just_pressed: Vec<input::keyboard::Key>,
+    /// Keys that have been released since the end of the last render cycle.
     pub keys_just_released: Vec<input::keyboard::Key>,
+    /// Text that has been entered since the end of the last render cycle.
     pub text_just_entered: Vec<String>,
-    glyph_cache: C,
+    character_cache: C,
     prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,
     /// Window height.
     pub win_h: f64,
-    /// The UIID of the widget drawn previously.
+    /// The UiId of the previously drawn Widget.
     prev_uiid: u64,
 }
 
@@ -53,15 +61,15 @@ impl<C> Ui<C>
 {
 
     /// Constructor for a UiContext.
-    pub fn new(glyph_cache: C, theme: Theme) -> Ui<C> {
+    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
         Ui {
-            data: repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(512).collect(),
+            widget_cache: repeat(Widget::empty()).take(512).collect(),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
-            glyph_cache: glyph_cache,
+            character_cache: character_cache,
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
@@ -119,12 +127,10 @@ impl<C> Ui<C>
     }
 
     /// Return a reference to a `Character` from the GlyphCache.
-    pub fn get_character(
-        &mut self,
-        size: FontSize,
-        ch: char
-    ) -> &Character<<C as CharacterCache>::Texture> {
-        self.glyph_cache.character(size, ch)
+    pub fn get_character(&mut self,
+                         size: FontSize,
+                         ch: char) -> &Character<<C as CharacterCache>::Texture> {
+        self.character_cache.character(size, ch)
     }
 
     /// Return the width of a 'Character'.
@@ -140,14 +146,12 @@ impl<C> Ui<C>
     }
 
     /// Draws text
-    pub fn draw_text<B>(
-        &mut self,
-        graphics: &mut B,
-        pos: Point,
-        size: FontSize,
-        color: Color,
-        text: &str
-    )
+    pub fn draw_text<B>(&mut self,
+                        graphics: &mut B,
+                        pos: Point,
+                        size: FontSize,
+                        color: Color,
+                        text: &str)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>
     {
@@ -160,7 +164,7 @@ impl<C> Ui<C>
                         .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
         Text::colored(color.to_fsa(), size).draw(
             text,
-            &mut self.glyph_cache,
+            &mut self.character_cache,
             draw_state,
             transform,
             graphics
@@ -170,6 +174,7 @@ impl<C> Ui<C>
 }
 
 impl<C> Ui<C> {
+
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> Mouse {
         self.mouse
@@ -186,56 +191,43 @@ impl<C> Ui<C> {
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget(&mut self, ui_id: UIID, default: Widget) -> &mut Widget {
+    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind) -> &mut WidgetKind {
         let ui_id_idx = ui_id as usize;
-        if self.data.len() > ui_id_idx {
-            match &mut self.data[ui_id_idx] {
-                &mut (widget::Widget::NoWidget, _) => {
-                    match &mut self.data[ui_id_idx] {
-                        &mut (ref mut widget, _) => {
-                            *widget = default; widget
-                        }
-                    }
+        if self.widget_cache.len() > ui_id_idx {
+            match &mut self.widget_cache[ui_id_idx].kind {
+                &mut WidgetKind::NoWidget => {
+                    let mut widget = &mut self.widget_cache[ui_id_idx].kind;
+                    *widget = default;
+                    widget
                 },
-                _ => {
-                    match &mut self.data[ui_id_idx] {
-                        &mut (ref mut widget, _) => widget
-                    }
-                },
+                _ => &mut self.widget_cache[ui_id_idx].kind,
             }
         } else {
-            if ui_id_idx >= self.data.len() {
-                let num_to_push = ui_id_idx - self.data.len();
-                let mut vec: Vec<(widget::Widget, widget::Placing)> = repeat((widget::Widget::NoWidget, widget::Placing::NoPlace)).take(num_to_push).collect();
-                vec.push((default, widget::Placing::NoPlace));
-                self.data.extend(vec.into_iter());
+            if ui_id_idx >= self.widget_cache.len() {
+                let num_to_extend = ui_id_idx - self.widget_cache.len();
+                self.widget_cache.extend(repeat(Widget::empty())
+                    .take(num_to_extend)
+                    .chain(Some(Widget::new(default)).into_iter()));
             } else {
-                self.data[ui_id_idx] = (default, widget::Placing::NoPlace);
+                self.widget_cache[ui_id_idx] = Widget::new(default);
             }
-            match &mut self.data[ui_id_idx] {
-                &mut (ref mut widget, _) => widget,
-            }
+            &mut self.widget_cache[ui_id_idx].kind
         }
     }
 
     /// Set the Placing for a particular widget.
-    pub fn set_place(&mut self, ui_id: UIID, pos: Point, dim: Dimensions) {
-        match &mut self.data[ui_id as usize] {
-            &mut (_, ref mut placing) => {
-                *placing = widget::Placing::Place(pos[0], pos[1], dim[0], dim[1])
-            }
-        }
+    pub fn set_place(&mut self, ui_id: UiId, pos: Point, dim: Dimensions) {
+        self.widget_cache[ui_id as usize].placing = Placing::Place(pos[0], pos[1], dim[0], dim[1]);
         self.prev_uiid = ui_id;
     }
 
-    /// Get the UIID of the previous widget.
-    pub fn get_prev_uiid(&self) -> UIID { self.prev_uiid }
+    /// Get the UiId of the previous widget.
+    pub fn get_prev_uiid(&self) -> UiId { self.prev_uiid }
 
     /// Get the Placing for a particular widget.
-    pub fn get_placing(&self, ui_id: UIID) -> widget::Placing {
-        if ui_id as usize >= self.data.len() { widget::Placing::NoPlace }
-        else {
-            match self.data[ui_id as usize] { (_, ref placing) => *placing }
-        }
+    pub fn get_placing(&self, ui_id: UiId) -> Placing {
+        if ui_id as usize >= self.widget_cache.len() { Placing::NoPlace }
+        else { self.widget_cache[ui_id as usize].placing }
     }
+
 }

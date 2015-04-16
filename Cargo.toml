@@ -18,6 +18,20 @@ homepage = "https://github.com/pistondevelopers/conrod"
 name = "conrod"
 path = "./src/lib.rs"
 
+
+[dev-dependencies.pistoncore-glutin_window]
+git = "https://github.com/PistonDevelopers/glutin_window.git"
+
+[dev-dependencies.piston2d-opengl_graphics]
+git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+
+
+[dependencies.clock_ticks]
+git = "https://github.com/tomaka/clock_ticks"
+
+[dependencies.elmesque]
+git = "https://github.com/mitchmindtree/elmesque"
+
 [dependencies.piston]
 git = "https://github.com/PistonDevelopers/piston/"
 
@@ -26,15 +40,6 @@ git = "https://github.com/PistonDevelopers/graphics.git"
 
 [dependencies.vecmath]
 git = "https://github.com/PistonDevelopers/vecmath.git"
-
-[dev-dependencies.pistoncore-glutin_window]
-git = "https://github.com/PistonDevelopers/glutin_window.git"
-
-[dev-dependencies.piston2d-opengl_graphics]
-git = "https://github.com/PistonDevelopers/opengl_graphics.git"
-
-[dependencies.clock_ticks]
-git = "https://github.com/tomaka/clock_ticks"
 
 [dependencies]
 bitflags = "*"

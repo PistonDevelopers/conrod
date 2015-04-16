@@ -1,23 +1,25 @@
 
-use color::{ Color, Colorable };
+use color::{Color, Colorable};
 use draw::Drawable;
-use graphics;
-use graphics::Graphics;
+use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
 use ui::Ui;
 
-/// The context from which we'll draw the background.
+/// A type for drawing a colored window background.
 #[derive(Copy, Clone)]
 pub struct Background {
     maybe_color: Option<Color>,
 }
 
 impl Background {
+
+    /// Construct a background.
     pub fn new() -> Background {
         Background {
             maybe_color: None,
         }
     }
+
 }
 
 impl Colorable for Background {
@@ -37,3 +39,4 @@ impl Drawable for Background {
         graphics::clear(color.to_fsa(), graphics);
     }
 }
+

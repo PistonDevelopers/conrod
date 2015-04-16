@@ -4,41 +4,41 @@ macro_rules! widget_fns(
     ($widget:ident, $widget_state:ident, $default:expr) => (
 
         /// Default Widget state.
-        fn default() -> ::widget::Widget { $default }
+        fn default() -> ::widget::Kind { $default }
 
-        /// Get a reference to the widget associated with the given UIID.
+        /// Get a reference to the widget associated with the given UiId.
         fn get_widget<C>(
             ui: &mut ::ui::Ui<C>,
-            ui_id: ::ui::UIID
-        ) -> &mut ::widget::Widget {
+            ui_id: ::ui::UiId
+        ) -> &mut ::widget::Kind {
             ui.get_widget(ui_id, default())
         }
 
         /// Get the current State for the widget.
         fn get_state<C>(
             ui: &mut ::ui::Ui<C>,
-            ui_id: ::ui::UIID
+            ui_id: ::ui::UiId
         ) -> &$widget_state {
             match *get_widget(ui, ui_id) {
-                ::widget::Widget::$widget(ref state) => state,
-                _ => panic!("The Widget variant returned by uiontext is different to that which \
-                           was requested (Check that there are no UIID conflicts)."),
+                ::widget::Kind::$widget(ref state) => state,
+                _ => panic!("The Kind variant returned by Ui is different to that which \
+                           was requested (Check that there are no UiId conflicts)."),
             }
         }
 
         /// Set the state for the widget in the Ui.
         fn set_state<C>(
             ui: &mut ::ui::Ui<C>,
-            ui_id: ::ui::UIID,
-            new_state: ::widget::Widget,
+            ui_id: ::ui::UiId,
+            new_state: ::widget::Kind,
             pos: ::point::Point,
             dim: ::dimensions::Dimensions
         ) {
             match *get_widget(ui, ui_id) {
                 ref mut state => {
                     if !state.matches(&new_state) {
-                        panic!("The Widget variant returned by Ui is different to that which \
-                                   was requested (Check that there are no UIID conflicts).");
+                        panic!("The Kind variant returned by Ui is different to that which \
+                                   was requested (Check that there are no UiId conflicts).");
                     }
                     *state = new_state;
                 }

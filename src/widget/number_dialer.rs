@@ -1,27 +1,23 @@
-use std::cmp::Ordering;
-use num::{ Float, ToPrimitive, FromPrimitive };
-use std::iter::repeat;
-use frame::Frameable;
+
 use callback::Callable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use graphics;
-use graphics::{ Graphics, Transformed };
+use frame::Frameable;
+use graphics::{self, Graphics, Transformed};
 use graphics::character::CharacterCache;
-use label;
+use label::{self, FontSize, Labelable};
 use mouse::Mouse;
+use num::{Float, ToPrimitive, FromPrimitive};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use utils::{
-    clamp,
-    compare_f64s,
-};
-use ui::{ UIID, Ui };
+use shape::Shapeable;
+use std::cmp::Ordering;
+use std::iter::repeat;
+use utils::{clamp, compare_f64s};
+use ui::{UiId, Ui};
 use vecmath::vec2_add;
-use widget::Widget;
+use widget::Kind;
 
 /// Represents the specific elements that the
 /// NumberDialer is made up of. This is used to
@@ -45,7 +41,7 @@ pub enum State {
     Clicked(Element),
 }
 
-widget_fns!(NumberDialer, State, Widget::NumberDialer(State::Normal));
+widget_fns!(NumberDialer, State, Kind::NumberDialer(State::Normal));
 
 /// Create the string to be drawn from the given values
 /// and precision. Combine this with the label string if
@@ -267,9 +263,10 @@ fn draw_value_string<B, C: CharacterCache>(
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// A widget for precision control over any digit within a value. The callback is triggered when
+/// the value is updated or if the mouse button is released while the cursor is above the widget.
 pub struct NumberDialer<'a, T, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     value: T,
     min: T,
     max: T,
@@ -287,7 +284,7 @@ pub struct NumberDialer<'a, T, F> {
 
 impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     /// A number_dialer builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
+    pub fn new(ui_id: UiId, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
             ui_id: ui_id,
             value: clamp(value, min, max),
@@ -457,7 +454,7 @@ impl<'a, T, F> ::draw::Drawable for NumberDialer<'a, T, F>
             }
         }
 
-        set_state(ui, self.ui_id, Widget::NumberDialer(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::NumberDialer(new_state), self.pos, self.dim);
 
     }
 

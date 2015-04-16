@@ -1,25 +1,21 @@
-use num::{ Float, ToPrimitive, FromPrimitive };
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use label;
+use frame::Frameable;
+use label::{self, FontSize, Labelable};
 use mouse::Mouse;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
+use num::{Float, ToPrimitive, FromPrimitive};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use ui::{ UIID, Ui };
-use utils::{
-    clamp,
-    percentage,
-    value_from_perc,
-};
-use widget::Widget;
+use shape::Shapeable;
+use ui::{UiId, Ui};
+use utils::{clamp, percentage, value_from_perc};
 use vecmath::vec2_add;
+use widget::Kind;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -40,7 +36,7 @@ impl State {
     }
 }
 
-widget_fns!(Slider, State, Widget::Slider(State::Normal));
+widget_fns!(Slider, State, Kind::Slider(State::Normal));
 
 /// Check the current state of the slider.
 fn get_new_state(is_over: bool,
@@ -57,9 +53,12 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// Linear value selection. If the slider's width is greater than it's height, it will
+/// automatically become a horizontal slider, otherwise it will be a vertical slider. Its callback
+/// is triggered if the value is updated or if the mouse button is released while the cursor is
+/// above the rectangle.
 pub struct Slider<'a, T, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     value: T,
     min: T,
     max: T,
@@ -76,7 +75,7 @@ pub struct Slider<'a, T, F> {
 
 impl<'a, T, F> Slider<'a, T, F> {
     /// A button builder method to be implemented by the Ui.
-    pub fn new(ui_id: UIID, value: T, min: T, max: T) -> Slider<'a, T, F> {
+    pub fn new(ui_id: UiId, value: T, min: T, max: T) -> Slider<'a, T, F> {
         Slider {
             ui_id: ui_id,
             value: value,
@@ -246,7 +245,7 @@ impl<'a, T, F> ::draw::Drawable for Slider<'a, T, F>
             ui.draw_text(graphics, l_pos, size, text_color, &text);
         }
 
-        set_state(ui, self.ui_id, Widget::Slider(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::Slider(new_state), self.pos, self.dim);
 
     }
 }

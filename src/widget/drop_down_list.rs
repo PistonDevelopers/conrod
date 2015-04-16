@@ -1,18 +1,19 @@
+
 use callback::Callable;
-use frame::Frameable;
-use label::{ FontSize, Labelable };
-use color::{ Color, Colorable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
+use frame::Frameable;
+use graphics::Graphics;
+use graphics::character::CharacterCache;
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use ui::{ UIID, Ui };
+use shape::Shapeable;
+use ui::{UiId, Ui};
 use vecmath::vec2_add;
-use graphics::Graphics;
-use graphics::character::CharacterCache;
-use widget::Widget;
+use widget::Kind;
 
 /// Tuple / Callback params.
 pub type Idx = usize;
@@ -53,7 +54,7 @@ impl State {
     }
 }
 
-widget_fns!(DropDownList, State, Widget::DropDownList(State::Closed(DrawState::Normal)));
+widget_fns!(DropDownList, State, Kind::DropDownList(State::Closed(DrawState::Normal)));
 
 /// Is the cursor currently over the widget? If so which item?
 fn is_over(pos: Point,
@@ -125,9 +126,10 @@ fn get_new_state(is_over_idx: Option<Idx>,
     }
 }
 
-/// A context on which the builder pattern can be implemented.
+/// Displays a given `Vec<String>` as a selectable drop down menu. It's callback is triggered upon
+/// selection of a list item.
 pub struct DropDownList<'a, F> {
-    ui_id: UIID,
+    ui_id: UiId,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
     pos: Point,
@@ -142,7 +144,9 @@ pub struct DropDownList<'a, F> {
 }
 
 impl<'a, F> DropDownList<'a, F> {
-    pub fn new(ui_id: UIID,
+
+    /// Construct a new DropDownList.
+    pub fn new(ui_id: UiId,
                strings: &'a mut Vec<String>,
                selected: &'a mut Option<Idx>) -> DropDownList<'a, F> {
         DropDownList {
@@ -160,6 +164,7 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_label_font_size: None,
         }
     }
+
 }
 
 impl<'a, F> Colorable for DropDownList<'a, F> {
@@ -325,7 +330,7 @@ impl<'a, F> ::draw::Drawable for DropDownList<'a, F>
 
         }
 
-        set_state(ui, self.ui_id, Widget::DropDownList(new_state), self.pos, self.dim);
+        set_state(ui, self.ui_id, Kind::DropDownList(new_state), self.pos, self.dim);
 
     }
 }
