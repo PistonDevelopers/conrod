@@ -1,15 +1,11 @@
 
 use color::{Color, black, white};
-use rustc_serialize::{
-    json,
-    Encodable,
-    Decodable,
-};
+use rustc_serialize::{json, Encodable, Decodable};
+use std::borrow::ToOwned;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 use std::str;
-use std::borrow::ToOwned;
 
 /// A data holder for style-related data.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]

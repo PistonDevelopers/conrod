@@ -7,7 +7,6 @@
 //! and [HSL](http://en.wikipedia.org/wiki/HSL_and_HSV) creation, gradients and built-in names.
 //!
 
-
 use num::Float;
 use rustc_serialize::hex::ToHex;
 use std::ascii::AsciiExt;

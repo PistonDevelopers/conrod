@@ -1,4 +1,5 @@
 #![deny(missing_copy_implementations)]
+#![warn(missing_docs)]
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;

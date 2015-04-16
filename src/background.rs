@@ -1,8 +1,7 @@
 
-use color::{ Color, Colorable };
+use color::{Color, Colorable};
 use draw::Drawable;
-use graphics;
-use graphics::Graphics;
+use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
 use ui::Ui;
 

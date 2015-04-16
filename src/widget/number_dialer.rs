@@ -1,25 +1,21 @@
-use std::cmp::Ordering;
-use num::{ Float, ToPrimitive, FromPrimitive };
-use std::iter::repeat;
-use frame::Frameable;
+
 use callback::Callable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use graphics;
-use graphics::{ Graphics, Transformed };
+use frame::Frameable;
+use graphics::{self, Graphics, Transformed};
 use graphics::character::CharacterCache;
-use label;
+use label::{self, FontSize, Labelable};
 use mouse::Mouse;
+use num::{Float, ToPrimitive, FromPrimitive};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use utils::{
-    clamp,
-    compare_f64s,
-};
-use ui::{ UIID, Ui };
+use shape::Shapeable;
+use std::cmp::Ordering;
+use std::iter::repeat;
+use utils::{clamp, compare_f64s};
+use ui::{UIID, Ui};
 use vecmath::vec2_add;
 use widget::Kind;
 

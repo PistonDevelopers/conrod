@@ -1,6 +1,7 @@
+
+use color::{black, Color, Colorable};
 use graphics::Graphics;
 use graphics::character::CharacterCache;
-use color::{black, Color, Colorable};
 use label::FontSize;
 use point::Point;
 use position::Positionable;

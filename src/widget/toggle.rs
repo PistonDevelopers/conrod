@@ -1,16 +1,17 @@
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
+use frame::Frameable;
+use graphics::Graphics;
+use graphics::character::CharacterCache;
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use graphics::Graphics;
-use graphics::character::CharacterCache;
-use ui::{ UIID, Ui };
+use shape::Shapeable;
+use ui::{UIID, Ui};
 use widget::Kind;
 
 /// Represents the state of the Toggle widget.

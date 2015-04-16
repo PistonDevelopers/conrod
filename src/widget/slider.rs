@@ -1,25 +1,21 @@
-use num::{ Float, ToPrimitive, FromPrimitive };
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
-use label::{ FontSize, Labelable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use label;
+use frame::Frameable;
+use label::{self, FontSize, Labelable};
 use mouse::Mouse;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
+use num::{Float, ToPrimitive, FromPrimitive};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use ui::{ UIID, Ui };
-use utils::{
-    clamp,
-    percentage,
-    value_from_perc,
-};
-use widget::Kind;
+use shape::Shapeable;
+use ui::{UIID, Ui};
+use utils::{clamp, percentage, value_from_perc};
 use vecmath::vec2_add;
+use widget::Kind;
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]

@@ -1,34 +1,23 @@
-use std::cmp::Ordering;
-use num::{ Float, ToPrimitive, FromPrimitive };
+
 use callback::Callable;
-use frame::Frameable;
-use label::{ FontSize, Labelable };
-use color::{ Color, Colorable };
+use color::{Color, Colorable};
 use dimensions::Dimensions;
+use frame::Frameable;
 use graphics::math::Scalar;
-use graphics::{ self, Graphics };
+use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
-use label;
+use label::{self, FontSize, Labelable};
 use mouse::Mouse;
+use num::{Float, ToPrimitive, FromPrimitive};
 use point::Point;
 use position::Positionable;
+use rectangle::{self, Corner};
 use shape::Shapeable;
-use rectangle;
-use rectangle::{
-    Corner
-};
-use ui::{ UIID, Ui };
-use utils::{
-    clamp,
-    map_range,
-    percentage,
-    val_to_string,
-};
+use std::cmp::Ordering;
+use ui::{UIID, Ui};
+use utils::{clamp, map_range, percentage, val_to_string};
+use vecmath::{vec2_add, vec2_sub};
 use widget::Kind;
-use vecmath::{
-    vec2_add,
-    vec2_sub
-};
 
 /// Represents the specific elements that the
 /// EnvelopeEditor is made up of. This is used to

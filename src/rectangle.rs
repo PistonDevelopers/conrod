@@ -1,12 +1,10 @@
 
 use color::Color;
 use dimensions::Dimensions;
-use graphics;
-use graphics::{ DrawState, Graphics };
+use graphics::{self, DrawState, Graphics};
 use graphics::math::Matrix2d;
 use graphics::character::CharacterCache;
-use label;
-use label::FontSize;
+use label::{self, FontSize};
 use point::Point;
 use ui::Ui;
 use utils::map_range;

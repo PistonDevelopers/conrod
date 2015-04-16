@@ -1,14 +1,10 @@
-use std::iter::repeat;
-use Color;
+
+use color::Color;
 use dimensions::Dimensions;
-use graphics;
-use graphics::Graphics;
-use graphics::character::{ Character, CharacterCache };
+use graphics::{self, Graphics};
+use graphics::character::{Character, CharacterCache};
 use label::FontSize;
-use mouse::{
-    ButtonState,
-    Mouse,
-};
+use mouse::{ButtonState, Mouse};
 use piston::input;
 use piston::event::{
     GenericEvent,
@@ -19,6 +15,7 @@ use piston::event::{
     TextEvent,
 };
 use point::Point;
+use std::iter::repeat;
 use theme::Theme;
 use widget::Kind as WidgetKind;
 use widget::{Placing, Widget};
@@ -196,10 +193,9 @@ impl<C> Ui<C> {
         } else {
             if ui_id_idx >= self.data.len() {
                 let num_to_extend = ui_id_idx - self.data.len();
-                let extension = repeat(Widget::empty())
+                self.data.extend(repeat(Widget::empty())
                     .take(num_to_extend)
-                    .chain(Some(Widget::new(default)).into_iter());
-                self.data.extend(extension);
+                    .chain(Some(Widget::new(default)).into_iter()));
             } else {
                 self.data[ui_id_idx] = Widget::new(default);
             }

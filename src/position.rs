@@ -1,6 +1,6 @@
+
 use point::Point;
-use ui::UIID;
-use Ui;
+use ui::{UIID, Ui};
 
 /// A trait that indicates whether or not a widget
 /// builder is positionable.

@@ -1,5 +1,6 @@
+
+use color::{rgba, Color};
 use graphics::character::CharacterCache;
-use color::{Color, rgba};
 use ui::Ui;
 
 pub type FontSize = u32;

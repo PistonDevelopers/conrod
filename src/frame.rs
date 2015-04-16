@@ -1,4 +1,5 @@
-use color::{rgba, Color};
+
+use color::{Color, rgba};
 
 /// To be used as a parameter for defining the aesthetic
 /// of the widget frame.

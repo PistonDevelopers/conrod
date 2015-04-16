@@ -1,32 +1,21 @@
+
 use callback::Callable;
-use frame::Frameable;
-use color::{ Color, Colorable };
+use clock_ticks::precise_time_s;
+use color::{Color, Colorable};
 use dimensions::Dimensions;
-use graphics;
-use graphics::{
-    Graphics,
-};
+use frame::Frameable;
+use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
-use label;
-use label::FontSize;
+use label::{self, FontSize};
 use mouse::Mouse;
-use piston::input::keyboard::Key::{
-    Backspace,
-    Left,
-    Right,
-    Return,
-};
+use num::Float;
+use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
 use point::Point;
 use position::Positionable;
-use shape::Shapeable;
 use rectangle;
-use num::Float;
-use clock_ticks::precise_time_s;
-use ui::{ UIID, Ui };
-use vecmath::{
-    vec2_add,
-    vec2_sub,
-};
+use shape::Shapeable;
+use ui::{UIID, Ui};
+use vecmath::{vec2_add, vec2_sub};
 use widget::Kind;
 
 pub type Idx = usize;
