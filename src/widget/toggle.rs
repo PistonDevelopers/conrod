@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -69,7 +68,7 @@ pub struct Toggle<'a, F> {
 
 impl<'a, F> Toggle<'a, F> {
 
-    /// Create a toggle context to be built upon.
+    /// Construct a new Toggle widget.
     pub fn new(ui_id: UiId, value: bool) -> Toggle<'a, F> {
         Toggle {
             ui_id: ui_id,
@@ -84,6 +83,12 @@ impl<'a, F> Toggle<'a, F> {
             maybe_label_font_size: None,
             value: value,
         }
+    }
+
+    /// Set the callback for the Toggle. It will be triggered upon release of the button.
+    pub fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
     }
 
 }
@@ -102,13 +107,6 @@ impl<'a, F> Frameable for Toggle<'a, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, F> Callable<F> for Toggle<'a, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

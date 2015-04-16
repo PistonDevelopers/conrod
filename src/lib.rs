@@ -30,7 +30,6 @@ pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::xy_pad::XYPad;
 
 pub use background::Background;
-pub use callback::Callable;
 pub use color::{Color, Colorable};
 pub use dimensions::Dimensions;
 pub use draw::Drawable;
@@ -46,7 +45,6 @@ pub use ui::{Ui, UiId};
 mod macros;
 
 mod background;
-mod callback;
 pub mod color;
 mod dimensions;
 mod draw;
@@ -61,3 +59,4 @@ mod theme;
 mod ui;
 mod utils;
 mod widget;
+

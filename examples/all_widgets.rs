@@ -8,7 +8,6 @@ extern crate vecmath;
 use conrod::{
     Background,
     Button,
-    Callable,
     Color,
     Colorable,
     Drawable,
@@ -25,9 +24,9 @@ use conrod::{
     TextBox,
     Theme,
     Toggle,
+    Ui,
     WidgetMatrix,
     XYPad,
-    Ui
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -75,7 +74,8 @@ struct DemoApp {
 }
 
 impl DemoApp {
-    /// Constructor for the Demonstration Application data.
+
+    /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
         DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
@@ -110,6 +110,7 @@ impl DemoApp {
                                    [1.0, 0.0], ], "Envelope B".to_string())],
         }
     }
+
 }
 
 fn main() {

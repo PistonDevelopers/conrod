@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use clock_ticks::precise_time_s;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
@@ -273,15 +272,6 @@ pub struct TextBox<'a, F> {
 
 impl<'a, F> TextBox<'a, F> {
 
-    /// Set the font size of the text.
-    pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
-        TextBox { font_size: font_size, ..self }
-    }
-
-}
-
-impl<'a, F> TextBox<'a, F> {
-
     /// Construct a TextBox widget.
     pub fn new(ui_id: UiId, text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
@@ -295,6 +285,18 @@ impl<'a, F> TextBox<'a, F> {
             maybe_frame: None,
             maybe_frame_color: None,
         }
+    }
+
+    /// Set the font size of the text.
+    pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
+        TextBox { font_size: font_size, ..self }
+    }
+
+    /// Set the callback for the TextBox. It will be triggered upon pressing of the
+    /// `Enter`/`Return` key.
+    pub fn callback(mut self, cb: F) -> TextBox<'a, F> {
+        self.maybe_callback = Some(cb);
+        self
     }
 
     fn selection_rect<C: CharacterCache>
@@ -322,13 +324,6 @@ impl<'a, F> Frameable for TextBox<'a, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, F> Callable<F> for TextBox<'a, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }
