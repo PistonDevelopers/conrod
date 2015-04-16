@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -246,10 +245,6 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         EnvelopeEditor { skew_y_range: skew, ..self }
     }
 
-}
-
-impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
-
     /// Construct an EnvelopeEditor widget.
     pub fn new(ui_id: UiId, env: &'a mut Vec<E>,
                min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y) -> EnvelopeEditor<'a, E, F> {
@@ -274,6 +269,12 @@ impl <'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         }
     }
 
+    /// Set the callback for the EnvelopeEditor. 
+    pub fn callback(mut self, cb: F) -> EnvelopeEditor<'a, E, F> {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
@@ -296,16 +297,6 @@ impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, E, F> Callable<F> for EnvelopeEditor<'a, E, F>
-    where
-        E: EnvelopePoint
-{
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

@@ -6,7 +6,6 @@ extern crate piston;
 use conrod::{
     Background,
     Button,
-    Callable,
     Colorable,
     Shapeable,
     Drawable,

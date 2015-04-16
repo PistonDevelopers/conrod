@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -82,6 +81,12 @@ impl<'a, F> Button<'a, F> {
         }
     }
 
+    /// Set the callback for the Button. The callback will be triggered upon release of the button.
+    pub fn callback(mut self, cb: F) -> Button<'a, F> {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, F> Colorable for Button<'a, F> {
@@ -98,13 +103,6 @@ impl<'a, F> Frameable for Button<'a, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, F> Callable<F> for Button<'a, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

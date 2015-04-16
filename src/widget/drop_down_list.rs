@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -165,6 +164,12 @@ impl<'a, F> DropDownList<'a, F> {
         }
     }
 
+    /// Set the DropDownList's callback. It will be triggered upon selection of a list item.
+    pub fn callback(mut self, cb: F) -> DropDownList<'a, F> {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, F> Colorable for DropDownList<'a, F> {
@@ -181,13 +186,6 @@ impl<'a, F> Frameable for DropDownList<'a, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, F> Callable<F> for DropDownList<'a, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

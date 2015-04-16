@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -102,24 +101,9 @@ pub struct XYPad<'a, X, Y, F> {
     maybe_label_font_size: Option<u32>,
 }
 
-impl <'a, X, Y, F> XYPad<'a, X, Y, F> {
-
-    /// Set the width of the XYPad's crosshair lines.
-    #[inline]
-    pub fn line_width(self, width: f64) -> XYPad<'a, X, Y, F> {
-        XYPad { line_width: width, ..self }
-    }
-
-    /// Set the font size for the displayed crosshair value.
-    #[inline]
-    pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y, F> {
-        XYPad { font_size: size, ..self }
-    }
-
-}
-
 impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
-    /// An xy_pad builder method to be implemented by the Ui.
+
+    /// Construct a new XYPad widget.
     pub fn new(ui_id: UiId,
               x_val: X, min_x: X, max_x: X,
               y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
@@ -140,6 +124,26 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             maybe_label_font_size: None,
         }
     }
+
+    /// Set the width of the XYPad's crosshair lines.
+    #[inline]
+    pub fn line_width(self, width: f64) -> XYPad<'a, X, Y, F> {
+        XYPad { line_width: width, ..self }
+    }
+
+    /// Set the font size for the displayed crosshair value.
+    #[inline]
+    pub fn value_font_size(self, size: FontSize) -> XYPad<'a, X, Y, F> {
+        XYPad { font_size: size, ..self }
+    }
+
+    /// Set the callback for the XYPad. It will be triggered when the value is updated or if the
+    /// mouse button is released while the cursor is above the rectangle.
+    pub fn callback(mut self, cb: F) -> Self {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
@@ -156,13 +160,6 @@ impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, X, Y, F> Callable<F> for XYPad<'a, X, Y, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

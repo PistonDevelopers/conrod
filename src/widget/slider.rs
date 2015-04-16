@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -74,7 +73,8 @@ pub struct Slider<'a, T, F> {
 }
 
 impl<'a, T, F> Slider<'a, T, F> {
-    /// A button builder method to be implemented by the Ui.
+
+    /// Construct a new Slider widget.
     pub fn new(ui_id: UiId, value: T, min: T, max: T) -> Slider<'a, T, F> {
         Slider {
             ui_id: ui_id,
@@ -92,6 +92,14 @@ impl<'a, T, F> Slider<'a, T, F> {
             maybe_label_font_size: None,
         }
     }
+
+    /// Set the callback for the Slider. It will be triggered if the value is updated or if the
+    /// mouse button is released while the cursor is above the rectangle.
+    pub fn callback(mut self, cb: F) -> Slider<'a, T, F> {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, T, F> Colorable for Slider<'a, T, F> {
@@ -108,13 +116,6 @@ impl<'a, T, F> Frameable for Slider<'a, T, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, T, F> Callable<F> for Slider<'a, T, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }

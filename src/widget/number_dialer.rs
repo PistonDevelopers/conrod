@@ -1,5 +1,4 @@
 
-use callback::Callable;
 use color::{Color, Colorable};
 use dimensions::Dimensions;
 use frame::Frameable;
@@ -283,7 +282,8 @@ pub struct NumberDialer<'a, T, F> {
 }
 
 impl<'a, T: Float, F> NumberDialer<'a, T, F> {
-    /// A number_dialer builder method to be implemented by the Ui.
+
+    /// Construct a new NumberDialer widget.
     pub fn new(ui_id: UiId, value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
             ui_id: ui_id,
@@ -302,6 +302,14 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             maybe_callback: None,
         }
     }
+
+    /// Set the callback for the NumberDialer. It will be triggered when the value is updated or if
+    /// the mouse button is released while the cursor is above the widget.
+    pub fn callback(mut self, cb: F) -> NumberDialer<'a, T, F> {
+        self.maybe_callback = Some(cb);
+        self
+    }
+
 }
 
 impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
@@ -318,13 +326,6 @@ impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
     }
     fn frame_color(mut self, color: Color) -> Self {
         self.maybe_frame_color = Some(color);
-        self
-    }
-}
-
-impl<'a, T, F> Callable<F> for NumberDialer<'a, T, F> {
-    fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
         self
     }
 }
