@@ -68,7 +68,7 @@ impl Cursor {
         false
     }
 
-    fn move_cursor(&mut self, by: i32) {
+    fn shift(&mut self, by: i32) {
         if by == 0 {
              return;
         }
@@ -429,7 +429,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                 self.text.truncate(cursor.start);
                 self.text.push_str(&text);
                 self.text.push_str(&end);
-                cursor.move_cursor(text.len() as i32);
+                cursor.shift(text.len() as i32);
             }
 
             // Check for control keys.
@@ -442,7 +442,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                                 let end: String = self.text.chars().skip(cursor.end).collect();
                                 self.text.truncate(cursor.start - 1);
                                 self.text.push_str(&end);
-                                cursor.move_cursor(-1);
+                                cursor.shift(-1);
                             }
                         } else {
                             let end: String = self.text.chars().skip(cursor.end).collect();
@@ -453,12 +453,12 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     },
                     Left => {
                         if cursor.is_cursor() {
-                            cursor.move_cursor(-1);
+                            cursor.shift(-1);
                         }
                     },
                     Right => {
                         if cursor.is_cursor() && self.text.len() > cursor.end {
-                            cursor.move_cursor(1);
+                            cursor.shift(1);
                         }
                     },
                     Return => if self.text.len() > 0 {
