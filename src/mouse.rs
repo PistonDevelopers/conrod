@@ -11,7 +11,7 @@ pub enum ButtonState {
 /// Represents the current state of the Mouse.
 #[derive(Copy, Clone)]
 pub struct Mouse {
-    pub pos: Point,
+    pub xy: Point,
     pub left: ButtonState,
     pub middle: ButtonState,
     pub right: ButtonState,
@@ -19,10 +19,10 @@ pub struct Mouse {
 
 impl Mouse {
     /// Constructor for a Mouse struct.
-    pub fn new(pos: Point,
+    pub fn new(xy: Point,
                left: ButtonState,
                middle: ButtonState,
                right: ButtonState) -> Mouse {
-        Mouse { pos: pos, left: left, middle: middle, right: right }
+        Mouse { xy: xy, left: left, middle: middle, right: right }
     }
 }

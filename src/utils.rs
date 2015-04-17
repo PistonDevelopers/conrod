@@ -13,6 +13,13 @@ pub fn clampf32(f: f32) -> f32 {
     if f < 0f32 { 0f32 } else if f > 1f32 { 1f32 } else { f }
 }
 
+/// Return whether or not a given point is over a rectangle at a given point on a cartesian plane.
+pub fn is_over_rect(rect_point: Point, mouse_point: Point, rect_dim: Dimensions) -> bool {
+    let point = vec2_sub(rect_point, mouse_point);
+    if point[0].abs() < rect_dim[0] / 2.0 && point[1].abs() < rect_dim[1] / 2.0 { true }
+    else { false }
+}
+
 /// Compare two f64s and return an Ordering.
 pub fn compare_f64s(a: f64, b: f64) -> Ordering {
     if a > b { Greater }

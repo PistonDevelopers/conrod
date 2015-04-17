@@ -7,11 +7,11 @@ use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use point::Point;
-use position::Positionable;
+use position::{Position, Positionable};
 use rectangle;
 use shape::Shapeable;
 use ui::{UiId, Ui};
-use widget::Kind;
+use widget::{Kind, Widget};
 
 /// Represents the state of the Button widget.
 #[derive(PartialEq, Clone, Copy)]
@@ -22,6 +22,7 @@ pub enum State {
 }
 
 impl State {
+
     /// Return the associated Rectangle state.
     fn as_rectangle_state(&self) -> rectangle::State {
         match self {
@@ -30,6 +31,16 @@ impl State {
             &State::Clicked     => rectangle::State::Clicked,
         }
     }
+
+    /// Alter the widget color depending on the state.
+    fn color(&self, color: Color) -> Color {
+        match *self {
+            State::Normal => color,
+            State::Highlighted => color.highlighted(),
+            State::Clicked => color.clicked(),
+        }
+    }
+
 }
 
 widget_fns!(Button, State, Kind::Button(State::Normal));
@@ -69,7 +80,7 @@ impl<'a, F> Button<'a, F> {
     pub fn new(ui_id: UiId) -> Button<'a, F> {
         Button {
             ui_id: ui_id,
-            pos: [0.0, 0.0],
+            pos: Position::default(),
             dim: [64.0, 64.0],
             maybe_callback: None,
             maybe_color: None,
@@ -85,6 +96,59 @@ impl<'a, F> Button<'a, F> {
     pub fn callback(mut self, cb: F) -> Button<'a, F> {
         self.maybe_callback = Some(cb);
         self
+    }
+
+    /// After building the Button, use this method to set its current state into the given `Ui`.
+    /// It will use this state for rendering the next time `ui.draw(graphics)` is called.
+    pub fn set<C>(mut self, ui: &mut Ui<C>) {
+        use elmesque::form::{collage, Form, group, rect, text};
+        use utils::is_over_rect;
+
+        let state = *get_state(ui, self.ui_id);
+        let xy = ui.get_point(self.pos, self.dim);
+        let mouse = ui.get_mouse_state();
+        let is_over = is_over_rect(xy, mouse.xy, self.dim);
+        let new_state = get_new_state(is_over, state, mouse);
+        let (w, h) = (self.dim[0], self.dim[1]);
+
+        // Callback.
+        if let (true, State::Clicked, State::Highlighted) = (is_over, state, new_state) {
+            if let Some(ref mut callback) = self.maybe_callback { callback() }
+        }
+
+        // Construct the rectangle Form.
+        let rect_form = |button: &Button<'a, F>, ui: &Ui<C>| -> Form {
+            let color = new_state.color(button.maybe_color.unwrap_or(ui.theme.shape_color));
+            let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
+            if frame_w > 0.0 {
+                let frame_color = button.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+                let (inner_w, inner_h) = (button.dim[0] - frame_w,  button.dim[1] - frame_w);
+                group(vec![rect(w, h).filled(frame_color), rect(inner_w, inner_h).filled(color)])
+            } else {
+                rect(w, h).filled(color)
+            }
+        };
+
+        // Construct the button's Element.
+        let element = collage(w, h, match self.maybe_label {
+            None => vec![rect_form(&self, ui)],
+            Some(label_text) => {
+                use elmesque::text::Text;
+                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                vec![rect_form(&self, ui),
+                     text(Text::from_string(label_text.to_string()).color(text_color).height(size))]
+            },
+        });
+
+        // Store the widget's new state in the Ui.
+        ui.set_widget(self.ui_id, Widget {
+            kind: Kind::Button(new_state),
+            xy: xy,
+            depth: depth,
+            element: Some(element),
+        });
+
     }
 
 }
@@ -136,56 +200,56 @@ impl<'a, F> Shapeable for Button<'a, F> {
     fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
 }
 
-impl<'a, F> ::draw::Drawable for Button<'a, F>
-    where
-        F: FnMut() + 'a
-{
-
-    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
-        where
-            B: Graphics<Texture = <C as CharacterCache>::Texture>,
-            C: CharacterCache
-    {
-
-        let state = *get_state(ui, self.ui_id);
-        let mouse = ui.get_mouse_state();
-        let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
-        let new_state = get_new_state(is_over, state, mouse);
-
-        // Callback.
-        match (is_over, state, new_state) {
-            (true, State::Clicked, State::Highlighted) => match self.maybe_callback {
-                Some(ref mut callback) => (*callback)(), None => (),
-            }, _ => (),
-        }
-
-        // Draw.
-        let rect_state = new_state.as_rectangle_state();
-        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
-        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-        let maybe_frame = match frame_w > 0.0 {
-            true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
-            false => None,
-        };
-        match self.maybe_label {
-            None => {
-                rectangle::draw(
-                    ui.win_w, ui.win_h, graphics, rect_state, self.pos,
-                    self.dim, maybe_frame, color
-                )
-            },
-            Some(text) => {
-                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-                rectangle::draw_with_centered_label(
-                    ui.win_w, ui.win_h, graphics, ui, rect_state,
-                    self.pos, self.dim, maybe_frame, color,
-                    text, size, text_color
-                )
-            },
-        }
-
-        set_state(ui, self.ui_id, Kind::Button(new_state), self.pos, self.dim);
-
-    }
-}
+// impl<'a, F> ::draw::Drawable for Button<'a, F>
+//     where
+//         F: FnMut() + 'a
+// {
+// 
+//     fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
+//         where
+//             B: Graphics<Texture = <C as CharacterCache>::Texture>,
+//             C: CharacterCache
+//     {
+// 
+//         let state = *get_state(ui, self.ui_id);
+//         let mouse = ui.get_mouse_state();
+//         let is_over = rectangle::is_over(self.pos, mouse.pos, self.dim);
+//         let new_state = get_new_state(is_over, state, mouse);
+// 
+//         // Callback.
+//         match (is_over, state, new_state) {
+//             (true, State::Clicked, State::Highlighted) => match self.maybe_callback {
+//                 Some(ref mut callback) => (*callback)(), None => (),
+//             }, _ => (),
+//         }
+// 
+//         // Draw.
+//         let rect_state = new_state.as_rectangle_state();
+//         let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+//         let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
+//         let maybe_frame = match frame_w > 0.0 {
+//             true => Some((frame_w, self.maybe_frame_color.unwrap_or(ui.theme.frame_color))),
+//             false => None,
+//         };
+//         match self.maybe_label {
+//             None => {
+//                 rectangle::draw(
+//                     ui.win_w, ui.win_h, graphics, rect_state, self.pos,
+//                     self.dim, maybe_frame, color
+//                 )
+//             },
+//             Some(text) => {
+//                 let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+//                 let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+//                 rectangle::draw_with_centered_label(
+//                     ui.win_w, ui.win_h, graphics, ui, rect_state,
+//                     self.pos, self.dim, maybe_frame, color,
+//                     text, size, text_color
+//                 )
+//             },
+//         }
+// 
+//         set_state(ui, self.ui_id, Kind::Button(new_state), self.pos, self.dim);
+// 
+//     }
+// }

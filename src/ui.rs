@@ -15,10 +15,11 @@ use piston::event::{
     TextEvent,
 };
 use point::Point;
+use position::Position;
 use std::iter::repeat;
 use theme::Theme;
 use widget::Kind as WidgetKind;
-use widget::{Placing, Widget};
+use widget::Widget;
 
 /// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
 /// cached within the `Ui` type.
@@ -52,7 +53,7 @@ pub struct Ui<C> {
     /// Window height.
     pub win_h: f64,
     /// The UiId of the previously drawn Widget.
-    prev_uiid: u64,
+    maybe_prev_ui_id: Option<UiId>,
 }
 
 impl<C> Ui<C>
@@ -73,7 +74,7 @@ impl<C> Ui<C>
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
-            prev_uiid: 0,
+            maybe_prev_ui_id: None,
         }
     }
 
@@ -81,16 +82,20 @@ impl<C> Ui<C>
     pub fn handle_event<E: GenericEvent + ::std::fmt::Debug>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
+            self.maybe_prev_ui_id = None;
             self.prev_event_was_render = false;
         }
+
         event.render(|args| {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
         });
+
         event.mouse_cursor(|x, y| {
             self.mouse.pos = [x, y];
         });
+
         event.press(|button_type| {
             use piston::input::Button;
             use piston::input::MouseButton::Left;
@@ -106,10 +111,10 @@ impl<C> Ui<C>
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
             }
         });
+
         event.release(|button_type| {
             use piston::input::Button;
             use piston::input::MouseButton::Left;
-
             match button_type {
                 Button::Mouse(button) => {
                     *match button {
@@ -121,6 +126,7 @@ impl<C> Ui<C>
                 Button::Keyboard(key) => self.keys_just_released.push(key),
             }
         });
+
         event.text(|text| {
             self.text_just_entered.push(text.to_string())
         });
@@ -129,7 +135,7 @@ impl<C> Ui<C>
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self,
                          size: FontSize,
-                         ch: char) -> &Character<<C as CharacterCache>::Texture> {
+                         ch: char) -> &Character<C::Texture> {
         self.character_cache.character(size, ch)
     }
 
@@ -153,7 +159,7 @@ impl<C> Ui<C>
                         color: Color,
                         text: &str)
         where
-            B: Graphics<Texture = <C as CharacterCache>::Texture>
+            B: Graphics<Texture = C::Texture>
     {
         use graphics::text::Text;
         use graphics::Transformed;
@@ -170,10 +176,6 @@ impl<C> Ui<C>
             graphics
         );
     }
-
-}
-
-impl<C> Ui<C> {
 
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> Mouse {
@@ -215,19 +217,63 @@ impl<C> Ui<C> {
         }
     }
 
-    /// Set the Placing for a particular widget.
-    pub fn set_place(&mut self, ui_id: UiId, pos: Point, dim: Dimensions) {
-        self.widget_cache[ui_id as usize].placing = Placing::Place(pos[0], pos[1], dim[0], dim[1]);
-        self.prev_uiid = ui_id;
+    /// Set the given widget at the given UiId.
+    pub fn set_widget(&mut self, ui_id: UiId, mut widget: Widget) {
+        if self.widget_cache[ui_id].matches(&widget.kind)
+        || self.widget_cache[ui_id].matches(&WidgetKind::NoWidget) {
+            self.widget_cache[ui_id] = widget;
+            self.maybe_prev_ui_id = Some(ui_id);
+        } else {
+            panic!("A widget of a different kind already exists at the given UiId ({:?}).
+                    You tried to insert a {:?}, however the existing widget is a {:?}.
+                    Check your widgets' `UiId`s for errors.",
+                    ui_id, &widget.kind, &self.widget_cache[ui_id].kind);
+        }
     }
 
-    /// Get the UiId of the previous widget.
-    pub fn get_prev_uiid(&self) -> UiId { self.prev_uiid }
+    /// Get the center point of some given dimensions given some position.
+    pub fn get_point(&self, position: Position, dim: Dimensions) -> Point {
+        match position {
+            Position::Absolute(point) => point,
+            Position::Relative(direction, maybe_ui_id) => {
+                let maybe_rel_ui_id = maybe_ui_id.or(self.maybe_prev_ui_id);
+                match maybe_rel_ui_id {
+                    None => [0.0, 0.0],
+                    Some(rel_ui_id) => {
+                        let rel_point = self.widget_cache[rel_ui_id].point;
+                        let rel_dim = self.widget_cache[rel_ui_id].element.get_size();
+                        match direction {
+                            Direction::Up =>
+                                [rel_point[0], rel_point[1] + rel_dim[1] / 2.0 + dim[1] / 2.0],
+                            Direction::Down =>
+                                [rel_point[0], rel_point[1] - rel_dim[1] / 2.0 - dim[1] / 2.0],
+                            Direction::Left =>
+                                [rel_point[0] - rel_dim[0] / 2.0 - dim[0] / 2.0, rel_point[1]],
+                            Direction::Right =>
+                                [rel_point[0] + rel_dim[0] / 2.0 + dim[0] / 2.0, rel_point[1]],
+                        }
+                    },
+                }
+            },
+        }
+    }
 
-    /// Get the Placing for a particular widget.
-    pub fn get_placing(&self, ui_id: UiId) -> Placing {
-        if ui_id as usize >= self.widget_cache.len() { Placing::NoPlace }
-        else { self.widget_cache[ui_id as usize].placing }
+    /// Draw the `Ui` in it's current state.
+    /// - Translate widget layout flow into a graph.
+    /// - Use graph to determine absolute co-ords for all widgets.
+    /// - Sort widgets by render depth (depth first).
+    /// - Render all widgets.
+    pub fn draw<G: Graphics<Texture=C::Texture>>(&mut self, graphics: G) {
+        use elmesque::element::empty;
+        use std::cmp::Ordering;
+        let mut widgets = self.widget_cache.iter_mut().collect();
+        // Sort the widgets so that those with the greatest depth are rendered first.
+        widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
+                               else if a.depth > b.depth { Ordering::Less }
+                               else                      { Ordering::Equal });
+        for (ui_id, widget) in widgets.into_iter().enumerate() {
+            unimplemented!();
+        }
     }
 
 }
