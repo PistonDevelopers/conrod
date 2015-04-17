@@ -23,31 +23,37 @@ pub type CursorX = f64;
 /// Represents the state of the text_box widget.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum State {
-    Capturing(Selection),
+    Capturing(View),
     Uncaptured(Uncaptured),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Selection {
+pub struct View {
+    cursor: Cursor,
+    offset: f64,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Cursor {
     anchor: Anchor,
     start: Idx,
     end: Idx,
 }
 
-impl Selection {
-    fn from_index(idx: Idx) -> Selection {
-        Selection {anchor: Anchor::Start, start: idx, end: idx }
+impl Cursor {
+    fn from_index(idx: Idx) -> Cursor {
+        Cursor { anchor: Anchor::Start, start: idx, end: idx }
     }
 
-    fn from_range(start: Idx, end: Idx) -> Selection {
+    fn from_range(start: Idx, end: Idx) -> Cursor {
         if start < end {
-            Selection { anchor: Anchor::Start, start: start, end: end }
+            Cursor { anchor: Anchor::Start, start: start, end: end }
         } else {
-            Selection { anchor: Anchor::End, start: end, end: start }
+            Cursor { anchor: Anchor::End, start: end, end: start }
         }
     }
 
-    /// Ensure the selection does not go past end_limit. Returns true if the selection was
+    /// Ensure the cursor does not go past end_limit. Returns true if the cursor was
     /// previously too large.
     fn limit_end_to(&mut self, end_limit: usize) -> bool {
         if self.start > end_limit {
@@ -62,7 +68,7 @@ impl Selection {
         false
     }
 
-    fn move_cursor(&mut self, by: i32) {
+    fn shift(&mut self, by: i32) {
         if by == 0 {
              return;
         }
@@ -189,25 +195,32 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
     use self::Uncaptured::{ Normal, Highlighted };
 
     match prev_state {
-        State::Capturing(prev) => match mouse.left {
+        State::Capturing(mut prev) => match mouse.left {
             Down => match over_elem {
-                Element::Nill => if prev.anchor == Anchor::None {
+                Element::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
                 } else {
                     prev_state
                 },
-                Element::Rect =>  if prev.anchor == Anchor::None {
-                    Capturing(Selection::from_index(0))
+                Element::Rect =>  if prev.cursor.anchor == Anchor::None {
+                    prev.cursor = Cursor::from_index(0);
+                    Capturing(prev)
                 } else {
                     prev_state
                 },
-                Element::Char(idx) => match prev.anchor {
-                    Anchor::None => Capturing(Selection::from_index(idx)),
-                    Anchor::Start => Capturing(Selection::from_range(prev.start, idx)),
-                    Anchor::End => Capturing(Selection::from_range(prev.end, idx)),
+                Element::Char(idx) => {
+                    match prev.cursor.anchor {
+                        Anchor::None => prev.cursor = Cursor::from_index(idx),
+                        Anchor::Start => prev.cursor = Cursor::from_range(prev.cursor.start, idx),
+                        Anchor::End => prev.cursor = Cursor::from_range(prev.cursor.end, idx),
+                    }
+                    Capturing(prev)
                 },
             },
-            Up => Capturing(Selection { anchor: Anchor::None, .. prev })
+            Up => {
+                prev.cursor.anchor = Anchor::None;
+                Capturing(prev)
+            },
         },
 
         State::Uncaptured(prev) => match mouse.left {
@@ -215,11 +228,17 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
                 Element::Nill => Uncaptured(Normal),
                 Element::Rect => match prev {
                     Normal => prev_state,
-                    Highlighted => Capturing(Selection::from_index(0)),
+                    Highlighted => Capturing(View {
+                         cursor: Cursor::from_index(0),
+                         offset: 0.0,
+                    })
                 },
                 Element::Char(idx) =>  match prev {
                     Normal => prev_state,
-                    Highlighted => Capturing(Selection::from_index(idx)),
+                    Highlighted => Capturing(View {
+                        cursor: Cursor::from_index(idx),
+                        offset: 0.0,
+                    })
                 },
             },
             Up => match over_elem {
@@ -299,7 +318,7 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
-    fn selection_rect<C: CharacterCache>
+    fn cursor_rect<C: CharacterCache>
                      (&self, ui: &mut Ui<C>, text_x: f64, start: Idx, end: Idx) ->
                      (Point, Dimensions) {
         let pos = cursor_position(ui, start, text_x, self.font_size, &self.text);
@@ -376,37 +395,60 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
-        if let State::Capturing(mut selection) = new_state {
-            // Ensure the selection is still valid.
-            if selection.limit_end_to(self.text.len()) {
-                new_state = State::Capturing(selection);
+        if let State::Capturing(view) = new_state {
+            let mut cursor = view.cursor;
+            let mut v_offset = view.offset;
+
+            // Ensure the cursor is still valid.
+            cursor.limit_end_to(self.text.len());
+
+            // This matters if the text is scrolled with the mouse.
+            let cursor_idx = match cursor.anchor {
+                Anchor::End => cursor.start,
+                Anchor::Start | Anchor::None => cursor.end,
+            };
+            let cursor_x = cursor_position(ui, cursor_idx, text_x, self.font_size, &self.text);
+
+            if cursor.is_cursor() || cursor.anchor != Anchor::None {
+                let cursor_x_view = cursor_x - v_offset;
+                let text_right = self.pos[0] + self.dim[0] - TEXT_PADDING - frame_w;
+
+                if cursor_x_view < text_x {
+                    v_offset += cursor_x_view - text_x;
+                } else if cursor_x_view > text_right {
+                    v_offset += cursor_x_view - text_right;
+                }
             }
 
-            // Draw the selection.
-            if selection.is_cursor() {
-                let cursor_x = cursor_position(ui, selection.start, text_x,
-                                               self.font_size, &self.text);
-                draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
+            // Draw the cursor.
+            if cursor.is_cursor() {
+                draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x - v_offset, pad_pos[1], pad_dim[1]);
             } else {
-                let (pos, dim) = self.selection_rect(ui, text_x, selection.start, selection.end);
+                let (pos, dim) = self.cursor_rect(ui, text_x - v_offset, cursor.start, cursor.end);
                 rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                                 [pos[0], pos[1] + frame_w], [dim[0], dim[1] - frame_w2],
                                 None, color.highlighted());
             }
+
+            ui.draw_text(graphics, [text_pos[0] - v_offset, text_pos[1]], self.font_size, color.plain_contrast(), &self.text);
+
+            new_state = State::Capturing(View { cursor: cursor, offset: v_offset });
+        } else {
+            ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
         }
 
-        ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
+        if let State::Capturing(captured) = new_state {
+            let mut cursor = captured.cursor;
 
-        if let State::Capturing(mut selection) = new_state {
             // Check for entered text.
             for text in ui.get_entered_text().iter() {
                 if text.len() == 0 { continue; }
 
-                let end: String = self.text.chars().skip(selection.end).collect();
-                self.text.truncate(selection.start);
+                let end: String = self.text.chars().skip(cursor.end).collect();
+                self.text.truncate(cursor.start);
                 self.text.push_str(&text);
                 self.text.push_str(&end);
-                selection.move_cursor(text.len() as i32);
+                cursor.shift(text.len() as i32);
             }
 
             // Check for control keys.
@@ -414,28 +456,28 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
             for key in pressed_keys.iter() {
                 match *key {
                     Backspace => {
-                        if selection.is_cursor() {
-                            if selection.start > 0 {
-                                let end: String = self.text.chars().skip(selection.end).collect();
-                                self.text.truncate(selection.start - 1);
+                        if cursor.is_cursor() {
+                            if cursor.start > 0 {
+                                let end: String = self.text.chars().skip(cursor.end).collect();
+                                self.text.truncate(cursor.start - 1);
                                 self.text.push_str(&end);
-                                selection.move_cursor(-1);
+                                cursor.shift(-1);
                             }
                         } else {
-                            let end: String = self.text.chars().skip(selection.end).collect();
-                            self.text.truncate(selection.start);
+                            let end: String = self.text.chars().skip(cursor.end).collect();
+                            self.text.truncate(cursor.start);
                             self.text.push_str(&end);
-                            selection.end = selection.start;
+                            cursor.end = cursor.start;
                         }
                     },
                     Left => {
-                        if selection.is_cursor() {
-                            selection.move_cursor(-1);
+                        if cursor.is_cursor() {
+                            cursor.shift(-1);
                         }
                     },
                     Right => {
-                        if selection.is_cursor() && self.text.len() > selection.end {
-                            selection.move_cursor(1);
+                        if cursor.is_cursor() && self.text.len() > cursor.end {
+                            cursor.shift(1);
                         }
                     },
                     Return => if self.text.len() > 0 {
@@ -452,7 +494,7 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
                     _ => (),
                 }
             }
-            new_state = State::Capturing(selection);
+            new_state = State::Capturing(View { cursor: cursor, .. captured });
         }
         set_state(ui, self.ui_id, Kind::TextBox(new_state), self.pos, self.dim);
     }
