@@ -395,28 +395,47 @@ impl<'a, F> ::draw::Drawable for TextBox<'a, F>
         rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                         self.pos, self.dim, maybe_frame, color);
 
-        if let State::Capturing(captured) = new_state {
-            let mut cursor = captured.cursor;
+        if let State::Capturing(view) = new_state {
+            let mut cursor = view.cursor;
+            let mut v_offset = view.offset;
 
             // Ensure the cursor is still valid.
-            if cursor.limit_end_to(self.text.len()) {
-                new_state = State::Capturing(View { cursor: cursor, .. captured });
+            cursor.limit_end_to(self.text.len());
+
+            // This matters if the text is scrolled with the mouse.
+            let cursor_idx = match cursor.anchor {
+                Anchor::End => cursor.start,
+                Anchor::Start | Anchor::None => cursor.end,
+            };
+            let cursor_x = cursor_position(ui, cursor_idx, text_x, self.font_size, &self.text);
+
+            if cursor.is_cursor() || cursor.anchor != Anchor::None {
+                let cursor_x_view = cursor_x - v_offset;
+                let text_right = self.pos[0] + self.dim[0] - TEXT_PADDING - frame_w;
+
+                if cursor_x_view < text_x {
+                    v_offset += cursor_x_view - text_x;
+                } else if cursor_x_view > text_right {
+                    v_offset += cursor_x_view - text_right;
+                }
             }
 
             // Draw the cursor.
             if cursor.is_cursor() {
-                let cursor_x = cursor_position(ui, cursor.start, text_x,
-                                               self.font_size, &self.text);
-                draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x, pad_pos[1], pad_dim[1]);
+                draw_cursor(ui.win_w, ui.win_h, graphics, color, cursor_x - v_offset, pad_pos[1], pad_dim[1]);
             } else {
-                let (pos, dim) = self.cursor_rect(ui, text_x, cursor.start, cursor.end);
+                let (pos, dim) = self.cursor_rect(ui, text_x - v_offset, cursor.start, cursor.end);
                 rectangle::draw(ui.win_w, ui.win_h, graphics, new_state.as_rectangle_state(),
                                 [pos[0], pos[1] + frame_w], [dim[0], dim[1] - frame_w2],
                                 None, color.highlighted());
             }
-        }
 
-        ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
+            ui.draw_text(graphics, [text_pos[0] - v_offset, text_pos[1]], self.font_size, color.plain_contrast(), &self.text);
+
+            new_state = State::Capturing(View { cursor: cursor, offset: v_offset });
+        } else {
+            ui.draw_text(graphics, text_pos, self.font_size, color.plain_contrast(), &self.text);
+        }
 
         if let State::Capturing(captured) = new_state {
             let mut cursor = captured.cursor;
