@@ -22,16 +22,6 @@ pub enum State {
 }
 
 impl State {
-
-    /// Return the associated Rectangle state.
-    fn as_rectangle_state(&self) -> rectangle::State {
-        match self {
-            &State::Normal      => rectangle::State::Normal,
-            &State::Highlighted => rectangle::State::Highlighted,
-            &State::Clicked     => rectangle::State::Clicked,
-        }
-    }
-
     /// Alter the widget color depending on the state.
     fn color(&self, color: Color) -> Color {
         match *self {
@@ -40,7 +30,6 @@ impl State {
             State::Clicked => color.clicked(),
         }
     }
-
 }
 
 widget_fns!(Button, State, Kind::Button(State::Normal));
@@ -105,7 +94,7 @@ impl<'a, F> Button<'a, F> {
         use utils::is_over_rect;
 
         let state = *get_state(ui, self.ui_id);
-        let xy = ui.get_point(self.pos, self.dim);
+        let xy = ui.get_absolute_xy(self.pos, self.dim);
         let mouse = ui.get_mouse_state();
         let is_over = is_over_rect(xy, mouse.xy, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
@@ -116,37 +105,38 @@ impl<'a, F> Button<'a, F> {
             if let Some(ref mut callback) = self.maybe_callback { callback() }
         }
 
-        // Construct the rectangle Form.
-        let rect_form = |button: &Button<'a, F>, ui: &Ui<C>| -> Form {
-            let color = new_state.color(button.maybe_color.unwrap_or(ui.theme.shape_color));
-            let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-            if frame_w > 0.0 {
-                let frame_color = button.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-                let (inner_w, inner_h) = (button.dim[0] - frame_w,  button.dim[1] - frame_w);
-                group(vec![rect(w, h).filled(frame_color), rect(inner_w, inner_h).filled(color)])
-            } else {
-                rect(w, h).filled(color)
-            }
-        };
+        // Consruct the frame and pressable forms.
+        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
+        let frame_color = button.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+        let (inner_w, inner_h) = (button.dim[0] - frame_w,  button.dim[1] - frame_w);
+        let frame_form = rect(w, h).filled(frame_color);
+        let color = new_state.color(button.maybe_color.unwrap_or(ui.theme.shape_color));
+        let pressable_form = rect(inner_w, inner_h).filled(color);
 
-        // Construct the button's Element.
-        let element = collage(w, h, match self.maybe_label {
-            None => vec![rect_form(&self, ui)],
-            Some(label_text) => {
-                use elmesque::text::Text;
-                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-                vec![rect_form(&self, ui),
-                     text(Text::from_string(label_text.to_string()).color(text_color).height(size))]
-            },
+        // Construct the label's Form.
+        let maybe_label_form = self.maybe_label.map(|label_text| {
+            use elmesque::text::Text;
+            let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+            let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+            text(Text::from_string(label_text.to_string()).color(text_color).height(size))
         });
+
+        // Construct the button's Form.
+        let form = group(Some(frame_form).into_iter()
+            .chain(Some(pressable_form).into_iter())
+            .chain(maybe_label_form.into_iter())
+            .collect());
+
+        // Construct the button's element.
+        let element = collage(dim[0] as i32, dim[1] as i32, vec![form.shift(xy[0], xy[1])]);
 
         // Store the widget's new state in the Ui.
         ui.set_widget(self.ui_id, Widget {
             kind: Kind::Button(new_state),
             xy: xy,
+            dim: dim,
             depth: depth,
-            element: Some(element),
+            form: Some(form),
         });
 
     }
@@ -189,7 +179,7 @@ impl<'a, F> Labelable<'a> for Button<'a, F> {
 }
 
 impl<'a, F> Positionable for Button<'a, F> {
-    fn point(mut self, pos: Point) -> Self {
+    fn position(mut self, pos: Position) -> Self {
         self.pos = pos;
         self
     }

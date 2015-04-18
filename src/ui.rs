@@ -231,26 +231,31 @@ impl<C> Ui<C>
         }
     }
 
-    /// Get the center point of some given dimensions given some position.
-    pub fn get_point(&self, position: Position, dim: Dimensions) -> Point {
+    /// Get the centre xy coords for some given dimensions and position.
+    pub fn get_xy(&self, position: Position, dim: Dimensions) -> Point {
         match position {
-            Position::Absolute(point) => point,
-            Position::Relative(direction, maybe_ui_id) => {
-                let maybe_rel_ui_id = maybe_ui_id.or(self.maybe_prev_ui_id);
-                match maybe_rel_ui_id {
+            Position::Absolute(xy) => xy,
+            Position::Relative(xy, maybe_ui_id) => {
+                match maybe_ui_id.or(self.maybe_prev_ui_id) {
+                    None => [0.0, 0.0],
+                    Some(rel_ui_id) => vec2_add(self.widget_cache[rel_ui_id].point, xy),
+                }
+            },
+            Position::Direction(direction, maybe_ui_id) => {
+                match maybe_ui_id.or(self.maybe_prev_ui_id) {
                     None => [0.0, 0.0],
                     Some(rel_ui_id) => {
-                        let rel_point = self.widget_cache[rel_ui_id].point;
+                        let rel_xy = self.widget_cache[rel_ui_id].point;
                         let rel_dim = self.widget_cache[rel_ui_id].element.get_size();
                         match direction {
-                            Direction::Up =>
-                                [rel_point[0], rel_point[1] + rel_dim[1] / 2.0 + dim[1] / 2.0],
-                            Direction::Down =>
-                                [rel_point[0], rel_point[1] - rel_dim[1] / 2.0 - dim[1] / 2.0],
-                            Direction::Left =>
-                                [rel_point[0] - rel_dim[0] / 2.0 - dim[0] / 2.0, rel_point[1]],
+                            Direction::Up(px) =>
+                                [rel_xy[0], rel_xy[1] + rel_dim[1] / 2.0 + dim[1] / 2.0 + px],
+                            Direction::Down(px) =>
+                                [rel_xy[0], rel_xy[1] - rel_dim[1] / 2.0 - dim[1] / 2.0 - px],
+                            Direction::Left(px) =>
+                                [rel_xy[0] - rel_dim[0] / 2.0 - dim[0] / 2.0 - px, rel_xy[1]],
                             Direction::Right =>
-                                [rel_point[0] + rel_dim[0] / 2.0 + dim[0] / 2.0, rel_point[1]],
+                                [rel_xy[0] + rel_dim[0] / 2.0 + dim[0] / 2.0 + px, rel_xy[1]],
                         }
                     },
                 }
@@ -259,20 +264,20 @@ impl<C> Ui<C>
     }
 
     /// Draw the `Ui` in it's current state.
-    /// - Translate widget layout flow into a graph.
-    /// - Use graph to determine absolute co-ords for all widgets.
     /// - Sort widgets by render depth (depth first).
+    /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
     /// - Render all widgets.
     pub fn draw<G: Graphics<Texture=C::Texture>>(&mut self, graphics: G) {
-        use elmesque::element::empty;
+        use elmesque::Renderer;
         use std::cmp::Ordering;
-        let mut widgets = self.widget_cache.iter_mut().collect();
-        // Sort the widgets so that those with the greatest depth are rendered first.
+        let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
+        let mut widgets = widget_cache.iter_mut().collect();
         widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
                                else if a.depth > b.depth { Ordering::Less }
                                else                      { Ordering::Equal });
-        for (ui_id, widget) in widgets.into_iter().enumerate() {
-            unimplemented!();
+        let renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
+        for widget in widgets.into_iter() {
+            widget.element.draw(&mut renderer);
         }
     }
 

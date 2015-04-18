@@ -21,9 +21,9 @@ pub type Depth = f32;
 #[derive(Clone)]
 pub struct Widget {
     pub kind: Kind,
-    pub point: Point,
+    pub xy: Point,
     pub depth: Depth,
-    pub element: Element,
+    pub form: Form,
 }
 
 impl Widget {
@@ -32,9 +32,9 @@ impl Widget {
     pub fn empty() -> Widget {
         Widget {
             kind: Kind::NoWidget,
-            placing: [0.0, 0.0],
+            xy: [0.0, 0.0],
             depth: 0.0,
-            maybe_element: ::elmesque::element::empty(),
+            element: ::elmesque::element::empty(),
         }
     }
 
@@ -42,9 +42,9 @@ impl Widget {
     pub fn new(kind: Kind) -> Widget {
         Widget {
             kind: kind,
-            placing: [0.0, 0.0],
+            xy: [0.0, 0.0],
             depth: 0.0,
-            maybe_element: ::elmesque::element::empty(),
+            element: ::elmesque::element::empty(),
         }
     }
 
