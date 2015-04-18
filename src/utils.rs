@@ -114,7 +114,7 @@ pub fn val_to_string<T: ToString + NumCast>
             // Find out how many pixels there are to actually use
             // and judge a reasonable precision from this.
             let mut n = 1;
-            while 10us.pow(n) < pixel_range { n += 1 }
+            while 10.pow(n) < pixel_range { n += 1 }
             let precision = n as usize;
 
             // Truncate the length to the pixel precision as
