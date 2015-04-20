@@ -371,8 +371,7 @@ impl<'a, F> TextBox<'a, F> {
                     let htext_w = label::width(ui, font_size, &htext);
                     ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
                 };
-                rect(dim[0], dim[1]).filled(color.highlighted())
-                    .alpha(cursor_alpha)
+                rect(dim[0], dim[1] - frame_w2).filled(color.highlighted())
                     .shift(block_xy[0], block_xy[1])
             };
 
@@ -447,8 +446,8 @@ impl<'a, F> TextBox<'a, F> {
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(inner_form).into_iter())
-            .chain(Some(text_form).into_iter())
             .chain(maybe_cursor_form.into_iter())
+            .chain(Some(text_form).into_iter())
             .map(|form| form.shift(xy[0], xy[1]));
 
         // Collect the Forms into a renderable `Element`.
@@ -511,4 +510,3 @@ impl<'a, F> position::Sizeable for TextBox<'a, F> {
         TextBox { dim: [w, h], ..self }
     }
 }
-
