@@ -29,6 +29,9 @@ git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 [dependencies.clock_ticks]
 git = "https://github.com/tomaka/clock_ticks"
 
+[dependencies.color]
+git = "https://github.com/PistonDevelopers/color/"
+
 [dependencies.elmesque]
 git = "https://github.com/mitchmindtree/elmesque"
 

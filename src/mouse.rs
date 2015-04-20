@@ -1,15 +1,15 @@
 
-use point::Point;
+use position::Point;
 
 /// Represents the current state of a mouse button.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ButtonState {
     Up,
     Down,
 }
 
 /// Represents the current state of the Mouse.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Mouse {
     pub xy: Point,
     pub left: ButtonState,
@@ -18,6 +18,7 @@ pub struct Mouse {
 }
 
 impl Mouse {
+
     /// Constructor for a Mouse struct.
     pub fn new(xy: Point,
                left: ButtonState,
@@ -25,4 +26,10 @@ impl Mouse {
                right: ButtonState) -> Mouse {
         Mouse { xy: xy, left: left, middle: middle, right: right }
     }
+
+    /// Return the mouse state with its position relative to the given position.
+    pub fn relative_to(self, xy: Point) -> Mouse {
+        Mouse { xy: ::vecmath::vec2_sub(self.xy, xy), ..self }
+    }
+
 }

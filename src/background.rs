@@ -1,6 +1,5 @@
 
 use color::{Color, Colorable};
-use draw::Drawable;
 use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
 use ui::Ui;
@@ -20,23 +19,22 @@ impl Background {
         }
     }
 
-}
-
-impl Colorable for Background {
-    fn color(mut self, color: Color) -> Self {
-        self.maybe_color = Some(color);
-        self
-    }
-}
-
-impl Drawable for Background {
-    fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
+    /// Draw the background.
+    pub fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
         where
             B: Graphics<Texture = <C as CharacterCache>::Texture>,
             C: CharacterCache
     {
         let color = self.maybe_color.unwrap_or(ui.theme.background_color);
         graphics::clear(color.to_fsa(), graphics);
+    }
+
+}
+
+impl Colorable for Background {
+    fn color(mut self, color: Color) -> Self {
+        self.maybe_color = Some(color);
+        self
     }
 }
 

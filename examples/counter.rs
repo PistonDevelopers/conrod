@@ -3,17 +3,7 @@ extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate piston;
 
-use conrod::{
-    Background,
-    Button,
-    Colorable,
-    Shapeable,
-    Drawable,
-    Label,
-    Positionable,
-    Theme,
-    Ui
-};
+use conrod::{Background, Button, Colorable, Labelable, Sizeable, Theme, Ui};
 use glutin_window::GlutinWindow;
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
@@ -40,7 +30,7 @@ fn main() {
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let ui = &mut Ui::new(glyph_cache, theme);
 
-    let mut count = 0;
+    let mut count: u32 = 0;
 
     for event in event_iter {
         ui.handle_event(&event);
@@ -48,10 +38,14 @@ fn main() {
             gl.draw(args.viewport(), |_, gl| {
 
                 // Draw the background.
-                Background::new().rgba(0.2, 0.25, 0.4, 1.0).draw(ui, gl);
+                Background::new().rgb(0.2, 0.25, 0.4).draw(ui, gl);
 
-                // Draw the counter.
-                counter(gl, ui, &mut count)
+                // Draw the button and increment count if pressed..
+                Button::new()
+                    .dimensions(80.0, 80.0)
+                    .label(&count.to_string())
+                    .callback(|| count += 1)
+                    .set(0, ui);
 
             });
         }
@@ -59,19 +53,3 @@ fn main() {
 
 }
 
-/// Function for drawing the counter widget.
-fn counter<'a>(gl: &mut GlGraphics,
-               ui: &mut Ui<GlyphCache<'a>>,
-               count: &mut u32) {
-
-    // Draw the value.
-    Label::new(&count.to_string()).position(10.0, 10.0).draw(ui, gl);
-
-    // Draw the button and increment count if pressed..
-    Button::new(0)
-        .position(110.0, 10.0)
-        .dimensions(80.0, 80.0)
-        .callback(|| *count += 1)
-        .draw(ui, gl)
-
-}

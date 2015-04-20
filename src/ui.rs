@@ -1,7 +1,5 @@
 
-use color::Color;
-use dimensions::Dimensions;
-use graphics::{self, Graphics};
+use graphics::Graphics;
 use graphics::character::{Character, CharacterCache};
 use label::FontSize;
 use mouse::{ButtonState, Mouse};
@@ -14,16 +12,16 @@ use piston::event::{
     RenderEvent,
     TextEvent,
 };
-use point::Point;
-use position::Position;
+use position::{Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use std::iter::repeat;
 use theme::Theme;
 use widget::Kind as WidgetKind;
 use widget::Widget;
 
 /// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
-/// cached within the `Ui` type.
-pub type UiId = u64;
+/// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
+/// a `Vec`, which is limited to a size of `usize` elements.
+pub type UiId = usize;
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
@@ -56,10 +54,7 @@ pub struct Ui<C> {
     maybe_prev_ui_id: Option<UiId>,
 }
 
-impl<C> Ui<C>
-    where
-        C: CharacterCache
-{
+impl<C> Ui<C> {
 
     /// Constructor for a UiContext.
     pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
@@ -93,7 +88,8 @@ impl<C> Ui<C>
         });
 
         event.mouse_cursor(|x, y| {
-            self.mouse.pos = [x, y];
+            // Convert mouse coords to (0, 0) origin.
+            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
         });
 
         event.press(|button_type| {
@@ -135,12 +131,18 @@ impl<C> Ui<C>
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self,
                          size: FontSize,
-                         ch: char) -> &Character<C::Texture> {
+                         ch: char) -> &Character<C::Texture>
+        where
+            C: CharacterCache
+    {
         self.character_cache.character(size, ch)
     }
 
     /// Return the width of a 'Character'.
-    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
+    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64
+        where
+            C: CharacterCache
+    {
         self.get_character(size, ch).width()
     }
 
@@ -149,32 +151,6 @@ impl<C> Ui<C>
         self.keys_just_pressed.clear();
         self.keys_just_released.clear();
         self.text_just_entered.clear();
-    }
-
-    /// Draws text
-    pub fn draw_text<B>(&mut self,
-                        graphics: &mut B,
-                        pos: Point,
-                        size: FontSize,
-                        color: Color,
-                        text: &str)
-        where
-            B: Graphics<Texture = C::Texture>
-    {
-        use graphics::text::Text;
-        use graphics::Transformed;
-        use num::Float;
-
-        let draw_state = graphics::default_draw_state();
-        let transform = graphics::abs_transform(self.win_w, self.win_h)
-                        .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
-        Text::colored(color.to_fsa(), size).draw(
-            text,
-            &mut self.character_cache,
-            draw_state,
-            transform,
-            graphics
-        );
     }
 
     /// Return the current mouse state.
@@ -218,9 +194,9 @@ impl<C> Ui<C>
     }
 
     /// Set the given widget at the given UiId.
-    pub fn set_widget(&mut self, ui_id: UiId, mut widget: Widget) {
-        if self.widget_cache[ui_id].matches(&widget.kind)
-        || self.widget_cache[ui_id].matches(&WidgetKind::NoWidget) {
+    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget) {
+        if self.widget_cache[ui_id].kind.matches(&widget.kind)
+        || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
             self.widget_cache[ui_id] = widget;
             self.maybe_prev_ui_id = Some(ui_id);
         } else {
@@ -231,31 +207,75 @@ impl<C> Ui<C>
         }
     }
 
-    /// Get the centre xy coords for some given dimensions and position.
-    pub fn get_xy(&self, position: Position, dim: Dimensions) -> Point {
+    /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
+    pub fn get_xy(&self,
+                  position: Position,
+                  dim: Dimensions,
+                  h_align: HorizontalAlign,
+                  v_align: VerticalAlign) -> Point {
         match position {
-            Position::Absolute(xy) => xy,
-            Position::Relative(xy, maybe_ui_id) => {
+            Position::Absolute(x, y) => [x, y],
+            Position::Relative(x, y, maybe_ui_id) => {
                 match maybe_ui_id.or(self.maybe_prev_ui_id) {
                     None => [0.0, 0.0],
-                    Some(rel_ui_id) => vec2_add(self.widget_cache[rel_ui_id].point, xy),
+                    Some(rel_ui_id) => ::vecmath::vec2_add(self.widget_cache[rel_ui_id].xy, [x, y]),
                 }
             },
             Position::Direction(direction, maybe_ui_id) => {
+                use position::{align_left_of, align_right_of, align_top_of, align_bottom_of};
                 match maybe_ui_id.or(self.maybe_prev_ui_id) {
                     None => [0.0, 0.0],
                     Some(rel_ui_id) => {
-                        let rel_xy = self.widget_cache[rel_ui_id].point;
-                        let rel_dim = self.widget_cache[rel_ui_id].element.get_size();
-                        match direction {
-                            Direction::Up(px) =>
-                                [rel_xy[0], rel_xy[1] + rel_dim[1] / 2.0 + dim[1] / 2.0 + px],
-                            Direction::Down(px) =>
-                                [rel_xy[0], rel_xy[1] - rel_dim[1] / 2.0 - dim[1] / 2.0 - px],
-                            Direction::Left(px) =>
-                                [rel_xy[0] - rel_dim[0] / 2.0 - dim[0] / 2.0 - px, rel_xy[1]],
-                            Direction::Right =>
-                                [rel_xy[0] + rel_dim[0] / 2.0 + dim[0] / 2.0 + px, rel_xy[1]],
+                        use position::Direction;
+                        let rel_xy = self.widget_cache[rel_ui_id].xy;
+                        if let Some(ref element) = self.widget_cache[rel_ui_id].element {
+                            let (rel_w, rel_h) = element.get_size();
+                            let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
+                            match direction {
+
+                                Direction::Up(px) => {
+                                    let x = rel_xy[0] + match h_align {
+                                        HorizontalAlign::Middle => 0.0,
+                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                    };
+                                    let y = rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px;
+                                    [x, y]
+                                },
+
+                                Direction::Down(px) => {
+                                    let x = rel_xy[0] + match h_align {
+                                        HorizontalAlign::Middle => 0.0,
+                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                    };
+                                    let y = rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px;
+                                    [x, y]
+                                },
+
+                                Direction::Left(px) => {
+                                    let y = rel_xy[1] + match v_align {
+                                        VerticalAlign::Middle => 0.0,
+                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                    };
+                                    let x = rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px;
+                                    [x, y]
+                                },
+
+                                Direction::Right(px) => {
+                                    let y = rel_xy[1] + match v_align {
+                                        VerticalAlign::Middle => 0.0,
+                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                    };
+                                    let x = rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px;
+                                    [x, y]
+                                },
+
+                            }
+                        } else {
+                            rel_xy
                         }
                     },
                 }
@@ -267,17 +287,23 @@ impl<C> Ui<C>
     /// - Sort widgets by render depth (depth first).
     /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
     /// - Render all widgets.
-    pub fn draw<G: Graphics<Texture=C::Texture>>(&mut self, graphics: G) {
+    pub fn draw<G>(&mut self, graphics: &mut G)
+        where
+            C: CharacterCache,
+            G: Graphics<Texture = C::Texture>,
+    {
         use elmesque::Renderer;
         use std::cmp::Ordering;
         let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
-        let mut widgets = widget_cache.iter_mut().collect();
+        let mut widgets: Vec<_> = widget_cache.iter_mut().collect();
         widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
                                else if a.depth > b.depth { Ordering::Less }
                                else                      { Ordering::Equal });
-        let renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
+        let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
         for widget in widgets.into_iter() {
-            widget.element.draw(&mut renderer);
+            if let Some(element) = widget.element.take() {
+                element.draw(&mut renderer);
+            }
         }
     }
 

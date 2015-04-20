@@ -9,6 +9,7 @@
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
+extern crate color as color_lib;
 extern crate elmesque;
 extern crate graphics;
 #[macro_use] extern crate piston;
@@ -16,6 +17,8 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
 extern crate num;
+
+pub use color_lib as color;
 
 pub use widget::button::Button;
 pub use widget::drop_down_list::DropDownList;
@@ -31,13 +34,9 @@ pub use widget::xy_pad::XYPad;
 
 pub use background::Background;
 pub use color::{Color, Colorable};
-pub use dimensions::Dimensions;
-pub use draw::Drawable;
 pub use frame::{Framing, Frameable};
 pub use label::Labelable;
-pub use point::Point;
-pub use position::Positionable;
-pub use shape::Shapeable;
+pub use position::{Depth, Direction, Dimensions, Point, Position, Positionable, Sizeable};
 pub use theme::Theme;
 pub use ui::{Ui, UiId};
 
@@ -45,16 +44,10 @@ pub use ui::{Ui, UiId};
 mod macros;
 
 mod background;
-pub mod color;
-mod dimensions;
-mod draw;
 mod frame;
 mod label;
 mod mouse;
-mod point;
 mod position;
-mod rectangle;
-mod shape;
 mod theme;
 mod ui;
 mod utils;

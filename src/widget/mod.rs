@@ -1,6 +1,6 @@
 
 use elmesque::Element;
-use point::Point;
+use position::{Depth, Point};
 
 pub mod button;
 pub mod drop_down_list;
@@ -13,17 +13,13 @@ pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
 
-/// The depth at which the widget will be rendered. This determines the order of rendering where
-/// widgets with a greater depth will be rendered first. 0.0 is the default depth.
-pub type Depth = f32;
-
 /// A widget element for storage within the Ui's `widget_cache`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Widget {
     pub kind: Kind,
     pub xy: Point,
     pub depth: Depth,
-    pub form: Form,
+    pub element: Option<Element>,
 }
 
 impl Widget {
@@ -34,7 +30,7 @@ impl Widget {
             kind: Kind::NoWidget,
             xy: [0.0, 0.0],
             depth: 0.0,
-            element: ::elmesque::element::empty(),
+            element: None,
         }
     }
 
@@ -44,7 +40,7 @@ impl Widget {
             kind: kind,
             xy: [0.0, 0.0],
             depth: 0.0,
-            element: ::elmesque::element::empty(),
+            element: None,
         }
     }
 
@@ -52,7 +48,7 @@ impl Widget {
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Kind {
     NoWidget,
     Button(button::State),
