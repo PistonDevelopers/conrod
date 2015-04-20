@@ -1,8 +1,6 @@
 
-use dimensions::Dimensions;
-use point::Point;
-use position::Positionable;
-use shape::Shapeable;
+use position::{self, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use ui::Ui;
 
 /// Callback params.
 pub type WidgetNum = usize;
@@ -20,8 +18,10 @@ pub type PosY = f64;
 pub struct Matrix {
     cols: usize,
     rows: usize,
-    pos: Point,
+    pos: Position,
     dim: Dimensions,
+    maybe_h_align: Option<HorizontalAlign>,
+    maybe_v_align: Option<VerticalAlign>,
     cell_pad_w: f64,
     cell_pad_h: f64,
 }
@@ -38,8 +38,10 @@ impl Matrix {
         Matrix {
             cols: cols,
             rows: rows,
-            pos: [0.0, 0.0],
+            pos: Position::default(),
             dim: [256.0, 256.0],
+            maybe_h_align: None,
+            maybe_v_align: None,
             cell_pad_w: 0.0,
             cell_pad_h: 0.0,
         }
@@ -47,24 +49,30 @@ impl Matrix {
 
     /// The callback called for each widget in the matrix. This should be called following all
     /// builder methods.
-    pub fn each_widget<F>(&mut self, mut callback: F)
+    pub fn each_widget<C, F>(&mut self, ui: &mut Ui<C>, mut callback: F)
         where
-            F: FnMut(WidgetNum, ColNum, RowNum, Point, Dimensions)
+            F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
-        let widget_w = self.dim[0] / self.cols as f64;
-        let widget_h = self.dim[1] / self.rows as f64;
+        use utils::map_range;
+        let dim = self.dim;
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
+        let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
+        let widget_w = dim[0] / self.cols as f64;
+        let widget_h = dim[1] / self.rows as f64;
+        let x_min = -half_w + widget_w / 2.0;
+        let x_max = half_w + widget_w / 2.0;
+        let y_min = -half_h - widget_h / 2.0;
+        let y_max = half_h - widget_h / 2.0;
         let mut widget_num = 0;
         for col in 0..self.cols {
             for row in 0..self.rows {
-                callback(
-                    widget_num,
-                    col,
-                    row,
-                    [self.pos[0] + (widget_w * col as f64) + self.cell_pad_w,
-                     self.pos[1] + (widget_h * row as f64) + self.cell_pad_h],
-                    [widget_w - self.cell_pad_w * 2.0,
-                     widget_h - self.cell_pad_h * 2.0],
-                );
+                let x = xy[0] + map_range(col as f64, 0.0, self.cols as f64, x_min, x_max);
+                let y = xy[1] + map_range(row as f64, 0.0, self.rows as f64, y_max, y_min);
+                let w = widget_w - self.cell_pad_w * 2.0;
+                let h = widget_h - self.cell_pad_h * 2.0;
+                callback(ui, widget_num, col, row, [x, y], [w, h]);
                 widget_num += 1;
             }
         }
@@ -77,14 +85,30 @@ impl Matrix {
 
 }
 
-impl Positionable for Matrix {
-    fn point(mut self, pos: Point) -> Self {
+impl position::Positionable for Matrix {
+    fn position(mut self, pos: Position) -> Self {
         self.pos = pos;
         self
     }
+    #[inline]
+    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
+        Matrix { maybe_h_align: Some(h_align), ..self }
+    }
+    #[inline]
+    fn vertical_align(self, v_align: VerticalAlign) -> Self {
+        Matrix { maybe_v_align: Some(v_align), ..self }
+    }
 }
 
-impl Shapeable for Matrix {
-    fn get_dim(&self) -> Dimensions { self.dim }
-    fn dim(mut self, dim: Dimensions) -> Self { self.dim = dim; self }
+impl position::Sizeable for Matrix {
+    #[inline]
+    fn width(self, w: f64) -> Self {
+        let h = self.dim[1];
+        Matrix { dim: [w, h], ..self }
+    }
+    #[inline]
+    fn height(self, h: f64) -> Self {
+        let w = self.dim[0];
+        Matrix { dim: [w, h], ..self }
+    }
 }

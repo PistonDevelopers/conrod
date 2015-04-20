@@ -1,7 +1,5 @@
 
-use color::Color;
-use dimensions::Dimensions;
-use graphics::{self, Graphics};
+use graphics::Graphics;
 use graphics::character::{Character, CharacterCache};
 use label::FontSize;
 use mouse::{ButtonState, Mouse};
@@ -14,15 +12,16 @@ use piston::event::{
     RenderEvent,
     TextEvent,
 };
-use point::Point;
+use position::{Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use std::iter::repeat;
 use theme::Theme;
 use widget::Kind as WidgetKind;
-use widget::{Placing, Widget};
+use widget::Widget;
 
 /// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
-/// cached within the `Ui` type.
-pub type UiId = u64;
+/// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
+/// a `Vec`, which is limited to a size of `usize` elements.
+pub type UiId = usize;
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
@@ -52,13 +51,10 @@ pub struct Ui<C> {
     /// Window height.
     pub win_h: f64,
     /// The UiId of the previously drawn Widget.
-    prev_uiid: u64,
+    maybe_prev_ui_id: Option<UiId>,
 }
 
-impl<C> Ui<C>
-    where
-        C: CharacterCache
-{
+impl<C> Ui<C> {
 
     /// Constructor for a UiContext.
     pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
@@ -73,7 +69,7 @@ impl<C> Ui<C>
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
-            prev_uiid: 0,
+            maybe_prev_ui_id: None,
         }
     }
 
@@ -81,16 +77,21 @@ impl<C> Ui<C>
     pub fn handle_event<E: GenericEvent + ::std::fmt::Debug>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
+            self.maybe_prev_ui_id = None;
             self.prev_event_was_render = false;
         }
+
         event.render(|args| {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
         });
+
         event.mouse_cursor(|x, y| {
-            self.mouse.pos = [x, y];
+            // Convert mouse coords to (0, 0) origin.
+            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
         });
+
         event.press(|button_type| {
             use piston::input::Button;
             use piston::input::MouseButton::Left;
@@ -106,10 +107,10 @@ impl<C> Ui<C>
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
             }
         });
+
         event.release(|button_type| {
             use piston::input::Button;
             use piston::input::MouseButton::Left;
-
             match button_type {
                 Button::Mouse(button) => {
                     *match button {
@@ -121,6 +122,7 @@ impl<C> Ui<C>
                 Button::Keyboard(key) => self.keys_just_released.push(key),
             }
         });
+
         event.text(|text| {
             self.text_just_entered.push(text.to_string())
         });
@@ -129,12 +131,18 @@ impl<C> Ui<C>
     /// Return a reference to a `Character` from the GlyphCache.
     pub fn get_character(&mut self,
                          size: FontSize,
-                         ch: char) -> &Character<<C as CharacterCache>::Texture> {
+                         ch: char) -> &Character<C::Texture>
+        where
+            C: CharacterCache
+    {
         self.character_cache.character(size, ch)
     }
 
     /// Return the width of a 'Character'.
-    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64 {
+    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64
+        where
+            C: CharacterCache
+    {
         self.get_character(size, ch).width()
     }
 
@@ -144,36 +152,6 @@ impl<C> Ui<C>
         self.keys_just_released.clear();
         self.text_just_entered.clear();
     }
-
-    /// Draws text
-    pub fn draw_text<B>(&mut self,
-                        graphics: &mut B,
-                        pos: Point,
-                        size: FontSize,
-                        color: Color,
-                        text: &str)
-        where
-            B: Graphics<Texture = <C as CharacterCache>::Texture>
-    {
-        use graphics::text::Text;
-        use graphics::Transformed;
-        use num::Float;
-
-        let draw_state = graphics::default_draw_state();
-        let transform = graphics::abs_transform(self.win_w, self.win_h)
-                        .trans(pos[0].ceil(), pos[1].ceil() + size as f64);
-        Text::colored(color.to_fsa(), size).draw(
-            text,
-            &mut self.character_cache,
-            draw_state,
-            transform,
-            graphics
-        );
-    }
-
-}
-
-impl<C> Ui<C> {
 
     /// Return the current mouse state.
     pub fn get_mouse_state(&self) -> Mouse {
@@ -215,19 +193,118 @@ impl<C> Ui<C> {
         }
     }
 
-    /// Set the Placing for a particular widget.
-    pub fn set_place(&mut self, ui_id: UiId, pos: Point, dim: Dimensions) {
-        self.widget_cache[ui_id as usize].placing = Placing::Place(pos[0], pos[1], dim[0], dim[1]);
-        self.prev_uiid = ui_id;
+    /// Set the given widget at the given UiId.
+    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget) {
+        if self.widget_cache[ui_id].kind.matches(&widget.kind)
+        || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
+            self.widget_cache[ui_id] = widget;
+            self.maybe_prev_ui_id = Some(ui_id);
+        } else {
+            panic!("A widget of a different kind already exists at the given UiId ({:?}).
+                    You tried to insert a {:?}, however the existing widget is a {:?}.
+                    Check your widgets' `UiId`s for errors.",
+                    ui_id, &widget.kind, &self.widget_cache[ui_id].kind);
+        }
     }
 
-    /// Get the UiId of the previous widget.
-    pub fn get_prev_uiid(&self) -> UiId { self.prev_uiid }
+    /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
+    pub fn get_xy(&self,
+                  position: Position,
+                  dim: Dimensions,
+                  h_align: HorizontalAlign,
+                  v_align: VerticalAlign) -> Point {
+        match position {
+            Position::Absolute(x, y) => [x, y],
+            Position::Relative(x, y, maybe_ui_id) => {
+                match maybe_ui_id.or(self.maybe_prev_ui_id) {
+                    None => [0.0, 0.0],
+                    Some(rel_ui_id) => ::vecmath::vec2_add(self.widget_cache[rel_ui_id].xy, [x, y]),
+                }
+            },
+            Position::Direction(direction, maybe_ui_id) => {
+                use position::{align_left_of, align_right_of, align_top_of, align_bottom_of};
+                match maybe_ui_id.or(self.maybe_prev_ui_id) {
+                    None => [0.0, 0.0],
+                    Some(rel_ui_id) => {
+                        use position::Direction;
+                        let rel_xy = self.widget_cache[rel_ui_id].xy;
+                        if let Some(ref element) = self.widget_cache[rel_ui_id].element {
+                            let (rel_w, rel_h) = element.get_size();
+                            let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
+                            match direction {
 
-    /// Get the Placing for a particular widget.
-    pub fn get_placing(&self, ui_id: UiId) -> Placing {
-        if ui_id as usize >= self.widget_cache.len() { Placing::NoPlace }
-        else { self.widget_cache[ui_id as usize].placing }
+                                Direction::Up(px) => {
+                                    let x = rel_xy[0] + match h_align {
+                                        HorizontalAlign::Middle => 0.0,
+                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                    };
+                                    let y = rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px;
+                                    [x, y]
+                                },
+
+                                Direction::Down(px) => {
+                                    let x = rel_xy[0] + match h_align {
+                                        HorizontalAlign::Middle => 0.0,
+                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                    };
+                                    let y = rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px;
+                                    [x, y]
+                                },
+
+                                Direction::Left(px) => {
+                                    let y = rel_xy[1] + match v_align {
+                                        VerticalAlign::Middle => 0.0,
+                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                    };
+                                    let x = rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px;
+                                    [x, y]
+                                },
+
+                                Direction::Right(px) => {
+                                    let y = rel_xy[1] + match v_align {
+                                        VerticalAlign::Middle => 0.0,
+                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                    };
+                                    let x = rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px;
+                                    [x, y]
+                                },
+
+                            }
+                        } else {
+                            rel_xy
+                        }
+                    },
+                }
+            },
+        }
+    }
+
+    /// Draw the `Ui` in it's current state.
+    /// - Sort widgets by render depth (depth first).
+    /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
+    /// - Render all widgets.
+    pub fn draw<G>(&mut self, graphics: &mut G)
+        where
+            C: CharacterCache,
+            G: Graphics<Texture = C::Texture>,
+    {
+        use elmesque::Renderer;
+        use std::cmp::Ordering;
+        let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
+        let mut widgets: Vec<_> = widget_cache.iter_mut().collect();
+        widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
+                               else if a.depth > b.depth { Ordering::Less }
+                               else                      { Ordering::Equal });
+        let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
+        for widget in widgets.into_iter() {
+            if let Some(element) = widget.element.take() {
+                element.draw(&mut renderer);
+            }
+        }
     }
 
 }

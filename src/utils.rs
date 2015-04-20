@@ -1,60 +1,18 @@
 
-use std::cmp::Ordering::{self, Less, Equal, Greater};
-use std::f32::consts::PI;
 use num::{Float, NumCast, PrimInt, ToPrimitive};
+use position::{Dimensions, Point};
+use vecmath::vec2_sub;
 
 /// Clamp a value between a given min and max.
 pub fn clamp<T: PartialOrd>(n: T, min: T, max: T) -> T {
     if n < min { min } else if n > max { max } else { n }
 }
 
-/// Clamp a f32 between 0f32 and 1f32.
-pub fn clampf32(f: f32) -> f32 {
-    if f < 0f32 { 0f32 } else if f > 1f32 { 1f32 } else { f }
-}
-
-/// Compare two f64s and return an Ordering.
-pub fn compare_f64s(a: f64, b: f64) -> Ordering {
-    if a > b { Greater }
-    else if a < b { Less }
-    else { Equal }
-}
-
-/// Convert turns to radians.
-pub fn turns<F: Float + NumCast>(t: F) -> F {
-    let f: F = NumCast::from(2.0 * PI).unwrap();
-    f * t
-}
-
-/// Convert degrees to radians.
-pub fn degrees<F: Float + NumCast>(d: F) -> F {
-    d * NumCast::from(PI / 180.0).unwrap()
-}
-
-/// The modulo function.
-#[inline]
-pub fn modulo<I: PrimInt>(a: I, b: I) -> I {
-    match a % b {
-        r if (r > I::zero() && b < I::zero())
-          || (r < I::zero() && b > I::zero()) => (r + b),
-        r                                         => r,
-    }
-}
-
-/// Modulo float.
-pub fn fmod(f: f32, n: i32) -> f32 {
-    let i = f.floor() as i32;
-    modulo(i, n) as f32 + f - i as f32
-}
-
-/// Return the max between to floats.
-pub fn max(a: f32, b: f32) -> f32 {
-    if a >= b { a } else { b }
-}
-
-/// Return the min between to floats.
-pub fn min(a: f32, b: f32) -> f32 {
-    if a <= b { a } else { b }
+/// Return whether or not a given point is over a rectangle at a given point on a cartesian plane.
+pub fn is_over_rect(rect_point: Point, mouse_point: Point, rect_dim: Dimensions) -> bool {
+    let point = vec2_sub(rect_point, mouse_point);
+    if point[0].abs() < rect_dim[0] / 2.0 && point[1].abs() < rect_dim[1] / 2.0 { true }
+    else { false }
 }
 
 /// Get value percentage between max and min.

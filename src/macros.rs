@@ -26,25 +26,5 @@ macro_rules! widget_fns(
             }
         }
 
-        /// Set the state for the widget in the Ui.
-        fn set_state<C>(
-            ui: &mut ::ui::Ui<C>,
-            ui_id: ::ui::UiId,
-            new_state: ::widget::Kind,
-            pos: ::point::Point,
-            dim: ::dimensions::Dimensions
-        ) {
-            match *get_widget(ui, ui_id) {
-                ref mut state => {
-                    if !state.matches(&new_state) {
-                        panic!("The Kind variant returned by Ui is different to that which \
-                                   was requested (Check that there are no UiId conflicts).");
-                    }
-                    *state = new_state;
-                }
-            }
-            ui.set_place(ui_id, pos, dim);
-        }
-
     )
 );

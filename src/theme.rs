@@ -1,5 +1,6 @@
 
 use color::{Color, black, white};
+use position::{Position, HorizontalAlign, VerticalAlign};
 use rustc_serialize::{json, Encodable, Decodable};
 use std::borrow::ToOwned;
 use std::error::Error;
@@ -28,6 +29,12 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
+    /// A default widget position.
+    pub position: Position,
+    /// A default horizontal alignment for widgets.
+    pub h_align: HorizontalAlign,
+    /// A default vertical alignment for widgets.
+    pub v_align: VerticalAlign,
     //TODO: Add unique theme-ing for each widget.
     //i.e. maybe_slider: Option<SliderTheme>, etc
 }
@@ -46,6 +53,9 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
+            position: Position::default(),
+            h_align: HorizontalAlign::Left,
+            v_align: VerticalAlign::Top,
         }
     }
 
