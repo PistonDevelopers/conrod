@@ -99,7 +99,7 @@ impl<'a, F> Button<'a, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state().relative_to(xy);
+        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
         let new_state = get_new_state(is_over, state, mouse);
 
@@ -122,13 +122,14 @@ impl<'a, F> Button<'a, F> {
             let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
             let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
             text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
+                .shift(xy[0].floor(), xy[1].floor())
         });
 
         // Construct the button's Form.
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(pressable_form).into_iter())
-            .chain(maybe_label_form.into_iter())
-            .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+            .map(|form| form.shift(xy[0], xy[1]))
+            .chain(maybe_label_form.into_iter());
 
         // Turn the form into a renderable Element.
         let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());

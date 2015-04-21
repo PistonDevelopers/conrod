@@ -130,7 +130,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state().relative_to(xy);
+        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
         let pad_dim = vec2_sub(dim, [frame_w2; 2]);

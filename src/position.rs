@@ -208,9 +208,13 @@ pub trait Sizeable: Sized {
 /// A corner of a rectangle.
 #[derive(Copy, Clone)]
 pub enum Corner {
+    /// The top left quarter of a rectangle's area.
     TopLeft,
+    /// The top right quarter of a rectangle's area.
     TopRight,
+    /// The bottom left quarter of a rectangle's area.
     BottomLeft,
+    /// The bottom right quarter of a rectangle's area.
     BottomRight,
 }
 

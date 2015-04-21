@@ -103,7 +103,7 @@ impl<'a, F> Toggle<'a, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, self.dim, h_align, v_align);
-        let mouse = ui.get_mouse_state();
+        let mouse = ui.get_mouse_state(ui_id);
         let is_over = is_over_rect(xy, mouse.xy, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 

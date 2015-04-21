@@ -172,14 +172,23 @@ impl<'a, F> DropDownList<'a, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state().relative_to(xy);
+        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let is_over_idx = is_over(mouse.xy, frame_w, dim, state, self.strings.len());
         let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
         let selected = self.selected.and_then(|idx| if idx < self.strings.len() { Some(idx) }
                                                     else { None });
 
-        // Call the `callback` closure if mouse was released on one of the DropDownMenu items.
+        // Check whether or not we need to capture or uncapture the mouse.
+        // We need to capture the cursor if the DropDownList has just been opened.
+        // We need to uncapture the cursor if the DropDownList has just been closed.
+        match (state, new_state) {
+            (State::Closed(_), State::Open(_)) => ui.mouse_captured_by(ui_id),
+            (State::Open(_), State::Closed(_)) => ui.mouse_uncaptured_by(ui_id),
+            _ => (),
+        }
+
+        // Call the `callback` closure if mouse was released on one of the DropDownList items.
         if let Some(ref mut callback) = self.maybe_callback {
             if let (State::Open(o_d_state), State::Closed(c_d_state)) = (state, new_state) {
                 if let (DrawState::Clicked(idx, _), DrawState::Normal) = (o_d_state, c_d_state) {
@@ -263,7 +272,7 @@ impl<'a, F> DropDownList<'a, F> {
                                              .height(t_size as f64));
                     Some(frame_form.shift_y(shift_amt)).into_iter()
                         .chain(Some(inner_form.shift_y(shift_amt)).into_iter())
-                        .chain(Some(text_form.shift_y(shift_amt)).into_iter())
+                        .chain(Some(text_form.shift_y(shift_amt.floor())).into_iter())
                 }).map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
                 // Collect the Form's into a renderable Element.
