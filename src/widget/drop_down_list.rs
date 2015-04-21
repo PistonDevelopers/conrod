@@ -263,7 +263,7 @@ impl<'a, F> DropDownList<'a, F> {
                                              .height(t_size as f64));
                     Some(frame_form.shift_y(shift_amt)).into_iter()
                         .chain(Some(inner_form.shift_y(shift_amt)).into_iter())
-                        .chain(Some(text_form.shift_y(shift_amt)).into_iter())
+                        .chain(Some(text_form.shift_y(shift_amt.floor())).into_iter())
                 }).map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
                 // Collect the Form's into a renderable Element.

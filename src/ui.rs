@@ -197,6 +197,13 @@ impl<C> Ui<C> {
     pub fn set_widget(&mut self, ui_id: UiId, widget: Widget) {
         if self.widget_cache[ui_id].kind.matches(&widget.kind)
         || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
+            if self.widget_cache[ui_id].element.is_some() {
+                println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
+                          since the last time that `Ui::draw` was called (you probably don't want \
+                          this). Perhaps check that your UiIds are correct, that you're calling \
+                          `Ui::draw` after constructing your widgets and that you haven't \
+                          accidentally set the same widget twice.");
+            }
             self.widget_cache[ui_id] = widget;
             self.maybe_prev_ui_id = Some(ui_id);
         } else {
