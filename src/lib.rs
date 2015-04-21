@@ -21,6 +21,8 @@ extern crate num;
 pub use color_lib as color;
 
 pub use widget::button::Button;
+pub use widget::custom::Custom as CustomWidget;
+pub use widget::custom::State as CustomWidgetState;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;

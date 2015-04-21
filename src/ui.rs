@@ -13,8 +13,11 @@ use piston::event::{
     TextEvent,
 };
 use position::{Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use std::fmt::Debug;
 use std::iter::repeat;
 use theme::Theme;
+use widget::Custom as CustomWidget;
+use widget::custom::State as CustomWidgetState;
 use widget::Kind as WidgetKind;
 use widget::Widget;
 
@@ -40,9 +43,9 @@ enum Capturing {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<C> {
+pub struct Ui<C, W=()> where W: CustomWidget {
     /// The Widget cache, storing state for all widgets.
-    widget_cache: Vec<Widget>,
+    widget_cache: Vec<Widget<W>>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// The latest received mouse state.
@@ -67,10 +70,10 @@ pub struct Ui<C> {
     maybe_captured_keyboard: Option<Capturing>
 }
 
-impl<C> Ui<C> {
+impl<C, W> Ui<C, W> where W: CustomWidget {
 
     /// Constructor for a UiContext.
-    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
+    pub fn new(character_cache: C, theme: Theme) -> Ui<C, W> {
         Ui {
             widget_cache: repeat(Widget::empty()).take(512).collect(),
             theme: theme,
@@ -216,7 +219,7 @@ impl<C> Ui<C> {
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind) -> &mut WidgetKind {
+    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
         let ui_id_idx = ui_id as usize;
         if self.widget_cache.len() > ui_id_idx {
             match &mut self.widget_cache[ui_id_idx].kind {
@@ -234,14 +237,14 @@ impl<C> Ui<C> {
                     .take(num_to_extend)
                     .chain(Some(Widget::new(default)).into_iter()));
             } else {
-                self.widget_cache[ui_id_idx] = Widget::new(default);
+                self.widget_cache[ui_id_idx] = Widget::<W>::new(default);
             }
             &mut self.widget_cache[ui_id_idx].kind
         }
     }
 
     /// Set the given widget at the given UiId.
-    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget) {
+    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget<W>) where W: Debug {
         if self.widget_cache[ui_id].kind.matches(&widget.kind)
         || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
             if self.widget_cache[ui_id].element.is_some() {
