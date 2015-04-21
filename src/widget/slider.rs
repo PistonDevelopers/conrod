@@ -47,7 +47,7 @@ fn get_new_state(is_over: bool,
 }
 
 /// Linear value selection. If the slider's width is greater than it's height, it will
-/// automatically become a horizontal slider, otherwise it will be a vertical slider. Its callback
+/// automatically become a horizontal slider, otherwise it will be a vertical slider. Its reaction
 /// is triggered if the value is updated or if the mouse button is released while the cursor is
 /// above the rectangle.
 pub struct Slider<'a, T, F> {
@@ -59,7 +59,7 @@ pub struct Slider<'a, T, F> {
     maybe_v_align: Option<VerticalAlign>,
     dim: Dimensions,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -81,7 +81,7 @@ impl<'a, T, F> Slider<'a, T, F> {
             maybe_v_align: None,
             dim: [192.0, 48.0],
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -91,10 +91,10 @@ impl<'a, T, F> Slider<'a, T, F> {
         }
     }
 
-    /// Set the callback for the Slider. It will be triggered if the value is updated or if the
+    /// Set the reaction for the Slider. It will be triggered if the value is updated or if the
     /// mouse button is released while the cursor is above the rectangle.
-    pub fn callback(mut self, cb: F) -> Slider<'a, T, F> {
-        self.maybe_callback = Some(cb);
+    pub fn react(mut self, reaction: F) -> Slider<'a, T, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -156,13 +156,13 @@ impl<'a, T, F> Slider<'a, T, F> {
             (new_value, rel_xy, [inner_w, h])
         };
 
-        // Callback.
-        match self.maybe_callback {
-            Some(ref mut callback) => {
+        // React.
+        match self.maybe_react {
+            Some(ref mut react) => {
                 if self.value != new_value || match (state, new_state) {
                     (State::Highlighted, State::Clicked) | (State::Clicked, State::Highlighted) => true,
                     _ => false,
-                } { callback(new_value) }
+                } { react(new_value) }
             }, None => (),
         }
 

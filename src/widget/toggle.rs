@@ -43,16 +43,16 @@ fn get_new_state(is_over: bool,
     }
 }
 
-/// A pressable widget for toggling the state of a bool. Like the button widget, it's callback is
+/// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
 /// triggered upon release and will return the new bool state. Note that the toggle will not
-/// mutate the bool for you, you should do this yourself within the callback closure.
+/// mutate the bool for you, you should do this yourself within the react closure.
 pub struct Toggle<'a, F> {
     pos: Position,
     dim: Dimensions,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -72,7 +72,7 @@ impl<'a, F> Toggle<'a, F> {
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -83,9 +83,9 @@ impl<'a, F> Toggle<'a, F> {
         }
     }
 
-    /// Set the callback for the Toggle. It will be triggered upon release of the button.
-    pub fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
+    /// Set the reaction for the Toggle. It will be triggered upon release of the button.
+    pub fn react(mut self, reaction: F) -> Self {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -107,9 +107,9 @@ impl<'a, F> Toggle<'a, F> {
         let is_over = is_over_rect(xy, mouse.xy, self.dim);
         let new_state = get_new_state(is_over, state, mouse);
 
-        // Callback.
+        // React.
         if let (true, State::Clicked, State::Highlighted) = (is_over, state, new_state) {
-            if let Some(ref mut callback) = self.maybe_callback { callback(!self.value) }
+            if let Some(ref mut react) = self.maybe_react { react(!self.value) }
         }
 
         // Construct the frame and pressable forms.

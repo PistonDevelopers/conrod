@@ -8,7 +8,7 @@ use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable
 use ui::{UiId, Ui};
 use widget::Kind;
 
-/// Tuple / Callback params.
+/// Tuple / React params.
 pub type Idx = usize;
 pub type Len = usize;
 
@@ -110,7 +110,7 @@ fn get_new_state(is_over_idx: Option<Idx>,
     }
 }
 
-/// Displays a given `Vec<String>` as a selectable drop down menu. It's callback is triggered upon
+/// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
 /// selection of a list item.
 pub struct DropDownList<'a, F> {
     strings: &'a mut Vec<String>,
@@ -120,7 +120,7 @@ pub struct DropDownList<'a, F> {
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -141,7 +141,7 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -151,9 +151,9 @@ impl<'a, F> DropDownList<'a, F> {
         }
     }
 
-    /// Set the DropDownList's callback. It will be triggered upon selection of a list item.
-    pub fn callback(mut self, cb: F) -> DropDownList<'a, F> {
-        self.maybe_callback = Some(cb);
+    /// Set the DropDownList's reaction. It will be triggered upon selection of a list item.
+    pub fn react(mut self, reaction: F) -> DropDownList<'a, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -188,12 +188,12 @@ impl<'a, F> DropDownList<'a, F> {
             _ => (),
         }
 
-        // Call the `callback` closure if mouse was released on one of the DropDownList items.
-        if let Some(ref mut callback) = self.maybe_callback {
+        // Call the `react` closure if mouse was released on one of the DropDownList items.
+        if let Some(ref mut react) = self.maybe_react {
             if let (State::Open(o_d_state), State::Closed(c_d_state)) = (state, new_state) {
                 if let (DrawState::Clicked(idx, _), DrawState::Normal) = (o_d_state, c_d_state) {
                     *self.selected = selected;
-                    callback(self.selected, idx, self.strings[idx].clone())
+                    react(self.selected, idx, self.strings[idx].clone())
                 }
             }
         }

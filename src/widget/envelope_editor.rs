@@ -188,7 +188,7 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -240,7 +240,7 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -250,9 +250,9 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         }
     }
 
-    /// Set the callback for the EnvelopeEditor. 
-    pub fn callback(mut self, cb: F) -> EnvelopeEditor<'a, E, F> {
-        self.maybe_callback = Some(cb);
+    /// Set the reaction for the EnvelopeEditor. 
+    pub fn react(mut self, reaction: F) -> EnvelopeEditor<'a, E, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -413,32 +413,32 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
              map_range(new_y_perc, 0.0, 1.0, min_y, max_y))
         };
 
-        // If a point is currently clicked, check for callback and value setting conditions.
+        // If a point is currently clicked, check for react and value setting conditions.
         match is_clicked_env_point {
 
             Some(idx) => {
 
-                // Call the `callback` closure if mouse was released
+                // Call the `react` closure if mouse was released
                 // on one of the DropDownMenu items.
                 match (state, new_state) {
                     (State::Clicked(_, m_button), State::Highlighted(_)) |
                     (State::Clicked(_, m_button), State::Normal) => {
                         match m_button {
                             MouseButton::Left => {
-                                // Adjust the point and trigger the callback.
+                                // Adjust the point and trigger the reaction.
                                 let (new_x, new_y) = get_new_value(&perc_env[..], idx);
                                 self.env[idx].set_x(new_x);
                                 self.env[idx].set_y(new_y);
-                                match self.maybe_callback {
-                                    Some(ref mut callback) => callback(self.env, idx),
+                                match self.maybe_react {
+                                    Some(ref mut react) => react(self.env, idx),
                                     None => (),
                                 }
                             },
                             MouseButton::Right => {
-                                // Delete the point and trigger the callback.
+                                // Delete the point and trigger the reaction.
                                 self.env.remove(idx);
-                                match self.maybe_callback {
-                                    Some(ref mut callback) => callback(self.env, idx),
+                                match self.maybe_react {
+                                    Some(ref mut react) => react(self.env, idx),
                                     None => (),
                                 }
                             },
@@ -452,11 +452,11 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
                                 let current_x = self.env[idx].get_x();
                                 let current_y = self.env[idx].get_y();
                                 if new_x != current_x || new_y != current_y {
-                                    // Adjust the point and trigger the callback.
+                                    // Adjust the point and trigger the reaction.
                                     self.env[idx].set_x(new_x);
                                     self.env[idx].set_y(new_y);
-                                    match self.maybe_callback {
-                                        Some(ref mut callback) => callback(self.env, idx),
+                                    match self.maybe_react {
+                                        Some(ref mut react) => react(self.env, idx),
                                         None => (),
                                     }
                                 }

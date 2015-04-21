@@ -44,7 +44,7 @@ fn main() {
                 Button::new()
                     .dimensions(80.0, 80.0)
                     .label(&count.to_string())
-                    .callback(|| count += 1)
+                    .react(|| count += 1)
                     .set(0, ui);
 
                 // Draw our Ui!

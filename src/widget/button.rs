@@ -42,7 +42,7 @@ fn get_new_state(is_over: bool, prev: State, mouse: Mouse) -> State {
     }
 }
 
-/// A pressable button widget whose callback is triggered upon release.
+/// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
     pos: Position,
     dim: Dimensions,
@@ -55,7 +55,7 @@ pub struct Button<'a, F> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
 }
 
 impl<'a, F> Button<'a, F> {
@@ -68,7 +68,7 @@ impl<'a, F> Button<'a, F> {
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -78,9 +78,9 @@ impl<'a, F> Button<'a, F> {
         }
     }
 
-    /// Set the callback for the Button. The callback will be triggered upon release of the button.
-    pub fn callback(mut self, cb: F) -> Button<'a, F> {
-        self.maybe_callback = Some(cb);
+    /// Set the reaction for the Button. The reaction will be triggered upon release of the button.
+    pub fn react(mut self, reaction: F) -> Button<'a, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -103,9 +103,9 @@ impl<'a, F> Button<'a, F> {
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
         let new_state = get_new_state(is_over, state, mouse);
 
-        // Callback.
+        // React.
         if let (true, State::Clicked, State::Highlighted) = (is_over, state, new_state) {
-            if let Some(ref mut callback) = self.maybe_callback { callback() }
+            if let Some(ref mut react) = self.maybe_react { react() }
         }
 
         // Consruct the frame and pressable Forms.

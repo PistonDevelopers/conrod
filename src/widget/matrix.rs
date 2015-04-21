@@ -2,7 +2,7 @@
 use position::{self, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use ui::Ui;
 
-/// Callback params.
+/// Reaction params.
 pub type WidgetNum = usize;
 pub type ColNum = usize;
 pub type RowNum = usize;
@@ -27,7 +27,7 @@ pub struct Matrix {
 }
 
 /*
-/// A cell to be returned via the cell callback.
+/// A cell to be returned via the cell reaction.
 pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
 */
 
@@ -47,9 +47,9 @@ impl Matrix {
         }
     }
 
-    /// The callback called for each widget in the matrix. This should be called following all
+    /// The reaction called for each widget in the matrix. This should be called following all
     /// builder methods.
-    pub fn each_widget<C, F>(&mut self, ui: &mut Ui<C>, mut callback: F)
+    pub fn each_widget<C, F>(&mut self, ui: &mut Ui<C>, mut react: F)
         where
             F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
@@ -72,7 +72,7 @@ impl Matrix {
                 let y = xy[1] + map_range(row as f64, 0.0, self.rows as f64, y_max, y_min);
                 let w = widget_w - self.cell_pad_w * 2.0;
                 let h = widget_h - self.cell_pad_h * 2.0;
-                callback(ui, widget_num, col, row, [x, y], [w, h]);
+                react(ui, widget_num, col, row, [x, y], [w, h]);
                 widget_num += 1;
             }
         }
