@@ -1,4 +1,4 @@
-//! 
+//!
 //!
 //! A demonstration of all widgets available in Conrod.
 //!
@@ -433,4 +433,3 @@ const TOGGLE_MATRIX: UiId = FRAME_WIDTH + 1;
 const COLOR_SELECT: UiId = TOGGLE_MATRIX + 64;
 const CIRCLE_POSITION: UiId = COLOR_SELECT + 1;
 const ENVELOPE_EDITOR: UiId = CIRCLE_POSITION + 1;
-
