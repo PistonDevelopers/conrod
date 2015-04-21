@@ -182,7 +182,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             .rgb(0.4, 0.75, 0.6)
             .frame(demo.frame_width)
             .label("PRESS")
-            .callback(|| demo.bg_color = color::random())
+            .react(|| demo.bg_color = color::random())
             .set(BUTTON, ui)
 
     }
@@ -207,7 +207,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             .frame(demo.frame_width)
             .label(&label)
             .label_color(white())
-            .callback(|new_pad: f32| demo.title_pad = new_pad as f64)
+            .react(|new_pad: f32| demo.title_pad = new_pad as f64)
             .set(TITLE_PAD_SLIDER, ui);
 
     }
@@ -226,7 +226,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .frame(demo.frame_width)
         .label(&label)
         .label_color(white())
-        .callback(|value| {
+        .react(|value| {
             demo.show_button = value;
             demo.toggle_label = match value {
                 true => "ON".to_string(),
@@ -265,7 +265,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             .frame(demo.frame_width)
             .label(&label)
             .label_color(white())
-            .callback(|color| match i {
+            .react(|color| match i {
                 0 => demo.bg_color.set_red(color),
                 1 => demo.bg_color.set_green(color),
                 _ => demo.bg_color.set_blue(color),
@@ -282,7 +282,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .frame(demo.frame_width)
         .label("Height (px)")
         .label_color(demo.bg_color.invert().plain_contrast())
-        .callback(|new_height| demo.v_slider_height = new_height)
+        .react(|new_height| demo.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
     // Number Dialer widget example. number_dialer(UiId, value, min, max, precision)
@@ -294,7 +294,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .frame_color(demo.bg_color.plain_contrast())
         .label("Frame Width (px)")
         .label_color(demo.bg_color.plain_contrast())
-        .callback(|new_width| demo.frame_width = new_width)
+        .react(|new_width| demo.frame_width = new_width)
         .set(FRAME_WIDTH, ui);
 
 
@@ -314,14 +314,14 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
                 1.0
             );
 
-            // Now draw the widgets with the given callback.
+            // Now draw the widgets with the given.react.
             let val = demo.bool_matrix[col][row];
             Toggle::new(val)
                 .dim(dim)
                 .point(pos)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .callback(|new_val: bool| demo.bool_matrix[col][row] = new_val)
+                .react(|new_val: bool| demo.bool_matrix[col][row] = new_val)
                 .set(TOGGLE_MATRIX + num, ui);
 
         });
@@ -355,7 +355,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
-        .callback(|selected_idx: &mut Option<usize>, new_idx, _string| {
+        .react(|selected_idx: &mut Option<usize>, new_idx, _string| {
             *selected_idx = Some(new_idx)
         })
         .set(COLOR_SELECT, ui);
@@ -372,7 +372,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .label("Circle Position")
         .label_color(ddl_color.plain_contrast().alpha(0.5))
         .line_width(2.0)
-        .callback(|new_x, new_y| {
+        .react(|new_x, new_y| {
             demo.circle_pos[0] = new_x;
             demo.circle_pos[1] = new_y;
         })
@@ -391,7 +391,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             .frame(demo.frame_width)
             .frame_color(demo.bg_color.invert().plain_contrast())
             .color(demo.bg_color.invert())
-            .callback(|_string: &mut String|{})
+            .react(|_string: &mut String|{})
             .set(ENVELOPE_EDITOR + (i * 2), ui);
 
         let env_y_max = match i { 0 => 20_000.0, _ => 1.0 };
@@ -409,7 +409,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             .label_color(demo.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
             .line_width(2.0)
-            .callback(|_points: &mut Vec<Point>, _idx: usize|{})
+            .react(|_points: &mut Vec<Point>, _idx: usize|{})
             .set(ENVELOPE_EDITOR + (i * 2) + 1, ui);
 
     }

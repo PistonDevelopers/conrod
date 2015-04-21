@@ -48,7 +48,7 @@ fn get_new_state(is_over: bool,
 }
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
-/// Its callback is triggered when the value is updated or if the mouse button is released while
+/// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
 pub struct XYPad<'a, X, Y, F> {
     x: X, min_x: X, max_x: X,
@@ -60,7 +60,7 @@ pub struct XYPad<'a, X, Y, F> {
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -83,7 +83,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -105,10 +105,10 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         XYPad { value_font_size: size, ..self }
     }
 
-    /// Set the callback for the XYPad. It will be triggered when the value is updated or if the
+    /// Set the reaction for the XYPad. It will be triggered when the value is updated or if the
     /// mouse button is released while the cursor is above the rectangle.
-    pub fn callback(mut self, cb: F) -> Self {
-        self.maybe_callback = Some(cb);
+    pub fn react(mut self, reaction: F) -> Self {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -150,13 +150,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             }
         };
 
-        // Callback if value is changed or the pad is clicked/released.
-        if let Some(ref mut callback) = self.maybe_callback {
-            if self.x != new_x || self.y != new_y { callback(new_x, new_y) }
+        // React if value is changed or the pad is clicked/released.
+        if let Some(ref mut react) = self.maybe_react {
+            if self.x != new_x || self.y != new_y { react(new_x, new_y) }
             else {
                 match (state, new_state) {
                     (State::Highlighted, State::Clicked) |
-                    (State::Clicked, State::Highlighted) => callback(new_x, new_y),
+                    (State::Clicked, State::Highlighted) => react(new_x, new_y),
                     _ => (),
                 }
             }

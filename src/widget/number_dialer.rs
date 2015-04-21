@@ -139,7 +139,7 @@ fn get_new_state(is_over_elem: Option<Element>, prev: State, mouse: Mouse) -> St
     }
 }
 
-/// A widget for precision control over any digit within a value. The callback is triggered when
+/// A widget for precision control over any digit within a value. The reaction is triggered when
 /// the value is updated or if the mouse button is released while the cursor is above the widget.
 pub struct NumberDialer<'a, T, F> {
     value: T,
@@ -157,7 +157,7 @@ pub struct NumberDialer<'a, T, F> {
     maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
 }
 
 impl<'a, T: Float, F> NumberDialer<'a, T, F> {
@@ -180,14 +180,14 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             maybe_label: None,
             maybe_label_color: None,
             maybe_label_font_size: None,
-            maybe_callback: None,
+            maybe_react: None,
         }
     }
 
-    /// Set the callback for the NumberDialer. It will be triggered when the value is updated or if
+    /// Set the reaction for the NumberDialer. It will be triggered when the value is updated or if
     /// the mouse button is released while the cursor is above the widget.
-    pub fn callback(mut self, cb: F) -> NumberDialer<'a, T, F> {
-        self.maybe_callback = Some(cb);
+    pub fn react(mut self, reaction: F) -> NumberDialer<'a, T, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -319,14 +319,14 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             })
         };
 
-        // Call the `callback` with the new value if the mouse is pressed/released on the widget
+        // Call the `react` with the new value if the mouse is pressed/released on the widget
         // or if the value has changed.
         if self.value != new_val || match (state, new_state) {
             (State::Highlighted(_), State::Clicked(_)) |
             (State::Clicked(_), State::Highlighted(_)) => true,
             _ => false,
         } {
-            if let Some(ref mut callback) = self.maybe_callback { callback(new_val) }
+            if let Some(ref mut react) = self.maybe_react { react(new_val) }
         }
 
         // Chain the forms and shift them into position.

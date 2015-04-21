@@ -247,7 +247,7 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
     }
 }
 
-/// A widget for displaying and mutating a given one-line text `String`. It's callback is
+/// A widget for displaying and mutating a given one-line text `String`. It's reaction is
 /// triggered upon pressing of the `Enter`/`Return` key.
 pub struct TextBox<'a, F> {
     text: &'a mut String,
@@ -257,7 +257,7 @@ pub struct TextBox<'a, F> {
     maybe_v_align: Option<VerticalAlign>,
     dim: Dimensions,
     depth: Depth,
-    maybe_callback: Option<F>,
+    maybe_react: Option<F>,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
@@ -275,7 +275,7 @@ impl<'a, F> TextBox<'a, F> {
             maybe_v_align: None,
             dim: [192.0, 48.0],
             depth: 0.0,
-            maybe_callback: None,
+            maybe_react: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -287,10 +287,10 @@ impl<'a, F> TextBox<'a, F> {
         TextBox { font_size: font_size, ..self }
     }
 
-    /// Set the callback for the TextBox. It will be triggered upon pressing of the
+    /// Set the reaction for the TextBox. It will be triggered upon pressing of the
     /// `Enter`/`Return` key.
-    pub fn callback(mut self, cb: F) -> TextBox<'a, F> {
-        self.maybe_callback = Some(cb);
+    pub fn react(mut self, reaction: F) -> TextBox<'a, F> {
+        self.maybe_react = Some(reaction);
         self
     }
 
@@ -431,9 +431,9 @@ impl<'a, F> TextBox<'a, F> {
                         cursor.shift(1);
                     },
                     Return => if self.text.len() > 0 {
-                        let TextBox { ref mut maybe_callback, ref mut text, .. } = self;
-                        if let Some(ref mut callback) = *maybe_callback {
-                            callback(*text);
+                        let TextBox { ref mut maybe_react, ref mut text, .. } = self;
+                        if let Some(ref mut react) = *maybe_react {
+                            react(*text);
                         }
                     },
                     _ => (),
