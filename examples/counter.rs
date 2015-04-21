@@ -47,9 +47,11 @@ fn main() {
                     .callback(|| count += 1)
                     .set(0, ui);
 
+                // Draw our Ui!
+                ui.draw(gl);
+
             });
         }
     }
 
 }
-
