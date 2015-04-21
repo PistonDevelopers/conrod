@@ -38,6 +38,8 @@ pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
 pub use label::Labelable;
+pub use mouse::Mouse;
+pub use mouse::ButtonState as MouseButtonState;
 pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
 pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Point, Position,
                    Positionable, Sizeable, VerticalAlign};
@@ -50,7 +52,7 @@ mod macros;
 mod background;
 mod frame;
 mod label;
-mod mouse;
+pub mod mouse;
 mod position;
 mod theme;
 mod ui;

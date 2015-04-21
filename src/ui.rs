@@ -118,14 +118,15 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
 
         event.press(|button_type| {
             use piston::input::Button;
-            use piston::input::MouseButton::Left;
+            use piston::input::MouseButton::{Left, Middle, Right};
 
             match button_type {
                 Button::Mouse(button) => {
                     *match button {
                         Left => &mut self.mouse.left,
-                        _/*input::mouse::Right*/ => &mut self.mouse.right,
-                        //Middle => &mut self.mouse.middle,
+                        Right => &mut self.mouse.right,
+                        Middle => &mut self.mouse.middle,
+                        _ => &mut self.mouse.unknown,
                     } = ButtonState::Down;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
