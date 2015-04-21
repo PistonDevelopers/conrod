@@ -1,4 +1,4 @@
-//! 
+//!
 //!
 //! A demonstration of all widgets available in Conrod.
 //!
@@ -343,7 +343,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     graphics::Ellipse::new(ddl_color.to_fsa())
         .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
               graphics::default_draw_state(),
-              graphics::abs_transform(ui.win_w, ui.win_h),
+              graphics::math::abs_transform(ui.win_w, ui.win_h),
               gl);
 
     // A demonstration using drop_down_list.
@@ -433,4 +433,3 @@ const TOGGLE_MATRIX: UiId = FRAME_WIDTH + 1;
 const COLOR_SELECT: UiId = TOGGLE_MATRIX + 64;
 const CIRCLE_POSITION: UiId = COLOR_SELECT + 1;
 const ENVELOPE_EDITOR: UiId = CIRCLE_POSITION + 1;
-
