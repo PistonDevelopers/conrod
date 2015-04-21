@@ -114,7 +114,7 @@ impl<'a, T, F> Slider<'a, T, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state().relative_to(xy);
+        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
         let new_state = get_new_state(is_over, state, mouse);
 

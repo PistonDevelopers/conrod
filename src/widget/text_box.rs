@@ -308,7 +308,7 @@ impl<'a, F> TextBox<'a, F> {
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state().relative_to(xy);
+        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let state = *get_state(ui, ui_id);
         let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
         let frame_w2 = frame_w * 2.0;
@@ -394,7 +394,7 @@ impl<'a, F> TextBox<'a, F> {
             let mut cursor = captured.cursor;
 
             // Check for entered text.
-            for text in ui.get_entered_text().iter() {
+            for text in ui.get_entered_text(ui_id).to_vec().iter() {
                 if text.len() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
@@ -408,7 +408,7 @@ impl<'a, F> TextBox<'a, F> {
             }
 
             // Check for control keys.
-            let pressed_keys = ui.get_pressed_keys();
+            let pressed_keys = ui.get_pressed_keys(ui_id);
             for key in pressed_keys.iter() {
                 match *key {
                     Backspace => if cursor.is_cursor() {
@@ -441,6 +441,13 @@ impl<'a, F> TextBox<'a, F> {
             }
 
             new_state = State::Capturing(View { cursor: cursor, .. captured });
+        }
+
+        // Check whether or not we need to capture or uncapture the keyboard.
+        match (state, new_state) {
+            (State::Uncaptured(_), State::Capturing(_)) => ui.keyboard_captured_by(ui_id),
+            (State::Capturing(_), State::Uncaptured(_)) => ui.keyboard_uncaptured_by(ui_id),
+            _ => (),
         }
 
         // Chain the Forms and shift them into position.

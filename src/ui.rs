@@ -23,6 +23,15 @@ use widget::Widget;
 /// a `Vec`, which is limited to a size of `usize` elements.
 pub type UiId = usize;
 
+/// Indicates whether or not the Mouse has been captured by a widget.
+#[derive(Copy, Clone, Debug)]
+enum Capturing {
+    /// The Ui is captured by the widget with UiId with the mouse state `Mouse`.
+    Captured(UiId),
+    /// The Ui has just been uncaptured.
+    JustReleased,
+}
+
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
 /// # Ui Handles the following:
@@ -52,6 +61,10 @@ pub struct Ui<C> {
     pub win_h: f64,
     /// The UiId of the previously drawn Widget.
     maybe_prev_ui_id: Option<UiId>,
+    /// The captured Mouse and the UiId of the widget who has captured it.
+    maybe_captured_mouse: Option<(Capturing, Mouse)>,
+    /// The UiId of the widget currently keyboard input if there is one.
+    maybe_captured_keyboard: Option<Capturing>
 }
 
 impl<C> Ui<C> {
@@ -70,15 +83,23 @@ impl<C> Ui<C> {
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_ui_id: None,
+            maybe_captured_mouse: None,
+            maybe_captured_keyboard: None,
         }
     }
 
     /// Handle game events and update the state.
-    pub fn handle_event<E: GenericEvent + ::std::fmt::Debug>(&mut self, event: &E) {
+    pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
             self.maybe_prev_ui_id = None;
             self.prev_event_was_render = false;
+            if let Some((Capturing::JustReleased, _)) = self.maybe_captured_mouse {
+                self.maybe_captured_mouse = None;
+            }
+            if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
+                self.maybe_captured_keyboard = None;
+            }
         }
 
         event.render(|args| {
@@ -153,19 +174,45 @@ impl<C> Ui<C> {
         self.text_just_entered.clear();
     }
 
-    /// Return the current mouse state.
-    pub fn get_mouse_state(&self) -> Mouse {
-        self.mouse
+    /// Return the current mouse state. If the Ui has been captured and the given ui_id doesn't
+    /// match the captured ui_id, return the captured mouse state.
+    pub fn get_mouse_state(&self, ui_id: UiId) -> Mouse {
+        match self.maybe_captured_mouse {
+            Some((Capturing::Captured(captured_ui_id), captured_mouse)) => {
+                match ui_id == captured_ui_id {
+                    true => self.mouse,
+                    false => captured_mouse,
+                }
+            },
+            Some((Capturing::JustReleased, captured_mouse)) => captured_mouse,
+            None => self.mouse,
+        }
     }
 
     /// Return the vector of recently pressed keys.
-    pub fn get_pressed_keys(&self) -> Vec<input::keyboard::Key> {
-        self.keys_just_pressed.clone()
+    pub fn get_pressed_keys(&self, ui_id: UiId) -> &[input::keyboard::Key] {
+        match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
+                &self.keys_just_pressed
+            } else {
+                &[]
+            },
+            Some(Capturing::JustReleased) => &[],
+            None => &self.keys_just_pressed,
+        }
     }
 
     /// Return the vector of recently entered text.
-    pub fn get_entered_text(&self) -> Vec<String> {
-        self.text_just_entered.clone()
+    pub fn get_entered_text(&self, ui_id: UiId) -> &[String] {
+        match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
+                &self.text_just_entered
+            } else {
+                &[]
+            },
+            Some(Capturing::JustReleased) => &[],
+            None => &self.text_just_entered,
+        }
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
@@ -202,7 +249,7 @@ impl<C> Ui<C> {
                           since the last time that `Ui::draw` was called (you probably don't want \
                           this). Perhaps check that your UiIds are correct, that you're calling \
                           `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same widget twice.");
+                          accidentally set the same widget twice.", ui_id);
             }
             self.widget_cache[ui_id] = widget;
             self.maybe_prev_ui_id = Some(ui_id);
@@ -290,6 +337,76 @@ impl<C> Ui<C> {
         }
     }
 
+    /// Indicate that the widget with the given UiId has captured the mouse.
+    pub fn mouse_captured_by(&mut self, ui_id: UiId) {
+        match self.maybe_captured_mouse {
+            Some((Capturing::Captured(captured_ui_id), _)) => if ui_id != captured_ui_id {
+                println!("Warning: Widget {:?} tried to capture the mouse, however it is \
+                         already captured by {:?}.", ui_id, captured_ui_id);
+            },
+            Some((Capturing::JustReleased, _)) => {
+                println!("Warning: Widget {:?} tried to capture the mouse, however it was \
+                         already captured.", ui_id);
+            },
+            None => self.maybe_captured_mouse = Some((Capturing::Captured(ui_id), self.mouse)),
+        }
+    }
+
+    /// Indicate that the widget is no longer capturing the mouse.
+    pub fn mouse_uncaptured_by(&mut self, ui_id: UiId) {
+        match self.maybe_captured_mouse {
+            Some((Capturing::Captured(captured_ui_id), mouse)) => if ui_id != captured_ui_id {
+                println!("Warning: Widget {:?} tried to uncapture the mouse, however it is \
+                         actually captured by {:?}.", ui_id, captured_ui_id);
+            } else {
+                self.maybe_captured_mouse = Some((Capturing::JustReleased, mouse));
+            },
+            Some((Capturing::JustReleased, _)) => {
+                println!("Warning: Widget {:?} tried to uncapture the mouse, however it had \
+                         already been released this cycle.", ui_id);
+            },
+            None => {
+                println!("Warning: Widget {:?} tried to uncapture the mouse, however the mouse \
+                         was not captured", ui_id);
+            },
+        }
+    }
+
+    /// Indicate that the widget with the given UiId has captured the keyboard.
+    pub fn keyboard_captured_by(&mut self, ui_id: UiId) {
+        match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+                println!("Warning: Widget {:?} tried to capture the keyboard, however it is \
+                         already captured by {:?}.", ui_id, captured_ui_id);
+            },
+            Some(Capturing::JustReleased) => {
+                println!("Warning: Widget {:?} tried to capture the keyboard, however it was \
+                         already captured.", ui_id);
+            },
+            None => self.maybe_captured_keyboard = Some(Capturing::Captured(ui_id)),
+        }
+    }
+
+    /// Indicate that the widget is no longer capturing the keyboard.
+    pub fn keyboard_uncaptured_by(&mut self, ui_id: UiId) {
+        match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+                println!("Warning: Widget {:?} tried to uncapture the keyboard, however it is \
+                         actually captured by {:?}.", ui_id, captured_ui_id);
+            } else {
+                self.maybe_captured_keyboard = Some(Capturing::JustReleased);
+            },
+            Some(Capturing::JustReleased) => {
+                println!("Warning: Widget {:?} tried to uncapture the keyboard, however it had \
+                         already been released this cycle.", ui_id);
+            },
+            None => {
+                println!("Warning: Widget {:?} tried to uncapture the keyboard, however the mouse \
+                         was not captured", ui_id);
+            },
+        }
+    }
+
     /// Draw the `Ui` in it's current state.
     /// - Sort widgets by render depth (depth first).
     /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
@@ -301,16 +418,56 @@ impl<C> Ui<C> {
     {
         use elmesque::Renderer;
         use std::cmp::Ordering;
+
         let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
+
+        // Collect references to the widgets so that we can sort them without changing cache order.
         let mut widgets: Vec<_> = widget_cache.iter_mut().collect();
+
+        // Check for captured widgets and take them from the Vec (we want to draw them last).
+        let maybe_mouse = self.maybe_captured_mouse.map(|(capturing, _)| capturing);
+        let maybe_keyboard = self.maybe_captured_keyboard;
+        let (maybe_mouse_widget, maybe_keyboard_widget) = match (maybe_mouse, maybe_keyboard) {
+            (Some(Capturing::Captured(mouse_ui_id)), Some(Capturing::Captured(keyboard_ui_id))) => {
+                if mouse_ui_id == keyboard_ui_id {
+                    (Some(widgets.swap_remove(mouse_ui_id)), None)
+                } else if mouse_ui_id > keyboard_ui_id {
+                    let mouse_widget = widgets.swap_remove(mouse_ui_id);
+                    let keyboard_widget = widgets.swap_remove(keyboard_ui_id);
+                    (Some(mouse_widget), Some(keyboard_widget))
+                }
+                else {
+                    let keyboard_widget = widgets.swap_remove(keyboard_ui_id);
+                    let mouse_widget = widgets.swap_remove(mouse_ui_id);
+                    (Some(mouse_widget), Some(keyboard_widget))
+                }
+            },
+            (Some(Capturing::Captured(mouse_ui_id)), _) => {
+                (Some(widgets.swap_remove(mouse_ui_id)), None)
+            },
+            (_, Some(Capturing::Captured(keyboard_ui_id))) => {
+                (None, Some(widgets.swap_remove(keyboard_ui_id)))
+            },
+            (_, _) => (None, None),
+        };
+
+        // Sort the rest of the widgets by rendering depth.
         widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
                                else if a.depth > b.depth { Ordering::Less }
                                else                      { Ordering::Equal });
+
+        // Construct the elmesque Renderer for rendering the Elements.
         let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
-        for widget in widgets.into_iter() {
-            if let Some(element) = widget.element.take() {
-                element.draw(&mut renderer);
-            }
+
+        // Chain our widgets with the captured widgets and take their Elements.
+        let elements = widgets.into_iter()
+            .chain(maybe_keyboard_widget.into_iter())
+            .chain(maybe_mouse_widget.into_iter())
+            .filter_map(|widget| widget.element.take());
+
+        // Draw all Elements.
+        for element in elements {
+            element.draw(&mut renderer);
         }
     }
 
