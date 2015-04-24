@@ -9,16 +9,14 @@
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
-extern crate color as color_lib;
 extern crate elmesque;
 extern crate graphics;
+extern crate num;
 #[macro_use] extern crate piston;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
-extern crate num;
 
-pub use color_lib as color;
 
 pub use widget::button::Button;
 pub use widget::custom::Custom as CustomWidget;
@@ -35,7 +33,8 @@ pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::xy_pad::XYPad;
 
 pub use background::Background;
-pub use color::{Color, Colorable};
+pub use elmesque::color;
+pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
 pub use label::Labelable;
 pub use mouse::Mouse;
