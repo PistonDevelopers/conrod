@@ -18,6 +18,9 @@ homepage = "https://github.com/pistondevelopers/conrod"
 name = "conrod"
 path = "./src/lib.rs"
 
+[dev-dependencies.gfx]
+git = "https://github.com/gfx-rs/gfx-rs"
+
 [dev-dependencies.gfx_device_gl]
 git = "https://github.com/gfx-rs/gfx_device_gl"
 
