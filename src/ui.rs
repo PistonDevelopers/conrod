@@ -56,7 +56,7 @@ pub struct Ui<C, W=()> where W: CustomWidget {
     pub keys_just_released: Vec<input::keyboard::Key>,
     /// Text that has been entered since the end of the last render cycle.
     pub text_just_entered: Vec<String>,
-    character_cache: C,
+    pub character_cache: C,
     prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,

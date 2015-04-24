@@ -18,12 +18,26 @@ homepage = "https://github.com/pistondevelopers/conrod"
 name = "conrod"
 path = "./src/lib.rs"
 
+[dev-dependencies.gfx_device_gl]
+git = "https://github.com/gfx-rs/gfx_device_gl"
+
+[dev-dependencies.piston_window]
+git = "https://github.com/PistonDevelopers/piston_window.git"
 
 [dev-dependencies.pistoncore-glutin_window]
 git = "https://github.com/PistonDevelopers/glutin_window.git"
 
+[dev-dependencies.pistoncore-window]
+git = "https://github.com/pistondevelopers/window.git"
+
+[dev-dependencies.piston2d-gfx_graphics]
+git = "https://github.com/PistonDevelopers/gfx_graphics.git"
+
 [dev-dependencies.piston2d-opengl_graphics]
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
+
+[dependencies.piston-viewport]
+git = "https://github.com/pistondevelopers/viewport"
 
 
 [dependencies.clock_ticks]
