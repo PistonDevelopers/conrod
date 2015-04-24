@@ -36,7 +36,7 @@ git = "https://github.com/PistonDevelopers/gfx_graphics.git"
 [dev-dependencies.piston2d-opengl_graphics]
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 
-[dependencies.piston-viewport]
+[dev-dependencies.piston-viewport]
 git = "https://github.com/pistondevelopers/viewport"
 
 
