@@ -23,7 +23,8 @@ pub struct Widget<C=()> where C: Custom {
     pub kind: Kind<C>,
     pub xy: Point,
     pub depth: Depth,
-    pub element: Option<Element>,
+    pub element: Element,
+    pub set_since_last_drawn: bool,
 }
 
 impl<C> Widget<C> where C: Custom {
@@ -34,7 +35,8 @@ impl<C> Widget<C> where C: Custom {
             kind: Kind::NoWidget,
             xy: [0.0, 0.0],
             depth: 0.0,
-            element: None,
+            element: ::elmesque::element::empty(),
+            set_since_last_drawn: false,
         }
     }
 
@@ -44,7 +46,8 @@ impl<C> Widget<C> where C: Custom {
             kind: kind,
             xy: [0.0, 0.0],
             depth: 0.0,
-            element: None,
+            element: ::elmesque::element::empty(),
+            set_since_last_drawn: false,
         }
     }
 

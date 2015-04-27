@@ -121,8 +121,6 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             X: Float + NumCast + ToString,
             Y: Float + NumCast + ToString,
     {
-        use elmesque::form::{collage, line, rect, solid, text};
-        use elmesque::text::Text;
         use utils::is_over_rect;
 
         let state = *get_state(ui, ui_id);
@@ -162,72 +160,78 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             }
         }
 
-        // Construct the frame and inner rectangle Forms.
-        let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let draw_new_element_condition = true;
 
-        // Construct the label Form.
-        let maybe_label_form = self.maybe_label.map(|l_text| {
-            let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            text(Text::from_string(l_text.to_string()).color(l_color).height(l_size as f64))
-        });
+        // Only update the Element if the state has changed.
+        let maybe_new_element = if draw_new_element_condition {
+            use elmesque::form::{collage, line, rect, solid, text};
+            use elmesque::text::Text;
 
-        // Construct the crosshair line Forms.
-        let (ch_x, ch_y) = match (is_over_pad, new_state) {
-            (_, State::Normal) | (_, State::Highlighted) =>
-                (map_range(new_x, self.min_x, self.max_x, -half_pad_w, half_pad_w).floor(),
-                 map_range(new_y, self.min_y, self.max_y, -half_pad_h, half_pad_h).floor()),
-            (_, State::Clicked) =>
-                (clamp(mouse.xy[0], -half_pad_w, half_pad_w).floor(),
-                 clamp(mouse.xy[1], -half_pad_h, half_pad_h).floor()),
-        };
-        let line_style = solid(color.plain_contrast()).width(self.line_width);
-        let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
-        let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
+            // Construct the frame and inner rectangle Forms.
+            let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
+            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+            let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+            let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
 
-        // Construct the value string Form.
-        let x_string = val_to_string(self.x, self.max_x, self.max_x - self.min_x, dim[0] as usize);
-        let y_string = val_to_string(self.y, self.max_y, self.max_y - self.min_y, dim[1] as usize);
-        let value_string = format!("{}, {}", x_string, y_string);
-        let value_text_form = {
-            const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-            let w = label::width(ui, self.value_font_size, &value_string);
-            let h = self.value_font_size as f64;
-            let x_shift = w / 2.0 + PAD;
-            let y_shift = h / 2.0 + PAD;
-            let (value_text_x, value_text_y) = match position::corner([ch_x, ch_y], pad_dim) {
-                Corner::TopLeft => (x_shift, -y_shift),
-                Corner::TopRight => (-x_shift, -y_shift),
-                Corner::BottomLeft => (x_shift, y_shift),
-                Corner::BottomRight => (-x_shift, y_shift),
+            // Construct the label Form.
+            let maybe_label_form = self.maybe_label.map(|l_text| {
+                let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                text(Text::from_string(l_text.to_string()).color(l_color).height(l_size as f64))
+            });
+
+            // Construct the crosshair line Forms.
+            let (ch_x, ch_y) = match (is_over_pad, new_state) {
+                (_, State::Normal) | (_, State::Highlighted) =>
+                    (map_range(new_x, self.min_x, self.max_x, -half_pad_w, half_pad_w).floor(),
+                     map_range(new_y, self.min_y, self.max_y, -half_pad_h, half_pad_h).floor()),
+                (_, State::Clicked) =>
+                    (clamp(mouse.xy[0], -half_pad_w, half_pad_w).floor(),
+                     clamp(mouse.xy[1], -half_pad_h, half_pad_h).floor()),
             };
-            text(Text::from_string(value_string).color(color.plain_contrast()).height(h))
-                .shift(ch_x, ch_y)
-                .shift(value_text_x.floor(), value_text_y.floor())
-        };
+            let line_style = solid(color.plain_contrast()).width(self.line_width);
+            let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
+            let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
 
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .chain(maybe_label_form.into_iter())
-            .chain(Some(vert_form).into_iter())
-            .chain(Some(hori_form).into_iter())
-            .chain(Some(value_text_form).into_iter())
-            .map(|form| form.shift(xy[0].round(), xy[1].round()));
+            // Construct the value string Form.
+            let x_string = val_to_string(self.x, self.max_x, self.max_x - self.min_x, dim[0] as usize);
+            let y_string = val_to_string(self.y, self.max_y, self.max_y - self.min_y, dim[1] as usize);
+            let value_string = format!("{}, {}", x_string, y_string);
+            let value_text_form = {
+                const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
+                let w = label::width(ui, self.value_font_size, &value_string);
+                let h = self.value_font_size as f64;
+                let x_shift = w / 2.0 + PAD;
+                let y_shift = h / 2.0 + PAD;
+                let (value_text_x, value_text_y) = match position::corner([ch_x, ch_y], pad_dim) {
+                    Corner::TopLeft => (x_shift, -y_shift),
+                    Corner::TopRight => (-x_shift, -y_shift),
+                    Corner::BottomLeft => (x_shift, y_shift),
+                    Corner::BottomRight => (-x_shift, y_shift),
+                };
+                text(Text::from_string(value_string).color(color.plain_contrast()).height(h))
+                    .shift(ch_x, ch_y)
+                    .shift(value_text_x.floor(), value_text_y.floor())
+            };
 
-        // Turn the form into a renderable Element.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+            // Chain the Forms and shift them into position.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(pressable_form).into_iter())
+                .chain(maybe_label_form.into_iter())
+                .chain(Some(vert_form).into_iter())
+                .chain(Some(hori_form).into_iter())
+                .chain(Some(value_text_form).into_iter())
+                .map(|form| form.shift(xy[0].round(), xy[1].round()));
 
-        // Store the XYPad's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::XYPad(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+            // Turn the form into a renderable Element.
+            let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+            Some(element)
+
+        } else { None };
+
+        // Update the XYPad's state within the Ui.
+        ui.update_widget(ui_id, Kind::XYPad(new_state), xy, self.depth, maybe_new_element);
 
     }
 

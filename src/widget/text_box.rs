@@ -461,12 +461,7 @@ impl<'a, F> TextBox<'a, F> {
         let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
 
         // Store the TextBox's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::TextBox(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+        ui.update_widget(ui_id, Kind::TextBox(new_state), xy, self.depth, Some(element));
 
     }
 

@@ -166,55 +166,59 @@ impl<'a, T, F> Slider<'a, T, F> {
             }, None => (),
         }
 
-        // Draw.
-        let frame_color = new_state.color(self.maybe_frame_color.unwrap_or(ui.theme.frame_color));
-        let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
+        let draw_new_element_condition = true;
 
-        // Rectangle frame / backdrop Form.
-        let frame_form = rect(dim[0], dim[1])
-            .filled(frame_color);
-        // Slider rectangle Form.
-        let pad_form = rect(pad_dim[0], pad_dim[1])
-            .filled(color)
-            .shift(pad_rel_xy[0], pad_rel_xy[1]);
+        // Only update the element if the state or value has changed.
+        let maybe_new_element = if draw_new_element_condition {
 
-        // Label Form.
-        let maybe_label_form = self.maybe_label.map(|label_text| {
-            use elmesque::text::Text;
-            use label;
-            const TEXT_PADDING: f64 = 10.0;
-            let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            let label_w = label::width(ui, size, &label_text);
-            let is_horizontal = self.dim[0] > self.dim[1];
-            let l_pos = if is_horizontal {
-                let x = position::align_left_of(dim[0], label_w) + TEXT_PADDING;
-                [x, 0.0]
-            } else {
-                let y = position::align_bottom_of(dim[1], size as f64) + TEXT_PADDING;
-                [0.0, y]
-            };
-            text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
-                .shift(l_pos[0].floor(), l_pos[1].floor())
-                .shift(xy[0].floor(), xy[1].floor())
-        });
+            // Draw.
+            let frame_color = new_state.color(self.maybe_frame_color.unwrap_or(ui.theme.frame_color));
+            let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
 
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pad_form).into_iter())
-            .map(|form| form.shift(xy[0], xy[1]))
-            .chain(maybe_label_form.into_iter());
+            // Rectangle frame / backdrop Form.
+            let frame_form = rect(dim[0], dim[1])
+                .filled(frame_color);
+            // Slider rectangle Form.
+            let pad_form = rect(pad_dim[0], pad_dim[1])
+                .filled(color)
+                .shift(pad_rel_xy[0], pad_rel_xy[1]);
 
-        // Collect the Forms into a renderable Element.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+            // Label Form.
+            let maybe_label_form = self.maybe_label.map(|label_text| {
+                use elmesque::text::Text;
+                use label;
+                const TEXT_PADDING: f64 = 10.0;
+                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                let label_w = label::width(ui, size, &label_text);
+                let is_horizontal = self.dim[0] > self.dim[1];
+                let l_pos = if is_horizontal {
+                    let x = position::align_left_of(dim[0], label_w) + TEXT_PADDING;
+                    [x, 0.0]
+                } else {
+                    let y = position::align_bottom_of(dim[1], size as f64) + TEXT_PADDING;
+                    [0.0, y]
+                };
+                text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
+                    .shift(l_pos[0].floor(), l_pos[1].floor())
+                    .shift(xy[0].floor(), xy[1].floor())
+            });
+
+            // Chain the Forms and shift them into position.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(pad_form).into_iter())
+                .map(|form| form.shift(xy[0], xy[1]))
+                .chain(maybe_label_form.into_iter());
+
+            // Collect the Forms into a renderable Element.
+            let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+            Some(element)
+
+        } else { None };
 
         // Store the slider's state in the `Ui`.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::Slider(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+        ui.update_widget(ui_id, Kind::Slider(new_state), xy, self.depth, maybe_new_element);
 
     }
 

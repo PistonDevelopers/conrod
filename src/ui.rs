@@ -1,4 +1,5 @@
 
+use elmesque::Element;
 use graphics::Graphics;
 use graphics::character::{Character, CharacterCache};
 use label::FontSize;
@@ -12,7 +13,7 @@ use piston::event::{
     RenderEvent,
     TextEvent,
 };
-use position::{Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use std::fmt::Debug;
 use std::iter::repeat;
 use theme::Theme;
@@ -244,26 +245,58 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         }
     }
 
-    /// Set the given widget at the given UiId.
-    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget<W>) where W: Debug {
-        if self.widget_cache[ui_id].kind.matches(&widget.kind)
+    /// Update the given widget at the given UiId.
+    pub fn update_widget(&mut self,
+                         ui_id: UiId,
+                         kind: WidgetKind<W>,
+                         xy: Point,
+                         depth: Depth,
+                         new_element: Option<Element>) where W: Debug {
+        if self.widget_cache[ui_id].kind.matches(&kind)
         || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
-            if self.widget_cache[ui_id].element.is_some() {
+            if self.widget_cache[ui_id].set_since_last_drawn {
                 println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
                           since the last time that `Ui::draw` was called (you probably don't want \
                           this). Perhaps check that your UiIds are correct, that you're calling \
                           `Ui::draw` after constructing your widgets and that you haven't \
                           accidentally set the same widget twice.", ui_id);
             }
-            self.widget_cache[ui_id] = widget;
+            let widget = &mut self.widget_cache[ui_id];
+            widget.kind = kind;
+            widget.xy = xy;
+            widget.depth = depth;
+            if let Some(new_element) = new_element {
+                widget.element = new_element;
+            }
+            widget.set_since_last_drawn = true;
             self.maybe_prev_ui_id = Some(ui_id);
         } else {
             panic!("A widget of a different kind already exists at the given UiId ({:?}).
                     You tried to insert a {:?}, however the existing widget is a {:?}.
                     Check your widgets' `UiId`s for errors.",
-                    ui_id, &widget.kind, &self.widget_cache[ui_id].kind);
+                    ui_id, &kind, &self.widget_cache[ui_id].kind);
         }
     }
+
+    // pub fn set_widget(&mut self, ui_id: UiId, widget: Widget<W>) where W: Debug {
+    //     if self.widget_cache[ui_id].kind.matches(&widget.kind)
+    //     || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
+    //         if self.widget_cache[ui_id].element.is_some() {
+    //             println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
+    //                       since the last time that `Ui::draw` was called (you probably don't want \
+    //                       this). Perhaps check that your UiIds are correct, that you're calling \
+    //                       `Ui::draw` after constructing your widgets and that you haven't \
+    //                       accidentally set the same widget twice.", ui_id);
+    //         }
+    //         self.widget_cache[ui_id] = widget;
+    //         self.maybe_prev_ui_id = Some(ui_id);
+    //     } else {
+    //         panic!("A widget of a different kind already exists at the given UiId ({:?}).
+    //                 You tried to insert a {:?}, however the existing widget is a {:?}.
+    //                 Check your widgets' `UiId`s for errors.",
+    //                 ui_id, &widget.kind, &self.widget_cache[ui_id].kind);
+    //     }
+    // }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     pub fn get_xy(&self,
@@ -286,54 +319,51 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                     Some(rel_ui_id) => {
                         use position::Direction;
                         let rel_xy = self.widget_cache[rel_ui_id].xy;
-                        if let Some(ref element) = self.widget_cache[rel_ui_id].element {
-                            let (rel_w, rel_h) = element.get_size();
-                            let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
-                            match direction {
+                        let element = &self.widget_cache[rel_ui_id].element;
+                        let (rel_w, rel_h) = element.get_size();
+                        let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
+                        match direction {
 
-                                Direction::Up(px) => {
-                                    let x = rel_xy[0] + match h_align {
-                                        HorizontalAlign::Middle => 0.0,
-                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
-                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
-                                    };
-                                    let y = rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px;
-                                    [x, y]
-                                },
+                            Direction::Up(px) => {
+                                let x = rel_xy[0] + match h_align {
+                                    HorizontalAlign::Middle => 0.0,
+                                    HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                    HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                };
+                                let y = rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px;
+                                [x, y]
+                            },
 
-                                Direction::Down(px) => {
-                                    let x = rel_xy[0] + match h_align {
-                                        HorizontalAlign::Middle => 0.0,
-                                        HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
-                                        HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
-                                    };
-                                    let y = rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px;
-                                    [x, y]
-                                },
+                            Direction::Down(px) => {
+                                let x = rel_xy[0] + match h_align {
+                                    HorizontalAlign::Middle => 0.0,
+                                    HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
+                                    HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
+                                };
+                                let y = rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px;
+                                [x, y]
+                            },
 
-                                Direction::Left(px) => {
-                                    let y = rel_xy[1] + match v_align {
-                                        VerticalAlign::Middle => 0.0,
-                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
-                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
-                                    };
-                                    let x = rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px;
-                                    [x, y]
-                                },
+                            Direction::Left(px) => {
+                                let y = rel_xy[1] + match v_align {
+                                    VerticalAlign::Middle => 0.0,
+                                    VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                    VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                };
+                                let x = rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px;
+                                [x, y]
+                            },
 
-                                Direction::Right(px) => {
-                                    let y = rel_xy[1] + match v_align {
-                                        VerticalAlign::Middle => 0.0,
-                                        VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
-                                        VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
-                                    };
-                                    let x = rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px;
-                                    [x, y]
-                                },
+                            Direction::Right(px) => {
+                                let y = rel_xy[1] + match v_align {
+                                    VerticalAlign::Middle => 0.0,
+                                    VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
+                                    VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
+                                };
+                                let x = rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px;
+                                [x, y]
+                            },
 
-                            }
-                        } else {
-                            rel_xy
                         }
                     },
                 }
@@ -426,7 +456,14 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
 
         // Collect references to the widgets so that we can sort them without changing cache order.
-        let mut widgets: Vec<_> = widget_cache.iter_mut().collect();
+        let mut widgets: Vec<_> = widget_cache.iter_mut()
+            .filter(|widget| widget.set_since_last_drawn)
+            .collect();
+
+        // Indicate that the widget has now been drawn since the last time it was set.
+        for widget in widgets.iter_mut() {
+            widget.set_since_last_drawn = false;
+        }
 
         // Check for captured widgets and take them from the Vec (we want to draw them last).
         let maybe_mouse = self.maybe_captured_mouse.map(|(capturing, _)| capturing);
@@ -464,10 +501,10 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
 
         // Chain our widgets with the captured widgets and take their Elements.
-        let elements = widgets.into_iter()
-            .chain(maybe_keyboard_widget.into_iter())
-            .chain(maybe_mouse_widget.into_iter())
-            .filter_map(|widget| widget.element.take());
+        let elements = widgets.iter()
+            .chain(maybe_keyboard_widget.iter())
+            .chain(maybe_mouse_widget.iter())
+            .map(|widget| &widget.element);
 
         // Draw all Elements.
         for element in elements {

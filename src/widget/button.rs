@@ -9,7 +9,7 @@ use ui::{UiId, Ui};
 use widget::Kind;
 
 /// Represents the state of the Button widget.
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum State {
     Normal,
     Highlighted,
@@ -44,27 +44,50 @@ fn get_new_state(is_over: bool, prev: State, mouse: Mouse) -> State {
 
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
-    pos: Position,
     dim: Dimensions,
+    pos: Position,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
+    maybe_label: Option<&'a str>,
+    maybe_react: Option<F>,
+    // style: Style,
     maybe_color: Option<Color>,
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
-    maybe_label: Option<&'a str>,
     maybe_label_color: Option<Color>,
     maybe_label_font_size: Option<u32>,
-    maybe_react: Option<F>,
 }
+
+// /// Styling for the Button, necessary for constructing its renderable Element.
+// pub struct Style {
+//     pub maybe_color: Option<Color>,
+//     pub maybe_frame: Option<f64>,
+//     pub maybe_frame_color: Option<Color>,
+//     pub maybe_label_color: Option<Color>,
+//     pub maybe_label_font_size: Option<u32>,
+// }
+// 
+// impl Style {
+//     /// Construct the default Style.
+//     pub fn new() -> Style {
+//         Style {
+//             maybe_color: None,
+//             maybe_frame: None,
+//             maybe_frame_color: None,
+//             maybe_label_color: None,
+//             maybe_label_font_size: None,
+//         }
+//     }
+// }
 
 impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
     pub fn new() -> Button<'a, F> {
         Button {
-            pos: Position::default(),
             dim: [64.0, 64.0],
+            pos: Position::default(),
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
@@ -108,39 +131,43 @@ impl<'a, F> Button<'a, F> {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
 
-        // Consruct the frame and pressable Forms.
-        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let (inner_w, inner_h) = (dim[0] - frame_w * 2.0, dim[1] - frame_w * 2.0);
-        let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
-        let pressable_form = rect(inner_w, inner_h).filled(color);
+        let draw_new_element_condition = true;
 
-        // Construct the label's Form.
-        let maybe_label_form = self.maybe_label.map(|label_text| {
-            use elmesque::text::Text;
-            let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
-                .shift(xy[0].floor(), xy[1].floor())
-        });
+        // If the state has changed, construct a new Element.
+        let maybe_new_element = if draw_new_element_condition {
 
-        // Construct the button's Form.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .map(|form| form.shift(xy[0], xy[1]))
-            .chain(maybe_label_form.into_iter());
+            // Consruct the frame and pressable Forms.
+            let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
+            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+            let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+            let (inner_w, inner_h) = (dim[0] - frame_w * 2.0, dim[1] - frame_w * 2.0);
+            let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
+            let pressable_form = rect(inner_w, inner_h).filled(color);
 
-        // Turn the form into a renderable Element.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+            // Construct the label's Form.
+            let maybe_label_form = self.maybe_label.map(|label_text| {
+                use elmesque::text::Text;
+                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
+                    .shift(xy[0].floor(), xy[1].floor())
+            });
 
-        // Store the button's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::Button(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+            // Construct the button's Form.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(pressable_form).into_iter())
+                .map(|form| form.shift(xy[0], xy[1]))
+                .chain(maybe_label_form.into_iter());
+
+            // Turn the form into a renderable Element.
+            let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+            Some(element)
+
+        } else { None };
+
+        // Update the widget's state within the Ui.
+        ui.update_widget(ui_id, Kind::Button(new_state), xy, self.depth, maybe_new_element);
 
     }
 
