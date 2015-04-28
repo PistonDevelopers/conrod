@@ -49,6 +49,7 @@ pub use ui::{Ui, UiId};
 mod macros;
 
 mod background;
+mod canvas;
 mod frame;
 mod label;
 pub mod mouse;

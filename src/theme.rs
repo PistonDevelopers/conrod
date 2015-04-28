@@ -7,12 +7,21 @@ use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 use std::str;
+use widget::{button};
 
 /// A serializable collection of widget styling defaults.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     /// A name for the theme used for identification.
     pub name: String,
+    /// Padding for Canvas layout and positioning.
+    pub padding: Padding,
+    /// Margin for Canvas layout and positioning.
+    pub margin: Margin,
+    /// A default widget position.
+    pub position: Position,
+    /// A default alignment for widgets.
+    pub align: Align,
     /// A default background for the theme.
     pub background_color: Color,
     /// A default color for widget shapes.
@@ -29,14 +38,43 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// A default widget position.
-    pub position: Position,
-    /// A default horizontal alignment for widgets.
-    pub h_align: HorizontalAlign,
-    /// A default vertical alignment for widgets.
-    pub v_align: VerticalAlign,
-    //TODO: Add unique theme-ing for each widget.
-    //i.e. maybe_slider: Option<SliderTheme>, etc
+    /// Specific defaults for a Button widget.
+    pub maybe_button: Option<button::Style>,
+}
+
+/// The distance between the inner edge of a frame and the outer edge of the inner content.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct Padding {
+    /// Padding between the top of a Widget and the top of a Canvas.
+    pub top: f64,
+    /// Padding between the bottom of a Widget and the bottom of a Canvas.
+    pub bottom: f64,
+    /// Margin between the left of a Widget and the left of a Canvas.
+    pub left: f64,
+    /// Margin between the right of a Widget and the right of a Canvas.
+    pub right: f64,
+}
+
+/// The distance between the dimension bound and the outer edge of the frame.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct Margin {
+    /// Margin between the y max Canvas and the outer edge of its frame.
+    pub top: f64,
+    /// Margin between the y min Canvas and the outer edge of its frame.
+    pub bottom: f64,
+    /// Margin between the x min Canvas and the outer edge of its frame.
+    pub left: f64,
+    /// Margin between the x max Canvas and the outer edge of its frame.
+    pub right: f64,
+}
+
+/// The alignment of an element's dimensions with another's.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct Align {
+    /// Positioning relative to an elements width and position on the x axis.
+    pub horizontal: HorizontalAlign,
+    /// Positioning relative to an elements height and position on the y axis.
+    pub vertical: VerticalAlign,
 }
 
 impl Theme {
@@ -45,6 +83,23 @@ impl Theme {
     pub fn default() -> Theme {
         Theme {
             name: "Demo Theme".to_string(),
+            padding: Padding {
+                top: 20.0,
+                bottom: 20.0,
+                left: 20.0,
+                right: 20.0,
+            },
+            margin: Margin {
+                top: 0.0,
+                bottom: 0.0,
+                left: 0.0,
+                right: 0.0,
+            },
+            position: Position::default(),
+            align: Align {
+                horizontal: HorizontalAlign::Left,
+                vertical: VerticalAlign::Top,
+            },
             background_color: black(),
             shape_color: white(),
             frame_color: black(),
@@ -53,9 +108,7 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            position: Position::default(),
-            h_align: HorizontalAlign::Left,
-            v_align: VerticalAlign::Top,
+            maybe_button: None,
         }
     }
 

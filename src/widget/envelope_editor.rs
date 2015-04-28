@@ -269,8 +269,8 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 
         let state = *get_state(ui, ui_id);
         let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let skew = self.skew_y_range;

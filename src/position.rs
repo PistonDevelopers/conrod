@@ -20,13 +20,13 @@ pub enum Position {
     /// A position relative to some other widget.
     Relative(Scalar, Scalar, Option<UiId>),
     /// A direction relative to some other widget.
-    Direction(Direction, Option<UiId>),
+    Direction(Direction, Scalar, Option<UiId>),
 }
 
 impl Position {
     /// The default widget Position.
     pub fn default() -> Position{
-        Position::Direction(Direction::Down(20.0), None)
+        Position::Direction(Direction::Down, 20.0, None)
     }
 }
 
@@ -34,13 +34,13 @@ impl Position {
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Direction {
     /// Positioned above.
-    Up(Scalar),
+    Up,
     /// Positioned below.
-    Down(Scalar),
+    Down,
     /// Positioned to the left.
-    Left(Scalar),
+    Left,
     /// Positioned to the right.
-    Right(Scalar),
+    Right,
 }
 
 /// The horizontal alignment of a widget positioned relatively to another widget on the y axis.
@@ -103,42 +103,42 @@ pub trait Positionable: Sized {
 
     /// Set the position as below the previous widget.
     fn down(self, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Down(pixels), None))
+        self.position(Position::Direction(Direction::Down, pixels, None))
     }
 
     /// Set the position as above the previous widget.
     fn up(self, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Up(pixels), None))
+        self.position(Position::Direction(Direction::Up, pixels, None))
     }
 
     /// Set the position to the left of the previous widget.
     fn left(self, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Left(pixels), None))
+        self.position(Position::Direction(Direction::Left, pixels, None))
     }
 
     /// Set the position to the right of the previous widget.
     fn right(self, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Right(pixels), None))
+        self.position(Position::Direction(Direction::Right, pixels, None))
     }
 
     /// Set the position as below the widget with the given UiId.
     fn down_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Down(pixels), Some(ui_id)))
+        self.position(Position::Direction(Direction::Down, pixels, Some(ui_id)))
     }
 
     /// Set the position as above the widget with the given UiId.
     fn up_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Up(pixels), Some(ui_id)))
+        self.position(Position::Direction(Direction::Up, pixels, Some(ui_id)))
     }
 
     /// Set the position to the left of the widget with the given UiId.
     fn left_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Left(pixels), Some(ui_id)))
+        self.position(Position::Direction(Direction::Left, pixels, Some(ui_id)))
     }
 
     /// Set the position to the right of the widget with the given UiId.
     fn right_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Right(pixels), Some(ui_id)))
+        self.position(Position::Direction(Direction::Right, pixels, Some(ui_id)))
     }
 
     ///// Alignment methods. /////

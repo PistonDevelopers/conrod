@@ -99,8 +99,8 @@ impl<'a, F> Toggle<'a, F> {
 
         let state = *get_state(ui, ui_id);
         let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, self.dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id);
         let is_over = is_over_rect(xy, mouse.xy, self.dim);

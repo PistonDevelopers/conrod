@@ -46,8 +46,8 @@ impl<'a> Label<'a> {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
         let dim = [label::width(ui, self.size, self.text), self.size as f64];
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let color = self.maybe_color.unwrap_or(ui.theme.label_color);
         let form = text(Text::from_string(self.text.to_string())

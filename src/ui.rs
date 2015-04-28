@@ -57,6 +57,7 @@ pub struct Ui<C, W=()> where W: CustomWidget {
     pub keys_just_released: Vec<input::keyboard::Key>,
     /// Text that has been entered since the end of the last render cycle.
     pub text_just_entered: Vec<String>,
+    /// Cache for character textures, used for label width calculation and glyph rendering.
     pub character_cache: C,
     prev_event_was_render: bool,
     /// Window width.
@@ -312,7 +313,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                     Some(rel_ui_id) => ::vecmath::vec2_add(self.widget_cache[rel_ui_id].xy, [x, y]),
                 }
             },
-            Position::Direction(direction, maybe_ui_id) => {
+            Position::Direction(direction, px, maybe_ui_id) => {
                 use position::{align_left_of, align_right_of, align_top_of, align_bottom_of};
                 match maybe_ui_id.or(self.maybe_prev_ui_id) {
                     None => [0.0, 0.0],
@@ -324,7 +325,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                         let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
                         match direction {
 
-                            Direction::Up(px) => {
+                            Direction::Up => {
                                 let x = rel_xy[0] + match h_align {
                                     HorizontalAlign::Middle => 0.0,
                                     HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
@@ -334,7 +335,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                                 [x, y]
                             },
 
-                            Direction::Down(px) => {
+                            Direction::Down => {
                                 let x = rel_xy[0] + match h_align {
                                     HorizontalAlign::Middle => 0.0,
                                     HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
@@ -344,7 +345,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                                 [x, y]
                             },
 
-                            Direction::Left(px) => {
+                            Direction::Left => {
                                 let y = rel_xy[1] + match v_align {
                                     VerticalAlign::Middle => 0.0,
                                     VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
@@ -354,7 +355,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                                 [x, y]
                             },
 
-                            Direction::Right(px) => {
+                            Direction::Right => {
                                 let y = rel_xy[1] + match v_align {
                                     VerticalAlign::Middle => 0.0,
                                     VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
