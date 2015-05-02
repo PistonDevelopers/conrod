@@ -1,3 +1,7 @@
+//! 
+//! Various utility functions used throughout Conrod.
+//!
+
 
 use num::{Float, NumCast, PrimInt, ToPrimitive};
 use position::{Dimensions, Point};

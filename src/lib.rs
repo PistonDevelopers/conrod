@@ -39,7 +39,7 @@ pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
-pub use label::Labelable;
+pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
@@ -59,6 +59,6 @@ pub mod mouse;
 mod position;
 mod theme;
 mod ui;
-mod utils;
+pub mod utils;
 mod widget;
 
