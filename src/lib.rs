@@ -32,6 +32,7 @@ pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::xy_pad::XYPad;
+pub use widget::Update as WidgetUpdate;
 
 pub use background::Background;
 pub use canvas::{Canvas, CanvasId};
