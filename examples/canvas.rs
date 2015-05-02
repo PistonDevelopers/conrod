@@ -57,18 +57,18 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
     use conrod::color::{blue, light_orange, orange, dark_orange};
     use conrod::{Button, Colorable, Label, Positionable, Sizeable, Split, WidgetMatrix};
 
-    // Construct our master Canvas and it's children.
-    Split::new(MASTER).flow_down(vec![
+    // Construct our Canvas tree.
+    Split::new(MASTER).flow_down(&[
         Split::new(HEADER).color(blue()).pad_bottom(20.0),
-        Split::new(BODY).flow_right(vec![
-            Split::new(LEFT_COLUMN).color(light_orange()).pad(20.0),
+        Split::new(BODY).flow_right(&[
+            Split::new(LEFT_COLUMN).length(400.0).color(light_orange()).pad(20.0),
             Split::new(MIDDLE_COLUMN).color(orange()),
             Split::new(RIGHT_COLUMN).color(dark_orange()).pad(20.0),
         ]),
         Split::new(FOOTER).color(blue())
     ]).set(ui);
 
-    Label::new("Fancy Title").color(blue().complement()).size(48).middle_of(HEADER).set(TITLE, ui);
+    Label::new("Fancy Title").color(light_orange()).size(48).middle_of(HEADER).set(TITLE, ui);
     Label::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
 
     Label::new("Top Left")
@@ -98,7 +98,6 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
                 .set(BUTTON + n, ui);
         });
 
-    // Draw the Ui.
     ui.draw(g);
 }
 
