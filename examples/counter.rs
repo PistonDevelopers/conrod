@@ -5,10 +5,10 @@ extern crate piston;
 
 use conrod::{Background, Button, Colorable, Labelable, Sizeable, Theme, Ui};
 use glutin_window::GlutinWindow;
-use opengl_graphics::{ GlGraphics, OpenGL };
+use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
-use piston::window::{ WindowSettings, Size };
+use piston::window::{WindowSettings, Size};
 use std::path::Path;
 
 fn main() {
