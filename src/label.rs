@@ -3,6 +3,7 @@ use color::{Color, hsl, hsla, rgb, rgba};
 use graphics::character::CharacterCache;
 use ui::Ui;
 
+/// Font size used throughout Conrod.
 pub type FontSize = u32;
 
 /// Determine the pixel width of the final text bitmap.
