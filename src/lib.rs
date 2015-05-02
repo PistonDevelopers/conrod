@@ -17,6 +17,7 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
 
+pub use canvas::split::Split;
 
 pub use widget::button::Button;
 pub use widget::custom::Custom as CustomWidget;
@@ -33,6 +34,7 @@ pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::xy_pad::XYPad;
 
 pub use background::Background;
+pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
@@ -40,7 +42,7 @@ pub use label::Labelable;
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
-pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Point, Position,
+pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Place, Point, Position,
                    Positionable, Sizeable, VerticalAlign};
 pub use theme::Theme;
 pub use ui::{Ui, UiId};
@@ -49,6 +51,7 @@ pub use ui::{Ui, UiId};
 mod macros;
 
 mod background;
+mod canvas;
 mod frame;
 mod label;
 pub mod mouse;

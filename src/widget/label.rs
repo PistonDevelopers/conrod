@@ -46,8 +46,8 @@ impl<'a> Label<'a> {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
         let dim = [label::width(ui, self.size, self.text), self.size as f64];
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let color = self.maybe_color.unwrap_or(ui.theme.label_color);
         let form = text(Text::from_string(self.text.to_string())
@@ -55,12 +55,7 @@ impl<'a> Label<'a> {
                             .height(self.size as f64)).shift(xy[0].floor(), xy[1].floor());
         let element = collage(dim[0] as i32, dim[1] as i32, vec![form]);
         // Store the label's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: ::widget::Kind::Label,
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+        ui.update_widget(ui_id, ::widget::Kind::Label, xy, self.depth, Some(element));
     }
 
 }

@@ -266,13 +266,11 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
             E::Y: Float,
             F: FnMut(&mut Vec<E>, usize),
     {
-        use elmesque::form::{circle, collage, Form, line, rect, solid, text};
-        use elmesque::text::Text;
 
         let state = *get_state(ui, ui_id);
         let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let skew = self.skew_y_range;
@@ -299,31 +297,6 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
             is_over_and_closest(mouse.xy, dim, pad_dim, &perc_env[..], pt_radius);
         let new_state = get_new_state(is_over_elem, state, mouse);
 
-        // Construct the frame and inner rectangle Forms.
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
-        let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-
-        // Construct the label Form.
-        let maybe_label_form = self.maybe_label.map(|l_text| {
-            let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            text(Text::from_string(l_text.to_string()).color(l_color).height(l_size as f64))
-        });
-
-        // Draw the envelope lines.
-        let line_color = color.plain_contrast();
-        let envelope_line_forms = perc_env.windows(2).map(|window| {
-            let ((x_a, y_a, _), (x_b, y_b, _)) = (window[0], window[1]);
-            let p_a = [map_range(x_a, 0.0, 1.0, -half_pad_w, half_pad_w),
-                       map_range(y_a, 0.0, 1.0, -half_pad_h, half_pad_h)];
-            let p_b = [map_range(x_b, 0.0, 1.0, -half_pad_w, half_pad_w),
-                       map_range(y_b, 0.0, 1.0, -half_pad_h, half_pad_h)];
-            let style = solid(line_color).width(line_width);
-            line(style, p_a[0], p_a[1], p_b[0], p_b[1])
-        });
-
         // Determine the left and right X bounds for a point.
         let get_x_bounds = |envelope_perc: &[(f32, f32, f32)], idx: usize| -> (f32, f32) {
             let right_bound = if envelope_perc.len() > 0 && envelope_perc.len() - 1 > idx {
@@ -336,68 +309,11 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         };
 
         // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
-        let (maybe_closest_point_form, is_clicked_env_point) = match (state, new_state) {
-
-            (_, State::Clicked(elem, _)) | (_, State::Highlighted(elem)) => {
-                use std::iter::Chain;
-                use std::option::IntoIter;
-
-                // Construct a Form for an envelope point and it's value in text form.
-                let env_pt_form = |ui: &mut Ui<C>, env: &[E], idx: usize, p_pos: Point|
-                                                -> Chain<IntoIter<Form>, IntoIter<Form>> {
-                    let x_range = max_x - min_x;
-                    let y_range = max_y - min_y;
-                    let x_px_range = pad_dim[0] as usize;
-                    let y_px_range = pad_dim[1] as usize;
-                    let x_string = val_to_string(env[idx].get_x(), max_x, x_range, x_px_range);
-                    let y_string = val_to_string(env[idx].get_y(), max_y, y_range, y_px_range);
-                    let xy_string = format!("{}, {}", x_string, y_string);
-                    const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-                    let w = label::width(ui, value_font_size, &xy_string);
-                    let h = value_font_size as f64;
-                    let x_shift = w / 2.0 + PAD;
-                    let y_shift = h / 2.0 + PAD;
-                    let (text_x, text_y) = match position::corner(p_pos, pad_dim) {
-                        Corner::TopLeft => (x_shift, -y_shift),
-                        Corner::TopRight => (-x_shift, -y_shift),
-                        Corner::BottomLeft => (x_shift, y_shift),
-                        Corner::BottomRight => (-x_shift, y_shift),
-                    };
-                    let color = color.plain_contrast();
-                    let circle_form = circle(pt_radius).filled(color)
-                        .shift(p_pos[0].floor(), p_pos[1].floor());
-                    let text_form = text(Text::from_string(xy_string).color(color).height(h))
-                        .shift(p_pos[0], p_pos[1])
-                        .shift(text_x.floor(), text_y.floor());
-                    Some(circle_form).into_iter().chain(Some(text_form).into_iter())
-                };
-
-                match elem {
-                    // If a point is clicked, draw that point.
-                    Element::EnvPoint(idx, (x, y)) => {
-                        let (left_x_bound, right_x_bound) = get_x_bounds(&perc_env[..], idx);
-                        let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
-                        let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
-                        let p_pos_x_clamped = clamp(x, left_pixel_bound, right_pixel_bound);
-                        let p_pos_y_clamped = clamp(y, -half_pad_h, half_pad_h);
-                        let p_pos_clamped = [p_pos_x_clamped, p_pos_y_clamped];
-                        let point_form = env_pt_form(ui, &self.env[..], idx, p_pos_clamped);
-                        (Some(point_form), Some(idx))
-                    },
-                    // Otherwise, draw the closest point if there is one.
-                    Element::Pad => match is_closest_elem {
-                        Some(Element::EnvPoint(closest_idx, (x, y))) => {
-                            let point_form = env_pt_form(ui, &self.env[..], closest_idx, [x, y]);
-                            (Some(point_form), None)
-                        },
-                        _ => (None, None),
-                    },
-                    _ => (None, None),
-                }
-
+        let is_clicked_env_point = match new_state {
+            State::Clicked(elem, _) | State::Highlighted(elem) => {
+                if let Element::EnvPoint(idx, _) = elem { Some(idx) } else { None }
             },
-            _ => (None, None),
-
+            _ => None,
         };
 
         // Determine new values.
@@ -414,131 +330,202 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         };
 
         // If a point is currently clicked, check for react and value setting conditions.
-        match is_clicked_env_point {
+        if let Some(idx) = is_clicked_env_point {
 
-            Some(idx) => {
-
-                // Call the `react` closure if mouse was released
-                // on one of the DropDownMenu items.
-                match (state, new_state) {
-                    (State::Clicked(_, m_button), State::Highlighted(_)) |
-                    (State::Clicked(_, m_button), State::Normal) => {
-                        match m_button {
-                            MouseButton::Left => {
-                                // Adjust the point and trigger the reaction.
-                                let (new_x, new_y) = get_new_value(&perc_env[..], idx);
-                                self.env[idx].set_x(new_x);
-                                self.env[idx].set_y(new_y);
-                                match self.maybe_react {
-                                    Some(ref mut react) => react(self.env, idx),
-                                    None => (),
-                                }
-                            },
-                            MouseButton::Right => {
-                                // Delete the point and trigger the reaction.
-                                self.env.remove(idx);
-                                match self.maybe_react {
-                                    Some(ref mut react) => react(self.env, idx),
-                                    None => (),
-                                }
-                            },
+            // Call the `react` closure if mouse was released
+            // on one of the DropDownMenu items.
+            match (state, new_state) {
+                (State::Clicked(_, m_button), State::Highlighted(_)) |
+                (State::Clicked(_, m_button), State::Normal) => {
+                    match m_button {
+                        MouseButton::Left => {
+                            // Adjust the point and trigger the reaction.
+                            let (new_x, new_y) = get_new_value(&perc_env[..], idx);
+                            self.env[idx].set_x(new_x);
+                            self.env[idx].set_y(new_y);
+                            if let Some(ref mut react) = self.maybe_react { react(self.env, idx) }
+                        },
+                        MouseButton::Right => {
+                            // Delete the point and trigger the reaction.
+                            self.env.remove(idx);
+                            if let Some(ref mut react) = self.maybe_react { react(self.env, idx) }
+                        },
+                    }
+                },
+                (State::Clicked(_, prev_m_button), State::Clicked(_, m_button)) => {
+                    if let (MouseButton::Left, MouseButton::Left) = (prev_m_button, m_button) {
+                        let (new_x, new_y) = get_new_value(&perc_env[..], idx);
+                        let current_x = self.env[idx].get_x();
+                        let current_y = self.env[idx].get_y();
+                        if new_x != current_x || new_y != current_y {
+                            // Adjust the point and trigger the reaction.
+                            self.env[idx].set_x(new_x);
+                            self.env[idx].set_y(new_y);
+                            if let Some(ref mut react) = self.maybe_react { react(self.env, idx) }
                         }
-                    },
+                    }
+                },
+                _ => (),
 
-                    (State::Clicked(_, prev_m_button), State::Clicked(_, m_button)) => {
-                        match (prev_m_button, m_button) {
-                            (MouseButton::Left, MouseButton::Left) => {
-                                let (new_x, new_y) = get_new_value(&perc_env[..], idx);
-                                let current_x = self.env[idx].get_x();
-                                let current_y = self.env[idx].get_y();
-                                if new_x != current_x || new_y != current_y {
-                                    // Adjust the point and trigger the reaction.
-                                    self.env[idx].set_x(new_x);
-                                    self.env[idx].set_y(new_y);
-                                    match self.maybe_react {
-                                        Some(ref mut react) => react(self.env, idx),
-                                        None => (),
-                                    }
-                                }
-                            }, _ => (),
-                        }
-                    }, _ => (),
+            }
 
-                }
+        } else {
 
-            },
-
-            None => {
-
-                // Check if a there are no points. If so and the mouse was clicked, add a point.
-                if self.env.len() == 0 {
-                    match (state, new_state) {
-                        (State::Clicked(elem, m_button), State::Highlighted(_)) => {
-                            match (elem, m_button) {
-                                (Element::Pad, MouseButton::Left) => {
-                                    let (new_x, new_y) = get_new_value(&perc_env[..], 0);
-                                    let new_point = EnvelopePoint::new(new_x, new_y);
-                                    self.env.push(new_point);
-                                }, _ => (),
-                            }
-                        }, _ => (),
+            // Check if a there are no points. If so and the mouse was clicked, add a point.
+            if self.env.len() == 0 {
+                if let (State::Clicked(elem, m_button), State::Highlighted(_)) = (state, new_state) {
+                    if let (Element::Pad, MouseButton::Left) = (elem, m_button) {
+                        let (new_x, new_y) = get_new_value(&perc_env[..], 0);
+                        let new_point = EnvelopePoint::new(new_x, new_y);
+                        self.env.push(new_point);
                     }
                 }
+            }
 
-                else {
-                    // Check if a new point should be created.
-                    match (state, new_state) {
-                        (State::Clicked(elem, m_button), State::Highlighted(_)) => {
-                            match (elem, m_button) {
-                                (Element::Pad, MouseButton::Left) => {
-                                    let (new_x, new_y) = {
-                                        let mouse_x = clamp(mouse.xy[0], -half_pad_w, half_pad_w);
-                                        let mouse_y = clamp(mouse.xy[1], -half_pad_h, half_pad_h);
-                                        let new_x_perc = percentage(mouse_x, -half_pad_w, half_pad_w);
-                                        let new_y_perc = percentage(mouse_y, -half_pad_h, half_pad_h).powf(skew);
-                                        (map_range(new_x_perc, 0.0, 1.0, min_x, max_x),
-                                         map_range(new_y_perc, 0.0, 1.0, min_y, max_y))
-                                    };
-                                    let new_point = EnvelopePoint::new(new_x, new_y);
-                                    self.env.push(new_point);
-                                    self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
-                                                            else if a.get_x() < b.get_x() { Ordering::Less }
-                                                            else { Ordering::Equal });
-                                }, _ => (),
-                            }
-                        }, _ => (),
+            else {
+                // Check if a new point should be created.
+                if let (State::Clicked(elem, m_button), State::Highlighted(_)) = (state, new_state) {
+                    if let (Element::Pad, MouseButton::Left) = (elem, m_button) {
+                        let (new_x, new_y) = {
+                            let mouse_x = clamp(mouse.xy[0], -half_pad_w, half_pad_w);
+                            let mouse_y = clamp(mouse.xy[1], -half_pad_h, half_pad_h);
+                            let new_x_perc = percentage(mouse_x, -half_pad_w, half_pad_w);
+                            let new_y_perc = percentage(mouse_y, -half_pad_h, half_pad_h).powf(skew);
+                            (map_range(new_x_perc, 0.0, 1.0, min_x, max_x),
+                             map_range(new_y_perc, 0.0, 1.0, min_y, max_y))
+                        };
+                        let new_point = EnvelopePoint::new(new_x, new_y);
+                        self.env.push(new_point);
+                        self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
+                                                else if a.get_x() < b.get_x() { Ordering::Less }
+                                                else { Ordering::Equal });
                     }
                 }
-
-            },
+            }
 
         }
 
-        // Group the different Forms into a single form.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .chain(maybe_label_form.into_iter())
-            .chain(envelope_line_forms);
-        let forms = match maybe_closest_point_form {
-            Some(closest_point_form) => form_chain
-                .chain(closest_point_form)
-                .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
-                .collect(),
-            None => form_chain
-                .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
-                .collect(),
-        };
+        let draw_new_element_condition = true;
 
-        // Turn the form into a renderable element.
-        let element = collage(dim[0] as i32, dim[1] as i32, forms);
+        // If the state has changed, construct a new `Element`.
+        let maybe_new_element = if draw_new_element_condition {
+            use elmesque::form::{circle, collage, Form, line, rect, solid, text};
+            use elmesque::text::Text;
 
-        // Store the EnvelopeEditor's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::EnvelopeEditor(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+            // Construct the frame and inner rectangle Forms.
+            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+            let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+            let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
+            let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+
+            // Construct the label Form.
+            let maybe_label_form = self.maybe_label.map(|l_text| {
+                let l_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let l_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                text(Text::from_string(l_text.to_string()).color(l_color).height(l_size as f64))
+            });
+
+            // Draw the envelope lines.
+            let line_color = color.plain_contrast();
+            let envelope_line_forms = perc_env.windows(2).map(|window| {
+                let ((x_a, y_a, _), (x_b, y_b, _)) = (window[0], window[1]);
+                let p_a = [map_range(x_a, 0.0, 1.0, -half_pad_w, half_pad_w),
+                           map_range(y_a, 0.0, 1.0, -half_pad_h, half_pad_h)];
+                let p_b = [map_range(x_b, 0.0, 1.0, -half_pad_w, half_pad_w),
+                           map_range(y_b, 0.0, 1.0, -half_pad_h, half_pad_h)];
+                let style = solid(line_color).width(line_width);
+                line(style, p_a[0], p_a[1], p_b[0], p_b[1])
+            });
+
+            // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
+            let maybe_closest_point_form = match new_state {
+
+                State::Clicked(elem, _) | State::Highlighted(elem) => {
+                    use std::iter::Chain;
+                    use std::option::IntoIter;
+
+                    // Construct a Form for an envelope point and it's value in text form.
+                    let env_pt_form = |ui: &mut Ui<C>, env: &[E], idx: usize, p_pos: Point|
+                                                    -> Chain<IntoIter<Form>, IntoIter<Form>> {
+                        let x_range = max_x - min_x;
+                        let y_range = max_y - min_y;
+                        let x_px_range = pad_dim[0] as usize;
+                        let y_px_range = pad_dim[1] as usize;
+                        let x_string = val_to_string(env[idx].get_x(), max_x, x_range, x_px_range);
+                        let y_string = val_to_string(env[idx].get_y(), max_y, y_range, y_px_range);
+                        let xy_string = format!("{}, {}", x_string, y_string);
+                        const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
+                        let w = label::width(ui, value_font_size, &xy_string);
+                        let h = value_font_size as f64;
+                        let x_shift = w / 2.0 + PAD;
+                        let y_shift = h / 2.0 + PAD;
+                        let (text_x, text_y) = match position::corner(p_pos, pad_dim) {
+                            Corner::TopLeft => (x_shift, -y_shift),
+                            Corner::TopRight => (-x_shift, -y_shift),
+                            Corner::BottomLeft => (x_shift, y_shift),
+                            Corner::BottomRight => (-x_shift, y_shift),
+                        };
+                        let color = color.plain_contrast();
+                        let circle_form = circle(pt_radius).filled(color)
+                            .shift(p_pos[0].floor(), p_pos[1].floor());
+                        let text_form = text(Text::from_string(xy_string).color(color).height(h))
+                            .shift(p_pos[0], p_pos[1])
+                            .shift(text_x.floor(), text_y.floor());
+                        Some(circle_form).into_iter().chain(Some(text_form).into_iter())
+                    };
+
+                    match elem {
+                        // If a point is clicked, draw that point.
+                        Element::EnvPoint(idx, (x, y)) => {
+                            let (left_x_bound, right_x_bound) = get_x_bounds(&perc_env[..], idx);
+                            let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
+                            let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
+                            let p_pos_x_clamped = clamp(x, left_pixel_bound, right_pixel_bound);
+                            let p_pos_y_clamped = clamp(y, -half_pad_h, half_pad_h);
+                            let p_pos_clamped = [p_pos_x_clamped, p_pos_y_clamped];
+                            let point_form = env_pt_form(ui, &self.env[..], idx, p_pos_clamped);
+                            Some(point_form)
+                        },
+                        // Otherwise, draw the closest point if there is one.
+                        Element::Pad => match is_closest_elem {
+                            Some(Element::EnvPoint(closest_idx, (x, y))) => {
+                                let point_form = env_pt_form(ui, &self.env[..], closest_idx, [x, y]);
+                                Some(point_form)
+                            },
+                            _ => None,
+                        },
+                        _ => None,
+                    }
+
+                },
+                _ => None,
+
+            };
+
+            // Group the different Forms into a single form.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(pressable_form).into_iter())
+                .chain(maybe_label_form.into_iter())
+                .chain(envelope_line_forms);
+            let forms = match maybe_closest_point_form {
+                Some(closest_point_form) => form_chain
+                    .chain(closest_point_form)
+                    .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
+                    .collect(),
+                None => form_chain
+                    .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
+                    .collect(),
+            };
+
+            // Turn the form into a renderable element.
+            let element = collage(dim[0] as i32, dim[1] as i32, forms);
+
+            Some(element)
+
+        } else { None };
+
+        // Update the EnvelopeEditor's new state in the Ui.
+        ui.update_widget(ui_id, Kind::EnvelopeEditor(new_state), xy, self.depth, maybe_new_element);
 
     }
 

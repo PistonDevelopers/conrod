@@ -95,13 +95,12 @@ impl<'a, F> Toggle<'a, F> {
         where
             F: FnMut(bool),
     {
-        use elmesque::form::{collage, rect, text};
         use utils::is_over_rect;
 
         let state = *get_state(ui, ui_id);
         let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, self.dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id);
         let is_over = is_over_rect(xy, mouse.xy, self.dim);
@@ -112,40 +111,45 @@ impl<'a, F> Toggle<'a, F> {
             if let Some(ref mut react) = self.maybe_react { react(!self.value) }
         }
 
-        // Construct the frame and pressable forms.
-        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let (inner_w, inner_h) = (dim[0] - frame_w * 2.0, dim[1] - frame_w * 2.0);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
-        let color = new_state.color(if self.value { color } else { color.with_luminance(0.1) });
-        let pressable_form = rect(inner_w, inner_h).filled(color);
+        let draw_new_element_condition = true;
 
-        // Construct the label's Form.
-        let maybe_label_form = self.maybe_label.map(|label_text| {
-            use elmesque::text::Text;
-            let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
-                .shift(xy[0].floor(), xy[1].floor())
-        });
+        // Only update the Element if the state has changed.
+        let maybe_new_element = if draw_new_element_condition {
+            use elmesque::form::{collage, rect, text};
 
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .map(|form| form.shift(xy[0], xy[1]))
-            .chain(maybe_label_form.into_iter());
+            // Construct the frame and pressable forms.
+            let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
+            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+            let (inner_w, inner_h) = (dim[0] - frame_w * 2.0, dim[1] - frame_w * 2.0);
+            let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+            let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+            let color = new_state.color(if self.value { color } else { color.with_luminance(0.1) });
+            let pressable_form = rect(inner_w, inner_h).filled(color);
 
-        // Collect the Forms into a renderable Element.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+            // Construct the label's Form.
+            let maybe_label_form = self.maybe_label.map(|label_text| {
+                use elmesque::text::Text;
+                let text_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+                let size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
+                text(Text::from_string(label_text.to_string()).color(text_color).height(size as f64))
+                    .shift(xy[0].floor(), xy[1].floor())
+            });
+
+            // Chain the Forms and shift them into position.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(pressable_form).into_iter())
+                .map(|form| form.shift(xy[0], xy[1]))
+                .chain(maybe_label_form.into_iter());
+
+            // Collect the Forms into a renderable Element.
+            let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+            Some(element)
+
+        } else { None };
 
         // Store the button's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::Toggle(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+        ui.update_widget(ui_id, Kind::Toggle(new_state), xy, self.depth, maybe_new_element);
 
     }
 

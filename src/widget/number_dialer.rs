@@ -204,8 +204,8 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
 
         let state = *get_state(ui, ui_id);
         let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.h_align);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.v_align);
+        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
+        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
@@ -222,18 +222,6 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
         let label_pos = [label_x, 0.0];
         let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_pos, label_dim, val_string_dim, val_string_len);
         let new_state = get_new_state(is_over_elem, state, mouse);
-
-        // Construct the frame and inner rectangle Forms.
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-
-        // Construct the label form.
-        let val_string_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-        let label_form = text(Text::from_string(label_string.clone())
-                                  .color(val_string_color)
-                                  .height(font_size as f64)).shift_x(label_x.floor());
 
         // Determine new value from the initial state and the new state.
         let mut new_val = self.value;
@@ -277,48 +265,6 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             }
         };
 
-        // If the value has changed, create a new string for val_string.
-        if self.value != new_val {
-            val_string = create_val_string(new_val, val_string_len, self.precision);
-        }
-
-        // Construct the value_string's Form.
-        let val_string_pos = vec2_add(label_pos, [label_dim[0] / 2.0, 0.0]);
-        let slot_w = value_glyph_slot_width(font_size);
-        let mut x = slot_w / 2.0;
-        let val_string_forms = {
-            val_string.chars().enumerate().flat_map(|(i, ch)| {
-                let maybe_rect_form = match new_state {
-                    State::Highlighted(elem) => if let Element::ValueGlyph(idx, _) = elem {
-                        let rect_color = if idx == i { color.highlighted() }
-                                         else { color };
-                        Some(rect(slot_w, pad_dim[1]).filled(rect_color)
-                             .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                             .shift_x(x.floor()))
-                    } else {
-                        None
-                    },
-                    State::Clicked(elem) => if let Element::ValueGlyph(idx, _) = elem {
-                        let rect_color = if idx == i { color.clicked() }
-                                         else { color };
-                        Some(rect(slot_w, pad_dim[1]).filled(rect_color)
-                             .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                             .shift_x(x.floor()))
-                    } else {
-                        None
-                    },
-                    _ => None,
-                };
-                let character_form = text(Text::from_string(ch.to_string())
-                                              .color(val_string_color)
-                                              .height(font_size as f64))
-                                        .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                                        .shift_x(x.floor());
-                x += slot_w;
-                maybe_rect_form.into_iter().chain(Some(character_form).into_iter())
-            })
-        };
-
         // Call the `react` with the new value if the mouse is pressed/released on the widget
         // or if the value has changed.
         if self.value != new_val || match (state, new_state) {
@@ -329,23 +275,81 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             if let Some(ref mut react) = self.maybe_react { react(new_val) }
         }
 
-        // Chain the forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form).into_iter())
-            .chain(Some(label_form).into_iter())
-            .chain(val_string_forms)
-            .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+        let draw_new_element_condition = true;
 
-        // Collect the Forms into a renderable Element.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+        // If the number dialer has changed state at all, construct a new element for it.
+        let maybe_new_element = if draw_new_element_condition {
+
+            // Construct the frame and inner rectangle Forms.
+            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+            let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
+            let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+            let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+
+            // If the value has changed, create a new string for val_string.
+            if self.value != new_val {
+                val_string = create_val_string(new_val, val_string_len, self.precision);
+            }
+
+            // Construct the label form.
+            let val_string_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
+            let label_form = text(Text::from_string(label_string.clone())
+                                      .color(val_string_color)
+                                      .height(font_size as f64)).shift_x(label_x.floor());
+
+            // Construct the value_string's Form.
+            let val_string_pos = vec2_add(label_pos, [label_dim[0] / 2.0, 0.0]);
+            let slot_w = value_glyph_slot_width(font_size);
+            let mut x = slot_w / 2.0;
+            let val_string_forms = {
+                val_string.chars().enumerate().flat_map(|(i, ch)| {
+                    let maybe_rect_form = match new_state {
+                        State::Highlighted(elem) => if let Element::ValueGlyph(idx, _) = elem {
+                            let rect_color = if idx == i { color.highlighted() }
+                                             else { color };
+                            Some(rect(slot_w, pad_dim[1]).filled(rect_color)
+                                 .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
+                                 .shift_x(x.floor()))
+                        } else {
+                            None
+                        },
+                        State::Clicked(elem) => if let Element::ValueGlyph(idx, _) = elem {
+                            let rect_color = if idx == i { color.clicked() }
+                                             else { color };
+                            Some(rect(slot_w, pad_dim[1]).filled(rect_color)
+                                 .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
+                                 .shift_x(x.floor()))
+                        } else {
+                            None
+                        },
+                        _ => None,
+                    };
+                    let character_form = text(Text::from_string(ch.to_string())
+                                                  .color(val_string_color)
+                                                  .height(font_size as f64))
+                                            .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
+                                            .shift_x(x.floor());
+                    x += slot_w;
+                    maybe_rect_form.into_iter().chain(Some(character_form).into_iter())
+                })
+            };
+
+            // Chain the forms and shift them into position.
+            let form_chain = Some(frame_form).into_iter()
+                .chain(Some(inner_form).into_iter())
+                .chain(Some(label_form).into_iter())
+                .chain(val_string_forms)
+                .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+
+            // Collect the Forms into a renderable Element.
+            let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+            Some(element)
+
+        } else { None };
 
         // Store the button's new state in the Ui.
-        ui.set_widget(ui_id, ::widget::Widget {
-            kind: Kind::NumberDialer(new_state),
-            xy: xy,
-            depth: self.depth,
-            element: Some(element),
-        });
+        ui.update_widget(ui_id, Kind::NumberDialer(new_state), xy, self.depth, maybe_new_element);
 
     }
 
