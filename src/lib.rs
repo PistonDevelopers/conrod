@@ -39,6 +39,7 @@ pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
+pub use graphics::character::CharacterCache;
 pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
