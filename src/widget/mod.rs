@@ -1,9 +1,8 @@
-
+use std::any::Any;
 use elmesque::Element;
 use position::{Depth, Point};
 
 pub use self::custom::Custom;
-pub use self::custom::State as CustomState;
 
 pub mod button;
 pub mod custom;
@@ -18,18 +17,18 @@ pub mod toggle;
 pub mod xy_pad;
 
 /// A widget element for storage within the Ui's `widget_cache`.
-#[derive(Clone, Debug)]
-pub struct Widget<C=()> where C: Custom {
-    pub kind: Kind<C>,
+#[derive(Debug)]
+pub struct Widget {
+    pub kind: Kind,
     pub xy: Point,
     pub depth: Depth,
     pub element: Option<Element>,
 }
 
-impl<C> Widget<C> where C: Custom {
+impl Widget {
 
     /// Construct an empty Widget for a vacant widget position within the Ui.
-    pub fn empty() -> Widget<C> {
+    pub fn empty() -> Widget {
         Widget {
             kind: Kind::NoWidget,
             xy: [0.0, 0.0],
@@ -39,7 +38,7 @@ impl<C> Widget<C> where C: Custom {
     }
 
     /// Construct a Widget from a given kind.
-    pub fn new(kind: Kind<C>) -> Widget<C> {
+    pub fn new(kind: Kind) -> Widget {
         Widget {
             kind: kind,
             xy: [0.0, 0.0],
@@ -52,8 +51,9 @@ impl<C> Widget<C> where C: Custom {
 
 /// Algebraic widget type for storing in ui_context
 /// and for ease of state-matching.
-#[derive(Copy, Clone, Debug)]
-pub enum Kind<C=()> where C: Custom {
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub enum Kind {
     NoWidget,
     Button(button::State),
     DropDownList(drop_down_list::State),
@@ -65,15 +65,12 @@ pub enum Kind<C=()> where C: Custom {
     TextBox(text_box::State),
     Toggle(toggle::State),
     XYPad(xy_pad::State),
-    Custom(C::State),
+    Custom(Box<Any>),
 }
 
-impl<C> Kind<C>
-    where
-        C: Custom,
-        C::State: CustomState,
-{
-    pub fn matches(&self, other: &Kind<C>) -> bool {
+impl Kind {
+    /// Checks if one kind matches with another.
+    pub fn matches(&self, other: &Kind) -> bool {
         match (self, other) {
             (&Kind::NoWidget, &Kind::NoWidget) => true,
             (&Kind::Button(_), &Kind::Button(_)) => true,
@@ -86,9 +83,11 @@ impl<C> Kind<C>
             (&Kind::TextBox(_), &Kind::TextBox(_)) => true,
             (&Kind::Toggle(_), &Kind::Toggle(_)) => true,
             (&Kind::XYPad(_), &Kind::XYPad(_)) => true,
-            (&Kind::Custom(ref state_a), &Kind::Custom(ref state_b)) => state_a.matches(state_b),
+            (&Kind::Custom(ref state_a), &Kind::Custom(ref state_b)) => {
+                // Likely to be replaced with associated static on `Any` trait.
+                state_a.get_type_id() == state_b.get_type_id()
+            }
             _ => false
         }
     }
 }
-

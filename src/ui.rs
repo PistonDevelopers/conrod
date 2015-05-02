@@ -13,11 +13,7 @@ use piston::event::{
     TextEvent,
 };
 use position::{Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
-use std::fmt::Debug;
-use std::iter::repeat;
 use theme::Theme;
-use widget::Custom as CustomWidget;
-use widget::custom::State as CustomWidgetState;
 use widget::Kind as WidgetKind;
 use widget::Widget;
 
@@ -43,9 +39,9 @@ enum Capturing {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<C, W=()> where W: CustomWidget {
+pub struct Ui<C> {
     /// The Widget cache, storing state for all widgets.
-    widget_cache: Vec<Widget<W>>,
+    widget_cache: Vec<Widget>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// The latest received mouse state.
@@ -71,12 +67,12 @@ pub struct Ui<C, W=()> where W: CustomWidget {
     maybe_captured_keyboard: Option<Capturing>
 }
 
-impl<C, W> Ui<C, W> where W: CustomWidget {
+impl<C> Ui<C> {
 
     /// Constructor for a UiContext.
-    pub fn new(character_cache: C, theme: Theme) -> Ui<C, W> {
+    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
         Ui {
-            widget_cache: repeat(Widget::empty()).take(512).collect(),
+            widget_cache: (0 .. 512).map(|_| Widget::empty()).collect(),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10),
@@ -221,7 +217,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
+    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind) -> &mut WidgetKind {
         let ui_id_idx = ui_id as usize;
         if self.widget_cache.len() > ui_id_idx {
             match &mut self.widget_cache[ui_id_idx].kind {
@@ -235,18 +231,18 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         } else {
             if ui_id_idx >= self.widget_cache.len() {
                 let num_to_extend = ui_id_idx - self.widget_cache.len();
-                self.widget_cache.extend(repeat(Widget::empty())
-                    .take(num_to_extend)
+                self.widget_cache.extend(
+                    (0 .. num_to_extend).map(|_| Widget::empty())
                     .chain(Some(Widget::new(default)).into_iter()));
             } else {
-                self.widget_cache[ui_id_idx] = Widget::<W>::new(default);
+                self.widget_cache[ui_id_idx] = Widget::new(default);
             }
             &mut self.widget_cache[ui_id_idx].kind
         }
     }
 
     /// Set the given widget at the given UiId.
-    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget<W>) where W: Debug {
+    pub fn set_widget(&mut self, ui_id: UiId, widget: Widget) {
         if self.widget_cache[ui_id].kind.matches(&widget.kind)
         || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
             if self.widget_cache[ui_id].element.is_some() {
