@@ -95,3 +95,16 @@ impl<C> Kind<C>
     }
 }
 
+
+/// An update to be returned by the widget after each pass.
+pub struct Update<T> {
+    /// The new state of the Widget.
+    pub new_state: T,
+    /// The position of the Widget given as [x, y] coordinates.
+    pub xy: Point,
+    /// The rendering depth for the Widget (the default is 0.0).
+    pub depth: Depth,
+    /// The element to be used for drawing. 
+    pub element: Element,
+}
+
