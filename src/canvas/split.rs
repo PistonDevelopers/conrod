@@ -16,7 +16,6 @@ pub type Length = Scalar;
 pub struct State;
 
 /// A type of Canvas for flexibly designing and guiding widget layout as splits of a window.
-#[derive(Clone)]
 pub struct Split<'a> {
     id: CanvasId,
     maybe_splits: Option<(Direction, &'a [Split<'a>])>,
@@ -234,10 +233,10 @@ impl<'a> Split<'a> {
     }
 
     /// Construct a Canvas from a Split.
-    fn into_ui<C, W>(self, dim: Dimensions, xy: Point, ui: &mut Ui<C, W>) where W: CustomWidget {
+    fn into_ui<C, W>(&self, dim: Dimensions, xy: Point, ui: &mut Ui<C, W>) where W: CustomWidget {
         use elmesque::form::{rect, collage};
         use vecmath::{vec2_add, vec2_sub, vec2_scale};
-        let Split { id, maybe_splits, style, .. } = self;
+        let Split { id, ref maybe_splits, ref style, .. } = *self;
 
         let color = style.color(&ui.theme);
         let frame_color = style.frame_color(&ui.theme);
@@ -254,7 +253,7 @@ impl<'a> Split<'a> {
         // Offset xy so that it is in the center of the given margin.
         let xy = vec2_add(xy, mgn_offset);
 
-        if let Some((direction, splits)) = maybe_splits {
+        if let Some((direction, splits)) = *maybe_splits {
             use position::{align_top_of, align_bottom_of, align_left_of, align_right_of};
             // Offset xy so that it is in the center of the padded area.
             let xy = vec2_add(xy, pad_offset);
@@ -282,7 +281,7 @@ impl<'a> Split<'a> {
 
             for (i, split) in splits.iter().enumerate() {
                 let split_xy = vec2_add(first_xy, vec2_scale(split_offset, i as f64));
-                split.clone().into_ui(split_dim, split_xy, ui)
+                split.into_ui(split_dim, split_xy, ui)
             }
         }
 

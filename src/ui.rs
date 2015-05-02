@@ -244,7 +244,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
     }
 
     /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
+    pub fn get_widget_mut(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
         let ui_id_idx = ui_id as usize;
         if self.widget_cache.len() > ui_id_idx {
             match &mut self.widget_cache[ui_id_idx].kind {

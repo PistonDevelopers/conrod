@@ -7,11 +7,11 @@ macro_rules! widget_fns(
         fn default() -> ::widget::Kind { $default }
 
         /// Get a reference to the widget associated with the given UiId.
-        fn get_widget<C>(
+        fn get_widget_mut<C>(
             ui: &mut ::ui::Ui<C>,
             ui_id: ::ui::UiId
         ) -> &mut ::widget::Kind {
-            ui.get_widget(ui_id, default())
+            ui.get_widget_mut(ui_id, default())
         }
 
         /// Get the current State for the widget.
@@ -19,7 +19,7 @@ macro_rules! widget_fns(
             ui: &mut ::ui::Ui<C>,
             ui_id: ::ui::UiId
         ) -> &$widget_state {
-            match *get_widget(ui, ui_id) {
+            match *get_widget_mut(ui, ui_id) {
                 ::widget::Kind::$widget(ref state) => state,
                 _ => panic!("The Kind variant returned by Ui is different to that which \
                            was requested (Check that there are no UiId conflicts)."),
