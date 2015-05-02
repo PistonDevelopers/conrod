@@ -1,4 +1,6 @@
 
+use canvas::{Canvas, CanvasId};
+use canvas::Kind as CanvasKind;
 use elmesque::Element;
 use graphics::Graphics;
 use graphics::character::{Character, CharacterCache};
@@ -13,7 +15,7 @@ use piston::event::{
     RenderEvent,
     TextEvent,
 };
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
 use std::fmt::Debug;
 use std::iter::repeat;
 use theme::Theme;
@@ -45,6 +47,8 @@ enum Capturing {
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
 pub struct Ui<C, W=()> where W: CustomWidget {
+    /// Stores the state of all canvasses.
+    canvas_cache: Vec<Canvas>,
     /// The Widget cache, storing state for all widgets.
     widget_cache: Vec<Widget<W>>,
     /// The theme used to set default styling for widgets.
@@ -66,6 +70,8 @@ pub struct Ui<C, W=()> where W: CustomWidget {
     pub win_h: f64,
     /// The UiId of the previously drawn Widget.
     maybe_prev_ui_id: Option<UiId>,
+    /// The Id of the current canvas.
+    maybe_current_canvas_id: Option<CanvasId>,
     /// The captured Mouse and the UiId of the widget who has captured it.
     maybe_captured_mouse: Option<(Capturing, Mouse)>,
     /// The UiId of the widget currently keyboard input if there is one.
@@ -76,8 +82,11 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
 
     /// Constructor for a UiContext.
     pub fn new(character_cache: C, theme: Theme) -> Ui<C, W> {
+        const CANVAS_RESERVATION: usize = 64;
+        const WIDGET_RESERVATION: usize = 512;
         Ui {
-            widget_cache: repeat(Widget::empty()).take(512).collect(),
+            canvas_cache: repeat(Canvas::empty()).take(CANVAS_RESERVATION).collect(),
+            widget_cache: repeat(Widget::empty()).take(WIDGET_RESERVATION).collect(),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10),
@@ -88,9 +97,22 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_ui_id: None,
+            maybe_current_canvas_id: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
         }
+    }
+
+    /// Return the dimensions of a Canvas.
+    pub fn widget_size(&self, ui_id: UiId) -> Dimensions {
+        let (w, h) = self.widget_cache[ui_id].element.get_size();
+        [w as f64, h as f64]
+    }
+
+    /// Return the dimensions of a Canvas.
+    pub fn canvas_size(&self, id: CanvasId) -> Dimensions {
+        let (w, h) = self.canvas_cache[id].element.get_size();
+        [w as f64, h as f64]
     }
 
     /// Handle game events and update the state.
@@ -246,13 +268,46 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         }
     }
 
+    /// Update the given canvas.
+    pub fn update_canvas(&mut self,
+                         id: CanvasId,
+                         kind: CanvasKind,
+                         xy: Point,
+                         padding: Padding,
+                         maybe_new_element: Option<Element>) {
+        if self.canvas_cache[id].kind.matches(&kind)
+        || self.canvas_cache[id].kind.matches(&CanvasKind::NoCanvas) {
+            if self.canvas_cache[id].set_since_last_drawn {
+                println!("Warning: The canvas with CanvasId {:?} has already been set within the \
+                          `Ui` since the last time that `Ui::draw` was called (you probably don't \
+                          want this). Perhaps check that your CanvasIds are correct, that you're \
+                          calling `Ui::draw` after constructing your widgets and that you haven't \
+                          accidentally set the same canvas twice.", id);
+            }
+            let canvas = &mut self.canvas_cache[id];
+            canvas.kind = kind;
+            canvas.xy = xy;
+            canvas.padding = padding;
+            if let Some(new_element) = maybe_new_element {
+                canvas.element = new_element;
+            }
+            canvas.set_since_last_drawn = true;
+            self.maybe_current_canvas_id = Some(id);
+        } else {
+            panic!("A canvas of a different kind already exists at the given CanvasId ({:?}).
+                    You tried to insert a {:?}, however the existing canvas is a {:?}.
+                    Check your widgets' `CanvasId`s for errors.",
+                    id, &kind, &self.canvas_cache[id].kind);
+        }
+    }
+
     /// Update the given widget at the given UiId.
     pub fn update_widget(&mut self,
                          ui_id: UiId,
                          kind: WidgetKind<W>,
                          xy: Point,
                          depth: Depth,
-                         new_element: Option<Element>) where W: Debug {
+                         maybe_new_element: Option<Element>) where W: Debug {
         if self.widget_cache[ui_id].kind.matches(&kind)
         || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
             if self.widget_cache[ui_id].set_since_last_drawn {
@@ -266,7 +321,7 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
             widget.kind = kind;
             widget.xy = xy;
             widget.depth = depth;
-            if let Some(new_element) = new_element {
+            if let Some(new_element) = maybe_new_element {
                 widget.element = new_element;
             }
             widget.set_since_last_drawn = true;
@@ -279,26 +334,6 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         }
     }
 
-    // pub fn set_widget(&mut self, ui_id: UiId, widget: Widget<W>) where W: Debug {
-    //     if self.widget_cache[ui_id].kind.matches(&widget.kind)
-    //     || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
-    //         if self.widget_cache[ui_id].element.is_some() {
-    //             println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
-    //                       since the last time that `Ui::draw` was called (you probably don't want \
-    //                       this). Perhaps check that your UiIds are correct, that you're calling \
-    //                       `Ui::draw` after constructing your widgets and that you haven't \
-    //                       accidentally set the same widget twice.", ui_id);
-    //         }
-    //         self.widget_cache[ui_id] = widget;
-    //         self.maybe_prev_ui_id = Some(ui_id);
-    //     } else {
-    //         panic!("A widget of a different kind already exists at the given UiId ({:?}).
-    //                 You tried to insert a {:?}, however the existing widget is a {:?}.
-    //                 Check your widgets' `UiId`s for errors.",
-    //                 ui_id, &widget.kind, &self.widget_cache[ui_id].kind);
-    //     }
-    // }
-
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     pub fn get_xy(&self,
                   position: Position,
@@ -306,13 +341,16 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                   h_align: HorizontalAlign,
                   v_align: VerticalAlign) -> Point {
         match position {
+
             Position::Absolute(x, y) => [x, y],
+
             Position::Relative(x, y, maybe_ui_id) => {
                 match maybe_ui_id.or(self.maybe_prev_ui_id) {
                     None => [0.0, 0.0],
                     Some(rel_ui_id) => ::vecmath::vec2_add(self.widget_cache[rel_ui_id].xy, [x, y]),
                 }
             },
+
             Position::Direction(direction, px, maybe_ui_id) => {
                 use position::{align_left_of, align_right_of, align_top_of, align_bottom_of};
                 match maybe_ui_id.or(self.maybe_prev_ui_id) {
@@ -369,6 +407,32 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                     },
                 }
             },
+
+            Position::Place(place, maybe_canvas_id) => {
+                use position::{self, Place};
+                let (xy, target_dim, pad) = match maybe_canvas_id.or(self.maybe_current_canvas_id) {
+                    Some(canvas_id) => {
+                        let canvas = &self.canvas_cache[canvas_id];
+                        let (w, h) = canvas.element.get_size();
+                        (canvas.xy, [w as f64, h as f64], canvas.padding.clone())
+                    },
+                    None => ([0.0, 0.0], [self.win_w, self.win_h], Padding::none()),
+                };
+                let place_xy = match place {
+                    Place::Middle      => position::middle_of(target_dim, dim),
+                    Place::TopLeft     => position::top_left_of(target_dim, dim),
+                    Place::TopRight    => position::top_right_of(target_dim, dim),
+                    Place::BottomLeft  => position::bottom_left_of(target_dim, dim),
+                    Place::BottomRight => position::bottom_right_of(target_dim, dim),
+                    Place::MidTop      => position::mid_top_of(target_dim, dim),
+                    Place::MidBottom   => position::mid_bottom_of(target_dim, dim),
+                    Place::MidLeft     => position::mid_left_of(target_dim, dim),
+                    Place::MidRight    => position::mid_right_of(target_dim, dim),
+                };
+                let relative_xy = ::vecmath::vec2_add(place_xy, pad.offset_from(place));
+                ::vecmath::vec2_add(xy, relative_xy)
+            },
+
         }
     }
 
@@ -443,7 +507,12 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
     }
 
     /// Draw the `Ui` in it's current state.
-    /// - Sort widgets by render depth (depth first).
+    /// - The order of drawing is as follows:
+    ///     1. Canvas splits.
+    ///     2. Widgets on Canvas splits.
+    ///     3. Floating Canvasses.
+    ///     4. Widgets on Floating Canvasses.
+    /// - Widgets are sorted by capturing and then render depth (depth first).
     /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
     /// - Render all widgets.
     pub fn draw<G>(&mut self, graphics: &mut G)
@@ -454,14 +523,19 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         use elmesque::Renderer;
         use std::cmp::Ordering;
 
-        let Ui { ref mut widget_cache, ref win_w, ref win_h, ref mut character_cache, .. } = *self;
+        let Ui {
+            ref mut canvas_cache,
+            ref mut widget_cache,
+            ref win_w, ref win_h,
+            ref mut character_cache,
+            ..
+        } = *self;
 
         // Collect references to the widgets so that we can sort them without changing cache order.
         let mut widgets: Vec<_> = widget_cache.iter_mut()
             .filter(|widget| widget.set_since_last_drawn)
             .collect();
 
-        // Indicate that the widget has now been drawn since the last time it was set.
         for widget in widgets.iter_mut() {
             widget.set_since_last_drawn = false;
         }
@@ -507,10 +581,21 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
             .chain(maybe_mouse_widget.iter())
             .map(|widget| &widget.element);
 
+        // Draw all Canvas Splits.
+        for canvas in canvas_cache.iter().filter(|canvas| canvas.set_since_last_drawn) {
+            canvas.element.draw(&mut renderer);
+        }
+
         // Draw all Elements.
         for element in elements {
             element.draw(&mut renderer);
         }
+
+        // Indicate that the canvasses and widgets have now been drawn since the last time it was set.
+        for canvas in canvas_cache.iter_mut() {
+            canvas.set_since_last_drawn = false;
+        }
+
     }
 
 }

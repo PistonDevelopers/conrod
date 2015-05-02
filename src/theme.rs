@@ -1,6 +1,7 @@
 
+use canvas;
 use color::{Color, black, white};
-use position::{Position, HorizontalAlign, VerticalAlign};
+use position::{Margin, Padding, Position, HorizontalAlign, VerticalAlign};
 use rustc_serialize::{json, Encodable, Decodable};
 use std::borrow::ToOwned;
 use std::error::Error;
@@ -38,34 +39,10 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
+    /// Optional style defaults for a Canvas split.
+    pub maybe_canvas_split: Option<canvas::split::Style>,
     /// Specific defaults for a Button widget.
     pub maybe_button: Option<button::Style>,
-}
-
-/// The distance between the inner edge of a frame and the outer edge of the inner content.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
-pub struct Padding {
-    /// Padding between the top of a Widget and the top of a Canvas.
-    pub top: f64,
-    /// Padding between the bottom of a Widget and the bottom of a Canvas.
-    pub bottom: f64,
-    /// Margin between the left of a Widget and the left of a Canvas.
-    pub left: f64,
-    /// Margin between the right of a Widget and the right of a Canvas.
-    pub right: f64,
-}
-
-/// The distance between the dimension bound and the outer edge of the frame.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
-pub struct Margin {
-    /// Margin between the y max Canvas and the outer edge of its frame.
-    pub top: f64,
-    /// Margin between the y min Canvas and the outer edge of its frame.
-    pub bottom: f64,
-    /// Margin between the x min Canvas and the outer edge of its frame.
-    pub left: f64,
-    /// Margin between the x max Canvas and the outer edge of its frame.
-    pub right: f64,
 }
 
 /// The alignment of an element's dimensions with another's.
@@ -84,10 +61,10 @@ impl Theme {
         Theme {
             name: "Demo Theme".to_string(),
             padding: Padding {
-                top: 20.0,
-                bottom: 20.0,
-                left: 20.0,
-                right: 20.0,
+                top: 0.0,
+                bottom: 0.0,
+                left: 0.0,
+                right: 0.0,
             },
             margin: Margin {
                 top: 0.0,
@@ -108,6 +85,7 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
+            maybe_canvas_split: None,
             maybe_button: None,
         }
     }

@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use graphics::math::Scalar;
 use ui::UiId;
 
@@ -21,6 +22,8 @@ pub enum Position {
     Relative(Scalar, Scalar, Option<UiId>),
     /// A direction relative to some other widget.
     Direction(Direction, Scalar, Option<UiId>),
+    /// A position at a place on the current Canvas.
+    Place(Place, Option<CanvasId>),
 }
 
 impl Position {
@@ -31,7 +34,7 @@ impl Position {
 }
 
 /// Directionally positioned, relative to another widget.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum Direction {
     /// Positioned above.
     Up,
@@ -44,7 +47,7 @@ pub enum Direction {
 }
 
 /// The horizontal alignment of a widget positioned relatively to another widget on the y axis.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum HorizontalAlign {
     /// Align the left edges of the widgets.
     Left,
@@ -55,7 +58,7 @@ pub enum HorizontalAlign {
 }
 
 /// The vertical alignment of a widget positioned relatively to another widget on the x axis.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum VerticalAlign {
     /// Align the top edges of the widgets.
     Top,
@@ -63,6 +66,29 @@ pub enum VerticalAlign {
     Middle,
     /// Align the bottom edges of the widgets.
     Bottom,
+}
+
+/// Place the widget at a position on the Canvas.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+pub enum Place {
+    /// Centre of the Canvas.
+    Middle,
+    /// Top left of the Canvas - pad_top + pad_left.
+    TopLeft,
+    /// Top right of the Canvas - pad_top - pad_right.
+    TopRight,
+    /// Bottom left of the Canvas + pad_bottom + pad_left.
+    BottomLeft,
+    /// Bottom right of the Canvas + pad_bottom - pad_right.
+    BottomRight,
+    /// Top centre of the Canvas - pad_top.
+    MidTop,
+    /// Bottom centre of the Canvas + pad_bottom.
+    MidBottom,
+    /// Left centre of the Canvas + pad_left.
+    MidLeft,
+    /// Right centre of the Canvas - pad_right.
+    MidRight,
 }
 
 /// Widgets that are positionable.
@@ -141,7 +167,7 @@ pub trait Positionable: Sized {
         self.position(Position::Direction(Direction::Right, pixels, Some(ui_id)))
     }
 
-    ///// Alignment methods. /////
+    ///// `Align` methods. /////
 
     /// Align the position horizontally (only effective for Up or Down `Direction`s).
     fn horizontal_align(self, align: HorizontalAlign) -> Self;
@@ -178,6 +204,67 @@ pub trait Positionable: Sized {
     fn align_bottom(self) -> Self {
         self.vertical_align(VerticalAlign::Bottom)
     }
+
+    ///// `Place` methods. /////
+
+    /// Place the widget at some position on the Canvas.
+    fn place(self, place: Place, maybe_id: Option<CanvasId>) -> Self {
+        self.position(Position::Place(place, maybe_id))
+    }
+
+    /// Place the widget in the middle of the given Canvas.
+    fn middle_of(self, id: CanvasId) -> Self { self.place(Place::Middle, Some(id)) }
+
+    /// Place the widget in the top left corner of the given Canvas.
+    fn top_left_of(self, id: CanvasId) -> Self { self.place(Place::TopLeft, Some(id)) }
+
+    /// Place the widget in the top right corner of the given Canvas.
+    fn top_right_of(self, id: CanvasId) -> Self { self.place(Place::TopRight, Some(id)) }
+
+    /// Place the widget in the bottom left corner of the given Canvas.
+    fn bottom_left_of(self, id: CanvasId) -> Self { self.place(Place::BottomLeft, Some(id)) }
+
+    /// Place the widget in the bottom right corner of the given Canvas.
+    fn bottom_right_of(self, id: CanvasId) -> Self { self.place(Place::BottomRight, Some(id)) }
+
+    /// Place the widget in the middle of the top edge of the given Canvas.
+    fn mid_top_of(self, id: CanvasId) -> Self { self.place(Place::MidTop, Some(id)) }
+
+    /// Place the widget in the middle of the bottom edge of the given Canvas.
+    fn mid_bottom_of(self, id: CanvasId) -> Self { self.place(Place::MidBottom, Some(id)) }
+
+    /// Place the widget in the middle of the left edge of the given Canvas.
+    fn mid_left_of(self, id: CanvasId) -> Self { self.place(Place::MidLeft, Some(id)) }
+
+    /// Place the widget in the middle of the right edge of the given Canvas.
+    fn mid_right_of(self, id: CanvasId) -> Self { self.place(Place::MidRight, Some(id)) }
+
+    /// Place the widget in the middle of the current Canvas.
+    fn middle(self) -> Self { self.place(Place::Middle, None) }
+
+    /// Place the widget in the top left corner of the current Canvas.
+    fn top_left(self) -> Self { self.place(Place::TopLeft, None) }
+
+    /// Place the widget in the top right corner of the current Canvas.
+    fn top_right(self) -> Self { self.place(Place::TopRight, None) }
+
+    /// Place the widget in the bottom left corner of the current Canvas.
+    fn bottom_left(self) -> Self { self.place(Place::BottomLeft, None) }
+
+    /// Place the widget in the bottom right corner of the current Canvas.
+    fn bottom_right(self) -> Self { self.place(Place::BottomRight, None) }
+
+    /// Place the widget in the middle of the top edge of the current Canvas.
+    fn mid_top(self) -> Self { self.place(Place::MidTop, None) }
+
+    /// Place the widget in the middle of the bottom edge of the current Canvas.
+    fn mid_bottom(self) -> Self { self.place(Place::MidBottom, None) }
+
+    /// Place the widget in the middle of the left edge of the current Canvas.
+    fn mid_left(self) -> Self { self.place(Place::MidLeft, None) }
+
+    /// Place the widget in the middle of the right edge of the current Canvas.
+    fn mid_right(self) -> Self { self.place(Place::MidRight, None) }
 
 }
 
@@ -229,6 +316,7 @@ pub fn corner(xy: Point, dim: Dimensions) -> Corner {
     else                                   { Corner::TopRight }
 }
 
+
 /// The x offset required to align an element with `width` to the left of a target element.
 pub fn align_left_of(target_width: Scalar, width: Scalar) -> Scalar {
     width / 2.0 - target_width / 2.0
@@ -247,5 +335,105 @@ pub fn align_bottom_of(target_height: Scalar, height: Scalar) -> Scalar {
 /// The y offset required to align an element with `height` to the top of a target element.
 pub fn align_top_of(target_height: Scalar, height: Scalar) -> Scalar {
     target_height / 2.0 - height / 2.0
+}
+
+
+/// The position of a rect with `dim` Dimensions at the middle of the `target` Dimensions.
+pub fn middle_of(_target: Dimensions, _dim: Dimensions) -> Point {
+    [0.0, 0.0]
+}
+
+/// The position of a rect with `dim` Dimensions at the top left of the `target` Dimensions.
+pub fn top_left_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_left_of(target[0], dim[0]), align_top_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the top right of the `target` Dimensions.
+pub fn top_right_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_right_of(target[0], dim[0]), align_top_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the bottom left of the `target` Dimensions.
+pub fn bottom_left_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_left_of(target[0], dim[0]), align_bottom_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the bottom right of the `target` Dimensions.
+pub fn bottom_right_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_right_of(target[0], dim[0]), align_bottom_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the middle of the inside of the top edge of
+/// the `target` Dimensions.
+pub fn mid_top_of(target: Dimensions, dim: Dimensions) -> Point {
+    [0.0, align_top_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the middle of the inside of the bottom edge of
+/// the `target` Dimensions.
+pub fn mid_bottom_of(target: Dimensions, dim: Dimensions) -> Point {
+    [0.0, align_bottom_of(target[1], dim[1])]
+}
+
+/// The position of a rect with `dim` Dimensions at the middle of the inside of the left edge of
+/// the `target` Dimensions.
+pub fn mid_left_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_left_of(target[0], dim[0]), 0.0]
+}
+
+/// The position of a rect with `dim` Dimensions at the middle of the inside of the right edge of
+/// the `target` Dimensions.
+pub fn mid_right_of(target: Dimensions, dim: Dimensions) -> Point {
+    [align_right_of(target[0], dim[0]), 0.0]
+}
+
+/// The distance between the inner edge of a frame and the outer edge of the inner content.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct Padding {
+    /// Padding between the top of a Widget and the top of a Canvas.
+    pub top: f64,
+    /// Padding between the bottom of a Widget and the bottom of a Canvas.
+    pub bottom: f64,
+    /// Margin between the left of a Widget and the left of a Canvas.
+    pub left: f64,
+    /// Margin between the right of a Widget and the right of a Canvas.
+    pub right: f64,
+}
+
+impl Padding {
+
+    /// No padding.
+    pub fn none() -> Padding {
+        Padding { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
+    }
+
+    /// Determine the offset for the given `Place`.
+    pub fn offset_from(&self, place: Place) -> Point {
+        match place {
+            Place::Middle => [0.0, 0.0],
+            Place::TopLeft => [self.left, -self.top],
+            Place::TopRight => [-self.right, -self.top],
+            Place::BottomLeft => [self.left, self.bottom],
+            Place::BottomRight => [-self.right, self.bottom],
+            Place::MidTop => [0.0, -self.top],
+            Place::MidBottom => [0.0, self.bottom],
+            Place::MidLeft => [self.left, 0.0],
+            Place::MidRight => [-self.right, 0.0],
+        }
+    }
+
+}
+
+/// The distance between the dimension bound and the outer edge of the frame.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct Margin {
+    /// Margin between the y max Canvas and the outer edge of its frame.
+    pub top: f64,
+    /// Margin between the y min Canvas and the outer edge of its frame.
+    pub bottom: f64,
+    /// Margin between the x min Canvas and the outer edge of its frame.
+    pub left: f64,
+    /// Margin between the x max Canvas and the outer edge of its frame.
+    pub right: f64,
 }
 
