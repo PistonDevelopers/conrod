@@ -28,7 +28,7 @@ pub trait Custom: Clone + ::std::fmt::Debug {
     /// This is the method you have to implement! Your widget's previous state is given to you as a
     /// parameter and it is your job to construct and return an Update that will be used to update
     /// the widget's cached state.
-    fn update<C>(mut self, prev: Self::State, ui_id: UiId, ui: &mut Ui<C, Self>) -> Update<Self::State>;
+    fn update<C>(mut self, prev: Self::State, ui_id: UiId, ui: &mut Ui<C, Self>) -> Update<Self::State> where C: CharacterCache;
 
 }
 
