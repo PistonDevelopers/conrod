@@ -1,5 +1,9 @@
 language: rust
 
+rust:
+    - nightly
+    - beta
+
 notifications:
     irc: "irc.mozilla.org#piston-internals"
 

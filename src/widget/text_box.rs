@@ -1,6 +1,7 @@
 
 use clock_ticks::precise_time_s;
 use color::{Color, Colorable};
+use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{self, FontSize};
@@ -8,19 +9,83 @@ use mouse::Mouse;
 use num::Float;
 use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use theme::Theme;
 use ui::{UiId, Ui};
 use vecmath::vec2_sub;
-use widget::Kind;
+use widget::{self, Widget};
+
 
 pub type Idx = usize;
 pub type CursorX = f64;
 
+const TEXT_PADDING: f64 = 5.0;
+
+
+/// A widget for displaying and mutating a given one-line text `String`. It's reaction is
+/// triggered upon pressing of the `Enter`/`Return` key.
+pub struct TextBox<'a, F> {
+    text: &'a mut String,
+    pos: Position,
+    maybe_h_align: Option<HorizontalAlign>,
+    maybe_v_align: Option<VerticalAlign>,
+    dim: Dimensions,
+    depth: Depth,
+    maybe_react: Option<F>,
+    style: Style,
+}
+
+/// Styling for the TextBox, necessary for constructing its renderable Element.
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Style {
+    pub maybe_color: Option<Color>,
+    pub maybe_frame: Option<f64>,
+    pub maybe_frame_color: Option<Color>,
+    pub maybe_font_size: Option<u32>,
+}
+
 /// Represents the state of the text_box widget.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum State {
     Capturing(View),
     Uncaptured(Uncaptured),
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct View {
+    cursor: Cursor,
+    offset: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Cursor {
+    anchor: Anchor,
+    start: Idx,
+    end: Idx,
+}
+
+/// The beginning of the cursor's highlighted range.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Anchor {
+    None,
+    Start,
+    End,
+}
+
+/// The TextBox's state if it is uncaptured.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Uncaptured {
+    Highlighted,
+    Normal,
+}
+
+/// Represents an element of the TextBox widget.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Elem {
+    Char(Idx),
+    Nill,
+    Rect,
+}
+
 
 impl State {
     /// Return the color associated with the current state.
@@ -35,24 +100,15 @@ impl State {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct View {
-    cursor: Cursor,
-    offset: f64,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Cursor {
-    anchor: Anchor,
-    start: Idx,
-    end: Idx,
-}
 
 impl Cursor {
+
+    /// Construct a Cursor from a String index.
     fn from_index(idx: Idx) -> Cursor {
         Cursor { anchor: Anchor::Start, start: idx, end: idx }
     }
 
+    /// Construct a Cursor from an index range.
     fn from_range(start: Idx, end: Idx) -> Cursor {
         if start < end {
             Cursor { anchor: Anchor::Start, start: start, end: end }
@@ -76,11 +132,11 @@ impl Cursor {
         false
     }
 
+    /// Shift the curosr by the given number of indices.
     fn shift(&mut self, by: i32) {
         if by == 0 {
              return;
         }
-
         let mut new_idx = self.start as i32 + by;
         if new_idx < 0 {
             new_idx = 0;
@@ -94,31 +150,7 @@ impl Cursor {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Anchor {
-    None,
-    Start,
-    End,
-}
-
-/// The TextBox's state if it is uncaptured.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Uncaptured {
-    Highlighted,
-    Normal,
-}
-
-/// Represents an element of the TextBox widget.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Element {
-    Char(Idx),
-    Nill,
-    Rect,
-}
-
-widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
-
-static TEXT_PADDING: f64 = 5.0;
+// widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
 
 /// Find the position of a character in a text box.
 fn cursor_position<C: CharacterCache>(ui: &mut Ui<C>,
@@ -146,17 +178,17 @@ fn over_elem<C: CharacterCache>(ui: &mut Ui<C>,
                                 text_start_x: f64,
                                 text_w: f64,
                                 font_size: FontSize,
-                                text: &str) -> Element {
+                                text: &str) -> Elem {
     use utils::is_over_rect;
     if is_over_rect([0.0, 0.0], mouse_xy, dim) {
         if is_over_rect([0.0, 0.0], mouse_xy, pad_dim) {
             let (idx, _) = closest_idx(ui, mouse_xy, text_start_x, text_w, font_size, text);
-            Element::Char(idx)
+            Elem::Char(idx)
         } else {
-            Element::Rect
+            Elem::Rect
         }
     } else {
-        Element::Nill
+        Elem::Nill
     }
 }
 
@@ -184,7 +216,7 @@ fn closest_idx<C: CharacterCache>(ui: &mut Ui<C>,
 }
 
 /// Check and return the current state of the TextBox.
-fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
+fn get_new_state(over_elem: Elem, prev_state: State, mouse: Mouse) -> State {
     use mouse::ButtonState::{ Down, Up };
     use self::State::{ Capturing, Uncaptured };
     use self::Uncaptured::{ Normal, Highlighted };
@@ -192,18 +224,18 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
     match prev_state {
         State::Capturing(mut prev) => match mouse.left {
             Down => match over_elem {
-                Element::Nill => if prev.cursor.anchor == Anchor::None {
+                Elem::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
                 } else {
                     prev_state
                 },
-                Element::Rect =>  if prev.cursor.anchor == Anchor::None {
+                Elem::Rect =>  if prev.cursor.anchor == Anchor::None {
                     prev.cursor = Cursor::from_index(0);
                     Capturing(prev)
                 } else {
                     prev_state
                 },
-                Element::Char(idx) => {
+                Elem::Char(idx) => {
                     match prev.cursor.anchor {
                         Anchor::None  => prev.cursor = Cursor::from_index(idx),
                         Anchor::Start => prev.cursor = Cursor::from_range(prev.cursor.start, idx),
@@ -220,15 +252,15 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
 
         State::Uncaptured(prev) => match mouse.left {
             Down => match over_elem {
-                Element::Nill => Uncaptured(Normal),
-                Element::Rect => match prev {
+                Elem::Nill => Uncaptured(Normal),
+                Elem::Rect => match prev {
                     Normal => prev_state,
                     Highlighted => Capturing(View {
                          cursor: Cursor::from_index(0),
                          offset: 0.0,
                     })
                 },
-                Element::Char(idx) =>  match prev {
+                Elem::Char(idx) =>  match prev {
                     Normal => prev_state,
                     Highlighted => Capturing(View {
                         cursor: Cursor::from_index(idx),
@@ -237,8 +269,8 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
                 },
             },
             Up => match over_elem {
-                Element::Nill => Uncaptured(Normal),
-                Element::Char(_) | Element::Rect => match prev {
+                Elem::Nill => Uncaptured(Normal),
+                Elem::Char(_) | Elem::Rect => match prev {
                     Normal => Uncaptured(Highlighted),
                     Highlighted => prev_state,
                 },
@@ -247,44 +279,26 @@ fn get_new_state(over_elem: Element, prev_state: State, mouse: Mouse) -> State {
     }
 }
 
-/// A widget for displaying and mutating a given one-line text `String`. It's reaction is
-/// triggered upon pressing of the `Enter`/`Return` key.
-pub struct TextBox<'a, F> {
-    text: &'a mut String,
-    font_size: u32,
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    dim: Dimensions,
-    depth: Depth,
-    maybe_react: Option<F>,
-    maybe_color: Option<Color>,
-    maybe_frame: Option<f64>,
-    maybe_frame_color: Option<Color>,
-}
-
 impl<'a, F> TextBox<'a, F> {
 
     /// Construct a TextBox widget.
     pub fn new(text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
             text: text,
-            font_size: 24, // Default font_size.
             pos: Position::default(),
             maybe_h_align: None,
             maybe_v_align: None,
             dim: [192.0, 48.0],
             depth: 0.0,
             maybe_react: None,
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
+            style: Style::new(),
         }
     }
 
     /// Set the font size of the text.
-    pub fn font_size(self, font_size: FontSize) -> TextBox<'a, F> {
-        TextBox { font_size: font_size, ..self }
+    pub fn font_size(mut self, font_size: FontSize) -> TextBox<'a, F> {
+        self.style.maybe_font_size = Some(font_size);
+        self
     }
 
     /// Set the reaction for the TextBox. It will be triggered upon pressing of the
@@ -294,42 +308,46 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
-    /// After building the TextBox, use this method to set its current state into the given `Ui`.
-    /// It will use this state for rendering the next time `ui.draw(graphics)` is called.
-    pub fn set<C>(mut self, ui_id: UiId, ui: &mut Ui<C>)
+}
+
+
+impl<'a, F> Widget for TextBox<'a, F>
+    where
+        F: FnMut(&mut String)
+{
+    type State = State;
+    type Style = Style;
+    fn unique_kind(&self) -> &'static str { "TextBox" }
+    fn init_state(&self) -> State { State::Uncaptured(Uncaptured::Normal) }
+    fn style(&self) -> Style { self.style.clone() }
+
+    /// Update the state of the TextBox.
+    fn update<C>(&mut self,
+                 prev_state: &widget::State<State>,
+                 style: &Style,
+                 ui_id: UiId,
+                 ui: &mut Ui<C>) -> widget::State<State>
         where
             C: CharacterCache,
-            F: FnMut(&mut String),
     {
-        use elmesque::form::{collage, line, rect, solid, text};
-        use elmesque::text::Text;
 
+        let widget::State { state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let state = *get_state(ui, ui_id);
-        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-        let frame_w2 = frame_w * 2.0;
-        let font_size = self.font_size;
-        let pad_dim = vec2_sub(dim, [frame_w2; 2]);
-        let half_pad_h = pad_dim[1] / 2.0;
+        let frame = style.frame(&ui.theme);
+        let font_size = style.font_size(&ui.theme);
+        let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let text_w = label::width(ui, font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x, text_w, font_size, &self.text);
         let mut new_state = get_new_state(over_elem, state, mouse);
 
-        // Construct the frame and inner rectangle Forms.
-        let color = new_state.color(self.maybe_color.unwrap_or(ui.theme.shape_color));
-        let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-
-        // - Check cursor validity (and update new_state if necessary).
-        // - Construct the cursor and text `Form`s.
-        let (maybe_cursor_form, text_form) = if let State::Capturing(view) = new_state {
+        // Check cursor validity (and update new_state if necessary).
+        if let State::Capturing(view) = new_state {
             let mut cursor = view.cursor;
             let mut v_offset = view.offset;
 
@@ -341,11 +359,11 @@ impl<'a, F> TextBox<'a, F> {
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, self.font_size, &self.text);
+            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &self.text);
 
             if cursor.is_cursor() || cursor.anchor != Anchor::None {
                 let cursor_x_view = cursor_x - v_offset;
-                let text_right = self.dim[0] - TEXT_PADDING - frame_w;
+                let text_right = self.dim[0] - TEXT_PADDING - frame;
 
                 if cursor_x_view < text_x {
                     v_offset += cursor_x_view - text_x;
@@ -356,38 +374,7 @@ impl<'a, F> TextBox<'a, F> {
 
             // Set the updated state.
             new_state = State::Capturing(View { cursor: cursor, offset: v_offset });
-
-            // Construct the Cursor's Form.
-            let cursor_alpha = (precise_time_s() * 2.5).sin() as f32 * 0.5 + 0.5;
-            let cursor_form = if cursor.is_cursor() {
-                line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
-                    .alpha(cursor_alpha)
-                    .shift_x(cursor_x)
-            } else {
-                let (block_xy, dim) = {
-                    let (start, end) = (cursor.start, cursor.end);
-                    let cursor_x = cursor_position(ui, start, text_start_x, font_size, &self.text);
-                    let htext: String = self.text.chars().skip(start).take(end - start).collect();
-                    let htext_w = label::width(ui, font_size, &htext);
-                    ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
-                };
-                rect(dim[0], dim[1] - frame_w2).filled(color.highlighted())
-                    .shift(block_xy[0], block_xy[1])
-            };
-
-            // Construct the text's Form.
-            let text_form = text(Text::from_string(self.text.clone())
-                                     .color(color.plain_contrast())
-                                     .height(font_size as f64)).shift_x(text_x.floor());
-
-            (Some(cursor_form), text_form)
-        } else {
-            // Construct the text's Form.
-            let text_form = text(Text::from_string(self.text.clone())
-                                     .color(color.plain_contrast())
-                                     .height(font_size as f64)).shift_x(text_x.floor());
-            (None, text_form)
-        };
+        }
 
         // If TextBox is captured, check for recent input and update the text accordingly.
         if let State::Capturing(captured) = new_state {
@@ -431,7 +418,7 @@ impl<'a, F> TextBox<'a, F> {
                         cursor.shift(1);
                     },
                     Return => if self.text.len() > 0 {
-                        let TextBox { ref mut maybe_react, ref mut text, .. } = self;
+                        let TextBox { ref mut maybe_react, ref mut text, .. } = *self;
                         if let Some(ref mut react) = *maybe_react {
                             react(*text);
                         }
@@ -450,6 +437,81 @@ impl<'a, F> TextBox<'a, F> {
             _ => (),
         }
 
+        widget::State { state: new_state, xy: xy, depth: self.depth }
+    }
+
+
+    /// Construct an Element from the given TextBox State.
+    fn draw<C>(&mut self,
+               new_state: &widget::State<State>,
+               style: &Style,
+               _ui_id: UiId,
+               ui: &mut Ui<C>) -> Element
+        where
+            C: CharacterCache,
+    {
+        use elmesque::form::{collage, line, rect, solid, text};
+        use elmesque::text::Text;
+
+        let widget::State { state, xy, .. } = *new_state;
+
+        // Construct the frame and inner rectangle Forms.
+        let dim = self.dim;
+        let frame = style.frame(&ui.theme);
+        let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
+        let color = state.color(style.color(&ui.theme));
+        let frame_color = style.frame_color(&ui.theme);
+        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let font_size = style.font_size(&ui.theme);
+        let text_w = label::width(ui, font_size, &self.text);
+        let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
+        let text_start_x = text_x - text_w / 2.0;
+
+        let (maybe_cursor_form, text_form) = if let State::Capturing(view) = state {
+            // Construct the Cursor's Form.
+            let cursor = view.cursor;
+
+            // This matters if the text is scrolled with the mouse.
+            let cursor_idx = match cursor.anchor {
+                Anchor::End => cursor.start,
+                Anchor::Start | Anchor::None => cursor.end,
+            };
+            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &self.text);
+
+            let cursor_alpha = (precise_time_s() * 2.5).sin() as f32 * 0.5 + 0.5;
+            let cursor_form = if cursor.is_cursor() {
+                let half_pad_h = pad_dim[1] / 2.0;
+                line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
+                    .alpha(cursor_alpha)
+                    .shift_x(cursor_x)
+            } else {
+                let (block_xy, dim) = {
+                    let (start, end) = (cursor.start, cursor.end);
+                    let cursor_x = cursor_position(ui, start, text_start_x, font_size, &self.text);
+                    let htext: String = self.text.chars().skip(start).take(end - start).collect();
+                    let htext_w = label::width(ui, font_size, &htext);
+                    ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
+                };
+                rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
+                    .shift(block_xy[0], block_xy[1])
+            };
+
+            // Construct the text's Form.
+            let text_form = text(Text::from_string(self.text.clone())
+                                     .color(color.plain_contrast())
+                                     .height(font_size as f64)).shift_x(text_x.floor());
+
+            (Some(cursor_form), text_form)
+        } else {
+
+            // Construct the text's Form.
+            let text_form = text(Text::from_string(self.text.clone())
+                                     .color(color.plain_contrast())
+                                     .height(font_size as f64)).shift_x(text_x.floor());
+            (None, text_form)
+        };
+ 
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(inner_form).into_iter())
@@ -458,29 +520,68 @@ impl<'a, F> TextBox<'a, F> {
             .map(|form| form.shift(xy[0], xy[1]));
 
         // Collect the Forms into a renderable `Element`.
-        let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
 
-        // Store the TextBox's new state in the Ui.
-        ui.update_widget(ui_id, Kind::TextBox(new_state), xy, self.depth, Some(element));
+}
 
+impl Style {
+
+    /// Construct the default Style.
+    pub fn new() -> Style {
+        Style {
+            maybe_color: None,
+            maybe_frame: None,
+            maybe_frame_color: None,
+            maybe_font_size: None,
+        }
+    }
+
+    /// Get the Color for an Element.
+    pub fn color(&self, theme: &Theme) -> Color {
+        self.maybe_color.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_color.unwrap_or(theme.shape_color)
+        })).unwrap_or(theme.shape_color)
+    }
+
+    /// Get the frame for an Element.
+    pub fn frame(&self, theme: &Theme) -> f64 {
+        self.maybe_frame.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_frame.unwrap_or(theme.frame_width)
+        })).unwrap_or(theme.frame_width)
+    }
+
+    /// Get the frame Color for an Element.
+    pub fn frame_color(&self, theme: &Theme) -> Color {
+        self.maybe_frame_color.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        })).unwrap_or(theme.frame_color)
+    }
+
+    /// Get the label font size for an Element.
+    pub fn font_size(&self, theme: &Theme) -> FontSize {
+        const DEFAULT_FONT_SIZE: u32 = 24;
+        self.maybe_font_size.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
+        })).unwrap_or(DEFAULT_FONT_SIZE)
     }
 
 }
 
 impl<'a, F> Colorable for TextBox<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.maybe_color = Some(color);
+        self.style.maybe_color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for TextBox<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.maybe_frame = Some(width);
+        self.style.maybe_frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.maybe_frame_color = Some(color);
+        self.style.maybe_frame_color = Some(color);
         self
     }
 }

@@ -14,7 +14,7 @@ pub type Dimensions = [Scalar; 2];
 pub type Point = [Scalar; 2];
 
 /// A cached widget's position for rendering.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Position {
     /// A specific position.
     Absolute(Scalar, Scalar),

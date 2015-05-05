@@ -17,22 +17,20 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
 
+
 pub use canvas::split::Split;
 
 pub use widget::button::Button;
-pub use widget::custom::Custom as CustomWidget;
-pub use widget::custom::State as CustomWidgetState;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::label::Label;
+pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::slider::Slider;
 pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
-pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::xy_pad::XYPad;
-pub use widget::Update as WidgetUpdate;
 
 pub use background::Background;
 pub use canvas::{Canvas, CanvasId};
@@ -48,9 +46,8 @@ pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Place,
                    Positionable, Sizeable, VerticalAlign};
 pub use theme::Theme;
 pub use ui::{Ui, UiId};
+pub use widget::Widget;
 
-#[macro_use]
-mod macros;
 
 mod background;
 mod canvas;

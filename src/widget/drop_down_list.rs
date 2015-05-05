@@ -1,16 +1,44 @@
 
 use color::{Color, Colorable};
+use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use theme::Theme;
 use ui::{UiId, Ui};
-use widget::Kind;
+use widget::{self, Widget};
+
 
 /// Tuple / React params.
 pub type Idx = usize;
 pub type Len = usize;
+
+/// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
+/// selection of a list item.
+pub struct DropDownList<'a, F> {
+    strings: &'a mut Vec<String>,
+    selected: &'a mut Option<Idx>,
+    pos: Position,
+    dim: Dimensions,
+    maybe_h_align: Option<HorizontalAlign>,
+    maybe_v_align: Option<VerticalAlign>,
+    depth: Depth,
+    maybe_react: Option<F>,
+    maybe_label: Option<&'a str>,
+    style: Style,
+}
+
+/// Styling for the DropDownList, necessary for constructing its renderable Element.
+#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct Style {
+    pub maybe_color: Option<Color>,
+    pub maybe_frame: Option<f64>,
+    pub maybe_frame_color: Option<Color>,
+    pub maybe_label_color: Option<Color>,
+    pub maybe_label_font_size: Option<u32>,
+}
 
 /// Represents the state of the menu.
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -27,6 +55,7 @@ pub enum DrawState {
     Clicked(Idx, Len),
 }
 
+
 impl DrawState {
     fn color(&self, color: Color) -> Color {
         match *self {
@@ -37,7 +66,6 @@ impl DrawState {
     }
 }
 
-widget_fns!(DropDownList, State, Kind::DropDownList(State::Closed(DrawState::Normal)));
 
 /// Is the cursor currently over the widget? If so which item?
 fn is_over(mouse_pos: Point,
@@ -62,6 +90,7 @@ fn is_over(mouse_pos: Point,
         },
     }
 }
+
 
 /// Determine and return the new State by comparing the mouse state
 /// and position to the previous State.
@@ -110,24 +139,6 @@ fn get_new_state(is_over_idx: Option<Idx>,
     }
 }
 
-/// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
-/// selection of a list item.
-pub struct DropDownList<'a, F> {
-    strings: &'a mut Vec<String>,
-    selected: &'a mut Option<Idx>,
-    pos: Position,
-    dim: Dimensions,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
-    maybe_react: Option<F>,
-    maybe_color: Option<Color>,
-    maybe_frame: Option<f64>,
-    maybe_frame_color: Option<Color>,
-    maybe_label: Option<&'a str>,
-    maybe_label_color: Option<Color>,
-    maybe_label_font_size: Option<u32>,
-}
 
 impl<'a, F> DropDownList<'a, F> {
 
@@ -142,12 +153,8 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_v_align: None,
             depth: 0.0,
             maybe_react: None,
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
             maybe_label: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
+            style: Style::new(),
         }
     }
 
@@ -157,22 +164,37 @@ impl<'a, F> DropDownList<'a, F> {
         self
     }
 
-    /// After building the DropDownList, use this method to set its current state into the given
-    /// `Ui`. It will use this state for rendering the next time `ui.draw(graphics)` is called.
-    pub fn set<C>(mut self, ui_id: UiId, ui: &mut Ui<C>)
+}
+
+
+impl<'a, F> Widget for DropDownList<'a, F>
+    where
+        F: FnMut(&mut Option<Idx>, Idx, String),
+{
+    type State = State;
+    type Style = Style;
+    fn unique_kind(&self) -> &'static str { "DropDownList" }
+    fn init_state(&self) -> State { State::Closed(DrawState::Normal) }
+    fn style(&self) -> Style { self.style.clone() }
+
+    /// Update the state of the DropDownList.
+    fn update<C>(&mut self,
+                 prev_state: &widget::State<State>,
+                 style: &Style,
+                 ui_id: UiId,
+                 ui: &mut Ui<C>) -> widget::State<State>
         where
             C: CharacterCache,
-            F: FnMut(&mut Option<Idx>, Idx, String),
     {
 
-        let state = *get_state(ui, ui_id);
+        let widget::State { state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let frame_w = self.maybe_frame.unwrap_or(ui.theme.frame_width);
-        let is_over_idx = is_over(mouse.xy, frame_w, dim, state, self.strings.len());
+        let frame = style.frame(&ui.theme);
+        let is_over_idx = is_over(mouse.xy, frame, dim, state, self.strings.len());
         let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
         let selected = self.selected.and_then(|idx| if idx < self.strings.len() { Some(idx) }
                                                     else { None });
@@ -196,137 +218,196 @@ impl<'a, F> DropDownList<'a, F> {
             }
         }
 
-        let draw_new_element_condition = true;
+        widget::State { state: new_state, xy: xy, depth: self.depth }
+    }
 
-        // If the state has changed, construct the new Element.
-        let maybe_new_element = if draw_new_element_condition {
-            use elmesque::form::{collage, rect, text};
-            use elmesque::text::Text;
+    /// Construct an Element from the given DropDownList State.
+    fn draw<C>(&mut self,
+               new_state: &widget::State<State>,
+               style: &Style,
+               _ui_id: UiId,
+               ui: &mut Ui<C>) -> Element
+        where
+            C: CharacterCache,
+    {
+        use elmesque::form::{collage, rect, text};
+        use elmesque::text::Text;
 
-            // Get the DropDownList's styling.
-            let color = self.maybe_color.unwrap_or(ui.theme.shape_color);
-            let t_size = self.maybe_label_font_size.unwrap_or(ui.theme.font_size_medium);
-            let t_color = self.maybe_label_color.unwrap_or(ui.theme.label_color);
-            let pad_dim = ::vecmath::vec2_sub(dim, [frame_w * 2.0; 2]);
-            let frame_color = self.maybe_frame_color.unwrap_or(ui.theme.frame_color);
+        let widget::State { ref state, xy, .. } = *new_state;
+        let theme = &ui.theme;
 
-            // Construct the DropDownList's Element.
-            match new_state {
+        // Retrieve the styling for the Element..
+        let color = style.color(theme);
+        let frame = style.frame(theme);
+        let frame_color = style.frame_color(theme);
+        let label_color = style.label_color(theme);
+        let font_size = style.label_font_size(theme);
+        let dim = self.dim;
+        let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
 
-                State::Closed(draw_state) => {
-                    let string = match selected {
-                        Some(idx) => &(*self.strings)[idx][..],
-                        None => match self.maybe_label {
-                            Some(text) => text,
-                            None => &(*self.strings)[0][..],
+        // Construct the DropDownList's Element.
+        match *state {
+
+            State::Closed(draw_state) => {
+                let string = match *self.selected {
+                    Some(idx) => &(*self.strings)[idx][..],
+                    None => match self.maybe_label {
+                        Some(text) => text,
+                        None => &(*self.strings)[0][..],
+                    },
+                }.to_string();
+                let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+                let inner_form = rect(pad_dim[0], pad_dim[1]).filled(draw_state.color(color));
+                let text_form = text(Text::from_string(string)
+                                         .color(label_color)
+                                         .height(font_size as f64));
+
+                // Chain and shift the Forms into position.
+                let form_chain = Some(frame_form).into_iter()
+                    .chain(Some(inner_form).into_iter())
+                    .chain(Some(text_form).into_iter())
+                    .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+
+                // Collect the Form's into a renderable Element.
+                collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+            },
+
+            State::Open(draw_state) => {
+                // Chain and shift the Forms into position.
+                let form_chain = self.strings.iter().enumerate().flat_map(|(i, string)| {
+                    let color = match *self.selected {
+                        None => match draw_state {
+                            DrawState::Normal => color,
+                            DrawState::Highlighted(idx, _) => {
+                                if i == idx { color.highlighted() }
+                                else { color }
+                            },
+                            DrawState::Clicked(idx, _) => {
+                                if i == idx { color.clicked() }
+                                else { color }
+                            },
                         },
-                    }.to_string();
-                    let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-                    let inner_form = rect(pad_dim[0], pad_dim[1]).filled(draw_state.color(color));
-                    let text_form = text(Text::from_string(string)
-                                             .color(t_color)
-                                             .height(t_size as f64));
-
-                    // Chain and shift the Forms into position.
-                    let form_chain = Some(frame_form).into_iter()
-                        .chain(Some(inner_form).into_iter())
-                        .chain(Some(text_form).into_iter())
-                        .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
-
-                    // Collect the Form's into a renderable Element.
-                    Some(collage(dim[0] as i32, dim[1] as i32, form_chain.collect()))
-                },
-
-                State::Open(draw_state) => {
-                    // Chain and shift the Forms into position.
-                    let form_chain = self.strings.iter().enumerate().flat_map(|(i, string)| {
-                        let color = match selected {
-                            None => match draw_state {
-                                DrawState::Normal => color,
-                                DrawState::Highlighted(idx, _) => {
-                                    if i == idx { color.highlighted() }
-                                    else { color }
-                                },
-                                DrawState::Clicked(idx, _) => {
-                                    if i == idx { color.clicked() }
-                                    else { color }
-                                },
-                            },
-                            Some(sel_idx) => {
-                                if sel_idx == i { color.clicked() }
-                                else {
-                                    match draw_state {
-                                        DrawState::Normal => color,
-                                        DrawState::Highlighted(idx, _) => {
-                                            if i == idx { color.highlighted() }
-                                            else { color }
-                                        },
-                                        DrawState::Clicked(idx, _) => {
-                                            if i == idx { color.clicked() }
-                                            else { color }
-                                        },
-                                    }
+                        Some(sel_idx) => {
+                            if sel_idx == i { color.clicked() }
+                            else {
+                                match draw_state {
+                                    DrawState::Normal => color,
+                                    DrawState::Highlighted(idx, _) => {
+                                        if i == idx { color.highlighted() }
+                                        else { color }
+                                    },
+                                    DrawState::Clicked(idx, _) => {
+                                        if i == idx { color.clicked() }
+                                        else { color }
+                                    },
                                 }
-                            },
-                        };
-                        let shift_amt = -(i as f64 * dim[1] - i as f64 * frame_w).floor();
-                        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-                        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-                        let text_form = text(Text::from_string(string.clone())
-                                                 .color(t_color)
-                                                 .height(t_size as f64));
-                        Some(frame_form.shift_y(shift_amt)).into_iter()
-                            .chain(Some(inner_form.shift_y(shift_amt)).into_iter())
-                            .chain(Some(text_form.shift_y(shift_amt.floor())).into_iter())
-                    }).map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+                            }
+                        },
+                    };
+                    let shift_amt = -(i as f64 * dim[1] - i as f64 * frame).floor();
+                    let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+                    let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+                    let text_form = text(Text::from_string(string.clone())
+                                             .color(label_color)
+                                             .height(font_size as f64));
+                    Some(frame_form.shift_y(shift_amt)).into_iter()
+                        .chain(Some(inner_form.shift_y(shift_amt)).into_iter())
+                        .chain(Some(text_form.shift_y(shift_amt.floor())).into_iter())
+                }).map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
-                    // Collect the Form's into a renderable Element.
-                    Some(collage(dim[0] as i32, dim[1] as i32, form_chain.collect()))
-                },
+                // Collect the Form's into a renderable Element.
+                collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+            },
 
-            }
-
-        } else { None };
-
-        // Store the drop down list's new state in the Ui.
-        ui.update_widget(ui_id, Kind::DropDownList(new_state), xy, self.depth, maybe_new_element);
+        }
 
     }
 
 }
 
+
+impl Style {
+
+    /// Construct the default Style.
+    pub fn new() -> Style {
+        Style {
+            maybe_color: None,
+            maybe_frame: None,
+            maybe_frame_color: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
+        }
+    }
+
+    /// Get the Color for an Element.
+    pub fn color(&self, theme: &Theme) -> Color {
+        self.maybe_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
+            style.maybe_color.unwrap_or(theme.shape_color)
+        })).unwrap_or(theme.shape_color)
+    }
+
+    /// Get the frame for an Element.
+    pub fn frame(&self, theme: &Theme) -> f64 {
+        self.maybe_frame.or(theme.maybe_drop_down_list.as_ref().map(|style| {
+            style.maybe_frame.unwrap_or(theme.frame_width)
+        })).unwrap_or(theme.frame_width)
+    }
+
+    /// Get the frame Color for an Element.
+    pub fn frame_color(&self, theme: &Theme) -> Color {
+        self.maybe_frame_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
+            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        })).unwrap_or(theme.frame_color)
+    }
+
+    /// Get the label Color for an Element.
+    pub fn label_color(&self, theme: &Theme) -> Color {
+        self.maybe_label_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
+            style.maybe_label_color.unwrap_or(theme.label_color)
+        })).unwrap_or(theme.label_color)
+    }
+
+    /// Get the label font size for an Element.
+    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
+        self.maybe_label_font_size.or(theme.maybe_drop_down_list.as_ref().map(|style| {
+            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        })).unwrap_or(theme.font_size_medium)
+    }
+
+}
+
+
 impl<'a, F> Colorable for DropDownList<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.maybe_color = Some(color);
+        self.style.maybe_color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for DropDownList<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.maybe_frame = Some(width);
+        self.style.maybe_frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.maybe_frame_color = Some(color);
+        self.style.maybe_frame_color = Some(color);
         self
     }
 }
 
-impl<'a, F> Labelable<'a> for DropDownList<'a, F>
-{
+impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
     fn label(mut self, text: &'a str) -> Self {
         self.maybe_label = Some(text);
         self
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.maybe_label_color = Some(color);
+        self.style.maybe_label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.maybe_label_font_size = Some(size);
+        self.style.maybe_label_font_size = Some(size);
         self
     }
 }

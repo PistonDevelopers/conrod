@@ -8,7 +8,8 @@ use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 use std::str;
-use widget::{button};
+use widget;
+
 
 /// A serializable collection of widget styling defaults.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
@@ -41,8 +42,22 @@ pub struct Theme {
     pub font_size_small: u32,
     /// Optional style defaults for a Canvas split.
     pub maybe_canvas_split: Option<canvas::split::Style>,
-    /// Specific defaults for a Button widget.
-    pub maybe_button: Option<button::Style>,
+    /// Optional style defaults for a Button widget.
+    pub maybe_button: Option<widget::button::Style>,
+    /// Optional style defaults for a DropDownList.
+    pub maybe_drop_down_list: Option<widget::drop_down_list::Style>,
+    /// Optional style defaults for an EnvelopeEditor.
+    pub maybe_envelope_editor: Option<widget::envelope_editor::Style>,
+    /// Optional style defaults for a NumberDialer.
+    pub maybe_number_dialer: Option<widget::number_dialer::Style>,
+    /// Optional style defaults for a Slider.
+    pub maybe_slider: Option<widget::slider::Style>,
+    /// Optional style defaults for a TextBox.
+    pub maybe_text_box: Option<widget::text_box::Style>,
+    /// Optional style defaults for a Toggle.
+    pub maybe_toggle: Option<widget::toggle::Style>,
+    /// Optional style defaults for an XYPad.
+    pub maybe_xy_pad: Option<widget::xy_pad::Style>,
 }
 
 /// The alignment of an element's dimensions with another's.
@@ -87,6 +102,13 @@ impl Theme {
             font_size_small: 12,
             maybe_canvas_split: None,
             maybe_button: None,
+            maybe_drop_down_list: None,
+            maybe_envelope_editor: None,
+            maybe_number_dialer: None,
+            maybe_slider: None,
+            maybe_text_box: None,
+            maybe_toggle: None,
+            maybe_xy_pad: None,
         }
     }
 

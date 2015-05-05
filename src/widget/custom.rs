@@ -25,17 +25,18 @@ pub trait Custom: Clone + ::std::fmt::Debug {
         ui.update_widget(ui_id, Kind::Custom(new_state), xy, depth, Some(element));
     }
 
+    /// Return the type of the widget as a &'static str. Note that this must be unique from all
+    /// other widgets' unique types. This is used by conrod to help users avoid UiId errors.
+    fn unique_type(&self) -> &'static str;
+
     /// This is the method you have to implement! Your widget's previous state is given to you as a
     /// parameter and it is your job to construct and return an Update that will be used to update
     /// the widget's cached state.
     fn update<C>(mut self, prev: Self::State, ui_id: UiId, ui: &mut Ui<C, Self>) -> Update<Self::State>;
-
 }
 
-/// The state to be stored within the `Ui`s widget cache.
+/// The widget's state that is to be stored within the `Ui`s widget cache.
 pub trait State: Clone + ::std::fmt::Debug {
-    /// Whether or not the state matches some other state.
-    fn matches(&self, other: &Self) -> bool;
     /// The inital state.
     fn init() -> Self;
 }

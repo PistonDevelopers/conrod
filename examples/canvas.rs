@@ -10,7 +10,7 @@ extern crate graphics;
 extern crate piston;
 extern crate piston_window;
 
-use conrod::{CanvasId, Theme, Ui, UiId};
+use conrod::{CanvasId, Theme, Ui, UiId, Widget};
 use gfx_device_gl::Resources;
 use gfx_graphics::{GlyphCache, Texture};
 use glutin_window::{GlutinWindow, OpenGL};
@@ -68,7 +68,7 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
         Split::new(FOOTER).color(blue())
     ]).set(ui);
 
-    Label::new("Fancy Title").color(light_orange()).size(48).middle_of(HEADER).set(TITLE, ui);
+    Label::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
     Label::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
 
     Label::new("Top Left")

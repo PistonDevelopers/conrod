@@ -16,13 +16,9 @@ use piston::event::{
     TextEvent,
 };
 use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
-use std::fmt::Debug;
-use std::iter::repeat;
+use std::any::Any;
 use theme::Theme;
-use widget::Custom as CustomWidget;
-use widget::custom::State as CustomWidgetState;
-use widget::Kind as WidgetKind;
-use widget::Widget;
+use widget::{self, Widget};
 
 /// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
 /// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
@@ -46,11 +42,11 @@ enum Capturing {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<C, W=()> where W: CustomWidget {
+pub struct Ui<C> {
     /// Stores the state of all canvasses.
     canvas_cache: Vec<Canvas>,
     /// The Widget cache, storing state for all widgets.
-    widget_cache: Vec<Widget<W>>,
+    widget_cache: Vec<widget::Cached>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// The latest received mouse state.
@@ -78,15 +74,15 @@ pub struct Ui<C, W=()> where W: CustomWidget {
     maybe_captured_keyboard: Option<Capturing>
 }
 
-impl<C, W> Ui<C, W> where W: CustomWidget {
+impl<C> Ui<C> {
 
     /// Constructor for a UiContext.
-    pub fn new(character_cache: C, theme: Theme) -> Ui<C, W> {
+    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
         const CANVAS_RESERVATION: usize = 64;
         const WIDGET_RESERVATION: usize = 512;
         Ui {
-            canvas_cache: repeat(Canvas::empty()).take(CANVAS_RESERVATION).collect(),
-            widget_cache: repeat(Widget::empty()).take(WIDGET_RESERVATION).collect(),
+            canvas_cache: (0..CANVAS_RESERVATION).map(|_| Canvas::empty()).collect(),
+            widget_cache: (0..WIDGET_RESERVATION).map(|_| widget::Cached::empty()).collect(),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10),
@@ -243,30 +239,88 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
         }
     }
 
-    /// Return a mutable reference to the widget that matches the given ui_id
-    pub fn get_widget_mut(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
-        let ui_id_idx = ui_id as usize;
-        if self.widget_cache.len() > ui_id_idx {
-            match &mut self.widget_cache[ui_id_idx].kind {
-                &mut WidgetKind::NoWidget => {
-                    let mut widget = &mut self.widget_cache[ui_id_idx].kind;
-                    *widget = default;
-                    widget
-                },
-                _ => &mut self.widget_cache[ui_id_idx].kind,
-            }
-        } else {
-            if ui_id_idx >= self.widget_cache.len() {
-                let num_to_extend = ui_id_idx - self.widget_cache.len();
-                self.widget_cache.extend(repeat(Widget::empty())
-                    .take(num_to_extend)
-                    .chain(Some(Widget::new(default)).into_iter()));
-            } else {
-                self.widget_cache[ui_id_idx] = Widget::<W>::new(default);
-            }
-            &mut self.widget_cache[ui_id_idx].kind
+    /// Get the state of a widget with the given type and UiId.
+    ///
+    /// If the widget doesn't already have a position within the Cache, Create and initialise a
+    /// cache position before returning the default initialised state.
+    pub fn get_widget_state<W>(&mut self,
+                               ui_id: UiId,
+                               kind: &'static str,
+                               style: &W::Style,
+                               widget: &W) -> widget::PrevState<W>
+        where
+            W: Widget,
+            W::State: Any + 'static,
+            W::Style: Any + 'static,
+    {
+        fn init_cache<W>(kind: &'static str, style: &W::Style, widget: &W) -> widget::Cached
+            where
+                W: Widget,
+                W::State: Any + 'static,
+                W::Style: Any + 'static,
+        {
+            let store: widget::Store<W::State, W::Style> = widget::Store {
+                state: W::init_state(&widget),
+                style: style.clone()
+            };
+            widget::Cached::new(kind, store)
         }
+
+        // If the cache is not big enough, extend it.
+        if self.widget_cache.len() <= ui_id {
+            let num_to_extend = ui_id - self.widget_cache.len();
+            let init = init_cache(kind, style, widget);
+            let extension = (0..num_to_extend)
+                .map(|_| widget::Cached::empty())
+                .chain(Some(init).into_iter());
+            self.widget_cache.extend(extension);
+        }
+
+        // If the cache is empty, initialise it.
+        if self.widget_cache[ui_id].kind == Widget::unique_kind(&()) {
+            self.widget_cache[ui_id] = init_cache(kind, style, widget);
+        // Else if the cache is already initialised for a widget of a different kind, warn the user.
+        } else if self.widget_cache[ui_id].kind != kind {
+            println!("A widget of a different kind already exists at the given UiId ({:?}).
+                      You tried to insert a {:?}, however the existing widget is a {:?}.
+                      Check your widgets' `UiId`s for errors.",
+                      ui_id, kind, &self.widget_cache[ui_id].kind);
+            self.widget_cache[ui_id] = init_cache(kind, style, widget);
+        }
+
+        let cached_widget = &mut self.widget_cache[ui_id];
+        let xy = cached_widget.xy;
+        let depth = cached_widget.depth;
+        let store: &widget::Store<W::State, W::Style> =
+            cached_widget.state.downcast_ref().unwrap();
+        let state = store.state.clone();
+        let style = store.style.clone();
+        widget::PrevState { state: state, style: style, xy: xy, depth: depth }
     }
+
+    // /// Return a mutable reference to the widget that matches the given ui_id
+    // pub fn get_widget_mut(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
+    //     if self.widget_cache.len() > ui_id {
+    //         match &mut self.widget_cache[ui_id].kind {
+    //             &mut WidgetKind::NoWidget => {
+    //                 let mut widget = &mut self.widget_cache[ui_id].kind;
+    //                 *widget = default;
+    //                 widget
+    //             },
+    //             _ => &mut self.widget_cache[ui_id].kind,
+    //         }
+    //     } else {
+    //         if ui_id >= self.widget_cache.len() {
+    //             let num_to_extend = ui_id - self.widget_cache.len();
+    //             self.widget_cache.extend(repeat(Widget::empty())
+    //                 .take(num_to_extend)
+    //                 .chain(Some(Widget::new(default)).into_iter()));
+    //         } else {
+    //             self.widget_cache[ui_id] = Widget::<W>::new(default);
+    //         }
+    //         &mut self.widget_cache[ui_id].kind
+    //     }
+    // }
 
     /// Update the given canvas.
     pub fn update_canvas(&mut self,
@@ -302,14 +356,19 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
     }
 
     /// Update the given widget at the given UiId.
-    pub fn update_widget(&mut self,
-                         ui_id: UiId,
-                         kind: WidgetKind<W>,
-                         xy: Point,
-                         depth: Depth,
-                         maybe_new_element: Option<Element>) where W: Debug {
-        if self.widget_cache[ui_id].kind.matches(&kind)
-        || self.widget_cache[ui_id].kind.matches(&WidgetKind::NoWidget) {
+    pub fn update_widget<Sta, Sty>(&mut self,
+                                   ui_id: UiId,
+                                   kind: &'static str,
+                                   store: widget::Store<Sta, Sty>,
+                                   xy: Point,
+                                   depth: Depth,
+                                   maybe_new_element: Option<Element>)
+        where
+            Sta: Any + Clone + ::std::fmt::Debug + 'static,
+            Sty: Any + Clone + ::std::fmt::Debug + 'static,
+    {
+        if self.widget_cache[ui_id].kind == kind
+        || self.widget_cache[ui_id].kind == ().unique_kind() {
             if self.widget_cache[ui_id].set_since_last_drawn {
                 println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
                           since the last time that `Ui::draw` was called (you probably don't want \
@@ -317,14 +376,19 @@ impl<C, W> Ui<C, W> where W: CustomWidget {
                           `Ui::draw` after constructing your widgets and that you haven't \
                           accidentally set the same widget twice.", ui_id);
             }
-            let widget = &mut self.widget_cache[ui_id];
-            widget.kind = kind;
-            widget.xy = xy;
-            widget.depth = depth;
-            if let Some(new_element) = maybe_new_element {
-                widget.element = new_element;
+            let cached_widget = &mut self.widget_cache[ui_id];
+            {
+                let state: &mut widget::Store<Sta, Sty> = cached_widget.state.downcast_mut()
+                    .expect("Mismatched type when casting to Store<W> from Any");
+                *state = store;
             }
-            widget.set_since_last_drawn = true;
+            cached_widget.kind = kind;
+            cached_widget.xy = xy;
+            cached_widget.depth = depth;
+            if let Some(new_element) = maybe_new_element {
+                cached_widget.element = new_element;
+            }
+            cached_widget.set_since_last_drawn = true;
             self.maybe_prev_ui_id = Some(ui_id);
         } else {
             panic!("A widget of a different kind already exists at the given UiId ({:?}).

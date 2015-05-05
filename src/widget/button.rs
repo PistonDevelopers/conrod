@@ -5,44 +5,11 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::Kind;
+use widget::{self, Widget};
 
-/// Represents the state of the Button widget.
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-pub enum State {
-    Normal,
-    Highlighted,
-    Clicked,
-}
-
-impl State {
-    /// Alter the widget color depending on the state.
-    fn color(&self, color: Color) -> Color {
-        match *self {
-            State::Normal => color,
-            State::Highlighted => color.highlighted(),
-            State::Clicked => color.clicked(),
-        }
-    }
-}
-
-widget_fns!(Button, State, Kind::Button(State::Normal));
-
-/// Check the current state of the button.
-fn get_new_state(is_over: bool, prev: State, mouse: Mouse) -> State {
-    use mouse::ButtonState::{Down, Up};
-    use self::State::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _                      => Normal,
-    }
-}
 
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
@@ -57,7 +24,7 @@ pub struct Button<'a, F> {
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<f64>,
@@ -66,60 +33,40 @@ pub struct Style {
     pub maybe_label_font_size: Option<u32>,
 }
 
-impl Style {
+/// Represents the state of the Button widget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum State {
+    Normal,
+    Highlighted,
+    Clicked,
+}
 
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
+
+impl State {
+    /// Alter the widget color depending on the state.
+    fn color(&self, color: Color) -> Color {
+        match *self {
+            State::Normal => color,
+            State::Highlighted => color.highlighted(),
+            State::Clicked => color.clicked(),
         }
     }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        let theme_color = theme.shape_color;
-        self.maybe_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        let theme_frame = theme.frame_width;
-        self.maybe_frame.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme_frame)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        let theme_frame_color = theme.frame_color;
-        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme_frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        let theme_label_color = theme.label_color;
-        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme_label_color)
-        })).unwrap_or(theme_label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        let theme_font_size = theme.font_size_medium;
-        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme_font_size)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
 }
+
+
+/// Check the current state of the button.
+fn get_new_state(is_over: bool, prev: State, mouse: Mouse) -> State {
+    use mouse::ButtonState::{Down, Up};
+    use self::State::{Normal, Highlighted, Clicked};
+    match (is_over, prev, mouse.left) {
+        (true,  Normal,  Down) => Normal,
+        (true,  _,       Down) => Clicked,
+        (true,  _,       Up)   => Highlighted,
+        (false, Clicked, Down) => Clicked,
+        _                      => Normal,
+    }
+}
+
 
 impl<'a, F> Button<'a, F> {
 
@@ -143,16 +90,30 @@ impl<'a, F> Button<'a, F> {
         self
     }
 
-    /// After building the Button, use this method to set its current state into the given `Ui`.
-    /// It will use this state for rendering the next time `ui.draw(graphics)` is called.
-    pub fn set<C>(mut self, ui_id: UiId, ui: &mut Ui<C>)
+}
+
+
+impl<'a, F> Widget for Button<'a, F>
+    where
+        F: FnMut()
+{
+    type State = State;
+    type Style = Style;
+    fn unique_kind(&self) -> &'static str { "Button" }
+    fn init_state(&self) -> State { State::Normal }
+    fn style(&self) -> Style { self.style.clone() }
+
+    /// Update the state of the Button.
+    fn update<C>(&mut self,
+                 prev_state: &widget::State<State>,
+                 _style: &Style,
+                 ui_id: UiId,
+                 ui: &mut Ui<C>) -> widget::State<State>
         where
             C: CharacterCache,
-            F: FnMut(),
     {
         use utils::is_over_rect;
-
-        let state = *get_state(ui, ui_id);
+        let widget::State { state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -160,66 +121,110 @@ impl<'a, F> Button<'a, F> {
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
         let new_state = get_new_state(is_over, state, mouse);
-
         // React.
         if let (true, State::Clicked, State::Highlighted) = (is_over, state, new_state) {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
+        widget::State { state: new_state, xy: xy, depth: self.depth }
+    }
 
-        // Check whether the Button's Element needs to be reconstructed.
-        let draw_new_element_condition = true;
+    /// Construct an Element from the given Button State.
+    fn draw<C>(&mut self,
+               new_state: &widget::State<State>,
+               style: &Style,
+               _ui_id: UiId,
+               ui: &mut Ui<C>) -> Element
+        where
+            C: CharacterCache,
+    {
+        use elmesque::form::{collage, rect, text};
+        let widget::State { ref state, xy, .. } = *new_state;
+        let dim = self.dim;
+        let theme = &ui.theme;
+        let maybe_label = self.maybe_label.take();
 
-        // If the state has changed, construct a new Element.
-        let maybe_new_element = if draw_new_element_condition {
-            Some(new_element(&ui.theme, xy, dim, &self.style, &new_state, self.maybe_label.take()))
-        } else {
-            None
-        };
+        // Retrieve the styling for the Element..
+        let color = state.color(style.color(theme));
+        let frame = style.frame(theme);
+        let frame_color = style.frame_color(theme);
 
-        // Update the widget's state within the Ui.
-        ui.update_widget(ui_id, Kind::Button(new_state), xy, self.depth, maybe_new_element);
+        // Construct the frame and inner rectangle forms.
+        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
+        let pressable_form = rect(inner_w, inner_h).filled(color);
+
+        // Construct the label's Form.
+        let maybe_label_form = maybe_label.map(|label_text| {
+            use elmesque::text::Text;
+            let label_color = style.label_color(theme);
+            let size = style.label_font_size(theme);
+            text(Text::from_string(label_text.to_string()).color(label_color).height(size as f64))
+                .shift(xy[0].floor(), xy[1].floor())
+        });
+
+        // Construct the button's Form.
+        let form_chain = Some(frame_form).into_iter()
+            .chain(Some(pressable_form).into_iter())
+            .map(|form| form.shift(xy[0], xy[1]))
+            .chain(maybe_label_form.into_iter());
+
+        // Turn the form into a renderable Element.
+        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
     }
 
 }
 
-/// Construct an Element from the given Button State.
-fn new_element(theme: &Theme,
-               xy: Point,
-               dim: Dimensions,
-               style: &Style,
-               state: &State,
-               maybe_label: Option<&str>) -> Element {
-    use elmesque::form::{collage, rect, text};
 
-    // Retrieve the values needed for constructin the element from the Theme.
-    let color = state.color(style.color(theme));
-    let frame = style.frame(theme);
-    let frame_color = style.frame_color(theme);
+impl Style {
 
-    // Construct the frame and inner rectangle forms.
-    let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-    let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-    let pressable_form = rect(inner_w, inner_h).filled(color);
+    /// Construct the default Style.
+    pub fn new() -> Style {
+        Style {
+            maybe_color: None,
+            maybe_frame: None,
+            maybe_frame_color: None,
+            maybe_label_color: None,
+            maybe_label_font_size: None,
+        }
+    }
 
-    // Construct the label's Form.
-    let maybe_label_form = maybe_label.map(|label_text| {
-        use elmesque::text::Text;
-        let label_color = style.label_color(theme);
-        let size = style.label_font_size(theme);
-        text(Text::from_string(label_text.to_string()).color(label_color).height(size as f64))
-            .shift(xy[0].floor(), xy[1].floor())
-    });
+    /// Get the Color for an Element.
+    pub fn color(&self, theme: &Theme) -> Color {
+        self.maybe_color.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_color.unwrap_or(theme.shape_color)
+        })).unwrap_or(theme.shape_color)
+    }
 
-    // Construct the button's Form.
-    let form_chain = Some(frame_form).into_iter()
-        .chain(Some(pressable_form).into_iter())
-        .map(|form| form.shift(xy[0], xy[1]))
-        .chain(maybe_label_form.into_iter());
+    /// Get the frame for an Element.
+    pub fn frame(&self, theme: &Theme) -> f64 {
+        self.maybe_frame.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_frame.unwrap_or(theme.frame_width)
+        })).unwrap_or(theme.frame_width)
+    }
 
-    // Turn the form into a renderable Element.
-    collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    /// Get the frame Color for an Element.
+    pub fn frame_color(&self, theme: &Theme) -> Color {
+        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        })).unwrap_or(theme.frame_color)
+    }
+
+    /// Get the label Color for an Element.
+    pub fn label_color(&self, theme: &Theme) -> Color {
+        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_label_color.unwrap_or(theme.label_color)
+        })).unwrap_or(theme.label_color)
+    }
+
+    /// Get the label font size for an Element.
+    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
+        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        })).unwrap_or(theme.font_size_medium)
+    }
 
 }
+
 
 impl<'a, F> Colorable for Button<'a, F> {
     fn color(mut self, color: Color) -> Self {
