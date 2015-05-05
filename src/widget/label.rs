@@ -54,6 +54,8 @@ impl<'a> Label<'a> {
                             .color(color)
                             .height(self.size as f64)).shift(xy[0].floor(), xy[1].floor());
         let element = collage(dim[0] as i32, dim[1] as i32, vec![form]);
+        // Reserve a slot in cache.
+        ui.get_widget_mut(ui_id, ::widget::Kind::NoWidget);
         // Store the label's new state in the Ui.
         ui.update_widget(ui_id, ::widget::Kind::Label, xy, self.depth, Some(element));
     }
