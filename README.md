@@ -25,6 +25,7 @@ Available Widgets
 - Button
 - Drop Down List
 - Envelope Editor
+- Label
 - Number Dialer
 - Slider
 - TextBox
