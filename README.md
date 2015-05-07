@@ -31,6 +31,7 @@ Available Widgets
 - TextBox
 - Toggle
 - XYPad
+- Custom: Conrod also provides a `Widget` trait for designing and implementing custom widgets. All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free add them in a pull request :)
 
 Dependencies
 ------------

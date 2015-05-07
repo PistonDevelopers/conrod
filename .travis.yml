@@ -26,4 +26,4 @@ after_success:
     - cp -R target/doc doc
     - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
     - rm -r doc
-
+    - curl https://raw.githubusercontent.com/PistonDevelopers/docs/gh-pages/travis-doc-upload.sh | sh
