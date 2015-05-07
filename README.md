@@ -54,5 +54,4 @@ And then build and run the examples like this:
 
 ## Dependencies
 
-![dependencies](./Cargo.png)
-
+![dependencies](./assets/images/Cargo.png)
