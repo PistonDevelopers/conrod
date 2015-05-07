@@ -112,3 +112,4 @@ impl position::Sizeable for Matrix {
         Matrix { dim: [w, h], ..self }
     }
 }
+

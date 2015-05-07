@@ -37,6 +37,7 @@ use conrod::{
     Toggle,
     Ui,
     UiId,
+    Widget,
     WidgetMatrix,
     XYPad,
 };
@@ -135,7 +136,7 @@ fn main() {
         .exit_on_esc(true)
         .samples(4)
     );
-    let event_iter = window.events().ups(180).max_fps(60);
+    let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
     let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
@@ -169,7 +170,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     // Label example.
     Label::new("Widget Demonstration")
         .xy(title_x, title_y)
-        .size(32)
+        .font_size(32)
         .color(demo.bg_color.plain_contrast())
         .set(TITLE, ui);
 

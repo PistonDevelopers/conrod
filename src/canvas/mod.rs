@@ -19,7 +19,7 @@ pub struct Canvas {
     /// Padding for the Canvas describes the distance between each edge and its Widget's.
     pub padding: Padding,
     /// Has the Canvas been set since the last time the Ui was drawn?
-    pub set_since_last_drawn: bool,
+    pub has_updated: bool,
 }
 
 impl Canvas {
@@ -31,7 +31,7 @@ impl Canvas {
             element: ::elmesque::element::empty(),
             padding: Padding::none(),
             kind: Kind::NoCanvas,
-            set_since_last_drawn: false,
+            has_updated: false,
         }
     }
 

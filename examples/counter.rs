@@ -3,7 +3,7 @@ extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate piston;
 
-use conrod::{Background, Button, Colorable, Labelable, Sizeable, Theme, Ui};
+use conrod::{Background, Button, color, Colorable, Labelable, Sizeable, Theme, Ui, Widget};
 use glutin_window::GlutinWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
@@ -42,6 +42,7 @@ fn main() {
 
                 // Draw the button and increment count if pressed..
                 Button::new()
+                    .color(color::red())
                     .dimensions(80.0, 80.0)
                     .label(&count.to_string())
                     .react(|| count += 1)

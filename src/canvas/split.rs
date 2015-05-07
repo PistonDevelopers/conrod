@@ -4,7 +4,6 @@ use graphics::math::Scalar;
 use position::{self, Dimensions, Direction, Point};
 use theme::Theme;
 use ui::Ui;
-use widget::Custom as CustomWidget;
 
 use super::{CanvasId, Kind};
 
@@ -227,13 +226,13 @@ impl<'a> Split<'a> {
 
     /// Store the Canvas and it's children within the `Ui`. Each Canvas can be accessed via it's
     /// unique identifier `CanvasId`.
-    pub fn set<C, W>(self, ui: &mut Ui<C, W>) where W: CustomWidget {
+    pub fn set<C>(self, ui: &mut Ui<C>) {
         let dim = [ui.win_w as f64, ui.win_h as f64];
         self.into_ui(dim, [0.0, 0.0], ui);
     }
 
     /// Construct a Canvas from a Split.
-    fn into_ui<C, W>(&self, dim: Dimensions, xy: Point, ui: &mut Ui<C, W>) where W: CustomWidget {
+    fn into_ui<C>(&self, dim: Dimensions, xy: Point, ui: &mut Ui<C>) {
         use elmesque::form::{rect, collage};
         use vecmath::{vec2_add, vec2_sub, vec2_scale};
         let Split { id, ref maybe_splits, ref style, .. } = *self;
