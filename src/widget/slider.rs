@@ -42,9 +42,12 @@ pub struct Style {
 }
 
 /// Represents the state of the Slider widget.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct State {
-    value: f64,
+#[derive(Clone, Debug, PartialEq)]
+pub struct State<T> {
+    value: T,
+    min: T,
+    max: T,
+    maybe_label: Option<String>,
     interaction: Interaction,
 }
 
@@ -57,7 +60,7 @@ pub enum Interaction {
 }
 
 
-impl State {
+impl<T> State<T> {
     /// Return the color associated with the state.
     fn color(&self, color: Color) -> Color {
         match self.interaction {
@@ -113,26 +116,34 @@ impl<'a, T, F> Slider<'a, T, F> {
 impl<'a, T, F> Widget for Slider<'a, T, F>
     where
         F: FnMut(T),
-        T: Float + NumCast + ToPrimitive,
+        T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
 {
-    type State = State;
+    type State = State<T>;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "Slider" }
-    fn init_state(&self) -> State { State { value: 0.0, interaction: Interaction::Normal } }
+    fn init_state(&self) -> State<T> {
+        State {
+            value: self.value,
+            min: self.min,
+            max: self.max,
+            maybe_label: None,
+            interaction: Interaction::Normal,
+        }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the Button.
-    fn update<C>(&mut self,
-                 prev_state: &widget::State<State>,
+    fn update<C>(mut self,
+                 prev_state: &widget::State<State<T>>,
                  style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -189,28 +200,37 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             }, None => (),
         }
 
-        // Construct the new slider state.
-        let new_state = State {
-            value: NumCast::from(new_value).unwrap(),
-            interaction: new_interaction,
+        // A function for constructing a new state.
+        let new_state = || {
+            State {
+                interaction: new_interaction,
+                value: self.value,
+                min: self.min,
+                max: self.max,
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+            }
         };
 
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || state.value != self.value
+            || state.min != self.min || state.max != self.max
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<T>>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::State { state, xy, .. } = *new_state;
-        let dim = self.dim;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
         let frame = style.frame(&ui.theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_color = state.color(style.frame_color(&ui.theme));
@@ -220,13 +240,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let is_horizontal = dim[0] > dim[1];
         let (pad_rel_xy, pad_dim) = if is_horizontal {
             // Horizontal.
-            let value_percentage = percentage(new_value, self.min, self.max);
+            let value_percentage = percentage(new_value, state.min, state.max);
             let w = clamp(value_percentage as f64 * inner_w, 0.0, inner_w);
             let rel_xy = [-(inner_w - w) / 2.0, 0.0];
             (rel_xy, [w, inner_h])
         } else {
             // Vertical.
-            let value_percentage = percentage(new_value, self.min, self.max);
+            let value_percentage = percentage(new_value, state.min, state.max);
             let h = clamp(value_percentage as f64 * inner_h, 0.0, inner_h);
             let rel_xy = [0.0, -(inner_h - h) / 2.0];
             (rel_xy, [inner_w, h])
@@ -241,14 +261,14 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             .shift(pad_rel_xy[0], pad_rel_xy[1]);
 
         // Label Form.
-        let maybe_label_form = self.maybe_label.map(|label_text| {
+        let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
             use label;
             const TEXT_PADDING: f64 = 10.0;
             let label_color = style.label_color(&ui.theme);
             let size = style.label_font_size(&ui.theme);
             let label_w = label::width(ui, size, &label_text);
-            let is_horizontal = self.dim[0] > self.dim[1];
+            let is_horizontal = dim[0] > dim[1];
             let l_pos = if is_horizontal {
                 let x = position::align_left_of(dim[0], label_w) + TEXT_PADDING;
                 [x, 0.0]
@@ -256,7 +276,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 let y = position::align_bottom_of(dim[1], size as f64) + TEXT_PADDING;
                 [0.0, y]
             };
-            text(Text::from_string(label_text.to_string()).color(label_color).height(size as f64))
+            text(Text::from_string(label_text.clone()).color(label_color).height(size as f64))
                 .shift(l_pos[0].floor(), l_pos[1].floor())
                 .shift(xy[0].floor(), xy[1].floor())
         });

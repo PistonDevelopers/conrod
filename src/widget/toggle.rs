@@ -45,10 +45,11 @@ pub enum Interaction {
 }
 
 /// The state of the Toggle.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     value: bool,
     interaction: Interaction,
+    maybe_label: Option<String>,
 }
 
 
@@ -113,26 +114,33 @@ impl<'a, F> Widget for Toggle<'a, F>
     type State = State;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "Toggle" }
-    fn init_state(&self) -> State { State { value: false, interaction: Interaction::Normal } }
+    fn init_state(&self) -> State {
+        State {
+            value: self.value,
+            interaction: Interaction::Normal,
+            maybe_label: None,
+        }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the Toggle.
-    fn update<C>(&mut self,
+    fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  _style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, self.dim, h_align, v_align);
+        let dim = self.dim;
+        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id);
-        let is_over = is_over_rect(xy, mouse.xy, self.dim);
+        let is_over = is_over_rect(xy, mouse.xy, dim);
         let new_interaction = get_new_interaction(is_over, state.interaction, mouse);
 
         // React.
@@ -145,25 +153,36 @@ impl<'a, F> Widget for Toggle<'a, F>
             _ => self.value,
         };
 
-        let new_state = State { value: new_value, interaction: new_interaction };
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // A function for constructing a new Toggle State.
+        let new_state = || {
+            State {
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+                value: new_value,
+                interaction: new_interaction,
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || state.value != self.value
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::State { state, xy, .. } = *new_state;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and pressable forms.
-        let dim = self.dim;
         let frame = style.frame(&ui.theme);
         let frame_color = style.frame_color(&ui.theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
@@ -174,11 +193,11 @@ impl<'a, F> Widget for Toggle<'a, F>
         let pressable_form = rect(inner_w, inner_h).filled(color);
 
         // Construct the label's Form.
-        let maybe_label_form = self.maybe_label.map(|label_text| {
+        let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
             let label_color = style.label_color(&ui.theme);
             let font_size = style.label_font_size(&ui.theme) as f64;
-            text(Text::from_string(label_text.to_string()).color(label_color).height(font_size))
+            text(Text::from_string(label_text.clone()).color(label_color).height(font_size))
                 .shift(xy[0].floor(), xy[1].floor())
         });
 

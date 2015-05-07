@@ -239,88 +239,59 @@ impl<C> Ui<C> {
         }
     }
 
+
     /// Get the state of a widget with the given type and UiId.
     ///
     /// If the widget doesn't already have a position within the Cache, Create and initialise a
-    /// cache position before returning the default initialised state.
+    /// cache position before returning None.
     pub fn get_widget_state<W>(&mut self,
                                ui_id: UiId,
-                               kind: &'static str,
-                               style: &W::Style,
-                               widget: &W) -> widget::PrevState<W>
+                               kind: &'static str) -> Option<widget::PrevState<W>>
         where
             W: Widget,
             W::State: Any + 'static,
             W::Style: Any + 'static,
     {
-        fn init_cache<W>(kind: &'static str, style: &W::Style, widget: &W) -> widget::Cached
-            where
-                W: Widget,
-                W::State: Any + 'static,
-                W::Style: Any + 'static,
-        {
-            let store: widget::Store<W::State, W::Style> = widget::Store {
-                state: W::init_state(&widget),
-                style: style.clone()
-            };
-            widget::Cached::new(kind, store)
-        }
 
         // If the cache is not big enough, extend it.
         if self.widget_cache.len() <= ui_id {
-            let num_to_extend = ui_id - self.widget_cache.len();
-            let init = init_cache(kind, style, widget);
-            let extension = (0..num_to_extend)
-                .map(|_| widget::Cached::empty())
-                .chain(Some(init).into_iter());
+            let num_to_extend = ui_id + 1 - self.widget_cache.len();
+            let extension = (0..num_to_extend).map(|_| widget::Cached::empty());
             self.widget_cache.extend(extension);
         }
 
-        // If the cache is empty, initialise it.
-        if self.widget_cache[ui_id].kind == Widget::unique_kind(&()) {
-            self.widget_cache[ui_id] = init_cache(kind, style, widget);
+        // If the cache is empty, return None.
+        if self.widget_cache[ui_id].kind == "EMPTY" {
+            None
+        }
+
         // Else if the cache is already initialised for a widget of a different kind, warn the user.
-        } else if self.widget_cache[ui_id].kind != kind {
+        else if self.widget_cache[ui_id].kind != kind {
             println!("A widget of a different kind already exists at the given UiId ({:?}).
                       You tried to insert a {:?}, however the existing widget is a {:?}.
                       Check your widgets' `UiId`s for errors.",
                       ui_id, kind, &self.widget_cache[ui_id].kind);
-            self.widget_cache[ui_id] = init_cache(kind, style, widget);
+            None
         }
 
-        let cached_widget = &mut self.widget_cache[ui_id];
-        let xy = cached_widget.xy;
-        let depth = cached_widget.depth;
-        let store: &widget::Store<W::State, W::Style> =
-            cached_widget.state.downcast_ref().unwrap();
-        let state = store.state.clone();
-        let style = store.style.clone();
-        widget::PrevState { state: state, style: style, xy: xy, depth: depth }
+        // Otherwise we've successfully found our state!
+        else {
+            let cached_widget = &mut self.widget_cache[ui_id];
+            if let Some(any_state) = cached_widget.maybe_state.take() {
+                let dim = cached_widget.dim;
+                let xy = cached_widget.xy;
+                let depth = cached_widget.depth;
+                let store: Box<widget::Store<W::State, W::Style>> = any_state.downcast()
+                    .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
+                let store: widget::Store<W::State, W::Style> = *store;
+                let widget::Store { state, style } = store;
+                Some(widget::PrevState { state: state, style: style, dim: dim, xy: xy, depth: depth })
+            } else {
+                None
+            }
+        }
     }
 
-    // /// Return a mutable reference to the widget that matches the given ui_id
-    // pub fn get_widget_mut(&mut self, ui_id: UiId, default: WidgetKind<W>) -> &mut WidgetKind<W> {
-    //     if self.widget_cache.len() > ui_id {
-    //         match &mut self.widget_cache[ui_id].kind {
-    //             &mut WidgetKind::NoWidget => {
-    //                 let mut widget = &mut self.widget_cache[ui_id].kind;
-    //                 *widget = default;
-    //                 widget
-    //             },
-    //             _ => &mut self.widget_cache[ui_id].kind,
-    //         }
-    //     } else {
-    //         if ui_id >= self.widget_cache.len() {
-    //             let num_to_extend = ui_id - self.widget_cache.len();
-    //             self.widget_cache.extend(repeat(Widget::empty())
-    //                 .take(num_to_extend)
-    //                 .chain(Some(Widget::new(default)).into_iter()));
-    //         } else {
-    //             self.widget_cache[ui_id] = Widget::<W>::new(default);
-    //         }
-    //         &mut self.widget_cache[ui_id].kind
-    //     }
-    // }
 
     /// Update the given canvas.
     pub fn update_canvas(&mut self,
@@ -331,7 +302,7 @@ impl<C> Ui<C> {
                          maybe_new_element: Option<Element>) {
         if self.canvas_cache[id].kind.matches(&kind)
         || self.canvas_cache[id].kind.matches(&CanvasKind::NoCanvas) {
-            if self.canvas_cache[id].set_since_last_drawn {
+            if self.canvas_cache[id].has_updated {
                 println!("Warning: The canvas with CanvasId {:?} has already been set within the \
                           `Ui` since the last time that `Ui::draw` was called (you probably don't \
                           want this). Perhaps check that your CanvasIds are correct, that you're \
@@ -345,7 +316,7 @@ impl<C> Ui<C> {
             if let Some(new_element) = maybe_new_element {
                 canvas.element = new_element;
             }
-            canvas.set_since_last_drawn = true;
+            canvas.has_updated = true;
             self.maybe_current_canvas_id = Some(id);
         } else {
             panic!("A canvas of a different kind already exists at the given CanvasId ({:?}).
@@ -355,21 +326,23 @@ impl<C> Ui<C> {
         }
     }
 
+
     /// Update the given widget at the given UiId.
     pub fn update_widget<Sta, Sty>(&mut self,
                                    ui_id: UiId,
                                    kind: &'static str,
                                    store: widget::Store<Sta, Sty>,
+                                   dim: Dimensions,
                                    xy: Point,
                                    depth: Depth,
                                    maybe_new_element: Option<Element>)
         where
-            Sta: Any + Clone + ::std::fmt::Debug + 'static,
-            Sty: Any + Clone + ::std::fmt::Debug + 'static,
+            Sta: Any + ::std::fmt::Debug + 'static,
+            Sty: Any + ::std::fmt::Debug + 'static,
     {
         if self.widget_cache[ui_id].kind == kind
-        || self.widget_cache[ui_id].kind == ().unique_kind() {
-            if self.widget_cache[ui_id].set_since_last_drawn {
+        || self.widget_cache[ui_id].kind == "EMPTY" {
+            if self.widget_cache[ui_id].has_updated {
                 println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
                           since the last time that `Ui::draw` was called (you probably don't want \
                           this). Perhaps check that your UiIds are correct, that you're calling \
@@ -377,18 +350,16 @@ impl<C> Ui<C> {
                           accidentally set the same widget twice.", ui_id);
             }
             let cached_widget = &mut self.widget_cache[ui_id];
-            {
-                let state: &mut widget::Store<Sta, Sty> = cached_widget.state.downcast_mut()
-                    .expect("Mismatched type when casting to Store<W> from Any");
-                *state = store;
-            }
+            let state: Box<Any> = Box::new(store);
+            cached_widget.maybe_state = Some(state);
             cached_widget.kind = kind;
             cached_widget.xy = xy;
+            cached_widget.dim = dim;
             cached_widget.depth = depth;
             if let Some(new_element) = maybe_new_element {
                 cached_widget.element = new_element;
             }
-            cached_widget.set_since_last_drawn = true;
+            cached_widget.has_updated = true;
             self.maybe_prev_ui_id = Some(ui_id);
         } else {
             panic!("A widget of a different kind already exists at the given UiId ({:?}).
@@ -397,6 +368,7 @@ impl<C> Ui<C> {
                     ui_id, &kind, &self.widget_cache[ui_id].kind);
         }
     }
+
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     pub fn get_xy(&self,
@@ -597,11 +569,11 @@ impl<C> Ui<C> {
 
         // Collect references to the widgets so that we can sort them without changing cache order.
         let mut widgets: Vec<_> = widget_cache.iter_mut()
-            .filter(|widget| widget.set_since_last_drawn)
+            .filter(|widget| widget.has_updated)
             .collect();
 
         for widget in widgets.iter_mut() {
-            widget.set_since_last_drawn = false;
+            widget.has_updated = false;
         }
 
         // Check for captured widgets and take them from the Vec (we want to draw them last).
@@ -646,7 +618,7 @@ impl<C> Ui<C> {
             .map(|widget| &widget.element);
 
         // Draw all Canvas Splits.
-        for canvas in canvas_cache.iter().filter(|canvas| canvas.set_since_last_drawn) {
+        for canvas in canvas_cache.iter().filter(|canvas| canvas.has_updated) {
             canvas.element.draw(&mut renderer);
         }
 
@@ -657,7 +629,7 @@ impl<C> Ui<C> {
 
         // Indicate that the canvasses and widgets have now been drawn since the last time it was set.
         for canvas in canvas_cache.iter_mut() {
-            canvas.set_since_last_drawn = false;
+            canvas.has_updated = false;
         }
 
     }

@@ -40,28 +40,37 @@ pub struct Style {
     pub maybe_label_font_size: Option<u32>,
 }
 
-/// Represents the state of the menu.
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum State {
-    Closed(DrawState),
-    Open(DrawState),
+/// Represents the state of the DropDownList.
+#[derive(PartialEq, Clone, Debug)]
+pub struct State {
+    menu_state: MenuState,
+    maybe_label: Option<String>,
+    strings: Vec<String>,
+    maybe_selected: Option<Idx>,
 }
 
-/// Represents the state of the DropDownList widget.
+/// Whether the DropDownList is currently open or closed.
 #[derive(PartialEq, Clone, Copy, Debug)]
-pub enum DrawState {
+pub enum MenuState {
+    Closed(Interaction),
+    Open(Interaction),
+}
+
+/// Describes how the DropDownList is currently being interacted with.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum Interaction {
     Normal,
     Highlighted(Idx, Len),
     Clicked(Idx, Len),
 }
 
 
-impl DrawState {
+impl Interaction {
     fn color(&self, color: Color) -> Color {
         match *self {
-            DrawState::Normal => color,
-            DrawState::Highlighted(_, _) => color.highlighted(),
-            DrawState::Clicked(_, _) => color.clicked(),
+            Interaction::Normal => color,
+            Interaction::Highlighted(_, _) => color.highlighted(),
+            Interaction::Clicked(_, _) => color.clicked(),
         }
     }
 }
@@ -71,15 +80,15 @@ impl DrawState {
 fn is_over(mouse_pos: Point,
            frame_w: f64,
            dim: Dimensions,
-           state: State,
+           menu_state: MenuState,
            len: Len) -> Option<Idx> {
     use utils::is_over_rect;
-    match state {
-        State::Closed(_) => match is_over_rect([0.0, 0.0], mouse_pos, dim) {
+    match menu_state {
+        MenuState::Closed(_) => match is_over_rect([0.0, 0.0], mouse_pos, dim) {
             false => None,
             true => Some(0),
         },
-        State::Open(_) => {
+        MenuState::Open(_) => {
             let item_h = dim[1] - frame_w;
             let total_h = item_h * len as f64;
             let open_centre_y = -(total_h - item_h) / 2.0;
@@ -94,44 +103,44 @@ fn is_over(mouse_pos: Point,
 
 /// Determine and return the new State by comparing the mouse state
 /// and position to the previous State.
-fn get_new_state(is_over_idx: Option<Idx>,
-                 len: Len,
-                 state: State,
-                 mouse: Mouse) -> State {
-    use self::DrawState::{Normal, Clicked, Highlighted};
+fn get_new_menu_state(is_over_idx: Option<Idx>,
+                      len: Len,
+                      menu_state: MenuState,
+                      mouse: Mouse) -> MenuState {
+    use self::Interaction::{Normal, Clicked, Highlighted};
     use mouse::ButtonState::{Down, Up};
-    match state {
-        State::Closed(draw_state) => {
+    match menu_state {
+        MenuState::Closed(draw_state) => {
             match is_over_idx {
                 Some(_) => {
                     match (draw_state, mouse.left) {
-                        (Normal,            Down) => State::Closed(Normal),
+                        (Normal,            Down) => MenuState::Closed(Normal),
                         (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => State::Closed(Highlighted(0, len)),
-                        (Highlighted(_, _), Down) => State::Closed(Clicked(0, len)),
-                        (Clicked(_, _),     Down) => State::Closed(Clicked(0, len)),
-                        (Clicked(_, _),     Up)   => State::Open(Normal),
+                        (Highlighted(_, _), Up)   => MenuState::Closed(Highlighted(0, len)),
+                        (Highlighted(_, _), Down) => MenuState::Closed(Clicked(0, len)),
+                        (Clicked(_, _),     Down) => MenuState::Closed(Clicked(0, len)),
+                        (Clicked(_, _),     Up)   => MenuState::Open(Normal),
                     }
                 },
-                None => State::Closed(Normal),
+                None => MenuState::Closed(Normal),
             }
         },
-        State::Open(draw_state) => {
+        MenuState::Open(draw_state) => {
             match is_over_idx {
                 Some(idx) => {
                     match (draw_state, mouse.left) {
-                        (Normal,            Down) => State::Open(Normal),
+                        (Normal,            Down) => MenuState::Open(Normal),
                         (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => State::Open(Highlighted(idx, len)),
-                        (Highlighted(_, _), Down) => State::Open(Clicked(idx, len)),
-                        (Clicked(p_idx, _), Down) => State::Open(Clicked(p_idx, len)),
-                        (Clicked(_, _),     Up)   => State::Closed(Normal),
+                        (Highlighted(_, _), Up)   => MenuState::Open(Highlighted(idx, len)),
+                        (Highlighted(_, _), Down) => MenuState::Open(Clicked(idx, len)),
+                        (Clicked(p_idx, _), Down) => MenuState::Open(Clicked(p_idx, len)),
+                        (Clicked(_, _),     Up)   => MenuState::Closed(Normal),
                     }
                 },
                 None => {
                     match (draw_state, mouse.left) {
-                        (Highlighted(p_idx, _), Up) => State::Open(Highlighted(p_idx, len)),
-                        _ => State::Closed(Normal),
+                        (Highlighted(p_idx, _), Up) => MenuState::Open(Highlighted(p_idx, len)),
+                        _ => MenuState::Closed(Normal),
                     }
                 },
             }
@@ -174,66 +183,91 @@ impl<'a, F> Widget for DropDownList<'a, F>
     type State = State;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "DropDownList" }
-    fn init_state(&self) -> State { State::Closed(DrawState::Normal) }
+    fn init_state(&self) -> State {
+        State {
+            menu_state: MenuState::Closed(Interaction::Normal),
+            strings: Vec::new(),
+            maybe_label: None,
+            maybe_selected: None,
+        }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the DropDownList.
-    fn update<C>(&mut self,
+    fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let frame = style.frame(&ui.theme);
-        let is_over_idx = is_over(mouse.xy, frame, dim, state, self.strings.len());
-        let new_state = get_new_state(is_over_idx, self.strings.len(), state, mouse);
-        let selected = self.selected.and_then(|idx| if idx < self.strings.len() { Some(idx) }
+        let num_strings = self.strings.len();
+        let is_over_idx = is_over(mouse.xy, frame, dim, state.menu_state, num_strings);
+        let new_menu_state = get_new_menu_state(is_over_idx, num_strings, state.menu_state, mouse);
+        let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
                                                     else { None });
 
         // Check whether or not we need to capture or uncapture the mouse.
         // We need to capture the cursor if the DropDownList has just been opened.
         // We need to uncapture the cursor if the DropDownList has just been closed.
-        match (state, new_state) {
-            (State::Closed(_), State::Open(_)) => ui.mouse_captured_by(ui_id),
-            (State::Open(_), State::Closed(_)) => ui.mouse_uncaptured_by(ui_id),
+        match (state.menu_state, new_menu_state) {
+            (MenuState::Closed(_), MenuState::Open(_)) => ui.mouse_captured_by(ui_id),
+            (MenuState::Open(_), MenuState::Closed(_)) => ui.mouse_uncaptured_by(ui_id),
             _ => (),
         }
 
         // Call the `react` closure if mouse was released on one of the DropDownList items.
         if let Some(ref mut react) = self.maybe_react {
-            if let (State::Open(o_d_state), State::Closed(c_d_state)) = (state, new_state) {
-                if let (DrawState::Clicked(idx, _), DrawState::Normal) = (o_d_state, c_d_state) {
+            if let (MenuState::Open(o_d_state), MenuState::Closed(c_d_state)) =
+                (state.menu_state, new_menu_state) {
+                if let (Interaction::Clicked(idx, _), Interaction::Normal) = (o_d_state, c_d_state) {
                     *self.selected = selected;
                     react(self.selected, idx, self.strings[idx].clone())
                 }
             }
         }
 
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // Function for constructing a new DropDownList State.
+        let construct_new_state = || {
+            State {
+                menu_state: new_menu_state,
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+                strings: self.strings.clone(),
+                maybe_selected: *self.selected,
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.menu_state != new_menu_state
+            || &state.strings[..] != &(*self.strings)[..]
+            || state.maybe_selected != *self.selected
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
+                              else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, xy, .. } = *new_state;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
         let theme = &ui.theme;
 
         // Retrieve the styling for the Element..
@@ -242,20 +276,19 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let frame_color = style.frame_color(theme);
         let label_color = style.label_color(theme);
         let font_size = style.label_font_size(theme);
-        let dim = self.dim;
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
 
         // Construct the DropDownList's Element.
-        match *state {
+        match state.menu_state {
 
-            State::Closed(draw_state) => {
-                let string = match *self.selected {
-                    Some(idx) => &(*self.strings)[idx][..],
-                    None => match self.maybe_label {
-                        Some(text) => text,
-                        None => &(*self.strings)[0][..],
+            MenuState::Closed(draw_state) => {
+                let string = match state.maybe_selected {
+                    Some(idx) => state.strings[idx].clone(),
+                    None => match state.maybe_label {
+                        Some(ref label) => label.clone(),
+                        None => state.strings[0].clone(),
                     },
-                }.to_string();
+                };
                 let frame_form = rect(dim[0], dim[1]).filled(frame_color);
                 let inner_form = rect(pad_dim[0], pad_dim[1]).filled(draw_state.color(color));
                 let text_form = text(Text::from_string(string)
@@ -272,17 +305,17 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
             },
 
-            State::Open(draw_state) => {
+            MenuState::Open(draw_state) => {
                 // Chain and shift the Forms into position.
-                let form_chain = self.strings.iter().enumerate().flat_map(|(i, string)| {
-                    let color = match *self.selected {
+                let form_chain = state.strings.iter().enumerate().flat_map(|(i, string)| {
+                    let color = match state.maybe_selected {
                         None => match draw_state {
-                            DrawState::Normal => color,
-                            DrawState::Highlighted(idx, _) => {
+                            Interaction::Normal => color,
+                            Interaction::Highlighted(idx, _) => {
                                 if i == idx { color.highlighted() }
                                 else { color }
                             },
-                            DrawState::Clicked(idx, _) => {
+                            Interaction::Clicked(idx, _) => {
                                 if i == idx { color.clicked() }
                                 else { color }
                             },
@@ -291,12 +324,12 @@ impl<'a, F> Widget for DropDownList<'a, F>
                             if sel_idx == i { color.clicked() }
                             else {
                                 match draw_state {
-                                    DrawState::Normal => color,
-                                    DrawState::Highlighted(idx, _) => {
+                                    Interaction::Normal => color,
+                                    Interaction::Highlighted(idx, _) => {
                                         if i == idx { color.highlighted() }
                                         else { color }
                                     },
-                                    DrawState::Clicked(idx, _) => {
+                                    Interaction::Clicked(idx, _) => {
                                         if i == idx { color.clicked() }
                                         else { color }
                                     },

@@ -27,6 +27,10 @@ pub struct Style {
     maybe_color: Option<Color>,
 }
 
+/// The state to be stored between updates for the Label.
+#[derive(Clone, Debug, PartialEq)]
+pub struct State(String);
+
 
 impl<'a> Label<'a> {
 
@@ -53,45 +57,43 @@ impl<'a> Label<'a> {
 
 
 impl<'a> Widget for Label<'a> {
-    type State = ();
+    type State = State;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "Label" }
-    fn init_state(&self) -> () { () }
+    fn init_state(&self) -> State { State(String::new()) }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the Label.
-    fn update<C>(&mut self,
-                 _prev_state: &widget::State<()>,
+    fn update<C>(self,
+                 prev_state: &widget::State<State>,
                  style: &Style,
                  _ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<()>
+                 ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
+        let widget::State { state: State(ref string), .. } = *prev_state;
         let size = style.font_size(&ui.theme);
         let dim = [label::width(ui, size, self.text), size as f64];
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        widget::State { state: (), xy: xy, depth: self.depth }
+        let maybe_new_state = if &string[..] != self.text { Some(State(self.text.to_string())) }
+                              else { None };
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element for the Label.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<()>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
-        let widget::State { xy, .. } = *new_state;
+        let widget::State { state: State(ref string), dim, xy, .. } = *new_state;
         let size = style.font_size(&ui.theme);
-        let dim = [label::width(ui, size, self.text), size as f64];
         let color = style.color(&ui.theme);
-        let form = text(Text::from_string(self.text.to_string())
+        let form = text(Text::from_string(string.clone())
                             .color(color)
                             .height(size as f64)).shift(xy[0].floor(), xy[1].floor());
         collage(dim[0] as i32, dim[1] as i32, vec![form])

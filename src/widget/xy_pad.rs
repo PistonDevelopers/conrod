@@ -5,7 +5,7 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{self, FontSize, Labelable};
 use mouse::Mouse;
-use num::{Float, NumCast};
+use num::Float;
 use position::{self, Corner, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
 use std::default::Default;
 use theme::Theme;
@@ -44,10 +44,11 @@ pub struct Style {
 }
 
 /// The state of the XYPad.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct State<X, Y> {
-    x: X,
-    y: Y,
+    x: X, min_x: X, max_x: X,
+    y: Y, min_y: Y, max_y: Y,
+    maybe_label: Option<String>,
     interaction: Interaction,
 }
 
@@ -132,8 +133,8 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     where
-        X: Float + NumCast + ToString + Default + ::std::fmt::Debug + ::std::any::Any,
-        Y: Float + NumCast + ToString + Default + ::std::fmt::Debug + ::std::any::Any,
+        X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+        Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
         F: FnMut(X, Y),
 {
     type State = State<X, Y>;
@@ -141,25 +142,26 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn unique_kind(&self) -> &'static str { "XYPad" }
     fn init_state(&self) -> State<X, Y> {
         State {
-            x: Default::default(),
-            y: Default::default(),
             interaction: Interaction::Normal,
+            x: self.x, min_x: self.min_x, max_x: self.max_x,
+            y: self.y, min_y: self.min_y, max_y: self.max_y,
+            maybe_label: None,
         }
     }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the XYPad's cached state.
-    fn update<C>(&mut self,
+    fn update<C>(mut self,
                  prev_state: &widget::State<State<X, Y>>,
                  style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State<X, Y>>
+                 ui: &mut Ui<C>) -> widget::State<Option<State<X, Y>>>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -195,25 +197,38 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             }
         }
 
-        let new_state = State { x: new_x, y: new_y, interaction: new_interaction };
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // Function for constructing a new State.
+        let new_state = || {
+            State {
+                interaction: new_interaction,
+                x: self.x, min_x: self.min_x, max_x: self.max_x,
+                y: self.y, min_y: self.min_y, max_y: self.max_y,
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || state.x != self.x || state.min_x != self.min_x || state.max_x != self.max_x
+            || state.y != self.y || state.min_y != self.min_y || state.max_y != self.max_y
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
 
     }
 
     /// Construct an Element from the given XYPad State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State<X, Y>>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<X, Y>>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::State { state, xy, .. } = *new_state;
-        let dim = self.dim;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
         let frame = style.frame(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
@@ -225,23 +240,23 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
 
         // Construct the label Form.
-        let maybe_label_form = self.maybe_label.map(|l_text| {
+        let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
             let l_color = style.label_color(&ui.theme);
             let l_size = style.label_font_size(&ui.theme) as f64;
-            text(Text::from_string(l_text.to_string()).color(l_color).height(l_size))
+            text(Text::from_string(l_text.clone()).color(l_color).height(l_size))
         });
 
         // Construct the crosshair line Forms.
-        let ch_x = map_range(state.x, self.min_x, self.max_x, -half_pad_w, half_pad_w).floor();
-        let ch_y = map_range(state.y, self.min_y, self.max_y, -half_pad_h, half_pad_h).floor();
+        let ch_x = map_range(state.x, state.min_x, state.max_x, -half_pad_w, half_pad_w).floor();
+        let ch_y = map_range(state.y, state.min_y, state.max_y, -half_pad_h, half_pad_h).floor();
         let line_width = style.line_width(&ui.theme);
         let line_style = solid(color.plain_contrast()).width(line_width);
         let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
         let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
 
         // Construct the value string Form.
-        let x_string = val_to_string(state.x, self.max_x, self.max_x - self.min_x, dim[0] as usize);
-        let y_string = val_to_string(state.y, self.max_y, self.max_y - self.min_y, dim[1] as usize);
+        let x_string = val_to_string(state.x, state.max_x, state.max_x - state.min_x, dim[0] as usize);
+        let y_string = val_to_string(state.y, state.max_y, state.max_y - state.min_y, dim[1] as usize);
         let value_string = format!("{}, {}", x_string, y_string);
         let value_text_form = {
             const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.

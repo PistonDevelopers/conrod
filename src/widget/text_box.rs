@@ -1,5 +1,4 @@
 
-use clock_ticks::precise_time_s;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -43,10 +42,17 @@ pub struct Style {
     pub maybe_font_size: Option<u32>,
 }
 
+/// The State of the TextBox widget that will be cached within the Ui.
+#[derive(Clone, Debug, PartialEq)]
+pub struct State {
+    interaction: Interaction,
+    text: String,
+}
+
 /// Represents the state of the text_box widget.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum State {
-    Capturing(View),
+pub enum Interaction {
+    Captured(View),
     Uncaptured(Uncaptured),
 }
 
@@ -87,12 +93,12 @@ pub enum Elem {
 }
 
 
-impl State {
+impl Interaction {
     /// Return the color associated with the current state.
     fn color(&self, color: Color) -> Color {
         match *self {
-            State::Capturing(_) => color,
-            State::Uncaptured(state) => match state {
+            Interaction::Captured(_) => color,
+            Interaction::Uncaptured(state) => match state {
                 Uncaptured::Highlighted => color.highlighted(),
                 Uncaptured::Normal => color,
             }
@@ -216,24 +222,24 @@ fn closest_idx<C: CharacterCache>(ui: &mut Ui<C>,
 }
 
 /// Check and return the current state of the TextBox.
-fn get_new_state(over_elem: Elem, prev_state: State, mouse: Mouse) -> State {
-    use mouse::ButtonState::{ Down, Up };
-    use self::State::{ Capturing, Uncaptured };
-    use self::Uncaptured::{ Normal, Highlighted };
+fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
+    use mouse::ButtonState::{Down, Up};
+    use self::Interaction::{Captured, Uncaptured};
+    use self::Uncaptured::{Normal, Highlighted};
 
-    match prev_state {
-        State::Capturing(mut prev) => match mouse.left {
+    match prev_interaction {
+        Interaction::Captured(mut prev) => match mouse.left {
             Down => match over_elem {
                 Elem::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
                 } else {
-                    prev_state
+                    prev_interaction
                 },
                 Elem::Rect =>  if prev.cursor.anchor == Anchor::None {
                     prev.cursor = Cursor::from_index(0);
-                    Capturing(prev)
+                    Captured(prev)
                 } else {
-                    prev_state
+                    prev_interaction
                 },
                 Elem::Char(idx) => {
                     match prev.cursor.anchor {
@@ -241,28 +247,28 @@ fn get_new_state(over_elem: Elem, prev_state: State, mouse: Mouse) -> State {
                         Anchor::Start => prev.cursor = Cursor::from_range(prev.cursor.start, idx),
                         Anchor::End   => prev.cursor = Cursor::from_range(prev.cursor.end, idx),
                     }
-                    Capturing(prev)
+                    Captured(prev)
                 },
             },
             Up => {
                 prev.cursor.anchor = Anchor::None;
-                Capturing(prev)
+                Captured(prev)
             },
         },
 
-        State::Uncaptured(prev) => match mouse.left {
+        Interaction::Uncaptured(prev) => match mouse.left {
             Down => match over_elem {
                 Elem::Nill => Uncaptured(Normal),
                 Elem::Rect => match prev {
-                    Normal => prev_state,
-                    Highlighted => Capturing(View {
+                    Normal => prev_interaction,
+                    Highlighted => Captured(View {
                          cursor: Cursor::from_index(0),
                          offset: 0.0,
                     })
                 },
                 Elem::Char(idx) =>  match prev {
-                    Normal => prev_state,
-                    Highlighted => Capturing(View {
+                    Normal => prev_interaction,
+                    Highlighted => Captured(View {
                         cursor: Cursor::from_index(idx),
                         offset: 0.0,
                     })
@@ -272,7 +278,7 @@ fn get_new_state(over_elem: Elem, prev_state: State, mouse: Mouse) -> State {
                 Elem::Nill => Uncaptured(Normal),
                 Elem::Char(_) | Elem::Rect => match prev {
                     Normal => Uncaptured(Highlighted),
-                    Highlighted => prev_state,
+                    Highlighted => prev_interaction,
                 },
             },
         },
@@ -318,20 +324,25 @@ impl<'a, F> Widget for TextBox<'a, F>
     type State = State;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "TextBox" }
-    fn init_state(&self) -> State { State::Uncaptured(Uncaptured::Normal) }
+    fn init_state(&self) -> State {
+        State {
+            interaction: Interaction::Uncaptured(Uncaptured::Normal),
+            text: String::new(),
+        }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the TextBox.
-    fn update<C>(&mut self,
+    fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -344,10 +355,10 @@ impl<'a, F> Widget for TextBox<'a, F>
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x, text_w, font_size, &self.text);
-        let mut new_state = get_new_state(over_elem, state, mouse);
+        let mut new_interaction = get_new_interaction(over_elem, state.interaction, mouse);
 
-        // Check cursor validity (and update new_state if necessary).
-        if let State::Capturing(view) = new_state {
+        // Check cursor validity (and update new_interaction if necessary).
+        if let Interaction::Captured(view) = new_interaction {
             let mut cursor = view.cursor;
             let mut v_offset = view.offset;
 
@@ -373,11 +384,11 @@ impl<'a, F> Widget for TextBox<'a, F>
             }
 
             // Set the updated state.
-            new_state = State::Capturing(View { cursor: cursor, offset: v_offset });
+            new_interaction = Interaction::Captured(View { cursor: cursor, offset: v_offset });
         }
 
         // If TextBox is captured, check for recent input and update the text accordingly.
-        if let State::Capturing(captured) = new_state {
+        if let Interaction::Captured(captured) = new_interaction {
             let mut cursor = captured.cursor;
 
             // Check for entered text.
@@ -418,7 +429,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                         cursor.shift(1);
                     },
                     Return => if self.text.len() > 0 {
-                        let TextBox { ref mut maybe_react, ref mut text, .. } = *self;
+                        let TextBox { ref mut maybe_react, ref mut text, .. } = self;
                         if let Some(ref mut react) = *maybe_react {
                             react(*text);
                         }
@@ -427,48 +438,60 @@ impl<'a, F> Widget for TextBox<'a, F>
                 }
             }
 
-            new_state = State::Capturing(View { cursor: cursor, .. captured });
+            new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
         }
 
         // Check whether or not we need to capture or uncapture the keyboard.
-        match (state, new_state) {
-            (State::Uncaptured(_), State::Capturing(_)) => ui.keyboard_captured_by(ui_id),
-            (State::Capturing(_), State::Uncaptured(_)) => ui.keyboard_uncaptured_by(ui_id),
+        match (state.interaction, new_interaction) {
+            (Interaction::Uncaptured(_), Interaction::Captured(_)) =>
+                ui.keyboard_captured_by(ui_id),
+            (Interaction::Captured(_), Interaction::Uncaptured(_)) =>
+                ui.keyboard_uncaptured_by(ui_id),
             _ => (),
         }
 
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // Function for constructing a new state.
+        let new_state = || {
+            State {
+                interaction: new_interaction,
+                text: self.text.clone(),
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || &state.text[..] != &self.text[..];
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
 
     /// Construct an Element from the given TextBox State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::State { state, xy, .. } = *new_state;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and inner rectangle Forms.
-        let dim = self.dim;
         let frame = style.frame(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let color = state.color(style.color(&ui.theme));
+        let color = state.interaction.color(style.color(&ui.theme));
         let frame_color = style.frame_color(&ui.theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
         let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
         let font_size = style.font_size(&ui.theme);
-        let text_w = label::width(ui, font_size, &self.text);
+        let text_w = label::width(ui, font_size, &state.text[..]);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
 
-        let (maybe_cursor_form, text_form) = if let State::Capturing(view) = state {
+        let (maybe_cursor_form, text_form) = if let Interaction::Captured(view) = state.interaction {
             // Construct the Cursor's Form.
             let cursor = view.cursor;
 
@@ -477,19 +500,18 @@ impl<'a, F> Widget for TextBox<'a, F>
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &self.text);
+            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &state.text);
 
-            let cursor_alpha = (precise_time_s() * 2.5).sin() as f32 * 0.5 + 0.5;
             let cursor_form = if cursor.is_cursor() {
                 let half_pad_h = pad_dim[1] / 2.0;
                 line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
-                    .alpha(cursor_alpha)
+                    .alpha(0.75)
                     .shift_x(cursor_x)
             } else {
                 let (block_xy, dim) = {
                     let (start, end) = (cursor.start, cursor.end);
-                    let cursor_x = cursor_position(ui, start, text_start_x, font_size, &self.text);
-                    let htext: String = self.text.chars().skip(start).take(end - start).collect();
+                    let cursor_x = cursor_position(ui, start, text_start_x, font_size, &state.text);
+                    let htext: String = state.text.chars().skip(start).take(end - start).collect();
                     let htext_w = label::width(ui, font_size, &htext);
                     ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
                 };
@@ -498,7 +520,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             };
 
             // Construct the text's Form.
-            let text_form = text(Text::from_string(self.text.clone())
+            let text_form = text(Text::from_string(state.text.clone())
                                      .color(color.plain_contrast())
                                      .height(font_size as f64)).shift_x(text_x.floor());
 
@@ -506,7 +528,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         } else {
 
             // Construct the text's Form.
-            let text_form = text(Text::from_string(self.text.clone())
+            let text_form = text(Text::from_string(state.text.clone())
                                      .color(color.plain_contrast())
                                      .height(font_size as f64)).shift_x(text_x.floor());
             (None, text_form)

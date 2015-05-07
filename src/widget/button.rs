@@ -34,8 +34,15 @@ pub struct Style {
 }
 
 /// Represents the state of the Button widget.
+#[derive(Clone, Debug, PartialEq)]
+pub struct State {
+    maybe_label: Option<String>,
+    interaction: Interaction,
+}
+
+/// Represents an interaction with the Button widget.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum State {
+pub enum Interaction {
     Normal,
     Highlighted,
     Clicked,
@@ -45,19 +52,19 @@ pub enum State {
 impl State {
     /// Alter the widget color depending on the state.
     fn color(&self, color: Color) -> Color {
-        match *self {
-            State::Normal => color,
-            State::Highlighted => color.highlighted(),
-            State::Clicked => color.clicked(),
+        match self.interaction {
+            Interaction::Normal => color,
+            Interaction::Highlighted => color.highlighted(),
+            Interaction::Clicked => color.clicked(),
         }
     }
 }
 
 
 /// Check the current state of the button.
-fn get_new_state(is_over: bool, prev: State, mouse: Mouse) -> State {
+fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonState::{Down, Up};
-    use self::State::{Normal, Highlighted, Clicked};
+    use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left) {
         (true,  Normal,  Down) => Normal,
         (true,  _,       Down) => Clicked,
@@ -100,48 +107,62 @@ impl<'a, F> Widget for Button<'a, F>
     type State = State;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "Button" }
-    fn init_state(&self) -> State { State::Normal }
+    fn init_state(&self) -> State {
+        State { maybe_label: None, interaction: Interaction::Normal }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the Button.
-    fn update<C>(&mut self,
+    fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  _style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_state = get_new_state(is_over, state, mouse);
-        // React.
-        if let (true, State::Clicked, State::Highlighted) = (is_over, state, new_state) {
+        let new_interaction = get_new_interaction(is_over, state.interaction, mouse);
+
+        // If the mouse was released over button, react.
+        if let (true, Interaction::Clicked, Interaction::Highlighted) =
+            (is_over, state.interaction, new_interaction) {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+
+        // A function for constructing a new state.
+        let new_state = || {
+            State {
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+                interaction: new_interaction,
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
-        let widget::State { ref state, xy, .. } = *new_state;
-        let dim = self.dim;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
         let theme = &ui.theme;
-        let maybe_label = self.maybe_label.take();
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));
@@ -154,7 +175,7 @@ impl<'a, F> Widget for Button<'a, F>
         let pressable_form = rect(inner_w, inner_h).filled(color);
 
         // Construct the label's Form.
-        let maybe_label_form = maybe_label.map(|label_text| {
+        let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
             let label_color = style.label_color(theme);
             let size = style.label_font_size(theme);

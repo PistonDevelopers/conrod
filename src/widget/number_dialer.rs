@@ -7,6 +7,7 @@ use label::{self, FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast};
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use theme::Theme;
@@ -54,7 +55,7 @@ pub enum Elem {
 }
 
 /// The current interaction with the NumberDialer.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Interaction {
     Normal,
     Highlighted(Elem),
@@ -62,9 +63,13 @@ pub enum Interaction {
 }
 
 /// The state of the NumberDialer.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
-pub struct State {
-    value: f64,
+#[derive(Clone, Debug, PartialEq)]
+pub struct State<T> {
+    value: T,
+    min: T,
+    max: T,
+    precision: u8,
+    maybe_label: Option<String>,
     interaction: Interaction,
 }
 
@@ -208,25 +213,34 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
 impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     where
         F: FnMut(T),
-        T: Float + NumCast + ToString,
+        T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
-    type State = State;
+    type State = State<T>;
     type Style = Style;
     fn unique_kind(&self) -> &'static str { "NumberDialer" }
-    fn init_state(&self) -> State { State { value: 0.0, interaction: Interaction::Normal } }
+    fn init_state(&self) -> State<T> {
+        State {
+            value: self.value,
+            min: self.min,
+            max: self.max,
+            precision: self.precision,
+            maybe_label: None,
+            interaction: Interaction::Normal,
+        }
+    }
     fn style(&self) -> Style { self.style.clone() }
 
     /// Update the state of the Button.
-    fn update<C>(&mut self,
-                 prev_state: &widget::State<State>,
+    fn update<C>(mut self,
+                 prev_state: &widget::State<State<T>>,
                  style: &Style,
                  ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<State>
+                 ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
     {
 
-        let widget::State { state, .. } = *prev_state;
+        let widget::State { ref state, .. } = *prev_state;
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -288,14 +302,9 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             }
         };
 
-        let new_state = State {
-            value: NumCast::from(new_val).unwrap(),
-            interaction: new_interaction,
-        };
-
         // Call the `react` with the new value if the mouse is pressed/released on the widget
         // or if the value has changed.
-        if self.value != new_val || match (state.interaction, new_state.interaction) {
+        if self.value != new_val || match (state.interaction, new_interaction) {
             (Interaction::Highlighted(_), Interaction::Clicked(_)) |
             (Interaction::Clicked(_), Interaction::Highlighted(_)) => true,
             _ => false,
@@ -303,38 +312,57 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             if let Some(ref mut react) = self.maybe_react { react(new_val) }
         }
 
-        widget::State { state: new_state, xy: xy, depth: self.depth }
+        // A function for constructing a new State.
+        let construct_new_state = || {
+            State {
+                value: new_val,
+                min: self.min,
+                max: self.max,
+                precision: self.precision,
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+                interaction: new_interaction,
+            }
+        };
+
+        // Check whether or not the state has changed since the previous update.
+        let state_has_changed = state.interaction != new_interaction
+            || state.value != new_val
+            || state.min != self.min || state.max != self.max
+            || state.precision != self.precision
+            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+
+        // Construct the new state if there was a change.
+        let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
+                              else { None };
+
+        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(&mut self,
-               new_state: &widget::State<State>,
-               style: &Style,
-               _ui_id: UiId,
-               ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<T>>, style: &Style, ui: &mut Ui<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { state, xy, .. } = *new_state;
+        let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and inner rectangle Forms.
         let frame = style.frame(&ui.theme);
-        let dim = self.dim;
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let frame_color = style.frame_color(&ui.theme);
         let color = style.color(&ui.theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
         let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-        let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0 }
-                                                          else { 1 + self.precision as usize };
-        let label_string = self.maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
+        let val_string_len = state.max.to_string().len() + if state.precision == 0 { 0 }
+                                                          else { 1 + state.precision as usize };
+        let label_string = state.maybe_label.as_ref()
+            .map_or_else(|| String::new(), |text| format!("{}: ", text));
         let font_size = style.label_font_size(&ui.theme);
 
         // If the value has changed, create a new string for val_string.
-        let val_string = create_val_string(state.value, val_string_len, self.precision);
+        let val_string = create_val_string(state.value, val_string_len, state.precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
         let label_x = -val_string_dim[0] / 2.0;
         let label_dim = [label::width(ui, font_size, &label_string), font_size as f64];
