@@ -115,14 +115,10 @@ pub trait Widget: Sized {
                current_style: &Self::Style,
                ui: &mut Ui<C>) -> Element
         where C: CharacterCache;
-}
 
-/// To be implemented by all traits that have an input that should be toggleable.
-pub trait Toggleable {
     /// If true, allows inputs.  If false, disallows inputs.
     fn enabled(mut self, flag: bool) -> Self;
 }
-
 
 /// Represents the unique cached state of a widget.
 #[derive(PartialEq)]

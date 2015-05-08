@@ -16,7 +16,7 @@ use theme::Theme;
 use ui::{UiId, Ui};
 use utils::{clamp, map_range, percentage, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
@@ -307,15 +307,6 @@ fn get_x_bounds(envelope_perc: &[(f32, f32, f32)], idx: usize) -> (f32, f32) {
         envelope_perc[idx - 1].0 // X value of point on left.
     } else { 0.0 };
     (left_bound, right_bound)
-}
-impl<'a, E, F> Toggleable for EnvelopeEditor<'a, E, F> 
-    where 
-        E: EnvelopePoint
-{
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
 }
 
 impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
@@ -659,6 +650,11 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         // Turn the form into a renderable element.
         collage(dim[0] as i32, dim[1] as i32, forms)
 
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

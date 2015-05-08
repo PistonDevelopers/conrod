@@ -10,7 +10,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign
 use theme::Theme;
 use ui::{UiId, Ui};
 use utils::{clamp, percentage, value_from_perc};
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// Linear value selection. If the slider's width is greater than it's height, it will
@@ -113,13 +113,6 @@ impl<'a, T, F> Slider<'a, T, F> {
     }
 
 }
-impl<'a, T, F> Toggleable for Slider<'a, T, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
-}
-
 
 impl<'a, T, F> Widget for Slider<'a, T, F>
     where
@@ -303,6 +296,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
         // Collect the Forms into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

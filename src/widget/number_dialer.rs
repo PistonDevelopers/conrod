@@ -13,7 +13,7 @@ use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
 use ui::{UiId, Ui};
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
@@ -209,12 +209,6 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
         self
     }
 
-}
-impl<'a, T, F> Toggleable for NumberDialer<'a, T, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
 }
 
 impl<'a, T, F> Widget for NumberDialer<'a, T, F>
@@ -432,6 +426,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         // Collect the Forms into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
 
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

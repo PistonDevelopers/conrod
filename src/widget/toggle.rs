@@ -8,7 +8,7 @@ use mouse::Mouse;
 use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
@@ -106,13 +106,6 @@ impl<'a, F> Toggle<'a, F> {
         self
     }
 
-}
-
-impl<'a, F> Toggleable for Toggle<'a, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
 }
 
 impl<'a, F> Widget for Toggle<'a, F>
@@ -223,6 +216,11 @@ impl<'a, F> Widget for Toggle<'a, F>
 
         // Collect the Forms into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

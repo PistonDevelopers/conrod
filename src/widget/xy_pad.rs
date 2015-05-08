@@ -12,7 +12,7 @@ use theme::Theme;
 use ui::{UiId, Ui};
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -130,12 +130,6 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
-}
-impl<'a, X, Y, F> Toggleable for XYPad<'a, X, Y, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
@@ -299,6 +293,11 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         // Turn the form into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

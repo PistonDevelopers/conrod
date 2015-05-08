@@ -8,7 +8,7 @@ use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -100,12 +100,7 @@ impl<'a, F> Button<'a, F> {
     }
 
 }
-impl<'a, F> Toggleable for Button<'a, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
-}
+
 
 impl<'a, F> Widget for Button<'a, F>
     where
@@ -204,6 +199,10 @@ impl<'a, F> Widget for Button<'a, F>
 
         // Turn the form into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

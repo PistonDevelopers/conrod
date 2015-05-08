@@ -98,6 +98,11 @@ impl<'a> Widget for Label<'a> {
                             .height(size as f64)).shift(xy[0].floor(), xy[1].floor());
         collage(dim[0] as i32, dim[1] as i32, vec![form])
     }
+    
+    fn enabled(mut self, flag: bool) -> Self {
+        //No way to disable inputs, as it doesn't get inputs anyway.
+        self
+    }
 }
 
 

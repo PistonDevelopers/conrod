@@ -8,7 +8,7 @@ use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 /// Tuple / React params.
@@ -148,13 +148,6 @@ fn get_new_menu_state(is_over_idx: Option<Idx>,
         }
     }
 }
-impl<'a, F> Toggleable for DropDownList<'a, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
-}
-
 
 impl<'a, F> DropDownList<'a, F> {
 
@@ -367,6 +360,11 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         }
 
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }

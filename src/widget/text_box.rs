@@ -11,7 +11,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Vertic
 use theme::Theme;
 use ui::{UiId, Ui};
 use vecmath::vec2_sub;
-use widget::{self, Widget, Toggleable};
+use widget::{self, Widget};
 
 
 pub type Idx = usize;
@@ -318,13 +318,6 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Toggleable for TextBox<'a, F> {
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
-    }
-}
-
 impl<'a, F> Widget for TextBox<'a, F>
     where
         F: FnMut(&mut String)
@@ -557,6 +550,11 @@ impl<'a, F> Widget for TextBox<'a, F>
 
         // Collect the Forms into a renderable `Element`.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    }
+
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
     }
 
 }
