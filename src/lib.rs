@@ -31,6 +31,7 @@ pub use widget::slider::Slider;
 pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
+pub use widget::Toggleable;
 
 pub use background::Background;
 pub use canvas::{Canvas, CanvasId};

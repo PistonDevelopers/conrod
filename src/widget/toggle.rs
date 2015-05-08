@@ -109,8 +109,9 @@ impl<'a, F> Toggle<'a, F> {
 }
 
 impl<'a, F> Toggleable for Toggle<'a, F> {
-    fn enabled(&mut self, flag: bool) {
+    fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
     }
 }
 

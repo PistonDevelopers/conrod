@@ -319,8 +319,9 @@ impl<'a, F> TextBox<'a, F> {
 }
 
 impl<'a, F> Toggleable for TextBox<'a, F> {
-    fn enabled(&mut self, flag: bool) {
+    fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
     }
 }
 

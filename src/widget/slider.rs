@@ -114,8 +114,9 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 }
 impl<'a, T, F> Toggleable for Slider<'a, T, F> {
-    fn enabled(&mut self, flag: bool) {
+    fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
     }
 }
 

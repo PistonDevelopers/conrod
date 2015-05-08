@@ -120,7 +120,7 @@ pub trait Widget: Sized {
 /// To be implemented by all traits that have an input that should be toggleable.
 pub trait Toggleable {
     /// If true, allows inputs.  If false, disallows inputs.
-    fn enabled(&mut self, flag: bool);
+    fn enabled(mut self, flag: bool) -> Self;
 }
 
 
