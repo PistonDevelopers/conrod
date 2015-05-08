@@ -13,7 +13,7 @@ use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
 use ui::{UiId, Ui};
-use widget::{self, Widget};
+use widget::{self, Widget, Toggleable};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
@@ -31,6 +31,7 @@ pub struct NumberDialer<'a, T, F> {
     precision: u8,
     maybe_react: Option<F>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
@@ -197,6 +198,7 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             maybe_label: None,
             maybe_react: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -208,7 +210,12 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     }
 
 }
-
+impl<'a, T, F> Toggleable for NumberDialer<'a, T, F> {
+    fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
+}
 
 impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     where
@@ -257,7 +264,12 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
         let label_x = -val_string_dim[0] / 2.0;
         let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_x, label_dim, val_string_dim, val_string_len);
-        let new_interaction = get_new_interaction(is_over_elem, state.interaction, mouse);
+        let new_interaction = 
+            if self.enabled {
+                get_new_interaction(is_over_elem, state.interaction, mouse)
+            } else {
+                Interaction::Normal
+            };
 
         // Determine new value from the initial state and the new state.
         let mut new_val = self.value;
