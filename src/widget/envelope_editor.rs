@@ -35,6 +35,7 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
@@ -284,12 +285,19 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
     /// Set the reaction for the EnvelopeEditor. 
     pub fn react(mut self, reaction: F) -> EnvelopeEditor<'a, E, F> {
         self.maybe_react = Some(reaction);
+        self
+    }
+
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
         self
     }
 
@@ -306,7 +314,6 @@ fn get_x_bounds(envelope_perc: &[(f32, f32, f32)], idx: usize) -> (f32, f32) {
     } else { 0.0 };
     (left_bound, right_bound)
 }
-
 
 impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     where
@@ -368,7 +375,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Check for new state.
         let is_over_elem = is_over_elem(mouse.xy, dim, pad_dim, &perc_env[..], pt_radius);
-        let new_interaction = get_new_interaction(is_over_elem, state.interaction, mouse);
+        let new_interaction = 
+            if self.enabled {
+                get_new_interaction(is_over_elem, state.interaction, mouse)
+            } else {
+                Interaction::Normal
+            };
 
         // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
         let is_clicked_env_point = match new_interaction {

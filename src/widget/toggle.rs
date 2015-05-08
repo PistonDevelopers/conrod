@@ -24,6 +24,7 @@ pub struct Toggle<'a, F> {
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the Toggle, necessary for constructing its renderable Element.
@@ -95,6 +96,7 @@ impl<'a, F> Toggle<'a, F> {
             maybe_label: None,
             value: value,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -104,8 +106,13 @@ impl<'a, F> Toggle<'a, F> {
         self
     }
 
-}
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
 
+}
 
 impl<'a, F> Widget for Toggle<'a, F>
     where
@@ -141,7 +148,13 @@ impl<'a, F> Widget for Toggle<'a, F>
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id);
         let is_over = is_over_rect(xy, mouse.xy, dim);
-        let new_interaction = get_new_interaction(is_over, state.interaction, mouse);
+        let new_interaction = 
+            if self.enabled {
+                get_new_interaction(is_over, state.interaction, mouse)
+            } else {
+                //This Toggle is disabled, pretend the interaction was normal.
+                Interaction::Normal
+            };
 
         // React.
         let new_value = match (is_over, state.interaction, new_interaction) {

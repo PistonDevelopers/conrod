@@ -115,8 +115,8 @@ pub trait Widget: Sized {
                current_style: &Self::Style,
                ui: &mut Ui<C>) -> Element
         where C: CharacterCache;
-}
 
+}
 
 /// Represents the unique cached state of a widget.
 #[derive(PartialEq)]

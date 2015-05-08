@@ -29,6 +29,7 @@ pub struct XYPad<'a, X, Y, F> {
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the XYPad, necessary for constructing its renderable Element.
@@ -104,6 +105,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -128,8 +130,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
-}
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
 
+}
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     where
@@ -170,7 +177,12 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let frame = style.frame(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let is_over_pad = is_over_rect([0.0, 0.0], mouse.xy, pad_dim);
-        let new_interaction = get_new_interaction(is_over_pad, state.interaction, mouse);
+        let new_interaction = 
+            if self.enabled {
+                get_new_interaction(is_over_pad, state.interaction, mouse)
+            } else {
+                Interaction::Normal
+            };
         let half_pad_w = pad_dim[0] / 2.0;
         let half_pad_h = pad_dim[1] / 2.0;
 

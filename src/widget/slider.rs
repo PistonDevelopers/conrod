@@ -29,6 +29,7 @@ pub struct Slider<'a, T, F> {
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the Slider, necessary for constructing its renderable Element.
@@ -100,6 +101,7 @@ impl<'a, T, F> Slider<'a, T, F> {
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -110,8 +112,13 @@ impl<'a, T, F> Slider<'a, T, F> {
         self
     }
 
-}
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
 
+}
 
 impl<'a, T, F> Widget for Slider<'a, T, F>
     where
@@ -150,7 +157,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction = get_new_interaction(is_over, state.interaction, mouse);
+        let new_interaction = 
+            if self.enabled {
+                get_new_interaction(is_over, state.interaction, mouse)
+            } else {
+                //Slider is disabled, so pretend the interaction is normal
+                Interaction::Normal
+            };
 
         let frame = style.frame(&ui.theme);
         let frame_2 = frame * 2.0;

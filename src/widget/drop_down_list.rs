@@ -28,6 +28,7 @@ pub struct DropDownList<'a, F> {
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
@@ -148,7 +149,6 @@ fn get_new_menu_state(is_over_idx: Option<Idx>,
     }
 }
 
-
 impl<'a, F> DropDownList<'a, F> {
 
     /// Construct a new DropDownList.
@@ -164,12 +164,19 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
     /// Set the DropDownList's reaction. It will be triggered upon selection of a list item.
     pub fn react(mut self, reaction: F) -> DropDownList<'a, F> {
         self.maybe_react = Some(reaction);
+        self
+    }
+
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
         self
     }
 
@@ -212,7 +219,12 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let frame = style.frame(&ui.theme);
         let num_strings = self.strings.len();
         let is_over_idx = is_over(mouse.xy, frame, dim, state.menu_state, num_strings);
-        let new_menu_state = get_new_menu_state(is_over_idx, num_strings, state.menu_state, mouse);
+        let new_menu_state = 
+            if self.enabled {
+                get_new_menu_state(is_over_idx, num_strings, state.menu_state, mouse)
+            } else {
+                MenuState::Closed(Interaction::Normal)
+            };
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
                                                     else { None });
 
