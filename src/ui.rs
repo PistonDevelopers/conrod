@@ -19,6 +19,7 @@ use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, Ver
 use std::any::Any;
 use theme::Theme;
 use widget::{self, Widget};
+use ::std::io::Write;
 
 /// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
 /// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
@@ -267,10 +268,11 @@ impl<C> Ui<C> {
 
         // Else if the cache is already initialised for a widget of a different kind, warn the user.
         else if self.widget_cache[ui_id].kind != kind {
-            println!("A widget of a different kind already exists at the given UiId ({:?}).
+            writeln!(::std::io::stderr(),
+                     "A widget of a different kind already exists at the given UiId ({:?}).
                       You tried to insert a {:?}, however the existing widget is a {:?}.
                       Check your widgets' `UiId`s for errors.",
-                      ui_id, kind, &self.widget_cache[ui_id].kind);
+                      ui_id, kind, &self.widget_cache[ui_id].kind).unwrap();
             None
         }
 
@@ -303,11 +305,12 @@ impl<C> Ui<C> {
         if self.canvas_cache[id].kind.matches(&kind)
         || self.canvas_cache[id].kind.matches(&CanvasKind::NoCanvas) {
             if self.canvas_cache[id].has_updated {
-                println!("Warning: The canvas with CanvasId {:?} has already been set within the \
+                writeln!(::std::io::stderr(),
+                         "Warning: The canvas with CanvasId {:?} has already been set within the \
                           `Ui` since the last time that `Ui::draw` was called (you probably don't \
                           want this). Perhaps check that your CanvasIds are correct, that you're \
                           calling `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same canvas twice.", id);
+                          accidentally set the same canvas twice.", id).unwrap();
             }
             let canvas = &mut self.canvas_cache[id];
             canvas.kind = kind;
@@ -343,11 +346,12 @@ impl<C> Ui<C> {
         if self.widget_cache[ui_id].kind == kind
         || self.widget_cache[ui_id].kind == "EMPTY" {
             if self.widget_cache[ui_id].has_updated {
-                println!("Warning: The widget with UiId {:?} has already been set within the `Ui` \
+                writeln!(::std::io::stderr(),
+                         "Warning: The widget with UiId {:?} has already been set within the `Ui` \
                           since the last time that `Ui::draw` was called (you probably don't want \
                           this). Perhaps check that your UiIds are correct, that you're calling \
                           `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same widget twice.", ui_id);
+                          accidentally set the same widget twice.", ui_id).unwrap();
             }
             let cached_widget = &mut self.widget_cache[ui_id];
             let state: Box<Any> = Box::new(store);
@@ -476,12 +480,14 @@ impl<C> Ui<C> {
     pub fn mouse_captured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_mouse {
             Some((Capturing::Captured(captured_ui_id), _)) => if ui_id != captured_ui_id {
-                println!("Warning: Widget {:?} tried to capture the mouse, however it is \
-                         already captured by {:?}.", ui_id, captured_ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to capture the mouse, however it is \
+                         already captured by {:?}.", ui_id, captured_ui_id).unwrap();
             },
             Some((Capturing::JustReleased, _)) => {
-                println!("Warning: Widget {:?} tried to capture the mouse, however it was \
-                         already captured.", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to capture the mouse, however it was \
+                         already captured.", ui_id).unwrap();
             },
             None => self.maybe_captured_mouse = Some((Capturing::Captured(ui_id), self.mouse)),
         }
@@ -491,18 +497,21 @@ impl<C> Ui<C> {
     pub fn mouse_uncaptured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_mouse {
             Some((Capturing::Captured(captured_ui_id), mouse)) => if ui_id != captured_ui_id {
-                println!("Warning: Widget {:?} tried to uncapture the mouse, however it is \
-                         actually captured by {:?}.", ui_id, captured_ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the mouse, however it is \
+                         actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
             } else {
                 self.maybe_captured_mouse = Some((Capturing::JustReleased, mouse));
             },
             Some((Capturing::JustReleased, _)) => {
-                println!("Warning: Widget {:?} tried to uncapture the mouse, however it had \
-                         already been released this cycle.", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the mouse, however it had \
+                         already been released this cycle.", ui_id).unwrap();
             },
             None => {
-                println!("Warning: Widget {:?} tried to uncapture the mouse, however the mouse \
-                         was not captured", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the mouse, however the mouse \
+                         was not captured", ui_id).unwrap();
             },
         }
     }
@@ -511,12 +520,14 @@ impl<C> Ui<C> {
     pub fn keyboard_captured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_keyboard {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                println!("Warning: Widget {:?} tried to capture the keyboard, however it is \
-                         already captured by {:?}.", ui_id, captured_ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to capture the keyboard, however it is \
+                         already captured by {:?}.", ui_id, captured_ui_id).unwrap();
             },
             Some(Capturing::JustReleased) => {
-                println!("Warning: Widget {:?} tried to capture the keyboard, however it was \
-                         already captured.", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to capture the keyboard, however it was \
+                         already captured.", ui_id).unwrap();
             },
             None => self.maybe_captured_keyboard = Some(Capturing::Captured(ui_id)),
         }
@@ -526,18 +537,21 @@ impl<C> Ui<C> {
     pub fn keyboard_uncaptured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_keyboard {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                println!("Warning: Widget {:?} tried to uncapture the keyboard, however it is \
-                         actually captured by {:?}.", ui_id, captured_ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the keyboard, however it is \
+                         actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
             } else {
                 self.maybe_captured_keyboard = Some(Capturing::JustReleased);
             },
             Some(Capturing::JustReleased) => {
-                println!("Warning: Widget {:?} tried to uncapture the keyboard, however it had \
-                         already been released this cycle.", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the keyboard, however it had \
+                         already been released this cycle.", ui_id).unwrap();
             },
             None => {
-                println!("Warning: Widget {:?} tried to uncapture the keyboard, however the mouse \
-                         was not captured", ui_id);
+                writeln!(::std::io::stderr(),
+                        "Warning: Widget {:?} tried to uncapture the keyboard, however the mouse \
+                         was not captured", ui_id).unwrap();
             },
         }
     }
