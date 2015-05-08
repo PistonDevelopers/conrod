@@ -316,6 +316,12 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
+
 }
 
 impl<'a, F> Widget for TextBox<'a, F>
@@ -550,11 +556,6 @@ impl<'a, F> Widget for TextBox<'a, F>
 
         // Collect the Forms into a renderable `Element`.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    }
-
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
     }
 
 }

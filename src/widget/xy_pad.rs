@@ -130,6 +130,12 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
+
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
@@ -293,11 +299,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         // Turn the form into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    }
-
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
     }
 
 }

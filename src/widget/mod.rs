@@ -116,8 +116,6 @@ pub trait Widget: Sized {
                ui: &mut Ui<C>) -> Element
         where C: CharacterCache;
 
-    /// If true, allows inputs.  If false, disallows inputs.
-    fn enabled(mut self, flag: bool) -> Self;
 }
 
 /// Represents the unique cached state of a widget.

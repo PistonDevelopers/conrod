@@ -99,11 +99,6 @@ impl<'a> Widget for Label<'a> {
         collage(dim[0] as i32, dim[1] as i32, vec![form])
     }
     
-    #[allow(unused_mut, unused_variables)]
-    fn enabled(mut self, flag: bool) -> Self {
-        //No way to disable inputs, as it doesn't get inputs anyway.
-        self
-    }
 }
 
 

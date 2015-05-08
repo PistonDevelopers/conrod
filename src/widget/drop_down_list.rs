@@ -174,6 +174,12 @@ impl<'a, F> DropDownList<'a, F> {
         self
     }
 
+    /// If true, will allow user inputs.  If false, will disallow user inputs.
+    pub fn enabled(mut self, flag: bool) -> Self {
+        self.enabled = flag;
+        self
+    }
+
 }
 
 
@@ -360,11 +366,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         }
 
-    }
-
-    fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
     }
 
 }
