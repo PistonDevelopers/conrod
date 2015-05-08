@@ -11,7 +11,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Vertic
 use theme::Theme;
 use ui::{UiId, Ui};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget::{self, Widget, Toggleable};
 
 
 pub type Idx = usize;
@@ -31,6 +31,7 @@ pub struct TextBox<'a, F> {
     depth: Depth,
     maybe_react: Option<F>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
@@ -298,6 +299,7 @@ impl<'a, F> TextBox<'a, F> {
             depth: 0.0,
             maybe_react: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -316,6 +318,11 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
+impl<'a, F> Toggleable for TextBox<'a, F> {
+    fn enabled(&mut self, flag: bool) {
+        self.enabled = flag;
+    }
+}
 
 impl<'a, F> Widget for TextBox<'a, F>
     where
@@ -355,7 +362,13 @@ impl<'a, F> Widget for TextBox<'a, F>
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x, text_w, font_size, &self.text);
-        let mut new_interaction = get_new_interaction(over_elem, state.interaction, mouse);
+        let mut new_interaction = 
+            if self.enabled {
+                get_new_interaction(over_elem, state.interaction, mouse)
+            } else {
+                //TextBox is disabled, so pretend the interaction is normal
+                Interaction::Uncaptured(Uncaptured::Normal)
+            };
 
         // Check cursor validity (and update new_interaction if necessary).
         if let Interaction::Captured(view) = new_interaction {

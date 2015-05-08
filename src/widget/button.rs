@@ -8,7 +8,7 @@ use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget};
+use widget::{self, Widget, Toggleable};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -21,6 +21,7 @@ pub struct Button<'a, F> {
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
     style: Style,
+    enabled: bool,
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
@@ -88,6 +89,7 @@ impl<'a, F> Button<'a, F> {
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
+            enabled: true,
         }
     }
 
@@ -98,7 +100,11 @@ impl<'a, F> Button<'a, F> {
     }
 
 }
-
+impl<'a, F> Toggleable for Button<'a, F> {
+    fn enabled(&mut self, flag: bool) {
+        self.enabled = flag;
+    }
+}
 
 impl<'a, F> Widget for Button<'a, F>
     where
@@ -129,7 +135,13 @@ impl<'a, F> Widget for Button<'a, F>
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
         let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction = get_new_interaction(is_over, state.interaction, mouse);
+        let new_interaction =
+            if self.enabled {
+                get_new_interaction(is_over, state.interaction, mouse)
+            } else {
+                //Button is disabled, pretend the new_interaction is Normal
+                Interaction::Normal
+            };
 
         // If the mouse was released over button, react.
         if let (true, Interaction::Clicked, Interaction::Highlighted) =
