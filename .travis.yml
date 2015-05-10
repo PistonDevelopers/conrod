@@ -10,10 +10,6 @@ os:
     - linux
     - osx
 
-env:
-    global:
-        - secure: W/pxVmgtzNXIQNPOm9lsIjSr2nEHGVD8uOGV0be4kdz0bUXCjFDe1j45VVDnXPoJZDrnv7TO0etn3yT7hpuiZGAT40Ovn7LVq7gqtTAoP2U7vbURN55g0MU9dSIAOUdfclAMZez9HgOHWC0P3Tg6bNkNrW5B5wwpmaFVyYwiQkE=
-
 install:
     - sudo apt-get install libXxf86vm-dev libosmesa6-dev
 
@@ -23,4 +19,4 @@ script:
     - cargo doc --verbose
 
 after_success:
-    - curl https://raw.githubusercontent.com/PistonDevelopers/docs/gh-pages/travis-doc-upload.sh | sh
+    - curl http://docs.piston.rs/travis-doc-upload.sh | sh
