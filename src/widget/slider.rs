@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -10,7 +11,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign
 use theme::Theme;
 use ui::{UiId, Ui};
 use utils::{clamp, percentage, value_from_perc};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// Linear value selection. If the slider's width is greater than it's height, it will
@@ -30,6 +31,7 @@ pub struct Slider<'a, T, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Slider, necessary for constructing its renderable Element.
@@ -102,6 +104,7 @@ impl<'a, T, F> Slider<'a, T, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -115,6 +118,13 @@ impl<'a, T, F> Slider<'a, T, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -143,7 +153,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State<T>>,
                  style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
@@ -155,51 +165,53 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction = 
-            if self.enabled {
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
                 get_new_interaction(is_over, state.interaction, mouse)
+            },
+        };
+
+        let new_value = if let Some(mouse) = maybe_mouse {
+            let frame = style.frame(&ui.theme);
+            let frame_2 = frame * 2.0;
+            let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
+            let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
+            let is_horizontal = dim[0] > dim[1];
+
+            if is_horizontal {
+                // Horizontal.
+                let w = match (state.interaction, new_interaction) {
+                    (Interaction::Highlighted, Interaction::Clicked) |
+                    (Interaction::Clicked, Interaction::Clicked) => {
+                        let w = map_range(mouse.xy[0], -half_inner_w, half_inner_w, 0.0, inner_w);
+                        clamp(w, 0.0, inner_w)
+                    },
+                    _ => {
+                        let value_percentage = percentage(self.value, self.min, self.max);
+                        clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
+                    },
+                };
+                value_from_perc((w / inner_w) as f32, self.min, self.max)
             } else {
-                //Slider is disabled, so pretend the interaction is normal
-                Interaction::Normal
-            };
-
-        let frame = style.frame(&ui.theme);
-        let frame_2 = frame * 2.0;
-        let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
-        let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
-
-        let is_horizontal = dim[0] > dim[1];
-
-        let new_value = if is_horizontal {
-            // Horizontal.
-            let w = match (is_over, state.interaction, new_interaction) {
-                (true, Interaction::Highlighted, Interaction::Clicked) |
-                (_, Interaction::Clicked, Interaction::Clicked) => {
-                    let w = map_range(mouse.xy[0], -half_inner_w, half_inner_w, 0.0, inner_w);
-                    clamp(w, 0.0, inner_w)
-                },
-                _ => {
-                    let value_percentage = percentage(self.value, self.min, self.max);
-                    clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
-                },
-            };
-            value_from_perc((w / inner_w) as f32, self.min, self.max)
+                // Vertical.
+                let h = match (state.interaction, new_interaction) {
+                    (Interaction::Highlighted, Interaction::Clicked) |
+                    (Interaction::Clicked, Interaction::Clicked) => {
+                        let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
+                        clamp(h, 0.0, inner_h)
+                    },
+                    _ => {
+                        let value_percentage = percentage(self.value, self.min, self.max);
+                        clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
+                    },
+                };
+                value_from_perc((h / inner_h) as f32, self.min, self.max)
+            }
         } else {
-            // Vertical.
-            let h = match (is_over, state.interaction, new_interaction) {
-                (true, Interaction::Highlighted, Interaction::Clicked) |
-                (_, Interaction::Clicked, Interaction::Clicked) => {
-                    let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
-                    clamp(h, 0.0, inner_h)
-                },
-                _ => {
-                    let value_percentage = percentage(self.value, self.min, self.max);
-                    clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
-                },
-            };
-            value_from_perc((h / inner_h) as f32, self.min, self.max)
+            state.value
         };
 
         // React.
@@ -233,7 +245,18 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
     /// Construct an Element from the given Button State.

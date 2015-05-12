@@ -337,6 +337,28 @@ pub fn align_top_of(target_height: Scalar, height: Scalar) -> Scalar {
     target_height / 2.0 - height / 2.0
 }
 
+impl HorizontalAlign {
+    /// Align `width` to the given `target_width`.
+    pub fn to(&self, target_width: Scalar, width: Scalar) -> Scalar {
+        match *self {
+            HorizontalAlign::Left => align_left_of(target_width, width),
+            HorizontalAlign::Right => align_right_of(target_width, width),
+            HorizontalAlign::Middle => 0.0,
+        }
+    }
+}
+
+impl VerticalAlign {
+    /// Align `height` to the given `target_height`.
+    pub fn to(&self, target_height: Scalar, height: Scalar) -> Scalar {
+        match *self {
+            VerticalAlign::Top => align_top_of(target_height, height),
+            VerticalAlign::Bottom => align_bottom_of(target_height, height),
+            VerticalAlign::Middle => 0.0,
+        }
+    }
+}
+
 
 /// The position of a rect with `dim` Dimensions at the middle of the `target` Dimensions.
 pub fn middle_of(_target: Dimensions, _dim: Dimensions) -> Point {
@@ -385,6 +407,23 @@ pub fn mid_left_of(target: Dimensions, dim: Dimensions) -> Point {
 /// the `target` Dimensions.
 pub fn mid_right_of(target: Dimensions, dim: Dimensions) -> Point {
     [align_right_of(target[0], dim[0]), 0.0]
+}
+
+impl Place {
+    /// Place the given `dim` within the `target_dim`.
+    pub fn within(&self, target_dim: Dimensions, dim: Dimensions) -> Point {
+        match *self {
+            Place::Middle      => middle_of(target_dim, dim),
+            Place::TopLeft     => top_left_of(target_dim, dim),
+            Place::TopRight    => top_right_of(target_dim, dim),
+            Place::BottomLeft  => bottom_left_of(target_dim, dim),
+            Place::BottomRight => bottom_right_of(target_dim, dim),
+            Place::MidTop      => mid_top_of(target_dim, dim),
+            Place::MidBottom   => mid_bottom_of(target_dim, dim),
+            Place::MidLeft     => mid_left_of(target_dim, dim),
+            Place::MidRight    => mid_right_of(target_dim, dim),
+        }
+    }
 }
 
 /// The distance between the inner edge of a frame and the outer edge of the inner content.

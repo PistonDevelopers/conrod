@@ -1,12 +1,13 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use label::{self, FontSize};
 use position::{Depth, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{Ui, UiId};
-use widget::{self, Widget};
+use ui::Ui;
+use widget::{self, Widget, WidgetId};
 
 
 /// Displays some given text centred within a rectangle.
@@ -18,6 +19,7 @@ pub struct Label<'a> {
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
     style: Style,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The styling for a Label's renderable Element.
@@ -43,6 +45,7 @@ impl<'a> Label<'a> {
             maybe_v_align: None,
             depth: 0.0,
             style: Style::new(),
+            maybe_canvas_id: None,
         }
     }
 
@@ -50,6 +53,13 @@ impl<'a> Label<'a> {
     #[inline]
     pub fn font_size(mut self, size: FontSize) -> Label<'a> {
         self.style.maybe_font_size = Some(size);
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -67,7 +77,7 @@ impl<'a> Widget for Label<'a> {
     fn update<C>(self,
                  prev_state: &widget::State<State>,
                  style: &Style,
-                 _ui_id: UiId,
+                 _id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
@@ -80,7 +90,19 @@ impl<'a> Widget for Label<'a> {
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_new_state = if &string[..] != self.text { Some(State(self.text.to_string())) }
                               else { None };
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
     /// Construct an Element for the Label.

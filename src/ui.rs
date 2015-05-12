@@ -1,6 +1,5 @@
 
-use canvas::{Canvas, CanvasId};
-use canvas::Kind as CanvasKind;
+use canvas::{self, Canvas, CanvasId};
 use elmesque::Element;
 use graphics::Graphics;
 use graphics::character::{Character, CharacterCache};
@@ -18,18 +17,22 @@ use piston::event::{
 use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
 use std::any::Any;
 use theme::Theme;
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 use ::std::io::Write;
 
-/// User interface identifier. Each widget must use a unique `UiId` so that it's state can be
-/// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
-/// a `Vec`, which is limited to a size of `usize` elements.
-pub type UiId = usize;
+/// For functions that may take either a WidgetId or a CanvasId.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub enum UiId {
+    /// The ID for a Canvas.
+    Canvas(CanvasId),
+    /// The ID for a Widget.
+    Widget(WidgetId),
+}
 
 /// Indicates whether or not the Mouse has been captured by a widget.
 #[derive(Copy, Clone, Debug)]
 enum Capturing {
-    /// The Ui is captured by the widget with UiId with the mouse state `Mouse`.
+    /// The Ui is captured by the Ui element with the given UiId.
     Captured(UiId),
     /// The Ui has just been uncaptured.
     JustReleased,
@@ -66,14 +69,15 @@ pub struct Ui<C> {
     /// Window height.
     pub win_h: f64,
     /// The UiId of the previously drawn Widget.
-    maybe_prev_ui_id: Option<UiId>,
+    maybe_prev_widget_id: Option<WidgetId>,
     /// The Id of the current canvas.
     maybe_current_canvas_id: Option<CanvasId>,
     /// The captured Mouse and the UiId of the widget who has captured it.
-    maybe_captured_mouse: Option<(Capturing, Mouse)>,
+    maybe_captured_mouse: Option<Capturing>,
     /// The UiId of the widget currently keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>
 }
+
 
 impl<C> Ui<C> {
 
@@ -93,7 +97,7 @@ impl<C> Ui<C> {
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
-            maybe_prev_ui_id: None,
+            maybe_prev_widget_id: None,
             maybe_current_canvas_id: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
@@ -101,8 +105,8 @@ impl<C> Ui<C> {
     }
 
     /// Return the dimensions of a Canvas.
-    pub fn widget_size(&self, ui_id: UiId) -> Dimensions {
-        let (w, h) = self.widget_cache[ui_id].element.get_size();
+    pub fn widget_size(&self, id: WidgetId) -> Dimensions {
+        let (w, h) = self.widget_cache[id].element.get_size();
         [w as f64, h as f64]
     }
 
@@ -116,9 +120,9 @@ impl<C> Ui<C> {
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
         if self.prev_event_was_render {
             self.flush_input();
-            self.maybe_prev_ui_id = None;
+            self.maybe_prev_widget_id = None;
             self.prev_event_was_render = false;
-            if let Some((Capturing::JustReleased, _)) = self.maybe_captured_mouse {
+            if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
                 self.maybe_captured_mouse = None;
             }
             if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
@@ -201,16 +205,16 @@ impl<C> Ui<C> {
 
     /// Return the current mouse state. If the Ui has been captured and the given ui_id doesn't
     /// match the captured ui_id, return the captured mouse state.
-    pub fn get_mouse_state(&self, ui_id: UiId) -> Mouse {
+    pub fn get_mouse_state(&self, ui_id: UiId) -> Option<Mouse> {
         match self.maybe_captured_mouse {
-            Some((Capturing::Captured(captured_ui_id), captured_mouse)) => {
+            Some(Capturing::Captured(captured_ui_id)) => {
                 match ui_id == captured_ui_id {
-                    true => self.mouse,
-                    false => captured_mouse,
+                    true => Some(self.mouse),
+                    false => None,
                 }
             },
-            Some((Capturing::JustReleased, captured_mouse)) => captured_mouse,
-            None => self.mouse,
+            Some(Capturing::JustReleased) => None,
+            None => Some(self.mouse),
         }
     }
 
@@ -241,12 +245,12 @@ impl<C> Ui<C> {
     }
 
 
-    /// Get the state of a widget with the given type and UiId.
+    /// Get the state of a widget with the given type and WidgetId.
     ///
     /// If the widget doesn't already have a position within the Cache, Create and initialise a
     /// cache position before returning None.
     pub fn get_widget_state<W>(&mut self,
-                               ui_id: UiId,
+                               id: WidgetId,
                                kind: &'static str) -> Option<widget::PrevState<W>>
         where
             W: Widget,
@@ -255,55 +259,87 @@ impl<C> Ui<C> {
     {
 
         // If the cache is not big enough, extend it.
-        if self.widget_cache.len() <= ui_id {
-            let num_to_extend = ui_id + 1 - self.widget_cache.len();
+        if self.widget_cache.len() <= id {
+            let num_to_extend = id + 1 - self.widget_cache.len();
             let extension = (0..num_to_extend).map(|_| widget::Cached::empty());
             self.widget_cache.extend(extension);
         }
 
         // If the cache is empty, return None.
-        if self.widget_cache[ui_id].kind == "EMPTY" {
+        if self.widget_cache[id].kind == "EMPTY" {
             None
         }
 
         // Else if the cache is already initialised for a widget of a different kind, warn the user.
-        else if self.widget_cache[ui_id].kind != kind {
+        else if self.widget_cache[id].kind != kind {
             writeln!(::std::io::stderr(),
                      "A widget of a different kind already exists at the given UiId ({:?}).
                       You tried to insert a {:?}, however the existing widget is a {:?}.
                       Check your widgets' `UiId`s for errors.",
-                      ui_id, kind, &self.widget_cache[ui_id].kind).unwrap();
+                      id, kind, &self.widget_cache[id].kind).unwrap();
             None
         }
 
         // Otherwise we've successfully found our state!
         else {
-            let cached_widget = &mut self.widget_cache[ui_id];
+            let cached_widget = &mut self.widget_cache[id];
             if let Some(any_state) = cached_widget.maybe_state.take() {
                 let dim = cached_widget.dim;
                 let xy = cached_widget.xy;
                 let depth = cached_widget.depth;
+                let maybe_canvas_id = cached_widget.maybe_canvas_id;
                 let store: Box<widget::Store<W::State, W::Style>> = any_state.downcast()
                     .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
                 let store: widget::Store<W::State, W::Style> = *store;
                 let widget::Store { state, style } = store;
-                Some(widget::PrevState { state: state, style: style, dim: dim, xy: xy, depth: depth })
+                Some(widget::PrevState {
+                    state: state,
+                    style: style,
+                    dim: dim,
+                    xy: xy,
+                    depth: depth,
+                    maybe_canvas_id: maybe_canvas_id,
+                })
             } else {
                 None
             }
         }
     }
 
+    
+    /// Get the state of a canvas with the given Id.
+    ///
+    /// If the canvas doesn't already have a position within the Cache, Create and initialise a
+    /// cache position before returning None.
+    pub fn get_canvas_state(&mut self, id: CanvasId) -> Option<canvas::Kind> {
+
+        // If the cache is not big enough, extend it.
+        if self.canvas_cache.len() <= id {
+            let num_to_extend = id + 1 - self.canvas_cache.len();
+            let extension = (0..num_to_extend).map(|_| Canvas::empty());
+            self.canvas_cache.extend(extension);
+        }
+
+        // If the cache is empty, return None.
+        if let &canvas::Kind::NoCanvas = &self.canvas_cache[id].kind {
+            None
+        }
+
+        // Otherwise, return the unique state of the Canvas.
+        else {
+            Some(self.canvas_cache[id].kind.clone())
+        }
+    }
 
     /// Update the given canvas.
     pub fn update_canvas(&mut self,
                          id: CanvasId,
-                         kind: CanvasKind,
+                         kind: canvas::Kind,
                          xy: Point,
                          padding: Padding,
                          maybe_new_element: Option<Element>) {
         if self.canvas_cache[id].kind.matches(&kind)
-        || self.canvas_cache[id].kind.matches(&CanvasKind::NoCanvas) {
+        || self.canvas_cache[id].kind.matches(&canvas::Kind::NoCanvas) {
             if self.canvas_cache[id].has_updated {
                 writeln!(::std::io::stderr(),
                          "Warning: The canvas with CanvasId {:?} has already been set within the \
@@ -320,7 +356,6 @@ impl<C> Ui<C> {
                 canvas.element = new_element;
             }
             canvas.has_updated = true;
-            self.maybe_current_canvas_id = Some(id);
         } else {
             panic!("A canvas of a different kind already exists at the given CanvasId ({:?}).
                     You tried to insert a {:?}, however the existing canvas is a {:?}.
@@ -332,7 +367,8 @@ impl<C> Ui<C> {
 
     /// Update the given widget at the given UiId.
     pub fn update_widget<Sta, Sty>(&mut self,
-                                   ui_id: UiId,
+                                   id: WidgetId,
+                                   maybe_canvas_id: Option<CanvasId>,
                                    kind: &'static str,
                                    store: widget::Store<Sta, Sty>,
                                    dim: Dimensions,
@@ -343,33 +379,37 @@ impl<C> Ui<C> {
             Sta: Any + ::std::fmt::Debug + 'static,
             Sty: Any + ::std::fmt::Debug + 'static,
     {
-        if self.widget_cache[ui_id].kind == kind
-        || self.widget_cache[ui_id].kind == "EMPTY" {
-            if self.widget_cache[ui_id].has_updated {
+        if self.widget_cache[id].kind == kind
+        || self.widget_cache[id].kind == "EMPTY" {
+            if self.widget_cache[id].has_updated {
                 writeln!(::std::io::stderr(),
                          "Warning: The widget with UiId {:?} has already been set within the `Ui` \
                           since the last time that `Ui::draw` was called (you probably don't want \
                           this). Perhaps check that your UiIds are correct, that you're calling \
                           `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same widget twice.", ui_id).unwrap();
+                          accidentally set the same widget twice.", id).unwrap();
             }
-            let cached_widget = &mut self.widget_cache[ui_id];
+            let cached_widget = &mut self.widget_cache[id];
             let state: Box<Any> = Box::new(store);
             cached_widget.maybe_state = Some(state);
             cached_widget.kind = kind;
             cached_widget.xy = xy;
             cached_widget.dim = dim;
             cached_widget.depth = depth;
+            cached_widget.maybe_canvas_id = maybe_canvas_id.or(self.maybe_current_canvas_id);
             if let Some(new_element) = maybe_new_element {
                 cached_widget.element = new_element;
             }
             cached_widget.has_updated = true;
-            self.maybe_prev_ui_id = Some(ui_id);
+            self.maybe_prev_widget_id = Some(id);
+            if let Some(id) = cached_widget.maybe_canvas_id {
+                self.maybe_current_canvas_id = Some(id);
+            }
         } else {
             panic!("A widget of a different kind already exists at the given UiId ({:?}).
                     You tried to insert a {:?}, however the existing widget is a {:?}.
                     Check your widgets' `UiId`s for errors.",
-                    ui_id, &kind, &self.widget_cache[ui_id].kind);
+                    id, &kind, &self.widget_cache[id].kind);
         }
     }
 
@@ -385,71 +425,46 @@ impl<C> Ui<C> {
             Position::Absolute(x, y) => [x, y],
 
             Position::Relative(x, y, maybe_ui_id) => {
-                match maybe_ui_id.or(self.maybe_prev_ui_id) {
+                match maybe_ui_id.or(self.maybe_prev_widget_id.map(|id| UiId::Widget(id))) {
                     None => [0.0, 0.0],
-                    Some(rel_ui_id) => ::vecmath::vec2_add(self.widget_cache[rel_ui_id].xy, [x, y]),
+                    Some(UiId::Widget(id)) => ::vecmath::vec2_add(self.widget_cache[id].xy, [x, y]),
+                    Some(UiId::Canvas(id)) => ::vecmath::vec2_add(self.canvas_cache[id].xy, [x, y]),
                 }
             },
 
             Position::Direction(direction, px, maybe_ui_id) => {
-                use position::{align_left_of, align_right_of, align_top_of, align_bottom_of};
-                match maybe_ui_id.or(self.maybe_prev_ui_id) {
+                match maybe_ui_id.or(self.maybe_prev_widget_id.map(|id| UiId::Widget(id))) {
                     None => [0.0, 0.0],
                     Some(rel_ui_id) => {
                         use position::Direction;
-                        let rel_xy = self.widget_cache[rel_ui_id].xy;
-                        let element = &self.widget_cache[rel_ui_id].element;
+                        let (rel_xy, element) = match rel_ui_id {
+                            UiId::Widget(id) =>
+                                (self.widget_cache[id].xy, &self.widget_cache[id].element),
+                            UiId::Canvas(id) =>
+                                (self.canvas_cache[id].xy, &self.canvas_cache[id].element),
+                        };
                         let (rel_w, rel_h) = element.get_size();
                         let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
+
                         match direction {
-
-                            Direction::Up => {
-                                let x = rel_xy[0] + match h_align {
-                                    HorizontalAlign::Middle => 0.0,
-                                    HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
-                                    HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
-                                };
-                                let y = rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px;
-                                [x, y]
-                            },
-
-                            Direction::Down => {
-                                let x = rel_xy[0] + match h_align {
-                                    HorizontalAlign::Middle => 0.0,
-                                    HorizontalAlign::Left   => align_left_of(rel_w, dim[0]),
-                                    HorizontalAlign::Right  => align_right_of(rel_w, dim[0]),
-                                };
-                                let y = rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px;
-                                [x, y]
-                            },
-
-                            Direction::Left => {
-                                let y = rel_xy[1] + match v_align {
-                                    VerticalAlign::Middle => 0.0,
-                                    VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
-                                    VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
-                                };
-                                let x = rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px;
-                                [x, y]
-                            },
-
-                            Direction::Right => {
-                                let y = rel_xy[1] + match v_align {
-                                    VerticalAlign::Middle => 0.0,
-                                    VerticalAlign::Bottom => align_bottom_of(rel_h, dim[1]),
-                                    VerticalAlign::Top    => align_top_of(rel_h, dim[1]),
-                                };
-                                let x = rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px;
-                                [x, y]
-                            },
-
+                            Direction::Up =>
+                                [rel_xy[0] + h_align.to(rel_w, dim[0]),
+                                 rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px],
+                            Direction::Down =>
+                                [rel_xy[0] + h_align.to(rel_w, dim[0]),
+                                 rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px],
+                            Direction::Left =>
+                                [rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px,
+                                 rel_xy[1] + v_align.to(rel_h, dim[1])],
+                            Direction::Right =>
+                                [rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px,
+                                 rel_xy[1] + v_align.to(rel_h, dim[1])],
                         }
                     },
                 }
             },
 
             Position::Place(place, maybe_canvas_id) => {
-                use position::{self, Place};
                 let (xy, target_dim, pad) = match maybe_canvas_id.or(self.maybe_current_canvas_id) {
                     Some(canvas_id) => {
                         let canvas = &self.canvas_cache[canvas_id];
@@ -458,17 +473,7 @@ impl<C> Ui<C> {
                     },
                     None => ([0.0, 0.0], [self.win_w, self.win_h], Padding::none()),
                 };
-                let place_xy = match place {
-                    Place::Middle      => position::middle_of(target_dim, dim),
-                    Place::TopLeft     => position::top_left_of(target_dim, dim),
-                    Place::TopRight    => position::top_right_of(target_dim, dim),
-                    Place::BottomLeft  => position::bottom_left_of(target_dim, dim),
-                    Place::BottomRight => position::bottom_right_of(target_dim, dim),
-                    Place::MidTop      => position::mid_top_of(target_dim, dim),
-                    Place::MidBottom   => position::mid_bottom_of(target_dim, dim),
-                    Place::MidLeft     => position::mid_left_of(target_dim, dim),
-                    Place::MidRight    => position::mid_right_of(target_dim, dim),
-                };
+                let place_xy = place.within(target_dim, dim);
                 let relative_xy = ::vecmath::vec2_add(place_xy, pad.offset_from(place));
                 ::vecmath::vec2_add(xy, relative_xy)
             },
@@ -479,31 +484,31 @@ impl<C> Ui<C> {
     /// Indicate that the widget with the given UiId has captured the mouse.
     pub fn mouse_captured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_mouse {
-            Some((Capturing::Captured(captured_ui_id), _)) => if ui_id != captured_ui_id {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
                         "Warning: Widget {:?} tried to capture the mouse, however it is \
                          already captured by {:?}.", ui_id, captured_ui_id).unwrap();
             },
-            Some((Capturing::JustReleased, _)) => {
+            Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
                         "Warning: Widget {:?} tried to capture the mouse, however it was \
                          already captured.", ui_id).unwrap();
             },
-            None => self.maybe_captured_mouse = Some((Capturing::Captured(ui_id), self.mouse)),
+            None => self.maybe_captured_mouse = Some(Capturing::Captured(ui_id)),
         }
     }
 
     /// Indicate that the widget is no longer capturing the mouse.
     pub fn mouse_uncaptured_by(&mut self, ui_id: UiId) {
         match self.maybe_captured_mouse {
-            Some((Capturing::Captured(captured_ui_id), mouse)) => if ui_id != captured_ui_id {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
                         "Warning: Widget {:?} tried to uncapture the mouse, however it is \
                          actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
             } else {
-                self.maybe_captured_mouse = Some((Capturing::JustReleased, mouse));
+                self.maybe_captured_mouse = Some(Capturing::JustReleased);
             },
-            Some((Capturing::JustReleased, _)) => {
+            Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
                         "Warning: Widget {:?} tried to uncapture the mouse, however it had \
                          already been released this cycle.", ui_id).unwrap();
@@ -582,63 +587,82 @@ impl<C> Ui<C> {
         } = *self;
 
         // Collect references to the widgets so that we can sort them without changing cache order.
-        let mut widgets: Vec<_> = widget_cache.iter_mut()
-            .filter(|widget| widget.has_updated)
+        let mut widgets: Vec<_> = widget_cache.iter_mut().enumerate()
+            .filter(|&(_, ref widget)| widget.has_updated)
             .collect();
 
-        for widget in widgets.iter_mut() {
+        for &mut (_, ref mut widget) in widgets.iter_mut() {
             widget.has_updated = false;
         }
 
         // Check for captured widgets and take them from the Vec (we want to draw them last).
-        let maybe_mouse = self.maybe_captured_mouse.map(|(capturing, _)| capturing);
+        let maybe_mouse = self.maybe_captured_mouse;
         let maybe_keyboard = self.maybe_captured_keyboard;
-        let (maybe_mouse_widget, maybe_keyboard_widget) = match (maybe_mouse, maybe_keyboard) {
-            (Some(Capturing::Captured(mouse_ui_id)), Some(Capturing::Captured(keyboard_ui_id))) => {
-                if mouse_ui_id == keyboard_ui_id {
-                    (Some(widgets.swap_remove(mouse_ui_id)), None)
-                } else if mouse_ui_id > keyboard_ui_id {
-                    let mouse_widget = widgets.swap_remove(mouse_ui_id);
-                    let keyboard_widget = widgets.swap_remove(keyboard_ui_id);
-                    (Some(mouse_widget), Some(keyboard_widget))
-                }
-                else {
-                    let keyboard_widget = widgets.swap_remove(keyboard_ui_id);
-                    let mouse_widget = widgets.swap_remove(mouse_ui_id);
-                    (Some(mouse_widget), Some(keyboard_widget))
-                }
-            },
-            (Some(Capturing::Captured(mouse_ui_id)), _) => {
-                (Some(widgets.swap_remove(mouse_ui_id)), None)
-            },
-            (_, Some(Capturing::Captured(keyboard_ui_id))) => {
-                (None, Some(widgets.swap_remove(keyboard_ui_id)))
-            },
-            (_, _) => (None, None),
-        };
 
         // Sort the rest of the widgets by rendering depth.
-        widgets.sort_by(|a, b| if      a.depth < b.depth { Ordering::Greater }
-                               else if a.depth > b.depth { Ordering::Less }
-                               else                      { Ordering::Equal });
+        widgets.sort_by(|&(id_a, ref a), &(id_b, ref b)| {
+            match (a.maybe_canvas_id, b.maybe_canvas_id) {
+                (Some(canvas_id_a), Some(canvas_id_b)) => {
+                    match (&canvas_cache[canvas_id_a].kind, &canvas_cache[canvas_id_b].kind) {
+                        (&canvas::Kind::Split(_), &canvas::Kind::Split(_)) => (),
+                        (&canvas::Kind::Split(_), _) => return Ordering::Less,
+                        (_, &canvas::Kind::Split(_)) => return Ordering::Greater,
+                        _ => (),
+                    }
+                },
+                (Some(_), None) => return Ordering::Greater,
+                (None, Some(_)) => return Ordering::Less,
+                _ => (),
+            };
+            if let Some(Capturing::Captured(UiId::Widget(id))) = maybe_mouse {
+                if      id == id_a { return Ordering::Greater }
+                else if id == id_b { return Ordering::Less }
+            }
+            if let Some(Capturing::Captured(UiId::Widget(id))) = maybe_keyboard {
+                if      id == id_a { return Ordering::Greater }
+                else if id == id_b { return Ordering::Less }
+            }
+            if      a.depth < b.depth { Ordering::Greater }
+            else if a.depth > b.depth { Ordering::Less }
+            else                      { Ordering::Equal }
+        });
 
         // Construct the elmesque Renderer for rendering the Elements.
         let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
 
-        // Chain our widgets with the captured widgets and take their Elements.
-        let elements = widgets.iter()
-            .chain(maybe_keyboard_widget.iter())
-            .chain(maybe_mouse_widget.iter())
-            .map(|widget| &widget.element);
-
-        // Draw all Canvas Splits.
+        // First, draw all of the `Split` canvasses.
         for canvas in canvas_cache.iter().filter(|canvas| canvas.has_updated) {
-            canvas.element.draw(&mut renderer);
+            if let canvas::Kind::Split(_) = canvas.kind {
+                canvas.element.draw(&mut renderer);
+            }
         }
 
-        // Draw all Elements.
-        for element in elements {
-            element.draw(&mut renderer);
+        // Is the given widget on a Canvas Split?
+        fn is_on_split(widget: &widget::Cached, canvas_cache: &Vec<Canvas>) -> bool {
+            match widget.maybe_canvas_id {
+                None => true,
+                Some(canvas_id) => match canvas_cache[canvas_id].kind {
+                    canvas::Kind::Split(_) | canvas::Kind::NoCanvas => true,
+                    _ => false,
+                },
+            }
+        }
+
+        // Finally, draw all of the widgets that are placed on a Floating Canvas.
+        for &(_, ref widget) in widgets.iter().take_while(|&&(_, ref w)| is_on_split(w, canvas_cache)) {
+            widget.element.draw(&mut renderer);
+        }
+
+        // Now, draw all of the `Floating` canvasses.
+        for canvas in canvas_cache.iter().filter(|canvas| canvas.has_updated) {
+            if let canvas::Kind::Floating(_) = canvas.kind {
+                canvas.element.draw(&mut renderer);
+            }
+        }
+
+        // Finally, draw all of the widgets that are placed on a Floating Canvas.
+        for &(_, ref widget) in widgets.iter().skip_while(|&&(_, ref w)| is_on_split(w, canvas_cache)) {
+            widget.element.draw(&mut renderer);
         }
 
         // Indicate that the canvasses and widgets have now been drawn since the last time it was set.

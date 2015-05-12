@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -13,7 +14,7 @@ use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
 use ui::{UiId, Ui};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
@@ -32,6 +33,7 @@ pub struct NumberDialer<'a, T, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
@@ -120,7 +122,6 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
 }
 
 /// Determine if the cursor is over the number_dialer and if so, which element.
-#[inline]
 fn is_over(mouse_xy: Point,
            dim: Dimensions,
            pad_dim: Dimensions,
@@ -155,7 +156,6 @@ fn is_over(mouse_xy: Point,
 }
 
 /// Check and return the current state of the NumberDialer.
-#[inline]
 fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonState::{Down, Up};
     use self::Elem::ValueGlyph;
@@ -199,6 +199,7 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
             maybe_react: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -212,6 +213,13 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -241,7 +249,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State<T>>,
                  style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
@@ -252,7 +260,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let font_size = style.label_font_size(&ui.theme);
@@ -263,13 +271,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let val_string = create_val_string(self.value, val_string_len, self.precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
         let label_x = -val_string_dim[0] / 2.0;
-        let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_x, label_dim, val_string_dim, val_string_len);
-        let new_interaction = 
-            if self.enabled {
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_x, label_dim,
+                                           val_string_dim, val_string_len);
                 get_new_interaction(is_over_elem, state.interaction, mouse)
-            } else {
-                Interaction::Normal
-            };
+            },
+        };
 
         // Determine new value from the initial state and the new state.
         let mut new_val = self.value;
@@ -347,7 +356,18 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
                               else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
     /// Construct an Element from the given Button State.

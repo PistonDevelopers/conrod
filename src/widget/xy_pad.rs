@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -12,7 +13,7 @@ use theme::Theme;
 use ui::{UiId, Ui};
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -30,6 +31,7 @@ pub struct XYPad<'a, X, Y, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the XYPad, necessary for constructing its renderable Element.
@@ -106,6 +108,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -136,6 +139,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
+        self
+    }
+
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
@@ -161,7 +171,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State<X, Y>>,
                  style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State<X, Y>>>
         where
             C: CharacterCache,
@@ -173,23 +183,23 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let is_over_pad = is_over_rect([0.0, 0.0], mouse.xy, pad_dim);
-        let new_interaction = 
-            if self.enabled {
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over_pad = is_over_rect([0.0, 0.0], mouse.xy, pad_dim);
                 get_new_interaction(is_over_pad, state.interaction, mouse)
-            } else {
-                Interaction::Normal
-            };
-        let half_pad_w = pad_dim[0] / 2.0;
-        let half_pad_h = pad_dim[1] / 2.0;
+            },
+        };
 
         // Determine new values from the mouse position over the pad.
-        let (new_x, new_y) = match new_interaction {
-            Interaction::Normal | Interaction::Highlighted => (self.x, self.y),
-            Interaction::Clicked => {
+        let (new_x, new_y) = match (maybe_mouse, new_interaction) {
+            (None, _) | (_, Interaction::Normal) | (_, Interaction::Highlighted) => (self.x, self.y),
+            (Some(mouse), Interaction::Clicked) => {
+                let half_pad_w = pad_dim[0] / 2.0;
+                let half_pad_h = pad_dim[1] / 2.0;
                 let temp_x = clamp(mouse.xy[0], -half_pad_w, half_pad_w);
                 let temp_y = clamp(mouse.xy[1], -half_pad_h, half_pad_h);
                 (map_range(temp_x, -half_pad_w, half_pad_w, self.min_x, self.max_x),
@@ -228,7 +238,18 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
 
     }
 

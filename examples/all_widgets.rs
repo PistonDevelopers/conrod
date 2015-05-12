@@ -24,6 +24,7 @@ use conrod::{
     Colorable,
     DropDownList,
     EnvelopeEditor,
+    Floating,
     Frameable,
     Label,
     Labelable,
@@ -37,6 +38,7 @@ use conrod::{
     Toggle,
     Ui,
     UiId,
+    WidgetId,
     Widget,
     WidgetMatrix,
     XYPad,
@@ -163,6 +165,9 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     // Draw the background.
     Background::new().color(demo.bg_color).draw(ui, gl);
 
+    // Construct a floating canvas in the centre of the screen.
+    Floating::new().label("Testing...").label_color(white()).set(0, ui);
+
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
     let title_y = (ui.win_h / 2.0) - 50.0;
@@ -176,7 +181,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
 
     if demo.show_button {
 
-        // Button widget example button(UiId).
+        // Button widget example button(WidgetId).
         Button::new()
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
@@ -200,7 +205,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
             text
         };
 
-        // Slider widget example slider(UiId, value, min, max).
+        // Slider widget example slider(WidgetId, value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
@@ -219,7 +224,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     // Keep track of the currently shown widget.
     let shown_widget = if demo.show_button { BUTTON } else { TITLE_PAD_SLIDER };
 
-    // Toggle widget example toggle(UiId, value).
+    // Toggle widget example toggle(WidgetId, value).
     Toggle::new(demo.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0)
@@ -258,7 +263,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         let mut label = value.to_string();
         if label.len() > 4 { label.truncate(4); }
 
-        // Slider widget examples. slider(UiId, value, min, max)
+        // Slider widget examples. slider(WidgetId, value, min, max)
         if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
         else      { Slider::new(value, 0.0, 1.0).right(20.0) }
             .dimensions(40.0, demo.v_slider_height)
@@ -275,10 +280,10 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
 
     }
 
-    // Number Dialer widget example. number_dialer(UiId, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(WidgetId, value, min, max, precision)
     NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
-        .right_from(shown_widget, 30.0)
+        .right_from(UiId::Widget(shown_widget), 30.0)
         .color(demo.bg_color.invert())
         .frame(demo.frame_width)
         .label("Height (px)")
@@ -286,7 +291,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         .react(|new_height| demo.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
-    // Number Dialer widget example. number_dialer(UiId, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(WidgetId, value, min, max, precision)
     NumberDialer::new(demo.frame_width, 0.0, 15.0, 2u8)
         .dimensions(260.0, 60.0)
         .down(20.0)
@@ -350,7 +355,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     // A demonstration using drop_down_list.
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
-        .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
+        .right_from(UiId::Widget(SLIDER_HEIGHT), 30.0) // Position right from widget 6 by 50 pixels.
         .color(ddl_color)
         .frame(demo.frame_width)
         .frame_color(ddl_color.plain_contrast())
@@ -365,7 +370,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     XYPad::new(demo.circle_pos[0], 550.0, 700.0, // x range.
                demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
-        .right_from(TOGGLE_MATRIX + 63, 30.0)
+        .right_from(UiId::Widget(TOGGLE_MATRIX + 63), 30.0)
         .align_bottom() // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
         .frame(demo.frame_width)
@@ -385,7 +390,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
         let &mut (ref mut env, ref mut text) = &mut demo.envelopes[i];
 
         // Draw a TextBox. text_box(&mut String, FontSize)
-        if i == 0 { TextBox::new(text).right_from(COLOR_SELECT, 30.0) }
+        if i == 0 { TextBox::new(text).right_from(UiId::Widget(COLOR_SELECT), 30.0) }
         else      { TextBox::new(text) }
             .font_size(20)
             .dimensions(320.0, 40.0)
@@ -423,15 +428,15 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
 
 // As each widget must have it's own unique identifier, it can be useful to create these
 // identifiers relative to each other in order to make refactoring easier.
-const TITLE: UiId = 0;
-const BUTTON: UiId = TITLE + 1;
-const TITLE_PAD_SLIDER: UiId = BUTTON + 1;
-const TOGGLE: UiId = TITLE_PAD_SLIDER + 1;
-const COLOR_SLIDER: UiId = TOGGLE + 1;
-const SLIDER_HEIGHT: UiId = COLOR_SLIDER + 3;
-const FRAME_WIDTH: UiId = SLIDER_HEIGHT + 1;
-const TOGGLE_MATRIX: UiId = FRAME_WIDTH + 1;
-const COLOR_SELECT: UiId = TOGGLE_MATRIX + 64;
-const CIRCLE_POSITION: UiId = COLOR_SELECT + 1;
-const ENVELOPE_EDITOR: UiId = CIRCLE_POSITION + 1;
+const TITLE: WidgetId = 0;
+const BUTTON: WidgetId = TITLE + 1;
+const TITLE_PAD_SLIDER: WidgetId = BUTTON + 1;
+const TOGGLE: WidgetId = TITLE_PAD_SLIDER + 1;
+const COLOR_SLIDER: WidgetId = TOGGLE + 1;
+const SLIDER_HEIGHT: WidgetId = COLOR_SLIDER + 3;
+const FRAME_WIDTH: WidgetId = SLIDER_HEIGHT + 1;
+const TOGGLE_MATRIX: WidgetId = FRAME_WIDTH + 1;
+const COLOR_SELECT: WidgetId = TOGGLE_MATRIX + 64;
+const CIRCLE_POSITION: WidgetId = COLOR_SELECT + 1;
+const ENVELOPE_EDITOR: WidgetId = CIRCLE_POSITION + 1;
 

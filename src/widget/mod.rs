@@ -1,10 +1,11 @@
 
+use canvas::CanvasId;
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use position::{Depth, Dimensions, Point};
 use std::any::Any;
 use std::fmt::Debug;
-use ui::{UiId, Ui};
+use ui::Ui;
 
 pub mod button;
 pub mod drop_down_list;
@@ -17,6 +18,10 @@ pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
 
+/// Unique widget identifier. Each widget must use a unique `WidgetId` so that it's state can be
+/// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
+/// a `Vec`, which is limited to a size of `usize` elements.
+pub type WidgetId = usize;
 
 /// A trait to be implemented by all Widget types.
 pub trait Widget: Sized {
@@ -39,31 +44,55 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
-    fn set<C>(self, ui_id: UiId, ui: &mut Ui<C>) where C: CharacterCache {
+    fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
         let kind = self.unique_kind();
         let new_style = self.style();
-        let maybe_prev_state = ui.get_widget_state::<Self>(ui_id, kind).map(|prev|{
-            let PrevState { state, style, xy, dim, depth } = prev;
-            (Some(style), State { state: state, xy: xy, dim: dim, depth: depth })
+        let maybe_prev_state = ui.get_widget_state::<Self>(id, kind).map(|prev|{
+            let PrevState { state, style, xy, dim, depth, maybe_canvas_id } = prev;
+            (Some(style), State {
+                state: state,
+                xy: xy,
+                dim: dim,
+                depth: depth,
+                maybe_canvas_id: maybe_canvas_id,
+            })
         });
         let (maybe_prev_style, prev_state) = maybe_prev_state.unwrap_or_else(|| {
-            (None, State { state: self.init_state(), dim: [0.0, 0.0], xy: [0.0, 0.0], depth: 0.0 })
+            (None, State {
+                state: self.init_state(),
+                dim: [0.0, 0.0],
+                xy: [0.0, 0.0],
+                depth: 0.0,
+                maybe_canvas_id: None,
+            })
         });
 
         // Update the widget's state.
-        let maybe_new_state = self.update(&prev_state, &new_style, ui_id, ui);
+        let maybe_new_state = self.update(&prev_state, &new_style, id, ui);
 
         // Determine whether or not the `State` has changed.
         let (state_has_changed, new_state) = {
-            let State { dim, xy, depth, state } = maybe_new_state;
+            let State { dim, xy, depth, state, maybe_canvas_id } = maybe_new_state;
             match state {
                 Some(new_state) =>
-                    (true, State { dim: dim, xy: xy, depth: depth, state: new_state }),
+                    (true, State {
+                        dim: dim,
+                        xy: xy,
+                        depth: depth,
+                        state: new_state,
+                        maybe_canvas_id: maybe_canvas_id,
+                    }),
                 None => {
                     let has_changed = xy != prev_state.xy
                         || dim != prev_state.dim
                         || depth != prev_state.depth;
-                    (has_changed, State { dim: dim, xy: xy, depth: depth, ..prev_state })
+                    (has_changed, State {
+                        dim: dim,
+                        xy: xy,
+                        depth: depth,
+                        maybe_canvas_id: maybe_canvas_id,
+                        ..prev_state
+                    })
                 },
             }
         };
@@ -82,9 +111,9 @@ pub trait Widget: Sized {
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth, .. } = new_state;
+        let State { state, dim, xy, depth, maybe_canvas_id } = new_state;
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
-        ui.update_widget(ui_id, kind, store, dim, xy, depth, maybe_new_element);
+        ui.update_widget(id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
 
     /// Return the kind of the widget as a &'static str. Note that this must be unique from all
@@ -104,7 +133,7 @@ pub trait Widget: Sized {
     fn update<C>(self,
                  prev: &State<Self::State>,
                  current_style: &Self::Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> State<Option<Self::State>>
         where C: CharacterCache;
 
@@ -129,6 +158,8 @@ pub struct State<T> {
     pub xy: Point,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
+    /// The ID of the Canvas on which the widget is placed, if it is placed on one.
+    pub maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
@@ -143,6 +174,8 @@ pub struct PrevState<W> where W: Widget {
     pub xy: Point,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
+    /// The ID of the Canvas on which the widget is placed, if it is placed on one.
+    pub maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The state type that we'll dynamically cast to and from Any for storage within the Cache.
@@ -166,6 +199,7 @@ pub struct Cached {
     pub depth: Depth,
     pub element: Element,
     pub has_updated: bool,
+    pub maybe_canvas_id: Option<CanvasId>,
 }
 
 impl Cached {
@@ -180,6 +214,7 @@ impl Cached {
             depth: 0.0,
             element: ::elmesque::element::empty(),
             has_updated: false,
+            maybe_canvas_id: None,
         }
     }
 

@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -8,7 +9,7 @@ use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -22,6 +23,7 @@ pub struct Button<'a, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
@@ -90,11 +92,12 @@ impl<'a, F> Button<'a, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
     /// Set the reaction for the Button. The reaction will be triggered upon release of the button.
-    pub fn react(mut self, reaction: F) -> Button<'a, F> {
+    pub fn react(mut self, reaction: F) -> Self {
         self.maybe_react = Some(reaction);
         self
     }
@@ -102,6 +105,13 @@ impl<'a, F> Button<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -124,7 +134,7 @@ impl<'a, F> Widget for Button<'a, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  _style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
@@ -135,19 +145,20 @@ impl<'a, F> Widget for Button<'a, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction =
-            if self.enabled {
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+
+        // Check whether or not a new interaction has occurred.
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
                 get_new_interaction(is_over, state.interaction, mouse)
-            } else {
-                //Button is disabled, pretend the new_interaction is Normal
-                Interaction::Normal
-            };
+            },
+        };
 
         // If the mouse was released over button, react.
-        if let (true, Interaction::Clicked, Interaction::Highlighted) =
-            (is_over, state.interaction, new_interaction) {
+        if let (Interaction::Clicked, Interaction::Highlighted) =
+            (state.interaction, new_interaction) {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
 
@@ -166,7 +177,18 @@ impl<'a, F> Widget for Button<'a, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
     /// Construct an Element from the given Button State.

@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -8,7 +9,7 @@ use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{UiId, Ui};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// Tuple / React params.
@@ -29,6 +30,7 @@ pub struct DropDownList<'a, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
@@ -165,6 +167,7 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -177,6 +180,13 @@ impl<'a, F> DropDownList<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -204,7 +214,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
@@ -215,16 +225,19 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let num_strings = self.strings.len();
-        let is_over_idx = is_over(mouse.xy, frame, dim, state.menu_state, num_strings);
-        let new_menu_state = 
-            if self.enabled {
+
+        // Check for a new interaction with the DropDownList.
+        let new_menu_state = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => MenuState::Closed(Interaction::Normal),
+            (true, Some(mouse)) => {
+                let is_over_idx = is_over(mouse.xy, frame, dim, state.menu_state, num_strings);
                 get_new_menu_state(is_over_idx, num_strings, state.menu_state, mouse)
-            } else {
-                MenuState::Closed(Interaction::Normal)
-            };
+            },
+        };
+
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
                                                     else { None });
 
@@ -232,8 +245,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
         // We need to capture the cursor if the DropDownList has just been opened.
         // We need to uncapture the cursor if the DropDownList has just been closed.
         match (state.menu_state, new_menu_state) {
-            (MenuState::Closed(_), MenuState::Open(_)) => ui.mouse_captured_by(ui_id),
-            (MenuState::Open(_), MenuState::Closed(_)) => ui.mouse_uncaptured_by(ui_id),
+            (MenuState::Closed(_), MenuState::Open(_)) => ui.mouse_captured_by(UiId::Widget(id)),
+            (MenuState::Open(_), MenuState::Closed(_)) => ui.mouse_uncaptured_by(UiId::Widget(id)),
             _ => (),
         }
 
@@ -268,7 +281,18 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
                               else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
     /// Construct an Element from the given DropDownList State.

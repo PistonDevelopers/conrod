@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -11,7 +12,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Vertic
 use theme::Theme;
 use ui::{UiId, Ui};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 pub type Idx = usize;
@@ -32,6 +33,7 @@ pub struct TextBox<'a, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
@@ -300,6 +302,7 @@ impl<'a, F> TextBox<'a, F> {
             maybe_react: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -319,6 +322,13 @@ impl<'a, F> TextBox<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -343,7 +353,7 @@ impl<'a, F> Widget for TextBox<'a, F>
     fn update<C>(mut self,
                  prev_state: &widget::State<State>,
                  style: &Style,
-                 ui_id: UiId,
+                 id: WidgetId,
                  ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
@@ -354,21 +364,21 @@ impl<'a, F> Widget for TextBox<'a, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
+        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let font_size = style.font_size(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let text_w = label::width(ui, font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
-        let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x, text_w, font_size, &self.text);
-        let mut new_interaction = 
-            if self.enabled {
+        let mut new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
+            (true, Some(mouse)) => {
+                let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x,
+                                          text_w, font_size, &self.text);
                 get_new_interaction(over_elem, state.interaction, mouse)
-            } else {
-                //TextBox is disabled, so pretend the interaction is normal
-                Interaction::Uncaptured(Uncaptured::Normal)
-            };
+            },
+        };
 
         // Check cursor validity (and update new_interaction if necessary).
         if let Interaction::Captured(view) = new_interaction {
@@ -405,7 +415,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             let mut cursor = captured.cursor;
 
             // Check for entered text.
-            for text in ui.get_entered_text(ui_id).to_vec().iter() {
+            for text in ui.get_entered_text(UiId::Widget(id)).to_vec().iter() {
                 if text.len() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
@@ -419,7 +429,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             }
 
             // Check for control keys.
-            let pressed_keys = ui.get_pressed_keys(ui_id);
+            let pressed_keys = ui.get_pressed_keys(UiId::Widget(id));
             for key in pressed_keys.iter() {
                 match *key {
                     Backspace => if cursor.is_cursor() {
@@ -457,9 +467,9 @@ impl<'a, F> Widget for TextBox<'a, F>
         // Check whether or not we need to capture or uncapture the keyboard.
         match (state.interaction, new_interaction) {
             (Interaction::Uncaptured(_), Interaction::Captured(_)) =>
-                ui.keyboard_captured_by(ui_id),
+                ui.keyboard_captured_by(UiId::Widget(id)),
             (Interaction::Captured(_), Interaction::Uncaptured(_)) =>
-                ui.keyboard_uncaptured_by(ui_id),
+                ui.keyboard_uncaptured_by(UiId::Widget(id)),
             _ => (),
         }
 
@@ -478,7 +488,18 @@ impl<'a, F> Widget for TextBox<'a, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        // Retrieve the CanvasId.
+        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
+            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
+        });
+
+        widget::State {
+            state: maybe_new_state,
+            dim: dim,
+            xy: xy,
+            depth: self.depth,
+            maybe_canvas_id: maybe_canvas_id,
+        }
     }
 
 
