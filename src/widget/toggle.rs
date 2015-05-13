@@ -8,7 +8,7 @@ use label::{FontSize, Labelable};
 use mouse::Mouse;
 use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{UiId, Ui, UserInput};
 use widget::{self, Widget, WidgetId};
 
 
@@ -139,13 +139,15 @@ impl<'a, F> Widget for Toggle<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Toggle.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State>,
-                 _style: &Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State>,
+                     input: UserInput<'b>,
+                     _style: &Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
@@ -156,7 +158,7 @@ impl<'a, F> Widget for Toggle<'a, F>
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let dim = self.dim;
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Check whether or not a new interaction has occurred.
         let new_interaction = match (self.enabled, maybe_mouse) {
@@ -194,17 +196,11 @@ impl<'a, F> Widget for Toggle<'a, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -340,6 +336,7 @@ impl<'a, F> position::Positionable for Toggle<'a, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Toggle { maybe_h_align: Some(h_align), ..self }

@@ -20,6 +20,7 @@ use theme::Theme;
 use widget::{self, Widget, WidgetId};
 use ::std::io::Write;
 
+
 /// For functions that may take either a WidgetId or a CanvasId.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum UiId {
@@ -75,7 +76,22 @@ pub struct Ui<C> {
     /// The captured Mouse and the UiId of the widget who has captured it.
     maybe_captured_mouse: Option<Capturing>,
     /// The UiId of the widget currently keyboard input if there is one.
-    maybe_captured_keyboard: Option<Capturing>
+    maybe_captured_keyboard: Option<Capturing>,
+    /// The Canvas that is currently under the mouse.
+    maybe_canvas_under_mouse: Option<CanvasId>,
+}
+
+/// A wrapper over the current user input state.
+#[derive(Clone, Debug)]
+pub struct UserInput<'a> {
+    /// Mouse state if it is available.
+    pub maybe_mouse: Option<Mouse>,
+    /// Keys pressed since the last cycle.
+    pub pressed_keys: &'a [input::keyboard::Key],
+    /// Keys released since the last cycle.
+    pub released_keys: &'a [input::keyboard::Key],
+    /// Text entered since the last cycle.
+    pub entered_text: &'a [String],
 }
 
 
@@ -101,6 +117,7 @@ impl<C> Ui<C> {
             maybe_current_canvas_id: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
+            maybe_canvas_under_mouse: None,
         }
     }
 
@@ -139,6 +156,7 @@ impl<C> Ui<C> {
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
             self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.maybe_canvas_under_mouse = self.pick_canvas(self.mouse.xy);
         });
 
         event.press(|button_type| {
@@ -203,9 +221,85 @@ impl<C> Ui<C> {
         self.text_just_entered.clear();
     }
 
-    /// Return the current mouse state. If the Ui has been captured and the given ui_id doesn't
-    /// match the captured ui_id, return the captured mouse state.
-    pub fn get_mouse_state(&self, ui_id: UiId) -> Option<Mouse> {
+    /// If the given Point is currently on a Canvas, return the Id of that canvas.
+    pub fn pick_canvas(&self, xy: Point) -> Option<CanvasId> {
+        use std::cmp::Ordering;
+        let mut canvasses = self.canvas_cache.iter().enumerate().filter(|&(_, ref canvas)| {
+            if let canvas::Kind::NoCanvas = canvas.kind { false } else { true }
+        }).collect::<Vec<_>>();
+        canvasses.sort_by(|&(_, ref a), &(_, ref b)| match (&a.kind, &b.kind) {
+            (&canvas::Kind::Split(_), &canvas::Kind::Floating(_)) => Ordering::Less,
+            (&canvas::Kind::Floating(_), &canvas::Kind::Split(_)) => Ordering::Greater,
+            (&canvas::Kind::Floating(ref a_state), &canvas::Kind::Floating(ref b_state)) =>
+                b_state.time_last_clicked.cmp(&a_state.time_last_clicked),
+            _ => Ordering::Equal,
+        });
+        canvasses.iter().find(|&&(_, ref canvas)| {
+            use utils::is_over_rect;
+            let (w, h) = canvas.element.get_size();
+            is_over_rect(canvas.xy, xy, [w as f64, h as f64])
+        }).map(|&(id, _)| id)
+    }
+
+    /// Check the given position for a attached Canvas.
+    pub fn canvas_from_position(&self, position: Position) -> Option<CanvasId> {
+        match position {
+            Position::Relative(_, _, ui_id) => match ui_id {
+                Some(UiId::Widget(id)) => self.widget_cache[id].maybe_canvas_id,
+                Some(UiId::Canvas(id)) => Some(id),
+                None => match self.maybe_prev_widget_id {
+                    Some(id) => self.widget_cache[id].maybe_canvas_id,
+                    None => self.maybe_current_canvas_id,
+                },
+            },
+            Position::Direction(_, _, ui_id) => match ui_id {
+                Some(UiId::Widget(id)) => self.widget_cache[id].maybe_canvas_id,
+                Some(UiId::Canvas(id)) => Some(id),
+                None => match self.maybe_prev_widget_id {
+                    Some(id) => self.widget_cache[id].maybe_canvas_id,
+                    None => self.maybe_current_canvas_id,
+                },
+            },
+            Position::Place(_, maybe_canvas_id) => maybe_canvas_id,
+            _ => None,
+        }
+    }
+
+    /// Return the user input state available for the widget with the given ID.
+    /// Take into consideration whether or not each input type is captured.
+    pub fn user_input<'a>(&'a self, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> UserInput<'a> {
+        let maybe_mouse = self.get_mouse_state(ui_id, maybe_canvas_id);
+        let without_keys = || UserInput {
+            maybe_mouse: maybe_mouse,
+            pressed_keys: &[],
+            released_keys: &[],
+            entered_text: &[],
+        };
+        let with_keys = || UserInput {
+            maybe_mouse: maybe_mouse,
+            pressed_keys: &self.keys_just_pressed,
+            released_keys: &self.keys_just_released,
+            entered_text: &self.text_just_entered,
+        };
+        match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
+                with_keys()
+            } else {
+                without_keys()
+            },
+            Some(Capturing::JustReleased) => without_keys(),
+            None => with_keys(),
+        }
+    }
+
+    /// Return the current mouse state.
+    ///
+    /// If the Ui has been captured and the given ui_id doesn't match the captured ui_id, return
+    /// None.
+    ///
+    /// If no widget is capturing the mouse and a canvas id was given, check that the mouse is over
+    /// the same canvas.
+    pub fn get_mouse_state(&self, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> Option<Mouse> {
         match self.maybe_captured_mouse {
             Some(Capturing::Captured(captured_ui_id)) => {
                 match ui_id == captured_ui_id {
@@ -214,7 +308,10 @@ impl<C> Ui<C> {
                 }
             },
             Some(Capturing::JustReleased) => None,
-            None => Some(self.mouse),
+            None => match self.maybe_canvas_under_mouse == maybe_canvas_id {
+                true => Some(self.mouse),
+                false => None,
+            },
         }
     }
 
@@ -287,7 +384,6 @@ impl<C> Ui<C> {
                 let dim = cached_widget.dim;
                 let xy = cached_widget.xy;
                 let depth = cached_widget.depth;
-                let maybe_canvas_id = cached_widget.maybe_canvas_id;
                 let store: Box<widget::Store<W::State, W::Style>> = any_state.downcast()
                     .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
                 let store: widget::Store<W::State, W::Style> = *store;
@@ -298,7 +394,6 @@ impl<C> Ui<C> {
                     dim: dim,
                     xy: xy,
                     depth: depth,
-                    maybe_canvas_id: maybe_canvas_id,
                 })
             } else {
                 None

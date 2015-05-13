@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt::Debug;
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{UiId, Ui, UserInput};
 use utils::{clamp, map_range, percentage, val_to_string};
 use vecmath::vec2_sub;
 use widget::{self, Widget, WidgetId};
@@ -349,13 +349,15 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State<E>>,
-                 style: &Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State<E>>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State<E>>,
+                     input: UserInput<'b>,
+                     style: &Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State<E>>>
         where
             C: CharacterCache,
     {
@@ -364,7 +366,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
 
@@ -539,17 +541,11 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
                               else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -820,6 +816,7 @@ impl<'a, E, F> position::Positionable for EnvelopeEditor<'a, E, F>
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         EnvelopeEditor { maybe_h_align: Some(h_align), ..self }

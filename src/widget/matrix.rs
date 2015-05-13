@@ -90,6 +90,7 @@ impl position::Positionable for Matrix {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Matrix { maybe_h_align: Some(h_align), ..self }

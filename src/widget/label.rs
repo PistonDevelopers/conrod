@@ -6,7 +6,7 @@ use graphics::character::CharacterCache;
 use label::{self, FontSize};
 use position::{Depth, HorizontalAlign, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::Ui;
+use ui::{Ui, UserInput};
 use widget::{self, Widget, WidgetId};
 
 
@@ -72,13 +72,15 @@ impl<'a> Widget for Label<'a> {
     fn unique_kind(&self) -> &'static str { "Label" }
     fn init_state(&self) -> State { State(String::new()) }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Label.
-    fn update<C>(self,
-                 prev_state: &widget::State<State>,
-                 style: &Style,
-                 _id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(self,
+                     prev_state: &widget::State<State>,
+                     _input: UserInput<'b>,
+                     style: &Style,
+                     _id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
@@ -91,17 +93,11 @@ impl<'a> Widget for Label<'a> {
         let maybe_new_state = if &string[..] != self.text { Some(State(self.text.to_string())) }
                               else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -159,6 +155,7 @@ impl<'a> Positionable for Label<'a> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Label { maybe_h_align: Some(h_align), ..self }

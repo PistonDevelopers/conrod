@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
-use ui::{UiId, Ui};
+use ui::{UiId, Ui, UserInput};
 use widget::{self, Widget, WidgetId};
 
 
@@ -244,13 +244,15 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Button.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State<T>>,
-                 style: &Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State<T>>,
+                     input: UserInput<'b>,
+                     style: &Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
     {
@@ -260,7 +262,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let font_size = style.label_font_size(&ui.theme);
@@ -356,17 +358,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
                               else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -549,6 +545,7 @@ impl<'a, T, F> position::Positionable for NumberDialer<'a, T, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         NumberDialer { maybe_h_align: Some(h_align), ..self }

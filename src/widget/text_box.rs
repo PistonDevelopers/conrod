@@ -10,7 +10,7 @@ use num::Float;
 use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{UiId, Ui, UserInput};
 use vecmath::vec2_sub;
 use widget::{self, Widget, WidgetId};
 
@@ -348,13 +348,15 @@ impl<'a, F> Widget for TextBox<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the TextBox.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State>,
-                 style: &Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State>,
+                     input: UserInput<'b>,
+                     style: &Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State>>
         where
             C: CharacterCache,
     {
@@ -364,7 +366,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(&ui.theme);
         let font_size = style.font_size(&ui.theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
@@ -488,17 +490,11 @@ impl<'a, F> Widget for TextBox<'a, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -647,6 +643,7 @@ impl<'a, F> position::Positionable for TextBox<'a, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         TextBox { maybe_h_align: Some(h_align), ..self }

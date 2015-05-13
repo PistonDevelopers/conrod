@@ -18,9 +18,9 @@ pub type Point = [Scalar; 2];
 pub enum Position {
     /// A specific position.
     Absolute(Scalar, Scalar),
-    /// A position relative to some other widget.
+    /// A position relative to some other Ui element.
     Relative(Scalar, Scalar, Option<UiId>),
-    /// A direction relative to some other widget.
+    /// A direction relative to some other Ui element.
     Direction(Direction, Scalar, Option<UiId>),
     /// A position at a place on the current Canvas.
     Place(Place, Option<CanvasId>),
@@ -96,6 +96,9 @@ pub trait Positionable: Sized {
 
     /// Set the Position.
     fn position(self, pos: Position) -> Self;
+
+    /// Get the Position.
+    fn get_position(&self) -> Position;
 
     /// Set the position with some Point.
     fn point(self, point: Point) -> Self {

@@ -2,10 +2,10 @@
 use canvas::CanvasId;
 use elmesque::Element;
 use graphics::character::CharacterCache;
-use position::{Depth, Dimensions, Point};
+use position::{Depth, Dimensions, Point, Position, Positionable};
 use std::any::Any;
 use std::fmt::Debug;
-use ui::Ui;
+use ui::{Ui, UiId, UserInput};
 
 pub mod button;
 pub mod drop_down_list;
@@ -24,7 +24,7 @@ pub mod xy_pad;
 pub type WidgetId = usize;
 
 /// A trait to be implemented by all Widget types.
-pub trait Widget: Sized {
+pub trait Widget: Positionable + Sized {
     /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
     /// allocations that you would like to avoid repeating between updates, or any calculations
     /// that you'd like to avoid repeating between calls to `update` and `draw`. Conrod will never
@@ -34,7 +34,6 @@ pub trait Widget: Sized {
     /// abstraction in order to making Theme serializing easier. Conrod doesn't yet support
     /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
     type Style: Any + PartialEq + ::std::fmt::Debug;
-
 
     /// After building the widget, you call this method to set its current state into the given
     /// `Ui`. More precisely, the following will occur when calling this method:
@@ -47,52 +46,38 @@ pub trait Widget: Sized {
     fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
         let kind = self.unique_kind();
         let new_style = self.style();
+        let position = self.get_position();
+
+        // Collect the previous state and style or initialise both if none exist.
         let maybe_prev_state = ui.get_widget_state::<Self>(id, kind).map(|prev|{
-            let PrevState { state, style, xy, dim, depth, maybe_canvas_id } = prev;
-            (Some(style), State {
-                state: state,
-                xy: xy,
-                dim: dim,
-                depth: depth,
-                maybe_canvas_id: maybe_canvas_id,
-            })
+            let PrevState { state, style, xy, dim, depth } = prev;
+            (Some(style), State { state: state, xy: xy, dim: dim, depth: depth, })
         });
         let (maybe_prev_style, prev_state) = maybe_prev_state.unwrap_or_else(|| {
-            (None, State {
-                state: self.init_state(),
-                dim: [0.0, 0.0],
-                xy: [0.0, 0.0],
-                depth: 0.0,
-                maybe_canvas_id: None,
-            })
+            (None, State { state: self.init_state(), dim: [0.0, 0.0], xy: [0.0, 0.0], depth: 0.0 })
         });
 
+        // Determine the id of the canvas that the widget is attached to. If not given explicitly,
+        // check the positioning to retrieve the Id from there.
+        let maybe_canvas_id = self.canvas_id().or_else(|| ui.canvas_from_position(position));
+
+        // Construct a UserInput for the widget.
+        let user_input = ui.user_input(UiId::Widget(id), maybe_canvas_id);
+
         // Update the widget's state.
-        let maybe_new_state = self.update(&prev_state, &new_style, id, ui);
+        let maybe_new_state = self.update(&prev_state, user_input, &new_style, id, ui);
 
         // Determine whether or not the `State` has changed.
         let (state_has_changed, new_state) = {
-            let State { dim, xy, depth, state, maybe_canvas_id } = maybe_new_state;
+            let State { dim, xy, depth, state } = maybe_new_state;
             match state {
                 Some(new_state) =>
-                    (true, State {
-                        dim: dim,
-                        xy: xy,
-                        depth: depth,
-                        state: new_state,
-                        maybe_canvas_id: maybe_canvas_id,
-                    }),
+                    (true, State { dim: dim, xy: xy, depth: depth, state: new_state }),
                 None => {
                     let has_changed = xy != prev_state.xy
                         || dim != prev_state.dim
                         || depth != prev_state.depth;
-                    (has_changed, State {
-                        dim: dim,
-                        xy: xy,
-                        depth: depth,
-                        maybe_canvas_id: maybe_canvas_id,
-                        ..prev_state
-                    })
+                    (has_changed, State { dim: dim, xy: xy, depth: depth, ..prev_state })
                 },
             }
         };
@@ -111,7 +96,7 @@ pub trait Widget: Sized {
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth, maybe_canvas_id } = new_state;
+        let State { state, dim, xy, depth } = new_state;
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
         ui.update_widget(id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
@@ -128,13 +113,17 @@ pub trait Widget: Sized {
     /// be constructed.
     fn style(&self) -> Self::Style;
 
+    /// Return the canvas to which the Widget will be attached, if there is one.
+    fn canvas_id(&self) -> Option<CanvasId> { None }
+
     /// Your widget's previous state is given to you as a parameter and it is your job to
     /// construct and return an Update that will be used to update the widget's cached state.
-    fn update<C>(self,
-                 prev: &State<Self::State>,
-                 current_style: &Self::Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> State<Option<Self::State>>
+    fn update<'a, C>(self,
+                     prev: &State<Self::State>,
+                     input: UserInput<'a>,
+                     current_style: &Self::Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> State<Option<Self::State>>
         where C: CharacterCache;
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
@@ -158,8 +147,6 @@ pub struct State<T> {
     pub xy: Point,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
-    /// The ID of the Canvas on which the widget is placed, if it is placed on one.
-    pub maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
@@ -174,8 +161,6 @@ pub struct PrevState<W> where W: Widget {
     pub xy: Point,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
-    /// The ID of the Canvas on which the widget is placed, if it is placed on one.
-    pub maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The state type that we'll dynamically cast to and from Any for storage within the Cache.

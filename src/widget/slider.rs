@@ -9,7 +9,7 @@ use mouse::Mouse;
 use num::{Float, NumCast, ToPrimitive};
 use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{UiId, Ui, UserInput};
 use utils::{clamp, percentage, value_from_perc};
 use widget::{self, Widget, WidgetId};
 
@@ -148,13 +148,15 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Button.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State<T>>,
-                 style: &Style,
-                 id: WidgetId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State<T>>,
+                     input: UserInput<'b>,
+                     style: &Style,
+                     id: WidgetId,
+                     ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
         where
             C: CharacterCache,
     {
@@ -165,7 +167,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
         let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_mouse = ui.get_mouse_state(UiId::Widget(id)).map(|m| m.relative_to(xy));
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
@@ -245,17 +247,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // Construct the new state if there was a change.
         let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
 
-        // Retrieve the CanvasId.
-        let maybe_canvas_id = self.maybe_canvas_id.or_else(|| {
-            if let Position::Place(_, maybe_canvas_id) = self.pos { maybe_canvas_id } else { None }
-        });
-
         widget::State {
             state: maybe_new_state,
             dim: dim,
             xy: xy,
             depth: self.depth,
-            maybe_canvas_id: maybe_canvas_id,
         }
     }
 
@@ -429,6 +425,7 @@ impl<'a, T, F> position::Positionable for Slider<'a, T, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
 }
 
 impl<'a, T, F> position::Sizeable for Slider<'a, T, F> {

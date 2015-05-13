@@ -1,4 +1,5 @@
 
+use clock_ticks::precise_time_ns;
 use color::Color;
 use graphics::character::CharacterCache;
 use graphics::math::Scalar;
@@ -17,6 +18,7 @@ pub struct State {
     interaction: Interaction,
     xy: Point,
     dim: Dimensions,
+    pub time_last_clicked: u64,
 }
 
 /// Describes an interaction with the Floating Canvas.
@@ -149,7 +151,7 @@ impl<'a> Floating<'a> {
             ..
         } = self;
 
-        let State { interaction, xy, dim } = match ui.get_canvas_state(id) {
+        let State { interaction, xy, dim, time_last_clicked } = match ui.get_canvas_state(id) {
             Some(Kind::Floating(state)) => state,
             _ => {
                 let init_dim = self.init_dim;
@@ -160,11 +162,12 @@ impl<'a> Floating<'a> {
                     interaction: Interaction::Normal, 
                     xy: init_xy,
                     dim: init_dim,
+                    time_last_clicked: precise_time_ns(),
                 }
             },
         };
 
-        let maybe_mouse = ui.get_mouse_state(UiId::Canvas(id));
+        let maybe_mouse = ui.get_mouse_state(UiId::Canvas(id), Some(id));
         let pad = style.padding(&ui.theme);
         let title_bar_font_size = style.title_bar_font_size(&ui.theme);
         const TITLE_BAR_LABEL_PADDING: f64 = 2.0;
@@ -186,11 +189,28 @@ impl<'a> Floating<'a> {
             interaction
         };
 
-        // Drag the Canvas.
+        // Drag the Canvas if the TitleBar remains clicked.
         let new_xy = match (interaction, new_interaction) {
             (Interaction::Clicked(Elem::TitleBar, a), Interaction::Clicked(Elem::TitleBar, b)) =>
                 ::vecmath::vec2_add(xy, ::vecmath::vec2_sub(b, a)),
             _ => xy,
+        };
+
+        // Check whether or not we need to capture or uncapture the mouse.
+        match (interaction, new_interaction) {
+            (Interaction::Highlighted(Elem::TitleBar), Interaction::Clicked(Elem::TitleBar, _)) =>
+                ui.mouse_captured_by(UiId::Canvas(id)),
+            (Interaction::Clicked(Elem::TitleBar, _), _) =>
+                ui.mouse_uncaptured_by(UiId::Canvas(id)),
+            _ => (),
+        }
+
+        // If the canvas was clicked, dragged or released, update the time_last_clicked.
+        let new_time_last_clicked = match (interaction, new_interaction) {
+            (Interaction::Highlighted(_), Interaction::Clicked(_, _)) |
+            (Interaction::Clicked(_, _), Interaction::Highlighted(_)) |
+            (Interaction::Clicked(_, _), Interaction::Clicked(_, _))  => precise_time_ns(),
+            _ => time_last_clicked,
         };
 
         // Draw.
@@ -234,7 +254,12 @@ impl<'a> Floating<'a> {
         let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
 
         // Construct the new Canvas state.
-        let new_state = State { interaction: new_interaction, xy: new_xy, dim: dim };
+        let new_state = State {
+            interaction: new_interaction,
+            xy: new_xy,
+            dim: dim,
+            time_last_clicked: new_time_last_clicked,
+        };
 
         // Update the canvas within the `Ui`'s `canvas_cache`.
         ui.update_canvas(id, Kind::Floating(new_state), new_xy, pad, Some(element));
@@ -389,6 +414,7 @@ impl<'a> ::position::Positionable for Floating<'a> {
         self.init_pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.init_pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Floating { maybe_h_align: Some(h_align), ..self }
