@@ -4,7 +4,7 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
-use label::{self, FontSize, Labelable};
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast};
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
@@ -13,8 +13,8 @@ use std::cmp::Ordering;
 use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
-use ui::{UiId, Ui, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::{GlyphCache, UserInput};
+use widget::{self, Widget};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
@@ -249,25 +249,23 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     /// Update the state of the Button.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<T>>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
+                     theme: &Theme,
+                     glyph_cache: &GlyphCache<C>) -> Option<State<T>>
         where
             C: CharacterCache,
     {
 
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
-        let font_size = style.label_font_size(&ui.theme);
+        let font_size = style.label_font_size(theme);
         let label_string = self.maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
-        let label_dim = [label::width(ui, font_size, &label_string), font_size as f64];
+        let label_dim = [glyph_cache.width(font_size, &label_string), font_size as f64];
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0 }
                                                           else { 1 + self.precision as usize };
         let val_string = create_val_string(self.value, val_string_len, self.precision);
@@ -336,7 +334,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         }
 
         // A function for constructing a new State.
-        let construct_new_state = || {
+        let new_state = || {
             State {
                 value: new_val,
                 min: self.min,
@@ -355,19 +353,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
-                              else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State<T>>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<T>>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -377,26 +370,26 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and inner rectangle Forms.
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
-        let frame_color = style.frame_color(&ui.theme);
-        let color = style.color(&ui.theme);
+        let frame_color = style.frame_color(theme);
+        let color = style.color(theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
         let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
         let val_string_len = state.max.to_string().len() + if state.precision == 0 { 0 }
                                                           else { 1 + state.precision as usize };
         let label_string = state.maybe_label.as_ref()
             .map_or_else(|| String::new(), |text| format!("{}: ", text));
-        let font_size = style.label_font_size(&ui.theme);
+        let font_size = style.label_font_size(theme);
 
         // If the value has changed, create a new string for val_string.
         let val_string = create_val_string(state.value, val_string_len, state.precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
         let label_x = -val_string_dim[0] / 2.0;
-        let label_dim = [label::width(ui, font_size, &label_string), font_size as f64];
+        let label_dim = [glyph_cache.width(font_size, &label_string), font_size as f64];
 
         // Construct the label form.
-        let val_string_color = style.label_color(&ui.theme);
+        let val_string_color = style.label_color(theme);
         let label_form = text(Text::from_string(label_string.clone())
                                   .color(val_string_color)
                                   .height(font_size as f64)).shift_x(label_x.floor());
@@ -447,7 +440,6 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
         // Collect the Forms into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-
     }
 
 }
@@ -554,6 +546,17 @@ impl<'a, T, F> position::Positionable for NumberDialer<'a, T, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         NumberDialer { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, T, F> position::Sizeable for NumberDialer<'a, T, F> {
@@ -567,5 +570,7 @@ impl<'a, T, F> position::Sizeable for NumberDialer<'a, T, F> {
         let w = self.dim[0];
         NumberDialer { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

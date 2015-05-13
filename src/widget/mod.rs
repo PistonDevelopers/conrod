@@ -2,10 +2,11 @@
 use canvas::CanvasId;
 use elmesque::Element;
 use graphics::character::CharacterCache;
-use position::{Depth, Dimensions, Point, Position, Positionable};
+use position::{Depth, Dimensions, Point, Positionable, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
-use ui::{Ui, UiId, UserInput};
+use theme::Theme;
+use ui::{GlyphCache, Ui, UiId, UserInput};
 
 pub mod button;
 pub mod drop_down_list;
@@ -24,7 +25,7 @@ pub mod xy_pad;
 pub type WidgetId = usize;
 
 /// A trait to be implemented by all Widget types.
-pub trait Widget: Positionable + Sized {
+pub trait Widget: Positionable + Sizeable + Sized {
     /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
     /// allocations that you would like to avoid repeating between updates, or any calculations
     /// that you'd like to avoid repeating between calls to `update` and `draw`. Conrod will never
@@ -46,7 +47,14 @@ pub trait Widget: Positionable + Sized {
     fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
         let kind = self.unique_kind();
         let new_style = self.style();
-        let position = self.get_position();
+        let depth = self.get_depth();
+        let pos = self.get_position();
+        let (h_align, v_align) = self.get_alignment(&ui.theme);
+        let dim = {
+            let Ui { ref theme, ref glyph_cache, .. } = *ui;
+            self.get_dimensions(theme, glyph_cache)
+        };
+        let xy = ui.get_xy(pos, dim, h_align, v_align);
 
         // Collect the previous state and style or initialise both if none exist.
         let maybe_prev_state = ui.get_widget_state::<Self>(id, kind).map(|prev|{
@@ -59,18 +67,39 @@ pub trait Widget: Positionable + Sized {
 
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
-        let maybe_canvas_id = self.canvas_id().or_else(|| ui.canvas_from_position(position));
-
-        // Construct a UserInput for the widget.
-        let user_input = ui.user_input(UiId::Widget(id), maybe_canvas_id);
+        let maybe_canvas_id = self.canvas_id().or_else(|| ui.canvas_from_position(pos));
 
         // Update the widget's state.
-        let maybe_new_state = self.update(&prev_state, user_input, &new_style, id, ui);
+        let maybe_new_state = {
+            // Construct a UserInput for the widget.
+            let user_input = ui.user_input(UiId::Widget(id), maybe_canvas_id);
+            let Ui { ref theme, ref glyph_cache, .. } = *ui;
+            self.update(&prev_state, xy, dim, user_input, &new_style, theme, glyph_cache)
+        };
+
+        // Check for whether or not the user input needs to be captured or uncaptured.
+        {
+            let new_state = match maybe_new_state {
+                Some(ref new_state) => new_state,
+                None => &prev_state.state
+            };
+            if Self::capture_mouse(&prev_state.state, new_state) {
+                ui.mouse_captured_by(UiId::Widget(id));
+            }
+            if Self::uncapture_mouse(&prev_state.state, new_state) {
+                ui.mouse_uncaptured_by(UiId::Widget(id));
+            }
+            if Self::capture_keyboard(&prev_state.state, new_state) {
+                ui.keyboard_captured_by(UiId::Widget(id));
+            }
+            if Self::uncapture_keyboard(&prev_state.state, new_state) {
+                ui.keyboard_uncaptured_by(UiId::Widget(id));
+            }
+        }
 
         // Determine whether or not the `State` has changed.
         let (state_has_changed, new_state) = {
-            let State { dim, xy, depth, state } = maybe_new_state;
-            match state {
+            match maybe_new_state {
                 Some(new_state) =>
                     (true, State { dim: dim, xy: xy, depth: depth, state: new_state }),
                 None => {
@@ -90,7 +119,8 @@ pub trait Widget: Positionable + Sized {
 
         // Construct the widget's element.
         let maybe_new_element = if style_has_changed || state_has_changed {
-            Some(Self::draw(&new_state, &new_style, ui))
+            let Ui { ref theme, ref glyph_cache, .. } = *ui;
+            Some(Self::draw(&new_state, &new_style, theme, glyph_cache))
         } else {
             None
         };
@@ -100,6 +130,18 @@ pub trait Widget: Positionable + Sized {
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
         ui.update_widget(id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn uncapture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn capture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
 
     /// Return the kind of the widget as a &'static str. Note that this must be unique from all
     /// other widgets' "unique kinds". This is used by conrod to help avoid UiId errors.
@@ -120,10 +162,12 @@ pub trait Widget: Positionable + Sized {
     /// construct and return an Update that will be used to update the widget's cached state.
     fn update<'a, C>(self,
                      prev: &State<Self::State>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'a>,
                      current_style: &Self::Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> State<Option<Self::State>>
+                     theme: &Theme,
+                     glyph_cache: &GlyphCache<C>) -> Option<Self::State>
         where C: CharacterCache;
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
@@ -131,7 +175,8 @@ pub trait Widget: Positionable + Sized {
     /// when designing your widget's `Style` and `State` types.
     fn draw<C>(new_state: &State<Self::State>,
                current_style: &Self::Style,
-               ui: &mut Ui<C>) -> Element
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where C: CharacterCache;
 
 }

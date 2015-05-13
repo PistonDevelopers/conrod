@@ -4,16 +4,16 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
-use label::{self, FontSize, Labelable};
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::Float;
-use position::{self, Corner, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
+use position::{self, Corner, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use std::default::Default;
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
+use ui::{GlyphCache, UserInput};
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -171,22 +171,20 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     /// Update the XYPad's cached state.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<X, Y>>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State<X, Y>>>
+                     theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State<X, Y>>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
 
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
@@ -238,19 +236,14 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
-
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given XYPad State.
-    fn draw<C>(new_state: &widget::State<State<X, Y>>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<X, Y>>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -258,27 +251,27 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         use elmesque::text::Text;
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
 
         // Construct the frame and inner rectangle Forms.
-        let color = state.color(style.color(&ui.theme));
-        let frame_color = style.frame_color(&ui.theme);
+        let color = state.color(style.color(theme));
+        let frame_color = style.frame_color(theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
         let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
 
         // Construct the label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
-            let l_color = style.label_color(&ui.theme);
-            let l_size = style.label_font_size(&ui.theme) as f64;
+            let l_color = style.label_color(theme);
+            let l_size = style.label_font_size(theme) as f64;
             text(Text::from_string(l_text.clone()).color(l_color).height(l_size))
         });
 
         // Construct the crosshair line Forms.
         let ch_x = map_range(state.x, state.min_x, state.max_x, -half_pad_w, half_pad_w).floor();
         let ch_y = map_range(state.y, state.min_y, state.max_y, -half_pad_h, half_pad_h).floor();
-        let line_width = style.line_width(&ui.theme);
+        let line_width = style.line_width(theme);
         let line_style = solid(color.plain_contrast()).width(line_width);
         let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
         let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
@@ -289,8 +282,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let value_string = format!("{}, {}", x_string, y_string);
         let value_text_form = {
             const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-            let value_font_size = style.value_font_size(&ui.theme);
-            let w = label::width(ui, value_font_size, &value_string);
+            let value_font_size = style.value_font_size(theme);
+            let w = glyph_cache.width(value_font_size, &value_string);
             let h = value_font_size as f64;
             let x_shift = w / 2.0 + PAD;
             let y_shift = h / 2.0 + PAD;
@@ -439,6 +432,17 @@ impl<'a, X, Y, F> position::Positionable for XYPad<'a, X, Y, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         XYPad { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, X, Y, F> position::Sizeable for XYPad<'a, X, Y, F> {
@@ -452,5 +456,7 @@ impl<'a, X, Y, F> position::Sizeable for XYPad<'a, X, Y, F> {
         let w = self.dim[0];
         XYPad { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

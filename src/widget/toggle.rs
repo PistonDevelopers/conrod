@@ -6,10 +6,10 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::{GlyphCache, UserInput};
+use widget::{self, Widget};
 
 
 /// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
@@ -144,20 +144,18 @@ impl<'a, F> Widget for Toggle<'a, F>
     /// Update the state of the Toggle.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      _style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State>>
+                     _theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
 
         let widget::State { ref state, .. } = *prev_state;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let dim = self.dim;
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Check whether or not a new interaction has occurred.
@@ -194,18 +192,14 @@ impl<'a, F> Widget for Toggle<'a, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -214,11 +208,11 @@ impl<'a, F> Widget for Toggle<'a, F>
         let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and pressable forms.
-        let frame = style.frame(&ui.theme);
-        let frame_color = style.frame_color(&ui.theme);
+        let frame = style.frame(theme);
+        let frame_color = style.frame_color(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let color = style.color(&ui.theme);
+        let color = style.color(theme);
         let color = state.color(if state.value { color }
                                     else { color.with_luminance(0.1) });
         let pressable_form = rect(inner_w, inner_h).filled(color);
@@ -226,8 +220,8 @@ impl<'a, F> Widget for Toggle<'a, F>
         // Construct the label's Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
-            let label_color = style.label_color(&ui.theme);
-            let font_size = style.label_font_size(&ui.theme) as f64;
+            let label_color = style.label_color(theme);
+            let font_size = style.label_font_size(theme) as f64;
             text(Text::from_string(label_text.clone()).color(label_color).height(font_size))
                 .shift(xy[0].floor(), xy[1].floor())
         });
@@ -345,6 +339,17 @@ impl<'a, F> position::Positionable for Toggle<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Toggle { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> position::Sizeable for Toggle<'a, F> {
@@ -358,5 +363,7 @@ impl<'a, F> position::Sizeable for Toggle<'a, F> {
         let w = self.dim[0];
         Toggle { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

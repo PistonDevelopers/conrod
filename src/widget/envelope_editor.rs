@@ -5,7 +5,7 @@ use elmesque::Element;
 use frame::Frameable;
 use graphics::math::Scalar;
 use graphics::character::CharacterCache;
-use label::{self, FontSize, Labelable};
+use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::Float;
 use position::{self, Corner, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
@@ -14,10 +14,10 @@ use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt::Debug;
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
+use ui::{GlyphCache, UserInput};
 use utils::{clamp, map_range, percentage, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
@@ -354,24 +354,22 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     /// Update the state of the EnvelopeEditor's cached state.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<E>>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State<E>>>
+                     theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State<E>>
         where
             C: CharacterCache,
     {
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
 
-        let pt_radius = style.point_radius(&ui.theme);
-        let frame = style.frame(&ui.theme);
+        let pt_radius = style.point_radius(theme);
+        let frame = style.frame(theme);
         let frame_2 = frame * 2.0;
         let pad_dim = vec2_sub(dim, [frame_2; 2]);
         let half_pad_w = pad_dim[0] / 2.0;
@@ -515,7 +513,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         };
 
         // A function for constructing a new State.
-        let construct_new_state = || {
+        let new_state = || {
             State {
                 interaction: new_interaction,
                 env: self.env.clone(),
@@ -538,19 +536,14 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // If so, construct the new state.
-        let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
-                              else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given EnvelopeEditor State.
-    fn draw<C>(new_state: &widget::State<State<E>>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<E>>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -558,23 +551,23 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         use elmesque::text::Text;
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
         let skew = state.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (state.min_x, state.max_x, state.min_y, state.max_y);
 
         // Construct the frame and inner rectangle Forms.
-        let value_font_size = style.value_font_size(&ui.theme);
-        let frame_color = style.frame_color(&ui.theme);
+        let value_font_size = style.value_font_size(theme);
+        let frame_color = style.frame_color(theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let color = state.interaction.color(style.color(&ui.theme));
+        let color = state.interaction.color(style.color(theme));
         let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
 
         // Construct the label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
-            let l_color = style.label_color(&ui.theme);
-            let l_size = style.label_font_size(&ui.theme);
+            let l_color = style.label_color(theme);
+            let l_size = style.label_font_size(theme);
             text(Text::from_string(l_text.clone()).color(l_color).height(l_size as f64))
         });
 
@@ -588,7 +581,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Draw the envelope lines.
         let line_color = color.plain_contrast();
-        let line_width = style.line_width(&ui.theme);
+        let line_width = style.line_width(theme);
         let envelope_line_forms = perc_env.windows(2).map(|window| {
             let ((x_a, y_a, _), (x_b, y_b, _)) = (window[0], window[1]);
             let p_a = [map_range(x_a, 0.0, 1.0, -half_pad_w, half_pad_w),
@@ -607,7 +600,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 use std::option::IntoIter;
 
                 // Construct a Form for an envelope point and it's value in text form.
-                let env_pt_form = |ui: &mut Ui<C>, env: &[E], idx: usize, p_pos: Point|
+                let env_pt_form = |env: &[E], idx: usize, p_pos: Point|
                                                 -> Chain<IntoIter<Form>, IntoIter<Form>> {
                     let x_range = max_x - min_x;
                     let y_range = max_y - min_y;
@@ -617,7 +610,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     let y_string = val_to_string(env[idx].get_y(), max_y, y_range, y_px_range);
                     let xy_string = format!("{}, {}", x_string, y_string);
                     const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-                    let w = label::width(ui, value_font_size, &xy_string);
+                    let w = glyph_cache.width(value_font_size, &xy_string);
                     let h = value_font_size as f64;
                     let x_shift = w / 2.0 + PAD;
                     let y_shift = h / 2.0 + PAD;
@@ -628,7 +621,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                         Corner::BottomRight => (-x_shift, y_shift),
                     };
                     let color = color.plain_contrast();
-                    let point_radius = style.point_radius(&ui.theme);
+                    let point_radius = style.point_radius(theme);
                     let circle_form = circle(point_radius).filled(color)
                         .shift(p_pos[0].floor(), p_pos[1].floor());
                     let text_form = text(Text::from_string(xy_string).color(color).height(h))
@@ -646,12 +639,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                         let p_pos_x_clamped = clamp(x, left_pixel_bound, right_pixel_bound);
                         let p_pos_y_clamped = clamp(y, -half_pad_h, half_pad_h);
                         let p_pos_clamped = [p_pos_x_clamped, p_pos_y_clamped];
-                        let point_form = env_pt_form(ui, &state.env[..], idx, p_pos_clamped);
+                        let point_form = env_pt_form(&state.env[..], idx, p_pos_clamped);
                         Some(point_form)
                     },
                     // Otherwise, draw the closest point if there is one.
                     Elem::Pad => if let Some((closest_idx, (x, y))) = state.maybe_closest_point {
-                        Some(env_pt_form(ui, &state.env[..], closest_idx, [x, y]))
+                        Some(env_pt_form(&state.env[..], closest_idx, [x, y]))
                     } else {
                         None
                     },
@@ -825,6 +818,17 @@ impl<'a, E, F> position::Positionable for EnvelopeEditor<'a, E, F>
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         EnvelopeEditor { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, E, F> position::Sizeable for EnvelopeEditor<'a, E, F>
@@ -841,5 +845,7 @@ impl<'a, E, F> position::Sizeable for EnvelopeEditor<'a, E, F>
         let w = self.dim[0];
         EnvelopeEditor { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

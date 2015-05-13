@@ -8,8 +8,8 @@ use label::{FontSize, Labelable};
 use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::{GlyphCache, UserInput};
+use widget::{self, Widget};
 
 
 /// Tuple / React params.
@@ -211,24 +211,37 @@ impl<'a, F> Widget for DropDownList<'a, F>
     fn style(&self) -> Style { self.style.clone() }
     fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
+    /// Capture the mouse if the menu was opened.
+    fn capture_mouse(prev: &State, new: &State) -> bool {
+        match (prev.menu_state, new.menu_state) {
+            (MenuState::Closed(_), MenuState::Open(_)) => true,
+            _ => false,
+        }
+    }
+
+    /// Uncapture the mouse if the menu was closed.
+    fn uncapture_mouse(prev: &State, new: &State) -> bool {
+        match (prev.menu_state, new.menu_state) {
+            (MenuState::Open(_), MenuState::Closed(_)) => true,
+            _ => false,
+        }
+    }
+
     /// Update the state of the DropDownList.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State>>
+                     theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
-
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let num_strings = self.strings.len();
 
         // Check for a new interaction with the DropDownList.
@@ -243,15 +256,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
                                                     else { None });
 
-        // Check whether or not we need to capture or uncapture the mouse.
-        // We need to capture the cursor if the DropDownList has just been opened.
-        // We need to uncapture the cursor if the DropDownList has just been closed.
-        match (state.menu_state, new_menu_state) {
-            (MenuState::Closed(_), MenuState::Open(_)) => ui.mouse_captured_by(UiId::Widget(id)),
-            (MenuState::Open(_), MenuState::Closed(_)) => ui.mouse_uncaptured_by(UiId::Widget(id)),
-            _ => (),
-        }
-
         // Call the `react` closure if mouse was released on one of the DropDownList items.
         if let Some(ref mut react) = self.maybe_react {
             if let (MenuState::Open(o_d_state), MenuState::Closed(c_d_state)) =
@@ -264,7 +268,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
         }
 
         // Function for constructing a new DropDownList State.
-        let construct_new_state = || {
+        let new_state = || {
             State {
                 menu_state: new_menu_state,
                 maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
@@ -280,19 +284,14 @@ impl<'a, F> Widget for DropDownList<'a, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(construct_new_state()) }
-                              else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -300,7 +299,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
         use elmesque::text::Text;
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let theme = &ui.theme;
 
         // Retrieve the styling for the Element..
         let color = style.color(theme);
@@ -491,6 +489,17 @@ impl<'a, F> Positionable for DropDownList<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         DropDownList { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> ::position::Sizeable for DropDownList<'a, F> {
@@ -504,5 +513,7 @@ impl<'a, F> ::position::Sizeable for DropDownList<'a, F> {
         let w = self.dim[0];
         DropDownList { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

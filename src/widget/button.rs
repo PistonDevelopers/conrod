@@ -6,10 +6,10 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
+use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::{GlyphCache, UserInput};
+use widget::{self, Widget};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -134,19 +134,17 @@ impl<'a, F> Widget for Button<'a, F>
     /// Update the state of the Button.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      _style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State>>
+                     _theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Check whether or not a new interaction has occurred.
@@ -177,24 +175,19 @@ impl<'a, F> Widget for Button<'a, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let theme = &ui.theme;
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));
@@ -328,6 +321,17 @@ impl<'a, F> Positionable for Button<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Button { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> ::position::Sizeable for Button<'a, F> {
@@ -341,5 +345,7 @@ impl<'a, F> ::position::Sizeable for Button<'a, F> {
         let w = self.dim[0];
         Button { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

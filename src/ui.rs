@@ -2,7 +2,7 @@
 use canvas::{self, Canvas, CanvasId};
 use elmesque::Element;
 use graphics::Graphics;
-use graphics::character::{Character, CharacterCache};
+use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::{ButtonState, Mouse};
 use piston::input;
@@ -63,7 +63,7 @@ pub struct Ui<C> {
     /// Text that has been entered since the end of the last render cycle.
     pub text_just_entered: Vec<String>,
     /// Cache for character textures, used for label width calculation and glyph rendering.
-    pub character_cache: C,
+    pub glyph_cache: GlyphCache<C>,
     prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,
@@ -94,6 +94,21 @@ pub struct UserInput<'a> {
     pub entered_text: &'a [String],
 }
 
+/// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
+pub struct GlyphCache<C>(::std::cell::RefCell<C>);
+
+
+impl<C> GlyphCache<C> where C: CharacterCache {
+    /// Return the width of a character.
+    pub fn char_width(&self, font_size: FontSize, ch: char) -> f64 {
+        self.0.borrow_mut().character(font_size, ch).width()
+    }
+    /// Return the width of the given text.
+    pub fn width(&self, font_size: FontSize, text: &str) -> f64 {
+        self.0.borrow_mut().width(font_size, text)
+    }
+}
+
 
 impl<C> Ui<C> {
 
@@ -109,7 +124,7 @@ impl<C> Ui<C> {
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
-            character_cache: character_cache,
+            glyph_cache: GlyphCache(::std::cell::RefCell::new(character_cache)),
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
@@ -194,24 +209,6 @@ impl<C> Ui<C> {
         event.text(|text| {
             self.text_just_entered.push(text.to_string())
         });
-    }
-
-    /// Return a reference to a `Character` from the GlyphCache.
-    pub fn get_character(&mut self,
-                         size: FontSize,
-                         ch: char) -> &Character<C::Texture>
-        where
-            C: CharacterCache
-    {
-        self.character_cache.character(size, ch)
-    }
-
-    /// Return the width of a 'Character'.
-    pub fn get_character_w(&mut self, size: FontSize, ch: char) -> f64
-        where
-            C: CharacterCache
-    {
-        self.get_character(size, ch).width()
     }
 
     /// Flush all stored keys.
@@ -672,12 +669,13 @@ impl<C> Ui<C> {
     {
         use elmesque::Renderer;
         use std::cmp::Ordering;
+        use std::ops::DerefMut;
 
         let Ui {
             ref mut canvas_cache,
             ref mut widget_cache,
             ref win_w, ref win_h,
-            ref mut character_cache,
+            ref glyph_cache,
             ..
         } = *self;
 
@@ -723,6 +721,8 @@ impl<C> Ui<C> {
         });
 
         // Construct the elmesque Renderer for rendering the Elements.
+        let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
+        let character_cache = ref_mut_character_cache.deref_mut();
         let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
 
         // First, draw all of the `Split` canvasses.
@@ -768,3 +768,5 @@ impl<C> Ui<C> {
     }
 
 }
+
+

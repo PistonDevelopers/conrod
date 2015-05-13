@@ -4,15 +4,15 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
-use label::{self, FontSize};
+use label::FontSize;
 use mouse::Mouse;
 use num::Float;
 use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
+use ui::{GlyphCache, UserInput};
 use vecmath::vec2_sub;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 pub type Idx = usize;
@@ -162,7 +162,7 @@ impl Cursor {
 // widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
 
 /// Find the position of a character in a text box.
-fn cursor_position<C: CharacterCache>(ui: &mut Ui<C>,
+fn cursor_position<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                       idx: usize,
                                       mut text_start_x: f64,
                                       font_size: FontSize,
@@ -174,13 +174,13 @@ fn cursor_position<C: CharacterCache>(ui: &mut Ui<C>,
 
     for (i, ch) in text.chars().enumerate() {
         if i >= idx { break; }
-        text_start_x += ui.get_character(font_size, ch).width();
+        text_start_x += glyph_cache.char_width(font_size, ch);
     }
     text_start_x
 }
 
 /// Check if cursor is over the pad and if so, which
-fn over_elem<C: CharacterCache>(ui: &mut Ui<C>,
+fn over_elem<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                 mouse_xy: Point,
                                 dim: Dimensions,
                                 pad_dim: Dimensions,
@@ -191,7 +191,7 @@ fn over_elem<C: CharacterCache>(ui: &mut Ui<C>,
     use utils::is_over_rect;
     if is_over_rect([0.0, 0.0], mouse_xy, dim) {
         if is_over_rect([0.0, 0.0], mouse_xy, pad_dim) {
-            let (idx, _) = closest_idx(ui, mouse_xy, text_start_x, text_w, font_size, text);
+            let (idx, _) = closest_idx(glyph_cache, mouse_xy, text_start_x, text_w, font_size, text);
             Elem::Char(idx)
         } else {
             Elem::Rect
@@ -202,7 +202,7 @@ fn over_elem<C: CharacterCache>(ui: &mut Ui<C>,
 }
 
 /// Check which character is closest to the mouse cursor.
-fn closest_idx<C: CharacterCache>(ui: &mut Ui<C>,
+fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                   mouse_xy: Point,
                                   text_start_x: f64,
                                   text_w: f64,
@@ -213,8 +213,7 @@ fn closest_idx<C: CharacterCache>(ui: &mut Ui<C>,
     let mut x = left_x;
     let mut prev_x = x;
     for (i, ch) in text.chars().enumerate() {
-        let character = ui.get_character(font_size, ch);
-        let char_w = character.width();
+        let char_w = glyph_cache.char_width(font_size, ch);
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
         if mouse_xy[0] > left_x && mouse_xy[0] <= right_x { return (i, prev_x) }
@@ -350,33 +349,47 @@ impl<'a, F> Widget for TextBox<'a, F>
     fn style(&self) -> Style { self.style.clone() }
     fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
+    /// Capture the keyboard if the Interaction has become `Captured`.
+    fn capture_keyboard(prev: &State, new: &State) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Uncaptured(_), Interaction::Captured(_)) => true,
+            _ => false,
+        }
+    }
+
+    /// Uncapture the keyboard if the Interaction has become `Uncaptured`.
+    fn uncapture_keyboard(prev: &State, new: &State) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Captured(_), Interaction::Uncaptured(_)) => true,
+            _ => false,
+        }
+    }
+
     /// Update the state of the TextBox.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State>>
+                     theme: &Theme,
+                     glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
 
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(&ui.theme);
-        let font_size = style.font_size(&ui.theme);
+        let frame = style.frame(theme);
+        let font_size = style.font_size(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let text_w = label::width(ui, font_size, &self.text);
+        let text_w = glyph_cache.width(font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
             (true, Some(mouse)) => {
-                let over_elem = over_elem(ui, mouse.xy, dim, pad_dim, text_start_x,
+                let over_elem = over_elem(glyph_cache, mouse.xy, dim, pad_dim, text_start_x,
                                           text_w, font_size, &self.text);
                 get_new_interaction(over_elem, state.interaction, mouse)
             },
@@ -395,7 +408,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &self.text);
+            let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &self.text);
 
             if cursor.is_cursor() || cursor.anchor != Anchor::None {
                 let cursor_x_view = cursor_x - v_offset;
@@ -417,11 +430,11 @@ impl<'a, F> Widget for TextBox<'a, F>
             let mut cursor = captured.cursor;
 
             // Check for entered text.
-            for text in ui.get_entered_text(UiId::Widget(id)).to_vec().iter() {
+            for text in input.entered_text.to_vec().iter() {
                 if text.len() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
-                if text_w + label::width(ui, font_size, &text) > max_w { continue; }
+                if text_w + glyph_cache.width(font_size, &text) > max_w { continue; }
 
                 let end: String = self.text.chars().skip(cursor.end).collect();
                 self.text.truncate(cursor.start);
@@ -431,8 +444,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             }
 
             // Check for control keys.
-            let pressed_keys = ui.get_pressed_keys(UiId::Widget(id));
-            for key in pressed_keys.iter() {
+            for key in input.pressed_keys.iter() {
                 match *key {
                     Backspace => if cursor.is_cursor() {
                         if cursor.start > 0 {
@@ -466,15 +478,6 @@ impl<'a, F> Widget for TextBox<'a, F>
             new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
         }
 
-        // Check whether or not we need to capture or uncapture the keyboard.
-        match (state.interaction, new_interaction) {
-            (Interaction::Uncaptured(_), Interaction::Captured(_)) =>
-                ui.keyboard_captured_by(UiId::Widget(id)),
-            (Interaction::Captured(_), Interaction::Uncaptured(_)) =>
-                ui.keyboard_uncaptured_by(UiId::Widget(id)),
-            _ => (),
-        }
-
         // Function for constructing a new state.
         let new_state = || {
             State {
@@ -488,19 +491,14 @@ impl<'a, F> Widget for TextBox<'a, F>
             || &state.text[..] != &self.text[..];
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
-
     /// Construct an Element from the given TextBox State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -510,14 +508,14 @@ impl<'a, F> Widget for TextBox<'a, F>
         let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and inner rectangle Forms.
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let color = state.interaction.color(style.color(&ui.theme));
-        let frame_color = style.frame_color(&ui.theme);
+        let color = state.interaction.color(style.color(theme));
+        let frame_color = style.frame_color(theme);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
         let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
-        let font_size = style.font_size(&ui.theme);
-        let text_w = label::width(ui, font_size, &state.text[..]);
+        let font_size = style.font_size(theme);
+        let text_w = glyph_cache.width(font_size, &state.text[..]);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
 
@@ -530,7 +528,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui, cursor_idx, text_start_x, font_size, &state.text);
+            let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &state.text);
 
             let cursor_form = if cursor.is_cursor() {
                 let half_pad_h = pad_dim[1] / 2.0;
@@ -540,9 +538,9 @@ impl<'a, F> Widget for TextBox<'a, F>
             } else {
                 let (block_xy, dim) = {
                     let (start, end) = (cursor.start, cursor.end);
-                    let cursor_x = cursor_position(ui, start, text_start_x, font_size, &state.text);
+                    let cursor_x = cursor_position(glyph_cache, start, text_start_x, font_size, &state.text);
                     let htext: String = state.text.chars().skip(start).take(end - start).collect();
-                    let htext_w = label::width(ui, font_size, &htext);
+                    let htext_w = glyph_cache.width(font_size, &htext);
                     ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
                 };
                 rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
@@ -652,6 +650,17 @@ impl<'a, F> position::Positionable for TextBox<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         TextBox { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> position::Sizeable for TextBox<'a, F> {
@@ -665,4 +674,6 @@ impl<'a, F> position::Sizeable for TextBox<'a, F> {
         let w = self.dim[0];
         TextBox { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }

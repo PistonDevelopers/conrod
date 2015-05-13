@@ -1,19 +1,9 @@
 
 use color::{Color, hsl, hsla, rgb, rgba};
-use graphics::character::CharacterCache;
 use ui::Ui;
 
 /// Font size used throughout Conrod.
 pub type FontSize = u32;
-
-/// Determine the pixel width of the final text bitmap.
-#[inline]
-pub fn width<C: CharacterCache>(ui: &mut Ui<C>, size: FontSize, text: &str) -> f64 {
-    text.chars().fold(0u32, |a, ch| {
-        let character = ui.get_character(size, ch);
-        a + character.width() as u32
-    }) as f64
-}
 
 /// Widgets that may display some label.
 pub trait Labelable<'a>: Sized {

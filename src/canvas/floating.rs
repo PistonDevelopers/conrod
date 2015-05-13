@@ -3,11 +3,11 @@ use clock_ticks::precise_time_ns;
 use color::Color;
 use graphics::character::CharacterCache;
 use graphics::math::Scalar;
-use label::{self, FontSize};
+use label::FontSize;
 use mouse::Mouse;
-use position::{self, Dimensions, HorizontalAlign, Place, Point, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Place, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{Ui, UiId};
+use ui::{GlyphCache, Ui, UiId};
 
 use super::{CanvasId, Kind};
 //use super::split::Split;
@@ -40,6 +40,7 @@ pub enum Elem {
 pub struct Floating<'a> {
     init_dim: Dimensions,
     init_pos: Position,
+    depth: Depth,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     //maybe_splits: Option<(Direction, &'a [Split<'a>])>,
@@ -92,6 +93,7 @@ impl<'a> Floating<'a> {
         Floating {
             init_dim: [160.0, 80.0],
             init_pos: Position::Place(Place::Middle, None),
+            depth: 0.0,
             maybe_h_align: None,
             maybe_v_align: None,
             //maybe_splits: None,
@@ -228,7 +230,7 @@ impl<'a> Floating<'a> {
                 use elmesque::text::Text;
                 let label_color = style.title_bar_label_color(&ui.theme);
                 let align = style.title_bar_label_align(&ui.theme);
-                let label_width = label::width(ui, title_bar_font_size, label);
+                let label_width = ui.glyph_cache.width(title_bar_font_size, label);
                 let label_x = align.to(inner_dim[0], label_width) + TITLE_BAR_LABEL_PADDING;
                 Some(text(Text::from_string(label.to_string())
                              .color(label_color)
@@ -423,6 +425,17 @@ impl<'a> ::position::Positionable for Floating<'a> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Floating { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a> ::position::Sizeable for Floating<'a> {
@@ -436,6 +449,8 @@ impl<'a> ::position::Sizeable for Floating<'a> {
         let w = self.init_dim[0];
         Floating { init_dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.init_dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.init_dim[1] }
 }
 
 impl<'a> ::label::Labelable<'a> for Floating<'a> {

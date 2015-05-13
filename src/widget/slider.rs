@@ -7,11 +7,11 @@ use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast, ToPrimitive};
-use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui, UserInput};
+use ui::{GlyphCache, UserInput};
 use utils::{clamp, percentage, value_from_perc};
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Linear value selection. If the slider's width is greater than it's height, it will
@@ -153,20 +153,18 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     /// Update the state of the Button.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<T>>,
+                     xy: Point,
+                     dim: Dimensions,
                      input: UserInput<'b>,
                      style: &Style,
-                     id: WidgetId,
-                     ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
+                     theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State<T>>
         where
             C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
 
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
@@ -177,7 +175,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         };
 
         let new_value = if let Some(mouse) = maybe_mouse {
-            let frame = style.frame(&ui.theme);
+            let frame = style.frame(theme);
             let frame_2 = frame * 2.0;
             let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
             let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
@@ -245,28 +243,24 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State {
-            state: maybe_new_state,
-            dim: dim,
-            xy: xy,
-            depth: self.depth,
-        }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State<T>>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<T>>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-        let frame_color = state.color(style.frame_color(&ui.theme));
-        let color = state.color(style.color(&ui.theme));
+        let frame_color = state.color(style.frame_color(theme));
+        let color = state.color(style.color(theme));
 
         let new_value = NumCast::from(state.value).unwrap();
         let is_horizontal = dim[0] > dim[1];
@@ -295,11 +289,10 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // Label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
-            use label;
             const TEXT_PADDING: f64 = 10.0;
-            let label_color = style.label_color(&ui.theme);
-            let size = style.label_font_size(&ui.theme);
-            let label_w = label::width(ui, size, &label_text);
+            let label_color = style.label_color(theme);
+            let size = style.label_font_size(theme);
+            let label_w = glyph_cache.width(size, &label_text);
             let is_horizontal = dim[0] > dim[1];
             let l_pos = if is_horizontal {
                 let x = position::align_left_of(dim[0], label_w) + TEXT_PADDING;
@@ -426,6 +419,17 @@ impl<'a, T, F> position::Positionable for Slider<'a, T, F> {
         self
     }
     fn get_position(&self) -> Position { self.pos }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, T, F> position::Sizeable for Slider<'a, T, F> {
@@ -439,5 +443,7 @@ impl<'a, T, F> position::Sizeable for Slider<'a, T, F> {
         let w = self.dim[0];
         Slider { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

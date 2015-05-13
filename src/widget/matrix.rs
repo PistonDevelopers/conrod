@@ -1,6 +1,8 @@
 
-use position::{self, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
-use ui::Ui;
+use graphics::character::CharacterCache;
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use theme::Theme;
+use ui::{GlyphCache, Ui};
 
 /// Reaction params.
 pub type WidgetNum = usize;
@@ -99,6 +101,14 @@ impl position::Positionable for Matrix {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Matrix { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(self, _depth: Depth) -> Self { self }
+    fn get_depth(&self) -> Depth { 0.0 }
 }
 
 impl position::Sizeable for Matrix {
@@ -112,5 +122,7 @@ impl position::Sizeable for Matrix {
         let w = self.dim[0];
         Matrix { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 
