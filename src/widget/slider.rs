@@ -150,7 +150,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     fn style(&self) -> Style { self.style.clone() }
     fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
-    /// Update the state of the Button.
+    /// Update the state of the Slider.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<T>>,
                      xy: Point,
@@ -246,7 +246,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         if state_has_changed { Some(new_state()) } else { None }
     }
 
-    /// Construct an Element from the given Button State.
+    /// Construct an Element from the given Slider State.
     fn draw<C>(new_state: &widget::State<State<T>>,
                style: &Style,
                theme: &Theme,

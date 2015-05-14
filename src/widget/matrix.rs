@@ -56,7 +56,7 @@ impl Matrix {
             F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
         use utils::map_range;
-        if let Some(id) = ui.canvas_from_position(self.pos) {
+        if let Some(id) = ui::canvas_from_position(ui, self.pos) {
             ui::set_current_canvas_id(ui, id);
         }
         let dim = self.dim;
