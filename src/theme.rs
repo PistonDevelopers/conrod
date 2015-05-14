@@ -1,3 +1,6 @@
+//!
+//! Types a functionality for handling Canvas and Widget theming.
+//!
 
 use canvas;
 use color::{Color, black, white};
@@ -11,7 +14,7 @@ use std::str;
 use widget;
 
 
-/// A serializable collection of widget styling defaults.
+/// A serializable collection of canvas and widget styling defaults.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct Theme {
     /// A name for the theme used for identification.
@@ -63,7 +66,7 @@ pub struct Theme {
 }
 
 /// The alignment of an element's dimensions with another's.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct Align {
     /// Positioning relative to an elements width and position on the x axis.
     pub horizontal: HorizontalAlign,

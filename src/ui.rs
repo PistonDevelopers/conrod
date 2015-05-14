@@ -50,27 +50,28 @@ enum Capturing {
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
 pub struct Ui<C> {
-    /// Stores the state of all canvasses.
-    canvas_cache: Vec<Canvas>,
-    /// The Widget cache, storing state for all widgets.
-    widget_cache: Vec<widget::Cached>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
-    /// The latest received mouse state.
-    pub mouse: Mouse,
-    /// Keys that have been pressed since the end of the last render cycle.
-    pub keys_just_pressed: Vec<input::keyboard::Key>,
-    /// Keys that have been released since the end of the last render cycle.
-    pub keys_just_released: Vec<input::keyboard::Key>,
-    /// Text that has been entered since the end of the last render cycle.
-    pub text_just_entered: Vec<String>,
     /// Cache for character textures, used for label width calculation and glyph rendering.
     pub glyph_cache: GlyphCache<C>,
-    prev_event_was_render: bool,
     /// Window width.
     pub win_w: f64,
     /// Window height.
     pub win_h: f64,
+    /// Stores the state of all canvasses.
+    canvas_cache: Vec<Canvas>,
+    /// The Widget cache, storing state for all widgets.
+    widget_cache: Vec<widget::Cached>,
+    /// The latest received mouse state.
+    mouse: Mouse,
+    /// Keys that have been pressed since the end of the last render cycle.
+    keys_just_pressed: Vec<input::keyboard::Key>,
+    /// Keys that have been released since the end of the last render cycle.
+    keys_just_released: Vec<input::keyboard::Key>,
+    /// Text that has been entered since the end of the last render cycle.
+    text_just_entered: Vec<String>,
+    /// Tracks whether or not the previous event was a Render event.
+    prev_event_was_render: bool,
     /// The UiId of the previously drawn Widget.
     maybe_prev_widget_id: Option<WidgetId>,
     /// The Id of the current canvas.
@@ -162,7 +163,12 @@ impl<C> Ui<C> {
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
         if self.prev_event_was_render {
-            self.flush_input();
+
+            // Flush input.
+            self.keys_just_pressed.clear();
+            self.keys_just_released.clear();
+            self.text_just_entered.clear();
+
             self.maybe_prev_widget_id = None;
             self.prev_event_was_render = false;
             if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
@@ -222,13 +228,6 @@ impl<C> Ui<C> {
         });
     }
 
-    /// Flush all stored keys.
-    pub fn flush_input(&mut self) {
-        self.keys_just_pressed.clear();
-        self.keys_just_released.clear();
-        self.text_just_entered.clear();
-    }
-
     /// If the given Point is currently on a Canvas, return the Id of that canvas.
     pub fn pick_canvas(&self, xy: Point) -> Option<CanvasId> {
         let mut canvasses = self.canvas_cache.iter().enumerate().filter(|&(_, ref canvas)| {
@@ -241,278 +240,6 @@ impl<C> Ui<C> {
             is_over_rect(canvas.xy, xy, [w as f64, h as f64])
         }).map(|&(id, _)| id)
     }
-
-    /// Check the given position for a attached Canvas.
-    pub fn canvas_from_position(&self, position: Position) -> Option<CanvasId> {
-        match position {
-            Position::Relative(_, _, ui_id) => match ui_id {
-                Some(UiId::Widget(id)) => self.widget_cache[id].maybe_canvas_id,
-                Some(UiId::Canvas(id)) => Some(id),
-                None => match self.maybe_prev_widget_id {
-                    Some(id) => self.widget_cache[id].maybe_canvas_id,
-                    None => self.maybe_current_canvas_id,
-                },
-            },
-            Position::Direction(_, _, ui_id) => match ui_id {
-                Some(UiId::Widget(id)) => self.widget_cache[id].maybe_canvas_id,
-                Some(UiId::Canvas(id)) => Some(id),
-                None => match self.maybe_prev_widget_id {
-                    Some(id) => self.widget_cache[id].maybe_canvas_id,
-                    None => self.maybe_current_canvas_id,
-                },
-            },
-            Position::Place(_, maybe_canvas_id) => maybe_canvas_id.or(self.maybe_current_canvas_id),
-            _ => self.maybe_current_canvas_id,
-        }
-    }
-
-    /// Return the user input state available for the widget with the given ID.
-    /// Take into consideration whether or not each input type is captured.
-    pub fn user_input<'a>(&'a self, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> UserInput<'a> {
-        let maybe_mouse = self.get_mouse_state(ui_id, maybe_canvas_id);
-        let without_keys = || UserInput {
-            maybe_mouse: maybe_mouse,
-            pressed_keys: &[],
-            released_keys: &[],
-            entered_text: &[],
-        };
-        let with_keys = || UserInput {
-            maybe_mouse: maybe_mouse,
-            pressed_keys: &self.keys_just_pressed,
-            released_keys: &self.keys_just_released,
-            entered_text: &self.text_just_entered,
-        };
-        match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
-                with_keys()
-            } else {
-                without_keys()
-            },
-            Some(Capturing::JustReleased) => without_keys(),
-            None => with_keys(),
-        }
-    }
-
-    /// Return the current mouse state.
-    ///
-    /// If the Ui has been captured and the given ui_id doesn't match the captured ui_id, return
-    /// None.
-    ///
-    /// If no widget is capturing the mouse and a canvas id was given, check that the mouse is over
-    /// the same canvas.
-    pub fn get_mouse_state(&self, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> Option<Mouse> {
-        match self.maybe_captured_mouse {
-            Some(Capturing::Captured(captured_ui_id)) => {
-                match ui_id == captured_ui_id {
-                    true => Some(self.mouse),
-                    false => None,
-                }
-            },
-            Some(Capturing::JustReleased) => None,
-            None => match self.maybe_canvas_under_mouse == maybe_canvas_id {
-                true => Some(self.mouse),
-                false => None,
-            },
-        }
-    }
-
-    /// Return the vector of recently pressed keys.
-    pub fn get_pressed_keys(&self, ui_id: UiId) -> &[input::keyboard::Key] {
-        match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
-                &self.keys_just_pressed
-            } else {
-                &[]
-            },
-            Some(Capturing::JustReleased) => &[],
-            None => &self.keys_just_pressed,
-        }
-    }
-
-    /// Return the vector of recently entered text.
-    pub fn get_entered_text(&self, ui_id: UiId) -> &[String] {
-        match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
-                &self.text_just_entered
-            } else {
-                &[]
-            },
-            Some(Capturing::JustReleased) => &[],
-            None => &self.text_just_entered,
-        }
-    }
-
-
-    /// Get the state of a widget with the given type and WidgetId.
-    ///
-    /// If the widget doesn't already have a position within the Cache, Create and initialise a
-    /// cache position before returning None.
-    pub fn get_widget_state<W>(&mut self,
-                               id: WidgetId,
-                               kind: &'static str) -> Option<widget::PrevState<W>>
-        where
-            W: Widget,
-            W::State: Any + 'static,
-            W::Style: Any + 'static,
-    {
-
-        // If the cache is not big enough, extend it.
-        if self.widget_cache.len() <= id {
-            let num_to_extend = id + 1 - self.widget_cache.len();
-            let extension = (0..num_to_extend).map(|_| widget::Cached::empty());
-            self.widget_cache.extend(extension);
-        }
-
-        // If the cache is empty, return None.
-        if self.widget_cache[id].kind == "EMPTY" {
-            None
-        }
-
-        // Else if the cache is already initialised for a widget of a different kind, warn the user.
-        else if self.widget_cache[id].kind != kind {
-            writeln!(::std::io::stderr(),
-                     "A widget of a different kind already exists at the given UiId ({:?}).
-                      You tried to insert a {:?}, however the existing widget is a {:?}.
-                      Check your widgets' `UiId`s for errors.",
-                      id, kind, &self.widget_cache[id].kind).unwrap();
-            None
-        }
-
-        // Otherwise we've successfully found our state!
-        else {
-            let cached_widget = &mut self.widget_cache[id];
-            if let Some(any_state) = cached_widget.maybe_state.take() {
-                let dim = cached_widget.dim;
-                let xy = cached_widget.xy;
-                let depth = cached_widget.depth;
-                let store: Box<widget::Store<W::State, W::Style>> = any_state.downcast()
-                    .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
-                let store: widget::Store<W::State, W::Style> = *store;
-                let widget::Store { state, style } = store;
-                Some(widget::PrevState {
-                    state: state,
-                    style: style,
-                    dim: dim,
-                    xy: xy,
-                    depth: depth,
-                })
-            } else {
-                None
-            }
-        }
-    }
-
-    
-    /// Get the state of a canvas with the given Id.
-    ///
-    /// If the canvas doesn't already have a position within the Cache, Create and initialise a
-    /// cache position before returning None.
-    pub fn get_canvas_state(&mut self, id: CanvasId) -> Option<canvas::Kind> {
-
-        // If the cache is not big enough, extend it.
-        if self.canvas_cache.len() <= id {
-            let num_to_extend = id + 1 - self.canvas_cache.len();
-            let extension = (0..num_to_extend).map(|_| Canvas::empty());
-            self.canvas_cache.extend(extension);
-        }
-
-        // If the cache is empty, return None.
-        if let &canvas::Kind::NoCanvas = &self.canvas_cache[id].kind {
-            None
-        }
-
-        // Otherwise, return the unique state of the Canvas.
-        else {
-            Some(self.canvas_cache[id].kind.clone())
-        }
-    }
-
-    /// Update the given canvas.
-    pub fn update_canvas(&mut self,
-                         id: CanvasId,
-                         kind: canvas::Kind,
-                         xy: Point,
-                         widget_area_xy: Point,
-                         widget_area_dim: Dimensions,
-                         padding: Padding,
-                         maybe_new_element: Option<Element>) {
-        if self.canvas_cache[id].kind.matches(&kind)
-        || self.canvas_cache[id].kind.matches(&canvas::Kind::NoCanvas) {
-            if self.canvas_cache[id].has_updated {
-                writeln!(::std::io::stderr(),
-                         "Warning: The canvas with CanvasId {:?} has already been set within the \
-                          `Ui` since the last time that `Ui::draw` was called (you probably don't \
-                          want this). Perhaps check that your CanvasIds are correct, that you're \
-                          calling `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same canvas twice.", id).unwrap();
-            }
-            let canvas = &mut self.canvas_cache[id];
-            canvas.kind = kind;
-            canvas.xy = xy;
-            canvas.widget_area_xy = widget_area_xy;
-            canvas.widget_area_dim = widget_area_dim;
-            canvas.padding = padding;
-            if let Some(new_element) = maybe_new_element {
-                canvas.element = new_element;
-            }
-            canvas.has_updated = true;
-        } else {
-            panic!("A canvas of a different kind already exists at the given CanvasId ({:?}).
-                    You tried to insert a {:?}, however the existing canvas is a {:?}.
-                    Check your widgets' `CanvasId`s for errors.",
-                    id, &kind, &self.canvas_cache[id].kind);
-        }
-    }
-
-
-    /// Update the given widget at the given UiId.
-    pub fn update_widget<Sta, Sty>(&mut self,
-                                   id: WidgetId,
-                                   maybe_canvas_id: Option<CanvasId>,
-                                   kind: &'static str,
-                                   store: widget::Store<Sta, Sty>,
-                                   dim: Dimensions,
-                                   xy: Point,
-                                   depth: Depth,
-                                   maybe_new_element: Option<Element>)
-        where
-            Sta: Any + ::std::fmt::Debug + 'static,
-            Sty: Any + ::std::fmt::Debug + 'static,
-    {
-        if self.widget_cache[id].kind == kind
-        || self.widget_cache[id].kind == "EMPTY" {
-            if self.widget_cache[id].has_updated {
-                writeln!(::std::io::stderr(),
-                         "Warning: The widget with UiId {:?} has already been set within the `Ui` \
-                          since the last time that `Ui::draw` was called (you probably don't want \
-                          this). Perhaps check that your UiIds are correct, that you're calling \
-                          `Ui::draw` after constructing your widgets and that you haven't \
-                          accidentally set the same widget twice.", id).unwrap();
-            }
-            let cached_widget = &mut self.widget_cache[id];
-            let state: Box<Any> = Box::new(store);
-            cached_widget.maybe_state = Some(state);
-            cached_widget.kind = kind;
-            cached_widget.xy = xy;
-            cached_widget.dim = dim;
-            cached_widget.depth = depth;
-            cached_widget.maybe_canvas_id = maybe_canvas_id.or(self.maybe_current_canvas_id);
-            if let Some(new_element) = maybe_new_element {
-                cached_widget.element = new_element;
-            }
-            cached_widget.has_updated = true;
-            self.maybe_prev_widget_id = Some(id);
-            if let Some(id) = cached_widget.maybe_canvas_id {
-                self.maybe_current_canvas_id = Some(id);
-            }
-        } else {
-            panic!("A widget of a different kind already exists at the given UiId ({:?}).
-                    You tried to insert a {:?}, however the existing widget is a {:?}.
-                    Check your widgets' `UiId`s for errors.",
-                    id, &kind, &self.widget_cache[id].kind);
-        }
-    }
-
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     pub fn get_xy(&self,
@@ -577,86 +304,6 @@ impl<C> Ui<C> {
                 ::vecmath::vec2_add(xy, relative_xy)
             },
 
-        }
-    }
-
-    /// Indicate that the widget with the given UiId has captured the mouse.
-    pub fn mouse_captured_by(&mut self, ui_id: UiId) {
-        match self.maybe_captured_mouse {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to capture the mouse, however it is \
-                         already captured by {:?}.", ui_id, captured_ui_id).unwrap();
-            },
-            Some(Capturing::JustReleased) => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to capture the mouse, however it was \
-                         already captured.", ui_id).unwrap();
-            },
-            None => self.maybe_captured_mouse = Some(Capturing::Captured(ui_id)),
-        }
-    }
-
-    /// Indicate that the widget is no longer capturing the mouse.
-    pub fn mouse_uncaptured_by(&mut self, ui_id: UiId) {
-        match self.maybe_captured_mouse {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the mouse, however it is \
-                         actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
-            } else {
-                self.maybe_captured_mouse = Some(Capturing::JustReleased);
-            },
-            Some(Capturing::JustReleased) => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the mouse, however it had \
-                         already been released this cycle.", ui_id).unwrap();
-            },
-            None => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the mouse, however the mouse \
-                         was not captured", ui_id).unwrap();
-            },
-        }
-    }
-
-    /// Indicate that the widget with the given UiId has captured the keyboard.
-    pub fn keyboard_captured_by(&mut self, ui_id: UiId) {
-        match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to capture the keyboard, however it is \
-                         already captured by {:?}.", ui_id, captured_ui_id).unwrap();
-            },
-            Some(Capturing::JustReleased) => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to capture the keyboard, however it was \
-                         already captured.", ui_id).unwrap();
-            },
-            None => self.maybe_captured_keyboard = Some(Capturing::Captured(ui_id)),
-        }
-    }
-
-    /// Indicate that the widget is no longer capturing the keyboard.
-    pub fn keyboard_uncaptured_by(&mut self, ui_id: UiId) {
-        match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the keyboard, however it is \
-                         actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
-            } else {
-                self.maybe_captured_keyboard = Some(Capturing::JustReleased);
-            },
-            Some(Capturing::JustReleased) => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the keyboard, however it had \
-                         already been released this cycle.", ui_id).unwrap();
-            },
-            None => {
-                writeln!(::std::io::stderr(),
-                        "Warning: {:?} tried to uncapture the keyboard, however the mouse \
-                         was not captured", ui_id).unwrap();
-            },
         }
     }
 
@@ -766,6 +413,7 @@ impl<C> Ui<C> {
 
 }
 
+
 /// Compare two canvasses in order to determine their rendering depth.
 fn compare_canvasses(a: &Canvas, b: &Canvas) -> Ordering {
     match (&a.kind, &b.kind) {
@@ -779,7 +427,339 @@ fn compare_canvasses(a: &Canvas, b: &Canvas) -> Ordering {
     }
 }
 
+
 /// Set the ID of the current canvas.
 pub fn set_current_canvas_id<C>(ui: &mut Ui<C>, id: CanvasId) {
     ui.maybe_current_canvas_id = Some(id);
 }
+
+
+/// Check the given position for a attached Canvas.
+pub fn canvas_from_position<C>(ui: &Ui<C>, position: Position) -> Option<CanvasId> {
+    match position {
+        Position::Relative(_, _, ui_id) => match ui_id {
+            Some(UiId::Widget(id)) => ui.widget_cache[id].maybe_canvas_id,
+            Some(UiId::Canvas(id)) => Some(id),
+            None => match ui.maybe_prev_widget_id {
+                Some(id) => ui.widget_cache[id].maybe_canvas_id,
+                None => ui.maybe_current_canvas_id,
+            },
+        },
+        Position::Direction(_, _, ui_id) => match ui_id {
+            Some(UiId::Widget(id)) => ui.widget_cache[id].maybe_canvas_id,
+            Some(UiId::Canvas(id)) => Some(id),
+            None => match ui.maybe_prev_widget_id {
+                Some(id) => ui.widget_cache[id].maybe_canvas_id,
+                None => ui.maybe_current_canvas_id,
+            },
+        },
+        Position::Place(_, maybe_canvas_id) => maybe_canvas_id.or(ui.maybe_current_canvas_id),
+        _ => ui.maybe_current_canvas_id,
+    }
+}
+
+
+/// Return the user input state available for the widget with the given ID.
+/// Take into consideration whether or not each input type is captured.
+pub fn user_input<'a, C>(ui: &'a Ui<C>, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> UserInput<'a> {
+    let maybe_mouse = get_mouse_state(ui, ui_id, maybe_canvas_id);
+    let without_keys = || UserInput {
+        maybe_mouse: maybe_mouse,
+        pressed_keys: &[],
+        released_keys: &[],
+        entered_text: &[],
+    };
+    let with_keys = || UserInput {
+        maybe_mouse: maybe_mouse,
+        pressed_keys: &ui.keys_just_pressed,
+        released_keys: &ui.keys_just_released,
+        entered_text: &ui.text_just_entered,
+    };
+    match ui.maybe_captured_keyboard {
+        Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
+            with_keys()
+        } else {
+            without_keys()
+        },
+        Some(Capturing::JustReleased) => without_keys(),
+        None => with_keys(),
+    }
+}
+
+
+/// Return the current mouse state.
+///
+/// If the Ui has been captured and the given ui_id doesn't match the captured ui_id, return
+/// None.
+///
+/// If no widget is capturing the mouse and a canvas id was given, check that the mouse is over
+/// the same canvas.
+pub fn get_mouse_state<C>(ui: &Ui<C>, ui_id: UiId, maybe_canvas_id: Option<CanvasId>) -> Option<Mouse> {
+    match ui.maybe_captured_mouse {
+        Some(Capturing::Captured(captured_ui_id)) => {
+            match ui_id == captured_ui_id {
+                true => Some(ui.mouse),
+                false => None,
+            }
+        },
+        Some(Capturing::JustReleased) => None,
+        None => match ui.maybe_canvas_under_mouse == maybe_canvas_id {
+            true => Some(ui.mouse),
+            false => None,
+        },
+    }
+}
+
+
+/// Get the state of a widget with the given type and WidgetId.
+///
+/// If the widget doesn't already have a position within the Cache, Create and initialise a
+/// cache position before returning None.
+pub fn get_widget_state<C, W>(ui: &mut Ui<C>,
+                          id: WidgetId,
+                          kind: &'static str) -> Option<widget::PrevState<W>>
+    where
+        W: Widget,
+        W::State: Any + 'static,
+        W::Style: Any + 'static,
+{
+
+    // If the cache is not big enough, extend it.
+    if ui.widget_cache.len() <= id {
+        let num_to_extend = id + 1 - ui.widget_cache.len();
+        let extension = (0..num_to_extend).map(|_| widget::Cached::empty());
+        ui.widget_cache.extend(extension);
+    }
+
+    // If the cache is empty, return None.
+    if ui.widget_cache[id].kind == "EMPTY" {
+        None
+    }
+
+    // Else if the cache is already initialised for a widget of a different kind, warn the user.
+    else if ui.widget_cache[id].kind != kind {
+        writeln!(::std::io::stderr(),
+                 "A widget of a different kind already exists at the given UiId ({:?}).
+                  You tried to insert a {:?}, however the existing widget is a {:?}.
+                  Check your widgets' `UiId`s for errors.",
+                  id, kind, &ui.widget_cache[id].kind).unwrap();
+        None
+    }
+
+    // Otherwise we've successfully found our state!
+    else {
+        let cached_widget = &mut ui.widget_cache[id];
+        if let Some(any_state) = cached_widget.maybe_state.take() {
+            let dim = cached_widget.dim;
+            let xy = cached_widget.xy;
+            let depth = cached_widget.depth;
+            let store: Box<widget::Store<W::State, W::Style>> = any_state.downcast()
+                .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
+            let store: widget::Store<W::State, W::Style> = *store;
+            let widget::Store { state, style } = store;
+            Some(widget::PrevState {
+                state: state,
+                style: style,
+                dim: dim,
+                xy: xy,
+                depth: depth,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+
+/// Get the state of a canvas with the given Id.
+///
+/// If the canvas doesn't already have a position within the Cache, Create and initialise a
+/// cache position before returning None.
+pub fn get_canvas_state<C>(ui: &mut Ui<C>, id: CanvasId) -> Option<canvas::Kind> {
+
+    // If the cache is not big enough, extend it.
+    if ui.canvas_cache.len() <= id {
+        let num_to_extend = id + 1 - ui.canvas_cache.len();
+        let extension = (0..num_to_extend).map(|_| Canvas::empty());
+        ui.canvas_cache.extend(extension);
+    }
+
+    // If the cache is empty, return None.
+    if let &canvas::Kind::NoCanvas = &ui.canvas_cache[id].kind {
+        None
+    }
+
+    // Otherwise, return the unique state of the Canvas.
+    else {
+        Some(ui.canvas_cache[id].kind.clone())
+    }
+}
+
+/// Indicate that the widget with the given UiId has captured the mouse.
+pub fn mouse_captured_by<C>(ui: &mut Ui<C>, ui_id: UiId) {
+    match ui.maybe_captured_mouse {
+        Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to capture the mouse, however it is \
+                     already captured by {:?}.", ui_id, captured_ui_id).unwrap();
+        },
+        Some(Capturing::JustReleased) => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to capture the mouse, however it was \
+                     already captured.", ui_id).unwrap();
+        },
+        None => ui.maybe_captured_mouse = Some(Capturing::Captured(ui_id)),
+    }
+}
+
+/// Indicate that the widget is no longer capturing the mouse.
+pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, ui_id: UiId) {
+    match ui.maybe_captured_mouse {
+        Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the mouse, however it is \
+                     actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
+        } else {
+            ui.maybe_captured_mouse = Some(Capturing::JustReleased);
+        },
+        Some(Capturing::JustReleased) => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the mouse, however it had \
+                     already been released this cycle.", ui_id).unwrap();
+        },
+        None => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the mouse, however the mouse \
+                     was not captured", ui_id).unwrap();
+        },
+    }
+}
+
+/// Indicate that the widget with the given UiId has captured the keyboard.
+pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, ui_id: UiId) {
+    match ui.maybe_captured_keyboard {
+        Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to capture the keyboard, however it is \
+                     already captured by {:?}.", ui_id, captured_ui_id).unwrap();
+        },
+        Some(Capturing::JustReleased) => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to capture the keyboard, however it was \
+                     already captured.", ui_id).unwrap();
+        },
+        None => ui.maybe_captured_keyboard = Some(Capturing::Captured(ui_id)),
+    }
+}
+
+/// Indicate that the widget is no longer capturing the keyboard.
+pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, ui_id: UiId) {
+    match ui.maybe_captured_keyboard {
+        Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the keyboard, however it is \
+                     actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
+        } else {
+            ui.maybe_captured_keyboard = Some(Capturing::JustReleased);
+        },
+        Some(Capturing::JustReleased) => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the keyboard, however it had \
+                     already been released this cycle.", ui_id).unwrap();
+        },
+        None => {
+            writeln!(::std::io::stderr(),
+                    "Warning: {:?} tried to uncapture the keyboard, however the mouse \
+                     was not captured", ui_id).unwrap();
+        },
+    }
+}
+
+
+/// Update the given canvas.
+pub fn update_canvas<C>(ui: &mut Ui<C>,
+                        id: CanvasId,
+                        kind: canvas::Kind,
+                        xy: Point,
+                        widget_area_xy: Point,
+                        widget_area_dim: Dimensions,
+                        padding: Padding,
+                        maybe_new_element: Option<Element>) {
+    if ui.canvas_cache[id].kind.matches(&kind)
+    || ui.canvas_cache[id].kind.matches(&canvas::Kind::NoCanvas) {
+        if ui.canvas_cache[id].has_updated {
+            writeln!(::std::io::stderr(),
+                     "Warning: The canvas with CanvasId {:?} has already been set within the \
+                      `Ui` since the last time that `Ui::draw` was called (you probably don't \
+                      want this). Perhaps check that your CanvasIds are correct, that you're \
+                      calling `Ui::draw` after constructing your widgets and that you haven't \
+                      accidentally set the same canvas twice.", id).unwrap();
+        }
+        let canvas = &mut ui.canvas_cache[id];
+        canvas.kind = kind;
+        canvas.xy = xy;
+        canvas.widget_area_xy = widget_area_xy;
+        canvas.widget_area_dim = widget_area_dim;
+        canvas.padding = padding;
+        if let Some(new_element) = maybe_new_element {
+            canvas.element = new_element;
+        }
+        canvas.has_updated = true;
+    } else {
+        panic!("A canvas of a different kind already exists at the given CanvasId ({:?}).
+                You tried to insert a {:?}, however the existing canvas is a {:?}.
+                Check your widgets' `CanvasId`s for errors.",
+                id, &kind, &ui.canvas_cache[id].kind);
+    }
+}
+
+
+/// Update the given widget at the given UiId.
+pub fn update_widget<C, Sta, Sty>(ui: &mut Ui<C>,
+                                  id: WidgetId,
+                                  maybe_canvas_id: Option<CanvasId>,
+                                  kind: &'static str,
+                                  store: widget::Store<Sta, Sty>,
+                                  dim: Dimensions,
+                                  xy: Point,
+                                  depth: Depth,
+                                  maybe_new_element: Option<Element>)
+    where
+        Sta: Any + ::std::fmt::Debug + 'static,
+        Sty: Any + ::std::fmt::Debug + 'static,
+{
+    if ui.widget_cache[id].kind == kind
+    || ui.widget_cache[id].kind == "EMPTY" {
+        if ui.widget_cache[id].has_updated {
+            writeln!(::std::io::stderr(),
+                     "Warning: The widget with UiId {:?} has already been set within the `Ui` \
+                      since the last time that `Ui::draw` was called (you probably don't want \
+                      this). Perhaps check that your UiIds are correct, that you're calling \
+                      `Ui::draw` after constructing your widgets and that you haven't \
+                      accidentally set the same widget twice.", id).unwrap();
+        }
+        let cached_widget = &mut ui.widget_cache[id];
+        let state: Box<Any> = Box::new(store);
+        cached_widget.maybe_state = Some(state);
+        cached_widget.kind = kind;
+        cached_widget.xy = xy;
+        cached_widget.dim = dim;
+        cached_widget.depth = depth;
+        cached_widget.maybe_canvas_id = maybe_canvas_id.or(ui.maybe_current_canvas_id);
+        if let Some(new_element) = maybe_new_element {
+            cached_widget.element = new_element;
+        }
+        cached_widget.has_updated = true;
+        ui.maybe_prev_widget_id = Some(id);
+        if let Some(id) = cached_widget.maybe_canvas_id {
+            ui.maybe_current_canvas_id = Some(id);
+        }
+    } else {
+        panic!("A widget of a different kind already exists at the given UiId ({:?}).
+                You tried to insert a {:?}, however the existing widget is a {:?}.
+                Check your widgets' `UiId`s for errors.",
+                id, &kind, &ui.widget_cache[id].kind);
+    }
+}
+
+

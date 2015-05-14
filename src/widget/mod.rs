@@ -6,7 +6,7 @@ use position::{Depth, Dimensions, Point, Positionable, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::Theme;
-use ui::{GlyphCache, Ui, UiId, UserInput};
+use ui::{self, GlyphCache, Ui, UiId, UserInput};
 
 pub mod button;
 pub mod drop_down_list;
@@ -57,7 +57,7 @@ pub trait Widget: Positionable + Sizeable + Sized {
         let xy = ui.get_xy(pos, dim, h_align, v_align);
 
         // Collect the previous state and style or initialise both if none exist.
-        let maybe_prev_state = ui.get_widget_state::<Self>(id, kind).map(|prev|{
+        let maybe_prev_state = ui::get_widget_state::<C, Self>(ui, id, kind).map(|prev|{
             let PrevState { state, style, xy, dim, depth } = prev;
             (Some(style), State { state: state, xy: xy, dim: dim, depth: depth, })
         });
@@ -67,12 +67,12 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
-        let maybe_canvas_id = self.canvas_id().or_else(|| ui.canvas_from_position(pos));
+        let maybe_canvas_id = self.canvas_id().or_else(|| ui::canvas_from_position(ui, pos));
 
         // Update the widget's state.
         let maybe_new_state = {
             // Construct a UserInput for the widget.
-            let user_input = ui.user_input(UiId::Widget(id), maybe_canvas_id);
+            let user_input = ui::user_input(ui, UiId::Widget(id), maybe_canvas_id);
             let Ui { ref theme, ref glyph_cache, .. } = *ui;
             self.update(&prev_state, xy, dim, user_input, &new_style, theme, glyph_cache)
         };
@@ -84,16 +84,16 @@ pub trait Widget: Positionable + Sizeable + Sized {
                 None => &prev_state.state
             };
             if Self::capture_mouse(&prev_state.state, new_state) {
-                ui.mouse_captured_by(UiId::Widget(id));
+                ui::mouse_captured_by(ui, UiId::Widget(id));
             }
             if Self::uncapture_mouse(&prev_state.state, new_state) {
-                ui.mouse_uncaptured_by(UiId::Widget(id));
+                ui::mouse_uncaptured_by(ui, UiId::Widget(id));
             }
             if Self::capture_keyboard(&prev_state.state, new_state) {
-                ui.keyboard_captured_by(UiId::Widget(id));
+                ui::keyboard_captured_by(ui, UiId::Widget(id));
             }
             if Self::uncapture_keyboard(&prev_state.state, new_state) {
-                ui.keyboard_uncaptured_by(UiId::Widget(id));
+                ui::keyboard_uncaptured_by(ui, UiId::Widget(id));
             }
         }
 
@@ -128,7 +128,7 @@ pub trait Widget: Positionable + Sizeable + Sized {
         // Store the new `State` and `Style` within the cache.
         let State { state, dim, xy, depth } = new_state;
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
-        ui.update_widget(id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
+        ui::update_widget(ui, id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
 
     /// Optionally override with the case that the widget should capture the mouse.

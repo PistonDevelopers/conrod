@@ -43,9 +43,11 @@ pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
+pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
+                   mid_top_of, mid_bottom_of, mid_left_of, mid_right_of};
 pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Place, Point, Position,
                    Positionable, Sizeable, VerticalAlign};
-pub use theme::Theme;
+pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UiId, UserInput};
 pub use widget::{Widget, WidgetId};
 
@@ -54,7 +56,7 @@ mod background;
 mod canvas;
 mod frame;
 mod label;
-pub mod mouse;
+mod mouse;
 mod position;
 mod theme;
 mod ui;

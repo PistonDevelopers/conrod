@@ -7,7 +7,7 @@ use label::FontSize;
 use mouse::Mouse;
 use position::{self, Depth, Dimensions, HorizontalAlign, Place, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{GlyphCache, Ui, UiId};
+use ui::{self, GlyphCache, Ui, UiId};
 
 use super::{CanvasId, Kind};
 //use super::split::Split;
@@ -153,7 +153,7 @@ impl<'a> Floating<'a> {
             ..
         } = self;
 
-        let State { interaction, xy, dim, time_last_clicked } = match ui.get_canvas_state(id) {
+        let State { interaction, xy, dim, time_last_clicked } = match ui::get_canvas_state(ui, id) {
             Some(Kind::Floating(state)) => state,
             _ => {
                 let init_dim = self.init_dim;
@@ -169,7 +169,7 @@ impl<'a> Floating<'a> {
             },
         };
 
-        let maybe_mouse = ui.get_mouse_state(UiId::Canvas(id), Some(id));
+        let maybe_mouse = ui::get_mouse_state(ui, UiId::Canvas(id), Some(id));
         let pad = style.padding(&ui.theme);
         let title_bar_font_size = style.title_bar_font_size(&ui.theme);
         const TITLE_BAR_LABEL_PADDING: f64 = 4.0;
@@ -204,10 +204,10 @@ impl<'a> Floating<'a> {
         // Check whether or not we need to capture or uncapture the mouse.
         match (interaction, new_interaction) {
             (Interaction::Highlighted(Elem::TitleBar), Interaction::Clicked(Elem::TitleBar, _)) =>
-                ui.mouse_captured_by(UiId::Canvas(id)),
+                ui::mouse_captured_by(ui, UiId::Canvas(id)),
             (Interaction::Clicked(Elem::TitleBar, _), Interaction::Highlighted(_)) |
             (Interaction::Clicked(Elem::TitleBar, _), Interaction::Normal)         =>
-                ui.mouse_uncaptured_by(UiId::Canvas(id)),
+                ui::mouse_uncaptured_by(ui, UiId::Canvas(id)),
             _ => (),
         }
 
@@ -268,13 +268,8 @@ impl<'a> Floating<'a> {
         };
 
         // Update the canvas within the `Ui`'s `canvas_cache`.
-        ui.update_canvas(id,
-                         Kind::Floating(new_state),
-                         new_xy,
-                         widget_area_xy,
-                         widget_area_dim,
-                         pad,
-                         Some(element));
+        ui::update_canvas(ui, id, Kind::Floating(new_state), new_xy, widget_area_xy,
+                          widget_area_dim, pad, Some(element));
     }
 
 }

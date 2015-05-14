@@ -143,3 +143,4 @@ const BOTTOM_RIGHT: WidgetId = MIDDLE + 1;
 const BUTTON: WidgetId = BOTTOM_RIGHT + 1;
 const BING: WidgetId = BUTTON + 24 * 8;
 const BONG: WidgetId = BING + 1;
+

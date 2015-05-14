@@ -3,7 +3,7 @@ use color::Color;
 use graphics::math::Scalar;
 use position::{self, Dimensions, Direction, Point};
 use theme::Theme;
-use ui::Ui;
+use ui::{self, Ui};
 
 use super::{CanvasId, Kind};
 
@@ -225,13 +225,8 @@ impl<'a> Split<'a> {
         let widget_area_xy = xy;
         let widget_area_dim = dim;
 
-        ui.update_canvas(id,
-                         Kind::Split(State),
-                         xy,
-                         widget_area_xy,
-                         widget_area_dim,
-                         pad,
-                         Some(element));
+        ui::update_canvas(ui, id, Kind::Split(State), xy, widget_area_xy,
+                          widget_area_dim, pad, Some(element));
     }
 
 }
