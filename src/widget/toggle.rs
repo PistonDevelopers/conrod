@@ -1,13 +1,14 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{GlyphCache, UserInput};
 use widget::{self, Widget};
 
 
@@ -25,6 +26,7 @@ pub struct Toggle<'a, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Toggle, necessary for constructing its renderable Element.
@@ -97,6 +99,7 @@ impl<'a, F> Toggle<'a, F> {
             value: value,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -109,6 +112,13 @@ impl<'a, F> Toggle<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -129,36 +139,37 @@ impl<'a, F> Widget for Toggle<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Toggle.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State>,
-                 _style: &Style,
-                 ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
+                     input: UserInput<'b>,
+                     _style: &Style,
+                     _theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
 
         let widget::State { ref state, .. } = *prev_state;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let dim = self.dim;
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id);
-        let is_over = is_over_rect(xy, mouse.xy, dim);
-        let new_interaction = 
-            if self.enabled {
-                get_new_interaction(is_over, state.interaction, mouse)
-            } else {
-                //This Toggle is disabled, pretend the interaction was normal.
-                Interaction::Normal
-            };
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
-        // React.
-        let new_value = match (is_over, state.interaction, new_interaction) {
-            (true, Interaction::Clicked, Interaction::Highlighted) => {
+        // Check whether or not a new interaction has occurred.
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
+                get_new_interaction(is_over, state.interaction, mouse)
+            },
+        };
+
+        // React and determine the new value.
+        let new_value = match (state.interaction, new_interaction) {
+            (Interaction::Clicked, Interaction::Highlighted) => {
                 let new_value = !self.value;
                 if let Some(ref mut react) = self.maybe_react { react(!self.value) }
                 new_value
@@ -181,13 +192,14 @@ impl<'a, F> Widget for Toggle<'a, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
@@ -196,11 +208,11 @@ impl<'a, F> Widget for Toggle<'a, F>
         let widget::State { ref state, dim, xy, .. } = *new_state;
 
         // Construct the frame and pressable forms.
-        let frame = style.frame(&ui.theme);
-        let frame_color = style.frame_color(&ui.theme);
+        let frame = style.frame(theme);
+        let frame_color = style.frame_color(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let color = style.color(&ui.theme);
+        let color = style.color(theme);
         let color = state.color(if state.value { color }
                                     else { color.with_luminance(0.1) });
         let pressable_form = rect(inner_w, inner_h).filled(color);
@@ -208,8 +220,8 @@ impl<'a, F> Widget for Toggle<'a, F>
         // Construct the label's Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
-            let label_color = style.label_color(&ui.theme);
-            let font_size = style.label_font_size(&ui.theme) as f64;
+            let label_color = style.label_color(theme);
+            let font_size = style.label_font_size(theme) as f64;
             text(Text::from_string(label_text.clone()).color(label_color).height(font_size))
                 .shift(xy[0].floor(), xy[1].floor())
         });
@@ -318,6 +330,7 @@ impl<'a, F> position::Positionable for Toggle<'a, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Toggle { maybe_h_align: Some(h_align), ..self }
@@ -326,6 +339,17 @@ impl<'a, F> position::Positionable for Toggle<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Toggle { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> position::Sizeable for Toggle<'a, F> {
@@ -339,5 +363,7 @@ impl<'a, F> position::Sizeable for Toggle<'a, F> {
         let w = self.dim[0];
         Toggle { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

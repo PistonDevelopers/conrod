@@ -1,11 +1,12 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use graphics::character::CharacterCache;
-use label::{self, FontSize};
-use position::{Depth, HorizontalAlign, Position, Positionable, VerticalAlign};
+use label::FontSize;
+use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{Ui, UiId};
+use ui::{GlyphCache, UserInput};
 use widget::{self, Widget};
 
 
@@ -18,6 +19,7 @@ pub struct Label<'a> {
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
     style: Style,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// The styling for a Label's renderable Element.
@@ -43,6 +45,7 @@ impl<'a> Label<'a> {
             maybe_v_align: None,
             depth: 0.0,
             style: Style::new(),
+            maybe_canvas_id: None,
         }
     }
 
@@ -50,6 +53,13 @@ impl<'a> Label<'a> {
     #[inline]
     pub fn font_size(mut self, size: FontSize) -> Label<'a> {
         self.style.maybe_font_size = Some(size);
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -62,37 +72,37 @@ impl<'a> Widget for Label<'a> {
     fn unique_kind(&self) -> &'static str { "Label" }
     fn init_state(&self) -> State { State(String::new()) }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Label.
-    fn update<C>(self,
-                 prev_state: &widget::State<State>,
-                 style: &Style,
-                 _ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(self,
+                     prev_state: &widget::State<State>,
+                     _xy: Point,
+                     _dim: Dimensions,
+                     _input: UserInput<'b>,
+                     _style: &Style,
+                     _theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
         let widget::State { state: State(ref string), .. } = *prev_state;
-        let size = style.font_size(&ui.theme);
-        let dim = [label::width(ui, size, self.text), size as f64];
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let maybe_new_state = if &string[..] != self.text { Some(State(self.text.to_string())) }
-                              else { None };
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        if &string[..] != self.text { Some(State(self.text.to_string())) } else { None }
     }
 
     /// Construct an Element for the Label.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
         let widget::State { state: State(ref string), dim, xy, .. } = *new_state;
-        let size = style.font_size(&ui.theme);
-        let color = style.color(&ui.theme);
+        let size = style.font_size(theme);
+        let color = style.color(theme);
         let form = text(Text::from_string(string.clone())
                             .color(color)
                             .height(size as f64)).shift(xy[0].floor(), xy[1].floor());
@@ -137,6 +147,7 @@ impl<'a> Positionable for Label<'a> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Label { maybe_h_align: Some(h_align), ..self }
@@ -145,5 +156,28 @@ impl<'a> Positionable for Label<'a> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Label { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
+}
+
+impl<'a> ::position::Sizeable for Label<'a> {
+    fn width(self, _w: f64) -> Self { self }
+    fn height(mut self, h: f64) -> Self {
+        self.style.maybe_font_size = Some(h as FontSize);
+        self
+    }
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> f64 {
+        glyph_cache.width(self.style.font_size(theme), self.text)
+    }
+    fn get_height(&self, theme: &Theme) -> f64 { self.style.font_size(theme) as f64 }
 }
 

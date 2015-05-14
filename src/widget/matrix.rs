@@ -1,6 +1,8 @@
 
-use position::{self, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
-use ui::Ui;
+use graphics::character::CharacterCache;
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use theme::Theme;
+use ui::{self, GlyphCache, Ui};
 
 /// Reaction params.
 pub type WidgetNum = usize;
@@ -54,6 +56,9 @@ impl Matrix {
             F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
         use utils::map_range;
+        if let Some(id) = ui.canvas_from_position(self.pos) {
+            ui::set_current_canvas_id(ui, id);
+        }
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
@@ -90,6 +95,7 @@ impl position::Positionable for Matrix {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Matrix { maybe_h_align: Some(h_align), ..self }
@@ -98,6 +104,14 @@ impl position::Positionable for Matrix {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Matrix { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(self, _depth: Depth) -> Self { self }
+    fn get_depth(&self) -> Depth { 0.0 }
 }
 
 impl position::Sizeable for Matrix {
@@ -111,5 +125,7 @@ impl position::Sizeable for Matrix {
         let w = self.dim[0];
         Matrix { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

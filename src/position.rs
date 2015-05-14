@@ -1,7 +1,9 @@
 
 use canvas::CanvasId;
+use graphics::character::CharacterCache;
 use graphics::math::Scalar;
-use ui::UiId;
+use theme::Theme;
+use ui::{GlyphCache, UiId};
 
 /// The depth at which the widget will be rendered. This determines the order of rendering where
 /// widgets with a greater depth will be rendered first. 0.0 is the default depth.
@@ -18,9 +20,9 @@ pub type Point = [Scalar; 2];
 pub enum Position {
     /// A specific position.
     Absolute(Scalar, Scalar),
-    /// A position relative to some other widget.
+    /// A position relative to some other Ui element.
     Relative(Scalar, Scalar, Option<UiId>),
-    /// A direction relative to some other widget.
+    /// A direction relative to some other Ui element.
     Direction(Direction, Scalar, Option<UiId>),
     /// A position at a place on the current Canvas.
     Place(Place, Option<CanvasId>),
@@ -96,6 +98,9 @@ pub trait Positionable: Sized {
 
     /// Set the Position.
     fn position(self, pos: Position) -> Self;
+
+    /// Get the Position.
+    fn get_position(&self) -> Position;
 
     /// Set the position with some Point.
     fn point(self, point: Point) -> Self {
@@ -174,6 +179,17 @@ pub trait Positionable: Sized {
 
     /// Align the position vertically (only effective for Left or Right `Direction`s).
     fn vertical_align(self, align: VerticalAlign) -> Self;
+
+    /// Return the horizontal alignment.
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign;
+
+    /// Return the vertical alignment.
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign;
+
+    /// Return the alignment of both axis.
+    fn get_alignment(&self, theme: &Theme) -> (HorizontalAlign, VerticalAlign) {
+        (self.get_horizontal_align(theme), self.get_vertical_align(theme))
+    }
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
     fn align_left(self) -> Self {
@@ -266,6 +282,14 @@ pub trait Positionable: Sized {
     /// Place the widget in the middle of the right edge of the current Canvas.
     fn mid_right(self) -> Self { self.place(Place::MidRight, None) }
 
+    ///// Rendering Depth (aka Z axis) /////
+
+    /// The depth at which the widget should be rendered.
+    fn depth(self, depth: Depth) -> Self;
+
+    /// Return the depth.
+    fn get_depth(&self) -> Depth;
+
 }
 
 /// Widgets that support different dimensions.
@@ -275,8 +299,13 @@ pub trait Sizeable: Sized {
     fn width(self, width: Scalar) -> Self;
 
     /// Set the height for the widget.
-    #[inline]
     fn height(self, height: Scalar) -> Self;
+
+    /// Get the width of the widget.
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> Scalar;
+
+    /// Get the height of the widget.
+    fn get_height(&self, theme: &Theme) -> Scalar;
 
     /// Set the dimensions for the widget.
     #[inline]
@@ -288,6 +317,13 @@ pub trait Sizeable: Sized {
     #[inline]
     fn dimensions(self, width: Scalar, height: Scalar) -> Self {
         self.dim([width, height])
+    }
+
+    /// Return the dimensions for the widget.
+    fn get_dimensions<C: CharacterCache>(&self,
+                                         theme: &Theme,
+                                         glyph_cache: &GlyphCache<C>) -> Dimensions {
+        [self.get_width(theme, glyph_cache), self.get_height(theme)]
     }
 
 }
@@ -335,6 +371,28 @@ pub fn align_bottom_of(target_height: Scalar, height: Scalar) -> Scalar {
 /// The y offset required to align an element with `height` to the top of a target element.
 pub fn align_top_of(target_height: Scalar, height: Scalar) -> Scalar {
     target_height / 2.0 - height / 2.0
+}
+
+impl HorizontalAlign {
+    /// Align `width` to the given `target_width`.
+    pub fn to(&self, target_width: Scalar, width: Scalar) -> Scalar {
+        match *self {
+            HorizontalAlign::Left => align_left_of(target_width, width),
+            HorizontalAlign::Right => align_right_of(target_width, width),
+            HorizontalAlign::Middle => 0.0,
+        }
+    }
+}
+
+impl VerticalAlign {
+    /// Align `height` to the given `target_height`.
+    pub fn to(&self, target_height: Scalar, height: Scalar) -> Scalar {
+        match *self {
+            VerticalAlign::Top => align_top_of(target_height, height),
+            VerticalAlign::Bottom => align_bottom_of(target_height, height),
+            VerticalAlign::Middle => 0.0,
+        }
+    }
 }
 
 
@@ -385,6 +443,23 @@ pub fn mid_left_of(target: Dimensions, dim: Dimensions) -> Point {
 /// the `target` Dimensions.
 pub fn mid_right_of(target: Dimensions, dim: Dimensions) -> Point {
     [align_right_of(target[0], dim[0]), 0.0]
+}
+
+impl Place {
+    /// Place the given `dim` within the `target_dim`.
+    pub fn within(&self, target_dim: Dimensions, dim: Dimensions) -> Point {
+        match *self {
+            Place::Middle      => middle_of(target_dim, dim),
+            Place::TopLeft     => top_left_of(target_dim, dim),
+            Place::TopRight    => top_right_of(target_dim, dim),
+            Place::BottomLeft  => bottom_left_of(target_dim, dim),
+            Place::BottomRight => bottom_right_of(target_dim, dim),
+            Place::MidTop      => mid_top_of(target_dim, dim),
+            Place::MidBottom   => mid_bottom_of(target_dim, dim),
+            Place::MidLeft     => mid_left_of(target_dim, dim),
+            Place::MidRight    => mid_right_of(target_dim, dim),
+        }
+    }
 }
 
 /// The distance between the inner edge of a frame and the outer edge of the inner content.

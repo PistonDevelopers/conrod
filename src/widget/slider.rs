@@ -1,4 +1,5 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -6,9 +7,9 @@ use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast, ToPrimitive};
-use position::{self, Depth, Dimensions, HorizontalAlign, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{GlyphCache, UserInput};
 use utils::{clamp, percentage, value_from_perc};
 use widget::{self, Widget};
 
@@ -30,6 +31,7 @@ pub struct Slider<'a, T, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Slider, necessary for constructing its renderable Element.
@@ -102,6 +104,7 @@ impl<'a, T, F> Slider<'a, T, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
@@ -115,6 +118,13 @@ impl<'a, T, F> Slider<'a, T, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -138,68 +148,70 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Button.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State<T>>,
-                 style: &Style,
-                 ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State<T>>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State<T>>,
+                     xy: Point,
+                     dim: Dimensions,
+                     input: UserInput<'b>,
+                     style: &Style,
+                     theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State<T>>
         where
             C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
 
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction = 
-            if self.enabled {
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
                 get_new_interaction(is_over, state.interaction, mouse)
+            },
+        };
+
+        let new_value = if let Some(mouse) = maybe_mouse {
+            let frame = style.frame(theme);
+            let frame_2 = frame * 2.0;
+            let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
+            let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
+            let is_horizontal = dim[0] > dim[1];
+
+            if is_horizontal {
+                // Horizontal.
+                let w = match (state.interaction, new_interaction) {
+                    (Interaction::Highlighted, Interaction::Clicked) |
+                    (Interaction::Clicked, Interaction::Clicked) => {
+                        let w = map_range(mouse.xy[0], -half_inner_w, half_inner_w, 0.0, inner_w);
+                        clamp(w, 0.0, inner_w)
+                    },
+                    _ => {
+                        let value_percentage = percentage(self.value, self.min, self.max);
+                        clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
+                    },
+                };
+                value_from_perc((w / inner_w) as f32, self.min, self.max)
             } else {
-                //Slider is disabled, so pretend the interaction is normal
-                Interaction::Normal
-            };
-
-        let frame = style.frame(&ui.theme);
-        let frame_2 = frame * 2.0;
-        let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
-        let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
-
-        let is_horizontal = dim[0] > dim[1];
-
-        let new_value = if is_horizontal {
-            // Horizontal.
-            let w = match (is_over, state.interaction, new_interaction) {
-                (true, Interaction::Highlighted, Interaction::Clicked) |
-                (_, Interaction::Clicked, Interaction::Clicked) => {
-                    let w = map_range(mouse.xy[0], -half_inner_w, half_inner_w, 0.0, inner_w);
-                    clamp(w, 0.0, inner_w)
-                },
-                _ => {
-                    let value_percentage = percentage(self.value, self.min, self.max);
-                    clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
-                },
-            };
-            value_from_perc((w / inner_w) as f32, self.min, self.max)
+                // Vertical.
+                let h = match (state.interaction, new_interaction) {
+                    (Interaction::Highlighted, Interaction::Clicked) |
+                    (Interaction::Clicked, Interaction::Clicked) => {
+                        let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
+                        clamp(h, 0.0, inner_h)
+                    },
+                    _ => {
+                        let value_percentage = percentage(self.value, self.min, self.max);
+                        clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
+                    },
+                };
+                value_from_perc((h / inner_h) as f32, self.min, self.max)
+            }
         } else {
-            // Vertical.
-            let h = match (is_over, state.interaction, new_interaction) {
-                (true, Interaction::Highlighted, Interaction::Clicked) |
-                (_, Interaction::Clicked, Interaction::Clicked) => {
-                    let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
-                    clamp(h, 0.0, inner_h)
-                },
-                _ => {
-                    let value_percentage = percentage(self.value, self.min, self.max);
-                    clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
-                },
-            };
-            value_from_perc((h / inner_h) as f32, self.min, self.max)
+            state.value
         };
 
         // React.
@@ -231,23 +243,24 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State<T>>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State<T>>,
+               style: &Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let frame = style.frame(&ui.theme);
+        let frame = style.frame(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-        let frame_color = state.color(style.frame_color(&ui.theme));
-        let color = state.color(style.color(&ui.theme));
+        let frame_color = state.color(style.frame_color(theme));
+        let color = state.color(style.color(theme));
 
         let new_value = NumCast::from(state.value).unwrap();
         let is_horizontal = dim[0] > dim[1];
@@ -276,11 +289,10 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // Label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
-            use label;
             const TEXT_PADDING: f64 = 10.0;
-            let label_color = style.label_color(&ui.theme);
-            let size = style.label_font_size(&ui.theme);
-            let label_w = label::width(ui, size, &label_text);
+            let label_color = style.label_color(theme);
+            let size = style.label_font_size(theme);
+            let label_w = glyph_cache.width(size, &label_text);
             let is_horizontal = dim[0] > dim[1];
             let l_pos = if is_horizontal {
                 let x = position::align_left_of(dim[0], label_w) + TEXT_PADDING;
@@ -406,6 +418,18 @@ impl<'a, T, F> position::Positionable for Slider<'a, T, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, T, F> position::Sizeable for Slider<'a, T, F> {
@@ -419,5 +443,7 @@ impl<'a, T, F> position::Sizeable for Slider<'a, T, F> {
         let w = self.dim[0];
         Slider { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 

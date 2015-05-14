@@ -23,7 +23,6 @@ pub struct Split<'a> {
     //maybe_adjustable: Option<Bounds>,
 }
 
-
 /// Describes the style of a Canvas Split.
 #[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct Style {
@@ -52,78 +51,9 @@ pub struct Margin {
     maybe_right: Option<f64>,
 }
 
-// /// The minimum and maximum for a dimension of a Split.
-// pub struct Bounds {
-//     pub min: f64,
-//     pub max: f64,
-// }
-
-
-impl Style {
-
-    /// Get the color for the Split's Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.background_color)
-        })).unwrap_or(theme.background_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the Padding for the Canvas Split.
-    pub fn padding(&self, theme: &Theme) -> position::Padding {
-        position::Padding {
-            top: self.padding.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_top.unwrap_or(theme.padding.top)
-            })).unwrap_or(theme.padding.top),
-            bottom: self.padding.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_bottom.unwrap_or(theme.padding.bottom)
-            })).unwrap_or(theme.padding.bottom),
-            left: self.padding.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_left.unwrap_or(theme.padding.left)
-            })).unwrap_or(theme.padding.left),
-            right: self.padding.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_right.unwrap_or(theme.padding.right)
-            })).unwrap_or(theme.padding.right),
-        }
-    }
-
-    /// Get the Margin for the Canvas Split.
-    pub fn margin(&self, theme: &Theme) -> position::Margin {
-        position::Margin {
-            top: self.margin.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_top.unwrap_or(theme.margin.top)
-            })).unwrap_or(theme.margin.top),
-            bottom: self.margin.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
-            })).unwrap_or(theme.margin.bottom),
-            left: self.margin.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_left.unwrap_or(theme.margin.left)
-            })).unwrap_or(theme.margin.left),
-            right: self.margin.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_right.unwrap_or(theme.margin.right)
-            })).unwrap_or(theme.margin.right),
-        }
-    }
-
-}
-
-
 impl<'a> Split<'a> {
 
-    /// Construct a default Canvas.
+    /// Construct a default Canvas Split.
     pub fn new(id: CanvasId) -> Split<'a> {
         Split {
             id: id,
@@ -292,13 +222,23 @@ impl<'a> Split<'a> {
 
         let element = collage(frame_dim[0] as i32, frame_dim[1] as i32, form_chain.collect());
 
-        ui.update_canvas(id, Kind::Split(State), xy, pad, Some(element));
+        let widget_area_xy = xy;
+        let widget_area_dim = dim;
+
+        ui.update_canvas(id,
+                         Kind::Split(State),
+                         xy,
+                         widget_area_xy,
+                         widget_area_dim,
+                         pad,
+                         Some(element));
     }
 
 }
 
 
 impl Style {
+
     /// Construct a default Style.
     pub fn new() -> Style {
         Style {
@@ -309,6 +249,64 @@ impl Style {
             margin: Margin::new(),
         }
     }
+
+    /// Get the color for the Split's Element.
+    pub fn color(&self, theme: &Theme) -> Color {
+        self.maybe_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
+            style.maybe_color.unwrap_or(theme.background_color)
+        })).unwrap_or(theme.background_color)
+    }
+
+    /// Get the frame for an Element.
+    pub fn frame(&self, theme: &Theme) -> f64 {
+        self.maybe_frame.or(theme.maybe_canvas_split.as_ref().map(|style| {
+            style.maybe_frame.unwrap_or(theme.frame_width)
+        })).unwrap_or(theme.frame_width)
+    }
+
+    /// Get the frame Color for an Element.
+    pub fn frame_color(&self, theme: &Theme) -> Color {
+        self.maybe_frame_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
+            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        })).unwrap_or(theme.frame_color)
+    }
+
+    /// Get the Padding for the Canvas Split.
+    pub fn padding(&self, theme: &Theme) -> position::Padding {
+        position::Padding {
+            top: self.padding.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.padding.maybe_top.unwrap_or(theme.padding.top)
+            })).unwrap_or(theme.padding.top),
+            bottom: self.padding.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.padding.maybe_bottom.unwrap_or(theme.padding.bottom)
+            })).unwrap_or(theme.padding.bottom),
+            left: self.padding.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.padding.maybe_left.unwrap_or(theme.padding.left)
+            })).unwrap_or(theme.padding.left),
+            right: self.padding.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.padding.maybe_right.unwrap_or(theme.padding.right)
+            })).unwrap_or(theme.padding.right),
+        }
+    }
+
+    /// Get the Margin for the Canvas Split.
+    pub fn margin(&self, theme: &Theme) -> position::Margin {
+        position::Margin {
+            top: self.margin.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.margin.maybe_top.unwrap_or(theme.margin.top)
+            })).unwrap_or(theme.margin.top),
+            bottom: self.margin.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
+            })).unwrap_or(theme.margin.bottom),
+            left: self.margin.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.margin.maybe_left.unwrap_or(theme.margin.left)
+            })).unwrap_or(theme.margin.left),
+            right: self.margin.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
+                style.margin.maybe_right.unwrap_or(theme.margin.right)
+            })).unwrap_or(theme.margin.right),
+        }
+    }
+
 }
 
 impl Padding {

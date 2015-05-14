@@ -10,7 +10,7 @@ extern crate graphics;
 extern crate piston;
 extern crate piston_window;
 
-use conrod::{CanvasId, Theme, Ui, UiId, Widget};
+use conrod::{CanvasId, Floating, Theme, Ui, Widget, WidgetId};
 use gfx_device_gl::Resources;
 use gfx_graphics::{GlyphCache, Texture};
 use glutin_window::{GlutinWindow, OpenGL};
@@ -46,7 +46,7 @@ fn main() {
     for event in window {
         ui.handle_event(&event);
         event.draw_2d(|_c, g| draw_ui(&mut ui, g));
-        ui.character_cache.update(&mut event.canvas.borrow_mut().factory);
+        ui.glyph_cache.borrow_mut().update(&mut event.canvas.borrow_mut().factory);
     }
 
 }
@@ -54,8 +54,8 @@ fn main() {
 
 // Draw the Ui.
 fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resources>>, g: &mut G) {
-    use conrod::color::{blue, light_orange, orange, dark_orange};
-    use conrod::{Button, Colorable, Label, Positionable, Sizeable, Split, WidgetMatrix};
+    use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
+    use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, WidgetMatrix};
 
     // Construct our Canvas tree.
     Split::new(MASTER).flow_down(&[
@@ -67,6 +67,20 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
         ]),
         Split::new(FOOTER).color(blue())
     ]).set(ui);
+
+    Floating::new()
+        .label("Blue")
+        .middle_of(LEFT_COLUMN)
+        .color(blue())
+        .label_color(white())
+        .set(FLOATING_A, ui);
+
+    Floating::new()
+        .label("Orange")
+        .middle_of(RIGHT_COLUMN)
+        .color(light_orange())
+        .label_color(white())
+        .set(FLOATING_B, ui);
 
     Label::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
     Label::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
@@ -97,6 +111,13 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
                 .react(|| println!("Hey! {:?}", n))
                 .set(BUTTON + n, ui);
         });
+    
+    Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_A)
+        .react(|| println!("Bing!"))
+        .set(BING, ui);
+    Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_B)
+        .react(|| println!("Bong!"))
+        .set(BONG, ui);
 
     ui.draw(g);
 }
@@ -110,12 +131,15 @@ const LEFT_COLUMN: CanvasId = BODY + 1;
 const MIDDLE_COLUMN: CanvasId = LEFT_COLUMN + 1;
 const RIGHT_COLUMN: CanvasId = MIDDLE_COLUMN + 1;
 const FOOTER: CanvasId = RIGHT_COLUMN + 1;
+const FLOATING_A: CanvasId = FOOTER + 1;
+const FLOATING_B: CanvasId = FLOATING_A + 1;
 
 // Widget IDs.
-const TITLE: UiId = 0;
-const SUBTITLE: UiId = TITLE + 1;
-const TOP_LEFT: UiId = SUBTITLE + 1;
-const MIDDLE: UiId = TOP_LEFT + 1;
-const BOTTOM_RIGHT: UiId = MIDDLE + 1;
-const BUTTON: UiId = BOTTOM_RIGHT + 1;
-
+const TITLE: WidgetId = 0;
+const SUBTITLE: WidgetId = TITLE + 1;
+const TOP_LEFT: WidgetId = SUBTITLE + 1;
+const MIDDLE: WidgetId = TOP_LEFT + 1;
+const BOTTOM_RIGHT: WidgetId = MIDDLE + 1;
+const BUTTON: WidgetId = BOTTOM_RIGHT + 1;
+const BING: WidgetId = BUTTON + 24 * 8;
+const BONG: WidgetId = BING + 1;

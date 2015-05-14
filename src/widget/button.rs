@@ -1,13 +1,14 @@
 
+use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Position, Positionable, VerticalAlign};
+use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{UiId, Ui};
+use ui::{GlyphCache, UserInput};
 use widget::{self, Widget};
 
 
@@ -22,6 +23,7 @@ pub struct Button<'a, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
+    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
@@ -90,11 +92,12 @@ impl<'a, F> Button<'a, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
+            maybe_canvas_id: None,
         }
     }
 
     /// Set the reaction for the Button. The reaction will be triggered upon release of the button.
-    pub fn react(mut self, reaction: F) -> Button<'a, F> {
+    pub fn react(mut self, reaction: F) -> Self {
         self.maybe_react = Some(reaction);
         self
     }
@@ -102,6 +105,13 @@ impl<'a, F> Button<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
+        self
+    }
+
+    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
+    /// Canvas by using the canvas placement `Positionable` methods.
+    pub fn canvas(mut self, id: CanvasId) -> Self {
+        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -119,35 +129,36 @@ impl<'a, F> Widget for Button<'a, F>
         State { maybe_label: None, interaction: Interaction::Normal }
     }
     fn style(&self) -> Style { self.style.clone() }
+    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
     /// Update the state of the Button.
-    fn update<C>(mut self,
-                 prev_state: &widget::State<State>,
-                 _style: &Style,
-                 ui_id: UiId,
-                 ui: &mut Ui<C>) -> widget::State<Option<State>>
+    fn update<'b, C>(mut self,
+                     prev_state: &widget::State<State>,
+                     xy: Point,
+                     dim: Dimensions,
+                     input: UserInput<'b>,
+                     _style: &Style,
+                     _theme: &Theme,
+                     _glyph_cache: &GlyphCache<C>) -> Option<State>
         where
             C: CharacterCache,
     {
         use utils::is_over_rect;
         let widget::State { ref state, .. } = *prev_state;
-        let dim = self.dim;
-        let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
-        let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
-        let mouse = ui.get_mouse_state(ui_id).relative_to(xy);
-        let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
-        let new_interaction =
-            if self.enabled {
+        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+
+        // Check whether or not a new interaction has occurred.
+        let new_interaction = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => Interaction::Normal,
+            (true, Some(mouse)) => {
+                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
                 get_new_interaction(is_over, state.interaction, mouse)
-            } else {
-                //Button is disabled, pretend the new_interaction is Normal
-                Interaction::Normal
-            };
+            },
+        };
 
         // If the mouse was released over button, react.
-        if let (true, Interaction::Clicked, Interaction::Highlighted) =
-            (is_over, state.interaction, new_interaction) {
+        if let (Interaction::Clicked, Interaction::Highlighted) =
+            (state.interaction, new_interaction) {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
 
@@ -164,19 +175,19 @@ impl<'a, F> Widget for Button<'a, F>
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
-        let maybe_new_state = if state_has_changed { Some(new_state()) } else { None };
-
-        widget::State { state: maybe_new_state, dim: dim, xy: xy, depth: self.depth }
+        if state_has_changed { Some(new_state()) } else { None }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State>, style: &Style, ui: &mut Ui<C>) -> Element
+    fn draw<C>(new_state: &widget::State<State>,
+               style: &Style,
+               theme: &Theme,
+               _glyph_cache: &GlyphCache<C>) -> Element
         where
             C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         let widget::State { ref state, dim, xy, .. } = *new_state;
-        let theme = &ui.theme;
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));
@@ -301,6 +312,7 @@ impl<'a, F> Positionable for Button<'a, F> {
         self.pos = pos;
         self
     }
+    fn get_position(&self) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Button { maybe_h_align: Some(h_align), ..self }
@@ -309,6 +321,17 @@ impl<'a, F> Positionable for Button<'a, F> {
     fn vertical_align(self, v_align: VerticalAlign) -> Self {
         Button { maybe_v_align: Some(v_align), ..self }
     }
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.maybe_h_align.unwrap_or(theme.align.horizontal)
+    }
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    }
+    fn depth(mut self, depth: Depth) -> Self {
+        self.depth = depth;
+        self
+    }
+    fn get_depth(&self) -> Depth { self.depth }
 }
 
 impl<'a, F> ::position::Sizeable for Button<'a, F> {
@@ -322,5 +345,7 @@ impl<'a, F> ::position::Sizeable for Button<'a, F> {
         let w = self.dim[0];
         Button { dim: [w, h], ..self }
     }
+    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
+    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
 }
 
