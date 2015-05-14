@@ -33,6 +33,16 @@ Available Widgets
 - XYPad
 - Custom: Conrod also provides a `Widget` trait for designing and implementing custom widgets. All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free add them in a pull request :)
 
+**To-do:**
+- [Menu Bar / Tool Bar](https://github.com/PistonDevelopers/conrod/issues/417)
+- [Right-click Context Menu](https://github.com/PistonDevelopers/conrod/issues/394)
+- [Text Area](https://github.com/PistonDevelopers/conrod/issues/62)
+- [Graph / Chart](https://github.com/PistonDevelopers/conrod/issues/84)
+- [File/Directory Navigator](https://github.com/PistonDevelopers/conrod/issues/381)
+- [Advanced graph visualisation and control](https://github.com/PistonDevelopers/mush)
+
+If conrod is missing anything you really wish it had, let us know with an issue describing the widget's style, behaviour and functionality - or even better, submit a pull request :D
+
 Dependencies
 ------------
 
@@ -53,6 +63,7 @@ Build the conrod lib like this:
 And then build and run the examples like this:
 
     cargo run --example all_widgets
+    cargo run --example canvas
 
 ## Dependencies
 
