@@ -2,7 +2,7 @@
 use graphics::character::CharacterCache;
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{GlyphCache, Ui};
+use ui::{self, GlyphCache, Ui};
 
 /// Reaction params.
 pub type WidgetNum = usize;
@@ -56,6 +56,9 @@ impl Matrix {
             F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
         use utils::map_range;
+        if let Some(id) = ui.canvas_from_position(self.pos) {
+            ui::set_current_canvas_id(ui, id);
+        }
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);

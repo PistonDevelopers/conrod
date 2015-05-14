@@ -222,7 +222,16 @@ impl<'a> Split<'a> {
 
         let element = collage(frame_dim[0] as i32, frame_dim[1] as i32, form_chain.collect());
 
-        ui.update_canvas(id, Kind::Split(State), xy, pad, Some(element));
+        let widget_area_xy = xy;
+        let widget_area_dim = dim;
+
+        ui.update_canvas(id,
+                         Kind::Split(State),
+                         xy,
+                         widget_area_xy,
+                         widget_area_dim,
+                         pad,
+                         Some(element));
     }
 
 }

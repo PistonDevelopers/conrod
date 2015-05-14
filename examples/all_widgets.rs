@@ -24,7 +24,6 @@ use conrod::{
     Colorable,
     DropDownList,
     EnvelopeEditor,
-    Floating,
     Frameable,
     Label,
     Labelable,
@@ -164,9 +163,6 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
 
     // Draw the background.
     Background::new().color(demo.bg_color).draw(ui, gl);
-
-    // Construct a floating canvas in the centre of the screen.
-    Floating::new().label("Testing...").label_color(white()).set(0, ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;

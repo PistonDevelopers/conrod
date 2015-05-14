@@ -16,6 +16,8 @@ use piston::event::{
 };
 use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
 use std::any::Any;
+use std::cell::RefCell;
+use std::cmp::Ordering;
 use theme::Theme;
 use widget::{self, Widget, WidgetId};
 use ::std::io::Write;
@@ -95,7 +97,7 @@ pub struct UserInput<'a> {
 }
 
 /// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
-pub struct GlyphCache<C>(::std::cell::RefCell<C>);
+pub struct GlyphCache<C>(RefCell<C>);
 
 
 impl<C> GlyphCache<C> where C: CharacterCache {
@@ -107,6 +109,15 @@ impl<C> GlyphCache<C> where C: CharacterCache {
     pub fn width(&self, font_size: FontSize, text: &str) -> f64 {
         self.0.borrow_mut().width(font_size, text)
     }
+}
+
+impl<C> ::std::ops::Deref for GlyphCache<C> {
+    type Target = RefCell<C>;
+    fn deref<'a>(&'a self) -> &'a RefCell<C> { &self.0 }
+}
+
+impl<C> ::std::ops::DerefMut for GlyphCache<C> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut RefCell<C> { &mut self.0 }
 }
 
 
@@ -124,7 +135,7 @@ impl<C> Ui<C> {
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
-            glyph_cache: GlyphCache(::std::cell::RefCell::new(character_cache)),
+            glyph_cache: GlyphCache(RefCell::new(character_cache)),
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
@@ -220,18 +231,11 @@ impl<C> Ui<C> {
 
     /// If the given Point is currently on a Canvas, return the Id of that canvas.
     pub fn pick_canvas(&self, xy: Point) -> Option<CanvasId> {
-        use std::cmp::Ordering;
         let mut canvasses = self.canvas_cache.iter().enumerate().filter(|&(_, ref canvas)| {
             if let canvas::Kind::NoCanvas = canvas.kind { false } else { true }
         }).collect::<Vec<_>>();
-        canvasses.sort_by(|&(_, ref a), &(_, ref b)| match (&a.kind, &b.kind) {
-            (&canvas::Kind::Split(_), &canvas::Kind::Floating(_)) => Ordering::Less,
-            (&canvas::Kind::Floating(_), &canvas::Kind::Split(_)) => Ordering::Greater,
-            (&canvas::Kind::Floating(ref a_state), &canvas::Kind::Floating(ref b_state)) =>
-                b_state.time_last_clicked.cmp(&a_state.time_last_clicked),
-            _ => Ordering::Equal,
-        });
-        canvasses.iter().find(|&&(_, ref canvas)| {
+        canvasses.sort_by(|&(_, ref a), &(_, ref b)| compare_canvasses(a, b));
+        canvasses.iter().rev().find(|&&(_, ref canvas)| {
             use utils::is_over_rect;
             let (w, h) = canvas.element.get_size();
             is_over_rect(canvas.xy, xy, [w as f64, h as f64])
@@ -257,8 +261,8 @@ impl<C> Ui<C> {
                     None => self.maybe_current_canvas_id,
                 },
             },
-            Position::Place(_, maybe_canvas_id) => maybe_canvas_id,
-            _ => None,
+            Position::Place(_, maybe_canvas_id) => maybe_canvas_id.or(self.maybe_current_canvas_id),
+            _ => self.maybe_current_canvas_id,
         }
     }
 
@@ -428,6 +432,8 @@ impl<C> Ui<C> {
                          id: CanvasId,
                          kind: canvas::Kind,
                          xy: Point,
+                         widget_area_xy: Point,
+                         widget_area_dim: Dimensions,
                          padding: Padding,
                          maybe_new_element: Option<Element>) {
         if self.canvas_cache[id].kind.matches(&kind)
@@ -443,6 +449,8 @@ impl<C> Ui<C> {
             let canvas = &mut self.canvas_cache[id];
             canvas.kind = kind;
             canvas.xy = xy;
+            canvas.widget_area_xy = widget_area_xy;
+            canvas.widget_area_dim = widget_area_dim;
             canvas.padding = padding;
             if let Some(new_element) = maybe_new_element {
                 canvas.element = new_element;
@@ -560,8 +568,7 @@ impl<C> Ui<C> {
                 let (xy, target_dim, pad) = match maybe_canvas_id.or(self.maybe_current_canvas_id) {
                     Some(canvas_id) => {
                         let canvas = &self.canvas_cache[canvas_id];
-                        let (w, h) = canvas.element.get_size();
-                        (canvas.xy, [w as f64, h as f64], canvas.padding.clone())
+                        (canvas.widget_area_xy, canvas.widget_area_dim, canvas.padding.clone())
                     },
                     None => ([0.0, 0.0], [self.win_w, self.win_h], Padding::none()),
                 };
@@ -578,12 +585,12 @@ impl<C> Ui<C> {
         match self.maybe_captured_mouse {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to capture the mouse, however it is \
+                        "Warning: {:?} tried to capture the mouse, however it is \
                          already captured by {:?}.", ui_id, captured_ui_id).unwrap();
             },
             Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to capture the mouse, however it was \
+                        "Warning: {:?} tried to capture the mouse, however it was \
                          already captured.", ui_id).unwrap();
             },
             None => self.maybe_captured_mouse = Some(Capturing::Captured(ui_id)),
@@ -595,19 +602,19 @@ impl<C> Ui<C> {
         match self.maybe_captured_mouse {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the mouse, however it is \
+                        "Warning: {:?} tried to uncapture the mouse, however it is \
                          actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
             } else {
                 self.maybe_captured_mouse = Some(Capturing::JustReleased);
             },
             Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the mouse, however it had \
+                        "Warning: {:?} tried to uncapture the mouse, however it had \
                          already been released this cycle.", ui_id).unwrap();
             },
             None => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the mouse, however the mouse \
+                        "Warning: {:?} tried to uncapture the mouse, however the mouse \
                          was not captured", ui_id).unwrap();
             },
         }
@@ -618,12 +625,12 @@ impl<C> Ui<C> {
         match self.maybe_captured_keyboard {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to capture the keyboard, however it is \
+                        "Warning: {:?} tried to capture the keyboard, however it is \
                          already captured by {:?}.", ui_id, captured_ui_id).unwrap();
             },
             Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to capture the keyboard, however it was \
+                        "Warning: {:?} tried to capture the keyboard, however it was \
                          already captured.", ui_id).unwrap();
             },
             None => self.maybe_captured_keyboard = Some(Capturing::Captured(ui_id)),
@@ -635,19 +642,19 @@ impl<C> Ui<C> {
         match self.maybe_captured_keyboard {
             Some(Capturing::Captured(captured_ui_id)) => if ui_id != captured_ui_id {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the keyboard, however it is \
+                        "Warning: {:?} tried to uncapture the keyboard, however it is \
                          actually captured by {:?}.", ui_id, captured_ui_id).unwrap();
             } else {
                 self.maybe_captured_keyboard = Some(Capturing::JustReleased);
             },
             Some(Capturing::JustReleased) => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the keyboard, however it had \
+                        "Warning: {:?} tried to uncapture the keyboard, however it had \
                          already been released this cycle.", ui_id).unwrap();
             },
             None => {
                 writeln!(::std::io::stderr(),
-                        "Warning: Widget {:?} tried to uncapture the keyboard, however the mouse \
+                        "Warning: {:?} tried to uncapture the keyboard, however the mouse \
                          was not captured", ui_id).unwrap();
             },
         }
@@ -668,7 +675,6 @@ impl<C> Ui<C> {
             G: Graphics<Texture = C::Texture>,
     {
         use elmesque::Renderer;
-        use std::cmp::Ordering;
         use std::ops::DerefMut;
 
         let Ui {
@@ -725,43 +731,34 @@ impl<C> Ui<C> {
         let character_cache = ref_mut_character_cache.deref_mut();
         let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
 
-        // First, draw all of the `Split` canvasses.
-        for canvas in canvas_cache.iter().filter(|canvas| canvas.has_updated) {
-            if let canvas::Kind::Split(_) = canvas.kind {
-                canvas.element.draw(&mut renderer);
-            }
-        }
+        // Collect references to the canvasses for sorting.
+        let mut canvasses: Vec<_> = canvas_cache.iter_mut().enumerate()
+            .filter(|&(_, ref canvas)| canvas.has_updated).collect();
 
-        // Is the given widget on a Canvas Split?
-        fn is_on_split(widget: &widget::Cached, canvas_cache: &Vec<Canvas>) -> bool {
-            match widget.maybe_canvas_id {
-                None => true,
-                Some(canvas_id) => match canvas_cache[canvas_id].kind {
-                    canvas::Kind::Split(_) | canvas::Kind::NoCanvas => true,
-                    _ => false,
-                },
+        // Sort canvasses into correct rendering depth.
+        canvasses.sort_by(|&(id_a, ref a), &(id_b, ref b)| {
+            let cmp = compare_canvasses(a, b);
+            match cmp {
+                Ordering::Less | Ordering::Greater => cmp,
+                Ordering::Equal => id_a.cmp(&id_b),
             }
-        }
+        });
 
-        // Finally, draw all of the widgets that are placed on a Floating Canvas.
-        for &(_, ref widget) in widgets.iter().take_while(|&&(_, ref w)| is_on_split(w, canvas_cache)) {
+
+        // Print all the widgets that aren't attached to any canvas.
+        for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == None) {
             widget.element.draw(&mut renderer);
         }
 
-        // Now, draw all of the `Floating` canvasses.
-        for canvas in canvas_cache.iter().filter(|canvas| canvas.has_updated) {
-            if let canvas::Kind::Floating(_) = canvas.kind {
-                canvas.element.draw(&mut renderer);
+        // Print all of the canvasses in order.
+        for (id, canvas) in canvasses.into_iter() {
+            canvas.element.draw(&mut renderer);
+
+            // Print each widget attached to the current canvas.
+            for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == Some(id)) {
+                widget.element.draw(&mut renderer);
             }
-        }
 
-        // Finally, draw all of the widgets that are placed on a Floating Canvas.
-        for &(_, ref widget) in widgets.iter().skip_while(|&&(_, ref w)| is_on_split(w, canvas_cache)) {
-            widget.element.draw(&mut renderer);
-        }
-
-        // Indicate that the canvasses and widgets have now been drawn since the last time it was set.
-        for canvas in canvas_cache.iter_mut() {
             canvas.has_updated = false;
         }
 
@@ -769,4 +766,20 @@ impl<C> Ui<C> {
 
 }
 
+/// Compare two canvasses in order to determine their rendering depth.
+fn compare_canvasses(a: &Canvas, b: &Canvas) -> Ordering {
+    match (&a.kind, &b.kind) {
+        (&canvas::Kind::Split(_), &canvas::Kind::Floating(_)) => Ordering::Less,
+        (&canvas::Kind::Floating(_), &canvas::Kind::Split(_)) => Ordering::Greater,
+        (&canvas::Kind::Floating(ref a_state), &canvas::Kind::Floating(ref b_state)) =>
+            a_state.time_last_clicked.cmp(&b_state.time_last_clicked),
+        (&canvas::Kind::NoCanvas, &canvas::Kind::Split(_)) => Ordering::Less,
+        (&canvas::Kind::Split(_), &canvas::Kind::NoCanvas) => Ordering::Greater,
+        _ => Ordering::Equal,
+    }
+}
 
+/// Set the ID of the current canvas.
+pub fn set_current_canvas_id<C>(ui: &mut Ui<C>, id: CanvasId) {
+    ui.maybe_current_canvas_id = Some(id);
+}

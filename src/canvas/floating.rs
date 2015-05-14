@@ -172,7 +172,7 @@ impl<'a> Floating<'a> {
         let maybe_mouse = ui.get_mouse_state(UiId::Canvas(id), Some(id));
         let pad = style.padding(&ui.theme);
         let title_bar_font_size = style.title_bar_font_size(&ui.theme);
-        const TITLE_BAR_LABEL_PADDING: f64 = 2.0;
+        const TITLE_BAR_LABEL_PADDING: f64 = 4.0;
         let (title_bar_h, title_bar_y) = {
             if show_title_bar {
                 let h = title_bar_font_size as f64 + TITLE_BAR_LABEL_PADDING * 2.0;
@@ -182,6 +182,9 @@ impl<'a> Floating<'a> {
                 (0.0, 0.0)
             }
         };
+
+        let widget_area_xy = [xy[0], xy[1] - title_bar_h / 2.0];
+        let widget_area_dim = [dim[0], dim[1] - title_bar_h];
 
         // If there is new mouse state, check for a new interaction.
         let new_interaction = if let Some(mouse) = maybe_mouse {
@@ -202,7 +205,8 @@ impl<'a> Floating<'a> {
         match (interaction, new_interaction) {
             (Interaction::Highlighted(Elem::TitleBar), Interaction::Clicked(Elem::TitleBar, _)) =>
                 ui.mouse_captured_by(UiId::Canvas(id)),
-            (Interaction::Clicked(Elem::TitleBar, _), _) =>
+            (Interaction::Clicked(Elem::TitleBar, _), Interaction::Highlighted(_)) |
+            (Interaction::Clicked(Elem::TitleBar, _), Interaction::Normal)         =>
                 ui.mouse_uncaptured_by(UiId::Canvas(id)),
             _ => (),
         }
@@ -264,7 +268,13 @@ impl<'a> Floating<'a> {
         };
 
         // Update the canvas within the `Ui`'s `canvas_cache`.
-        ui.update_canvas(id, Kind::Floating(new_state), new_xy, pad, Some(element));
+        ui.update_canvas(id,
+                         Kind::Floating(new_state),
+                         new_xy,
+                         widget_area_xy,
+                         widget_area_dim,
+                         pad,
+                         Some(element));
     }
 
 }
