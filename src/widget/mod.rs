@@ -25,6 +25,24 @@ pub mod xy_pad;
 pub type WidgetId = usize;
 
 /// A trait to be implemented by all Widget types.
+///
+/// Methods that *must* be overridden:
+/// - unique_kind
+/// - init_state
+/// - style
+/// - update
+/// - draw
+///
+/// Methods that can be optionally overridden:
+/// - canvas_id
+/// - capture_mouse
+/// - uncapture_mouse
+/// - capture_keyboard
+/// - uncapture_keyboard
+///
+/// Methods that should not be overridden:
+/// - set
+///
 pub trait Widget: Positionable + Sizeable + Sized {
     /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
     /// allocations that you would like to avoid repeating between updates, or any calculations
@@ -36,6 +54,75 @@ pub trait Widget: Positionable + Sizeable + Sized {
     /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
     type Style: Any + PartialEq + ::std::fmt::Debug;
 
+    /// Return the kind of the widget as a &'static str. Note that this must be unique from all
+    /// other widgets' "unique kinds". This is used by conrod to help avoid UiId errors.
+    fn unique_kind(&self) -> &'static str;
+
+    /// Return the initial `State` of the Widget. The `Ui` will only call this once.
+    fn init_state(&self) -> Self::State;
+
+    /// Return the styling of the widget. The `Ui` will call this once prior to each `update`. It
+    /// does this so that it can check for differences in `Style` in case a new `Element` needs to
+    /// be constructed.
+    fn style(&self) -> Self::Style;
+
+    /// Your widget's previous state is given to you as a parameter and it is your job to
+    /// construct and return an Update that will be used to update the widget's cached state.
+    ///
+    /// # Arguments
+    /// * prev - The previous state of the Widget. If none existed, `Widget::init_state` will be
+    /// used to pass the initial state instead.
+    /// * xy - The coordinates representing the middle of the widget.
+    /// * dim - The dimensions of the widget.
+    /// * input - A view into the current state of the user input (i.e. mouse and keyboard).
+    /// * current_style - The style just produced by the `Widget::style` method.
+    /// * theme - The currently active `Theme` within the `Ui`.
+    /// * glyph_cache - Used for determining the size of rendered text if necessary.
+    fn update<'a, C>(self,
+                     prev: &State<Self::State>,
+                     xy: Point,
+                     dim: Dimensions,
+                     input: UserInput<'a>,
+                     current_style: &Self::Style,
+                     theme: &Theme,
+                     glyph_cache: &GlyphCache<C>) -> Option<Self::State>
+        where C: CharacterCache;
+
+    /// Construct a renderable Element from the current styling and new state. This will *only* be
+    /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
+    /// when designing your widget's `Style` and `State` types.
+    ///
+    /// # Arguments
+    /// * new_state - The freshly produced State which contains the unique widget info necessary
+    /// for rendering.
+    /// * current_style - The freshly produced `Style` of the widget.
+    /// * theme - The currently active `Theme` within the `Ui`.
+    /// * glyph_cache - Used for determining the size of rendered text if necessary.
+    fn draw<C>(new_state: &State<Self::State>,
+               current_style: &Self::Style,
+               theme: &Theme,
+               glyph_cache: &GlyphCache<C>) -> Element
+        where C: CharacterCache;
+
+    /// Return the canvas to which the Widget will be attached, if there is one. Note that the
+    /// CanvasId can also normally be inferred by the widget's `Position`, however calling this
+    /// method will override this.
+    fn canvas_id(&self) -> Option<CanvasId> { None }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn uncapture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn capture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Optionally override with the case that the widget should capture the mouse.
+    fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Note: There should be no need to override this method.
+    ///
     /// After building the widget, you call this method to set its current state into the given
     /// `Ui`. More precisely, the following will occur when calling this method:
     /// - The widget's previous state and style will be retrieved.
@@ -130,54 +217,6 @@ pub trait Widget: Positionable + Sizeable + Sized {
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
         ui::update_widget(ui, id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn uncapture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn capture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Return the kind of the widget as a &'static str. Note that this must be unique from all
-    /// other widgets' "unique kinds". This is used by conrod to help avoid UiId errors.
-    fn unique_kind(&self) -> &'static str;
-
-    /// Return the initial `State` of the Widget. The `Ui` will only call this once.
-    fn init_state(&self) -> Self::State;
-
-    /// Return the styling of the widget. The `Ui` will call this once prior to each `update`. It
-    /// does this so that it can check for differences in `Style` in case a new `Element` needs to
-    /// be constructed.
-    fn style(&self) -> Self::Style;
-
-    /// Return the canvas to which the Widget will be attached, if there is one.
-    fn canvas_id(&self) -> Option<CanvasId> { None }
-
-    /// Your widget's previous state is given to you as a parameter and it is your job to
-    /// construct and return an Update that will be used to update the widget's cached state.
-    fn update<'a, C>(self,
-                     prev: &State<Self::State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'a>,
-                     current_style: &Self::Style,
-                     theme: &Theme,
-                     glyph_cache: &GlyphCache<C>) -> Option<Self::State>
-        where C: CharacterCache;
-
-    /// Construct a renderable Element from the current styling and new state. This will *only* be
-    /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
-    /// when designing your widget's `Style` and `State` types.
-    fn draw<C>(new_state: &State<Self::State>,
-               current_style: &Self::Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where C: CharacterCache;
 
 }
 
