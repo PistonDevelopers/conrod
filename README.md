@@ -48,8 +48,6 @@ If conrod is missing anything you really wish it had, let us know with an issue 
 Dependencies
 ------------
 
-- [rustc](http://www.rust-lang.org/) - we try to keep up to date with the latest nightly build.
-- [cargo](https://github.com/rust-lang/cargo) - for handling other rust dependencies and building the project.
 - [freetype](http://www.freetype.org/download.html) - at the moment, Conrod uses [freetype-rs](https://github.com/PistonDevelopers/freetype-rs) for its font rendering, which means you'll need to have the freetype library installed on your system. You can [download and install the freetype library here](http://www.freetype.org/download.html).
 
 
