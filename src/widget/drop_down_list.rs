@@ -4,17 +4,22 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
+use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{GlyphCache, UserInput};
 use widget::{self, Widget};
 
 
-/// Tuple / React params.
+/// The index of a selected item.
 pub type Idx = usize;
+/// The number of items in a list.
 pub type Len = usize;
+
+/// The width of the scrollbar when visible.
+pub const SCROLLBAR_WIDTH: f64 = 10.0;
 
 /// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
 /// selection of a list item.
@@ -36,11 +41,18 @@ pub struct DropDownList<'a, F> {
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
 #[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// Color of the widget.
     pub maybe_color: Option<Color>,
+    /// Width of the widget's frame.
     pub maybe_frame: Option<f64>,
+    /// Color of the widget's frame.
     pub maybe_frame_color: Option<Color>,
+    /// Color of the item labels.
     pub maybe_label_color: Option<Color>,
+    /// Font size for the item labels.
     pub maybe_label_font_size: Option<u32>,
+    /// Maximum height of the Open menu before the scrollbar appears.
+    pub maybe_max_visible_height: Option<MaxHeight>,
 }
 
 /// Represents the state of the DropDownList.
@@ -52,102 +64,246 @@ pub struct State {
     maybe_selected: Option<Idx>,
 }
 
+/// Position of the scroll bar and the height at which it appears.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub struct Scroll {
+    /// The current position of the scroll bar as y-axis offset from top.
+    y_offset: Scalar,
+    /// The maximum offset for the handle given the number of items.
+    max_offset: Scalar,
+    /// The maximum height for the display before scrollbar appears.
+    max_visible_height: Scalar,
+}
+
+/// Representations of the max height of the visible area of the DropDownList.
+#[derive(PartialEq, Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+pub enum MaxHeight {
+    Items(usize),
+    Scalar(f64),
+}
+
 /// Whether the DropDownList is currently open or closed.
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum MenuState {
     Closed(Interaction),
-    Open(Interaction),
+    Open(Interaction, Option<Scroll>),
 }
 
 /// Describes how the DropDownList is currently being interacted with.
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Interaction {
     Normal,
-    Highlighted(Idx, Len),
-    Clicked(Idx, Len),
+    Highlighted(Elem),
+    Clicked(Elem),
 }
 
+/// The different elements that make up the Open DropDownList.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum Elem {
+    ScrollBar(ScrollBar),
+    Item(Idx)
+}
+
+/// The elements that make up a ScrollBar.
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum ScrollBar {
+    /// The draggable bar and the mouse's position.
+    Handle(Point),
+    /// The track along which the bar can be dragged.
+    Track(Point),
+}
 
 impl Interaction {
     fn color(&self, color: Color) -> Color {
         match *self {
             Interaction::Normal => color,
-            Interaction::Highlighted(_, _) => color.highlighted(),
-            Interaction::Clicked(_, _) => color.clicked(),
+            Interaction::Highlighted(_) => color.highlighted(),
+            Interaction::Clicked(_) => color.clicked(),
         }
     }
 }
 
 
-/// Is the cursor currently over the widget? If so which item?
+/// Is the cursor currently over the widget? If so, which Elem?
 fn is_over(mouse_pos: Point,
            frame_w: f64,
            dim: Dimensions,
            menu_state: MenuState,
-           len: Len) -> Option<Idx> {
+           len: Len,
+           maybe_scroll: Option<(Scalar, Scalar, Scalar)>) -> Option<Elem> {
     use utils::is_over_rect;
     match menu_state {
+
         MenuState::Closed(_) => match is_over_rect([0.0, 0.0], mouse_pos, dim) {
             false => None,
-            true => Some(0),
+            true => Some(Elem::Item(0)),
         },
-        MenuState::Open(_) => {
+
+        MenuState::Open(ref interaction, _) => {
             let item_h = dim[1] - frame_w;
             let total_h = item_h * len as f64;
-            let open_centre_y = -(total_h - item_h) / 2.0;
-            match is_over_rect([0.0, open_centre_y], mouse_pos, [dim[0], total_h]) {
-                false => None,
-                true => Some(((mouse_pos[1] - item_h / 2.0).abs() / item_h) as usize),
+
+            // If the menu is scrollable.
+            if let Some((y_offset, track_h, max_offset)) = maybe_scroll {
+                //let centre_y = -(track_h - item_h) / 2.0;
+                let middle_y = item_h / 2.0 - track_h / 2.0;
+                match *interaction {
+                    Interaction::Highlighted(_) | Interaction::Clicked(_) => {
+                        let scroll_x = position::align_right_of(dim[0], SCROLLBAR_WIDTH);
+                        let handle_h = (track_h / total_h) * track_h;
+                        let handle_y = middle_y + position::align_top_of(track_h, handle_h) - y_offset;
+                        let handle_dim = [SCROLLBAR_WIDTH, handle_h];
+                        let track_dim = [SCROLLBAR_WIDTH, track_h];
+                        if is_over_rect([scroll_x, handle_y], mouse_pos, handle_dim) {
+                            return Some(Elem::ScrollBar(ScrollBar::Handle(mouse_pos)));
+                        } else if is_over_rect([scroll_x, middle_y], mouse_pos, track_dim) {
+                            return Some(Elem::ScrollBar(ScrollBar::Track(mouse_pos)));
+                        }
+                    }
+                    _ => (),
+                }
+                match is_over_rect([0.0, middle_y], mouse_pos, [dim[0], track_h]) {
+                    false => None,
+                    true => {
+                        let scroll_amt = (y_offset / max_offset) * (total_h - track_h);
+                        let idx = ((mouse_pos[1] - scroll_amt - item_h / 2.0).abs() / item_h) as Idx;
+                        Some(Elem::Item(idx))
+                    },
+                }
+            }
+
+            // If the menu is not scrollable.
+            else {
+                let centre_y = -(total_h - item_h) / 2.0;
+                match is_over_rect([0.0, centre_y], mouse_pos, [dim[0], total_h]) {
+                    false => None,
+                    true => {
+                        let idx = ((mouse_pos[1] - item_h / 2.0).abs() / item_h) as Idx;
+                        Some(Elem::Item(idx))
+                    },
+                }
             }
         },
+
     }
 }
 
 
 /// Determine and return the new State by comparing the mouse state
 /// and position to the previous State.
-fn get_new_menu_state(is_over_idx: Option<Idx>,
-                      len: Len,
+fn get_new_menu_state(is_over_elem: Option<Elem>,
                       menu_state: MenuState,
-                      mouse: Mouse) -> MenuState {
+                      height: Scalar,
+                      mouse: Mouse,
+                      maybe_scroll: Option<(Scalar, Scalar, Scalar)>) -> MenuState {
     use self::Interaction::{Normal, Clicked, Highlighted};
+    use self::Elem::{Item, ScrollBar};
+    use self::ScrollBar::{Handle, Track};
+    use self::MenuState::{Closed, Open};
     use mouse::ButtonState::{Down, Up};
-    match menu_state {
-        MenuState::Closed(draw_state) => {
-            match is_over_idx {
-                Some(_) => {
-                    match (draw_state, mouse.left) {
-                        (Normal,            Down) => MenuState::Closed(Normal),
-                        (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => MenuState::Closed(Highlighted(0, len)),
-                        (Highlighted(_, _), Down) => MenuState::Closed(Clicked(0, len)),
-                        (Clicked(_, _),     Down) => MenuState::Closed(Clicked(0, len)),
-                        (Clicked(_, _),     Up)   => MenuState::Open(Normal),
-                    }
-                },
-                None => MenuState::Closed(Normal),
+
+    let new_scroll = || maybe_scroll.map(|(y_offset, max_height, max_offset)| Scroll {
+        y_offset: y_offset,
+        max_offset: max_offset,
+        max_visible_height: max_height,
+    });
+
+    let shift_scroll = |prev_mouse_xy: Point| {
+        maybe_scroll.map(|(y_offset, max_height, max_offset)| {
+            let y_offset = y_offset + (prev_mouse_xy[1] - mouse.xy[1]);
+            let y_offset = ::utils::clamp(y_offset, 0.0, max_offset);
+            Scroll {
+                y_offset: y_offset,
+                max_offset: max_offset,
+                max_visible_height: max_height,
             }
+        })
+    };
+    // let update_scroll = |prev_maybe_scroll: Option<Scroll>, prev_mouse_pos: Point| {
+    //     maybe_scroll.map(|y_offset, max_height| {
+    //         if let Some(prev_scroll) = prev_maybe_scroll {
+    //         }
+    //     })
+    // };
+
+    match menu_state {
+
+        MenuState::Closed(draw_state) => match is_over_elem {
+            Some(_) => match (draw_state, mouse.left) {
+                (Normal,         Down) => Closed(Normal),
+                (Normal,         Up)   |
+                (Highlighted(_), Up)   => Closed(Highlighted(Item(0))),
+                (Highlighted(_), Down) => Closed(Clicked(Item(0))),
+                (Clicked(_),     Down) => Closed(Clicked(Item(0))),
+                (Clicked(_),     Up)   => Open(Normal, new_scroll()),
+            },
+            None => MenuState::Closed(Normal),
         },
-        MenuState::Open(draw_state) => {
-            match is_over_idx {
-                Some(idx) => {
-                    match (draw_state, mouse.left) {
-                        (Normal,            Down) => MenuState::Open(Normal),
-                        (Normal,            Up)   |
-                        (Highlighted(_, _), Up)   => MenuState::Open(Highlighted(idx, len)),
-                        (Highlighted(_, _), Down) => MenuState::Open(Clicked(idx, len)),
-                        (Clicked(p_idx, _), Down) => MenuState::Open(Clicked(p_idx, len)),
-                        (Clicked(_, _),     Up)   => MenuState::Closed(Normal),
-                    }
+
+        MenuState::Open(draw_state, prev_maybe_scroll) => {
+            match is_over_elem {
+                Some(elem) => match (draw_state, mouse.left, elem) {
+                    (Normal,         Down, _) => Open(Normal, new_scroll()),
+                    (Normal,         Up,   _) |
+                    (Highlighted(_), Up,   _) => Open(Highlighted(elem), new_scroll()),
+
+                    // Scroll bar has just been clicked.
+                    (Highlighted(_), Down, ScrollBar(bar)) => {
+                        match bar {
+                            Handle(_) =>
+                                Open(Clicked(ScrollBar(Handle(mouse.xy))), new_scroll()),
+                            Track(_) => {
+                                let maybe_scroll = maybe_scroll.map(|(y_offset, max_height, max_offset)| {
+                                    let top = height / 2.0;
+                                    let handle_h = max_height - max_offset;
+                                    let picked_y = (mouse.xy[1] - top).abs() - handle_h / 2.0;
+                                    let y_offset = ::utils::clamp(picked_y, 0.0, max_offset);
+                                    Scroll {
+                                        y_offset: y_offset,
+                                        max_visible_height: max_height,
+                                        max_offset: max_offset,
+                                    }
+                                });
+                                Open(Clicked(ScrollBar(Handle(mouse.xy))), maybe_scroll)
+                            },
+                        }
+                    },
+
+                    // An item has just been clicked.
+                    (Highlighted(_), Down, _) => Open(Clicked(elem), new_scroll()),
+
+                    // The scroll bar handle has just been dragged.
+                    (Clicked(ScrollBar(Handle(xy))), Down, _) =>
+                        Open(Clicked(ScrollBar(Handle(mouse.xy))), shift_scroll(xy)),
+
+                    // An item remains clicked.
+                    (Clicked(elem), Down, _)           => Open(Clicked(elem), new_scroll()),
+
+                    // The scrollbar, previously clicked, was released above an item.
+                    (Clicked(ScrollBar(_)), Up, Elem::Item(idx)) =>
+                        Open(Highlighted(Elem::Item(idx)), new_scroll()),
+
+                    // An item was selected.
+                    (Clicked(_),    Up, Elem::Item(_)) => Closed(Normal),
+
+                    // The scrollbar was released but remains highlighted.
+                    // TODO
+                    (Clicked(_),    Up, scroll)        => Open(Highlighted(scroll), new_scroll()),
                 },
-                None => {
-                    match (draw_state, mouse.left) {
-                        (Highlighted(p_idx, _), Up) => MenuState::Open(Highlighted(p_idx, len)),
-                        _ => MenuState::Closed(Normal),
-                    }
+
+                None => match (draw_state, mouse.left) {
+                    (Highlighted(_), Up)  => Open(Normal, new_scroll()),
+                    (Clicked(ScrollBar(Handle(xy))), Down) =>
+                        Open(Clicked(ScrollBar(Handle(mouse.xy))), shift_scroll(xy)),
+                    (Clicked(_), Up)      => Open(Normal, new_scroll()),
+                    (Clicked(elem), Down) => Open(Clicked(elem), new_scroll()),
+                    (Normal, Up)          => Open(Normal, new_scroll()),
+                    (Normal, Down)        => Closed(Normal),
+                    _                     => Closed(Normal),
                 },
             }
         }
+
     }
 }
 
@@ -165,9 +321,9 @@ impl<'a, F> DropDownList<'a, F> {
             depth: 0.0,
             maybe_react: None,
             maybe_label: None,
-            style: Style::new(),
             enabled: true,
             maybe_canvas_id: None,
+            style: Style::new(),
         }
     }
 
@@ -187,6 +343,20 @@ impl<'a, F> DropDownList<'a, F> {
     /// Canvas by using the canvas placement `Positionable` methods.
     pub fn canvas(mut self, id: CanvasId) -> Self {
         self.maybe_canvas_id = Some(id);
+        self
+    }
+
+    /// Set the maximum height of the DropDownList (before the scrollbar appears) as a number of
+    /// items.
+    pub fn max_visible_items(mut self, num: usize) -> Self {
+        self.style.maybe_max_visible_height = Some(MaxHeight::Items(num));
+        self
+    }
+
+    /// Set the maximum height of the DropDownList (before the scrollbar appears) as a scalar
+    /// height.
+    pub fn max_visible_height(mut self, height: f64) -> Self {
+        self.style.maybe_max_visible_height = Some(MaxHeight::Scalar(height));
         self
     }
 
@@ -214,7 +384,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     /// Capture the mouse if the menu was opened.
     fn capture_mouse(prev: &State, new: &State) -> bool {
         match (prev.menu_state, new.menu_state) {
-            (MenuState::Closed(_), MenuState::Open(_)) => true,
+            (MenuState::Closed(_), MenuState::Open(_, _)) => true,
             _ => false,
         }
     }
@@ -222,7 +392,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     /// Uncapture the mouse if the menu was closed.
     fn uncapture_mouse(prev: &State, new: &State) -> bool {
         match (prev.menu_state, new.menu_state) {
-            (MenuState::Open(_), MenuState::Closed(_)) => true,
+            (MenuState::Open(_, _), MenuState::Closed(_)) => true,
             _ => false,
         }
     }
@@ -245,24 +415,61 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let num_strings = self.strings.len();
 
         // Check for a new interaction with the DropDownList.
-        let new_menu_state = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => MenuState::Closed(Interaction::Normal),
+        let (new_menu_state, is_over_elem) = match (self.enabled, maybe_mouse) {
+            (false, _) | (true, None) => (MenuState::Closed(Interaction::Normal), None),
             (true, Some(mouse)) => {
-                let is_over_idx = is_over(mouse.xy, frame, dim, state.menu_state, num_strings);
-                get_new_menu_state(is_over_idx, num_strings, state.menu_state, mouse)
+
+                // Determine the maximum visible height before the scrollbar should appear.
+                let bottom_win_y = (-input.window_dim[1]) / 2.0;
+                const WINDOW_PADDING: Scalar = 20.0;
+                let max_max_visible_height = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
+                let max_visible_height = match style.max_visible_height(theme) {
+                    Some(max_height) => {
+                        let height = match max_height {
+                            MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
+                            MaxHeight::Scalar(height) => height,
+                        };
+                        ::utils::partial_min(height, max_max_visible_height)
+                    },
+                    None => max_max_visible_height,
+                };
+
+                // Determine whether or not there should be a scrollbar. If we do need one, and we
+                // also had one last update, then carry the y_offset across from the last update.
+                let item_h = dim[1] - frame;
+                let total_h = item_h * (num_strings as Scalar) + frame;
+                let maybe_scrollbar = {
+                    if total_h <= max_visible_height { None } else {
+                        let y_offset = match state.menu_state {
+                            MenuState::Open(_, Some(ref scroll)) => scroll.y_offset,
+                            _ => 0.0,
+                        };
+                        let max_offset = max_visible_height - (max_visible_height / total_h) * max_visible_height;
+                        Some((y_offset, max_visible_height, max_offset))
+                    }
+                };
+                let is_over_elem = is_over(mouse.xy, frame, dim, state.menu_state,
+                                           num_strings, maybe_scrollbar);
+                let new_menu_state = get_new_menu_state(is_over_elem, state.menu_state, dim[1],
+                                                        mouse, maybe_scrollbar);
+                (new_menu_state, is_over_elem)
             },
         };
 
+        // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
                                                     else { None });
 
         // Call the `react` closure if mouse was released on one of the DropDownList items.
         if let Some(ref mut react) = self.maybe_react {
-            if let (MenuState::Open(o_d_state), MenuState::Closed(c_d_state)) =
+            if let (MenuState::Open(o_d_state, _), MenuState::Closed(c_d_state)) =
                 (state.menu_state, new_menu_state) {
-                if let (Interaction::Clicked(idx, _), Interaction::Normal) = (o_d_state, c_d_state) {
-                    *self.selected = selected;
-                    react(self.selected, idx, self.strings[idx].clone())
+                if let (Some(Elem::Item(idx_a)), Interaction::Clicked(Elem::Item(idx_b)), Interaction::Normal) =
+                    (is_over_elem, o_d_state, c_d_state) {
+                    if idx_a == idx_b {
+                        *self.selected = selected;
+                        react(self.selected, idx_a, self.strings[idx_a].clone())
+                    }
                 }
             }
         }
@@ -287,6 +494,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
         if state_has_changed { Some(new_state()) } else { None }
     }
 
+
     /// Construct an Element from the given DropDownList State.
     fn draw<C>(new_state: &widget::State<State>,
                style: &Style,
@@ -300,7 +508,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         let widget::State { ref state, dim, xy, .. } = *new_state;
 
-        // Retrieve the styling for the Element..
+        // Retrieve the styling for the Element.
         let color = style.color(theme);
         let frame = style.frame(theme);
         let frame_color = style.frame_color(theme);
@@ -327,56 +535,114 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
                 // Chain and shift the Forms into position.
                 let form_chain = Some(frame_form).into_iter()
-                    .chain(Some(inner_form).into_iter())
-                    .chain(Some(text_form).into_iter())
+                    .chain(Some(inner_form))
+                    .chain(Some(text_form))
                     .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
                 // Collect the Form's into a renderable Element.
                 collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
             },
 
-            MenuState::Open(draw_state) => {
+            MenuState::Open(interaction, maybe_scroll) => {
+
+                // Determine the visible index range and the height of the first and last items.
+                let item_h = dim[1] - frame;
+                let total_h = item_h * state.strings.len() as f64 + frame;
+                let (start_idx, end_idx, scroll_amt) = if let Some(scroll) = maybe_scroll {
+                    let Scroll { max_visible_height, y_offset, max_offset } = scroll;
+                    let num_items_that_fit = max_visible_height / item_h;
+                    let num_items_scrolled_past = y_offset / item_h;
+                    let start_idx = num_items_scrolled_past.floor() as usize;
+                    let last_visible_item = num_items_scrolled_past + num_items_that_fit;
+                    let end_idx = last_visible_item.floor() as usize;
+                    let scroll_amt = (y_offset / max_offset) * (total_h - max_visible_height);
+                    (start_idx, end_idx, scroll_amt)
+                } else {
+                    (0, state.strings.len() - 1, 0.0)
+                };
+
                 // Chain and shift the Forms into position.
-                let form_chain = state.strings.iter().enumerate().flat_map(|(i, string)| {
+                let visible_range = &state.strings[start_idx..end_idx + 1];
+                let item_form_chain = visible_range.iter().enumerate().flat_map(|(i, string)| {
+                    let i = i + start_idx;
                     let color = match state.maybe_selected {
-                        None => match draw_state {
-                            Interaction::Normal => color,
-                            Interaction::Highlighted(idx, _) => {
-                                if i == idx { color.highlighted() }
-                                else { color }
-                            },
-                            Interaction::Clicked(idx, _) => {
-                                if i == idx { color.clicked() }
-                                else { color }
-                            },
+                        None => match interaction {
+                            Interaction::Highlighted(Elem::Item(idx)) =>
+                                if i == idx { color.highlighted() } else { color },
+                            Interaction::Clicked(Elem::Item(idx)) =>
+                                if i == idx { color.clicked() } else { color },
+                            _ => color,
                         },
                         Some(sel_idx) => {
                             if sel_idx == i { color.clicked() }
                             else {
-                                match draw_state {
-                                    Interaction::Normal => color,
-                                    Interaction::Highlighted(idx, _) => {
-                                        if i == idx { color.highlighted() }
-                                        else { color }
-                                    },
-                                    Interaction::Clicked(idx, _) => {
-                                        if i == idx { color.clicked() }
-                                        else { color }
-                                    },
+                                match interaction {
+                                    Interaction::Highlighted(Elem::Item(idx)) =>
+                                        if i == idx { color.highlighted() } else { color },
+                                    Interaction::Clicked(Elem::Item(idx)) =>
+                                        if i == idx { color.clicked() } else { color },
+                                    _ => color,
                                 }
                             }
                         },
                     };
-                    let shift_amt = -(i as f64 * dim[1] - i as f64 * frame).floor();
                     let frame_form = rect(dim[0], dim[1]).filled(frame_color);
                     let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
                     let text_form = text(Text::from_string(string.clone())
                                              .color(label_color)
                                              .height(font_size as f64));
-                    Some(frame_form.shift_y(shift_amt)).into_iter()
-                        .chain(Some(inner_form.shift_y(shift_amt)).into_iter())
-                        .chain(Some(text_form.shift_y(shift_amt.floor())).into_iter())
-                }).map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+                    let shift_amt = -(i as f64 * dim[1] - i as f64 * frame).floor() + scroll_amt;
+                    let forms = Some(frame_form).into_iter()
+                        .chain(Some(inner_form))
+                        .map(move |form| form.shift_y(shift_amt))
+                        .chain(Some(text_form.shift_y(shift_amt.floor())));
+                    forms
+                });
+
+                let maybe_scroll_forms = match interaction {
+                    Interaction::Highlighted(_) | Interaction::Clicked(Elem::ScrollBar(_)) => {
+                        Some(maybe_scroll.into_iter().flat_map(|scroll| {
+                            let Scroll { y_offset, max_offset, max_visible_height } = scroll;
+                            let scroll_x = position::align_right_of(dim[0], SCROLLBAR_WIDTH);
+                            let track_dim = [SCROLLBAR_WIDTH, max_visible_height];
+                            let middle_y = item_h / 2.0 - max_visible_height / 2.0;
+                            let track_xy = [scroll_x, middle_y];
+
+                            let handle_h = (max_visible_height / total_h) * max_visible_height;
+                            let handle_dim = [SCROLLBAR_WIDTH, handle_h];
+                            let handle_top = position::align_top_of(track_dim[1], handle_h);
+                            let handle_y = track_xy[1] + handle_top - y_offset;
+                            let handle_xy = [scroll_x, handle_y];
+
+                            let track_color = match interaction {
+                                Interaction::Clicked(Elem::ScrollBar(ScrollBar::Track(_))) =>
+                                    color.plain_contrast().plain_contrast().alpha(0.3).clicked(),
+                                Interaction::Highlighted(Elem::ScrollBar(ScrollBar::Track(_))) =>
+                                    color.plain_contrast().plain_contrast().alpha(0.3).highlighted(),
+                                _ => color.plain_contrast().plain_contrast().alpha(0.3),
+                            };
+                            let handle_color = match interaction {
+                                Interaction::Clicked(Elem::ScrollBar(ScrollBar::Handle(_))) =>
+                                    color.plain_contrast().alpha(0.9).clicked(),
+                                Interaction::Highlighted(Elem::ScrollBar(ScrollBar::Handle(_))) =>
+                                    color.plain_contrast().alpha(0.75).highlighted(),
+                                _ => color.plain_contrast().alpha(0.6),
+                            };
+
+                            let track_form = rect(track_dim[0], track_dim[1])
+                                .filled(track_color)
+                                .shift(track_xy[0], track_xy[1]);
+                            let handle_form = rect(handle_dim[0], handle_dim[1])
+                                .filled(handle_color)
+                                .shift(handle_xy[0], handle_xy[1]);
+                            Some(track_form).into_iter().chain(Some(handle_form))
+                        }))
+                    },
+                    _ => None,
+                }.into_iter().flat_map(|forms| forms);
+
+                let form_chain = item_form_chain.chain(maybe_scroll_forms)
+                    .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
                 // Collect the Form's into a renderable Element.
                 collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
@@ -399,6 +665,7 @@ impl Style {
             maybe_frame_color: None,
             maybe_label_color: None,
             maybe_label_font_size: None,
+            maybe_max_visible_height: None,
         }
     }
 
@@ -435,6 +702,14 @@ impl Style {
         self.maybe_label_font_size.or(theme.maybe_drop_down_list.as_ref().map(|style| {
             style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
+    }
+
+    /// Get the maximum visible height of the DropDownList.
+    pub fn max_visible_height(&self, theme: &Theme) -> Option<MaxHeight> {
+        if let Some(height) = self.maybe_max_visible_height { Some(height) }
+        else if let Some(Some(height)) = theme.maybe_drop_down_list.as_ref()
+            .map(|style| style.maybe_max_visible_height) { Some(height) }
+        else { None }
     }
 
 }

@@ -627,7 +627,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     let text_form = text(Text::from_string(xy_string).color(color).height(h))
                         .shift(p_pos[0], p_pos[1])
                         .shift(text_x.floor(), text_y.floor());
-                    Some(circle_form).into_iter().chain(Some(text_form).into_iter())
+                    Some(circle_form).into_iter().chain(Some(text_form))
                 };
 
                 match elem {
@@ -658,8 +658,8 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Group the different Forms into a single form.
         let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .chain(maybe_label_form.into_iter())
+            .chain(Some(pressable_form))
+            .chain(maybe_label_form)
             .chain(envelope_line_forms);
         let forms = match maybe_closest_point_form {
             Some(closest_point_form) => form_chain

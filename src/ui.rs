@@ -95,6 +95,8 @@ pub struct UserInput<'a> {
     pub released_keys: &'a [input::keyboard::Key],
     /// Text entered since the last cycle.
     pub entered_text: &'a [String],
+    /// Current dimensions of the window.
+    pub window_dim: Dimensions,
 }
 
 /// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
@@ -468,12 +470,14 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, ui_id: UiId, maybe_canvas_id: Option<Can
         pressed_keys: &[],
         released_keys: &[],
         entered_text: &[],
+        window_dim: [ui.win_w, ui.win_h],
     };
     let with_keys = || UserInput {
         maybe_mouse: maybe_mouse,
         pressed_keys: &ui.keys_just_pressed,
         released_keys: &ui.keys_just_released,
         entered_text: &ui.text_just_entered,
+        window_dim: [ui.win_w, ui.win_h],
     };
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {

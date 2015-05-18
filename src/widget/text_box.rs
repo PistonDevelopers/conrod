@@ -564,9 +564,9 @@ impl<'a, F> Widget for TextBox<'a, F>
  
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form).into_iter())
-            .chain(maybe_cursor_form.into_iter())
-            .chain(Some(text_form).into_iter())
+            .chain(Some(inner_form))
+            .chain(maybe_cursor_form)
+            .chain(Some(text_form))
             .map(|form| form.shift(xy[0], xy[1]));
 
         // Collect the Forms into a renderable `Element`.

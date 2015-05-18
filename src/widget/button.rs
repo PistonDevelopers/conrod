@@ -210,9 +210,9 @@ impl<'a, F> Widget for Button<'a, F>
 
         // Construct the button's Form.
         let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
+            .chain(Some(pressable_form))
             .map(|form| form.shift(xy[0], xy[1]))
-            .chain(maybe_label_form.into_iter());
+            .chain(maybe_label_form);
 
         // Turn the form into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())

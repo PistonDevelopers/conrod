@@ -352,6 +352,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
         .right_from(UiId::Widget(SLIDER_HEIGHT), 30.0) // Position right from widget 6 by 50 pixels.
+        .max_visible_items(3)
         .color(ddl_color)
         .frame(demo.frame_width)
         .frame_color(ddl_color.plain_contrast())
