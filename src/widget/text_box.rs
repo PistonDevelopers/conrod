@@ -36,6 +36,7 @@ pub struct TextBox<'a, F> {
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
+#[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     pub maybe_width: Option<Scalar>,

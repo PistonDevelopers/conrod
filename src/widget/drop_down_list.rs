@@ -38,6 +38,7 @@ pub struct DropDownList<'a, F> {
 }
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
+#[allow(missing_copy_implementations)]
 #[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// Width of the widget.

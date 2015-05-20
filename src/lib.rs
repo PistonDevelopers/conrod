@@ -33,6 +33,17 @@ pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
 
+pub use widget::button::Style as ButtonStyle;
+pub use widget::drop_down_list::Style as DropDownListStyle;
+pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
+pub use widget::label::Style as LabelStyle;
+pub use widget::number_dialer::Style as NumberDialerStyle;
+pub use widget::slider::Style as SliderStyle;
+pub use widget::text_box::Style as TextBoxStyle;
+pub use widget::toggle::Style as ToggleStyle;
+pub use widget::xy_pad::Style as XYPadStyle;
+
+
 pub use background::Background;
 pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
