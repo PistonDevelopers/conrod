@@ -4,6 +4,7 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
+use graphics::math::Scalar;
 use label::FontSize;
 use mouse::Mouse;
 use num::Float;
@@ -18,8 +19,7 @@ use widget::{self, Widget};
 pub type Idx = usize;
 pub type CursorX = f64;
 
-const TEXT_PADDING: f64 = 5.0;
-
+const TEXT_PADDING: Scalar = 5.0;
 
 /// A widget for displaying and mutating a given one-line text `String`. It's reaction is
 /// triggered upon pressing of the `Enter`/`Return` key.
@@ -28,7 +28,6 @@ pub struct TextBox<'a, F> {
     pos: Position,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
-    dim: Dimensions,
     depth: Depth,
     maybe_react: Option<F>,
     style: Style,
@@ -39,8 +38,10 @@ pub struct TextBox<'a, F> {
 /// Styling for the TextBox, necessary for constructing its renderable Element.
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    pub maybe_width: Option<Scalar>,
+    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
-    pub maybe_frame: Option<f64>,
+    pub maybe_frame: Option<Scalar>,
     pub maybe_frame_color: Option<Color>,
     pub maybe_font_size: Option<u32>,
 }
@@ -296,7 +297,6 @@ impl<'a, F> TextBox<'a, F> {
             pos: Position::default(),
             maybe_h_align: None,
             maybe_v_align: None,
-            dim: [192.0, 48.0],
             depth: 0.0,
             maybe_react: None,
             style: Style::new(),
@@ -412,7 +412,7 @@ impl<'a, F> Widget for TextBox<'a, F>
 
             if cursor.is_cursor() || cursor.anchor != Anchor::None {
                 let cursor_x_view = cursor_x - v_offset;
-                let text_right = self.dim[0] - TEXT_PADDING - frame;
+                let text_right = dim[0] - TEXT_PADDING - frame;
 
                 if cursor_x_view < text_x {
                     v_offset += cursor_x_view - text_x;
@@ -580,11 +580,29 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
+            maybe_width: None,
+            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_font_size: None,
         }
+    }
+
+    /// Get the width of the Widget.
+    pub fn width(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 192.0;
+        self.maybe_width.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    /// Get the height of the Widget.
+    pub fn height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 48.0;
+        self.maybe_height.or(theme.maybe_text_box.as_ref().map(|style| {
+            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Get the Color for an Element.
@@ -665,15 +683,19 @@ impl<'a, F> position::Positionable for TextBox<'a, F> {
 
 impl<'a, F> position::Sizeable for TextBox<'a, F> {
     #[inline]
-    fn width(self, w: f64) -> Self {
-        let h = self.dim[1];
-        TextBox { dim: [w, h], ..self }
+    fn width(mut self, w: Scalar) -> Self {
+        self.style.maybe_width = Some(w);
+        self
     }
     #[inline]
-    fn height(self, h: f64) -> Self {
-        let w = self.dim[0];
-        TextBox { dim: [w, h], ..self }
+    fn height(mut self, h: Scalar) -> Self {
+        self.style.maybe_height = Some(h);
+        self
     }
-    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
-    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        self.style.width(theme)
+    }
+    fn get_height(&self, theme: &Theme) -> Scalar {
+        self.style.height(theme)
+    }
 }
