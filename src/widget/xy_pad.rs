@@ -4,6 +4,7 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
+use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::Float;
@@ -23,7 +24,6 @@ pub struct XYPad<'a, X, Y, F> {
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     pos: Position,
-    dim: Dimensions,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
@@ -37,8 +37,10 @@ pub struct XYPad<'a, X, Y, F> {
 /// Styling for the XYPad, necessary for constructing its renderable Element.
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    pub maybe_width: Option<Scalar>,
+    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
-    pub maybe_frame: Option<f64>,
+    pub maybe_frame: Option<Scalar>,
     pub maybe_frame_color: Option<Color>,
     pub maybe_label_color: Option<Color>,
     pub maybe_label_font_size: Option<FontSize>,
@@ -100,7 +102,6 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
             pos: Position::default(),
-            dim: [128.0, 128.0],
             maybe_h_align: None,
             maybe_v_align: None,
             depth: 0.0,
@@ -319,6 +320,8 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
+            maybe_width: None,
+            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -327,6 +330,22 @@ impl Style {
             maybe_value_font_size: None,
             maybe_line_width: None,
         }
+    }
+
+    /// Get the width of the Widget.
+    pub fn width(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 128.0;
+        self.maybe_width.or(theme.maybe_xy_pad.as_ref().map(|style| {
+            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    /// Get the height of the Widget.
+    pub fn height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 128.0;
+        self.maybe_height.or(theme.maybe_xy_pad.as_ref().map(|style| {
+            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Get the Color for an Element.
@@ -446,17 +465,19 @@ impl<'a, X, Y, F> position::Positionable for XYPad<'a, X, Y, F> {
 }
 
 impl<'a, X, Y, F> position::Sizeable for XYPad<'a, X, Y, F> {
-    #[inline]
-    fn width(self, w: f64) -> Self {
-        let h = self.dim[1];
-        XYPad { dim: [w, h], ..self }
+    fn width(mut self, w: Scalar) -> Self {
+        self.style.maybe_width = Some(w);
+        self
     }
-    #[inline]
-    fn height(self, h: f64) -> Self {
-        let w = self.dim[0];
-        XYPad { dim: [w, h], ..self }
+    fn height(mut self, h: Scalar) -> Self {
+        self.style.maybe_height = Some(h);
+        self
     }
-    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
-    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        self.style.width(theme)
+    }
+    fn get_height(&self, theme: &Theme) -> Scalar {
+        self.style.height(theme)
+    }
 }
 
