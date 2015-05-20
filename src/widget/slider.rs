@@ -308,9 +308,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pad_form).into_iter())
+            .chain(Some(pad_form))
             .map(|form| form.shift(xy[0], xy[1]))
-            .chain(maybe_label_form.into_iter());
+            .chain(maybe_label_form);
 
         // Collect the Forms into a renderable Element.
         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())

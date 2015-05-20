@@ -1,6 +1,6 @@
 # Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod)
 
-An easy-to-use, immediate-mode, 2D GUI library written entirely in Rust.
+An easy-to-use, 2D GUI library written entirely in Rust.
 
 Here's a demo!
 

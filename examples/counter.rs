@@ -35,7 +35,7 @@ fn main() {
     for event in event_iter {
         ui.handle_event(&event);
         if let Some(args) = event.render_args() {
-            gl.draw(args.viewport(), |_, gl| {
+            gl.draw(args.viewport(), |c, gl| {
 
                 // Draw the background.
                 Background::new().rgb(0.2, 0.25, 0.4).draw(ui, gl);
@@ -49,7 +49,7 @@ fn main() {
                     .set(0, ui);
 
                 // Draw our Ui!
-                ui.draw(gl);
+                ui.draw(c, gl);
 
             });
         }

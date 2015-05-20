@@ -427,14 +427,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
                                         .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
                                         .shift_x(x.floor());
                 x += slot_w;
-                maybe_rect_form.into_iter().chain(Some(character_form).into_iter())
+                maybe_rect_form.into_iter().chain(Some(character_form))
             })
         };
 
         // Chain the forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form).into_iter())
-            .chain(Some(label_form).into_iter())
+            .chain(Some(inner_form))
+            .chain(Some(label_form))
             .chain(val_string_forms)
             .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 

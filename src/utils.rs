@@ -7,6 +7,16 @@ use num::{Float, NumCast, PrimInt, ToPrimitive};
 use position::{Dimensions, Point};
 use vecmath::vec2_sub;
 
+/// Compare to PartialOrd values and return the min.
+pub fn partial_min<T: PartialOrd>(a: T, b: T) -> T {
+    if a <= b { a } else { b }
+}
+
+/// Compare to PartialOrd values and return the min.
+pub fn partial_max<T: PartialOrd>(a: T, b: T) -> T {
+    if a >= b { a } else { b }
+}
+
 /// Clamp a value between a given min and max.
 pub fn clamp<T: PartialOrd>(n: T, min: T, max: T) -> T {
     if n < min { min } else if n > max { max } else { n }

@@ -35,7 +35,6 @@ use conrod::{
     TextBox,
     Theme,
     Toggle,
-    Ui,
     UiId,
     WidgetId,
     Widget,
@@ -43,12 +42,16 @@ use conrod::{
     XYPad,
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
+use glutin_window::GlutinWindow;
+use graphics::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
 use piston::window::{WindowSettings, Size};
-use glutin_window::GlutinWindow;
 use std::path::Path;
+
+
+type Ui = conrod::Ui<GlyphCache<'static>>;
 
 /// This struct holds all of the variables used to demonstrate
 /// application data being passed through the widgets. If some
@@ -149,8 +152,8 @@ fn main() {
     for event in event_iter {
         ui.handle_event(&event);
         if let Some(args) = event.render_args() {
-            gl.draw(args.viewport(), |_, gl| {
-                draw_ui(gl, &mut ui, &mut demo);
+            gl.draw(args.viewport(), |c, gl| {
+                draw_ui(c, gl, &mut ui, &mut demo);
             });
         }
     }
@@ -159,7 +162,7 @@ fn main() {
 
 
 /// Draw the User Interface.
-fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut DemoApp) {
+fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
     // Draw the background.
     Background::new().color(demo.bg_color).draw(ui, gl);
@@ -352,6 +355,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
         .right_from(UiId::Widget(SLIDER_HEIGHT), 30.0) // Position right from widget 6 by 50 pixels.
+        .max_visible_items(3)
         .color(ddl_color)
         .frame(demo.frame_width)
         .frame_color(ddl_color.plain_contrast())
@@ -417,7 +421,7 @@ fn draw_ui<'a>(gl: &mut GlGraphics, ui: &mut Ui<GlyphCache<'a>>, demo: &mut Demo
     }
 
     // Draw our Ui!
-    ui.draw(gl);
+    ui.draw(c, gl);
 
 }
 

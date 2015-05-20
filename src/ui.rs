@@ -1,7 +1,7 @@
 
 use canvas::{self, Canvas, CanvasId};
 use elmesque::Element;
-use graphics::Graphics;
+use graphics::{Context, Graphics};
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::{ButtonState, Mouse};
@@ -95,6 +95,8 @@ pub struct UserInput<'a> {
     pub released_keys: &'a [input::keyboard::Key],
     /// Text entered since the last cycle.
     pub entered_text: &'a [String],
+    /// Current dimensions of the window.
+    pub window_dim: Dimensions,
 }
 
 /// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
@@ -316,7 +318,7 @@ impl<C> Ui<C> {
     /// - Widgets are sorted by capturing and then render depth (depth first).
     /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
     /// - Render all widgets.
-    pub fn draw<G>(&mut self, graphics: &mut G)
+    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
         where
             C: CharacterCache,
             G: Graphics<Texture = C::Texture>,
@@ -327,7 +329,6 @@ impl<C> Ui<C> {
         let Ui {
             ref mut canvas_cache,
             ref mut widget_cache,
-            ref win_w, ref win_h,
             ref glyph_cache,
             ..
         } = *self;
@@ -376,7 +377,7 @@ impl<C> Ui<C> {
         // Construct the elmesque Renderer for rendering the Elements.
         let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
         let character_cache = ref_mut_character_cache.deref_mut();
-        let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
+        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
 
         // Collect references to the canvasses for sorting.
         let mut canvasses: Vec<_> = canvas_cache.iter_mut().enumerate()
@@ -393,7 +394,8 @@ impl<C> Ui<C> {
 
 
         // Print all the widgets that aren't attached to any canvas.
-        for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == None) {
+        for &mut (_, ref widget) in widgets.iter_mut()
+            .filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == None) {
             widget.element.draw(&mut renderer);
         }
 
@@ -402,7 +404,8 @@ impl<C> Ui<C> {
             canvas.element.draw(&mut renderer);
 
             // Print each widget attached to the current canvas.
-            for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == Some(id)) {
+            for &mut (_, ref widget) in widgets.iter_mut()
+                .filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == Some(id)) {
                 widget.element.draw(&mut renderer);
             }
 
@@ -468,12 +471,14 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, ui_id: UiId, maybe_canvas_id: Option<Can
         pressed_keys: &[],
         released_keys: &[],
         entered_text: &[],
+        window_dim: [ui.win_w, ui.win_h],
     };
     let with_keys = || UserInput {
         maybe_mouse: maybe_mouse,
         pressed_keys: &ui.keys_just_pressed,
         released_keys: &ui.keys_just_released,
         entered_text: &ui.text_just_entered,
+        window_dim: [ui.win_w, ui.win_h],
     };
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_ui_id)) => if ui_id == captured_ui_id {
