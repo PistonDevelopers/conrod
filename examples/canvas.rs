@@ -25,6 +25,7 @@ use std::rc::Rc;
 type Ui = conrod::Ui<GlyphCache<Resources>>;
 type Graphics<'a> = GfxGraphics<'a, Resources, CommandBuffer, Output>;
 
+
 fn main() {
 
     // Construct the window.
@@ -66,7 +67,7 @@ fn draw_ui<'a>(ui: &mut Ui, c: Context, g: &mut Graphics<'a>) {
     // Construct our Canvas tree.
     Split::new(MASTER).flow_down(&[
         Split::new(HEADER).color(blue()).pad_bottom(20.0),
-        Split::new(BODY).flow_right(&[
+        Split::new(BODY).length(300.0).flow_right(&[
             Split::new(LEFT_COLUMN).color(light_orange()).pad(20.0),
             Split::new(MIDDLE_COLUMN).color(orange()),
             Split::new(RIGHT_COLUMN).color(dark_orange()).pad(20.0),
@@ -106,12 +107,12 @@ fn draw_ui<'a>(ui: &mut Ui, c: Context, g: &mut Graphics<'a>) {
         .bottom_right_of(RIGHT_COLUMN)
         .set(BOTTOM_RIGHT, ui);
 
-    WidgetMatrix::new(24, 8)
+    WidgetMatrix::new(COLS, ROWS)
         .dim(ui.canvas_size(FOOTER))
         .middle_of(FOOTER)
         .each_widget(ui, |ui, n, _col, _row, xy, dim| {
             Button::new()
-                .color(blue().with_luminance(n as f32 / (24 * 8) as f32))
+                .color(blue().with_luminance(n as f32 / (COLS * ROWS) as f32))
                 .dim(dim)
                 .point(xy)
                 .react(|| println!("Hey! {:?}", n))
@@ -147,6 +148,8 @@ const TOP_LEFT: WidgetId = SUBTITLE + 1;
 const MIDDLE: WidgetId = TOP_LEFT + 1;
 const BOTTOM_RIGHT: WidgetId = MIDDLE + 1;
 const BUTTON: WidgetId = BOTTOM_RIGHT + 1;
-const BING: WidgetId = BUTTON + 24 * 8;
+const ROWS: usize = 5;
+const COLS: usize = 24;
+const BING: WidgetId = BUTTON + COLS * ROWS;
 const BONG: WidgetId = BING + 1;
 

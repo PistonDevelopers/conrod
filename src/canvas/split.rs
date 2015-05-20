@@ -67,10 +67,7 @@ impl<'a> Split<'a> {
     /// Set the dimension of the Split.
     pub fn length(mut self, length: Length) -> Split<'a> {
         self.maybe_length = Some(length);
-        println!("Consideration of `maybe_length` still needs to be implemented within \
-                       `Split::into_ui`.");
-        unimplemented!();
-        //self
+        self
     }
     
     /// Set the child Canvas Splits of the current Canvas flowing in a given direction.
