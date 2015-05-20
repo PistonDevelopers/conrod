@@ -253,7 +253,6 @@ impl Style {
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_button.as_ref().map(|style| {
