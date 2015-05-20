@@ -27,6 +27,7 @@ pub struct Button<'a, F> {
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
+#[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     pub maybe_width: Option<Scalar>,

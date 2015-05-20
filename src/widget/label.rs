@@ -23,6 +23,7 @@ pub struct Label<'a> {
 }
 
 /// The styling for a Label's renderable Element.
+#[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     maybe_font_size: Option<FontSize>,

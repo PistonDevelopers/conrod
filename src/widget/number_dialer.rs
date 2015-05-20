@@ -37,6 +37,7 @@ pub struct NumberDialer<'a, T, F> {
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
+#[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     pub maybe_width: Option<Scalar>,
