@@ -219,12 +219,14 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
             }
         })
     };
-    // let update_scroll = |prev_maybe_scroll: Option<Scroll>, prev_mouse_pos: Point| {
-    //     maybe_scroll.map(|y_offset, max_height| {
-    //         if let Some(prev_scroll) = prev_maybe_scroll {
-    //         }
-    //     })
-    // };
+
+    let scroll_with_mouse = |maybe_scroll: Option<Scroll>| {
+        maybe_scroll.map(|scroll| {
+            let y_offset = scroll.y_offset;
+            let new_y_offset = ::utils::clamp(y_offset - mouse.scroll.y, 0.0, scroll.max_offset);
+            Scroll { y_offset: new_y_offset, ..scroll }
+        })
+    };
 
     match menu_state {
 
@@ -245,7 +247,8 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
                 Some(elem) => match (draw_state, mouse.left, elem) {
                     (Normal,         Down, _) => Open(Normal, new_scroll()),
                     (Normal,         Up,   _) |
-                    (Highlighted(_), Up,   _) => Open(Highlighted(elem), new_scroll()),
+                    (Highlighted(_), Up,   _) =>
+                        Open(Highlighted(elem), scroll_with_mouse(new_scroll())),
 
                     // Scroll bar has just been clicked.
                     (Highlighted(_), Down, ScrollBar(bar)) => {
@@ -288,7 +291,8 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
 
                     // The scrollbar was released but remains highlighted.
                     // TODO
-                    (Clicked(_),    Up, scroll)        => Open(Highlighted(scroll), new_scroll()),
+                    (Clicked(_),    Up, scroll)        =>
+                        Open(Highlighted(scroll), new_scroll()),
                 },
 
                 None => match (draw_state, mouse.left) {

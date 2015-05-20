@@ -28,6 +28,17 @@ pub struct Mouse {
     pub right: ButtonState,
     /// Unknown button state.
     pub unknown: ButtonState,
+    /// Amount that the mouse has scrolled since the last render.
+    pub scroll: Scroll,
+}
+
+/// The amount of scrolling that has occurred since the last render event.
+#[derive(Copy, Clone, Debug)]
+pub struct Scroll {
+    /// Scrolling across the x axis.
+    pub x: f64,
+    /// Scrolling across the y axis.
+    pub y: f64,
 }
 
 impl Mouse {
@@ -37,7 +48,14 @@ impl Mouse {
                left: ButtonState,
                middle: ButtonState,
                right: ButtonState) -> Mouse {
-        Mouse { xy: xy, left: left, middle: middle, right: right, unknown: ButtonState::Up }
+        Mouse {
+            xy: xy,
+            left: left,
+            middle: middle,
+            right: right,
+            unknown: ButtonState::Up,
+            scroll: Scroll { x: 0.0, y: 0.0 },
+        }
     }
 
     /// Return the mouse state with its position relative to the given position.
