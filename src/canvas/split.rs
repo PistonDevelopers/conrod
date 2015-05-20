@@ -164,7 +164,9 @@ impl<'a> Split<'a> {
     /// Construct a Canvas from a Split.
     fn into_ui<C>(&self, dim: Dimensions, xy: Point, ui: &mut Ui<C>) {
         use elmesque::form::{rect, collage};
-        use vecmath::{vec2_add, vec2_sub, vec2_scale};
+        use vecmath::{vec2_add, vec2_sub};
+
+
         let Split { id, ref maybe_splits, ref style, .. } = *self;
 
         let color = style.color(&ui.theme);
@@ -184,33 +186,67 @@ impl<'a> Split<'a> {
 
         if let Some((direction, splits)) = *maybe_splits {
             use position::{align_top_of, align_bottom_of, align_left_of, align_right_of};
+
+            let mut stuck_length: f64 = 0.0;
             // Offset xy so that it is in the center of the padded area.
             let xy = vec2_add(xy, pad_offset);
-            let num = splits.len() as f64;
-            let split_dim = match splits.len() {
+            let mut num = splits.len();
+            for s in splits.iter() {
+                match s.maybe_length {
+                    Some(l) => {
+                        stuck_length += l;
+                        num -= 1;
+                    },
+                    _ => {}
+                }
+            }
+
+            let split_dim = match num {
                 0 => [0.0, 0.0],
                 1 => pad_dim,
                 _ => match direction {
-                    Direction::Up   | Direction::Down  => [pad_dim[0], pad_dim[1] / num],
-                    Direction::Left | Direction::Right => [pad_dim[0] / num, pad_dim[1]],
+                    Direction::Up   | Direction::Down  => [pad_dim[0], (pad_dim[1] - stuck_length) / num as f64],
+                    Direction::Left | Direction::Right => [(pad_dim[0] - stuck_length) / num as f64, pad_dim[1]],
                 },
             };
-            let split_offset = match direction {
-                Direction::Up    => [0.0, split_dim[1]],
-                Direction::Down  => [0.0, -split_dim[1]],
-                Direction::Left  => [-split_dim[0], 0.0],
-                Direction::Right => [split_dim[0], 0.0],
-            };
-            let first_xy = match direction {
-                Direction::Up    => [xy[0], xy[1] + align_bottom_of(pad_dim[1], split_dim[1])],
-                Direction::Down  => [xy[0], xy[1] + align_top_of(pad_dim[1], split_dim[1])],
-                Direction::Left  => [xy[0] + align_right_of(pad_dim[0], split_dim[0]), xy[1]],
-                Direction::Right => [xy[0] + align_left_of(pad_dim[0], split_dim[0]), xy[1]],
-            };
 
-            for (i, split) in splits.iter().enumerate() {
-                let split_xy = vec2_add(first_xy, vec2_scale(split_offset, i as f64));
-                split.into_ui(split_dim, split_xy, ui)
+            let mut cur_xy = xy;
+
+            for split in splits.iter() {
+                let split_dim = match split.maybe_length {
+                    Some(len) => {
+                        match direction {
+                            Direction::Up   | Direction::Down  => [pad_dim[0], len],
+                            Direction::Left | Direction::Right => [len, pad_dim[1]],
+                        }
+                    },
+                    None => split_dim
+                };
+                split.into_ui(split_dim, vec2_add(cur_xy, match direction {
+                    Direction::Up    => [0.0, xy[1] + align_bottom_of(pad_dim[1], split_dim[1])],
+                    Direction::Down  => [0.0, xy[1] + align_top_of(pad_dim[1], split_dim[1])],
+                    Direction::Left  => [align_right_of(pad_dim[0], split_dim[0]), 0.0],
+                    Direction::Right => [align_left_of(pad_dim[0], split_dim[0]), 0.0],
+                }), ui);
+
+                cur_xy = vec2_add(cur_xy, match split.maybe_length {
+                    Some(len) => {
+                        match direction {
+                            Direction::Up    => [0.0, len],
+                            Direction::Down  => [0.0, -len],
+                            Direction::Left  => [-len, 0.0],
+                            Direction::Right => [len, 0.0],
+                        }
+                    },
+                    None => {
+                        match direction {
+                            Direction::Up    => [0.0, split_dim[1]],
+                            Direction::Down  => [0.0, -split_dim[1]],
+                            Direction::Left  => [-split_dim[0], 0.0],
+                            Direction::Right => [split_dim[0], 0.0],
+                        }
+                    }
+                });
             }
         }
 
