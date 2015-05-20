@@ -4,11 +4,12 @@ use elmesque::Element;
 use graphics::{Context, Graphics};
 use graphics::character::CharacterCache;
 use label::FontSize;
-use mouse::{ButtonState, Mouse};
+use mouse::{ButtonState, Mouse, Scroll};
 use piston::input;
 use piston::event::{
     GenericEvent,
     MouseCursorEvent,
+    MouseScrollEvent,
     PressEvent,
     ReleaseEvent,
     RenderEvent,
@@ -170,6 +171,7 @@ impl<C> Ui<C> {
             self.keys_just_pressed.clear();
             self.keys_just_released.clear();
             self.text_just_entered.clear();
+            self.mouse.scroll = Scroll { x: 0.0, y: 0.0 };
 
             self.maybe_prev_widget_id = None;
             self.prev_event_was_render = false;
@@ -191,6 +193,11 @@ impl<C> Ui<C> {
             // Convert mouse coords to (0, 0) origin.
             self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
             self.maybe_canvas_under_mouse = self.pick_canvas(self.mouse.xy);
+        });
+
+        event.mouse_scroll(|x, y| {
+            self.mouse.scroll.x += x;
+            self.mouse.scroll.y += y;
         });
 
         event.press(|button_type| {

@@ -11,7 +11,7 @@ extern crate piston;
 extern crate piston_window;
 
 use conrod::{CanvasId, Floating, Theme, Widget, WidgetId};
-use gfx_device_gl::{CommandBuffer, Resources, Output};
+use gfx_device_gl::{CommandBuffer, Factory, Resources, Output};
 use gfx_graphics::{GfxGraphics, GlyphCache};
 use glutin_window::{GlutinWindow, OpenGL};
 use graphics::Context;
@@ -22,7 +22,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 
-type Ui = conrod::Ui<GlyphCache<Resources>>;
+type Ui = conrod::Ui<GlyphCache<Resources, Factory>>;
 type Graphics<'a> = GfxGraphics<'a, Resources, CommandBuffer, Output>;
 
 
@@ -38,14 +38,11 @@ fn main() {
         PistonWindow::new(Rc::new(RefCell::new(window)), piston_window::empty_app())
     };
 
-    // Spawn the gfx::factory.
-    let mut factory = window.device.borrow().spawn_factory();
-
     // construct our `Ui`.
     let mut ui = {
         let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = GlyphCache::new(&font_path, &mut factory);
+        let glyph_cache = GlyphCache::new(&font_path, window.device.borrow().spawn_factory());
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
@@ -53,7 +50,6 @@ fn main() {
     for event in window {
         ui.handle_event(&event);
         event.draw_2d(|c, g| draw_ui(&mut ui, c, g));
-        ui.glyph_cache.borrow_mut().update(&mut factory);
     }
 
 }
