@@ -1,7 +1,7 @@
 
 use canvas::{self, Canvas, CanvasId};
 use elmesque::Element;
-use graphics::Graphics;
+use graphics::{Context, Graphics};
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::{ButtonState, Mouse};
@@ -318,7 +318,7 @@ impl<C> Ui<C> {
     /// - Widgets are sorted by capturing and then render depth (depth first).
     /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
     /// - Render all widgets.
-    pub fn draw<G>(&mut self, graphics: &mut G)
+    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
         where
             C: CharacterCache,
             G: Graphics<Texture = C::Texture>,
@@ -329,7 +329,6 @@ impl<C> Ui<C> {
         let Ui {
             ref mut canvas_cache,
             ref mut widget_cache,
-            ref win_w, ref win_h,
             ref glyph_cache,
             ..
         } = *self;
@@ -378,7 +377,7 @@ impl<C> Ui<C> {
         // Construct the elmesque Renderer for rendering the Elements.
         let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
         let character_cache = ref_mut_character_cache.deref_mut();
-        let mut renderer = Renderer::new(*win_w, *win_h, graphics).character_cache(character_cache);
+        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
 
         // Collect references to the canvasses for sorting.
         let mut canvasses: Vec<_> = canvas_cache.iter_mut().enumerate()

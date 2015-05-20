@@ -240,7 +240,7 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
             None => MenuState::Closed(Normal),
         },
 
-        MenuState::Open(draw_state, prev_maybe_scroll) => {
+        MenuState::Open(draw_state, _prev_maybe_scroll) => {
             match is_over_elem {
                 Some(elem) => match (draw_state, mouse.left, elem) {
                     (Normal,         Down, _) => Open(Normal, new_scroll()),
@@ -253,7 +253,7 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
                             Handle(_) =>
                                 Open(Clicked(ScrollBar(Handle(mouse.xy))), new_scroll()),
                             Track(_) => {
-                                let maybe_scroll = maybe_scroll.map(|(y_offset, max_height, max_offset)| {
+                                let maybe_scroll = maybe_scroll.map(|(_y_offset, max_height, max_offset)| {
                                     let top = height / 2.0;
                                     let handle_h = max_height - max_offset;
                                     let picked_y = (mouse.xy[1] - top).abs() - handle_h / 2.0;
@@ -601,8 +601,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
                 let maybe_scroll_forms = match interaction {
                     Interaction::Highlighted(_) | Interaction::Clicked(Elem::ScrollBar(_)) => {
-                        Some(maybe_scroll.into_iter().flat_map(|scroll| {
-                            let Scroll { y_offset, max_offset, max_visible_height } = scroll;
+                        Some(maybe_scroll.iter().flat_map(|scroll| {
+                            let Scroll { y_offset, max_visible_height, .. } = *scroll;
                             let scroll_x = position::align_right_of(dim[0], SCROLLBAR_WIDTH);
                             let track_dim = [SCROLLBAR_WIDTH, max_visible_height];
                             let middle_y = item_h / 2.0 - max_visible_height / 2.0;
@@ -645,7 +645,18 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
 
                 // Collect the Form's into a renderable Element.
-                collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+                let element = collage(dim[0] as i32, dim[1] as i32, form_chain.collect());
+
+                match maybe_scroll {
+                    Some(scroll) => {
+                        let x = xy[0];
+                        let y = xy[1] + dim[1] / 2.0 - scroll.max_visible_height / 2.0;
+                        element.crop(x, y, dim[0], scroll.max_visible_height)
+                    },
+                    None => {
+                        element
+                    }
+                }
             },
 
         }

@@ -10,17 +10,20 @@ extern crate graphics;
 extern crate piston;
 extern crate piston_window;
 
-use conrod::{CanvasId, Floating, Theme, Ui, Widget, WidgetId};
-use gfx_device_gl::Resources;
-use gfx_graphics::{GlyphCache, Texture};
+use conrod::{CanvasId, Floating, Theme, Widget, WidgetId};
+use gfx_device_gl::{CommandBuffer, Resources, Output};
+use gfx_graphics::{GfxGraphics, GlyphCache};
 use glutin_window::{GlutinWindow, OpenGL};
-use graphics::Graphics;
+use graphics::Context;
 use piston::window::{WindowSettings, Size};
 use piston_window::PistonWindow;
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 
+
+type Ui = conrod::Ui<GlyphCache<Resources>>;
+type Graphics<'a> = GfxGraphics<'a, Resources, CommandBuffer, Output>;
 
 fn main() {
 
@@ -34,26 +37,29 @@ fn main() {
         PistonWindow::new(Rc::new(RefCell::new(window)), piston_window::empty_app())
     };
 
+    // Spawn the gfx::factory.
+    let mut factory = window.device.borrow().spawn_factory();
+
     // construct our `Ui`.
     let mut ui = {
         let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = GlyphCache::new(&font_path, &mut window.canvas.borrow_mut().factory);
+        let glyph_cache = GlyphCache::new(&font_path, &mut factory);
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
     // Poll events from the window.
     for event in window {
         ui.handle_event(&event);
-        event.draw_2d(|_c, g| draw_ui(&mut ui, g));
-        ui.glyph_cache.borrow_mut().update(&mut event.canvas.borrow_mut().factory);
+        event.draw_2d(|c, g| draw_ui(&mut ui, c, g));
+        ui.glyph_cache.borrow_mut().update(&mut factory);
     }
 
 }
 
 
 // Draw the Ui.
-fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resources>>, g: &mut G) {
+fn draw_ui<'a>(ui: &mut Ui, c: Context, g: &mut Graphics<'a>) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
     use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, WidgetMatrix};
 
@@ -61,7 +67,7 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
     Split::new(MASTER).flow_down(&[
         Split::new(HEADER).color(blue()).pad_bottom(20.0),
         Split::new(BODY).flow_right(&[
-            Split::new(LEFT_COLUMN).length(400.0).color(light_orange()).pad(20.0),
+            Split::new(LEFT_COLUMN).color(light_orange()).pad(20.0),
             Split::new(MIDDLE_COLUMN).color(orange()),
             Split::new(RIGHT_COLUMN).color(dark_orange()).pad(20.0),
         ]),
@@ -119,7 +125,7 @@ fn draw_ui<G: Graphics<Texture=Texture<Resources>>>(ui: &mut Ui<GlyphCache<Resou
         .react(|| println!("Bong!"))
         .set(BONG, ui);
 
-    ui.draw(g);
+    ui.draw(c, g);
 }
 
 
