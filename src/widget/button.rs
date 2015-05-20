@@ -4,6 +4,7 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
+use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
@@ -15,7 +16,6 @@ use widget::{self, Widget};
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
     pos: Position,
-    dim: Dimensions,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
@@ -29,6 +29,8 @@ pub struct Button<'a, F> {
 /// Styling for the Button, necessary for constructing its renderable Element.
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    pub maybe_width: Option<Scalar>,
+    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<f64>,
     pub maybe_frame_color: Option<Color>,
@@ -83,7 +85,6 @@ impl<'a, F> Button<'a, F> {
     /// Create a button context to be built upon.
     pub fn new() -> Button<'a, F> {
         Button {
-            dim: [64.0, 64.0],
             pos: Position::default(),
             maybe_h_align: None,
             maybe_v_align: None,
@@ -226,6 +227,8 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
+            maybe_width: None,
+            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -233,6 +236,23 @@ impl Style {
             maybe_label_font_size: None,
         }
     }
+
+    /// Get the width of the Widget.
+    pub fn width(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 64.0;
+        self.maybe_width.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    /// Get the height of the Widget.
+    pub fn height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 64.0;
+        self.maybe_height.or(theme.maybe_button.as_ref().map(|style| {
+            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
+
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
@@ -336,16 +356,20 @@ impl<'a, F> Positionable for Button<'a, F> {
 
 impl<'a, F> ::position::Sizeable for Button<'a, F> {
     #[inline]
-    fn width(self, w: f64) -> Self {
-        let h = self.dim[1];
-        Button { dim: [w, h], ..self }
+    fn width(mut self, w: f64) -> Self {
+        self.style.maybe_width = Some(w);
+        self
     }
     #[inline]
-    fn height(self, h: f64) -> Self {
-        let w = self.dim[0];
-        Button { dim: [w, h], ..self }
+    fn height(mut self, h: f64) -> Self {
+        self.style.maybe_height = Some(h);
+        self
     }
-    fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
-    fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> f64 {
+        self.style.width(theme)
+    }
+    fn get_height(&self, theme: &Theme) -> f64 {
+        self.style.height(theme)
+    }
 }
 
