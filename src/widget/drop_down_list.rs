@@ -653,9 +653,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                         let y = xy[1] + dim[1] / 2.0 - scroll.max_visible_height / 2.0;
                         element.crop(x, y, dim[0], scroll.max_visible_height)
                     },
-                    None => {
-                        element
-                    }
+                    None => element,
                 }
             },
 

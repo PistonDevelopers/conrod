@@ -394,7 +394,8 @@ impl<C> Ui<C> {
 
 
         // Print all the widgets that aren't attached to any canvas.
-        for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == None) {
+        for &mut (_, ref widget) in widgets.iter_mut()
+            .filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == None) {
             widget.element.draw(&mut renderer);
         }
 
@@ -403,7 +404,8 @@ impl<C> Ui<C> {
             canvas.element.draw(&mut renderer);
 
             // Print each widget attached to the current canvas.
-            for &mut (_, ref widget) in widgets.iter_mut().filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == Some(id)) {
+            for &mut (_, ref widget) in widgets.iter_mut()
+                .filter(|&&mut(_, ref widget)| widget.maybe_canvas_id == Some(id)) {
                 widget.element.draw(&mut renderer);
             }
 
