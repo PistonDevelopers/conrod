@@ -539,6 +539,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Check whether or not the state has changed since the previous update.
         let state_has_changed = state.interaction != new_interaction
+            || state.maybe_closest_point != maybe_closest_point
             || &state.env[..] != &self.env[..]
             || state.min_x != min_x || state.max_x != max_x
             || state.min_y != min_y || state.max_y != max_y
