@@ -166,7 +166,6 @@ impl<'a> Split<'a> {
         use elmesque::form::{rect, collage};
         use vecmath::{vec2_add, vec2_sub};
 
-
         let Split { id, ref maybe_splits, ref style, .. } = *self;
 
         let color = style.color(&ui.theme);
@@ -185,68 +184,83 @@ impl<'a> Split<'a> {
         let xy = vec2_add(xy, mgn_offset);
 
         if let Some((direction, splits)) = *maybe_splits {
-            use position::{align_top_of, align_bottom_of, align_left_of, align_right_of};
+            use Direction::{Up, Down, Left, Right};
 
-            let mut stuck_length: f64 = 0.0;
             // Offset xy so that it is in the center of the padded area.
             let xy = vec2_add(xy, pad_offset);
-            let mut num = splits.len();
-            for s in splits.iter() {
-                match s.maybe_length {
-                    Some(l) => {
-                        stuck_length += l;
-                        num -= 1;
-                    },
-                    _ => {}
-                }
-            }
+            let (stuck_length, num_not_stuck) =
+                splits.iter().fold((0.0, splits.len()), |(total, remaining), split| {
+                    match split.maybe_length {
+                        Some(length) => (total + length, remaining - 1),
+                        None => (total, remaining),
+                    }
+                });
 
-            let split_dim = match num {
+            // Dimensions for Splits that haven't been given a specific length.
+            let split_dim = match num_not_stuck {
                 0 => [0.0, 0.0],
-                1 => pad_dim,
                 _ => match direction {
-                    Direction::Up   | Direction::Down  => [pad_dim[0], (pad_dim[1] - stuck_length) / num as f64],
-                    Direction::Left | Direction::Right => [(pad_dim[0] - stuck_length) / num as f64, pad_dim[1]],
+                    Up   | Down  => {
+                        let remaining_height = pad_dim[1] - stuck_length;
+                        let height = match remaining_height > 0.0 {
+                            true  => remaining_height / num_not_stuck as f64,
+                            false => 0.0,
+                        };
+                        [pad_dim[0], height]
+                    },
+                    Left | Right => {
+                        let remaining_width = pad_dim[0] - stuck_length;
+                        let width = match remaining_width > 0.0 {
+                            true  => remaining_width / num_not_stuck as f64,
+                            false => 0.0
+                        };
+                        [width, pad_dim[1]]
+                    },
                 },
             };
 
-            let mut cur_xy = xy;
+            // The length of the previous split.
+            let mut prev_length = 0.0;
 
+            // Initialise the `current_xy` at the beginning of the pad_dim.
+            let mut current_xy = match direction {
+                Down  => [xy[0], xy[1] + pad_dim[1] / 2.0],
+                Up    => [xy[0], xy[1] - pad_dim[1] / 2.0],
+                Left  => [xy[0] + pad_dim[0] / 2.0, xy[1]],
+                Right => [xy[0] - pad_dim[0] / 2.0, xy[1]],
+            };
+
+            // Update every split within the Ui.
             for split in splits.iter() {
                 let split_dim = match split.maybe_length {
-                    Some(len) => {
-                        match direction {
-                            Direction::Up   | Direction::Down  => [pad_dim[0], len],
-                            Direction::Left | Direction::Right => [len, pad_dim[1]],
-                        }
+                    Some(len) => match direction {
+                        Up   | Down  => [split_dim[0], len],
+                        Left | Right => [len, split_dim[1]],
                     },
-                    None => split_dim
+                    None => split_dim,
                 };
-                split.into_ui(split_dim, vec2_add(cur_xy, match direction {
-                    Direction::Up    => [0.0, xy[1] + align_bottom_of(pad_dim[1], split_dim[1])],
-                    Direction::Down  => [0.0, xy[1] + align_top_of(pad_dim[1], split_dim[1])],
-                    Direction::Left  => [align_right_of(pad_dim[0], split_dim[0]), 0.0],
-                    Direction::Right => [align_left_of(pad_dim[0], split_dim[0]), 0.0],
-                }), ui);
 
-                cur_xy = vec2_add(cur_xy, match split.maybe_length {
-                    Some(len) => {
-                        match direction {
-                            Direction::Up    => [0.0, len],
-                            Direction::Down  => [0.0, -len],
-                            Direction::Left  => [-len, 0.0],
-                            Direction::Right => [len, 0.0],
-                        }
+                // Shift xy into position for the current split.
+                match direction {
+                    Down => {
+                        current_xy[1] -= split_dim[1] / 2.0 + prev_length / 2.0;
+                        prev_length = split_dim[1];
                     },
-                    None => {
-                        match direction {
-                            Direction::Up    => [0.0, split_dim[1]],
-                            Direction::Down  => [0.0, -split_dim[1]],
-                            Direction::Left  => [-split_dim[0], 0.0],
-                            Direction::Right => [split_dim[0], 0.0],
-                        }
-                    }
-                });
+                    Up   => {
+                        current_xy[1] += split_dim[1] / 2.0 + prev_length / 2.0;
+                        prev_length = split_dim[1];
+                    },
+                    Left => {
+                        current_xy[0] -= split_dim[0] / 2.0 + prev_length / 2.0;
+                        prev_length = split_dim[0];
+                    },
+                    Right => {
+                        current_xy[0] += split_dim[0] / 2.0 + prev_length / 2.0;
+                        prev_length = split_dim[0];
+                    },
+                }
+
+                split.into_ui(split_dim, current_xy, ui);
             }
         }
 

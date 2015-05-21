@@ -467,6 +467,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                             let (new_x, new_y) = get_new_value(&perc_env[..], 0);
                             let new_point = EnvelopePoint::new(new_x, new_y);
                             self.env.push(new_point);
+                            if let Some(ref mut react) = self.maybe_react {
+                                react(self.env, 0)
+                            }
                         }
                     }
                 }
@@ -490,6 +493,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                             self.env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
                                                     else if a.get_x() < b.get_x() { Ordering::Less }
                                                     else { Ordering::Equal });
+                            if let Some(ref mut react) = self.maybe_react {
+                                let idx = self.env.iter().enumerate().find(|&(_, point)| {
+                                    point.get_x() == new_x && point.get_y() == new_y
+                                }).map(|(idx, _)| idx).unwrap();
+                                react(self.env, idx)
+                            }
                         }
                     }
                 }
