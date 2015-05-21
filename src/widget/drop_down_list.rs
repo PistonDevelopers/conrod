@@ -197,6 +197,7 @@ fn is_over(mouse_pos: Point,
 /// and position to the previous State.
 fn get_new_menu_state(is_over_elem: Option<Elem>,
                       menu_state: MenuState,
+                      num_strings: usize,
                       height: Scalar,
                       mouse: Mouse,
                       maybe_scroll: Option<(Scalar, Scalar, Scalar)>) -> MenuState {
@@ -241,7 +242,10 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
                 (Highlighted(_), Up)   => Closed(Highlighted(Item(0))),
                 (Highlighted(_), Down) => Closed(Clicked(Item(0))),
                 (Clicked(_),     Down) => Closed(Clicked(Item(0))),
-                (Clicked(_),     Up)   => Open(Normal, new_scroll()),
+                (Clicked(_),     Up)   => match num_strings {
+                    0 => Closed(Highlighted(Item(0))),
+                    _ => Open(Normal, new_scroll()),
+                },
             },
             None => MenuState::Closed(Normal),
         },
@@ -457,8 +461,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 };
                 let is_over_elem = is_over(mouse.xy, frame, dim, state.menu_state,
                                            num_strings, maybe_scrollbar);
-                let new_menu_state = get_new_menu_state(is_over_elem, state.menu_state, dim[1],
-                                                        mouse, maybe_scrollbar);
+                let new_menu_state = get_new_menu_state(is_over_elem, state.menu_state, num_strings,
+                                                        dim[1], mouse, maybe_scrollbar);
                 (new_menu_state, is_over_elem)
             },
         };
@@ -531,7 +535,10 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     Some(idx) => state.strings[idx].clone(),
                     None => match state.maybe_label {
                         Some(ref label) => label.clone(),
-                        None => state.strings[0].clone(),
+                        None => match state.strings.len() {
+                            0 => "-----".to_owned(),
+                            _ => state.strings[0].clone(),
+                        },
                     },
                 };
                 let frame_form = rect(dim[0], dim[1]).filled(frame_color);
@@ -565,11 +572,16 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     let scroll_amt = (y_offset / max_offset) * (total_h - max_visible_height);
                     (start_idx, end_idx, scroll_amt)
                 } else {
-                    (0, state.strings.len() - 1, 0.0)
+                    let len = state.strings.len();
+                    let end_idx = if len == 0 { 0 } else { len - 1 };
+                    (0, end_idx, 0.0)
                 };
 
                 // Chain and shift the Forms into position.
-                let visible_range = &state.strings[start_idx..end_idx + 1];
+                let visible_range = match state.strings.len() {
+                    0 => &state.strings[0..0],
+                    _ => &state.strings[start_idx..end_idx + 1],
+                };
                 let item_form_chain = visible_range.iter().enumerate().flat_map(|(i, string)| {
                     let i = i + start_idx;
                     let color = match state.maybe_selected {

@@ -137,6 +137,10 @@ const FOOTER: CanvasId = RIGHT_COLUMN + 1;
 const FLOATING_A: CanvasId = FOOTER + 1;
 const FLOATING_B: CanvasId = FLOATING_A + 1;
 
+// Button matrix dimensions.
+const ROWS: usize = 5;
+const COLS: usize = 24;
+
 // Widget IDs.
 const TITLE: WidgetId = 0;
 const SUBTITLE: WidgetId = TITLE + 1;
@@ -144,8 +148,6 @@ const TOP_LEFT: WidgetId = SUBTITLE + 1;
 const MIDDLE: WidgetId = TOP_LEFT + 1;
 const BOTTOM_RIGHT: WidgetId = MIDDLE + 1;
 const BUTTON: WidgetId = BOTTOM_RIGHT + 1;
-const ROWS: usize = 5;
-const COLS: usize = 24;
 const BING: WidgetId = BUTTON + COLS * ROWS;
 const BONG: WidgetId = BING + 1;
 
