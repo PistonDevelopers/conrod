@@ -75,3 +75,24 @@ mod ui;
 pub mod utils;
 mod widget;
 
+
+// #[macro_export]
+// macro_rules! widget_ids {
+//     ($($ids:ident),*) => {
+//         $(
+//             new_widget_id!(0, $($ids,)*);
+//         )*
+//     };
+// }
+// 
+// macro_rules! new_widget_id{
+//     ($count:expr, ,) => {};
+//     ($count:expr, $current_id:ident) => {
+//         const $current_id: WidgetId = $count;
+//     };
+//     ($count:expr, $current_id:ident, $($rest:ident,)*) => {
+//         new_widget_id!($count, $current_id);
+//         new_widget_id!($count + 1, $($rest),*,);
+//     };
+// }
+
