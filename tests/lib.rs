@@ -75,6 +75,9 @@ fn test_auto_uiid() {
         if let Some(b) = ui.get_uiid(&b2) {
             Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).set(b, &mut ui);
         }
+        if let Some(b) = ui.get_uiid(&b3) {
+            Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).set(b, &mut ui);
+        }
         ui.draw(c,g);
     });
 }
