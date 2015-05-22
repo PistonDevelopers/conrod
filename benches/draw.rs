@@ -76,14 +76,14 @@ fn init_window() -> PistonWindow<GlutinWindow> {
 }
 
 fn init_gl_ui<'a>() -> Ui<GlGlyphCache<'a>> {
-    let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
+    let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlGlyphCache::new(&font_path);
     Ui::new(glyph_cache.unwrap(), theme)
 }
 
 fn init_gfx_ui(window: &mut PistonWindow<GlutinWindow>) -> Ui<GfxGlyphCache<Resources>> {
-    let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
+    let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GfxGlyphCache::new(&font_path, &mut window.canvas.borrow_mut().factory);
     Ui::new(glyph_cache.unwrap(), theme)

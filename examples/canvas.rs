@@ -40,7 +40,7 @@ fn main() {
 
     // construct our `Ui`.
     let mut ui = {
-        let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
+        let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
         let glyph_cache = GlyphCache::new(&font_path, window.device.borrow().spawn_factory());
         Ui::new(glyph_cache.unwrap(), theme)
