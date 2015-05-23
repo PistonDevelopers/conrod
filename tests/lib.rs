@@ -31,7 +31,7 @@ pub fn setup_test<'a> () -> (Viewport,GlGraphics, Ui<GlyphCache<'a>>) {
             .samples(4)
             );
     
-    let font_path = Path::new("./assets/NotoSans/NotoSans-Regular.ttf");
+    let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path);
     let ui = Ui::new(glyph_cache.unwrap(), theme);
