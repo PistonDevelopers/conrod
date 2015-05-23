@@ -67,6 +67,7 @@ fn test_auto_uiid() {
     let b2 = ui.add_uiid();
     let b3 = ui.add_uiid();
     ui.remove_uiid(&b2);
+    let b4 = ui.add_uiid();
     
     gl.draw(view, |c, g| {
         if let Some(b) = ui.get_uiid(&b1) {
@@ -78,6 +79,10 @@ fn test_auto_uiid() {
         if let Some(b) = ui.get_uiid(&b3) {
             Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).set(b, &mut ui);
         }
+        
+        Button::new().dimensions(80.0, 80.0).label("b4").react(|| { }).ifset(&b4, &mut ui);
+
+        
         ui.draw(c,g);
     });
 }

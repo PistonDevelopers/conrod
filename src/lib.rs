@@ -60,7 +60,7 @@ pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_
 pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Margin, Padding,
                    Place, Point, Position, Positionable, Sizeable, VerticalAlign};
 pub use theme::{Align, Theme};
-pub use ui::{GlyphCache, Ui, UiId, UserInput};
+pub use ui::{GlyphCache, Ui, UiId, UserInput,Rid};
 pub use widget::{Widget, WidgetId};
 
 
