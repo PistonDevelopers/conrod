@@ -68,4 +68,3 @@ And then build and run the examples like this:
 ## Dependencies
 
 ![dependencies](./Cargo.png)
-
