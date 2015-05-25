@@ -62,6 +62,7 @@ pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Margin
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UiId, UserInput};
 pub use widget::{Widget, WidgetId};
+pub use widget::State as WidgetState;
 
 
 mod background;
