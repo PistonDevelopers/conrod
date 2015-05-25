@@ -65,6 +65,11 @@ And then build and run the examples like this:
     cargo run --example all_widgets
     cargo run --example canvas
 
+You can add it to your project by adding this to your Cargo.toml:
+
+    [dependencies.conrod]
+	git = "git://github.com/PistonDevelopers/conrod.git"
+
 ## Dependencies
 
 ![dependencies](./Cargo.png)
