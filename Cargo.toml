@@ -30,9 +30,6 @@ git = "https://github.com/PistonDevelopers/piston_window.git"
 [dev-dependencies.pistoncore-glutin_window]
 git = "https://github.com/PistonDevelopers/glutin_window.git"
 
-[dev-dependencies.pistoncore-window]
-git = "https://github.com/pistondevelopers/window.git"
-
 [dev-dependencies.piston2d-gfx_graphics]
 git = "https://github.com/PistonDevelopers/gfx_graphics.git"
 
@@ -40,23 +37,26 @@ git = "https://github.com/PistonDevelopers/gfx_graphics.git"
 git = "https://github.com/PistonDevelopers/opengl_graphics.git"
 
 [dev-dependencies.piston-viewport]
-git = "https://github.com/pistondevelopers/viewport"
-
+#git = "https://github.com/pistondevelopers/viewport"
+version = "0.0.3"
 
 [dependencies.clock_ticks]
-git = "https://github.com/tomaka/clock_ticks"
+#git = "https://github.com/tomaka/clock_ticks"
+version = "0.0.5"
 
 [dependencies.elmesque]
 git = "https://github.com/mitchmindtree/elmesque"
 
 [dependencies.piston]
-git = "https://github.com/PistonDevelopers/piston/"
+#git = "https://github.com/PistonDevelopers/piston/"
+version = "0.1.3"
 
 [dependencies.piston2d-graphics]
 git = "https://github.com/PistonDevelopers/graphics.git"
 
 [dependencies.vecmath]
-git = "https://github.com/PistonDevelopers/vecmath.git"
+#git = "https://github.com/PistonDevelopers/vecmath.git"
+version = "0.0.23"
 
 [dependencies]
 bitflags = "*"
