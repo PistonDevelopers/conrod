@@ -13,54 +13,30 @@ readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
 
+
 [lib]
 
 name = "conrod"
 path = "./src/lib.rs"
 
-[dev-dependencies.gfx]
-git = "https://github.com/gfx-rs/gfx-rs"
-
-[dev-dependencies.gfx_device_gl]
-git = "https://github.com/gfx-rs/gfx_device_gl"
-
-[dev-dependencies.piston_window]
-git = "https://github.com/PistonDevelopers/piston_window.git"
-
-[dev-dependencies.pistoncore-glutin_window]
-git = "https://github.com/PistonDevelopers/glutin_window.git"
-
-[dev-dependencies.piston2d-gfx_graphics]
-git = "https://github.com/PistonDevelopers/gfx_graphics.git"
-
-[dev-dependencies.piston2d-opengl_graphics]
-git = "https://github.com/PistonDevelopers/opengl_graphics.git"
-
-[dev-dependencies.piston-viewport]
-#git = "https://github.com/pistondevelopers/viewport"
-version = "0.0.3"
-
-[dependencies.clock_ticks]
-#git = "https://github.com/tomaka/clock_ticks"
-version = "0.0.5"
-
-[dependencies.elmesque]
-git = "https://github.com/mitchmindtree/elmesque"
-
-[dependencies.piston]
-#git = "https://github.com/PistonDevelopers/piston/"
-version = "0.1.3"
-
-[dependencies.piston2d-graphics]
-git = "https://github.com/PistonDevelopers/graphics.git"
-
-[dependencies.vecmath]
-#git = "https://github.com/PistonDevelopers/vecmath.git"
-version = "0.0.23"
 
 [dependencies]
 bitflags = "*"
+clock_ticks = "0.0.6"
+elmesque = "0.1.0"
+piston = "0.1.3"
+piston2d-graphics = "0.0.48"
+num = "*"
 rand = "*"
 rustc-serialize = "*"
-num = "*"
+vecmath = "0.0.23"
+
+[dev-dependencies]
+gfx = "0.6.*"
+gfx_device_gl = "0.4.*"
+piston-viewport = "0.0.3"
+piston_window = "0.0.8"
+piston2d-gfx_graphics = "0.1.21"
+piston2d-opengl_graphics = "0.0.17"
+pistoncore-glutin_window = "0.0.9"
 
