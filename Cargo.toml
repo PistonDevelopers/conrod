@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -23,15 +23,16 @@ path = "./src/lib.rs"
 [dependencies]
 bitflags = "*"
 clock_ticks = "0.0.6"
-elmesque = "0.1.*"
+elmesque = "0.1.2"
 piston = "0.1.3"
-piston2d-graphics = "0.1.3"
+piston2d-graphics = "0.1.4"
 num = "*"
 rand = "*"
 rustc-serialize = "*"
 vecmath = "0.0.23"
 
 [dev-dependencies]
+find_folder = "0.1.1"
 gfx = "0.6.*"
 gfx_device_gl = "0.4.*"
 piston-viewport = "0.1.0"

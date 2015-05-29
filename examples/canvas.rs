@@ -3,6 +3,7 @@
 //!
 
 extern crate conrod;
+extern crate find_folder;
 extern crate gfx_device_gl;
 extern crate gfx_graphics;
 extern crate glutin_window;
@@ -18,7 +19,6 @@ use graphics::Context;
 use piston::window::{WindowSettings, Size};
 use piston_window::PistonWindow;
 use std::cell::RefCell;
-use std::path::Path;
 use std::rc::Rc;
 
 
@@ -40,7 +40,8 @@ fn main() {
 
     // construct our `Ui`.
     let mut ui = {
-        let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
+        let assets = find_folder::Search::Both(3, 3).for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
         let glyph_cache = GlyphCache::new(&font_path, window.factory.borrow().clone());
         Ui::new(glyph_cache.unwrap(), theme)
