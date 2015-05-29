@@ -67,8 +67,8 @@ And then build and run the examples like this:
 
 You can add it to your project by adding this to your Cargo.toml:
 
-    [dependencies.conrod]
-	git = "git://github.com/PistonDevelopers/conrod.git"
+    [dependencies]
+    conrod = "*"
 
 ## Dependencies
 
