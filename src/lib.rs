@@ -66,6 +66,9 @@ pub use widget::{Widget, WidgetId};
 pub use widget::State as WidgetState;
 
 
+pub use json_io::Error as JsonIoError;
+
+
 mod background;
 mod canvas;
 mod frame;
