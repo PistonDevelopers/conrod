@@ -11,6 +11,7 @@
 extern crate clock_ticks;
 extern crate elmesque;
 extern crate graphics;
+extern crate json_io;
 extern crate num;
 #[macro_use] extern crate piston;
 extern crate rand;
