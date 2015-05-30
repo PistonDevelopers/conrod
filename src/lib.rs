@@ -11,6 +11,7 @@
 extern crate clock_ticks;
 extern crate elmesque;
 extern crate graphics;
+extern crate json_io;
 extern crate num;
 #[macro_use] extern crate piston;
 extern crate rand;
@@ -62,6 +63,10 @@ pub use position::{Corner, Depth, Direction, Dimensions, HorizontalAlign, Margin
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UiId, UserInput,Rid};
 pub use widget::{Widget, WidgetId};
+pub use widget::State as WidgetState;
+
+
+pub use json_io::Error as JsonIoError;
 
 
 mod background;

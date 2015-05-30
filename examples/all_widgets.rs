@@ -12,6 +12,7 @@
 
 extern crate piston;
 extern crate conrod;
+extern crate find_folder;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate glutin_window;
@@ -48,7 +49,6 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
 use piston::window::{WindowSettings, Size};
-use std::path::Path;
 
 
 type Ui = conrod::Ui<GlyphCache<'static>>;
@@ -143,7 +143,8 @@ fn main() {
     let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
-    let font_path = Path::new("./assets/fonts/NotoSans/NotoSans-Regular.ttf");
+    let assets = find_folder::Search::Both(3, 3).for_folder("assets").unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let mut ui = Ui::new(glyph_cache, theme);

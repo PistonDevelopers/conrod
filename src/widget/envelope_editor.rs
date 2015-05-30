@@ -352,6 +352,21 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     fn style(&self) -> Style { self.style.clone() }
     fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
 
+    fn capture_mouse(prev: &State<E>, new: &State<E>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Highlighted(_), Interaction::Clicked(_, _)) => true,
+            _ => false,
+        }
+    }
+
+    fn uncapture_mouse(prev: &State<E>, new: &State<E>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Clicked(_, _), Interaction::Clicked(_, _)) => false,
+            (Interaction::Clicked(_, _), _) => true,
+            _ => false,
+        }
+    }
+
     /// Update the state of the EnvelopeEditor's cached state.
     fn update<'b, C>(mut self,
                      prev_state: &widget::State<State<E>>,
