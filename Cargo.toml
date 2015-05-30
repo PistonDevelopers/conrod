@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.1.4"
+version = "0.2.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -24,6 +24,7 @@ path = "./src/lib.rs"
 bitflags = "*"
 clock_ticks = "0.0.6"
 elmesque = "0.1.2"
+json_io = "0.1.2"
 piston = "0.1.3"
 piston2d-graphics = "0.1.4"
 num = "*"

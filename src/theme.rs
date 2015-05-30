@@ -4,13 +4,11 @@
 
 use canvas;
 use color::{Color, black, white};
+use json_io;
 use position::{Margin, Padding, Position, HorizontalAlign, VerticalAlign};
-use rustc_serialize::{json, Encodable, Decodable};
-use std::borrow::ToOwned;
+use rustc_serialize::Encodable;
 use std::error::Error;
-use std::fs::File;
 use std::path::Path;
-use std::str;
 use widget;
 
 
@@ -119,46 +117,13 @@ impl Theme {
     }
 
     /// Load a theme from file.
-    pub fn load(path: &str) -> Result<Theme, String> {
-        let mut file = match File::open(&Path::new(path)) {
-            Ok(file) => file,
-            Err(e) => return Err(format!("Failed to open file for Theme: {}",
-                                         Error::description(&e))),
-        };
-        let mut contents = Vec::new();
-        if let Err(e) = ::std::io::Read::read_to_end(&mut file, &mut contents) {
-            return Err(format!("Failed to load Theme correctly: {}",
-                               Error::description(&e)));
-        }
-        let json_object = match json::Json::from_str(str::from_utf8(&contents[..]).unwrap()) {
-            Ok(json_object) => json_object,
-            Err(e) => return Err(format!("Failed to construct json_object from str: {}",
-                                         Error::description(&e))),
-        };
-        let mut decoder = json::Decoder::new(json_object);
-        let theme = match Decodable::decode(&mut decoder) {
-            Ok(theme) => Ok(theme),
-            Err(e) => Err(format!("Failed to construct Theme from json decoder: {}",
-                                  Error::description(&e))),
-        };
-        theme
+    pub fn load(path: &Path) -> Result<Theme, json_io::Error> {
+        json_io::load(path)
     }
 
     /// Save a theme to file.
-    pub fn save(&self, path: &str) -> Result<(), String> {
-        let json_string = match json::encode(self) {
-            Ok(x) => x,
-            Err(e) => return Err(e.description().to_owned())
-        };
-        let mut file = match File::create(&Path::new(path)) {
-            Ok(file) => file,
-            Err(e) => return Err(format!("Failed to create a File at the given path: {}",
-                                         Error::description(&e)))
-        };
-        match ::std::io::Write::write_all(&mut file, json_string.as_bytes()) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(format!("Theme failed to save correctly: {}", Error::description(&e))),
-        }
+    pub fn save(&self, path: &Path) -> Result<(), json_io::Error> {
+        json_io::save(path, self)
     }
 
 }
