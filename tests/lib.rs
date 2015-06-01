@@ -12,9 +12,9 @@ use conrod::{Ui,Theme,Button, Label,Sizeable,Labelable,Widget};
 use glutin_window::GlutinWindow;
 use opengl_graphics::{ GlGraphics, OpenGL };
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::*;
+//use piston::event::*;
 use piston::window::{ WindowSettings, Size };
-use piston_window::PistonWindow;
+//use piston_window::PistonWindow;
 use std::path::Path;
 use viewport::Viewport;
 use window::Window;
@@ -36,7 +36,7 @@ pub fn setup_test<'a> () -> (Viewport,GlGraphics, Ui<GlyphCache<'a>>) {
     let glyph_cache = GlyphCache::new(&font_path);
     let ui = Ui::new(glyph_cache.unwrap(), theme);
 
-    let mut gl = GlGraphics::new(opengl);
+    let gl = GlGraphics::new(opengl);
 
     let size = window.size();
     let draw_size = window.draw_size();
@@ -73,27 +73,20 @@ fn test_basic_panic() {
 #[test]
 fn test_auto_uiid() {
     let (view,mut gl,mut ui) = setup_test();
-
+    
     let b1 = ui.add_uiid();
     let b2 = ui.add_uiid();
     let b3 = ui.add_uiid();
-    ui.remove_uiid(&b2);
     let l1 = ui.add_uiid();
     
-    gl.draw(view, |c, g| {
-        if let Some(b) = ui.get_uiid(&b1) {
-            Button::new().dimensions(80.0, 80.0).label("b1").react(|| { }).set(b, &mut ui);
-        }
-        if let Some(b) = ui.get_uiid(&b2) {
-            Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).set(b, &mut ui);
-        }
-        if let Some(b) = ui.get_uiid(&b3) {
-            Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).set(b, &mut ui);
-        }
-        
-        Label::new("l1").dimensions(80.0, 80.0).ifset(&l1, &mut ui);
-
-        
-        ui.draw(c,g);
-    });
+    for _ in (0..2) {
+        gl.draw(view, |c, g| {
+            Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).ifset(&b3, &mut ui);
+            Label::new("l1").dimensions(80.0, 80.0).ifset(&l1, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).ifset(&b2, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b1").react(|| { }).ifset(&b1, &mut ui);
+            
+            ui.draw(c,g);
+        });
+    }
 }
