@@ -90,3 +90,27 @@ fn test_auto_uiid() {
         });
     }
 }
+
+
+#[test]
+fn test_remove_uiid() {
+    let (view,mut gl,mut ui) = setup_test();
+
+    let b1 = ui.add_id();
+    ui.remove_id(&b1);
+    let l1 = ui.add_id();
+    let b2 = ui.add_id();
+    
+    
+    for n in (0..2) {
+        gl.draw(view, |c, g| {
+            if n == 1 { ui.remove_id(&b2); }
+            
+            Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).set_if(&b2, &mut ui);
+            Label::new("l1").dimensions(80.0, 80.0).set_if(&l1, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b1").react(|| { }).set_if(&b1, &mut ui);
+            
+            ui.draw(c,g);
+        });
+    }
+}
