@@ -87,13 +87,14 @@ pub struct Ui<C> {
     maybe_canvas_under_mouse: Option<CanvasId>,
 
     /// auto-uiid: we track all registered widgets
-    uiid_handler: UiIdHandler,
+    pub uiid_handler: UiIdHandler,
 }
 
 /// registered uiid
 pub type Rid = (usize,u32);
 
-struct UiIdHandler {
+#[derive(Debug)]
+pub struct UiIdHandler {
     next_id: usize,
     registered: HashSet<Rid>,
     deregistered: Vec<usize>,
@@ -109,7 +110,9 @@ impl UiIdHandler {
         let mut id = self.deregistered.pop();
         if !id.is_some() { id = Some(self.next_id);
                            self.next_id += 1; }
-        (id.unwrap(),rand::random::<u32>())
+        let rid = (id.unwrap(),rand::random::<u32>());
+        self.registered.insert(rid);
+        rid
     }
     fn remove(&mut self, rid: &Rid) {
         if self.registered.remove(rid) {
