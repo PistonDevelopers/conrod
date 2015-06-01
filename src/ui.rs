@@ -87,14 +87,14 @@ pub struct Ui<C> {
     maybe_canvas_under_mouse: Option<CanvasId>,
 
     /// auto-uiid: we track all registered widgets
-    pub uiid_handler: UiIdHandler,
+    uiid_handler: UiIdHandler,
 }
 
 /// registered uiid
 pub type Rid = (usize,u32);
 
 #[derive(Debug)]
-pub struct UiIdHandler {
+struct UiIdHandler {
     next_id: usize,
     registered: HashSet<Rid>,
     deregistered: Vec<usize>,
