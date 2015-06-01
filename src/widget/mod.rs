@@ -219,8 +219,8 @@ pub trait Widget: Positionable + Sizeable + Sized {
     }
     /// if widget exists in ui's auto-uiid hashset, then we can call set method directly on the widget
     /// this is a convenience method
-    fn ifset<C>(self, id: &Rid, ui: &mut Ui<C>) where C: CharacterCache {
-        if let Some(b) = ui.get_uiid(id) {
+    fn set_if<C>(self, id: &Rid, ui: &mut Ui<C>) where C: CharacterCache {
+        if let Some(b) = ui.get_id(id) {
             self.set(b,ui);
         }
     }

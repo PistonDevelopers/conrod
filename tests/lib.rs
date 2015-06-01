@@ -74,17 +74,17 @@ fn test_basic_panic() {
 fn test_auto_uiid() {
     let (view,mut gl,mut ui) = setup_test();
     
-    let b1 = ui.add_uiid();
-    let b2 = ui.add_uiid();
-    let b3 = ui.add_uiid();
-    let l1 = ui.add_uiid();
+    let b1 = ui.add_id();
+    let b2 = ui.add_id();
+    let b3 = ui.add_id();
+    let l1 = ui.add_id();
     
     for _ in (0..2) {
         gl.draw(view, |c, g| {
-            Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).ifset(&b3, &mut ui);
-            Label::new("l1").dimensions(80.0, 80.0).ifset(&l1, &mut ui);
-            Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).ifset(&b2, &mut ui);
-            Button::new().dimensions(80.0, 80.0).label("b1").react(|| { }).ifset(&b1, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).set_if(&b3, &mut ui);
+            Label::new("l1").dimensions(80.0, 80.0).set_if(&l1, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b2").react(|| { }).set_if(&b2, &mut ui);
+            Button::new().dimensions(80.0, 80.0).label("b1").react(|| { }).set_if(&b1, &mut ui);
             
             ui.draw(c,g);
         });

@@ -467,16 +467,16 @@ impl<C> Ui<C> {
 
     /// uiid handler accessors
     /// adds a new widget id to the set, returns registered-uiid
-    pub fn add_uiid(&mut self) -> Rid {
+    pub fn add_id(&mut self) -> Rid {
         self.uiid_handler.add()
     }
     /// removes registered uiid from set, recycles internal widget-id for reuse
-    pub fn remove_uiid(&mut self, rid: &Rid) {
+    pub fn remove_id(&mut self, rid: &Rid) {
         self.uiid_handler.remove(rid);
         self.widget_cache.remove(rid.0);
     }
     /// gets the widget-id that can be used for widget.set methods
-    pub fn get_uiid(&self, rid: &Rid) -> Option<usize> {
+    pub fn get_id(&self, rid: &Rid) -> Option<usize> {
         self.uiid_handler.get(rid)
     }
 }
