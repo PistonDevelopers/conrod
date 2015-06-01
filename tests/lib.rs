@@ -7,7 +7,7 @@ extern crate viewport;
 extern crate window;
 
 
-use conrod::{Ui,Theme,Button,Sizeable,Labelable,Widget};
+use conrod::{Ui,Theme,Button, Label,Sizeable,Labelable,Widget};
 
 use glutin_window::GlutinWindow;
 use opengl_graphics::{ GlGraphics, OpenGL };
@@ -60,6 +60,17 @@ fn test_basic() {
 }
 
 #[test]
+#[should_panic]
+fn test_basic_panic() {
+    let (view,mut gl,mut ui) = setup_test();
+    Label::new("0").dimensions(80.0, 80.0).set(0, &mut ui);
+    gl.draw(view, |c, g| {
+        Button::new().dimensions(80.0, 80.0).label("0").react(|| { }).set(0, &mut ui);
+        ui.draw(c,g);
+    });
+}
+
+#[test]
 fn test_auto_uiid() {
     let (view,mut gl,mut ui) = setup_test();
 
@@ -67,7 +78,7 @@ fn test_auto_uiid() {
     let b2 = ui.add_uiid();
     let b3 = ui.add_uiid();
     ui.remove_uiid(&b2);
-    let b4 = ui.add_uiid();
+    let l1 = ui.add_uiid();
     
     gl.draw(view, |c, g| {
         if let Some(b) = ui.get_uiid(&b1) {
@@ -80,7 +91,7 @@ fn test_auto_uiid() {
             Button::new().dimensions(80.0, 80.0).label("b3").react(|| { }).set(b, &mut ui);
         }
         
-        Button::new().dimensions(80.0, 80.0).label("b4").react(|| { }).ifset(&b4, &mut ui);
+        Label::new("l1").dimensions(80.0, 80.0).ifset(&l1, &mut ui);
 
         
         ui.draw(c,g);

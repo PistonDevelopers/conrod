@@ -41,4 +41,4 @@ piston_window = "0.1.0"
 piston2d-gfx_graphics = "0.1.22"
 piston2d-opengl_graphics = "0.1.0"
 pistoncore-glutin_window = "0.1.0"
-
+pistoncore-window = "*"
