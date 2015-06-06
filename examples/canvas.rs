@@ -4,46 +4,26 @@
 
 extern crate conrod;
 extern crate find_folder;
-extern crate gfx_device_gl;
-extern crate gfx_graphics;
-extern crate glutin_window;
-extern crate graphics;
-extern crate piston;
 extern crate piston_window;
 
 use conrod::{CanvasId, Floating, Theme, Widget, WidgetId};
-use gfx_device_gl::{CommandBuffer, Factory, Resources, Output};
-use gfx_graphics::{GfxGraphics, GlyphCache};
-use glutin_window::{GlutinWindow, OpenGL};
-use graphics::Context;
-use piston::window::{WindowSettings, Size};
-use piston_window::PistonWindow;
-use std::cell::RefCell;
-use std::rc::Rc;
+use piston_window::*;
 
-
-type Ui = conrod::Ui<GlyphCache<Resources, Factory>>;
-type Graphics<'a> = GfxGraphics<'a, Resources, CommandBuffer, Output>;
-
+type Ui = conrod::Ui<Glyphs>;
 
 fn main() {
 
     // Construct the window.
-    let window = {
-        let window = GlutinWindow::new(
-            OpenGL::_3_2,
-            WindowSettings::new("Canvas Demo".to_string(), Size { width: 800, height: 600 })
-                .exit_on_esc(true)
-        );
-        PistonWindow::new(Rc::new(RefCell::new(window)), piston_window::empty_app())
-    };
+    let window: PistonWindow =
+        WindowSettings::new("Canvas Demo", [800, 600])
+            .exit_on_esc(true).into();
 
     // construct our `Ui`.
     let mut ui = {
         let assets = find_folder::Search::Both(3, 3).for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = GlyphCache::new(&font_path, window.factory.borrow().clone());
+        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
@@ -57,7 +37,7 @@ fn main() {
 
 
 // Draw the Ui.
-fn draw_ui<'a>(ui: &mut Ui, c: Context, g: &mut Graphics<'a>) {
+fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
     use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, WidgetMatrix};
 
