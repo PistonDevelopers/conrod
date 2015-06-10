@@ -23,6 +23,7 @@ pub struct Slider<'a, T, F> {
     value: T,
     min: T,
     max: T,
+    skew: f32,
     pos: Position,
     maybe_h_align: Option<HorizontalAlign>,
     maybe_v_align: Option<VerticalAlign>,
@@ -53,6 +54,7 @@ pub struct State<T> {
     value: T,
     min: T,
     max: T,
+    skew: f32,
     maybe_label: Option<String>,
     interaction: Interaction,
 }
@@ -98,6 +100,7 @@ impl<'a, T, F> Slider<'a, T, F> {
             value: value,
             min: min,
             max: max,
+            skew: 1.0,
             pos: Position::default(),
             maybe_h_align: None,
             maybe_v_align: None,
@@ -108,6 +111,15 @@ impl<'a, T, F> Slider<'a, T, F> {
             enabled: true,
             maybe_canvas_id: None,
         }
+    }
+
+    /// Set the amount in which the slider's display should be skewed.
+    /// Higher skew amounts (above 1.0) will weight lower values.
+    /// Lower skew amounts (below 1.0) will weight heigher values.
+    /// All skew amounts should be greater than 0.0.
+    pub fn skew(mut self, skew: f32) -> Slider<'a, T, F> {
+        self.skew = skew;
+        self
     }
 
     /// Set the reaction for the Slider. It will be triggered if the value is updated or if the
@@ -145,6 +157,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             value: self.value,
             min: self.min,
             max: self.max,
+            skew: self.skew,
             maybe_label: None,
             interaction: Interaction::Normal,
         }
@@ -177,6 +190,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         };
 
         let new_value = if let Some(mouse) = maybe_mouse {
+            let Slider { value, min, max, skew, .. } = self;
             let frame = style.frame(theme);
             let frame_2 = frame * 2.0;
             let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
@@ -192,11 +206,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         clamp(w, 0.0, inner_w)
                     },
                     _ => {
-                        let value_percentage = percentage(self.value, self.min, self.max);
+                        let value_percentage = percentage(value, min, max);
                         clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
                     },
                 };
-                value_from_perc((w / inner_w) as f32, self.min, self.max)
+                value_from_perc(((w / inner_w) as f32).powf(skew), min, max)
             } else {
                 // Vertical.
                 let h = match (state.interaction, new_interaction) {
@@ -206,11 +220,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         clamp(h, 0.0, inner_h)
                     },
                     _ => {
-                        let value_percentage = percentage(self.value, self.min, self.max);
+                        let value_percentage = percentage(value, min, max);
                         clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
                     },
                 };
-                value_from_perc((h / inner_h) as f32, self.min, self.max)
+                value_from_perc(((h / inner_h) as f32).powf(skew), min, max)
             }
         } else {
             state.value
@@ -234,6 +248,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 value: self.value,
                 min: self.min,
                 max: self.max,
+                skew: self.skew,
                 maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
             }
         };
@@ -242,6 +257,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let state_has_changed = state.interaction != new_interaction
             || state.value != self.value
             || state.min != self.min || state.max != self.max
+            || state.skew != self.skew
             || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
 
         // Construct the new state if there was a change.
@@ -268,13 +284,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let is_horizontal = dim[0] > dim[1];
         let (pad_rel_xy, pad_dim) = if is_horizontal {
             // Horizontal.
-            let value_percentage = percentage(new_value, state.min, state.max);
+            let value_percentage = percentage(new_value, state.min, state.max).powf(1.0/state.skew);
             let w = clamp(value_percentage as f64 * inner_w, 0.0, inner_w);
             let rel_xy = [-(inner_w - w) / 2.0, 0.0];
             (rel_xy, [w, inner_h])
         } else {
             // Vertical.
-            let value_percentage = percentage(new_value, state.min, state.max);
+            let value_percentage = percentage(new_value, state.min, state.max).powf(1.0/state.skew);
             let h = clamp(value_percentage as f64 * inner_h, 0.0, inner_h);
             let rel_xy = [0.0, -(inner_h - h) / 2.0];
             (rel_xy, [inner_w, h])
