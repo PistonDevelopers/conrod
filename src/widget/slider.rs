@@ -206,7 +206,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         clamp(w, 0.0, inner_w)
                     },
                     _ => {
-                        let value_percentage = percentage(value, min, max);//.powf(skew);
+                        let value_percentage = percentage(value, min, max);
                         clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
                     },
                 };
@@ -220,7 +220,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         clamp(h, 0.0, inner_h)
                     },
                     _ => {
-                        let value_percentage = percentage(value, min, max);//.powf(skew);
+                        let value_percentage = percentage(value, min, max);
                         clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
                     },
                 };
