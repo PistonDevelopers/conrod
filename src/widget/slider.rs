@@ -220,12 +220,12 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                     (Interaction::Clicked, Interaction::Clicked) => {
                         let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
                         let perc = clamp(h, 0.0, inner_h) / inner_h;
-                        (perc as f32).powf(skew)
+                        (perc).powf(skew as f64)
                     },
                     _ => {
                         let value_percentage = percentage(value, min, max);
                         let h = clamp(value_percentage as f64 * inner_h, 0.0, inner_h);
-                        (h / inner_h) as f32
+                        (h / inner_h)
                     },
                 };
                 value_from_perc(h_perc as f32, min, max)
