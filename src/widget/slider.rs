@@ -212,7 +212,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         (w / inner_w)
                     },
                 };
-                value_from_perc(w_perc, min, max)
+                value_from_perc(w_perc as f32, min, max)
             } else {
                 // Vertical.
                 let h_perc = match (state.interaction, new_interaction) {
@@ -228,7 +228,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                         (h / inner_h) as f32
                     },
                 };
-                value_from_perc(h_perc, min, max)
+                value_from_perc(h_perc as f32, min, max)
             }
         } else {
             state.value
