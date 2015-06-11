@@ -199,32 +199,36 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
             if is_horizontal {
                 // Horizontal.
-                let w = match (state.interaction, new_interaction) {
+                let w_perc = match (state.interaction, new_interaction) {
                     (Interaction::Highlighted, Interaction::Clicked) |
                     (Interaction::Clicked, Interaction::Clicked) => {
                         let w = map_range(mouse.xy[0], -half_inner_w, half_inner_w, 0.0, inner_w);
-                        clamp(w, 0.0, inner_w)
+                        let perc = clamp(w, 0.0, inner_w) / inner_w;
+                        (perc).powf(skew as f64)
                     },
                     _ => {
                         let value_percentage = percentage(value, min, max);
-                        clamp(value_percentage as f64 * inner_w, 0.0, inner_w)
+                        let w = clamp(value_percentage as f64 * inner_w, 0.0, inner_w);
+                        (w / inner_w)
                     },
                 };
-                value_from_perc(((w / inner_w) as f32).powf(skew), min, max)
+                value_from_perc(w_perc as f32, min, max)
             } else {
                 // Vertical.
-                let h = match (state.interaction, new_interaction) {
+                let h_perc = match (state.interaction, new_interaction) {
                     (Interaction::Highlighted, Interaction::Clicked) |
                     (Interaction::Clicked, Interaction::Clicked) => {
                         let h = map_range(mouse.xy[1], -half_inner_h, half_inner_h, 0.0, inner_h);
-                        clamp(h, 0.0, inner_h)
+                        let perc = clamp(h, 0.0, inner_h) / inner_h;
+                        (perc).powf(skew as f64)
                     },
                     _ => {
                         let value_percentage = percentage(value, min, max);
-                        clamp(value_percentage as f64 * inner_h, 0.0, inner_h)
+                        let h = clamp(value_percentage as f64 * inner_h, 0.0, inner_h);
+                        (h / inner_h)
                     },
                 };
-                value_from_perc(((h / inner_h) as f32).powf(skew), min, max)
+                value_from_perc(h_perc as f32, min, max)
             }
         } else {
             state.value
