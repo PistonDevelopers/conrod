@@ -399,8 +399,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
              pt.get_curve())
         }).collect();
 
-        // Check for new state.
-        let new_interaction = match (self.enabled, maybe_mouse) {
+        // Check for a new interaction.
+        // The reason we create the new interaction as mutable is because we may need to shift back
+        // an index in the event that a point is removed.
+        let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
                 let is_over_elem = is_over_elem(mouse.xy, dim, pad_dim, &perc_env[..], pt_radius);
@@ -451,6 +453,17 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                             MouseButton::Right => {
                                 // Delete the point and trigger the reaction.
                                 self.env.remove(idx);
+                                // Check for whether or not the highlighted index is out of range
+                                // now that a point has been removed from the envelope.
+                                if let Interaction::Highlighted(ref mut elem) = new_interaction {
+                                    if self.env.is_empty() {
+                                        *elem = Elem::Pad;
+                                    } else if let Elem::EnvPoint(p_idx, p) = *elem {
+                                        if p_idx >= self.env.len() {
+                                            *elem = Elem::EnvPoint(self.env.len() - 1, p);
+                                        }
+                                    }
+                                }
                                 if let Some(ref mut react) = self.maybe_react { react(self.env, idx) }
                             },
                         }
@@ -524,7 +537,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Determine the closest point to the cursor.
         let maybe_closest_point = match new_interaction {
-            Interaction::Clicked(Elem::EnvPoint(idx, p), _) => Some((idx, p)),
+            Interaction::Clicked(Elem::EnvPoint(idx, p), _)  |
             Interaction::Highlighted(Elem::EnvPoint(idx, p)) => Some((idx, p)),
             Interaction::Clicked(_, _) | Interaction::Highlighted(_) => {
                 if let Some(mouse) = maybe_mouse {
