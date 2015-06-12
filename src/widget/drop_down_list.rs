@@ -561,11 +561,14 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
                 // Determine the visible index range and the height of the first and last items.
                 let item_h = dim[1] - frame;
-                let total_h = item_h * state.strings.len() as f64 + frame;
+                let num_strings = state.strings.len();
+                let total_h = item_h * num_strings as f64 + frame;
                 let (start_idx, end_idx, scroll_amt) = if let Some(scroll) = maybe_scroll {
                     let Scroll { max_visible_height, y_offset, max_offset } = scroll;
-                    let num_items_that_fit = max_visible_height / item_h;
-                    let num_items_scrolled_past = y_offset / item_h;
+                    let num_items_that_fit = (max_visible_height - frame) / item_h;
+                    let scroll_perc = y_offset / (max_offset + frame);
+                    let num_hidden_items = num_strings as f64 - num_items_that_fit;
+                    let num_items_scrolled_past = scroll_perc * num_hidden_items;
                     let start_idx = num_items_scrolled_past.floor() as usize;
                     let last_visible_item = num_items_scrolled_past + num_items_that_fit;
                     let end_idx = last_visible_item.floor() as usize;
