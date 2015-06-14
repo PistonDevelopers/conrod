@@ -231,7 +231,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 value_from_perc(h_perc as f32, min, max)
             }
         } else {
-            state.value
+            self.value
         };
 
         // React.
