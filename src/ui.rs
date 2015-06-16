@@ -1,3 +1,4 @@
+extern crate rand;
 
 use canvas::{self, Canvas, CanvasId};
 use elmesque::Element;
@@ -23,9 +24,10 @@ use theme::Theme;
 use widget::{self, Widget, WidgetId};
 use ::std::io::Write;
 
+use std::collections::{HashSet};
 
 /// For functions that may take either a WidgetId or a CanvasId.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum UiId {
     /// The ID for a Canvas.
     Canvas(CanvasId),
@@ -83,7 +85,48 @@ pub struct Ui<C> {
     maybe_captured_keyboard: Option<Capturing>,
     /// The Canvas that is currently under the mouse.
     maybe_canvas_under_mouse: Option<CanvasId>,
+
+    /// auto-uiid: we track all registered widgets
+    uiid_handler: UiIdHandler,
 }
+
+/// registered uiid
+pub type Rid = (usize,u32);
+
+#[derive(Debug)]
+struct UiIdHandler {
+    next_id: usize,
+    registered: HashSet<Rid>,
+    deregistered: Vec<usize>,
+}
+
+impl UiIdHandler {
+    fn new(offset: usize) -> UiIdHandler {
+        UiIdHandler { next_id: offset+1,
+                      registered: HashSet::new(),
+                      deregistered: Vec::new(), }
+    }
+    fn add(&mut self) -> Rid {
+        let mut id = self.deregistered.pop();
+        if !id.is_some() { id = Some(self.next_id);
+                           self.next_id += 1; }
+        let rid = (id.unwrap(),rand::random::<u32>());
+        self.registered.insert(rid);
+        rid
+    }
+    fn remove(&mut self, rid: &Rid) {
+        if self.registered.remove(rid) {
+            self.deregistered.push(rid.0);
+        }
+    }
+    fn get(&self, rid: &Rid) -> Option<usize> {
+        if self.registered.contains(rid) {
+            Some(rid.0)
+        }
+        else { None }
+    }
+}
+
 
 /// A wrapper over the current user input state.
 #[derive(Clone, Debug)]
@@ -148,6 +191,7 @@ impl<C> Ui<C> {
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
             maybe_canvas_under_mouse: None,
+            uiid_handler: UiIdHandler::new(0),
         }
     }
 
@@ -421,6 +465,20 @@ impl<C> Ui<C> {
 
     }
 
+    /// uiid handler accessors
+    /// adds a new widget id to the set, returns registered-uiid
+    pub fn add_id(&mut self) -> Rid {
+        self.uiid_handler.add()
+    }
+    /// removes registered uiid from set, recycles internal widget-id for reuse
+    pub fn remove_id(&mut self, rid: &Rid) {
+        self.uiid_handler.remove(rid);
+        self.widget_cache.remove(rid.0);
+    }
+    /// gets the widget-id that can be used for widget.set methods
+    pub fn get_id(&self, rid: &Rid) -> Option<usize> {
+        self.uiid_handler.get(rid)
+    }
 }
 
 
@@ -773,5 +831,3 @@ pub fn update_widget<C, Sta, Sty>(ui: &mut Ui<C>,
                 id, &kind, &ui.widget_cache[id].kind);
     }
 }
-
-

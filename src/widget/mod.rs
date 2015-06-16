@@ -6,7 +6,7 @@ use position::{Depth, Dimensions, Point, Positionable, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::Theme;
-use ui::{self, GlyphCache, Ui, UiId, UserInput};
+use ui::{self, GlyphCache, Ui, UiId, UserInput, Rid};
 
 pub mod button;
 pub mod drop_down_list;
@@ -217,7 +217,13 @@ pub trait Widget: Positionable + Sizeable + Sized {
         let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
         ui::update_widget(ui, id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
     }
-
+    /// if widget exists in ui's auto-uiid hashset, then we can call set method directly on the widget
+    /// this is a convenience method
+    fn set_if<C>(self, id: &Rid, ui: &mut Ui<C>) where C: CharacterCache {
+        if let Some(b) = ui.get_id(id) {
+            self.set(b,ui);
+        }
+    }
 }
 
 /// Represents the unique cached state of a widget.
