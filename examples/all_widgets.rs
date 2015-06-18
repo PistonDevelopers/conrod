@@ -131,15 +131,15 @@ impl DemoApp {
 
 fn main() {
     let opengl = OpenGL::_3_2;
-    let window = GlutinWindow::new(
-        opengl,
+    let window: GlutinWindow =
         WindowSettings::new(
             "Hello Conrod".to_string(),
             Size { width: 1100, height: 550 }
         )
+        .opengl(opengl)
         .exit_on_esc(true)
         .samples(4)
-    );
+        .into();
     let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 

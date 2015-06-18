@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.2.5"
+version = "0.3.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -25,7 +25,7 @@ bitflags = "*"
 clock_ticks = "0.0.6"
 elmesque = "0.1.2"
 json_io = "0.1.2"
-piston = "0.1.3"
+piston = "0.2.0"
 piston2d-graphics = "0.1.4"
 num = "*"
 rand = "*"
@@ -37,8 +37,8 @@ find_folder = "0.1.1"
 gfx = "0.6.*"
 gfx_device_gl = "0.4.*"
 piston-viewport = "0.1.0"
-piston_window = "0.2.1"
+piston_window = "0.3.0"
 piston2d-gfx_graphics = "0.1.22"
 piston2d-opengl_graphics = "0.1.0"
-pistoncore-glutin_window = "0.1.0"
+pistoncore-glutin_window = "0.2.1"
 
