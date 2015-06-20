@@ -169,7 +169,7 @@ fn cursor_position<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                       mut text_start_x: f64,
                                       font_size: FontSize,
                                       text: &str) -> CursorX {
-    assert!(idx <= text.len());
+    assert!(idx <= text.chars().count());
     if idx == 0 {
          return text_start_x;
     }
@@ -222,7 +222,7 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
         prev_x = x;
         left_x = right_x;
     }
-    (text.len(), text_start_x + text_w)
+    (text.chars().count(), text_start_x + text_w)
 }
 
 /// Check and return the current state of the TextBox.
@@ -402,7 +402,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             let mut v_offset = view.offset;
 
             // Ensure the cursor is still valid.
-            cursor.limit_end_to(self.text.len());
+            cursor.limit_end_to(self.text.chars().count());
 
             // This matters if the text is scrolled with the mouse.
             let cursor_idx = match cursor.anchor {
@@ -432,16 +432,18 @@ impl<'a, F> Widget for TextBox<'a, F>
 
             // Check for entered text.
             for text in input.entered_text.to_vec().iter() {
-                if text.len() == 0 { continue; }
+                if text.chars().count() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
                 if text_w + glyph_cache.width(font_size, &text) > max_w { continue; }
 
                 let end: String = self.text.chars().skip(cursor.end).collect();
-                self.text.truncate(cursor.start);
+                let start: String = self.text.chars().take(cursor.start).collect();
+                self.text.clear();
+                self.text.push_str(&start);
                 self.text.push_str(&text);
                 self.text.push_str(&end);
-                cursor.shift(text.len() as i32);
+                cursor.shift(text.chars().count() as i32);
             }
 
             // Check for control keys.
@@ -449,24 +451,24 @@ impl<'a, F> Widget for TextBox<'a, F>
                 match *key {
                     Backspace => if cursor.is_cursor() {
                         if cursor.start > 0 {
+                            let start: String = self.text.chars().take(cursor.start-1).collect();
                             let end: String = self.text.chars().skip(cursor.end).collect();
-                            self.text.truncate(cursor.start - 1);
+                            self.text.clear();
+                            self.text.push_str(&start);
                             self.text.push_str(&end);
                             cursor.shift(-1);
                         }
                     } else {
-                        let end: String = self.text.chars().skip(cursor.end).collect();
-                        self.text.truncate(cursor.start);
-                        self.text.push_str(&end);
+                        // When cursor is in pos 0 or negative no erase nothing
                         cursor.end = cursor.start;
                     },
                     Left => if cursor.is_cursor() {
                         cursor.shift(-1);
                     },
-                    Right => if cursor.is_cursor() && self.text.len() > cursor.end {
+                    Right => if cursor.is_cursor() && self.text.chars().count() > cursor.end {
                         cursor.shift(1);
                     },
-                    Return => if self.text.len() > 0 {
+                    Return => if self.text.chars().count() > 0 {
                         let TextBox { ref mut maybe_react, ref mut text, .. } = self;
                         if let Some(ref mut react) = *maybe_react {
                             react(*text);
