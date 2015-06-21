@@ -459,7 +459,11 @@ impl<'a, F> Widget for TextBox<'a, F>
                             cursor.shift(-1);
                         }
                     } else {
-                        // When cursor is in pos 0 or negative no erase nothing
+                        let start: String = self.text.chars().take(cursor.start).collect();
+                        let end: String = self.text.chars().skip(cursor.end).collect();
+                        self.text.clear();
+                        self.text.push_str(&start);
+                        self.text.push_str(&end);
                         cursor.end = cursor.start;
                     },
                     Left => if cursor.is_cursor() {
