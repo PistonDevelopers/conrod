@@ -50,7 +50,6 @@ use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event::*;
 use piston::window::{WindowSettings, Size};
 
-
 type Ui = conrod::Ui<GlyphCache<'static>>;
 
 /// This struct holds all of the variables used to demonstrate
@@ -143,7 +142,8 @@ fn main() {
     let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
-    let assets = find_folder::Search::Both(3, 3).for_folder("assets").unwrap();
+    let assets = find_folder::Search::ParentsThenKids(3, 3)
+        .for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
