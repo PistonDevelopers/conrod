@@ -431,7 +431,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             let mut cursor = captured.cursor;
 
             // Check for entered text.
-            for text in input.entered_text.to_vec().iter() {
+            for text in input.entered_text {
                 if text.chars().count() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
