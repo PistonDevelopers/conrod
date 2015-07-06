@@ -48,9 +48,13 @@ pub enum Direction {
     Right,
 }
 
-/// The horizontal alignment of a widget positioned relatively to another widget on the y axis.
+/// The horizontal alignment of a widget positioned relatively to another UI element on the y axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub enum HorizontalAlign {
+pub struct HorizontalAlign(pub Horizontal, pub Option<UiId>);
+
+/// The orientation of a HorizontalAlign.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+pub enum Horizontal {
     /// Align the left edges of the widgets.
     Left,
     /// Align the centres of the widgets' closest parallel edges.
@@ -59,9 +63,13 @@ pub enum HorizontalAlign {
     Right,
 }
 
-/// The vertical alignment of a widget positioned relatively to another widget on the x axis.
+/// The vertical alignment of a widget positioned relatively to another UI element on the x axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub enum VerticalAlign {
+pub struct VerticalAlign(pub Vertical, pub Option<UiId>);
+
+/// The orientation of a VerticalAlign.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+pub enum Vertical {
     /// Align the top edges of the widgets.
     Top,
     /// Align the centres of the widgets' closest parallel edges.
@@ -193,33 +201,64 @@ pub trait Positionable: Sized {
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
     fn align_left(self) -> Self {
-        self.horizontal_align(HorizontalAlign::Left)
+        self.horizontal_align(HorizontalAlign(Horizontal::Left, None))
     }
 
     /// Align the position to the middle (only effective for Up or Down `Direction`s).
     fn align_middle_x(self) -> Self {
-        self.horizontal_align(HorizontalAlign::Middle)
+        self.horizontal_align(HorizontalAlign(Horizontal::Middle, None))
     }
 
     /// Align the position to the right (only effective for Up or Down `Direction`s).
     fn align_right(self) -> Self {
-        self.horizontal_align(HorizontalAlign::Right)
+        self.horizontal_align(HorizontalAlign(Horizontal::Right, None))
     }
 
     /// Align the position to the top (only effective for Left or Right `Direction`s).
     fn align_top(self) -> Self {
-        self.vertical_align(VerticalAlign::Top)
+        self.vertical_align(VerticalAlign(Vertical::Top, None))
     }
 
     /// Align the position to the middle (only effective for Left or Right `Direction`s).
     fn align_middle_y(self) -> Self {
-        self.vertical_align(VerticalAlign::Middle)
+        self.vertical_align(VerticalAlign(Vertical::Middle, None))
     }
 
     /// Align the position to the bottom (only effective for Left or Right `Direction`s).
     fn align_bottom(self) -> Self {
-        self.vertical_align(VerticalAlign::Bottom)
+        self.vertical_align(VerticalAlign(Vertical::Bottom, None))
     }
+
+    /// Align the position to the left (only effective for Up or Down `Direction`s).
+    fn align_left_of(self, other: UiId) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Left, Some(other)))
+    }
+
+    /// Align the position to the middle (only effective for Up or Down `Direction`s).
+    fn align_middle_x_of(self, other: UiId) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Middle, Some(other)))
+    }
+
+    /// Align the position to the right (only effective for Up or Down `Direction`s).
+    fn align_right_of(self, other: UiId) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Right, Some(other)))
+    }
+
+    /// Align the position to the top (only effective for Left or Right `Direction`s).
+    fn align_top_of(self, other: UiId) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Top, Some(other)))
+    }
+
+    /// Align the position to the middle (only effective for Left or Right `Direction`s).
+    fn align_middle_y_of(self, other: UiId) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Middle, Some(other)))
+    }
+
+    /// Align the position to the bottom (only effective for Left or Right `Direction`s).
+    fn align_bottom_of(self, other: UiId) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Bottom, Some(other)))
+    }
+
 
     ///// `Place` methods. /////
 
@@ -373,24 +412,24 @@ pub fn align_top_of(target_height: Scalar, height: Scalar) -> Scalar {
     target_height / 2.0 - height / 2.0
 }
 
-impl HorizontalAlign {
+impl Horizontal {
     /// Align `width` to the given `target_width`.
     pub fn to(&self, target_width: Scalar, width: Scalar) -> Scalar {
         match *self {
-            HorizontalAlign::Left => align_left_of(target_width, width),
-            HorizontalAlign::Right => align_right_of(target_width, width),
-            HorizontalAlign::Middle => 0.0,
+            Horizontal::Left => align_left_of(target_width, width),
+            Horizontal::Right => align_right_of(target_width, width),
+            Horizontal::Middle => 0.0,
         }
     }
 }
 
-impl VerticalAlign {
+impl Vertical {
     /// Align `height` to the given `target_height`.
     pub fn to(&self, target_height: Scalar, height: Scalar) -> Scalar {
         match *self {
-            VerticalAlign::Top => align_top_of(target_height, height),
-            VerticalAlign::Bottom => align_bottom_of(target_height, height),
-            VerticalAlign::Middle => 0.0,
+            Vertical::Top => align_top_of(target_height, height),
+            Vertical::Bottom => align_bottom_of(target_height, height),
+            Vertical::Middle => 0.0,
         }
     }
 }

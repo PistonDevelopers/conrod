@@ -283,18 +283,61 @@ impl<C> Ui<C> {
                         let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
 
                         match direction {
-                            Direction::Up =>
-                                [rel_xy[0] + h_align.to(rel_w, dim[0]),
-                                 rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px],
-                            Direction::Down =>
-                                [rel_xy[0] + h_align.to(rel_w, dim[0]),
-                                 rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px],
-                            Direction::Left =>
-                                [rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px,
-                                 rel_xy[1] + v_align.to(rel_h, dim[1])],
-                            Direction::Right =>
-                                [rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px,
-                                 rel_xy[1] + v_align.to(rel_h, dim[1])],
+
+                            // For vertical directions, we must consider horizontal alignment.
+                            Direction::Up | Direction::Down => {
+                                // Check whether or not we are aligning to a specific `Ui` element.
+                                let (other_x, other_w) = match h_align.1 {
+                                    Some(other_ui_id) => {
+                                        let (x, elem) = match other_ui_id {
+                                            UiId::Widget(id) =>
+                                                (self.widget_cache[id].xy[0],
+                                                 &self.widget_cache[id].element),
+                                            UiId::Canvas(id) =>
+                                                (self.canvas_cache[id].xy[0],
+                                                 &self.canvas_cache[id].element),
+                                        };
+                                        let w = elem.get_width() as f64;
+                                        (x, w)
+                                    },
+                                    None => (rel_xy[0], rel_w),
+                                };
+                                let x = other_x + h_align.0.to(other_w, dim[0]);
+                                let y = match direction {
+                                    Direction::Up   => rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px,
+                                    Direction::Down => rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px,
+                                    _ => unreachable!(),
+                                };
+                                [x, y]
+                            },
+
+                            // For horizontal directions, we must consider vertical alignment.
+                            Direction::Left | Direction::Right => {
+                                // Check whether or not we are aligning to a specific `Ui` element.
+                                let (other_y, other_h) = match h_align.1 {
+                                    Some(other_ui_id) => {
+                                        let (y, elem) = match other_ui_id {
+                                            UiId::Widget(id) =>
+                                                (self.widget_cache[id].xy[1],
+                                                 &self.widget_cache[id].element),
+                                            UiId::Canvas(id) =>
+                                                (self.canvas_cache[id].xy[1],
+                                                 &self.canvas_cache[id].element),
+                                        };
+                                        let h = elem.get_height() as f64;
+                                        (y, h)
+                                    },
+                                    None => (rel_xy[1], rel_h),
+                                };
+                                let y = other_y + v_align.0.to(other_h, dim[1]);
+                                let x = match direction {
+                                    Direction::Left  => rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px,
+                                    Direction::Right => rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px,
+                                    _ => unreachable!(),
+                                };
+                                [x, y]
+                            },
+
                         }
                     },
                 }

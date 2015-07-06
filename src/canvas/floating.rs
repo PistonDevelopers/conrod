@@ -5,7 +5,8 @@ use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use label::FontSize;
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Place, Point, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, Horizontal, HorizontalAlign, Place, Point, Position,
+               VerticalAlign};
 use theme::Theme;
 use ui::{self, GlyphCache, Ui, UiId};
 
@@ -57,7 +58,7 @@ pub struct Style {
     maybe_frame: Option<f64>,
     maybe_frame_color: Option<Color>,
     maybe_title_bar_font_size: Option<FontSize>,
-    maybe_title_bar_label_align: Option<HorizontalAlign>,
+    maybe_title_bar_label_align: Option<Horizontal>,
     maybe_title_bar_label_color: Option<Color>,
     padding: Padding,
 }
@@ -370,8 +371,8 @@ impl Style {
     }
 
     /// Get the alignment of the title bar label.
-    pub fn title_bar_label_align(&self, theme: &Theme) -> HorizontalAlign {
-        const DEFAULT_ALIGN: HorizontalAlign = HorizontalAlign::Middle;
+    pub fn title_bar_label_align(&self, theme: &Theme) -> Horizontal {
+        const DEFAULT_ALIGN: Horizontal = Horizontal::Middle;
         self.maybe_title_bar_label_align.or(theme.maybe_canvas_floating.as_ref().map(|style| {
             style.maybe_title_bar_label_align.unwrap_or(DEFAULT_ALIGN)
         })).unwrap_or(DEFAULT_ALIGN)
