@@ -5,7 +5,7 @@
 use canvas;
 use color::{Color, black, white};
 use json_io;
-use position::{Margin, Padding, Position, HorizontalAlign, VerticalAlign};
+use position::{Margin, Padding, Position, Horizontal, HorizontalAlign, Vertical, VerticalAlign};
 use rustc_serialize::Encodable;
 use std::error::Error;
 use std::path::Path;
@@ -92,8 +92,8 @@ impl Theme {
             },
             position: Position::default(),
             align: Align {
-                horizontal: HorizontalAlign::Left,
-                vertical: VerticalAlign::Top,
+                horizontal: HorizontalAlign(Horizontal::Left, None),
+                vertical: VerticalAlign(Vertical::Top, None),
             },
             background_color: black(),
             shape_color: white(),

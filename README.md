@@ -56,19 +56,25 @@ Getting Started
 
 Build the conrod lib like this:
 
-    git clone https://github.com/PistonDevelopers/conrod.git
-    cd conrod
-    cargo build
+```
+git clone https://github.com/PistonDevelopers/conrod.git
+cd conrod
+cargo build
+```
 
 And then build and run the examples like this:
 
-    cargo run --example all_widgets
-    cargo run --example canvas
+```
+cargo run --example all_widgets
+cargo run --example canvas
+```
 
 You can add it to your project by adding this to your Cargo.toml:
 
-    [dependencies]
-    conrod = "*"
+```toml
+[dependencies]
+conrod = "*"
+```
 
 ## Dependencies
 
