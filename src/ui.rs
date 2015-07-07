@@ -73,13 +73,13 @@ pub struct Ui<C> {
     text_just_entered: Vec<String>,
     /// Tracks whether or not the previous event was a Render event.
     prev_event_was_render: bool,
-    /// The UiId of the previously drawn Widget.
+    /// The UiId of the previously set Widget.
     maybe_prev_widget_id: Option<WidgetId>,
     /// The Id of the current canvas.
     maybe_current_canvas_id: Option<CanvasId>,
-    /// The captured Mouse and the UiId of the widget who has captured it.
+    /// The UiId of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
-    /// The UiId of the widget currently keyboard input if there is one.
+    /// The UiId of the widget currently capturing keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>,
     /// The Canvas that is currently under the mouse.
     maybe_canvas_under_mouse: Option<CanvasId>,

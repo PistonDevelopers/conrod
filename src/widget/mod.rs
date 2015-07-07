@@ -9,6 +9,7 @@ use theme::Theme;
 use ui::{self, GlyphCache, Ui, UiId, UserInput};
 
 pub mod button;
+pub mod cache;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod label;
