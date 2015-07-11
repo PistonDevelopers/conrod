@@ -13,14 +13,15 @@ extern crate elmesque;
 extern crate graphics;
 extern crate json_io;
 extern crate num;
+extern crate petgraph;
 #[macro_use] extern crate piston;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
 
 
-pub use canvas::split::Split;
-pub use canvas::floating::Floating;
+// pub use canvas::split::Split;
+// pub use canvas::floating::Floating;
 
 pub use widget::button::Button;
 pub use widget::drop_down_list::DropDownList;
@@ -46,7 +47,7 @@ pub use widget::xy_pad::Style as XYPadStyle;
 
 
 pub use background::Background;
-pub use canvas::{Canvas, CanvasId};
+//pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
@@ -63,7 +64,7 @@ pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalA
                    Padding, Place, Point, Position, Positionable, Sizeable, Vertical,
                    VerticalAlign};
 pub use theme::{Align, Theme};
-pub use ui::{GlyphCache, Ui, UiId, UserInput};
+pub use ui::{GlyphCache, Ui, UserInput};
 pub use widget::{Widget, WidgetId};
 pub use widget::State as WidgetState;
 
@@ -72,8 +73,9 @@ pub use json_io::Error as JsonIoError;
 
 
 mod background;
-mod canvas;
+//mod canvas;
 mod frame;
+mod graph;
 mod label;
 mod mouse;
 mod position;

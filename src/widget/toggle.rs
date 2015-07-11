@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -10,7 +9,7 @@ use mouse::Mouse;
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
 use ui::{GlyphCache, UserInput};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
@@ -26,7 +25,7 @@ pub struct Toggle<'a, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
+    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the Toggle, necessary for constructing its renderable Element.
@@ -101,7 +100,7 @@ impl<'a, F> Toggle<'a, F> {
             value: value,
             style: Style::new(),
             enabled: true,
-            maybe_canvas_id: None,
+            maybe_parent_id: None,
         }
     }
 
@@ -117,10 +116,10 @@ impl<'a, F> Toggle<'a, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
+    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
+    /// parent by using the placement `Positionable` methods.
+    pub fn parent(mut self, id: WidgetId) -> Self {
+        self.maybe_parent_id = Some(id);
         self
     }
 
@@ -141,7 +140,7 @@ impl<'a, F> Widget for Toggle<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
 
     /// Update the state of the Toggle.
     fn update<'b, C>(mut self,

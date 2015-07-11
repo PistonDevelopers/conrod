@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -10,7 +9,7 @@ use mouse::Mouse;
 use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{GlyphCache, UserInput};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// The index of a selected item.
@@ -34,7 +33,7 @@ pub struct DropDownList<'a, F> {
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
+    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
@@ -333,7 +332,7 @@ impl<'a, F> DropDownList<'a, F> {
             maybe_react: None,
             maybe_label: None,
             enabled: true,
-            maybe_canvas_id: None,
+            maybe_parent_id: None,
             style: Style::new(),
         }
     }
@@ -350,10 +349,10 @@ impl<'a, F> DropDownList<'a, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
+    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
+    /// widget by using the placement `Positionable` methods.
+    pub fn parent(mut self, id: WidgetId) -> Self {
+        self.maybe_parent_id = Some(id);
         self
     }
 
@@ -390,7 +389,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
 
     /// Capture the mouse if the menu was opened.
     fn capture_mouse(prev: &State, new: &State) -> bool {

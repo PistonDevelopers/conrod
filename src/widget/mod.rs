@@ -1,15 +1,13 @@
 
-use canvas::CanvasId;
 use elmesque::Element;
 use graphics::character::CharacterCache;
-use position::{Depth, Dimensions, Point, Positionable, Sizeable};
+use position::{Depth, Dimensions, Padding, Point, Positionable, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::Theme;
-use ui::{self, GlyphCache, Ui, UiId, UserInput};
+use ui::{self, GlyphCache, Ui, UserInput};
 
 pub mod button;
-pub mod cache;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod label;
@@ -35,7 +33,7 @@ pub type WidgetId = usize;
 /// - draw
 ///
 /// Methods that can be optionally overridden:
-/// - canvas_id
+/// - parent_id
 /// - capture_mouse
 /// - uncapture_mouse
 /// - capture_keyboard
@@ -56,7 +54,8 @@ pub trait Widget: Positionable + Sizeable + Sized {
     type Style: Any + PartialEq + ::std::fmt::Debug;
 
     /// Return the kind of the widget as a &'static str. Note that this must be unique from all
-    /// other widgets' "unique kinds". This is used by conrod to help avoid UiId errors.
+    /// other widgets' "unique kinds". This is used by conrod to help avoid WidgetId errors and to
+    /// provide better messages for those that do occur.
     fn unique_kind(&self) -> &'static str;
 
     /// Return the initial `State` of the Widget. The `Ui` will only call this once.
@@ -69,6 +68,9 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
     /// Your widget's previous state is given to you as a parameter and it is your job to
     /// construct and return an Update that will be used to update the widget's cached state.
+    /// You only have to return `Some` state if the resulting state would be different to `prev`.
+    /// If `Some` new state was returned, `Widget::draw` will be called in order to construct an
+    /// up to date `Element`.
     ///
     /// # Arguments
     /// * prev - The previous state of the Widget. If none existed, `Widget::init_state` will be
@@ -105,10 +107,10 @@ pub trait Widget: Positionable + Sizeable + Sized {
                glyph_cache: &GlyphCache<C>) -> Element
         where C: CharacterCache;
 
-    /// Return the canvas to which the Widget will be attached, if there is one. Note that the
-    /// CanvasId can also normally be inferred by the widget's `Position`, however calling this
-    /// method will override this.
-    fn canvas_id(&self) -> Option<CanvasId> { None }
+    /// Return the parent to which the Widget will be attached, if there is one. Note that the
+    /// WidgetId can also normally be inferred by the widget's `Position`, however calling this
+    /// method will override this behaviour.
+    fn parent_id(&self) -> Option<WidgetId> { None }
 
     /// Optionally override with the case that the widget should capture the mouse.
     fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
@@ -133,6 +135,7 @@ pub trait Widget: Positionable + Sizeable + Sized {
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
     fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
+
         let kind = self.unique_kind();
         let new_style = self.style();
         let depth = self.get_depth();
@@ -146,7 +149,8 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
         // Collect the previous state and style or initialise both if none exist.
         let maybe_prev_state = ui::get_widget_state::<C, Self>(ui, id, kind).map(|prev|{
-            let PrevState { state, style, xy, dim, depth } = prev;
+            let Cached { state, style, xy, dim, depth, kid_area_xy, kid_area_dim, kid_area_pad } =
+                prev;
             (Some(style), State { state: state, xy: xy, dim: dim, depth: depth, })
         });
         let (maybe_prev_style, prev_state) = maybe_prev_state.unwrap_or_else(|| {
@@ -155,12 +159,12 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
-        let maybe_canvas_id = self.canvas_id().or_else(|| ui::canvas_from_position(ui, pos));
+        let maybe_parent_id = self.parent_id().or_else(|| ui::parent_from_position(ui, pos));
 
         // Update the widget's state.
         let maybe_new_state = {
             // Construct a UserInput for the widget.
-            let user_input = ui::user_input(ui, UiId::Widget(id), maybe_canvas_id);
+            let user_input = ui::user_input(ui, id);
             let Ui { ref theme, ref glyph_cache, .. } = *ui;
             self.update(&prev_state, xy, dim, user_input, &new_style, theme, glyph_cache)
         };
@@ -172,16 +176,16 @@ pub trait Widget: Positionable + Sizeable + Sized {
                 None => &prev_state.state
             };
             if Self::capture_mouse(&prev_state.state, new_state) {
-                ui::mouse_captured_by(ui, UiId::Widget(id));
+                ui::mouse_captured_by(ui, id);
             }
             if Self::uncapture_mouse(&prev_state.state, new_state) {
-                ui::mouse_uncaptured_by(ui, UiId::Widget(id));
+                ui::mouse_uncaptured_by(ui, id);
             }
             if Self::capture_keyboard(&prev_state.state, new_state) {
-                ui::keyboard_captured_by(ui, UiId::Widget(id));
+                ui::keyboard_captured_by(ui, id);
             }
             if Self::uncapture_keyboard(&prev_state.state, new_state) {
-                ui::keyboard_uncaptured_by(ui, UiId::Widget(id));
+                ui::keyboard_uncaptured_by(ui, id);
             }
         }
 
@@ -215,11 +219,30 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
         // Store the new `State` and `Style` within the cache.
         let State { state, dim, xy, depth } = new_state;
-        let store: Store<Self::State, Self::Style> = Store { state: state, style: new_style };
-        ui::update_widget(ui, id, maybe_canvas_id, kind, store, dim, xy, depth, maybe_new_element);
+        let cached: Cached<Self> = Cached {
+            state: state,
+            style: new_style,
+            dim: dim,
+            xy: xy,
+            depth: depth,
+            // TODO: Implement these proplerly
+            kid_area_xy: xy,
+            kid_area_dim: dim,
+            kid_area_pad: Padding::none(),
+        };
+        ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
     }
 
 }
+
+// /// A struct containing builder data common to all Widget types.
+// pub struct CommonBuilder {
+//     pub maybe_width: Option<Scalar>,
+//     pub maybe_height: Option<Scalar>,
+//     pub maybe_pos: Option<Position>,
+//     pub maybe_h_align: Option<HorizontalAlign>,
+//     pub maybe_v_align: Option<VerticalAlign>,
+// }
 
 /// Represents the unique cached state of a widget.
 #[derive(PartialEq)]
@@ -235,7 +258,7 @@ pub struct State<T> {
 }
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
-pub struct PrevState<W> where W: Widget {
+pub struct Cached<W> where W: Widget {
     /// State that is unique to the widget.
     pub state: W::State,
     /// Unique styling state for the widget.
@@ -246,47 +269,11 @@ pub struct PrevState<W> where W: Widget {
     pub xy: Point,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
-}
-
-/// The state type that we'll dynamically cast to and from Any for storage within the Cache.
-#[derive(Debug)]
-pub struct Store<Sta, Sty>
-    where
-        Sta: Any  + Debug,
-        Sty: Any  + Debug,
-{
-    pub state: Sta,
-    pub style: Sty,
-}
-
-/// A widget element for storage within the Ui's `widget_cache`.
-#[derive(Debug)]
-pub struct Cached {
-    pub maybe_state: Option<Box<Any>>,
-    pub kind: &'static str,
-    pub dim: Dimensions,
-    pub xy: Point,
-    pub depth: Depth,
-    pub element: Element,
-    pub has_updated: bool,
-    pub maybe_canvas_id: Option<CanvasId>,
-}
-
-impl Cached {
-
-    /// Construct an empty Widget for a vacant widget position within the Ui.
-    pub fn empty() -> Cached {
-        Cached {
-            maybe_state: None,
-            kind: "EMPTY",
-            dim: [0.0, 0.0],
-            xy: [0.0, 0.0],
-            depth: 0.0,
-            element: ::elmesque::element::empty(),
-            has_updated: false,
-            maybe_canvas_id: None,
-        }
-    }
-
+    /// The position of the area in which child widgets are placed.
+    pub kid_area_xy: Point,
+    /// The dimensions of the area in which child widgets are placed.
+    pub kid_area_dim: Dimensions,
+    /// Padding of the area in which child widgets are placed.
+    pub kid_area_pad: Padding,
 }
 

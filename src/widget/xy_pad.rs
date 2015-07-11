@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -14,7 +13,7 @@ use theme::Theme;
 use ui::{GlyphCache, UserInput};
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -31,7 +30,7 @@ pub struct XYPad<'a, X, Y, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
+    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the XYPad, necessary for constructing its renderable Element.
@@ -110,7 +109,7 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             maybe_label: None,
             style: Style::new(),
             enabled: true,
-            maybe_canvas_id: None,
+            maybe_parent_id: None,
         }
     }
 
@@ -141,10 +140,10 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
+    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
+    /// parent by using the placement `Positionable` methods.
+    pub fn parent(mut self, id: WidgetId) -> Self {
+        self.maybe_parent_id = Some(id);
         self
     }
 
@@ -168,7 +167,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
 
     /// Update the XYPad's cached state.
     fn update<'b, C>(mut self,

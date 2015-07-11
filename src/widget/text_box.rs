@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -13,7 +12,7 @@ use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Vertic
 use theme::Theme;
 use ui::{GlyphCache, UserInput};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 pub type Idx = usize;
@@ -32,7 +31,7 @@ pub struct TextBox<'a, F> {
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
+    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
@@ -302,7 +301,7 @@ impl<'a, F> TextBox<'a, F> {
             maybe_react: None,
             style: Style::new(),
             enabled: true,
-            maybe_canvas_id: None,
+            maybe_parent_id: None,
         }
     }
 
@@ -325,10 +324,10 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
+    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
+    /// parent by using the placement `Positionable` methods.
+    pub fn parent(mut self, id: WidgetId) -> Self {
+        self.maybe_parent_id = Some(id);
         self
     }
 
@@ -348,7 +347,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
 
     /// Capture the keyboard if the Interaction has become `Captured`.
     fn capture_keyboard(prev: &State, new: &State) -> bool {

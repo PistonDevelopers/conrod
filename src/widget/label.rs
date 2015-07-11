@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use graphics::character::CharacterCache;
@@ -7,7 +6,7 @@ use label::FontSize;
 use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
 use ui::{GlyphCache, UserInput};
-use widget::{self, Widget};
+use widget::{self, Widget, WidgetId};
 
 
 /// Displays some given text centred within a rectangle.
@@ -19,7 +18,7 @@ pub struct Label<'a> {
     maybe_v_align: Option<VerticalAlign>,
     depth: Depth,
     style: Style,
-    maybe_canvas_id: Option<CanvasId>,
+    maybe_parent_id: Option<WidgetId>,
 }
 
 /// The styling for a Label's renderable Element.
@@ -46,7 +45,7 @@ impl<'a> Label<'a> {
             maybe_v_align: None,
             depth: 0.0,
             style: Style::new(),
-            maybe_canvas_id: None,
+            maybe_parent_id: None,
         }
     }
 
@@ -57,10 +56,10 @@ impl<'a> Label<'a> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
+    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
+    /// parent by using the placement `Positionable` methods.
+    pub fn parent(mut self, id: WidgetId) -> Self {
+        self.maybe_parent_id = Some(id);
         self
     }
 
@@ -73,7 +72,7 @@ impl<'a> Widget for Label<'a> {
     fn unique_kind(&self) -> &'static str { "Label" }
     fn init_state(&self) -> State { State(String::new()) }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
 
     /// Update the state of the Label.
     fn update<'b, C>(self,
