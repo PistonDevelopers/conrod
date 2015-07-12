@@ -23,27 +23,21 @@ use widget::{self, Widget, WidgetId};
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
+    common: widget::CommonBuilder,
     env: &'a mut Vec<E>,
     skew_y_range: f32,
     min_x: E::X, max_x: E::X,
     min_y: E::Y, max_y: E::Y,
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
-    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
 #[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    pub maybe_width: Option<Scalar>,
-    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<f64>,
     pub maybe_frame_color: Option<Color>,
@@ -276,19 +270,15 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     pub fn new(env: &'a mut Vec<E>, min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y)
     -> EnvelopeEditor<'a, E, F> {
         EnvelopeEditor {
+            common: widget::CommonBuilder::new(),
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).
             min_x: min_x, max_x: max_x,
             min_y: min_y, max_y: max_y,
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
-            maybe_parent_id: None,
         }
     }
 
@@ -334,6 +324,8 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 {
     type State = State<E>;
     type Style = Style;
+    fn common(&self) -> &CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "EnvelopeEditor" }
     fn init_state(&self) -> State<E> {
         State {
@@ -349,7 +341,20 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
+
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 256.0;
+        self.maybe_width.or(theme.maybe_envelope_editor.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 128.0;
+        self.maybe_height.or(theme.maybe_envelope_editor.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     fn capture_mouse(prev: &State<E>, new: &State<E>) -> bool {
         match (prev.interaction, new.interaction) {
@@ -722,8 +727,6 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -733,22 +736,6 @@ impl Style {
             maybe_point_radius: None,
             maybe_line_width: None,
         }
-    }
-
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 256.0;
-        self.maybe_width.or(theme.maybe_envelope_editor.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 128.0;
-        self.maybe_height.or(theme.maybe_envelope_editor.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Get the Color for an Element.
@@ -854,58 +841,6 @@ impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, E, F> position::Positionable for EnvelopeEditor<'a, E, F>
-    where
-        E: EnvelopePoint
-{
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        EnvelopeEditor { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        EnvelopeEditor { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, E, F> position::Sizeable for EnvelopeEditor<'a, E, F>
-    where
-        E: EnvelopePoint
-{
-    #[inline]
-    fn width(mut self, w: Scalar) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    #[inline]
-    fn height(mut self, h: Scalar) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> Scalar {
-        self.style.height(theme)
     }
 }
 

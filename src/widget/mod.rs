@@ -1,7 +1,9 @@
 
+use Scalar;
 use elmesque::Element;
 use graphics::character::CharacterCache;
-use position::{Depth, Dimensions, Padding, Point, Positionable, Sizeable};
+use position::{Depth, Dimensions, Direction, Padding, Point, Position, Positionable, Sizeable,
+               HorizontalAlign, VerticalAlign};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::Theme;
@@ -26,6 +28,8 @@ pub type WidgetId = usize;
 /// A trait to be implemented by all Widget types.
 ///
 /// Methods that *must* be overridden:
+/// - common_mut
+/// - common
 /// - unique_kind
 /// - init_state
 /// - style
@@ -38,11 +42,16 @@ pub type WidgetId = usize;
 /// - uncapture_mouse
 /// - capture_keyboard
 /// - uncapture_keyboard
+/// - default_position
+/// - default_width
+/// - default_height
+/// - default_h_align
+/// - default_v_align
 ///
 /// Methods that should not be overridden:
+/// - parent
 /// - set
-///
-pub trait Widget: Positionable + Sizeable + Sized {
+pub trait Widget: Sized {
     /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
     /// allocations that you would like to avoid repeating between updates, or any calculations
     /// that you'd like to avoid repeating between calls to `update` and `draw`. Conrod will never
@@ -52,6 +61,14 @@ pub trait Widget: Positionable + Sizeable + Sized {
     /// abstraction in order to making Theme serializing easier. Conrod doesn't yet support
     /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
     type Style: Any + PartialEq + ::std::fmt::Debug;
+
+    /// Return a reference to a CommonBuilder struct owned by the Widget.
+    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+    fn common(&self) -> &CommonBuilder;
+
+    /// Return a mutable reference to a CommonBuilder struct owned by the Widget.
+    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+    fn common_mut(&mut self) -> &mut CommonBuilder;
 
     /// Return the kind of the widget as a &'static str. Note that this must be unique from all
     /// other widgets' "unique kinds". This is used by conrod to help avoid WidgetId errors and to
@@ -110,7 +127,42 @@ pub trait Widget: Positionable + Sizeable + Sized {
     /// Return the parent to which the Widget will be attached, if there is one. Note that the
     /// WidgetId can also normally be inferred by the widget's `Position`, however calling this
     /// method will override this behaviour.
-    fn parent_id(&self) -> Option<WidgetId> { None }
+
+    /// The default Position for the widget.
+    /// This is used when no Position is explicitly given when instantiating the Widget.
+    fn default_position(&self, theme: &Theme) -> Position {
+        Position::Direction(Direction::Down, 20.0, None)
+    }
+
+    /// The default horizontal alignment for the widget.
+    /// This is used when no HorizontalAlign is explicitly given when instantiating a Widget.
+    fn default_h_align(&self, theme: &Theme) -> HorizontalAlign {
+        theme.align.horizontal
+    }
+
+    /// The default vertical alignment for the widget.
+    /// This is used when no VerticalAlign is explicitly given when instantiating a Widget.
+    fn default_v_align(&self, theme: &Theme) -> VerticalAlign {
+        theme.align.vertical
+    }
+
+    /// The default width of the widget.
+    /// A reference to the GlyphCache is provided in case the width should adjust to some text len.
+    /// This method is only used if no width or dimensions are given.
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        0.0
+    }
+
+    /// The default height of the widget.
+    /// This method is only used if no height or dimensions are given.
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        0.0
+    }
+
+    /// The default padding for the left of the area where child widgets will be placed.
+    fn default_padding(&self, theme: &Theme) -> Padding {
+        theme.padding
+    }
 
     /// Optionally override with the case that the widget should capture the mouse.
     fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
@@ -123,6 +175,13 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
     /// Optionally override with the case that the widget should capture the mouse.
     fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// Set the parent widget for this Widget by passing the WidgetId of the parent.
+    /// This will attach this Widget to the parent widget.
+    fn parent(mut self, parent_id: WidgetId) -> Self {
+        self.common_mut().maybe_parent_id = Some(parent_id);
+        self
+    }
 
     /// Note: There should be no need to override this method.
     ///
@@ -139,7 +198,7 @@ pub trait Widget: Positionable + Sizeable + Sized {
         let kind = self.unique_kind();
         let new_style = self.style();
         let depth = self.get_depth();
-        let pos = self.get_position();
+        let pos = self.get_position(&ui.theme);
         let (h_align, v_align) = self.get_alignment(&ui.theme);
         let dim = {
             let Ui { ref theme, ref glyph_cache, .. } = *ui;
@@ -235,14 +294,40 @@ pub trait Widget: Positionable + Sizeable + Sized {
 
 }
 
-// /// A struct containing builder data common to all Widget types.
-// pub struct CommonBuilder {
-//     pub maybe_width: Option<Scalar>,
-//     pub maybe_height: Option<Scalar>,
-//     pub maybe_pos: Option<Position>,
-//     pub maybe_h_align: Option<HorizontalAlign>,
-//     pub maybe_v_align: Option<VerticalAlign>,
-// }
+
+/// A struct containing builder data common to all Widget types.
+/// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct CommonBuilder {
+    /// The width of a Widget.
+    pub maybe_width: Option<Scalar>,
+    /// The height of a Widget.
+    pub maybe_height: Option<Scalar>,
+    /// The position of a Widget.
+    pub maybe_position: Option<Position>,
+    /// The horizontal alignment of a Widget.
+    pub maybe_h_align: Option<HorizontalAlign>,
+    /// The vertical alignment of a Widget.
+    pub maybe_v_align: Option<VerticalAlign>,
+    /// The rendering Depth of the Widget.
+    pub maybe_depth: Option<Depth>,
+    /// The parent widget of the Widget.
+    pub maybe_parent_id: Option<WidgetId>,
+    /// The padding for the area where child widgets will be placed.
+    pub kid_area_pad: PaddingBuilder,
+}
+
+/// A builder for the padding of the area where child widgets will be placed.
+pub struct PaddingBuilder {
+    /// The padding for the left of the area where child widgets will be placed.
+    pub maybe_left: Option<Scalar>,
+    /// The padding for the right of the area where child widgets will be placed.
+    pub maybe_right: Option<Scalar>,
+    /// The padding for the top of the area where child widgets will be placed.
+    pub maybe_top: Option<Scalar>,
+    /// The padding for the bottom of the area where child widgets will be placed.
+    pub maybe_bottom: Option<Scalar>,
+}
 
 /// Represents the unique cached state of a widget.
 #[derive(PartialEq)]
@@ -275,5 +360,113 @@ pub struct Cached<W> where W: Widget {
     pub kid_area_dim: Dimensions,
     /// Padding of the area in which child widgets are placed.
     pub kid_area_pad: Padding,
+}
+
+
+impl CommonBuilder {
+    /// Construct an empty, initialised CommonBuilder.
+    pub fn new() -> CommonBuilder {
+        CommonBuilder {
+            maybe_width: None,
+            maybe_height: None,
+            maybe_position: None,
+            maybe_h_align: None,
+            maybe_v_align: None,
+            maybe_depth: None,
+            maybe_parent_id: None,
+            kid_area_pad: PaddingBuilder {
+                maybe_left: None,
+                maybe_right: None,
+                maybe_top: None,
+                maybe_bottom: None,
+            },
+        }
+    }
+}
+
+
+impl<T> Positionable for T where T: Widget {
+    #[inline]
+    fn position(mut self, pos: Position) -> Self {
+        self.common_mut().maybe_pos = Some(pos);
+        self
+    }
+    #[inline]
+    fn get_position(&self, theme: &Theme) -> Position {
+        self.common().maybe_pos.unwrap_or(self.default_position(theme))
+    }
+    #[inline]
+    fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
+        self.common_mut().maybe_h_align = Some(h_align);
+        self
+    }
+    #[inline]
+    fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
+        self.common_mut().maybe_v_align = Some(v_align);
+        self
+    }
+    #[inline]
+    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+        self.common().maybe_h_align.unwrap_or(self.default_h_align(theme))
+    }
+    #[inline]
+    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+        self.common().maybe_v_align.unwrap_or(self.default_v_align(theme))
+    }
+    #[inline]
+    fn depth(mut self, depth: Depth) -> Self {
+        self.common_mut().maybe_depth = Some(depth);
+        self
+    }
+    #[inline]
+    fn get_depth(&self) -> Depth {
+        const DEFAULT_DEPTH: Depth = 0.0;
+        self.common().maybe_depth.unwarp_or(DEFAULT_DEPTH)
+    }
+}
+
+impl<T> Sizeable for T where T: Widget {
+    #[inline]
+    fn width(mut self, w: f64) -> Self {
+        self.common_mut().maybe_width = Some(w);
+        self
+    }
+    #[inline]
+    fn height(mut self, h: f64) -> Self {
+        self.common_mut().maybe_height = Some(h);
+        self
+    }
+    #[inline]
+    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> f64 {
+        self.common().maybe_width.unwrap_or(self.default_width(theme, glyph_cache))
+    }
+    #[inline]
+    fn get_height(&self, theme: &Theme) -> f64 {
+        self.common().maybe_height.unwrap_or(self.default_height(theme))
+    }
+    /// Set the padding of the left of the area where child widgets will be placed.
+    #[inline]
+    fn pad_left(mut self, pad: Scalar) -> Self {
+        self.common_mut().kid_area_pad.maybe_left = Some(pad);
+        self
+    }
+    /// Set the padding of the right of the area where child widgets will be placed.
+    #[inline]
+    fn pad_right(mut self, pad: Scalar) -> Self {
+        self.common_mut().kid_area_pad.maybe_right = Some(pad);
+        self
+    }
+    /// Set the padding of the top of the area where child widgets will be placed.
+    #[inline]
+    fn pad_top(mut self, pad: Scalar) -> Self {
+        self.common_mut().kid_area_pad.maybe_top = Some(pad);
+        self
+    }
+    /// Set the padding of the bottom of the area where child widgets will be placed.
+    #[inline]
+    fn pad_bottom(mut self, pad: Scalar) -> Self {
+        self.common_mut().kid_area_pad.maybe_bottom = Some(pad);
+        self
+    }
 }
 

@@ -259,7 +259,6 @@ pub trait Positionable: Sized {
         self.vertical_align(VerticalAlign(Vertical::Bottom, Some(other)))
     }
 
-
     ///// `Place` methods. /////
 
     /// Place the widget at some position on the Widget.
@@ -358,11 +357,31 @@ pub trait Sizeable: Sized {
         self.dim([width, height])
     }
 
-    /// Return the dimensions for the widget.
+    /// The dimensions for the widget.
     fn get_dimensions<C: CharacterCache>(&self,
                                          theme: &Theme,
                                          glyph_cache: &GlyphCache<C>) -> Dimensions {
         [self.get_width(theme, glyph_cache), self.get_height(theme)]
+    }
+
+    /// Set the padding for the left of widget.
+    fn pad_left(self, pad: Scalar) -> Self;
+
+    /// Set the padding for the right of widget.
+    fn pad_right(self, pad: Scalar) -> Self;
+
+    /// Set the padding for the top of widget.
+    fn pad_top(self, pad: Scalar) -> Self;
+
+    /// Set the padding for the bottom of widget.
+    fn pad_bottom(self, pad: Scalar) -> Self;
+
+    /// Set the padding for the widget.
+    fn pad(self, pad: Padding) -> Self {
+        self.pad_left(pad.left)
+            .pad_right(pad.right)
+            .pad_top(pad.top)
+            .pad_bottom(pad.bottom)
     }
 
 }
