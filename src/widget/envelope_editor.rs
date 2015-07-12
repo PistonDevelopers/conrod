@@ -294,13 +294,6 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         self
     }
 
-    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
-    /// parent by using the placement `Positionable` methods.
-    pub fn parent(mut self, id: WidgetId) -> Self {
-        self.maybe_parent_id = Some(id);
-        self
-    }
-
 }
 
 
