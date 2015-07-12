@@ -16,24 +16,18 @@ use widget::{self, Widget, WidgetId};
 /// triggered upon release and will return the new bool state. Note that the toggle will not
 /// mutate the bool for you, you should do this yourself within the react closure.
 pub struct Toggle<'a, F> {
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
+    common: widget::CommonBuilder,
     value: bool,
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
-    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the Toggle, necessary for constructing its renderable Element.
 #[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    pub maybe_width: Option<Scalar>,
-    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<Scalar>,
     pub maybe_frame_color: Option<Color>,
@@ -91,16 +85,12 @@ impl<'a, F> Toggle<'a, F> {
     /// Construct a new Toggle widget.
     pub fn new(value: bool) -> Toggle<'a, F> {
         Toggle {
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
+            common: widget::CommonBuilder::new(),
             maybe_react: None,
             maybe_label: None,
             value: value,
             style: Style::new(),
             enabled: true,
-            maybe_parent_id: None,
         }
     }
 
@@ -116,13 +106,6 @@ impl<'a, F> Toggle<'a, F> {
         self
     }
 
-    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
-    /// parent by using the placement `Positionable` methods.
-    pub fn parent(mut self, id: WidgetId) -> Self {
-        self.maybe_parent_id = Some(id);
-        self
-    }
-
 }
 
 impl<'a, F> Widget for Toggle<'a, F>
@@ -131,6 +114,8 @@ impl<'a, F> Widget for Toggle<'a, F>
 {
     type State = State;
     type Style = Style;
+    fn common(&self) -> &CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "Toggle" }
     fn init_state(&self) -> State {
         State {
@@ -140,7 +125,20 @@ impl<'a, F> Widget for Toggle<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
+
+    fn default_width(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 64.0;
+        self.maybe_width.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 64.0;
+        self.maybe_height.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     /// Update the state of the Toggle.
     fn update<'b, C>(mut self,
@@ -245,30 +243,12 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_label_color: None,
             maybe_label_font_size: None,
         }
-    }
-
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 64.0;
-        self.maybe_width.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 64.0;
-        self.maybe_height.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Get the Color for an Element.
@@ -341,50 +321,6 @@ impl<'a, F> Labelable<'a> for Toggle<'a, F> {
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, F> position::Positionable for Toggle<'a, F> {
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        Toggle { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        Toggle { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, F> position::Sizeable for Toggle<'a, F> {
-    fn width(mut self, w: Scalar) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    fn height(mut self, h: Scalar) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> Scalar {
-        self.style.height(theme)
     }
 }
 
