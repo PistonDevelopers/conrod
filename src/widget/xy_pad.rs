@@ -20,25 +20,19 @@ use widget::{self, Widget, WidgetId};
 /// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
 pub struct XYPad<'a, X, Y, F> {
+    common: widget::CommonBuilder,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
-    maybe_parent_id: Option<WidgetId>,
 }
 
 /// Styling for the XYPad, necessary for constructing its renderable Element.
 #[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    pub maybe_width: Option<Scalar>,
-    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<Scalar>,
     pub maybe_frame_color: Option<Color>,
@@ -99,17 +93,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     /// Construct a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
         XYPad {
+            common: widget::CommonBuilder::new(),
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
-            maybe_parent_id: None,
         }
     }
 
@@ -140,13 +130,6 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         self
     }
 
-    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
-    /// parent by using the placement `Positionable` methods.
-    pub fn parent(mut self, id: WidgetId) -> Self {
-        self.maybe_parent_id = Some(id);
-        self
-    }
-
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
@@ -157,6 +140,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 {
     type State = State<X, Y>;
     type Style = Style;
+    fn common(&self) -> &CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "XYPad" }
     fn init_state(&self) -> State<X, Y> {
         State {
@@ -167,7 +152,20 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn parent_id(&self) -> Option<WidgetId> { self.maybe_parent_id }
+
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 128.0;
+        self.maybe_width.or(theme.maybe_xy_pad.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 128.0;
+        self.maybe_height.or(theme.maybe_xy_pad.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     /// Update the XYPad's cached state.
     fn update<'b, C>(mut self,
@@ -320,8 +318,6 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -330,22 +326,6 @@ impl Style {
             maybe_value_font_size: None,
             maybe_line_width: None,
         }
-    }
-
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        self.maybe_width.or(theme.maybe_xy_pad.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 128.0;
-        self.maybe_height.or(theme.maybe_xy_pad.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Get the Color for an Element.
@@ -434,50 +414,6 @@ impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, X, Y, F> position::Positionable for XYPad<'a, X, Y, F> {
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        XYPad { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        XYPad { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, X, Y, F> position::Sizeable for XYPad<'a, X, Y, F> {
-    fn width(mut self, w: Scalar) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    fn height(mut self, h: Scalar) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> Scalar {
-        self.style.height(theme)
     }
 }
 
