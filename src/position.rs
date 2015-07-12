@@ -108,7 +108,7 @@ pub trait Positionable: Sized {
     fn position(self, pos: Position) -> Self;
 
     /// Get the Position.
-    fn get_position(&self) -> Position;
+    fn get_position(&self, theme: &Theme) -> Position;
 
     /// Set the position with some Point.
     fn point(self, point: Point) -> Self {

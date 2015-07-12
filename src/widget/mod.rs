@@ -218,7 +218,8 @@ pub trait Widget: Sized {
 
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
-        let maybe_parent_id = self.parent_id().or_else(|| ui::parent_from_position(ui, pos));
+        let maybe_parent_id = self.common().maybe_parent_id
+            .or_else(|| ui::parent_from_position(ui, pos));
 
         // Update the widget's state.
         let maybe_new_state = {
@@ -297,7 +298,7 @@ pub trait Widget: Sized {
 
 /// A struct containing builder data common to all Widget types.
 /// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct CommonBuilder {
     /// The width of a Widget.
     pub maybe_width: Option<Scalar>,
@@ -318,6 +319,7 @@ pub struct CommonBuilder {
 }
 
 /// A builder for the padding of the area where child widgets will be placed.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct PaddingBuilder {
     /// The padding for the left of the area where child widgets will be placed.
     pub maybe_left: Option<Scalar>,
@@ -388,12 +390,12 @@ impl CommonBuilder {
 impl<T> Positionable for T where T: Widget {
     #[inline]
     fn position(mut self, pos: Position) -> Self {
-        self.common_mut().maybe_pos = Some(pos);
+        self.common_mut().maybe_position = Some(pos);
         self
     }
     #[inline]
     fn get_position(&self, theme: &Theme) -> Position {
-        self.common().maybe_pos.unwrap_or(self.default_position(theme))
+        self.common().maybe_position.unwrap_or(self.default_position(theme))
     }
     #[inline]
     fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
@@ -421,7 +423,7 @@ impl<T> Positionable for T where T: Widget {
     #[inline]
     fn get_depth(&self) -> Depth {
         const DEFAULT_DEPTH: Depth = 0.0;
-        self.common().maybe_depth.unwarp_or(DEFAULT_DEPTH)
+        self.common().maybe_depth.unwrap_or(DEFAULT_DEPTH)
     }
 }
 

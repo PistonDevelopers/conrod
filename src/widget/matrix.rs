@@ -1,6 +1,7 @@
 
+use Scalar;
 use graphics::character::CharacterCache;
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
 use theme::Theme;
 use ui::{self, GlyphCache, Ui};
 
@@ -28,10 +29,8 @@ pub struct Matrix {
     cell_pad_h: f64,
 }
 
-/*
-/// A cell to be returned via the cell reaction.
-pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
-*/
+// /// A cell to be returned via the cell reaction.
+// pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
 
 impl Matrix {
 
@@ -95,7 +94,7 @@ impl position::Positionable for Matrix {
         self.pos = pos;
         self
     }
-    fn get_position(&self) -> Position { self.pos }
+    fn get_position(&self, _: &Theme) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Matrix { maybe_h_align: Some(h_align), ..self }
@@ -127,5 +126,17 @@ impl position::Sizeable for Matrix {
     }
     fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
     fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
+    fn pad_left(mut self, pad: Scalar) -> Self {
+        unimplemented!();
+    }
+    fn pad_right(mut self, pad: Scalar) -> Self {
+        unimplemented!();
+    }
+    fn pad_top(mut self, pad: Scalar) -> Self {
+        unimplemented!();
+    }
+    fn pad_bottom(mut self, pad: Scalar) -> Self {
+        unimplemented!();
+    }
 }
 

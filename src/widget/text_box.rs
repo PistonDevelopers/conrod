@@ -322,8 +322,8 @@ impl<'a, F> Widget for TextBox<'a, F>
 {
     type State = State;
     type Style = Style;
-    fn common(&self) -> &CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "TextBox" }
     fn init_state(&self) -> State {
         State {
@@ -335,14 +335,14 @@ impl<'a, F> Widget for TextBox<'a, F>
 
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 192.0;
-        self.maybe_width.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.common.maybe_width.or(theme.maybe_text_box.as_ref().map(|default| {
             default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
         })).unwrap_or(DEFAULT_WIDTH)
     }
 
     fn default_height(&self, theme: &Theme) -> Scalar {
         const DEFAULT_HEIGHT: Scalar = 48.0;
-        self.maybe_height.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.common.maybe_height.or(theme.maybe_text_box.as_ref().map(|default| {
             default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
         })).unwrap_or(DEFAULT_HEIGHT)
     }
@@ -593,30 +593,30 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_text_box.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_text_box.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_text_box.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_text_box.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_text_box.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_text_box.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label font size for an Element.
     pub fn font_size(&self, theme: &Theme) -> FontSize {
         const DEFAULT_FONT_SIZE: u32 = 24;
-        self.maybe_font_size.or(theme.maybe_text_box.as_ref().map(|style| {
-            style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
+        self.maybe_font_size.or(theme.maybe_text_box.as_ref().map(|default| {
+            default.style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
         })).unwrap_or(DEFAULT_FONT_SIZE)
     }
 

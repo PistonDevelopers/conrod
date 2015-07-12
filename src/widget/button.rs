@@ -99,13 +99,6 @@ impl<'a, F> Button<'a, F> {
         self
     }
 
-    /// Set which parent to attach the Widget to. Note that you can also attach a widget to a
-    /// parent by using the placement `Positionable` methods.
-    pub fn parent(mut self, id: WidgetId) -> Self {
-        self.maybe_parent_id = Some(id);
-        self
-    }
-
 }
 
 
@@ -115,8 +108,8 @@ impl<'a, F> Widget for Button<'a, F>
 {
     type State = State;
     type Style = Style;
-    fn common(&self) -> &CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "Button" }
     fn init_state(&self) -> State {
         State { maybe_label: None, interaction: Interaction::Normal }
@@ -132,7 +125,7 @@ impl<'a, F> Widget for Button<'a, F>
 
     fn default_height(&self, theme: &Theme) -> Scalar {
         const DEFAULT_HEIGHT: Scalar = 64.0;
-        self.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
+        self.common.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
             default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
         })).unwrap_or(DEFAULT_HEIGHT)
     }
@@ -242,36 +235,36 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme.label_color)
+        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 

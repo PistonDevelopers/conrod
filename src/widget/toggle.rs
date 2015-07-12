@@ -114,8 +114,8 @@ impl<'a, F> Widget for Toggle<'a, F>
 {
     type State = State;
     type Style = Style;
-    fn common(&self) -> &CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "Toggle" }
     fn init_state(&self) -> State {
         State {
@@ -126,16 +126,16 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
     fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width(&self, theme: &Theme) -> Scalar {
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 64.0;
-        self.maybe_width.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.common.maybe_width.or(theme.maybe_toggle.as_ref().map(|default| {
             default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
         })).unwrap_or(DEFAULT_WIDTH)
     }
 
     fn default_height(&self, theme: &Theme) -> Scalar {
         const DEFAULT_HEIGHT: Scalar = 64.0;
-        self.maybe_height.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.common.maybe_height.or(theme.maybe_toggle.as_ref().map(|default| {
             default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
         })).unwrap_or(DEFAULT_HEIGHT)
     }
@@ -253,36 +253,36 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme.label_color)
+        self.maybe_label_color.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_toggle.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size.or(theme.maybe_toggle.as_ref().map(|default| {
+            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 
