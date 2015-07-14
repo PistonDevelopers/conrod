@@ -5,11 +5,12 @@ use graphics::character::CharacterCache;
 use position::{Depth, Dimensions, Direction, Padding, Point, Position, Positionable, Sizeable,
                HorizontalAlign, VerticalAlign};
 use std::any::Any;
-use std::fmt::Debug;
 use theme::Theme;
 use ui::{self, GlyphCache, Ui, UserInput};
 
 pub mod button;
+pub mod canvas;
+pub mod drag;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod label;
@@ -98,14 +99,7 @@ pub trait Widget: Sized {
     /// * current_style - The style just produced by the `Widget::style` method.
     /// * theme - The currently active `Theme` within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn update<'a, C>(self,
-                     prev: &State<Self::State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'a>,
-                     current_style: &Self::Style,
-                     theme: &Theme,
-                     glyph_cache: &GlyphCache<C>) -> Option<Self::State>
+    fn update<'a, 'b, C>(self, args: UpdateArgs<'a, 'b, Self, C>) -> Option<Self::State>
         where C: CharacterCache;
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
@@ -118,19 +112,12 @@ pub trait Widget: Sized {
     /// * current_style - The freshly produced `Style` of the widget.
     /// * theme - The currently active `Theme` within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<C>(new_state: &State<Self::State>,
-               current_style: &Self::Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
+    fn draw<'a, C>(args: DrawArgs<'a, Self, C>) -> Element
         where C: CharacterCache;
-
-    /// Return the parent to which the Widget will be attached, if there is one. Note that the
-    /// WidgetId can also normally be inferred by the widget's `Position`, however calling this
-    /// method will override this behaviour.
 
     /// The default Position for the widget.
     /// This is used when no Position is explicitly given when instantiating the Widget.
-    fn default_position(&self, theme: &Theme) -> Position {
+    fn default_position(&self, _theme: &Theme) -> Position {
         Position::Direction(Direction::Down, 20.0, None)
     }
 
@@ -149,19 +136,14 @@ pub trait Widget: Sized {
     /// The default width of the widget.
     /// A reference to the GlyphCache is provided in case the width should adjust to some text len.
     /// This method is only used if no width or dimensions are given.
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+    fn default_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         0.0
     }
 
     /// The default height of the widget.
     /// This method is only used if no height or dimensions are given.
-    fn default_height(&self, theme: &Theme) -> Scalar {
+    fn default_height(&self, _theme: &Theme) -> Scalar {
         0.0
-    }
-
-    /// The default padding for the left of the area where child widgets will be placed.
-    fn default_padding(&self, theme: &Theme) -> Padding {
-        theme.padding
     }
 
     /// Optionally override with the case that the widget should capture the mouse.
@@ -175,6 +157,26 @@ pub trait Widget: Sized {
 
     /// Optionally override with the case that the widget should capture the mouse.
     fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
+
+    /// If the widget is draggable, implement this method and return the position an dimensions
+    /// of the draggable space.
+    fn drag_area(&self,
+                 _xy: Point,
+                 _dim: Dimensions,
+                 _style: &Self::Style,
+                 _theme: &Theme) -> Option<drag::Area>
+    {
+        None
+    }
+
+    /// The area on which child widgets will be placed when using the `Place` `Position` methods.
+    fn kid_area(state: &State<Self::State>, _style: &Self::Style, _theme: &Theme) -> KidArea {
+        KidArea {
+            xy: state.xy,
+            dim: state.dim,
+            pad: Padding::none(),
+        }
+    }
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
     /// This will attach this Widget to the parent widget.
@@ -196,37 +198,102 @@ pub trait Widget: Sized {
     fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
 
         let kind = self.unique_kind();
-        let new_style = self.style();
-        let depth = self.get_depth();
-        let pos = self.get_position(&ui.theme);
-        let (h_align, v_align) = self.get_alignment(&ui.theme);
-        let dim = {
-            let Ui { ref theme, ref glyph_cache, .. } = *ui;
-            self.get_dimensions(theme, glyph_cache)
-        };
-        let xy = ui.get_xy(pos, dim, h_align, v_align);
 
         // Collect the previous state and style or initialise both if none exist.
-        let maybe_prev_state = ui::get_widget_state::<C, Self>(ui, id, kind).map(|prev|{
-            let Cached { state, style, xy, dim, depth, kid_area_xy, kid_area_dim, kid_area_pad } =
-                prev;
-            (Some(style), State { state: state, xy: xy, dim: dim, depth: depth, })
-        });
-        let (maybe_prev_style, prev_state) = maybe_prev_state.unwrap_or_else(|| {
-            (None, State { state: self.init_state(), dim: [0.0, 0.0], xy: [0.0, 0.0], depth: 0.0 })
-        });
+        let maybe_widget_state = ui::get_widget_state::<C, Self>(ui, id, kind);
+        let (maybe_prev_state, maybe_prev_style) = maybe_widget_state.map(|prev|{
+
+            // Destructure the cached state.
+            let Cached {
+                state,
+                style,
+                xy,
+                dim,
+                depth,
+                drag_state,
+                //kid_area,
+                ..
+            } = prev;
+
+            // Use the cached state to construct the prev_state (to be fed to Widget::update).
+            let prev_state = State {
+                state: state,
+                xy: xy,
+                dim: dim,
+                depth: depth,
+                drag_state: drag_state,
+            };
+
+            (Some(prev_state), Some(style))
+        }).unwrap_or_else(|| (None, None));
+
+        let new_style = self.style();
+        let depth = self.get_depth();
+        let dim = self.get_dimensions(&ui.theme, &ui.glyph_cache);
+        let pos = self.get_position(&ui.theme);
+
+        let (xy, drag_state) = {
+            // A function for producing the initial xy coords.
+            let init_xy = || {
+                let (h_align, v_align) = self.get_alignment(&ui.theme);
+                let new_xy = ui.get_xy(pos, dim, h_align, v_align);
+                new_xy
+            };
+
+            // Check to see if the widget is currently being dragged and return the new xy / drag.
+            match maybe_prev_state {
+                None => (init_xy(), drag::State::Normal),
+                Some(ref prev_state) => {
+                    let maybe_mouse = ui::get_mouse_state(ui, id);
+                    let maybe_drag_area = self.drag_area(prev_state.xy, dim, &new_style, &ui.theme);
+                    match (maybe_drag_area, maybe_mouse) {
+                        // If there is some draggable area and mouse, drag the xy.
+                        (Some(drag_area), Some(mouse)) => {
+                            let drag_state = prev_state.drag_state;
+
+                            // Drag the xy of the widget and return the new xy.
+                            drag::drag_widget(prev_state.xy, drag_area, drag_state, mouse)
+                        },
+                        // Otherwise just return the regular xy and drag state.
+                        _ => (init_xy(), drag::State::Normal),
+                    }
+                },
+            }
+        };
 
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
         let maybe_parent_id = self.common().maybe_parent_id
             .or_else(|| ui::parent_from_position(ui, pos));
 
+        // Determine whether or not this is the first time set has been called.
+        // We'll use this to determine whether or not we need to call Widget::draw.
+        let is_first_set = maybe_prev_state.is_none();
+
+        // Unwrap the previous state. If there is no previous state to unwrap, call the
+        // `init_state` method to use the initial state as the prev_state.
+        let prev_state = maybe_prev_state.unwrap_or_else(|| State {
+            state: self.init_state(),
+            xy: xy,
+            dim: dim,
+            depth: depth,
+            drag_state: drag_state,
+        });
+
         // Update the widget's state.
         let maybe_new_state = {
             // Construct a UserInput for the widget.
-            let user_input = ui::user_input(ui, id);
-            let Ui { ref theme, ref glyph_cache, .. } = *ui;
-            self.update(&prev_state, xy, dim, user_input, &new_style, theme, glyph_cache)
+            let input = ui::user_input(ui, id);
+            let args = UpdateArgs {
+                prev_state: &prev_state,
+                xy: xy,
+                dim: dim,
+                input: input,
+                style: &new_style,
+                theme: &ui.theme,
+                glyph_cache: &ui.glyph_cache,
+            };
+            self.update(args)
         };
 
         // Check for whether or not the user input needs to be captured or uncaptured.
@@ -250,17 +317,12 @@ pub trait Widget: Sized {
         }
 
         // Determine whether or not the `State` has changed.
-        let (state_has_changed, new_state) = {
-            match maybe_new_state {
-                Some(new_state) =>
-                    (true, State { dim: dim, xy: xy, depth: depth, state: new_state }),
-                None => {
-                    let has_changed = xy != prev_state.xy
-                        || dim != prev_state.dim
-                        || depth != prev_state.depth;
-                    (has_changed, State { dim: dim, xy: xy, depth: depth, ..prev_state })
-                },
-            }
+        let state_has_changed = match maybe_new_state {
+            Some(_) => true,
+            None => xy != prev_state.xy
+                || dim != prev_state.dim
+                || depth != prev_state.depth
+                || is_first_set,
         };
 
         // Determine whether or not the widget's `Style` has changed.
@@ -269,32 +331,90 @@ pub trait Widget: Sized {
             None => false,
         };
 
+        // Construct the resulting new State to be passed to the `draw` method.
+        let new_state = State {
+            state: maybe_new_state.unwrap_or_else(move || {
+                let State { state, .. } = prev_state;
+                state
+            }),
+            dim: dim,
+            xy: xy,
+            depth: depth,
+            drag_state: drag_state,
+        };
+
+        // Retrieve the area upon which kid widgets will be placed.
+        let kid_area = Self::kid_area(&new_state, &new_style, &ui.theme);
+
         // Construct the widget's element.
         let maybe_new_element = if style_has_changed || state_has_changed {
-            let Ui { ref theme, ref glyph_cache, .. } = *ui;
-            Some(Self::draw(&new_state, &new_style, theme, glyph_cache))
+            let args = DrawArgs {
+                state: &new_state,
+                style: &new_style,
+                theme: &ui.theme,
+                glyph_cache: &ui.glyph_cache,
+            };
+            Some(Self::draw(args))
         } else {
             None
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth } = new_state;
+        let State { state, dim, xy, depth, drag_state } = new_state;
         let cached: Cached<Self> = Cached {
             state: state,
             style: new_style,
             dim: dim,
             xy: xy,
             depth: depth,
-            // TODO: Implement these proplerly
-            kid_area_xy: xy,
-            kid_area_dim: dim,
-            kid_area_pad: Padding::none(),
+            drag_state: drag_state,
+            kid_area: kid_area,
         };
         ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
     }
 
 }
 
+/// Arguments for the `Widget::update` method in a struct to simplify the method signature.
+pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
+    /// The Widget's state that was last returned by the update method.
+    pub prev_state: &'a State<W::State>,
+    /// The absolute (centered origin) screen position of the widget.
+    pub xy: Point,
+    /// The dimensions of the Widget.
+    pub dim: Dimensions,
+    /// The current state of user input (i.e. mouse, keys pressed, etc).
+    pub input: UserInput<'b>,
+    /// The Widget's current Style.
+    pub style: &'a W::Style,
+    /// The active `Theme` within the `Ui`.
+    pub theme: &'a Theme,
+    /// The `Ui`'s GlyphCache (for determining text width, etc).
+    pub glyph_cache: &'a GlyphCache<C>,
+}
+
+/// Arguments for the `Widget::draw` method in a struct to simplify the method signature.
+pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
+    /// The current state of the Widget.
+    pub state: &'a State<W::State>,
+    /// The current style of the Widget.
+    pub style: &'a W::Style,
+    /// The active `Theme` within the `Ui`.
+    pub theme: &'a Theme,
+    /// The `Ui`'s GlyphCache (for determining text width, etc).
+    pub glyph_cache: &'a GlyphCache<C>,
+}
+
+/// The area upon which a Widget's child widgets will be placed.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct KidArea {
+    /// The coords of the centre of the rectangle.
+    pub xy: Point,
+    /// The dimensions of the area.
+    pub dim: Dimensions,
+    /// The distance between the edge of the area and where the widgets will be placed.
+    pub pad: Padding,
+}
 
 /// A struct containing builder data common to all Widget types.
 /// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
@@ -314,21 +434,6 @@ pub struct CommonBuilder {
     pub maybe_depth: Option<Depth>,
     /// The parent widget of the Widget.
     pub maybe_parent_id: Option<WidgetId>,
-    /// The padding for the area where child widgets will be placed.
-    pub kid_area_pad: PaddingBuilder,
-}
-
-/// A builder for the padding of the area where child widgets will be placed.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct PaddingBuilder {
-    /// The padding for the left of the area where child widgets will be placed.
-    pub maybe_left: Option<Scalar>,
-    /// The padding for the right of the area where child widgets will be placed.
-    pub maybe_right: Option<Scalar>,
-    /// The padding for the top of the area where child widgets will be placed.
-    pub maybe_top: Option<Scalar>,
-    /// The padding for the bottom of the area where child widgets will be placed.
-    pub maybe_bottom: Option<Scalar>,
 }
 
 /// Represents the unique cached state of a widget.
@@ -342,6 +447,8 @@ pub struct State<T> {
     pub xy: Point,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
+    /// The current state of the dragged widget, if it is draggable.
+    pub drag_state: drag::State,
 }
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
@@ -356,12 +463,10 @@ pub struct Cached<W> where W: Widget {
     pub xy: Point,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
-    /// The position of the area in which child widgets are placed.
-    pub kid_area_xy: Point,
-    /// The dimensions of the area in which child widgets are placed.
-    pub kid_area_dim: Dimensions,
-    /// Padding of the area in which child widgets are placed.
-    pub kid_area_pad: Padding,
+    /// The current state of the dragged widget, if it is draggable.
+    pub drag_state: drag::State,
+    /// The area in which child widgets are placed.
+    pub kid_area: KidArea,
 }
 
 
@@ -376,12 +481,6 @@ impl CommonBuilder {
             maybe_v_align: None,
             maybe_depth: None,
             maybe_parent_id: None,
-            kid_area_pad: PaddingBuilder {
-                maybe_left: None,
-                maybe_right: None,
-                maybe_top: None,
-                maybe_bottom: None,
-            },
         }
     }
 }
@@ -445,30 +544,6 @@ impl<T> Sizeable for T where T: Widget {
     #[inline]
     fn get_height(&self, theme: &Theme) -> f64 {
         self.common().maybe_height.unwrap_or(self.default_height(theme))
-    }
-    /// Set the padding of the left of the area where child widgets will be placed.
-    #[inline]
-    fn pad_left(mut self, pad: Scalar) -> Self {
-        self.common_mut().kid_area_pad.maybe_left = Some(pad);
-        self
-    }
-    /// Set the padding of the right of the area where child widgets will be placed.
-    #[inline]
-    fn pad_right(mut self, pad: Scalar) -> Self {
-        self.common_mut().kid_area_pad.maybe_right = Some(pad);
-        self
-    }
-    /// Set the padding of the top of the area where child widgets will be placed.
-    #[inline]
-    fn pad_top(mut self, pad: Scalar) -> Self {
-        self.common_mut().kid_area_pad.maybe_top = Some(pad);
-        self
-    }
-    /// Set the padding of the bottom of the area where child widgets will be placed.
-    #[inline]
-    fn pad_bottom(mut self, pad: Scalar) -> Self {
-        self.common_mut().kid_area_pad.maybe_bottom = Some(pad);
-        self
     }
 }
 

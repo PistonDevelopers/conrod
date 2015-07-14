@@ -7,11 +7,10 @@ use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast, ToPrimitive};
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use utils::{clamp, percentage, value_from_perc};
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Linear value selection. If the slider's width is greater than it's height, it will
@@ -163,19 +162,12 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State<T>>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State<T>>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<T>>
+        where C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
@@ -266,16 +258,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Construct an Element from the given Slider State.
-    fn draw<C>(new_state: &widget::State<State<T>>,
-               style: &Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
         let frame = style.frame(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_color = state.color(style.frame_color(theme));
@@ -308,6 +297,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // Label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
             use elmesque::text::Text;
+            use position;
             const TEXT_PADDING: f64 = 10.0;
             let label_color = style.label_color(theme);
             let size = style.label_font_size(theme);

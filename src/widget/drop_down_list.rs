@@ -6,10 +6,10 @@ use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::{self, Dimensions, Point, Positionable};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::GlyphCache;
+use widget::{self, Widget};
 
 
 /// The index of a selected item.
@@ -405,17 +405,10 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache
     {
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
@@ -503,17 +496,14 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Retrieve the styling for the Element.
         let color = style.color(theme);

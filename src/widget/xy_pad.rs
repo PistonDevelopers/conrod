@@ -7,13 +7,12 @@ use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::Float;
-use position::{self, Corner, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
-use std::default::Default;
+use position::{self, Corner};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -168,19 +167,12 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State<X, Y>>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State<X, Y>>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<X, Y>>
+        where C: CharacterCache,
     {
         use utils::is_over_rect;
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
@@ -239,17 +231,14 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Construct an Element from the given XYPad State.
-    fn draw<C>(new_state: &widget::State<State<X, Y>>,
-               style: &Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
         let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);

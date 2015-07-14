@@ -7,14 +7,14 @@ use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast};
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{Dimensions, Point};
 use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
-use ui::{GlyphCache, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::GlyphCache;
+use widget::{self, Widget};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
@@ -246,19 +246,13 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State<T>>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     glyph_cache: &GlyphCache<C>) -> Option<State<T>>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<T>>
+        where C: CharacterCache,
     {
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, glyph_cache } = args;
         let widget::State { ref state, .. } = *prev_state;
+
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
@@ -356,17 +350,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Construct an Element from the given NumberDialer State.
-    fn draw<C>(new_state: &widget::State<State<T>>,
-               style: &Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Construct the frame and inner rectangle Forms.
         let frame = style.frame(theme);

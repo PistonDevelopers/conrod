@@ -1,7 +1,6 @@
 
-use Scalar;
 use graphics::character::CharacterCache;
-use position::{self, Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
+use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
 use ui::{self, GlyphCache, Ui};
 
@@ -126,17 +125,5 @@ impl position::Sizeable for Matrix {
     }
     fn get_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> f64 { self.dim[0] }
     fn get_height(&self, _theme: &Theme) -> f64 { self.dim[1] }
-    fn pad_left(mut self, pad: Scalar) -> Self {
-        unimplemented!();
-    }
-    fn pad_right(mut self, pad: Scalar) -> Self {
-        unimplemented!();
-    }
-    fn pad_top(mut self, pad: Scalar) -> Self {
-        unimplemented!();
-    }
-    fn pad_bottom(mut self, pad: Scalar) -> Self {
-        unimplemented!();
-    }
 }
 

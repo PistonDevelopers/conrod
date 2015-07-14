@@ -6,15 +6,15 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::Positionable;
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
-use widget::{self, CommonBuilder, Widget, WidgetId};
+use ui::GlyphCache;
+use widget::{self, Widget};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
-    common: CommonBuilder,
+    common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
     style: Style,
@@ -22,13 +22,18 @@ pub struct Button<'a, F> {
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
+#[allow(missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// Color of the Button's pressable area.
     pub maybe_color: Option<Color>,
+    /// Width of the frame surrounding the button
     pub maybe_frame: Option<f64>,
+    /// The color of the frame.
     pub maybe_frame_color: Option<Color>,
+    /// The color of the Button's label.
     pub maybe_label_color: Option<Color>,
+    /// The font size of the Button's label.
     pub maybe_label_font_size: Option<u32>,
 }
 
@@ -79,7 +84,7 @@ impl<'a, F> Button<'a, F> {
     /// Create a button context to be built upon.
     pub fn new() -> Button<'a, F> {
         Button {
-            common: CommonBuilder::new(),
+            common: widget::CommonBuilder::new(),
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
@@ -108,6 +113,7 @@ impl<'a, F> Widget for Button<'a, F>
 {
     type State = State;
     type Style = Style;
+
     fn common(&self) -> &widget::CommonBuilder { &self.common }
     fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "Button" }
@@ -131,18 +137,11 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     _style: &Style,
-                     _theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
         use utils::is_over_rect;
+        let widget::UpdateArgs { prev_state, xy, dim, input, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
@@ -178,15 +177,13 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));

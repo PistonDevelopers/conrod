@@ -4,13 +4,11 @@ use elmesque::{Element, Renderer};
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use petgraph as pg;
-use position::{Depth, Dimensions, Padding, Point};
+use position::{Depth, Dimensions, Point};
 use self::index_map::{IndexMap, GraphIndex};
 use std::any::Any;
 use std::fmt::Debug;
-use std::ops::Index;
 use widget::{self, Widget, WidgetId};
-use ui::GlyphCache;
 
 
 mod index_map;
@@ -46,16 +44,14 @@ pub struct Container {
     pub xy: Point,
     /// The depth at which the widget will be rendered comparatively to its siblings.
     pub depth: Depth,
+    /// The drag state of the Widget.
+    pub drag_state: widget::drag::State,
     /// The element used for drawing the widget.
     pub element: Element,
     /// Whether or not the widget has been updated since the last time it was drawn.
     pub has_updated: bool,
-    /// The position of the area in which child widgets are placed.
-    pub kid_area_xy: Point,
-    /// The dimensions of the area in which child widgets are placed.
-    pub kid_area_dim: Dimensions,
-    /// Padding of the area in which child widgets are placed.
-    pub kid_area_pad: Padding,
+    /// The area in which child widgets are placed.
+    pub kid_area: widget::KidArea,
 }
 
 /// A node within the UI Graph.
@@ -97,9 +93,8 @@ impl Container {
             dim,
             xy,
             depth,
-            kid_area_xy,
-            kid_area_dim,
-            kid_area_pad,
+            drag_state,
+            kid_area,
             ..
         } = *self;
 
@@ -114,9 +109,8 @@ impl Container {
                 dim: dim,
                 xy: xy,
                 depth: depth,
-                kid_area_xy: kid_area_xy,
-                kid_area_dim: kid_area_dim,
-                kid_area_pad: kid_area_pad,
+                drag_state: drag_state,
+                kid_area: kid_area,
             }
         })
     }
@@ -125,12 +119,6 @@ impl Container {
 
 
 impl Graph {
-
-    /// Construct a new Ui Graph with default capacity.
-    pub fn new() -> Graph {
-        const DEFAULT_CAPACITY: usize = 512;
-        Graph::with_capacity(DEFAULT_CAPACITY)
-    }
 
     /// Construct a new Graph with the given capacity.
     pub fn with_capacity(capacity: usize) -> Graph {
@@ -310,9 +298,8 @@ impl Graph {
             xy,
             dim,
             depth,
-            kid_area_xy,
-            kid_area_dim,
-            kid_area_pad,
+            drag_state,
+            kid_area,
         } = cached;
 
         let stored: StoredWidget<W::State, W::Style> = StoredWidget { state: state, style: style };
@@ -327,11 +314,10 @@ impl Graph {
                     xy: xy,
                     dim: dim,
                     depth: depth,
+                    drag_state: drag_state,
                     element: maybe_new_element.unwrap_or_else(|| ::elmesque::element::empty()),
                     has_updated: true,
-                    kid_area_xy: kid_area_xy,
-                    kid_area_dim: kid_area_dim,
-                    kid_area_pad: kid_area_pad,
+                    kid_area: kid_area,
                 };
                 self.add_widget(container, Some(id), maybe_parent_idx);
             },
@@ -355,10 +341,9 @@ impl Graph {
                 container.xy = xy;
                 container.dim = dim;
                 container.depth = depth;
+                container.drag_state = drag_state;
                 container.has_updated = true;
-                container.kid_area_xy = kid_area_xy;
-                container.kid_area_dim = kid_area_dim;
-                container.kid_area_pad = kid_area_pad;
+                container.kid_area = kid_area;
                 if let Some(new_element) = maybe_new_element {
                     container.element = new_element;
                 }
@@ -381,8 +366,7 @@ impl Graph {
         G: Graphics<Texture = C::Texture>,
     {
         let Graph { ref mut graph, ref index_map, root, .. } = *self;
-        let root_idx = self.root;
-        draw_node(root_idx,
+        draw_node(root,
                   maybe_captured_mouse.map(|id| index_map[id]),
                   maybe_captured_keyboard.map(|id| index_map[id]),
                   graph,

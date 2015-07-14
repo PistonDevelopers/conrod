@@ -4,9 +4,8 @@ use color::{Color, Colorable};
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use widget::{self, Widget, WidgetId};
 
 
@@ -72,32 +71,22 @@ impl<'a> Widget for Label<'a> {
     }
 
     /// Update the state of the Label.
-    fn update<'b, C>(self,
-                     prev_state: &widget::State<State>,
-                     _xy: Point,
-                     _dim: Dimensions,
-                     _input: UserInput<'b>,
-                     _style: &Style,
-                     _theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
+        let widget::UpdateArgs { prev_state, .. } = args;
         let widget::State { state: State(ref string), .. } = *prev_state;
         if &string[..] != self.text { Some(State(self.text.to_string())) } else { None }
     }
 
     /// Construct an Element for the Label.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
-        let widget::State { state: State(ref string), dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { state: State(ref string), dim, xy, .. } = *state;
         let size = style.font_size(theme);
         let color = style.color(theme);
         let form = text(Text::from_string(string.clone())

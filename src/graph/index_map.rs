@@ -47,11 +47,11 @@ impl IndexMap {
         idx.to_node_index(self)
     }
 
-    /// Takes an arbitrary GraphIndex and converts it to a node index.
-    #[inline]
-    pub fn to_widget_id<I: GraphIndex>(&self, idx: I) -> Option<WidgetId> {
-        idx.to_widget_id(self)
-    }
+    // /// Takes an arbitrary GraphIndex and converts it to a node index.
+    // #[inline]
+    // pub fn to_widget_id<I: GraphIndex>(&self, idx: I) -> Option<WidgetId> {
+    //     idx.to_widget_id(self)
+    // }
 
 }
 
@@ -73,8 +73,11 @@ impl Index<NodeIndex> for IndexMap {
 /// A trait for being generic over both WidgetId and NodeIndex.
 /// Each method should only return `Some` if they are contained as a key within the given IndexMap.
 pub trait GraphIndex: ::std::fmt::Debug + Copy + Clone {
+    /// Convert Self to a WidgetId if it exists within the IndexMap.
     fn to_widget_id(self, map: &IndexMap) -> Option<WidgetId>;
+    /// Convert Self to a NodeIndex if it exists within the IndexMap.
     fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex>;
+    /// Convert some index to Self if it exists within the IndexMap.
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self>;
 }
 

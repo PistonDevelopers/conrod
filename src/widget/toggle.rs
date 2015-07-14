@@ -6,10 +6,9 @@ use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
-use widget::{self, Widget, WidgetId};
+use ui::GlyphCache;
+use widget::{self, Widget};
 
 
 /// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
@@ -141,19 +140,12 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Update the state of the Toggle.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     _style: &Style,
-                     _theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
         use utils::is_over_rect;
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
@@ -195,16 +187,13 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Construct the frame and pressable forms.
         let frame = style.frame(theme);

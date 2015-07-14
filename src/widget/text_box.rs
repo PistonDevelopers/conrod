@@ -8,11 +8,11 @@ use label::FontSize;
 use mouse::Mouse;
 use num::Float;
 use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{self, Dimensions, Point};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use vecmath::vec2_sub;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 pub type Idx = usize;
@@ -364,18 +364,11 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextBox.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, glyph_cache } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
@@ -499,17 +492,14 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Construct an Element from the given TextBox State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Construct the frame and inner rectangle Forms.
         let frame = style.frame(theme);

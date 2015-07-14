@@ -15,10 +15,9 @@ use piston::event::{
     RenderEvent,
     TextEvent,
 };
-use position::{Depth, Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
+use position::{Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
 use std::any::Any;
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget, WidgetId};
@@ -66,6 +65,8 @@ pub struct Ui<C> {
     maybe_prev_widget_id: Option<WidgetId>,
     /// The WidgetId of the last widget used as a parent for another widget.
     maybe_current_parent_id: Option<WidgetId>,
+    /// If the mouse is currently over a widget, its ID will be here.
+    maybe_mouse_over_widget: Option<WidgetId>,
     /// The WidgetId of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
@@ -118,7 +119,7 @@ impl<C> Ui<C> {
     pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
         const GRAPH_CAPACITY: usize = 512;
         Ui {
-            widget_graph: Graph::with_capacity(512),
+            widget_graph: Graph::with_capacity(GRAPH_CAPACITY),
             theme: theme,
             mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
             keys_just_pressed: Vec::with_capacity(10),
@@ -130,6 +131,7 @@ impl<C> Ui<C> {
             win_h: 0.0,
             maybe_prev_widget_id: None,
             maybe_current_parent_id: None,
+            maybe_mouse_over_widget: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
         }
@@ -164,6 +166,7 @@ impl<C> Ui<C> {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
+            self.maybe_mouse_over_widget = self.widget_graph.pick_widget(self.mouse.xy);
         });
 
         event.mouse_cursor(|x, y| {
@@ -299,8 +302,7 @@ impl<C> Ui<C> {
                 let (xy, target_dim, pad) = match maybe_parent_id.or(self.maybe_current_parent_id) {
                     Some(parent_id) => {
                         let parent = &self.widget_graph[parent_id];
-                        // TODO: implement this stuff in graph::Container some how.
-                        (parent.kid_area_xy, parent.kid_area_dim, parent.kid_area_pad.clone())
+                        (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad)
                     },
                     None => ([0.0, 0.0], [self.win_w, self.win_h], Padding::none()),
                 };

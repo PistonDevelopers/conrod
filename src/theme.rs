@@ -46,6 +46,8 @@ pub struct Theme {
     // pub maybe_canvas_floating: Option<canvas::floating::Style>,
     /// Optional style defaults for a Button widget.
     pub maybe_button: Option<WidgetDefault<widget::button::Style>>,
+    /// Optional style defaults for a Canvas widget.
+    pub maybe_canvas: Option<WidgetDefault<widget::canvas::Style>>,
     /// Optional style defaults for a DropDownList.
     pub maybe_drop_down_list: Option<WidgetDefault<widget::drop_down_list::Style>>,
     /// Optional style defaults for an EnvelopeEditor.
@@ -74,7 +76,9 @@ pub struct Align {
 /// The defaults for a specific widget.
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct WidgetDefault<T> {
+    /// The unique style of a widget.
     pub style: T,
+    /// The attributes commonly shared between widgets.
     pub common: widget::CommonBuilder,
 }
 
@@ -124,6 +128,7 @@ impl Theme {
             // maybe_canvas_split: None,
             // maybe_canvas_floating: None,
             maybe_button: None,
+            maybe_canvas: None,
             maybe_drop_down_list: None,
             maybe_envelope_editor: None,
             maybe_number_dialer: None,

@@ -20,10 +20,8 @@ extern crate rustc_serialize;
 extern crate vecmath;
 
 
-// pub use canvas::split::Split;
-// pub use canvas::floating::Floating;
-
 pub use widget::button::Button;
+pub use widget::canvas::Canvas;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
@@ -36,6 +34,7 @@ pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
 
 pub use widget::button::Style as ButtonStyle;
+pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
 pub use widget::label::Style as LabelStyle;
@@ -47,7 +46,6 @@ pub use widget::xy_pad::Style as XYPadStyle;
 
 
 pub use background::Background;
-//pub use canvas::{Canvas, CanvasId};
 pub use elmesque::color;
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
@@ -79,7 +77,7 @@ mod graph;
 mod label;
 mod mouse;
 mod position;
-mod theme;
+pub mod theme;
 mod ui;
 pub mod utils;
 mod widget;
