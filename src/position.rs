@@ -364,47 +364,6 @@ pub trait Sizeable: Sized {
         [self.get_width(theme, glyph_cache), self.get_height(theme)]
     }
 
-    // /// Set the padding for the left of widget.
-    // fn pad_left(self, pad: Scalar) -> Self;
-
-    // /// Set the padding for the right of widget.
-    // fn pad_right(self, pad: Scalar) -> Self;
-
-    // /// Set the padding for the top of widget.
-    // fn pad_top(self, pad: Scalar) -> Self;
-
-    // /// Set the padding for the bottom of widget.
-    // fn pad_bottom(self, pad: Scalar) -> Self;
-
-    // /// Set the padding for the widget.
-    // #[inline]
-    // fn pad(self, pad: Padding) -> Self {
-    //     self.pad_left(pad.left)
-    //         .pad_right(pad.right)
-    //         .pad_top(pad.top)
-    //         .pad_bottom(pad.bottom)
-    // }
-
-    // /// Get the padding from the left of the Widget.
-    // fn get_pad_left(&self, _theme: &Theme) -> Scalar;
-    // /// Get the padding from the right of the Widget.
-    // fn get_pad_right(&self, _theme: &Theme) -> Scalar;
-    // /// Get the padding from the top of the Widget.
-    // fn get_pad_top(&self, _theme: &Theme) -> Scalar;
-    // /// Get the padding from the bottom of the Widget.
-    // fn get_pad_bottom(&self, _theme: &Theme) -> Scalar;
-    // 
-    // /// Retrieve the padding for the widget, considering the active Theme.
-    // #[inline]
-    // fn get_padding(&self, theme: &Theme) -> Padding {
-    //     Padding {
-    //         left: self.get_pad_left(theme),
-    //         right: self.get_pad_right(theme),
-    //         top: self.get_pad_top(theme),
-    //         bottom: self.get_pad_bottom(theme),
-    //     }
-    // }
-
 }
 
 /// A corner of a rectangle.
