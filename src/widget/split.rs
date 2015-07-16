@@ -1,75 +1,40 @@
 
+use Scalar;
 use color::Color;
-use graphics::math::Scalar;
-use position::{self, Dimensions, Direction, Point};
-use theme::Theme;
-use ui::{self, Ui};
+use graphics::character::CharacterCache;
+use position::{Dimensions, Direction, Point, Positionable, Sizeable};
+use super::canvas;
+use widget::{Widget, WidgetId};
+use ui::Ui;
 
-use super::{CanvasId, Kind};
-
-/// The length of a Split.
-pub type Length = Scalar;
-
-/// The current state of a Split.
-#[derive(Clone, Debug, PartialEq)]
-pub struct State;
 
 /// A type of Canvas for flexibly designing and guiding widget layout as splits of a window.
 pub struct Split<'a> {
-    id: CanvasId,
+    id: WidgetId,
+    style: canvas::Style,
     maybe_splits: Option<(Direction, &'a [Split<'a>])>,
-    maybe_length: Option<f64>,
-    style: Style,
-    //maybe_adjustable: Option<Bounds>,
+    maybe_length: Option<Scalar>,
 }
 
-/// Describes the style of a Canvas Split.
-#[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
-pub struct Style {
-    maybe_frame: Option<f64>,
-    maybe_frame_color: Option<Color>,
-    maybe_color: Option<Color>,
-    padding: Padding,
-    margin: Margin,
-}
-
-/// The distance between the edge of a widget and the inner edge of a Canvas' frame.
-#[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
-pub struct Padding {
-    maybe_top: Option<f64>,
-    maybe_bottom: Option<f64>,
-    maybe_left: Option<f64>,
-    maybe_right: Option<f64>,
-}
-
-/// The distance between the edge of a Canvas' outer dimensions and the outer edge of its frame.
-#[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
-pub struct Margin {
-    maybe_top: Option<f64>,
-    maybe_bottom: Option<f64>,
-    maybe_left: Option<f64>,
-    maybe_right: Option<f64>,
-}
 
 impl<'a> Split<'a> {
 
     /// Construct a default Canvas Split.
-    pub fn new(id: CanvasId) -> Split<'a> {
+    pub fn new(id: WidgetId) -> Split<'a> {
         Split {
             id: id,
+            style: canvas::Style::new(),
             maybe_splits: None,
             maybe_length: None,
-            //maybe_adjustable: None,
-            style: Style::new(),
         }
     }
 
     /// Set the dimension of the Split.
-    pub fn length(mut self, length: Length) -> Split<'a> {
+    pub fn length(mut self, length: Scalar) -> Split<'a> {
         self.maybe_length = Some(length);
         self
     }
-    
+
     /// Set the child Canvas Splits of the current Canvas flowing in a given direction.
     pub fn flow(mut self, dir: Direction, splits: &'a [Split<'a>]) -> Split<'a> {
         self.maybe_splits = Some((dir, splits));
@@ -126,50 +91,53 @@ impl<'a> Split<'a> {
     }
 
     /// Set the margin from the left edge.
-    pub fn margin_left(mut self, pad: Scalar) -> Split<'a> {
-        self.style.margin.maybe_left = Some(pad);
+    pub fn margin_left(mut self, mgn: Scalar) -> Split<'a> {
+        self.style.margin.maybe_left = Some(mgn);
         self
     }
 
     /// Set the margin from the right edge.
-    pub fn margin_right(mut self, pad: Scalar) -> Split<'a> {
-        self.style.margin.maybe_right = Some(pad);
+    pub fn margin_right(mut self, mgn: Scalar) -> Split<'a> {
+        self.style.margin.maybe_right = Some(mgn);
         self
     }
 
     /// Set the margin from the top edge.
-    pub fn margin_top(mut self, pad: Scalar) -> Split<'a> {
-        self.style.margin.maybe_top = Some(pad);
+    pub fn margin_top(mut self, mgn: Scalar) -> Split<'a> {
+        self.style.margin.maybe_top = Some(mgn);
         self
     }
 
     /// Set the margin from the bottom edge.
-    pub fn margin_bottom(mut self, pad: Scalar) -> Split<'a> {
-        self.style.margin.maybe_bottom = Some(pad);
+    pub fn margin_bottom(mut self, mgn: Scalar) -> Split<'a> {
+        self.style.margin.maybe_bottom = Some(mgn);
         self
     }
 
     /// Set the margin for all edges.
-    pub fn margin(self, pad: Scalar) -> Split<'a> {
-        self.margin_left(pad).margin_right(pad).margin_top(pad).margin_bottom(pad)
+    pub fn margin(self, mgn: Scalar) -> Split<'a> {
+        self.margin_left(mgn).margin_right(mgn).margin_top(mgn).margin_bottom(mgn)
     }
 
-    /// Store the Canvas and it's children within the `Ui`. Each Canvas can be accessed via it's
-    /// unique identifier `CanvasId`.
-    pub fn set<C>(self, ui: &mut Ui<C>) {
+    /// Store the Canvas and its children within the `Ui`.
+    pub fn set<C>(self, ui: &mut Ui<C>) where C: CharacterCache {
         let dim = [ui.win_w as f64, ui.win_h as f64];
-        self.into_ui(dim, [0.0, 0.0], ui);
+        self.into_ui(dim, [0.0, 0.0], None, ui);
     }
 
     /// Construct a Canvas from a Split.
-    fn into_ui<C>(&self, dim: Dimensions, xy: Point, ui: &mut Ui<C>) {
-        use elmesque::form::{rect, collage};
+    fn into_ui<C>(&self,
+                  dim: Dimensions,
+                  xy: Point,
+                  maybe_parent: Option<WidgetId>,
+                  ui: &mut Ui<C>)
+        where
+            C: CharacterCache,
+    {
         use vecmath::{vec2_add, vec2_sub};
 
-        let Split { id, ref maybe_splits, ref style, .. } = *self;
+        let Split { id, ref style, ref maybe_splits, .. } = *self;
 
-        let color = style.color(&ui.theme);
-        let frame_color = style.frame_color(&ui.theme);
         let frame = style.frame(&ui.theme);
         let pad = style.padding(&ui.theme);
         let mgn = style.margin(&ui.theme);
@@ -260,122 +228,18 @@ impl<'a> Split<'a> {
                     },
                 }
 
-                split.into_ui(split_dim, current_xy, ui);
+                split.into_ui(split_dim, current_xy, Some(id), ui);
             }
         }
 
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = rect(frame_dim[0], frame_dim[1]).filled(color);
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form).into_iter())
-            .map(|form| form.shift(xy[0], xy[1]));
-
-        let element = collage(frame_dim[0] as i32, frame_dim[1] as i32, form_chain.collect());
-
-        let widget_area_xy = xy;
-        let widget_area_dim = dim;
-
-        ui::update_canvas(ui, id, Kind::Split(State), xy, widget_area_xy,
-                          widget_area_dim, pad, Some(element));
+        let mut canvas = canvas::Canvas::new();
+        canvas.style = style.clone();
+        match maybe_parent {
+            Some(parent_id) => canvas.parent(parent_id),
+            None => canvas,
+        }.point(xy).dim(dim).set(id, ui);
     }
 
-}
-
-
-impl Style {
-
-    /// Construct a default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_color: None,
-            padding: Padding::new(),
-            margin: Margin::new(),
-        }
-    }
-
-    /// Get the color for the Split's Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.background_color)
-        })).unwrap_or(theme.background_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_canvas_split.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the Padding for the Canvas Split.
-    pub fn padding(&self, theme: &Theme) -> position::Padding {
-        position::Padding {
-            top: self.padding.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_top.unwrap_or(theme.padding.top)
-            })).unwrap_or(theme.padding.top),
-            bottom: self.padding.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_bottom.unwrap_or(theme.padding.bottom)
-            })).unwrap_or(theme.padding.bottom),
-            left: self.padding.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_left.unwrap_or(theme.padding.left)
-            })).unwrap_or(theme.padding.left),
-            right: self.padding.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.padding.maybe_right.unwrap_or(theme.padding.right)
-            })).unwrap_or(theme.padding.right),
-        }
-    }
-
-    /// Get the Margin for the Canvas Split.
-    pub fn margin(&self, theme: &Theme) -> position::Margin {
-        position::Margin {
-            top: self.margin.maybe_top.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_top.unwrap_or(theme.margin.top)
-            })).unwrap_or(theme.margin.top),
-            bottom: self.margin.maybe_bottom.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
-            })).unwrap_or(theme.margin.bottom),
-            left: self.margin.maybe_left.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_left.unwrap_or(theme.margin.left)
-            })).unwrap_or(theme.margin.left),
-            right: self.margin.maybe_right.or(theme.maybe_canvas_split.as_ref().map(|style| {
-                style.margin.maybe_right.unwrap_or(theme.margin.right)
-            })).unwrap_or(theme.margin.right),
-        }
-    }
-
-}
-
-impl Padding {
-    /// Construct a defualt Padding.
-    pub fn new() -> Padding {
-        Padding {
-            maybe_top: None,
-            maybe_bottom: None,
-            maybe_left: None,
-            maybe_right: None,
-        }
-    }
-}
-
-impl Margin {
-    /// Construct a defualt Margin.
-    pub fn new() -> Margin {
-        Margin {
-            maybe_top: None,
-            maybe_bottom: None,
-            maybe_left: None,
-            maybe_right: None,
-        }
-    }
 }
 
 
@@ -396,4 +260,5 @@ impl<'a> ::frame::Frameable for Split<'a> {
         self
     }
 }
+
 

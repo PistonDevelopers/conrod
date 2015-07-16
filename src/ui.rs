@@ -144,6 +144,8 @@ impl<C> Ui<C> {
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
+
+        // The `Ui` tracks various things during a frame - we'll reset those things here.
         if self.prev_event_was_render {
 
             // Flush input.
@@ -153,6 +155,7 @@ impl<C> Ui<C> {
             self.mouse.scroll = Scroll { x: 0.0, y: 0.0 };
 
             self.maybe_prev_widget_id = None;
+            self.maybe_current_parent_id = None;
             self.prev_event_was_render = false;
             if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
                 self.maybe_captured_mouse = None;
@@ -553,6 +556,7 @@ pub fn update_widget<C, W>(ui: &mut Ui<C>,
 {
     ui.widget_graph.update_widget(id, maybe_parent_id, kind, cached, maybe_new_element);
     ui.maybe_prev_widget_id = Some(id);
+    ui.maybe_current_parent_id = maybe_parent_id;
 }
 
 

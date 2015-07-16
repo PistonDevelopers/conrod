@@ -226,9 +226,23 @@ impl Graph {
         let Graph { ref mut graph, ref index_map, root, .. } = *self;
         let node_idx = index_map.to_node_index(idx).expect("No NodeIndex for given GraphIndex");
         // If no parent id was given, we will set the root as the parent.
-        let parent_node_idx = maybe_parent_idx
-            .map(|idx| index_map.to_node_index(idx).expect("No NodeIndex for given GraphIndex"))
-            .unwrap_or(root);
+        let parent_node_idx = match maybe_parent_idx {
+            Some(idx) => match index_map.to_node_index(idx) {
+                Some(idx) => idx,
+                // If there is not yet a matching index in the graph for the given parent index, it
+                // may be that the parent widget has not yet been added. For now, we'll just return
+                // out of the function and not set any parent.
+                //
+                // FIXME: A better way to handle this might be to add a temporary node to the graph
+                // at the given parent index so that we can add the edge even in the parent widget's
+                // absense. The temporary node could be replaced by the proper widget later in the
+                // cycle. If the temporary node hasn't been replaced by the time `Graph::draw` is
+                // called, we could assume that there has been some error with the parent id for
+                // this widget and notify the user accordingly.
+                None => return,
+            },
+            None => root,
+        };
 
         // Walk our incoming edges and remove any that aren't connected to our requested parent.
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
@@ -249,7 +263,7 @@ impl Graph {
             if let Some(parent_idx) = maybe_parent_idx {
                 if pg::algo::is_cyclic_directed(graph) {
                     panic!("Adding widget {:?} with the given parent {:?} caused a cycle \
-                           within the Ui Graph", idx, parent_idx);
+                           within the Ui Graph.\n{:?}", idx, parent_idx, graph);
                 }
             }
         }

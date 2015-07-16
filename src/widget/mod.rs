@@ -17,6 +17,7 @@ pub mod label;
 pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
+pub mod split;
 pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
@@ -371,6 +372,7 @@ pub trait Widget: Sized {
             kid_area: kid_area,
         };
         ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
+
     }
 
 }

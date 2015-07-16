@@ -29,6 +29,7 @@ pub use widget::label::Label;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::slider::Slider;
+pub use widget::split::Split;
 pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;

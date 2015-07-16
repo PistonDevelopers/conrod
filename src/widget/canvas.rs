@@ -6,7 +6,7 @@ use elmesque::element::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::Mouse;
-use position::{self, Dimensions, Horizontal, Padding, Place, Point, Position};
+use position::{self, Dimensions, Horizontal, Margin, Padding, Place, Point, Position};
 use super::drag;
 use theme::Theme;
 use widget::{self, Widget};
@@ -16,7 +16,8 @@ use ui::GlyphCache;
 /// A widget designed to be a parent for other widgets.
 pub struct Canvas<'a> {
     common: widget::CommonBuilder,
-    style: Style,
+    /// The builder data related to the style of the Canvas.
+    pub style: Style,
     maybe_title_bar_label: Option<&'a str>,
     show_title_bar: bool,
 }
@@ -53,6 +54,19 @@ pub struct PaddingBuilder {
     pub maybe_bottom: Option<Scalar>,
 }
 
+/// A builder for the margin of the area where child widgets will be placed.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct MarginBuilder {
+    /// The margin for the left of the area where child widgets will be placed.
+    pub maybe_left: Option<Scalar>,
+    /// The margin for the right of the area where child widgets will be placed.
+    pub maybe_right: Option<Scalar>,
+    /// The margin for the top of the area where child widgets will be placed.
+    pub maybe_top: Option<Scalar>,
+    /// The margin for the bottom of the area where child widgets will be placed.
+    pub maybe_bottom: Option<Scalar>,
+}
+
 /// Describes the style of a Canvas Floating.
 #[allow(missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
@@ -71,6 +85,8 @@ pub struct Style {
     pub maybe_title_bar_label_color: Option<Color>,
     /// Padding of the kid area.
     pub padding: PaddingBuilder,
+    /// Margin for the kid area.
+    pub margin: MarginBuilder,
 }
 
 /// Describes an interaction with the Floating Canvas.
@@ -142,6 +158,43 @@ impl<'a> Canvas<'a> {
             .pad_right(pad.right)
             .pad_right(pad.top)
             .pad_right(pad.bottom)
+    }
+
+    /// Set the margin of the left of the area where child widgets will be placed.
+    #[inline]
+    pub fn margin_left(mut self, mgn: Scalar) -> Self {
+        self.style.margin.maybe_left = Some(mgn);
+        self
+    }
+
+    /// Set the margin of the right of the area where child widgets will be placed.
+    #[inline]
+    pub fn margin_right(mut self, mgn: Scalar) -> Self {
+        self.style.margin.maybe_right = Some(mgn);
+        self
+    }
+
+    /// Set the margin of the top of the area where child widgets will be placed.
+    #[inline]
+    pub fn margin_top(mut self, mgn: Scalar) -> Self {
+        self.style.margin.maybe_top = Some(mgn);
+        self
+    }
+
+    /// Set the margin of the bottom of the area where child widgets will be placed.
+    #[inline]
+    pub fn margin_bottom(mut self, mgn: Scalar) -> Self {
+        self.style.margin.maybe_bottom = Some(mgn);
+        self
+    }
+
+    /// Set the padding of the area where child widgets will be placed.
+    #[inline]
+    pub fn margin(self, mgn: Margin) -> Self {
+        self.pad_left(mgn.left)
+            .pad_right(mgn.right)
+            .pad_right(mgn.top)
+            .pad_right(mgn.bottom)
     }
 
 }
@@ -420,7 +473,13 @@ impl Style {
                 maybe_right: None,
                 maybe_top: None,
                 maybe_bottom: None,
-            }
+            },
+            margin: MarginBuilder {
+                maybe_left: None,
+                maybe_right: None,
+                maybe_top: None,
+                maybe_bottom: None,
+            },
         }
     }
 
@@ -482,6 +541,24 @@ impl Style {
             right: self.padding.maybe_right.or(theme.maybe_canvas.as_ref().map(|default| {
                 default.style.padding.maybe_right.unwrap_or(theme.padding.right)
             })).unwrap_or(theme.padding.right),
+        }
+    }
+
+    /// Get the Margin for the Canvas' kid area.
+    pub fn margin(&self, theme: &Theme) -> position::Margin {
+        position::Margin {
+            top: self.margin.maybe_top.or(theme.maybe_canvas.as_ref().map(|default| {
+                default.style.margin.maybe_top.unwrap_or(theme.margin.top)
+            })).unwrap_or(theme.margin.top),
+            bottom: self.margin.maybe_bottom.or(theme.maybe_canvas.as_ref().map(|default| {
+                default.style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
+            })).unwrap_or(theme.margin.bottom),
+            left: self.margin.maybe_left.or(theme.maybe_canvas.as_ref().map(|default| {
+                default.style.margin.maybe_left.unwrap_or(theme.margin.left)
+            })).unwrap_or(theme.margin.left),
+            right: self.margin.maybe_right.or(theme.maybe_canvas.as_ref().map(|default| {
+                default.style.margin.maybe_right.unwrap_or(theme.margin.right)
+            })).unwrap_or(theme.margin.right),
         }
     }
 
