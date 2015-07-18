@@ -129,7 +129,7 @@ impl DemoApp {
 }
 
 fn main() {
-    let opengl = OpenGL::_3_2;
+    let opengl = OpenGL::V3_2;
     let window: GlutinWindow =
         WindowSettings::new(
             "Hello Conrod".to_string(),
