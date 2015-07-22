@@ -5,8 +5,8 @@ use graphics::{Context, Graphics};
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::{ButtonState, Mouse, Scroll};
-use piston::input;
-use piston::event::{
+use input;
+use input::{
     GenericEvent,
     MouseCursorEvent,
     MouseScrollEvent,
@@ -201,8 +201,8 @@ impl<C> Ui<C> {
         });
 
         event.press(|button_type| {
-            use piston::input::Button;
-            use piston::input::MouseButton::{Left, Middle, Right};
+            use input::Button;
+            use input::MouseButton::{Left, Middle, Right};
 
             match button_type {
                 Button::Mouse(button) => {
@@ -218,8 +218,8 @@ impl<C> Ui<C> {
         });
 
         event.release(|button_type| {
-            use piston::input::Button;
-            use piston::input::MouseButton::Left;
+            use input::Button;
+            use input::MouseButton::Left;
             match button_type {
                 Button::Mouse(button) => {
                     *match button {

@@ -13,7 +13,7 @@ extern crate elmesque;
 extern crate graphics;
 extern crate json_io;
 extern crate num;
-#[macro_use] extern crate piston;
+extern crate input;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
