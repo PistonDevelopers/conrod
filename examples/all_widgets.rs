@@ -47,7 +47,8 @@ use glutin_window::GlutinWindow;
 use graphics::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::*;
+use piston::event_loop::{Events, EventLoop};
+use piston::input::{RenderEvent};
 use piston::window::{WindowSettings, Size};
 
 type Ui = conrod::Ui<GlyphCache<'static>>;

@@ -8,7 +8,8 @@ use conrod::{Background, Button, color, Colorable, Labelable, Sizeable, Theme, U
 use glutin_window::GlutinWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event::*;
+use piston::event_loop::{Events, EventLoop};
+use piston::input::{RenderEvent};
 use piston::window::{WindowSettings, Size};
 
 fn main() {
