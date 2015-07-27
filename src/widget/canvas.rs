@@ -364,8 +364,6 @@ impl<'a> Widget for Canvas<'a> {
     {
         use elmesque::form::{collage, rect, text};
 
-        println!("interaction: {:?}", &args.state.state.interaction);
-
         let widget::DrawArgs { state, style, theme, glyph_cache } = args;
         let widget::State { ref state, dim, xy, .. } = *state;
 

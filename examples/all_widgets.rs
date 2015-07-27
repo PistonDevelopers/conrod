@@ -96,7 +96,7 @@ impl DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
-            title_pad: -374.0,
+            title_pad: 350.0,
             v_slider_height: 230.0,
             frame_width: 1.0,
             bool_matrix: vec![ vec![true, true, true, true, true, true, true, true],

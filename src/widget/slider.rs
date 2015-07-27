@@ -147,6 +147,21 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
     fn style(&self) -> Style { self.style.clone() }
 
+    fn capture_mouse(prev: &State<T>, new: &State<T>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Highlighted, Interaction::Clicked) => true,
+            _ => false,
+        }
+    }
+
+    fn uncapture_mouse(prev: &State<T>, new: &State<T>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Clicked, Interaction::Highlighted) => true,
+            (Interaction::Clicked, Interaction::Normal) => true,
+            _ => false,
+        }
+    }
+
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 192.0;
         self.common.maybe_width.or(theme.maybe_slider.as_ref().map(|default| {

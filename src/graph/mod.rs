@@ -489,7 +489,11 @@ fn visit_by_depth(idx: NodeIndex,
                   floating_deque: &mut Vec<NodeIndex>)
 {
     // First, store the index of the current node.
-    depth_order.push(idx);
+    if let &Node::Widget(ref container) = &graph[idx] {
+        if container.has_updated == true {
+            depth_order.push(idx);
+        }
+    }
 
     // Sort the children of the current node by their `.depth` members.
     // FIXME: We should remove these allocations by storing a `child_sorter` buffer in each Widget

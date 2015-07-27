@@ -169,12 +169,7 @@ impl<C> Ui<C> {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
-
-            let maybe_new_picked_widget = self.widget_graph.pick_widget(self.mouse.xy);
-            if maybe_new_picked_widget != self.maybe_widget_under_mouse {
-                println!("Widget under mouse: {:?}", &maybe_new_picked_widget);
-            }
-            self.maybe_widget_under_mouse = maybe_new_picked_widget;
+            self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
         });
 
         event.mouse_cursor(|x, y| {
@@ -433,8 +428,12 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, id: WidgetId) -> Option<Mouse> {
             if id == captured_id { Some(ui.mouse) } else { None },
         Some(Capturing::JustReleased) =>
             None,
-        None =>
-            if Some(id) == ui.maybe_widget_under_mouse { Some(ui.mouse) } else { None },
+        None => match ui.maybe_captured_keyboard {
+            Some(Capturing::Captured(captured_id)) =>
+                if id == captured_id { Some(ui.mouse) } else { None },
+            _ =>
+                if Some(id) == ui.maybe_widget_under_mouse { Some(ui.mouse) } else { None },
+        },
     }
 }
 
