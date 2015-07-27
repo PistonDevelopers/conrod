@@ -211,17 +211,9 @@ impl Graph {
         let parent_node_idx = match maybe_parent_idx {
             Some(parent_idx) => match index_map.to_node_index(parent_idx) {
                 Some(parent_node_idx) => parent_node_idx,
-                // If there is not yet a matching index in the graph for the given parent index, it
-                // may be that the parent widget has not yet been added. For now, we'll just return
-                // out of the function and not set any parent.
-                //
-                // FIXME: A better way to handle this might be to add a temporary node to the graph
-                // at the given parent index so that we can add the edge even in the parent widget's
-                // absense. The temporary node could be replaced by the proper widget later in the
-                // cycle. If the temporary node hasn't been replaced by the time `Graph::draw` is
-                // called, we could assume that there has been some error with the parent id for
-                // this widget and notify the user accordingly.
-                // None => return,
+                // Add a temporary node to the graph at the given parent index so that we can add
+                // the edge even in the parent widget's absense. The temporary node should be
+                // replaced by the proper widget when it is updated later in the cycle.
                 None => {
                     // We *know* that this must be a WidgetId as `.to_node_indx` returned None.
                     let parent_widget_id = parent_idx.expect_widget_id();

@@ -72,7 +72,6 @@ pub use json_io::Error as JsonIoError;
 
 
 mod background;
-//mod canvas;
 mod frame;
 mod graph;
 mod label;
