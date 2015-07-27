@@ -235,8 +235,8 @@ impl<'a> Split<'a> {
         let mut canvas = canvas::Canvas::new();
         canvas.style = style.clone();
         match maybe_parent {
-            Some(parent_id) => canvas.parent(parent_id),
-            None => canvas,
+            Some(parent_id) => canvas.parent(Some(parent_id)),
+            None            => canvas.parent(None),
         }.point(xy).dim(dim).set(id, ui);
     }
 

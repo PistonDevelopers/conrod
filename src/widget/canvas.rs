@@ -236,37 +236,33 @@ impl<'a> Widget for Canvas<'a> {
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-    /// If the title bar was clicked, capture the mouse.
-    fn capture_mouse(prev: &State, new: &State) -> bool {
-        use self::Interaction::{Highlighted, Clicked};
-        match (prev.interaction, new.interaction) {
-            (Highlighted(Elem::TitleBar), Clicked(Elem::TitleBar, _)) => true,
-            _ => false,
-        }
-    }
+    // /// If the title bar was clicked, capture the mouse.
+    // fn capture_mouse(prev: &State, new: &State) -> bool {
+    //     use self::Interaction::{Highlighted, Clicked};
+    //     match (prev.interaction, new.interaction) {
+    //         (Highlighted(Elem::TitleBar), Clicked(Elem::TitleBar, _)) => true,
+    //         _ => false,
+    //     }
+    // }
 
-    /// If the title bar was released, uncapture the mouse.
-    fn uncapture_mouse(prev: &Self::State, new: &Self::State) -> bool {
-        use self::Interaction::{Normal, Highlighted, Clicked};
-        match (prev.interaction, new.interaction) {
-            (Clicked(Elem::TitleBar, _), Highlighted(_)) |
-            (Clicked(Elem::TitleBar, _), Normal)         => true,
-            _ => false,
-        }
-    }
+    // /// If the title bar was released, uncapture the mouse.
+    // fn uncapture_mouse(prev: &Self::State, new: &Self::State) -> bool {
+    //     use self::Interaction::{Normal, Highlighted, Clicked};
+    //     match (prev.interaction, new.interaction) {
+    //         (Clicked(Elem::TitleBar, _), Highlighted(_)) |
+    //         (Clicked(Elem::TitleBar, _), Normal)         => true,
+    //         _ => false,
+    //     }
+    // }
 
     /// The title bar area at which the Canvas can be clicked and dragged.
-    fn drag_area(&self,
-                 xy: Point,
-                 dim: Dimensions,
-                 style: &Style,
-                 theme: &Theme) -> Option<drag::Area>
-    {
+    /// The position of the area should be relative to the center of the widget..
+    fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<drag::Area> {
         if self.show_title_bar {
             let font_size = style.title_bar_font_size(theme);
             let (h, y) = title_bar_h_y(dim, font_size as f64);
             Some(drag::Area {
-                xy: [xy[0], y],
+                xy: [0.0, y],
                 dim: [dim[0], h],
             })
         } else {
@@ -284,7 +280,7 @@ impl<'a> Widget for Canvas<'a> {
                 pad: style.padding(theme),
             },
             Some(ref title_bar) => widget::KidArea {
-                xy: [xy[0], title_bar.y],
+                xy: [xy[0], xy[1] - (title_bar.h / 2.0)],
                 dim: [dim[0], dim[1] - title_bar.h],
                 pad: style.padding(theme),
             },
@@ -310,10 +306,10 @@ impl<'a> Widget for Canvas<'a> {
 
         // If there is new mouse state, check for a new interaction.
         let new_interaction = if let Some(mouse) = maybe_mouse {
-            let is_over_elem = is_over(mouse.relative_to(xy).xy, dim, title_bar_y, title_bar_h);
+            let is_over_elem = is_over(mouse.xy, dim, title_bar_y, title_bar_h);
             get_new_interaction(is_over_elem, interaction, mouse)
         } else {
-            interaction
+            Interaction::Normal
         };
 
         // If the canvas was clicked, dragged or released, update the time_last_clicked.
@@ -368,6 +364,8 @@ impl<'a> Widget for Canvas<'a> {
     {
         use elmesque::form::{collage, rect, text};
 
+        println!("interaction: {:?}", &args.state.state.interaction);
+
         let widget::DrawArgs { state, style, theme, glyph_cache } = args;
         let widget::State { ref state, dim, xy, .. } = *state;
 
@@ -375,8 +373,8 @@ impl<'a> Widget for Canvas<'a> {
         let inner_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let color = style.color(theme);
         let frame_color = style.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color.alpha(0.7));
-        let rect_form = rect(inner_dim[0], inner_dim[1]).filled(color.alpha(0.7));
+        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let rect_form = rect(inner_dim[0], inner_dim[1]).filled(color);
 
         // Check whether or not to draw the title bar.
         let maybe_title_bar_form = if let Some(ref title_bar) = state.maybe_title_bar {

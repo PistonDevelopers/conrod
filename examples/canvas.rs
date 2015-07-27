@@ -55,6 +55,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
 
     Canvas::new()
         .show_title_bar(true)
+        .floating(true)
         .label("Blue")
         .middle_of(LEFT_COLUMN)
         .color(blue())
@@ -63,6 +64,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
 
     Canvas::new()
         .show_title_bar(true)
+        .floating(true)
         .label("Orange")
         .middle_of(RIGHT_COLUMN)
         .color(light_orange())

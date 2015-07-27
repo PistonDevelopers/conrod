@@ -40,10 +40,6 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    // /// Optional style defaults for a Canvas split.
-    // pub maybe_canvas_split: Option<canvas::split::Style>,
-    // /// Optional style defaults for a Floating Canvas.
-    // pub maybe_canvas_floating: Option<canvas::floating::Style>,
     /// Optional style defaults for a Button widget.
     pub maybe_button: Option<WidgetDefault<widget::button::Style>>,
     /// Optional style defaults for a Canvas widget.
@@ -125,8 +121,6 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            // maybe_canvas_split: None,
-            // maybe_canvas_floating: None,
             maybe_button: None,
             maybe_canvas: None,
             maybe_drop_down_list: None,

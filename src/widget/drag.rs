@@ -31,8 +31,11 @@ pub fn drag_widget(xy: Point,
     use mouse::ButtonState::{Up, Down};
     use utils::is_over_rect;
 
+    // Find the absolute position of the draggable area.
+    let abs_area_xy = ::vecmath::vec2_add(xy, area.xy);
+
     // Check whether or not the cursor is over the drag area.
-    let is_over = is_over_rect(area.xy, mouse.xy, area.dim);
+    let is_over = is_over_rect(abs_area_xy, mouse.xy, area.dim);
 
     // Determine the new drag state.
     let new_state = match (is_over, state, mouse.left) {

@@ -66,7 +66,7 @@ pub struct Ui<C> {
     /// The WidgetId of the last widget used as a parent for another widget.
     maybe_current_parent_id: Option<WidgetId>,
     /// If the mouse is currently over a widget, its ID will be here.
-    maybe_mouse_over_widget: Option<WidgetId>,
+    maybe_widget_under_mouse: Option<WidgetId>,
     /// The WidgetId of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
@@ -131,7 +131,7 @@ impl<C> Ui<C> {
             win_h: 0.0,
             maybe_prev_widget_id: None,
             maybe_current_parent_id: None,
-            maybe_mouse_over_widget: None,
+            maybe_widget_under_mouse: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
         }
@@ -169,7 +169,12 @@ impl<C> Ui<C> {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
-            self.maybe_mouse_over_widget = self.widget_graph.pick_widget(self.mouse.xy);
+
+            let maybe_new_picked_widget = self.widget_graph.pick_widget(self.mouse.xy);
+            if maybe_new_picked_widget != self.maybe_widget_under_mouse {
+                println!("Widget under mouse: {:?}", &maybe_new_picked_widget);
+            }
+            self.maybe_widget_under_mouse = maybe_new_picked_widget;
         });
 
         event.mouse_cursor(|x, y| {
@@ -422,13 +427,14 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, id: WidgetId) -> UserInput<'a> {
 /// Return the current mouse state.
 ///
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
-///
-/// If no widget is capturing the mouse and a canvas id was given, check that the mouse is over
-/// the same canvas.
 pub fn get_mouse_state<C>(ui: &Ui<C>, id: WidgetId) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_id)) if id != captured_id => None,
-        _                                                           => Some(ui.mouse),
+        Some(Capturing::Captured(captured_id)) =>
+            if id == captured_id { Some(ui.mouse) } else { None },
+        Some(Capturing::JustReleased) =>
+            None,
+        None =>
+            if Some(id) == ui.maybe_widget_under_mouse { Some(ui.mouse) } else { None },
     }
 }
 

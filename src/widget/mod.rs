@@ -1,5 +1,6 @@
 
 use Scalar;
+use clock_ticks::precise_time_ns;
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use position::{Depth, Dimensions, Direction, Padding, Point, Position, Positionable, Sizeable,
@@ -160,9 +161,8 @@ pub trait Widget: Sized {
     fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
-    /// of the draggable space.
+    /// of the draggable space. The position should be relative to the center of the widget.
     fn drag_area(&self,
-                 _xy: Point,
                  _dim: Dimensions,
                  _style: &Self::Style,
                  _theme: &Theme) -> Option<drag::Area>
@@ -181,8 +181,23 @@ pub trait Widget: Sized {
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
     /// This will attach this Widget to the parent widget.
-    fn parent(mut self, parent_id: WidgetId) -> Self {
-        self.common_mut().maybe_parent_id = Some(parent_id);
+    fn parent(mut self, maybe_parent_id: Option<WidgetId>) -> Self {
+        self.common_mut().maybe_parent_id = match maybe_parent_id {
+            None => MaybeParent::None,
+            Some(id) => MaybeParent::Some(id),
+        };
+        self
+    }
+
+    /// Set whether or not the widget is floating (the default is `false`).
+    /// A typical example of a floating widget would be a pop-up or alert window.
+    ///
+    /// A "floating" widget will always be rendered *after* its parent tree and all widgets
+    /// connected to its parent tree. If two sibling widgets are both floating, then the one that
+    /// was last clicked will be rendered last. If neither are clicked, they will be rendered in
+    /// the order in which they were cached into the `Ui`.
+    fn floating(mut self, is_floating: bool) -> Self {
+        self.common_mut().is_floating = is_floating;
         self
     }
 
@@ -197,7 +212,6 @@ pub trait Widget: Sized {
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
     fn set<C>(self, id: WidgetId, ui: &mut Ui<C>) where C: CharacterCache {
-
         let kind = self.unique_kind();
 
         // Collect the previous state and style or initialise both if none exist.
@@ -212,6 +226,7 @@ pub trait Widget: Sized {
                 dim,
                 depth,
                 drag_state,
+                maybe_floating,
                 //kid_area,
                 ..
             } = prev;
@@ -223,6 +238,7 @@ pub trait Widget: Sized {
                 dim: dim,
                 depth: depth,
                 drag_state: drag_state,
+                maybe_floating: maybe_floating,
             };
 
             (Some(prev_state), Some(style))
@@ -234,8 +250,8 @@ pub trait Widget: Sized {
         let pos = self.get_position(&ui.theme);
 
         let (xy, drag_state) = {
-            // A function for producing the initial xy coords.
-            let init_xy = || {
+            // A function for generating the xy coords from the given alignment and Position.
+            let gen_xy = || {
                 let (h_align, v_align) = self.get_alignment(&ui.theme);
                 let new_xy = ui.get_xy(pos, dim, h_align, v_align);
                 new_xy
@@ -243,29 +259,79 @@ pub trait Widget: Sized {
 
             // Check to see if the widget is currently being dragged and return the new xy / drag.
             match maybe_prev_state {
-                None => (init_xy(), drag::State::Normal),
+                // If there is no previous state to compare for dragging, return an initial state.
+                None => (gen_xy(), drag::State::Normal),
                 Some(ref prev_state) => {
                     let maybe_mouse = ui::get_mouse_state(ui, id);
-                    let maybe_drag_area = self.drag_area(prev_state.xy, dim, &new_style, &ui.theme);
-                    match (maybe_drag_area, maybe_mouse) {
-                        // If there is some draggable area and mouse, drag the xy.
-                        (Some(drag_area), Some(mouse)) => {
-                            let drag_state = prev_state.drag_state;
+                    let maybe_drag_area = self.drag_area(dim, &new_style, &ui.theme);
+                    match maybe_drag_area {
+                        // If the widget isn't draggable, generate its position the normal way.
+                        // FIXME: This may cause issues in the case that a widget's draggable area
+                        // is dynamic (i.e. sometimes its Some, other times its None).
+                        // Specifically, if a widget is dragged somewhere and then it returns None,
+                        // it will snap back to the position produced by gen_xy. We should keep
+                        // track of whether or not a widget `has_been_dragged` to see if we should
+                        // leave it at its previous xy or use gen_xy.
+                        None => (gen_xy(), drag::State::Normal),
+                        Some(drag_area) => match maybe_mouse {
+                            // If there is some draggable area and mouse, drag the xy.
+                            Some(mouse) => {
+                                let drag_state = prev_state.drag_state;
 
-                            // Drag the xy of the widget and return the new xy.
-                            drag::drag_widget(prev_state.xy, drag_area, drag_state, mouse)
+                                // Drag the xy of the widget and return the new xy.
+                                drag::drag_widget(prev_state.xy, drag_area, drag_state, mouse)
+                            },
+                            // Otherwise just return the regular xy and drag state.
+                            None => (prev_state.xy, drag::State::Normal),
                         },
-                        // Otherwise just return the regular xy and drag state.
-                        _ => (init_xy(), drag::State::Normal),
                     }
                 },
             }
         };
 
+        // Check whether we have stopped / started dragging the widget and in turn whether or not
+        // we need to capture the mouse.
+        match (maybe_prev_state.as_ref().map(|prev| prev.drag_state), drag_state) {
+            (Some(drag::State::Highlighted), drag::State::Clicked(_)) =>
+                ui::mouse_captured_by(ui, id),
+            (Some(drag::State::Clicked(_)), drag::State::Highlighted) |
+            (Some(drag::State::Clicked(_)), drag::State::Normal)      =>
+                ui::mouse_uncaptured_by(ui, id),
+            _ => (),
+        }
+
         // Determine the id of the canvas that the widget is attached to. If not given explicitly,
         // check the positioning to retrieve the Id from there.
-        let maybe_parent_id = self.common().maybe_parent_id
-            .or_else(|| ui::parent_from_position(ui, pos));
+        let maybe_parent_id = match self.common().maybe_parent_id {
+            MaybeParent::Some(id) => Some(id),
+            MaybeParent::None => None,
+            MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
+        };
+
+        // Collect whether or not the widget is "floating" before `self` gets consumed so that we
+        // can store it in our widget::Cached later in the function.
+        let is_floating = self.common().is_floating;
+
+        // If it is floating, check to see if we need to update the last time it was clicked.
+        let new_floating = || Floating { time_last_clicked: precise_time_ns() };
+        let maybe_floating = match (is_floating, maybe_prev_state.as_ref()) {
+            (false, _) => None,
+            (true, Some(prev)) => {
+                let maybe_mouse = ui::get_mouse_state(ui, id);
+                match (prev.maybe_floating, maybe_mouse) {
+                    (Some(prev_floating), Some(mouse)) => {
+                        if mouse.left == ::mouse::ButtonState::Down {
+                            Some(new_floating())
+                        } else {
+                            Some(prev_floating)
+                        }
+                    },
+                    (Some(prev_floating), None) => Some(prev_floating),
+                    _ => Some(new_floating()),
+                }
+            },
+            (true, None) => Some(new_floating()),
+        };
 
         // Determine whether or not this is the first time set has been called.
         // We'll use this to determine whether or not we need to call Widget::draw.
@@ -279,6 +345,7 @@ pub trait Widget: Sized {
             dim: dim,
             depth: depth,
             drag_state: drag_state,
+            maybe_floating: maybe_floating,
         });
 
         // Update the widget's state.
@@ -342,6 +409,7 @@ pub trait Widget: Sized {
             xy: xy,
             depth: depth,
             drag_state: drag_state,
+            maybe_floating: maybe_floating,
         };
 
         // Retrieve the area upon which kid widgets will be placed.
@@ -361,7 +429,7 @@ pub trait Widget: Sized {
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth, drag_state } = new_state;
+        let State { state, dim, xy, depth, drag_state, maybe_floating } = new_state;
         let cached: Cached<Self> = Cached {
             state: state,
             style: new_style,
@@ -370,6 +438,7 @@ pub trait Widget: Sized {
             depth: depth,
             drag_state: drag_state,
             kid_area: kid_area,
+            maybe_floating: maybe_floating,
         };
         ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
 
@@ -418,6 +487,24 @@ pub struct KidArea {
     pub pad: Padding,
 }
 
+/// The builder argument for the widget's Parent.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum MaybeParent {
+    /// The user specified the widget should not have any parents, so the Root will be used.
+    None,
+    /// The user gave a specific parent widget.
+    Some(WidgetId),
+    /// No parent widget was specified, so we will assume they want the last parent.
+    Unspecified,
+}
+
+/// State necessary for Floating widgets.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Floating {
+    /// The time the canvas was last clicked (used for depth sorting in graph).
+    pub time_last_clicked: u64,
+}
+
 /// A struct containing builder data common to all Widget types.
 /// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -435,7 +522,9 @@ pub struct CommonBuilder {
     /// The rendering Depth of the Widget.
     pub maybe_depth: Option<Depth>,
     /// The parent widget of the Widget.
-    pub maybe_parent_id: Option<WidgetId>,
+    pub maybe_parent_id: MaybeParent,
+    /// Whether or not the Widget is a "floating" Widget.
+    pub is_floating: bool,
 }
 
 /// Represents the unique cached state of a widget.
@@ -451,6 +540,8 @@ pub struct State<T> {
     pub depth: Depth,
     /// The current state of the dragged widget, if it is draggable.
     pub drag_state: drag::State,
+    /// Floating state for the widget if it is floating.
+    pub maybe_floating: Option<Floating>,
 }
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
@@ -469,6 +560,8 @@ pub struct Cached<W> where W: Widget {
     pub drag_state: drag::State,
     /// The area in which child widgets are placed.
     pub kid_area: KidArea,
+    /// Whether or not the Widget is a "floating" Widget.
+    pub maybe_floating: Option<Floating>,
 }
 
 
@@ -482,7 +575,8 @@ impl CommonBuilder {
             maybe_h_align: None,
             maybe_v_align: None,
             maybe_depth: None,
-            maybe_parent_id: None,
+            maybe_parent_id: MaybeParent::Unspecified,
+            is_floating: false,
         }
     }
 }
