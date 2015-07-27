@@ -7,7 +7,7 @@ use graphics::math::Scalar;
 use label::FontSize;
 use mouse::Mouse;
 use num::Float;
-use piston::input::keyboard::Key::{Backspace, Left, Right, Return};
+use input::keyboard::Key::{Backspace, Left, Right, Return};
 use position::{self, Dimensions, Point};
 use theme::Theme;
 use ui::GlyphCache;

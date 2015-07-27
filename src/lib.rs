@@ -14,7 +14,7 @@ extern crate graphics;
 extern crate json_io;
 extern crate num;
 extern crate petgraph;
-#[macro_use] extern crate piston;
+extern crate input;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate vecmath;
