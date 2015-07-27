@@ -79,6 +79,10 @@ pub trait GraphIndex: ::std::fmt::Debug + Copy + Clone {
     fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex>;
     /// Convert some index to Self if it exists within the IndexMap.
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self>;
+    /// Force the type to a WidgetId.
+    fn expect_widget_id(self) -> WidgetId;
+    /// Force the type to a NodeIndex.
+    fn expect_node_index(self) -> NodeIndex;
 }
 
 impl GraphIndex for WidgetId {
@@ -94,6 +98,14 @@ impl GraphIndex for WidgetId {
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
         other.to_widget_id(map)
     }
+    #[inline]
+    fn expect_widget_id(self) -> WidgetId {
+        self
+    }
+    #[inline]
+    fn expect_node_index(self) -> NodeIndex {
+        panic!("expect_node_indx was called on a WidgetId");
+    }
 }
 
 impl GraphIndex for NodeIndex {
@@ -108,6 +120,14 @@ impl GraphIndex for NodeIndex {
     #[inline]
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
         other.to_node_index(map)
+    }
+    #[inline]
+    fn expect_widget_id(self) -> WidgetId {
+        panic!("expect_widget_id was called on a NodeIndex");
+    }
+    #[inline]
+    fn expect_node_index(self) -> NodeIndex {
+        self
     }
 }
 
