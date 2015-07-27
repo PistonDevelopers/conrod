@@ -28,10 +28,8 @@ pub struct Matrix {
     cell_pad_h: f64,
 }
 
-/*
-/// A cell to be returned via the cell reaction.
-pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
-*/
+// /// A cell to be returned via the cell reaction.
+// pub struct MatrixCell<'a>(&'a mut UiContext, WidgetNum, ColNum, RowNum, PosX, PosY, Width, Height);
 
 impl Matrix {
 
@@ -56,8 +54,8 @@ impl Matrix {
             F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
         use utils::map_range;
-        if let Some(id) = ui::canvas_from_position(ui, self.pos) {
-            ui::set_current_canvas_id(ui, id);
+        if let Some(id) = ui::parent_from_position(ui, self.pos) {
+            ui::set_current_parent_id(ui, id);
         }
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
@@ -95,7 +93,7 @@ impl position::Positionable for Matrix {
         self.pos = pos;
         self
     }
-    fn get_position(&self) -> Position { self.pos }
+    fn get_position(&self, _: &Theme) -> Position { self.pos }
     #[inline]
     fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
         Matrix { maybe_h_align: Some(h_align), ..self }

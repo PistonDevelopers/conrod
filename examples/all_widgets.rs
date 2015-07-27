@@ -36,7 +36,6 @@ use conrod::{
     TextBox,
     Theme,
     Toggle,
-    UiId,
     WidgetId,
     Widget,
     WidgetMatrix,
@@ -97,7 +96,7 @@ impl DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
-            title_pad: -374.0,
+            title_pad: 350.0,
             v_slider_height: 230.0,
             frame_width: 1.0,
             bool_matrix: vec![ vec![true, true, true, true, true, true, true, true],
@@ -284,7 +283,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     // Number Dialer widget example. number_dialer(WidgetId, value, min, max, precision)
     NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
-        .right_from(UiId::Widget(shown_widget), 30.0)
+        .right_from(shown_widget, 30.0)
         .color(demo.bg_color.invert())
         .frame(demo.frame_width)
         .label("Height (px)")
@@ -356,7 +355,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     // A demonstration using drop_down_list.
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
-        .right_from(UiId::Widget(SLIDER_HEIGHT), 30.0) // Position right from widget 6 by 50 pixels.
+        .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
         .color(ddl_color)
         .frame(demo.frame_width)
@@ -372,7 +371,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     XYPad::new(demo.circle_pos[0], 550.0, 700.0, // x range.
                demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
-        .right_from(UiId::Widget(TOGGLE_MATRIX + 63), 30.0)
+        .right_from(TOGGLE_MATRIX + 63, 30.0)
         .align_bottom() // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
         .frame(demo.frame_width)
@@ -392,7 +391,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         let &mut (ref mut env, ref mut text) = &mut demo.envelopes[i];
 
         // Draw a TextBox. text_box(&mut String, FontSize)
-        if i == 0 { TextBox::new(text).right_from(UiId::Widget(COLOR_SELECT), 30.0) }
+        if i == 0 { TextBox::new(text).right_from(COLOR_SELECT, 30.0) }
         else      { TextBox::new(text) }
             .font_size(20)
             .dimensions(320.0, 40.0)

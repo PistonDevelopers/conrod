@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -8,40 +7,34 @@ use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast};
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, VerticalAlign};
+use position::{Dimensions, Point};
 use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use theme::Theme;
 use utils::clamp;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use widget::{self, Widget};
 
 
 /// A widget for precision control over any digit within a value. The reaction is triggered when
 /// the value is updated or if the mouse button is released while the cursor is above the widget.
 pub struct NumberDialer<'a, T, F> {
+    common: widget::CommonBuilder,
     value: T,
     min: T,
     max: T,
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
     maybe_label: Option<&'a str>,
     precision: u8,
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
 #[allow(missing_docs, missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    pub maybe_width: Option<Scalar>,
-    pub maybe_height: Option<Scalar>,
     pub maybe_color: Option<Color>,
     pub maybe_frame: Option<f64>,
     pub maybe_frame_color: Option<Color>,
@@ -189,19 +182,15 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
         NumberDialer {
+            common: widget::CommonBuilder::new(),
             value: clamp(value, min, max),
             min: min,
             max: max,
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
             precision: precision,
             maybe_label: None,
             maybe_react: None,
             style: Style::new(),
             enabled: true,
-            maybe_canvas_id: None,
         }
     }
 
@@ -218,13 +207,6 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
-        self
-    }
-
 }
 
 impl<'a, T, F> Widget for NumberDialer<'a, T, F>
@@ -234,6 +216,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 {
     type State = State<T>;
     type Style = Style;
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "NumberDialer" }
     fn init_state(&self) -> State<T> {
         State {
@@ -246,22 +230,44 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+
+    fn capture_mouse(prev: &State<T>, new: &State<T>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Highlighted(_), Interaction::Clicked(_)) => true,
+            _ => false,
+        }
+    }
+
+    fn uncapture_mouse(prev: &State<T>, new: &State<T>) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Clicked(_), Interaction::Highlighted(_)) => true,
+            (Interaction::Clicked(_), Interaction::Normal) => true,
+            _ => false,
+        }
+    }
+
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 128.0;
+        self.common.maybe_width.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 48.0;
+        self.common.maybe_height.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     /// Update the state of the NumberDialer.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State<T>>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     glyph_cache: &GlyphCache<C>) -> Option<State<T>>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<T>>
+        where C: CharacterCache,
     {
 
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, glyph_cache } = args;
         let widget::State { ref state, .. } = *prev_state;
+
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
@@ -359,17 +365,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Construct an Element from the given NumberDialer State.
-    fn draw<C>(new_state: &widget::State<State<T>>,
-               style: &Style,
-               theme: &Theme,
-               glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Construct the frame and inner rectangle Forms.
         let frame = style.frame(theme);
@@ -452,8 +455,6 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -462,54 +463,38 @@ impl Style {
         }
     }
 
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        self.maybe_width.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 48.0;
-        self.maybe_height.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
-    }
-
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme.label_color)
+        self.maybe_label_color.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_number_dialer.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size.or(theme.maybe_number_dialer.as_ref().map(|default| {
+            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 
@@ -549,52 +534,6 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, T, F> position::Positionable for NumberDialer<'a, T, F> {
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        NumberDialer { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        NumberDialer { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, T, F> position::Sizeable for NumberDialer<'a, T, F> {
-    #[inline]
-    fn width(mut self, w: Scalar) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    #[inline]
-    fn height(mut self, h: Scalar) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> Scalar {
-        self.style.height(theme)
     }
 }
 

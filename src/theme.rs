@@ -2,7 +2,6 @@
 //! Types a functionality for handling Canvas and Widget theming.
 //!
 
-use canvas;
 use color::{Color, black, white};
 use json_io;
 use position::{Margin, Padding, Position, Horizontal, HorizontalAlign, Vertical, VerticalAlign};
@@ -41,26 +40,24 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// Optional style defaults for a Canvas split.
-    pub maybe_canvas_split: Option<canvas::split::Style>,
-    /// Optional style defaults for a Floating Canvas.
-    pub maybe_canvas_floating: Option<canvas::floating::Style>,
     /// Optional style defaults for a Button widget.
-    pub maybe_button: Option<widget::button::Style>,
+    pub maybe_button: Option<WidgetDefault<widget::button::Style>>,
+    /// Optional style defaults for a Canvas widget.
+    pub maybe_canvas: Option<WidgetDefault<widget::canvas::Style>>,
     /// Optional style defaults for a DropDownList.
-    pub maybe_drop_down_list: Option<widget::drop_down_list::Style>,
+    pub maybe_drop_down_list: Option<WidgetDefault<widget::drop_down_list::Style>>,
     /// Optional style defaults for an EnvelopeEditor.
-    pub maybe_envelope_editor: Option<widget::envelope_editor::Style>,
+    pub maybe_envelope_editor: Option<WidgetDefault<widget::envelope_editor::Style>>,
     /// Optional style defaults for a NumberDialer.
-    pub maybe_number_dialer: Option<widget::number_dialer::Style>,
+    pub maybe_number_dialer: Option<WidgetDefault<widget::number_dialer::Style>>,
     /// Optional style defaults for a Slider.
-    pub maybe_slider: Option<widget::slider::Style>,
+    pub maybe_slider: Option<WidgetDefault<widget::slider::Style>>,
     /// Optional style defaults for a TextBox.
-    pub maybe_text_box: Option<widget::text_box::Style>,
+    pub maybe_text_box: Option<WidgetDefault<widget::text_box::Style>>,
     /// Optional style defaults for a Toggle.
-    pub maybe_toggle: Option<widget::toggle::Style>,
+    pub maybe_toggle: Option<WidgetDefault<widget::toggle::Style>>,
     /// Optional style defaults for an XYPad.
-    pub maybe_xy_pad: Option<widget::xy_pad::Style>,
+    pub maybe_xy_pad: Option<WidgetDefault<widget::xy_pad::Style>>,
 }
 
 /// The alignment of an element's dimensions with another's.
@@ -71,6 +68,27 @@ pub struct Align {
     /// Positioning relative to an elements height and position on the y axis.
     pub vertical: VerticalAlign,
 }
+
+/// The defaults for a specific widget.
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+pub struct WidgetDefault<T> {
+    /// The unique style of a widget.
+    pub style: T,
+    /// The attributes commonly shared between widgets.
+    pub common: widget::CommonBuilder,
+}
+
+
+impl<T> WidgetDefault<T> {
+    /// Constructor for a WidgetDefault.
+    pub fn new(style: T) -> WidgetDefault<T> {
+        WidgetDefault {
+            style: style,
+            common: widget::CommonBuilder::new(),
+        }
+    }
+}
+
 
 impl Theme {
 
@@ -103,9 +121,8 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            maybe_canvas_split: None,
-            maybe_canvas_floating: None,
             maybe_button: None,
+            maybe_canvas: None,
             maybe_drop_down_list: None,
             maybe_envelope_editor: None,
             maybe_number_dialer: None,

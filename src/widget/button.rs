@@ -1,41 +1,39 @@
 
-use canvas::CanvasId;
+use Scalar;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
-use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::Positionable;
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use widget::{self, Widget};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
+    common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
+#[allow(missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    pub maybe_width: Option<Scalar>,
-    pub maybe_height: Option<Scalar>,
+    /// Color of the Button's pressable area.
     pub maybe_color: Option<Color>,
+    /// Width of the frame surrounding the button
     pub maybe_frame: Option<f64>,
+    /// The color of the frame.
     pub maybe_frame_color: Option<Color>,
+    /// The color of the Button's label.
     pub maybe_label_color: Option<Color>,
+    /// The font size of the Button's label.
     pub maybe_label_font_size: Option<u32>,
 }
 
@@ -86,15 +84,11 @@ impl<'a, F> Button<'a, F> {
     /// Create a button context to be built upon.
     pub fn new() -> Button<'a, F> {
         Button {
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
+            common: widget::CommonBuilder::new(),
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
-            maybe_canvas_id: None,
         }
     }
 
@@ -110,13 +104,6 @@ impl<'a, F> Button<'a, F> {
         self
     }
 
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
-        self
-    }
-
 }
 
 
@@ -126,26 +113,50 @@ impl<'a, F> Widget for Button<'a, F>
 {
     type State = State;
     type Style = Style;
+
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "Button" }
     fn init_state(&self) -> State {
         State { maybe_label: None, interaction: Interaction::Normal }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+
+    fn capture_mouse(prev: &State, new: &State) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Highlighted, Interaction::Clicked) => true,
+            _ => false,
+        }
+    }
+
+    fn uncapture_mouse(prev: &State, new: &State) -> bool {
+        match (prev.interaction, new.interaction) {
+            (Interaction::Clicked, Interaction::Highlighted) => true,
+            (Interaction::Clicked, Interaction::Normal) => true,
+            _ => false,
+        }
+    }
+
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 64.0;
+        self.common.maybe_width.or(theme.maybe_button.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 64.0;
+        self.common.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     /// Update the state of the Button.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     _style: &Style,
-                     _theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
         use utils::is_over_rect;
+        let widget::UpdateArgs { prev_state, xy, dim, input, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
@@ -181,15 +192,13 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));
@@ -228,8 +237,6 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -238,54 +245,38 @@ impl Style {
         }
     }
 
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 64.0;
-        self.maybe_width.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 64.0;
-        self.maybe_height.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
-    }
-
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme.label_color)
+        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|default| {
+            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 
@@ -324,52 +315,6 @@ impl<'a, F> Labelable<'a> for Button<'a, F> {
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, F> Positionable for Button<'a, F> {
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        Button { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        Button { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, F> ::position::Sizeable for Button<'a, F> {
-    #[inline]
-    fn width(mut self, w: f64) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    #[inline]
-    fn height(mut self, h: f64) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> f64 {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> f64 {
-        self.style.height(theme)
     }
 }
 

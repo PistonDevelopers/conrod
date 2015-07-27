@@ -1,5 +1,4 @@
 
-use canvas::CanvasId;
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
@@ -7,9 +6,9 @@ use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Depth, Dimensions, HorizontalAlign, Point, Position, Positionable, VerticalAlign};
+use position::{self, Dimensions, Point, Positionable};
 use theme::Theme;
-use ui::{GlyphCache, UserInput};
+use ui::GlyphCache;
 use widget::{self, Widget};
 
 
@@ -24,27 +23,19 @@ pub const SCROLLBAR_WIDTH: f64 = 10.0;
 /// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
 /// selection of a list item.
 pub struct DropDownList<'a, F> {
+    common: widget::CommonBuilder,
     strings: &'a mut Vec<String>,
     selected: &'a mut Option<Idx>,
-    pos: Position,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
-    depth: Depth,
     maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
-    maybe_canvas_id: Option<CanvasId>,
 }
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
 #[allow(missing_copy_implementations)]
 #[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Style {
-    /// Width of the widget.
-    pub maybe_width: Option<Scalar>,
-    /// Height of the widget.
-    pub maybe_height: Option<Scalar>,
     /// Color of the widget.
     pub maybe_color: Option<Color>,
     /// Width of the widget's frame.
@@ -200,7 +191,8 @@ fn get_new_menu_state(is_over_elem: Option<Elem>,
                       num_strings: usize,
                       height: Scalar,
                       mouse: Mouse,
-                      maybe_scroll: Option<(Scalar, Scalar, Scalar)>) -> MenuState {
+                      maybe_scroll: Option<(Scalar, Scalar, Scalar)>) -> MenuState
+{
     use self::Interaction::{Normal, Clicked, Highlighted};
     use self::Elem::{Item, ScrollBar};
     use self::ScrollBar::{Handle, Track};
@@ -324,16 +316,12 @@ impl<'a, F> DropDownList<'a, F> {
     /// Construct a new DropDownList.
     pub fn new(strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>) -> DropDownList<'a, F> {
         DropDownList {
+            common: widget::CommonBuilder::new(),
             strings: strings,
             selected: selected,
-            pos: Position::default(),
-            maybe_h_align: None,
-            maybe_v_align: None,
-            depth: 0.0,
             maybe_react: None,
             maybe_label: None,
             enabled: true,
-            maybe_canvas_id: None,
             style: Style::new(),
         }
     }
@@ -347,13 +335,6 @@ impl<'a, F> DropDownList<'a, F> {
     /// If true, will allow user inputs.  If false, will disallow user inputs.
     pub fn enabled(mut self, flag: bool) -> Self {
         self.enabled = flag;
-        self
-    }
-
-    /// Set which Canvas to attach the Widget to. Note that you can also attach a widget to a
-    /// Canvas by using the canvas placement `Positionable` methods.
-    pub fn canvas(mut self, id: CanvasId) -> Self {
-        self.maybe_canvas_id = Some(id);
         self
     }
 
@@ -380,6 +361,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
 {
     type State = State;
     type Style = Style;
+    fn common(&self) -> &widget::CommonBuilder { &self.common }
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
     fn unique_kind(&self) -> &'static str { "DropDownList" }
     fn init_state(&self) -> State {
         State {
@@ -390,7 +373,20 @@ impl<'a, F> Widget for DropDownList<'a, F>
         }
     }
     fn style(&self) -> Style { self.style.clone() }
-    fn canvas_id(&self) -> Option<CanvasId> { self.maybe_canvas_id }
+
+    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
+        const DEFAULT_WIDTH: Scalar = 128.0;
+        self.common.maybe_width.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+        })).unwrap_or(DEFAULT_WIDTH)
+    }
+
+    fn default_height(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_HEIGHT: Scalar = 32.0;
+        self.common.maybe_height.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+        })).unwrap_or(DEFAULT_HEIGHT)
+    }
 
     /// Capture the mouse if the menu was opened.
     fn capture_mouse(prev: &State, new: &State) -> bool {
@@ -409,17 +405,10 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update<'b, C>(mut self,
-                     prev_state: &widget::State<State>,
-                     xy: Point,
-                     dim: Dimensions,
-                     input: UserInput<'b>,
-                     style: &Style,
-                     theme: &Theme,
-                     _glyph_cache: &GlyphCache<C>) -> Option<State>
-        where
-            C: CharacterCache,
+    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        where C: CharacterCache
     {
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(theme);
@@ -507,17 +496,14 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(new_state: &widget::State<State>,
-               style: &Style,
-               theme: &Theme,
-               _glyph_cache: &GlyphCache<C>) -> Element
-        where
-            C: CharacterCache,
+    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::State { ref state, dim, xy, .. } = *new_state;
+        let widget::DrawArgs { state, style, theme, .. } = args;
+        let widget::State { ref state, dim, xy, .. } = *state;
 
         // Retrieve the styling for the Element.
         let color = style.color(theme);
@@ -691,8 +677,6 @@ impl Style {
     /// Construct the default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
-            maybe_height: None,
             maybe_color: None,
             maybe_frame: None,
             maybe_frame_color: None,
@@ -702,54 +686,38 @@ impl Style {
         }
     }
 
-    /// Get the width of the Widget.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        self.maybe_width.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
-    }
-
-    /// Get the height of the Widget.
-    pub fn height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 32.0;
-        self.maybe_height.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
-    }
-
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color)
+        self.maybe_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_frame.unwrap_or(theme.frame_width)
+        self.maybe_frame.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_frame_color.unwrap_or(theme.frame_color)
+        self.maybe_frame_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_label_color.unwrap_or(theme.label_color)
+        self.maybe_label_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_drop_down_list.as_ref().map(|style| {
-            style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 
@@ -757,7 +725,7 @@ impl Style {
     pub fn max_visible_height(&self, theme: &Theme) -> Option<MaxHeight> {
         if let Some(height) = self.maybe_max_visible_height { Some(height) }
         else if let Some(Some(height)) = theme.maybe_drop_down_list.as_ref()
-            .map(|style| style.maybe_max_visible_height) { Some(height) }
+            .map(|default| default.style.maybe_max_visible_height) { Some(height) }
         else { None }
     }
 
@@ -796,52 +764,6 @@ impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
     fn label_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_label_font_size = Some(size);
         self
-    }
-}
-
-impl<'a, F> Positionable for DropDownList<'a, F> {
-    fn position(mut self, pos: Position) -> Self {
-        self.pos = pos;
-        self
-    }
-    fn get_position(&self) -> Position { self.pos }
-    #[inline]
-    fn horizontal_align(self, h_align: HorizontalAlign) -> Self {
-        DropDownList { maybe_h_align: Some(h_align), ..self }
-    }
-    #[inline]
-    fn vertical_align(self, v_align: VerticalAlign) -> Self {
-        DropDownList { maybe_v_align: Some(v_align), ..self }
-    }
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
-    }
-    fn depth(mut self, depth: Depth) -> Self {
-        self.depth = depth;
-        self
-    }
-    fn get_depth(&self) -> Depth { self.depth }
-}
-
-impl<'a, F> ::position::Sizeable for DropDownList<'a, F> {
-    #[inline]
-    fn width(mut self, w: Scalar) -> Self {
-        self.style.maybe_width = Some(w);
-        self
-    }
-    #[inline]
-    fn height(mut self, h: Scalar) -> Self {
-        self.style.maybe_height = Some(h);
-        self
-    }
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        self.style.width(theme)
-    }
-    fn get_height(&self, theme: &Theme) -> Scalar {
-        self.style.height(theme)
     }
 }
 

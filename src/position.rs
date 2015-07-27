@@ -1,9 +1,9 @@
 
-use canvas::CanvasId;
 use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use theme::Theme;
-use ui::{GlyphCache, UiId};
+use ui::GlyphCache;
+use widget::WidgetId;
 
 /// The depth at which the widget will be rendered. This determines the order of rendering where
 /// widgets with a greater depth will be rendered first. 0.0 is the default depth.
@@ -20,12 +20,12 @@ pub type Point = [Scalar; 2];
 pub enum Position {
     /// A specific position.
     Absolute(Scalar, Scalar),
-    /// A position relative to some other Ui element.
-    Relative(Scalar, Scalar, Option<UiId>),
-    /// A direction relative to some other Ui element.
-    Direction(Direction, Scalar, Option<UiId>),
-    /// A position at a place on the current Canvas.
-    Place(Place, Option<CanvasId>),
+    /// A position relative to some other Widget.
+    Relative(Scalar, Scalar, Option<WidgetId>),
+    /// A direction relative to some other Widget.
+    Direction(Direction, Scalar, Option<WidgetId>),
+    /// A position at a place on some other Widget.
+    Place(Place, Option<WidgetId>),
 }
 
 impl Position {
@@ -50,7 +50,7 @@ pub enum Direction {
 
 /// The horizontal alignment of a widget positioned relatively to another UI element on the y axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub struct HorizontalAlign(pub Horizontal, pub Option<UiId>);
+pub struct HorizontalAlign(pub Horizontal, pub Option<WidgetId>);
 
 /// The orientation of a HorizontalAlign.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
@@ -65,7 +65,7 @@ pub enum Horizontal {
 
 /// The vertical alignment of a widget positioned relatively to another UI element on the x axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub struct VerticalAlign(pub Vertical, pub Option<UiId>);
+pub struct VerticalAlign(pub Vertical, pub Option<WidgetId>);
 
 /// The orientation of a VerticalAlign.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
@@ -78,26 +78,26 @@ pub enum Vertical {
     Bottom,
 }
 
-/// Place the widget at a position on the Canvas.
+/// Place the widget at a position on some other widget.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum Place {
-    /// Centre of the Canvas.
+    /// Centre of the Widget.
     Middle,
-    /// Top left of the Canvas - pad_top + pad_left.
+    /// Top left of the Widget - pad_top + pad_left.
     TopLeft,
-    /// Top right of the Canvas - pad_top - pad_right.
+    /// Top right of the Widget - pad_top - pad_right.
     TopRight,
-    /// Bottom left of the Canvas + pad_bottom + pad_left.
+    /// Bottom left of the Widget + pad_bottom + pad_left.
     BottomLeft,
-    /// Bottom right of the Canvas + pad_bottom - pad_right.
+    /// Bottom right of the Widget + pad_bottom - pad_right.
     BottomRight,
-    /// Top centre of the Canvas - pad_top.
+    /// Top centre of the Widget - pad_top.
     MidTop,
-    /// Bottom centre of the Canvas + pad_bottom.
+    /// Bottom centre of the Widget + pad_bottom.
     MidBottom,
-    /// Left centre of the Canvas + pad_left.
+    /// Left centre of the Widget + pad_left.
     MidLeft,
-    /// Right centre of the Canvas - pad_right.
+    /// Right centre of the Widget - pad_right.
     MidRight,
 }
 
@@ -108,7 +108,7 @@ pub trait Positionable: Sized {
     fn position(self, pos: Position) -> Self;
 
     /// Get the Position.
-    fn get_position(&self) -> Position;
+    fn get_position(&self, theme: &Theme) -> Position;
 
     /// Set the position with some Point.
     fn point(self, point: Point) -> Self {
@@ -130,14 +130,14 @@ pub trait Positionable: Sized {
         self.position(Position::Relative(x, y, None))
     }
 
-    /// Set the position relative to the widget with the given UiId.
-    fn relative_to(self, ui_id: UiId, point: Point) -> Self {
-        self.position(Position::Relative(point[0], point[1], Some(ui_id)))
+    /// Set the position relative to the widget with the given WidgetId.
+    fn relative_to(self, other: WidgetId, point: Point) -> Self {
+        self.position(Position::Relative(point[0], point[1], Some(other)))
     }
 
-    /// Set the position relative to the widget with the given UiId.
-    fn relative_xy_to(self, ui_id: UiId, x: Scalar, y: Scalar) -> Self {
-        self.position(Position::Relative(x, y, Some(ui_id)))
+    /// Set the position relative to the widget with the given WidgetId.
+    fn relative_xy_to(self, other: WidgetId, x: Scalar, y: Scalar) -> Self {
+        self.position(Position::Relative(x, y, Some(other)))
     }
 
     /// Set the position as below the previous widget.
@@ -160,24 +160,24 @@ pub trait Positionable: Sized {
         self.position(Position::Direction(Direction::Right, pixels, None))
     }
 
-    /// Set the position as below the widget with the given UiId.
-    fn down_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Down, pixels, Some(ui_id)))
+    /// Set the position as below the widget with the given WidgetId.
+    fn down_from(self, other: WidgetId, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Down, pixels, Some(other)))
     }
 
-    /// Set the position as above the widget with the given UiId.
-    fn up_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Up, pixels, Some(ui_id)))
+    /// Set the position as above the widget with the given WidgetId.
+    fn up_from(self, other: WidgetId, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Up, pixels, Some(other)))
     }
 
-    /// Set the position to the left of the widget with the given UiId.
-    fn left_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Left, pixels, Some(ui_id)))
+    /// Set the position to the left of the widget with the given WidgetId.
+    fn left_from(self, other: WidgetId, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Left, pixels, Some(other)))
     }
 
-    /// Set the position to the right of the widget with the given UiId.
-    fn right_from(self, ui_id: UiId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Right, pixels, Some(ui_id)))
+    /// Set the position to the right of the widget with the given WidgetId.
+    fn right_from(self, other: WidgetId, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Right, pixels, Some(other)))
     }
 
     ///// `Align` methods. /////
@@ -230,95 +230,94 @@ pub trait Positionable: Sized {
     }
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
-    fn align_left_of(self, other: UiId) -> Self {
+    fn align_left_of(self, other: WidgetId) -> Self {
         self.horizontal_align(HorizontalAlign(Horizontal::Left, Some(other)))
     }
 
     /// Align the position to the middle (only effective for Up or Down `Direction`s).
-    fn align_middle_x_of(self, other: UiId) -> Self {
+    fn align_middle_x_of(self, other: WidgetId) -> Self {
         self.horizontal_align(HorizontalAlign(Horizontal::Middle, Some(other)))
     }
 
     /// Align the position to the right (only effective for Up or Down `Direction`s).
-    fn align_right_of(self, other: UiId) -> Self {
+    fn align_right_of(self, other: WidgetId) -> Self {
         self.horizontal_align(HorizontalAlign(Horizontal::Right, Some(other)))
     }
 
     /// Align the position to the top (only effective for Left or Right `Direction`s).
-    fn align_top_of(self, other: UiId) -> Self {
+    fn align_top_of(self, other: WidgetId) -> Self {
         self.vertical_align(VerticalAlign(Vertical::Top, Some(other)))
     }
 
     /// Align the position to the middle (only effective for Left or Right `Direction`s).
-    fn align_middle_y_of(self, other: UiId) -> Self {
+    fn align_middle_y_of(self, other: WidgetId) -> Self {
         self.vertical_align(VerticalAlign(Vertical::Middle, Some(other)))
     }
 
     /// Align the position to the bottom (only effective for Left or Right `Direction`s).
-    fn align_bottom_of(self, other: UiId) -> Self {
+    fn align_bottom_of(self, other: WidgetId) -> Self {
         self.vertical_align(VerticalAlign(Vertical::Bottom, Some(other)))
     }
 
-
     ///// `Place` methods. /////
 
-    /// Place the widget at some position on the Canvas.
-    fn place(self, place: Place, maybe_id: Option<CanvasId>) -> Self {
+    /// Place the widget at some position on the Widget.
+    fn place(self, place: Place, maybe_id: Option<WidgetId>) -> Self {
         self.position(Position::Place(place, maybe_id))
     }
 
-    /// Place the widget in the middle of the given Canvas.
-    fn middle_of(self, id: CanvasId) -> Self { self.place(Place::Middle, Some(id)) }
+    /// Place the widget in the middle of the given Widget.
+    fn middle_of(self, id: WidgetId) -> Self { self.place(Place::Middle, Some(id)) }
 
-    /// Place the widget in the top left corner of the given Canvas.
-    fn top_left_of(self, id: CanvasId) -> Self { self.place(Place::TopLeft, Some(id)) }
+    /// Place the widget in the top left corner of the given Widget.
+    fn top_left_of(self, id: WidgetId) -> Self { self.place(Place::TopLeft, Some(id)) }
 
-    /// Place the widget in the top right corner of the given Canvas.
-    fn top_right_of(self, id: CanvasId) -> Self { self.place(Place::TopRight, Some(id)) }
+    /// Place the widget in the top right corner of the given Widget.
+    fn top_right_of(self, id: WidgetId) -> Self { self.place(Place::TopRight, Some(id)) }
 
-    /// Place the widget in the bottom left corner of the given Canvas.
-    fn bottom_left_of(self, id: CanvasId) -> Self { self.place(Place::BottomLeft, Some(id)) }
+    /// Place the widget in the bottom left corner of the given Widget.
+    fn bottom_left_of(self, id: WidgetId) -> Self { self.place(Place::BottomLeft, Some(id)) }
 
-    /// Place the widget in the bottom right corner of the given Canvas.
-    fn bottom_right_of(self, id: CanvasId) -> Self { self.place(Place::BottomRight, Some(id)) }
+    /// Place the widget in the bottom right corner of the given Widget.
+    fn bottom_right_of(self, id: WidgetId) -> Self { self.place(Place::BottomRight, Some(id)) }
 
-    /// Place the widget in the middle of the top edge of the given Canvas.
-    fn mid_top_of(self, id: CanvasId) -> Self { self.place(Place::MidTop, Some(id)) }
+    /// Place the widget in the middle of the top edge of the given Widget.
+    fn mid_top_of(self, id: WidgetId) -> Self { self.place(Place::MidTop, Some(id)) }
 
-    /// Place the widget in the middle of the bottom edge of the given Canvas.
-    fn mid_bottom_of(self, id: CanvasId) -> Self { self.place(Place::MidBottom, Some(id)) }
+    /// Place the widget in the middle of the bottom edge of the given Widget.
+    fn mid_bottom_of(self, id: WidgetId) -> Self { self.place(Place::MidBottom, Some(id)) }
 
-    /// Place the widget in the middle of the left edge of the given Canvas.
-    fn mid_left_of(self, id: CanvasId) -> Self { self.place(Place::MidLeft, Some(id)) }
+    /// Place the widget in the middle of the left edge of the given Widget.
+    fn mid_left_of(self, id: WidgetId) -> Self { self.place(Place::MidLeft, Some(id)) }
 
-    /// Place the widget in the middle of the right edge of the given Canvas.
-    fn mid_right_of(self, id: CanvasId) -> Self { self.place(Place::MidRight, Some(id)) }
+    /// Place the widget in the middle of the right edge of the given Widget.
+    fn mid_right_of(self, id: WidgetId) -> Self { self.place(Place::MidRight, Some(id)) }
 
-    /// Place the widget in the middle of the current Canvas.
+    /// Place the widget in the middle of the current parent Widget.
     fn middle(self) -> Self { self.place(Place::Middle, None) }
 
-    /// Place the widget in the top left corner of the current Canvas.
+    /// Place the widget in the top left corner of the current parent Widget.
     fn top_left(self) -> Self { self.place(Place::TopLeft, None) }
 
-    /// Place the widget in the top right corner of the current Canvas.
+    /// Place the widget in the top right corner of the current parent Widget.
     fn top_right(self) -> Self { self.place(Place::TopRight, None) }
 
-    /// Place the widget in the bottom left corner of the current Canvas.
+    /// Place the widget in the bottom left corner of the current parent Widget.
     fn bottom_left(self) -> Self { self.place(Place::BottomLeft, None) }
 
-    /// Place the widget in the bottom right corner of the current Canvas.
+    /// Place the widget in the bottom right corner of the current parent Widget.
     fn bottom_right(self) -> Self { self.place(Place::BottomRight, None) }
 
-    /// Place the widget in the middle of the top edge of the current Canvas.
+    /// Place the widget in the middle of the top edge of the current parent Widget.
     fn mid_top(self) -> Self { self.place(Place::MidTop, None) }
 
-    /// Place the widget in the middle of the bottom edge of the current Canvas.
+    /// Place the widget in the middle of the bottom edge of the current parent Widget.
     fn mid_bottom(self) -> Self { self.place(Place::MidBottom, None) }
 
-    /// Place the widget in the middle of the left edge of the current Canvas.
+    /// Place the widget in the middle of the left edge of the current parent Widget.
     fn mid_left(self) -> Self { self.place(Place::MidLeft, None) }
 
-    /// Place the widget in the middle of the right edge of the current Canvas.
+    /// Place the widget in the middle of the right edge of the current parent Widget.
     fn mid_right(self) -> Self { self.place(Place::MidRight, None) }
 
     ///// Rendering Depth (aka Z axis) /////
@@ -358,7 +357,7 @@ pub trait Sizeable: Sized {
         self.dim([width, height])
     }
 
-    /// Return the dimensions for the widget.
+    /// The dimensions for the widget.
     fn get_dimensions<C: CharacterCache>(&self,
                                          theme: &Theme,
                                          glyph_cache: &GlyphCache<C>) -> Dimensions {
@@ -502,15 +501,15 @@ impl Place {
 }
 
 /// The distance between the inner edge of a frame and the outer edge of the inner content.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Padding {
-    /// Padding between the top of a Widget and the top of a Canvas.
+    /// Padding between the top of a Widget and the top of a parent Widget.
     pub top: f64,
-    /// Padding between the bottom of a Widget and the bottom of a Canvas.
+    /// Padding between the bottom of a Widget and the bottom of a parent Widget.
     pub bottom: f64,
-    /// Margin between the left of a Widget and the left of a Canvas.
+    /// Margin between the left of a Widget and the left of a parent Widget.
     pub left: f64,
-    /// Margin between the right of a Widget and the right of a Canvas.
+    /// Margin between the right of a Widget and the right of a parent Widget.
     pub right: f64,
 }
 
@@ -541,13 +540,20 @@ impl Padding {
 /// The distance between the dimension bound and the outer edge of the frame.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Margin {
-    /// Margin between the y max Canvas and the outer edge of its frame.
+    /// Margin between the y max parent Widget and the outer edge of its frame.
     pub top: f64,
-    /// Margin between the y min Canvas and the outer edge of its frame.
+    /// Margin between the y min parent Widget and the outer edge of its frame.
     pub bottom: f64,
-    /// Margin between the x min Canvas and the outer edge of its frame.
+    /// Margin between the x min parent Widget and the outer edge of its frame.
     pub left: f64,
-    /// Margin between the x max Canvas and the outer edge of its frame.
+    /// Margin between the x max parent Widget and the outer edge of its frame.
     pub right: f64,
 }
 
+
+impl Margin {
+    /// No margin.
+    pub fn none() -> Margin {
+        Margin { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
+    }
+}

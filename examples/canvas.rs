@@ -6,7 +6,7 @@ extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{CanvasId, Floating, Theme, Widget, WidgetId};
+use conrod::{Canvas, Theme, Widget, WidgetId};
 use piston_window::*;
 
 type Ui = conrod::Ui<Glyphs>;
@@ -53,14 +53,18 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
         Split::new(FOOTER).color(blue())
     ]).set(ui);
 
-    Floating::new()
+    Canvas::new()
+        .show_title_bar(true)
+        .floating(true)
         .label("Blue")
         .middle_of(LEFT_COLUMN)
         .color(blue())
         .label_color(white())
         .set(FLOATING_A, ui);
 
-    Floating::new()
+    Canvas::new()
+        .show_title_bar(true)
+        .floating(true)
         .label("Orange")
         .middle_of(RIGHT_COLUMN)
         .color(light_orange())
@@ -86,7 +90,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
         .set(BOTTOM_RIGHT, ui);
 
     WidgetMatrix::new(COLS, ROWS)
-        .dim(ui.canvas_size(FOOTER))
+        .dim(ui.widget_size(FOOTER))
         .middle_of(FOOTER)
         .each_widget(ui, |ui, n, _col, _row, xy, dim| {
             Button::new()
@@ -108,23 +112,23 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
 }
 
 
-// Canvas IDs.
-const MASTER: CanvasId = 0;
-const HEADER: CanvasId = MASTER + 1;
-const BODY: CanvasId = HEADER + 1;
-const LEFT_COLUMN: CanvasId = BODY + 1;
-const MIDDLE_COLUMN: CanvasId = LEFT_COLUMN + 1;
-const RIGHT_COLUMN: CanvasId = MIDDLE_COLUMN + 1;
-const FOOTER: CanvasId = RIGHT_COLUMN + 1;
-const FLOATING_A: CanvasId = FOOTER + 1;
-const FLOATING_B: CanvasId = FLOATING_A + 1;
-
 // Button matrix dimensions.
 const ROWS: usize = 5;
 const COLS: usize = 24;
 
+// Canvas IDs.
+const MASTER: WidgetId = 0;
+const HEADER: WidgetId = MASTER + 1;
+const BODY: WidgetId = HEADER + 1;
+const LEFT_COLUMN: WidgetId = BODY + 1;
+const MIDDLE_COLUMN: WidgetId = LEFT_COLUMN + 1;
+const RIGHT_COLUMN: WidgetId = MIDDLE_COLUMN + 1;
+const FOOTER: WidgetId = RIGHT_COLUMN + 1;
+const FLOATING_A: WidgetId = FOOTER + 1;
+const FLOATING_B: WidgetId = FLOATING_A + 1;
+
 // Widget IDs.
-const TITLE: WidgetId = 0;
+const TITLE: WidgetId = FLOATING_B + 1;
 const SUBTITLE: WidgetId = TITLE + 1;
 const TOP_LEFT: WidgetId = SUBTITLE + 1;
 const MIDDLE: WidgetId = TOP_LEFT + 1;
