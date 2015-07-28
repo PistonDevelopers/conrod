@@ -163,6 +163,7 @@ fn cursor_position<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                       font_size: FontSize,
                                       text: &str) -> CursorX {
     assert!(idx <= text.chars().count());
+
     if idx == 0 {
          return text_start_x;
     }
@@ -472,6 +473,10 @@ impl<'a, F> Widget for TextBox<'a, F>
                 }
             }
 
+            // In case the string text was mutated with the `react` function, we need to make sure
+            // the cursor is limited to the current number of chars.
+            cursor.limit_end_to(self.text.chars().count());
+
             new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
         }
 
@@ -522,6 +527,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
+
             let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &state.text);
 
             let cursor_form = if cursor.is_cursor() {
