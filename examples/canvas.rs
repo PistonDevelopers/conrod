@@ -30,7 +30,6 @@ fn main() {
 
     // Poll events from the window.
     for event in window {
-        event.press(|pressed| println!("{:?}", &pressed));
         ui.handle_event(&event);
         event.draw_2d(|c, g| draw_ui(&mut ui, c, g));
     }
