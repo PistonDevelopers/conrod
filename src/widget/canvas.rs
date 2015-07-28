@@ -236,25 +236,6 @@ impl<'a> Widget for Canvas<'a> {
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-    // /// If the title bar was clicked, capture the mouse.
-    // fn capture_mouse(prev: &State, new: &State) -> bool {
-    //     use self::Interaction::{Highlighted, Clicked};
-    //     match (prev.interaction, new.interaction) {
-    //         (Highlighted(Elem::TitleBar), Clicked(Elem::TitleBar, _)) => true,
-    //         _ => false,
-    //     }
-    // }
-
-    // /// If the title bar was released, uncapture the mouse.
-    // fn uncapture_mouse(prev: &Self::State, new: &Self::State) -> bool {
-    //     use self::Interaction::{Normal, Highlighted, Clicked};
-    //     match (prev.interaction, new.interaction) {
-    //         (Clicked(Elem::TitleBar, _), Highlighted(_)) |
-    //         (Clicked(Elem::TitleBar, _), Normal)         => true,
-    //         _ => false,
-    //     }
-    // }
-
     /// The title bar area at which the Canvas can be clicked and dragged.
     /// The position of the area should be relative to the center of the widget..
     fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<drag::Area> {

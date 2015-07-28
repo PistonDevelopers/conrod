@@ -558,6 +558,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     let start_idx = num_items_scrolled_past.floor() as usize;
                     let last_visible_item = num_items_scrolled_past + num_items_that_fit;
                     let end_idx = last_visible_item.floor() as usize;
+                    // Make sure the resulting end_idx is smaller than the number of strings.
+                    let end_idx = if end_idx >= num_strings { num_strings - 1 } else { end_idx };
                     let scroll_amt = (y_offset / max_offset) * (total_h - max_visible_height);
                     (start_idx, end_idx, scroll_amt)
                 } else {
@@ -571,6 +573,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     0 => &state.strings[0..0],
                     _ => &state.strings[start_idx..end_idx + 1],
                 };
+
                 let item_form_chain = visible_range.iter().enumerate().flat_map(|(i, string)| {
                     let i = i + start_idx;
                     let color = match state.maybe_selected {
