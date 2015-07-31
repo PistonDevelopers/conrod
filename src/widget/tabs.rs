@@ -4,7 +4,7 @@ use color::Color;
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
-use position::{Dimensions, Point, Positionable};
+use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};
 use theme::Theme;
 use widget::{self, WidgetId, Widget};
@@ -230,6 +230,21 @@ impl<'a> Widget for Tabs<'a> {
     }
     fn style(&self) -> Style { self.style.clone() }
 
+    /// The area on which child widgets will be placed when using the `Place` `Position` methods.
+    fn kid_area(state: &widget::State<State>, style: &Style, theme: &Theme) -> widget::KidArea {
+        match style.layout(theme) {
+            Layout::Horizontal => widget::KidArea {
+                xy: [state.xy[0], state.xy[1] - state.state.tab_bar_dim[1] / 2.0],
+                dim: [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
+                pad: style.canvas.padding(theme),
+            },
+            Layout::Vertical => widget::KidArea {
+                xy: [state.xy[0] + state.state.tab_bar_dim[0] / 2.0, state.xy[1]],
+                dim: [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
+                pad: style.canvas.padding(theme),
+            },
+        }
+    }
 
     /// Update the state of the Tabs.
     fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
@@ -261,7 +276,7 @@ impl<'a> Widget for Tabs<'a> {
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Determine whether the mouse is currently over part of the widget..
-        let is_over_elem = if let Some(mouse) = maybe_mouse {
+        let is_over_elem = || if let Some(mouse) = maybe_mouse {
             use utils::is_over_rect;
             if is_over_rect([0.0, 0.0], mouse.xy, dim) {
                 if is_over_rect(tab_bar_rel_xy, mouse.xy, tab_bar_dim) {
@@ -272,7 +287,7 @@ impl<'a> Widget for Tabs<'a> {
                                 let tab_x = start_tab_x + i as f64 * tab_dim[0];
                                 let tab_xy = [tab_x, tab_bar_rel_xy[1]];
                                 if is_over_rect(tab_xy, mouse.xy, tab_dim) {
-                                    Some(Elem::Tab(i));
+                                    return Some(Elem::Tab(i));
                                 }
                             }
                             Some(Elem::Body)
@@ -283,7 +298,7 @@ impl<'a> Widget for Tabs<'a> {
                                 let tab_y = start_tab_y - i as f64 * tab_dim[1];
                                 let tab_xy = [tab_bar_rel_xy[0], tab_y];
                                 if is_over_rect(tab_xy, mouse.xy, tab_dim) {
-                                    Some(Elem::Tab(i));
+                                    return Some(Elem::Tab(i));
                                 }
                             }
                             Some(Elem::Body)
@@ -303,7 +318,7 @@ impl<'a> Widget for Tabs<'a> {
         let new_interaction = if let Some(mouse) = maybe_mouse {
             use mouse::ButtonState::{Down, Up};
             use self::Interaction::{Normal, Highlighted, Clicked};
-            match (is_over_elem, state.interaction, mouse.left) {
+            match (is_over_elem(), state.interaction, mouse.left) {
                 (Some(_),    Normal,          Down) => Normal,
                 (Some(elem), _,               Up)   => Highlighted(elem),
                 (Some(elem), Highlighted(_),  Down) => Clicked(elem),
@@ -431,7 +446,7 @@ impl<'a> Widget for Tabs<'a> {
                     let inner_tab_dim = ::vecmath::vec2_sub(tab_dim, [frame * 2.0; 2]);
                     let start_tab_y = dim[1] / 2.0 - tab_dim[1] / 2.0;
                     let tab_bar_forms = tabs.iter().enumerate().flat_map(|(i, &(_, ref label))| {
-                        let tab_y = start_tab_y + i as f64 * tab_dim[0];
+                        let tab_y = start_tab_y - i as f64 * tab_dim[1];
                         let tab_xy = [tab_bar_rel_xy[0], tab_y];
                         Some(rect_form(tab_dim, frame_color)).into_iter()
                             .chain(Some(rect_form(inner_tab_dim, color(i))))
@@ -460,11 +475,18 @@ impl<'a> Widget for Tabs<'a> {
         where C: CharacterCache,
     {
         if let Some(idx) = state.state.maybe_selected_tab_idx {
+            use position::{Positionable, Sizeable};
+
             let &(child_id, _) = &state.state.tabs[idx];
             let mut canvas = Canvas::new();
+            let dim = match style.layout(&ui.theme) {
+                Layout::Horizontal => [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
+                Layout::Vertical   => [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
+            };
             canvas.style = style.canvas.clone();
             canvas
                 .show_title_bar(false)
+                .dim(dim)
                 .floating(false)
                 .middle_of(id)
                 .parent(Some(id))
