@@ -1,6 +1,7 @@
 
 
 use elmesque::{Element, Renderer};
+use elmesque::element::layers;
 use graphics::Graphics;
 use graphics::character::CharacterCache;
 use petgraph as pg;
@@ -391,6 +392,53 @@ impl Graph {
                           renderer: &mut Renderer<'a, C, G>) where
         C: CharacterCache,
         G: Graphics<Texture = C::Texture>,
+    {                   
+        self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
+
+        // Draw the widgets in order of depth (starting with the deepest).
+        for &idx in self.depth_order.iter() {
+            if let &mut Node::Widget(ref mut container) = &mut self.graph[idx] {
+                if container.has_updated {
+                    container.element.draw(renderer);
+                    container.has_updated = false;
+                }
+            }
+        }
+    }
+    
+    /// Return an `elmesque::Element` containing all widgets within the entire Graph.
+    ///
+    /// The order in which we will draw all widgets will be a akin to a depth-first search, where
+    /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
+    /// widget, which will always be drawn last).
+    pub fn element(&mut self,
+                   maybe_captured_mouse: Option<WidgetId>,
+                   maybe_captured_keyboard: Option<WidgetId>) -> Element
+    {
+        self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
+
+        let Graph {
+            ref mut graph,
+            ref mut depth_order,
+            ..
+        } = *self;
+
+        let elements = depth_order.iter().filter_map(|&idx| {
+            if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
+                if container.has_updated {
+                    container.has_updated = false;
+                    return Some(container.element.clone());
+                }
+            }
+            None
+        }).collect();
+        layers(elements)
+    }
+
+    // Helper method for logic shared between draw() and element().
+    fn prepare_to_draw(&mut self,
+                       maybe_captured_mouse: Option<WidgetId>,
+                       maybe_captured_keyboard: Option<WidgetId>)
     {
         let Graph {
             ref mut graph,
@@ -408,18 +456,7 @@ impl Graph {
                            graph,
                            depth_order,
                            floating_deque);
-
-        // Draw the widgets in order of depth (starting with the deepest).
-        for &idx in depth_order.iter() {
-            if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                if container.has_updated {
-                    container.element.draw(renderer);
-                    container.has_updated = false;
-                }
-            }
-        }
     }
-
 }
 
 /// Update the depth_order (starting with the deepest) for all nodes in the graph.
@@ -440,7 +477,7 @@ fn update_depth_order(root: NodeIndex,
     floating_deque.clear();
     floating_deque.reserve(num_nodes);
 
-    // Fisit each node in order of depth and add their indices to depth_order.
+    // Visit each node in order of depth and add their indices to depth_order.
     // If the widget is floating, then store it in the floating_deque instead.
     visit_by_depth(root,
                    maybe_captured_mouse,
