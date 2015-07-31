@@ -89,11 +89,6 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
         .top_left_of(LEFT_COLUMN)
         .set(TOP_LEFT, ui);
 
-    Label::new("Middle")
-        .color(orange().complement())
-        .middle_of(MIDDLE_COLUMN)
-        .set(MIDDLE, ui);
-
     Label::new("Bottom Right")
         .color(dark_orange().complement())
         .bottom_right_of(RIGHT_COLUMN)
@@ -149,8 +144,7 @@ const TAB_BAZ: WidgetId = TAB_BAR + 1;
 const TITLE: WidgetId = TAB_BAZ + 1;
 const SUBTITLE: WidgetId = TITLE + 1;
 const TOP_LEFT: WidgetId = SUBTITLE + 1;
-const MIDDLE: WidgetId = TOP_LEFT + 1;
-const BOTTOM_RIGHT: WidgetId = MIDDLE + 1;
+const BOTTOM_RIGHT: WidgetId = TOP_LEFT + 1;
 const FOO_LABEL: WidgetId = BOTTOM_RIGHT + 1;
 const BAR_LABEL: WidgetId = FOO_LABEL + 1;
 const BAZ_LABEL: WidgetId = BAR_LABEL + 1;
