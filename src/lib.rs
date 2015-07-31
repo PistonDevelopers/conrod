@@ -64,7 +64,7 @@ pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalA
                    VerticalAlign};
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
-pub use widget::{Widget, WidgetId};
+pub use widget::{CommonBuilder, DrawArgs, UpdateArgs, Widget, WidgetId};
 pub use widget::State as WidgetState;
 
 
