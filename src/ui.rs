@@ -72,6 +72,9 @@ pub struct Ui<C> {
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>,
+    /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
+    /// triggered.
+    num_redraw_frames: u8,
     /// Whether or not the `Ui` needs to be re-drawn to screen.
     redraw_count: u8,
     /// A background color to clear the screen with before drawing if one was given.
@@ -145,6 +148,7 @@ impl<C> Ui<C> {
             maybe_widget_under_mouse: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
+            num_redraw_frames: SAFE_REDRAW_COUNT,
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
         }
@@ -336,11 +340,17 @@ impl<C> Ui<C> {
     }
 
 
+    /// Set the number of frames that the `Ui` should draw in the case that `needs_redraw` is
+    /// called. The default is `3` (see the SAFE_REDRAW_COUNT docs for details).
+    pub fn set_num_redraw_frames(&mut self, num_frames: u8) {
+        self.num_redraw_frames = num_frames;
+    }
+
     /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
     /// count to a `SAFE_REDRAW_COUNT`. See the docs for SAFE_REDRAW_COUNT or `draw_if_changed` for
     /// more info on how/why the redraw count is used.
     pub fn needs_redraw(&mut self) {
-        self.redraw_count = SAFE_REDRAW_COUNT;
+        self.redraw_count = self.num_redraw_frames;
     }
 
 
