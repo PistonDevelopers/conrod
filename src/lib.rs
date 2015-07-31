@@ -49,7 +49,7 @@ pub use widget::xy_pad::Style as XYPadStyle;
 
 
 pub use background::Background;
-pub use elmesque::color;
+pub use elmesque::{color, Element};
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
 pub use graphics::character::CharacterCache;
