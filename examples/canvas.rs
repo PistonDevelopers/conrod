@@ -75,8 +75,6 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Tabs::new(&[(TAB_FOO, "FOO"),
                 (TAB_BAR, "BAR"),
                 (TAB_BAZ, "BAZ")])
-        .layout_vertically()
-        .starting_canvas(TAB_BAZ)
         .dim(ui.widget_size(MIDDLE_COLUMN))
         .color(blue())
         .label_color(white())
