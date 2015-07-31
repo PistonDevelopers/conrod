@@ -19,6 +19,7 @@ pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
 pub mod split;
+pub mod tabs;
 pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
@@ -200,6 +201,16 @@ pub trait Widget: Sized {
         self.common_mut().is_floating = is_floating;
         self
     }
+
+    /// An optionally overridable method for setting child widgets.
+    /// This will be called immediately after the widget itself is updated.
+    /// NOTE: The API for this will probably changed somehow, as there is probably a nicer way to
+    /// do this than give the widget designer mutable access to the entire `Ui`.
+    fn set_children<C>(_id: WidgetId,
+                       _state: &State<Self::State>,
+                       _style: &Self::Style,
+                       _ui: &mut Ui<C>)
+        where C: CharacterCache {}
 
     /// Note: There should be no need to override this method.
     ///
@@ -411,6 +422,12 @@ pub trait Widget: Sized {
             drag_state: drag_state,
             maybe_floating: maybe_floating,
         };
+
+        // In the case that this widget is the owner of a set of children widgets, those will be
+        // set here.
+        // FIXME: There must be a better way to allow third-party widget designers to set child
+        // widgets without requiring mutable access to the entire `Ui`.
+        Self::set_children(id, &new_state, &new_style, ui);
 
         // Retrieve the area upon which kid widgets will be placed.
         let kid_area = Self::kid_area(&new_state, &new_style, &ui.theme);
