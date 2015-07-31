@@ -52,6 +52,8 @@ pub struct Theme {
     pub maybe_number_dialer: Option<WidgetDefault<widget::number_dialer::Style>>,
     /// Optional style defaults for a Slider.
     pub maybe_slider: Option<WidgetDefault<widget::slider::Style>>,
+    /// Optional style defaults for a Tabs widget.
+    pub maybe_tabs: Option<WidgetDefault<widget::tabs::Style>>,
     /// Optional style defaults for a TextBox.
     pub maybe_text_box: Option<WidgetDefault<widget::text_box::Style>>,
     /// Optional style defaults for a Toggle.
@@ -127,6 +129,7 @@ impl Theme {
             maybe_envelope_editor: None,
             maybe_number_dialer: None,
             maybe_slider: None,
+            maybe_tabs: None,
             maybe_text_box: None,
             maybe_toggle: None,
             maybe_xy_pad: None,

@@ -302,12 +302,17 @@ impl<C> Ui<C> {
             },
 
             Position::Place(place, maybe_parent_id) => {
+                let window = || ([0.0, 0.0], [self.win_w, self.win_h], Padding::none());
                 let (xy, target_dim, pad) = match maybe_parent_id.or(self.maybe_current_parent_id) {
-                    Some(parent_id) => {
-                        let parent = &self.widget_graph[parent_id];
-                        (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad)
+                    Some(parent_id) => match self.widget_graph.get_widget(parent_id) {
+                        Some(parent) =>
+                            (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad),
+                        // Sometimes the children are placed prior to their parents being set for
+                        // the first time. If this is the case, we'll just place them on the window
+                        // until we have information about the parents on the next update.
+                        None => window(),
                     },
-                    None => ([0.0, 0.0], [self.win_w, self.win_h], Padding::none()),
+                    None => window(),
                 };
                 let place_xy = place.within(target_dim, dim);
                 let relative_xy = ::vecmath::vec2_add(place_xy, pad.offset_from(place));
