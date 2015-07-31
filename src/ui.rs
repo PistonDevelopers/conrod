@@ -322,7 +322,7 @@ impl<C> Ui<C> {
         }
     }
 
-    /// Draw the `Ui` in it's current state.
+    /// Draw the `Ui` in its current state.
     /// - The order of drawing is as follows:
     ///     1. Canvas splits.
     ///     2. Widgets on Canvas splits.
@@ -339,23 +339,13 @@ impl<C> Ui<C> {
         use elmesque::Renderer;
         use std::ops::DerefMut;
 
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+
         let Ui {
             ref mut widget_graph,
             ref glyph_cache,
-            maybe_captured_mouse,
-            maybe_captured_keyboard,
             ..
         } = *self;
-
-        let maybe_captured_mouse = match maybe_captured_mouse {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-
-        let maybe_captured_keyboard = match maybe_captured_keyboard {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
 
         // Construct the elmesque Renderer for rendering the Elements.
         let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
@@ -365,6 +355,33 @@ impl<C> Ui<C> {
         widget_graph.draw(maybe_captured_mouse, maybe_captured_keyboard, &mut renderer);
     }
 
+    /// Compiles the `Ui` in its current state into an `elmesque::Element`.
+    /// - The order of drawing is as follows:
+    ///     1. Canvas splits.
+    ///     2. Widgets on Canvas splits.
+    ///     3. Floating Canvasses.
+    ///     4. Widgets on Floating Canvasses.
+    /// - Widgets are sorted by capturing and then render depth (depth first).
+    pub fn element(&mut self) -> Element {
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+        self.widget_graph.element(maybe_captured_mouse, maybe_captured_keyboard)
+    }
+
+    // Helper method for logic shared between draw() and element().
+    // Returns (maybe_captured_mouse, maybe_captured_keyboard).
+    fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
+        (
+            match self.maybe_captured_mouse {
+                Some(Capturing::Captured(id)) => Some(id),
+                _                             => None,
+            },
+
+            match self.maybe_captured_keyboard {
+                Some(Capturing::Captured(id)) => Some(id),
+                _                             => None,
+            }
+        )
+    }
 }
 
 
