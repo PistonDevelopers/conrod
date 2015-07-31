@@ -523,7 +523,7 @@ fn main() {
                 // drawn when we call Ui::draw.
                 .set(CIRCLE_BUTTON, &mut ui);
             
-            ui.draw(c, g);
+            ui.draw_if_changed(c, g);
         });
     }
 }

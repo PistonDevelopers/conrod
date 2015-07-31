@@ -165,8 +165,8 @@ fn main() {
 /// Draw the User Interface.
 fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
-    // Draw the background.
-    Background::new().color(demo.bg_color).draw(ui, gl);
+    // Sets a color to clear the background with before the Ui draws the widgets.
+    Background::new().color(demo.bg_color).set(ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
@@ -345,13 +345,6 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         None => purple(),
     };
 
-    // Draw the circle that's controlled by the XYPad.
-    graphics::Ellipse::new(ddl_color.to_fsa())
-        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
-              graphics::default_draw_state(),
-              graphics::math::abs_transform(ui.win_w, ui.win_h),
-              gl);
-
     // A demonstration using drop_down_list.
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
@@ -422,7 +415,18 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     }
 
     // Draw our Ui!
-    ui.draw(c, gl);
+    // The `draw_if_changed` method only re-draws the GUI if some state has changed or if
+    // `ui.needs_redraw();` was called.
+    // If you need to re-draw your conrod GUI every frame, use `Ui::draw`.
+    ui.draw_if_changed(c, gl);
+
+
+    // Draw the circle that's controlled by the XYPad.
+    graphics::Ellipse::new(ddl_color.to_fsa())
+        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
+              graphics::default_draw_state(),
+              graphics::math::abs_transform(ui.win_w, ui.win_h),
+              gl);
 
 }
 

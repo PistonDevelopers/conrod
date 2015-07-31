@@ -1,4 +1,5 @@
 
+use color::Color;
 use elmesque::Element;
 use graph::Graph;
 use graphics::{Context, Graphics};
@@ -71,6 +72,10 @@ pub struct Ui<C> {
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>,
+    /// Whether or not the `Ui` needs to be re-drawn to screen.
+    redraw_count: u8,
+    /// A background color to clear the screen with before drawing if one was given.
+    maybe_background_color: Option<Color>,
 }
 
 /// A wrapper over the current user input state.
@@ -113,6 +118,12 @@ impl<C> ::std::ops::DerefMut for GlyphCache<C> {
 }
 
 
+/// Each time conrod is required to redraw the GUI, it must draw for at least the next three frames
+/// to ensure that, in the case that graphics buffers are being swapped, we have filled each
+/// buffer. Otherwise if we don't draw into each buffer, we will probably be subject to flickering.
+pub const SAFE_REDRAW_COUNT: u8 = 3;
+
+
 impl<C> Ui<C> {
 
     /// Constructor for a UiContext.
@@ -134,6 +145,8 @@ impl<C> Ui<C> {
             maybe_widget_under_mouse: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
+            redraw_count: SAFE_REDRAW_COUNT,
+            maybe_background_color: None,
         }
     }
 
@@ -322,15 +335,44 @@ impl<C> Ui<C> {
         }
     }
 
+
+    /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
+    /// count to a `SAFE_REDRAW_COUNT`. See the docs for SAFE_REDRAW_COUNT or `draw_if_changed` for
+    /// more info on how/why the redraw count is used.
+    pub fn needs_redraw(&mut self) {
+        self.redraw_count = SAFE_REDRAW_COUNT;
+    }
+
+
+    /// Same as the `Ui::draw` method, but *only* draws if the `redraw_count` is greater than 0.
+    /// The `redraw_count` is set to `SAFE_REDRAW_COUNT` whenever a `Widget` produces a new
+    /// `Element` because its state has changed.
+    /// It can also be triggered manually by the user using the `Ui::needs_redraw` method.
+    ///
+    /// This method is generally preferred over `Ui::draw` as it requires far less CPU usage, only
+    /// redrawing to the screen if necessary.
+    ///
+    /// Note that when `Ui::needs_redraw` is triggered, it sets the `redraw_count` to 3 by default.
+    /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
+    /// happening. Let us know if you need finer control over this and we'll expose a way for you
+    /// to set the redraw count manually.
+    pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
+        where
+            C: CharacterCache,
+            G: Graphics<Texture = C::Texture>,
+    {
+        if self.redraw_count > 0 {
+            self.draw(context, graphics);
+        }
+    }
+
+
     /// Draw the `Ui` in it's current state.
-    /// - The order of drawing is as follows:
-    ///     1. Canvas splits.
-    ///     2. Widgets on Canvas splits.
-    ///     3. Floating Canvasses.
-    ///     4. Widgets on Floating Canvasses.
-    /// - Widgets are sorted by capturing and then render depth (depth first).
-    /// - Construct the elmesque `Renderer` for rendering the elm `Element`s.
-    /// - Render all widgets.
+    /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
+    /// `Ui::draw_if_changed` method instead.
+    /// See the `Graph::draw` method for more details on how Widgets are drawn.
+    /// See the `graph::update_visit_order` function for details on how the render order is
+    /// determined.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
         where
             C: CharacterCache,
@@ -344,8 +386,15 @@ impl<C> Ui<C> {
             ref glyph_cache,
             maybe_captured_mouse,
             maybe_captured_keyboard,
+            ref mut maybe_background_color,
+            ref mut redraw_count,
             ..
         } = *self;
+
+        // If some background color was given to clear the screen with, clear it.
+        if let Some(color) = maybe_background_color.take() {
+            ::graphics::clear(color.to_fsa(), graphics);
+        }
 
         let maybe_captured_mouse = match maybe_captured_mouse {
             Some(Capturing::Captured(id)) => Some(id),
@@ -363,6 +412,9 @@ impl<C> Ui<C> {
         let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
 
         widget_graph.draw(maybe_captured_mouse, maybe_captured_keyboard, &mut renderer);
+
+        // Now that we've drawn everything, take one from the redraw count.
+        *redraw_count = *redraw_count - 1;
     }
 
 }
@@ -569,4 +621,9 @@ pub fn update_widget<C, W>(ui: &mut Ui<C>,
     ui.maybe_current_parent_id = maybe_parent_id;
 }
 
+
+/// Clear the background with the given color.
+pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
+    ui.maybe_background_color = Some(color);
+}
 

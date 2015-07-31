@@ -40,8 +40,8 @@ fn main() {
         if let Some(args) = event.render_args() {
             gl.draw(args.viewport(), |c, gl| {
 
-                // Draw the background.
-                Background::new().rgb(0.2, 0.25, 0.4).draw(ui, gl);
+                // Set the background color to use for clearing the screen.
+                Background::new().rgb(0.2, 0.25, 0.4).set(ui);
 
                 // Draw the button and increment count if pressed..
                 Button::new()
@@ -52,7 +52,7 @@ fn main() {
                     .set(0, ui);
 
                 // Draw our Ui!
-                ui.draw(c, gl);
+                ui.draw_if_changed(c, gl);
 
             });
         }

@@ -117,7 +117,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
         .react(|| println!("Bong!"))
         .set(BONG, ui);
 
-    ui.draw(c, g);
+    ui.draw_if_changed(c, g);
 }
 
 
