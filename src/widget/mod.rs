@@ -524,7 +524,7 @@ pub struct Floating {
 
 /// A struct containing builder data common to all Widget types.
 /// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct CommonBuilder {
     /// The width of a Widget.
     pub maybe_width: Option<Scalar>,

@@ -79,3 +79,10 @@ conrod = "*"
 ## Dependencies
 
 ![dependencies](./Cargo.png)
+
+## Conrod uses Elmesque
+
+Conrod uses [Elmesque](https://github.com/mitchmindtree/elmesque) under the hood. You
+don't need to know about Elmesque to use Conrod. But if you want to combine Conrod with
+your own custom Elmesque drawing, see
+[the example](https://github.com/PistonDevelopers/conrod/blob/master/examples/elmesque.rs).
