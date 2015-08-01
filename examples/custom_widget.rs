@@ -17,12 +17,11 @@ extern crate piston_window;
 extern crate graphics;
 extern crate gfx_graphics;
 extern crate elmesque;
-extern crate conrod;
+#[macro_use] extern crate conrod;
 extern crate vecmath;
 extern crate find_folder;
 extern crate rustc_serialize;
 
-use conrod::WidgetId;
 
 mod circular_button {
     use conrod::{
@@ -530,5 +529,9 @@ fn main() {
     }
 }
 
-// The WidgetId we'll use to plug our widget into the `Ui`.
-const CIRCLE_BUTTON: WidgetId = 0;
+
+// The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
+widget_ids! {
+    // The WidgetId we'll use to plug our widget into the `Ui`.
+    CIRCLE_BUTTON,
+}

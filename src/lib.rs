@@ -1,4 +1,4 @@
-//! 
+//!
 //! # Conrod
 //!
 //! An easy-to-use, immediate-mode, 2D GUI library featuring a range of useful widgets.
@@ -85,23 +85,104 @@ pub mod utils;
 mod widget;
 
 
-// #[macro_export]
-// macro_rules! widget_ids {
-//     ($($ids:ident),*) => {
-//         $(
-//             new_widget_id!(0, $($ids,)*);
-//         )*
-//     };
-// }
-// 
-// macro_rules! new_widget_id{
-//     ($count:expr, ,) => {};
-//     ($count:expr, $current_id:ident) => {
-//         const $current_id: WidgetId = $count;
-//     };
-//     ($count:expr, $current_id:ident, $($rest:ident,)*) => {
-//         new_widget_id!($count, $current_id);
-//         new_widget_id!($count + 1, $($rest),*,);
-//     };
-// }
 
+
+/// Generate a list of unique IDs given a list of identifiers.
+///
+/// This is the recommended way of generating `WidgetId`s as it greatly lessens the chances of
+/// making errors when adding or removing widget ids.
+///
+/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state 
+/// between updates.
+///
+/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for 
+/// each identifier given in the list.
+///
+/// The `with n` syntax reserves `n` number of `WidgetId`s for that identifier rather than just one.
+///
+/// This is often useful in the case that you need to set multiple Widgets in a loop or when using
+/// the `widget::Matrix`.
+///
+/// Note: Make sure when that you remember to `#[macro_use]` if you want to use this macro - i.e.
+///
+/// `#[macro_use] extern crate conrod;`
+///
+#[macro_export]
+macro_rules! widget_ids {
+
+    // Handle the first ID.
+    ( $widget_id:ident , $($rest:tt)* ) => (
+        const $widget_id: $crate::WidgetId = 0;
+        widget_ids!($widget_id => $($rest)*);
+    );
+
+    // Handle the first ID with some given step between it and the next ID.
+    ( $widget_id:ident with $step:expr , $($rest:tt)* ) => (
+        const $widget_id: $crate::WidgetId = 0;
+        widget_ids!($widget_id + $step => $($rest)*);
+    );
+
+    // Handle some consecutive ID.
+    ( $prev_id:expr => $widget_id:ident , $($rest:tt)* ) => (
+        const $widget_id: $crate::WidgetId = $prev_id + 1;
+        widget_ids!($widget_id => $($rest)*);
+    );
+
+    // Handle some consecutive ID with some given step between it and the next ID.
+    ( $prev_id:expr => $widget_id:ident with $step:expr , $($rest:tt)* ) => (
+        const $widget_id: $crate::WidgetId = $prev_id + 1;
+        widget_ids!($widget_id + $step => $($rest)*);
+    );
+
+
+    ///// End cases. /////
+
+
+    // Handle the final ID.
+    () => ();
+
+    // Handle the final ID.
+    ( $prev_id:expr => ) => ();
+
+
+    ///// Handle end cases that don't have a trailing comma. /////
+
+
+    // Handle a single ID without a trailing comma.
+    ( $widget_id:ident ) => (
+        const $widget_id: $crate::WidgetId = 0;
+    );
+
+    // Handle a single ID with some given step without a trailing comma.
+    ( $widget_id:ident with $step:expr ) => (
+        const $widget_id: $crate::WidgetId = 0;
+    );
+
+    // Handle the last ID without a trailing comma.
+    ( $prev_id:expr => $widget_id:ident ) => (
+        const $widget_id: $crate::WidgetId = $prev_id + 1;
+    );
+
+    // Handle the last ID with some given step without a trailing comma.
+    ( $prev_id:expr => $widget_id:ident with $step:expr ) => (
+        const $widget_id: $crate::WidgetId = $prev_id + 1;
+    );
+
+}
+
+
+#[test]
+fn test() {
+    widget_ids! {
+        A,
+        B with 64,
+        C with 32,
+        D,
+        E with 8,
+    }
+    assert_eq!(A, 0);
+    assert_eq!(B, 1);
+    assert_eq!(C, 66);
+    assert_eq!(D, 99);
+    assert_eq!(E, 100);
+}
