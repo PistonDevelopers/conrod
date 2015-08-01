@@ -430,7 +430,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 }
 
 
-// In conrod, each widget must have it's own unique identifier so that the `Ui` can keep track of
+// In conrod, each widget must have its own unique identifier so that the `Ui` can keep track of
 // its state between updates.
 // To make this easier, conrod provides the `widget_ids` macro, which generates a unique `WidgetId`
 // for each identifier given in the list.
