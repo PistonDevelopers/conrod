@@ -434,6 +434,10 @@ pub trait Widget: Sized {
 
         // Construct the widget's element.
         let maybe_new_element = if style_has_changed || state_has_changed {
+
+            // Inform the `Ui` that we'll need a redraw.
+            ui.needs_redraw();
+
             let args = DrawArgs {
                 state: &new_state,
                 style: &new_style,

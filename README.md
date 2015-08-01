@@ -25,6 +25,7 @@ Available Widgets
 -----------------
 
 - Button
+- Canvas (Can be positioned manually or by using Splits or Tabs)
 - Drop Down List
 - Envelope Editor
 - Label
@@ -33,7 +34,7 @@ Available Widgets
 - TextBox
 - Toggle
 - XYPad
-- Custom: Conrod also provides a `Widget` trait for designing and implementing custom widgets. All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free add them in a pull request :)
+- Custom: Conrod also provides a `Widget` trait for designing and implementing custom widgets. You can find an annotated demonstration of designing a custom widget implementation [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/custom_widget.rs). All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free to add them in a pull request :)
 
 **To-do:**
 - [Menu Bar / Tool Bar](https://github.com/PistonDevelopers/conrod/issues/417)
@@ -44,6 +45,8 @@ Available Widgets
 - [Advanced graph visualisation and control](https://github.com/PistonDevelopers/mush)
 
 If conrod is missing anything you really wish it had, let us know with an issue describing the widget's style, behaviour and functionality - or even better, submit a pull request :D
+
+Make sure you check the [`widget` label](https://github.com/PistonDevelopers/conrod/labels/widget) for your desired widget first as it may have already been requested.
 
 Dependencies
 ------------
@@ -82,7 +85,6 @@ conrod = "*"
 
 ## Conrod uses Elmesque
 
-Conrod uses [Elmesque](https://github.com/mitchmindtree/elmesque) under the hood. You
-don't need to know about Elmesque to use Conrod. But if you want to combine Conrod with
-your own custom Elmesque drawing, see
-[the example](https://github.com/PistonDevelopers/conrod/blob/master/examples/elmesque.rs).
+Conrod uses [Elmesque](https://github.com/mitchmindtree/elmesque) under the hood for its 2D
+graphics and layout. You don't need to know about Elmesque to use Conrod. But if you want to
+combine Conrod with your own custom Elmesque drawing, see [the example](https://github.com/PistonDevelopers/conrod/blob/master/examples/elmesque.rs).

@@ -1,4 +1,4 @@
-//! 
+//!
 //! Demonstration of custom widgets. Although this file is long, much of the code is
 //! boilerplate that can be copied to almost any custom widget. For the most interesting
 //! parts, search for:
@@ -8,10 +8,10 @@
 //! - `fn update`
 //! - `fn is_over_circ`
 //! - `fn get_new_interaction`
-//! 
+//!
 //! As of July 28, 2015, this is broken on retina displays due to
 //! https://github.com/tomaka/glutin/issues/503.
-//! 
+//!
 
 extern crate piston_window;
 extern crate graphics;
@@ -25,12 +25,12 @@ extern crate rustc_serialize;
 use conrod::WidgetId;
 
 mod circular_button {
-    use elmesque::{self, Element};
     use conrod::{
         Color,
         Colorable,
         CommonBuilder,
         DrawArgs,
+        Element,
         FontSize,
         GlyphCache,
         Labelable,
@@ -46,7 +46,7 @@ mod circular_button {
     use vecmath::{vec2_sub, vec2_len};
     use graphics::math::Scalar;
 
-    
+
     pub struct CircularButton<'a, F> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
@@ -62,7 +62,7 @@ mod circular_button {
         /// user input.
         enabled: bool
     }
-    
+
     #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
     pub struct Style {
         /// Color of the button.
@@ -74,7 +74,7 @@ mod circular_button {
         /// Font size of the button's label.
         pub maybe_label_font_size: Option<u32>,
     }
-    
+
     /// Represents the state of the CircularButton widget.
     #[derive(Clone, Debug, PartialEq)]
     pub struct State {
@@ -84,7 +84,7 @@ mod circular_button {
         /// between interaction states.
         interaction: Interaction,
     }
-    
+
     impl State {
         /// Alter the widget color depending on the state.
         fn color(&self, color: Color) -> Color {
@@ -101,7 +101,7 @@ mod circular_button {
             }
         }
     }
-    
+
     /// Represents an interaction with the CircularButton widget.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum Interaction {
@@ -109,7 +109,7 @@ mod circular_button {
         Highlighted,
         Clicked,
     }
-    
+
     /// Check the current state of the button. Takes into account whether the mouse is
     /// over the button and the previous interaction state.
     fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
@@ -120,29 +120,29 @@ mod circular_button {
             // update. This means the user clicked somewhere outside the button and
             // moved over the button holding LMB down. We do nothing in this case.
             (true,  Normal,  Down) => Normal,
-            
+
             // LMB is down over the button. The button was either Highlighted or Clicked
             // last update. If it was highlighted before, that means the user clicked
             // just now, and we transition to the Clicked state. If it was clicked
             // before, that means the user is still holding LMB down from a previous
             // click, in which case the state remains Clicked.
             (true,  _,       Down) => Clicked,
-            
+
             // LMB is up. The mouse is hovering over the button. Regardless of what the
             // state was last update, the state should definitely be Highlighted now.
             (true,  _,       Up)   => Highlighted,
-            
+
             // LMB is down, the mouse is not over the button, but the previous state was
             // Clicked. That means the user clicked the button and then moved the mouse
             // outside the button while holding LMB down. The button stays Clicked.
             (false, Clicked, Down) => Clicked,
-            
+
             // If none of the above applies, then nothing interesting is happening with
             // this button.
             _                      => Normal,
         }
     }
-    
+
     impl<'a, F> CircularButton<'a, F> {
         /// Create a button context to be built upon.
         pub fn new() -> CircularButton<'a, F> {
@@ -171,20 +171,20 @@ mod circular_button {
             self
         }
     }
-    
+
     /// Return whether or not a given point is over a circle at a given point on a
     /// Cartesian plane. We use this to determine whether the mouse is over the button.
     pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
         // Offset vector from the center of the circle to the mouse.
         let offset = vec2_sub(mouse_point, circ_center);
-        
+
         // If the length of the offset vector is less than or equal to the circle's
         // radius, then the mouse is inside the circle. We assume that dim is a square
         // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
         vec2_len(offset) <= dim[0] / 2.0
     }
 
-    
+
     /// A custom Conrod widget must implement the Widget trait. See
     /// conrod/src/widget/mod.rs for comments on each required type and method.
     impl<'a, F> Widget for CircularButton<'a, F>
@@ -192,10 +192,10 @@ mod circular_button {
     {
         /// The State struct that we defined above.
         type State = State;
-        
+
         /// The Style struct that we defined above.
         type Style = Style;
-        
+
         fn common(&self) -> &CommonBuilder { &self.common }
         fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
         fn unique_kind(&self) -> &'static str { "CircularButton" }
@@ -216,7 +216,7 @@ mod circular_button {
                 _ => false,
             }
         }
-        
+
         /// Whether the button should uncapture the mouse.
         fn uncapture_mouse(prev: &State, new: &State) -> bool {
             match (prev.interaction, new.interaction) {
@@ -227,12 +227,12 @@ mod circular_button {
                 _ => false,
             }
         }
-        
+
         /// Default width of the widget. This method is optional. The Widget trait
         /// provides a default implementation that always returns zero.
         fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
             const DEFAULT_WIDTH: Scalar = 64.0;
-            
+
             // Defaults can come from several places. Here, we define how certain defaults
             // take precedence over others.
             self.common.maybe_width
@@ -246,7 +246,7 @@ mod circular_button {
         /// provides a default implementation that always returns zero.
         fn default_height(&self, theme: &Theme) -> Scalar {
             const DEFAULT_HEIGHT: Scalar = 64.0;
-            
+
             // See default_width for comments on this logic.
             self.common.maybe_height
                 .or(theme.maybe_button.as_ref().map(|default| {
@@ -273,10 +273,10 @@ mod circular_button {
                     // local coordinate system. Because mouse.xy is in local coords,
                     // we must also pass the circle center in local coords. Thus we pass
                     // [0.0, 0.0] as the center.
-                    // 
+                    //
                     // See above where we define is_over_circ.
                     let is_over = is_over_circ([0.0, 0.0], mouse.xy, dim);
-                    
+
                     // See above where we define get_new_interaction.
                     get_new_interaction(is_over, state.interaction, mouse)
                 },
@@ -303,7 +303,7 @@ mod circular_button {
                     // stores either an &str or None. If there's something there, we
                     // copy the &str into an owned String for the State object.
                     maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-                    
+
                     // We constructed new_interaction above. This is the interaction state
                     // as of this update.
                     interaction: new_interaction,
@@ -322,7 +322,7 @@ mod circular_button {
                     .map(|string| &string[..])
                     // Compare the current Option<&str> to the previous one.
                     != self.maybe_label;
-            
+
             // Construct and return the new state if there was a change. Recall that we
             // defined new_state above.
             if state_has_changed { Some(new_state()) } else { None }
@@ -333,21 +333,22 @@ mod circular_button {
         fn draw<'b, C>(args: DrawArgs<'b, Self, C>) -> Element
             where C: CharacterCache,
         {
+            use elmesque;
             use elmesque::form::{collage, circle, text};
-            
+
             // Unwrap the args and state structs into individual variables.
             let DrawArgs { state, style, theme, .. } = args;
             let WidgetState { ref state, dim, xy, .. } = *state;
-            
+
             // Retrieve the styling for the Element.
             let color = state.color(style.color(theme));
-            
+
             // Construct the frame and inner rectangle forms. We assume that dim is a
             // square bounding box, thus 2 * radius == dim[0] == dim[1].
             let radius = dim[0] / 2.0;
             let pressable_form: elmesque::Form =
                 circle(radius).filled(color);
-            
+
             // Construct the label's Form. Recall that State has maybe_label,
             // which stores either a String or None.
             let maybe_label_form: Option<elmesque::Form> =
@@ -363,7 +364,7 @@ mod circular_button {
                         .color(label_color).height(size as f64))
                         .shift(xy[0].floor(), xy[1].floor())
                 });
-            
+
             // Construct the button's Form.
             let form_chain =
                 // An Option can be converted into an Iterator. We do this because we want
@@ -380,7 +381,7 @@ mod circular_button {
                 // maybe_label_form as the last element. If our widget had more forms,
                 // we could add them with additional calls to chain.
                 .chain(maybe_label_form);
-            
+
             // We now have an Iterator containing all our Option<elmesque::Form>s. Turn
             // the forms into a renderable elmesque::Element.
             collage(
@@ -395,7 +396,7 @@ mod circular_button {
         }
 
     }
-    
+
     impl Style {
         /// Construct the default Style.
         pub fn new() -> Style {
@@ -428,7 +429,7 @@ mod circular_button {
             })).unwrap_or(theme.font_size_medium)
         }
     }
-    
+
     /// Provide the chainable color() configuration method.
     impl<'a, F> Colorable for CircularButton<'a, F> {
         fn color(mut self, color: Color) -> Self {
@@ -436,7 +437,7 @@ mod circular_button {
             self
         }
     }
-    
+
     /// Provide the chainable label(), label_color(), and label_font_size()
     /// configuration methods.
     impl<'a, F> Labelable<'a> for CircularButton<'a, F> {
@@ -469,24 +470,24 @@ fn main() {
         Widget
     };
     use gfx_graphics::GlyphCache;
-    
+
     use circular_button::CircularButton;
-    
+
     let opengl_version = piston_window::OpenGL::V3_2;
-    
+
     let window_settings = WindowSettings::new(
           "Control Panel",
             [1200, 800]
         )
         .opengl(opengl_version)
         .exit_on_esc(true);
-    
+
     // PistonWindow has two type parameters, but the default type is
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
     let window: PistonWindow = window_settings.into();
-    
+
     // Load a font. GlyphCache is provided by gfx_graphics. Other Piston backends provide
     // similar types.
     let assets = find_folder::Search::ParentsThenKids(3, 3)
@@ -496,24 +497,24 @@ fn main() {
         &font_path,
         window.factory.borrow().clone()
     ).unwrap();
-    
+
     // Conrod's main object.
-    let mut ui = conrod::Ui::new(
-        glyph_cache, conrod::Theme::default()
-    );
-    
+    let mut ui = conrod::Ui::new(glyph_cache, conrod::Theme::default());
+
     for e in window {
         // Invoke Conrod's user input handler.
-        ui.handle_event(&e.event.clone().unwrap());
-        
+        ui.handle_event(e.event.as_ref().unwrap());
+
         e.draw_2d(|c, g| {
+
+            // Sets a color to clear the background with before the Ui draws our widget.
+            conrod::Background::new().color(conrod::color::rgb(0.2, 0.1, 0.1)).set(&mut ui);
+
             // Create an instance of our custom widget.
             CircularButton::new()
-                // elmesque::color is also re-exported as conrod::color, so we could use
-                // it by that name too.
-                .color(elmesque::color::rgb(0.0, 0.3, 0.1))
+                .color(conrod::color::rgb(0.0, 0.3, 0.1))
                 .dimensions(256.0, 256.0)
-                .label_color(elmesque::color::white())
+                .label_color(conrod::color::white())
                 .label("Circular Button")
                 .react(|| {
                     // This is called when the user clicks the button.
@@ -522,10 +523,12 @@ fn main() {
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
                 // drawn when we call Ui::draw.
                 .set(CIRCLE_BUTTON, &mut ui);
-            
-            ui.draw(c, g);
+
+            // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
+            ui.draw_if_changed(c, g);
         });
     }
 }
 
+// The WidgetId we'll use to plug our widget into the `Ui`.
 const CIRCLE_BUTTON: WidgetId = 0;

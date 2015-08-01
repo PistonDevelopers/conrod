@@ -118,7 +118,7 @@ fn main() {
                 .set(SLIDER, &mut ui);
             
             // Draw all Conrod widgets. (We only have one in this instance.)
-            ui.draw(c, g); 
+            ui.draw_if_changed(c, g); 
         });
         
         e.update(|args| {
