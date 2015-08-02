@@ -74,6 +74,17 @@ enum Node {
 /// An alias for the petgraph::Graph used within our Ui Graph.
 type PetGraph = pg::Graph<Node, (), pg::Directed>;
 
+/// Parts of the graph that are significant when visiting and sorting by depth.
+/// The reason a widget and its scrollbar are separate here is because a widget's scrollbar may
+/// sometimes appear on *top* of the widget's children.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Visitable {
+    /// The index of some widget in the graph.
+    Widget(NodeIndex),
+    /// The scrollbar for the widget at the given NodeIndex.
+    ScrollbarFor(NodeIndex),
+}
+
 /// Stores the dynamic state of a UI tree of Widgets.
 #[derive(Debug)]
 pub struct Graph {
@@ -436,7 +447,7 @@ fn update_depth_order(root: NodeIndex,
                       maybe_captured_mouse: Option<NodeIndex>,
                       maybe_captured_keyboard: Option<NodeIndex>,
                       graph: &PetGraph,
-                      depth_order: &mut Vec<NodeIndex>,
+                      depth_order: &mut Vec<Visitable>,
                       floating_deque: &mut Vec<NodeIndex>)
 {
 
@@ -489,9 +500,7 @@ fn visit_by_depth(idx: NodeIndex,
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_updated => {
-            depth_order.push(idx);
-        },
+        &Node::Widget(ref container) if container.has_updated => depth_order.push(idx),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.
         _ => return,
@@ -532,6 +541,10 @@ fn visit_by_depth(idx: NodeIndex,
                                          depth_order,
                                          floating_deque),
         }
+    }
+
+    // If the widget is scrollable, we should add its scrollbar to the visit order also.
+    if let &Node::Widget(ref container) = &graph[idx] {
     }
 }
 
