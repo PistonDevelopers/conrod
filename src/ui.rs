@@ -424,7 +424,9 @@ impl<C> Ui<C> {
         widget_graph.draw(maybe_captured_mouse, maybe_captured_keyboard, &mut renderer);
 
         // Now that we've drawn everything, take one from the redraw count.
-        *redraw_count = *redraw_count - 1;
+        if *redraw_count > 0 {
+            *redraw_count = *redraw_count - 1;
+        }
     }
 
 }
