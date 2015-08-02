@@ -17,6 +17,7 @@ pub mod envelope_editor;
 pub mod label;
 pub mod matrix;
 pub mod number_dialer;
+pub mod scroll;
 pub mod slider;
 pub mod split;
 pub mod tabs;
@@ -199,6 +200,14 @@ pub trait Widget: Sized {
     /// the order in which they were cached into the `Ui`.
     fn floating(mut self, is_floating: bool) -> Self {
         self.common_mut().is_floating = is_floating;
+        self
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn scrollable(mut self, is_scrollable: bool) -> Self {
+        self.common_mut().is_scrollable = is_scrollable;
         self
     }
 
@@ -460,6 +469,7 @@ pub trait Widget: Sized {
             drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
+            maybe_scrolling: maybe_scrolling,
         };
         ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
 
@@ -546,6 +556,8 @@ pub struct CommonBuilder {
     pub maybe_parent_id: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
+    /// Whether or not the Widget's `KidArea` is scrollable.
+    pub is_scrollable: bool,
 }
 
 /// Represents the unique cached state of a widget.
@@ -583,6 +595,8 @@ pub struct Cached<W> where W: Widget {
     pub kid_area: KidArea,
     /// Whether or not the Widget is a "floating" Widget.
     pub maybe_floating: Option<Floating>,
+    /// The state for scrollable widgets.
+    pub maybe_scrolling: Option<scroll::State>,
 }
 
 
@@ -598,6 +612,7 @@ impl CommonBuilder {
             maybe_depth: None,
             maybe_parent_id: MaybeParent::Unspecified,
             is_floating: false,
+            is_scrollable: false,
         }
     }
 }

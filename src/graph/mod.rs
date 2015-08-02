@@ -55,6 +55,8 @@ pub struct Container {
     /// Whether or not the widget is a "Floating" widget.
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
+    /// Scroll related state (is only `Some` if the widget is scrollable)..
+    pub maybe_scrolling: Option<widget::scroll::State>,
 }
 
 /// A node within the UI Graph.
@@ -108,6 +110,7 @@ impl Container {
             drag_state,
             kid_area,
             maybe_floating,
+            maybe_scrolling,
             ..
         } = *self;
 
@@ -125,6 +128,7 @@ impl Container {
                 drag_state: drag_state,
                 kid_area: kid_area,
                 maybe_floating: maybe_floating,
+                maybe_scrolling: maybe_scrolling,
             }
         })
     }
@@ -298,6 +302,7 @@ impl Graph {
             drag_state,
             kid_area,
             maybe_floating,
+            maybe_scrolling,
         } = cached;
 
         let stored: StoredWidget<W::State, W::Style> =
@@ -319,6 +324,7 @@ impl Graph {
                 has_updated: true,
                 kid_area: kid_area,
                 maybe_floating: maybe_floating,
+                maybe_scrolling: maybe_scrolling,
             }
         };
 
@@ -366,6 +372,7 @@ impl Graph {
                         container.has_updated = true;
                         container.kid_area = kid_area;
                         container.maybe_floating = maybe_floating;
+                        container.maybe_scrolling = maybe_scrolling;
                         if let Some(new_element) = maybe_new_element {
                             container.element = new_element;
                         }
