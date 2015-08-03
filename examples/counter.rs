@@ -1,4 +1,4 @@
-extern crate conrod;
+#[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate glutin_window;
 extern crate opengl_graphics;
@@ -40,8 +40,11 @@ fn main() {
         if let Some(args) = event.render_args() {
             gl.draw(args.viewport(), |c, gl| {
 
-                // Draw the background.
-                Background::new().rgb(0.2, 0.25, 0.4).draw(ui, gl);
+                // Set the background color to use for clearing the screen.
+                Background::new().rgb(0.2, 0.25, 0.4).set(ui);
+
+                // Generate the ID for BUTTON.
+                widget_ids!(COUNTER);
 
                 // Draw the button and increment count if pressed..
                 Button::new()
@@ -49,10 +52,10 @@ fn main() {
                     .dimensions(80.0, 80.0)
                     .label(&count.to_string())
                     .react(|| count += 1)
-                    .set(0, ui);
+                    .set(COUNTER, ui);
 
                 // Draw our Ui!
-                ui.draw(c, gl);
+                ui.draw_if_changed(c, gl);
 
             });
         }

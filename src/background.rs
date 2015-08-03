@@ -1,8 +1,7 @@
 
 use color::{Color, Colorable};
-use graphics::{self, Graphics};
 use graphics::character::CharacterCache;
-use ui::Ui;
+use ui::{self, Ui};
 
 /// A type for drawing a colored window background.
 #[derive(Copy, Clone)]
@@ -19,14 +18,10 @@ impl Background {
         }
     }
 
-    /// Draw the background.
-    pub fn draw<B, C>(&mut self, ui: &mut Ui<C>, graphics: &mut B)
-        where
-            B: Graphics<Texture = <C as CharacterCache>::Texture>,
-            C: CharacterCache
-    {
+    /// Set the color used clear the background with before drawing widgets.
+    pub fn set<C>(&mut self, ui: &mut Ui<C>) where C: CharacterCache {
         let color = self.maybe_color.unwrap_or(ui.theme.background_color);
-        graphics::clear(color.to_fsa(), graphics);
+        ui::clear_with(ui, color);
     }
 
 }

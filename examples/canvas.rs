@@ -2,11 +2,11 @@
 //! A simple demonstration of how to construct and use Canvasses by splitting up the window.
 //!
 
-extern crate conrod;
+#[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Theme, Widget, WidgetId};
+use conrod::{Canvas, Theme, Widget};
 use piston_window::*;
 
 type Ui = conrod::Ui<Glyphs>;
@@ -117,7 +117,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
         .react(|| println!("Bong!"))
         .set(BONG, ui);
 
-    ui.draw(c, g);
+    ui.draw_if_changed(c, g);
 }
 
 
@@ -125,30 +125,36 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
 const ROWS: usize = 5;
 const COLS: usize = 24;
 
-// Canvas IDs.
-const MASTER: WidgetId = 0;
-const HEADER: WidgetId = MASTER + 1;
-const BODY: WidgetId = HEADER + 1;
-const LEFT_COLUMN: WidgetId = BODY + 1;
-const MIDDLE_COLUMN: WidgetId = LEFT_COLUMN + 1;
-const RIGHT_COLUMN: WidgetId = MIDDLE_COLUMN + 1;
-const FOOTER: WidgetId = RIGHT_COLUMN + 1;
-const FLOATING_A: WidgetId = FOOTER + 1;
-const FLOATING_B: WidgetId = FLOATING_A + 1;
-const TABS: WidgetId = FLOATING_B + 1;
-const TAB_FOO: WidgetId = TABS + 1;
-const TAB_BAR: WidgetId = TAB_FOO + 1;
-const TAB_BAZ: WidgetId = TAB_BAR + 1;
 
-// Widget IDs.
-const TITLE: WidgetId = TAB_BAZ + 1;
-const SUBTITLE: WidgetId = TITLE + 1;
-const TOP_LEFT: WidgetId = SUBTITLE + 1;
-const BOTTOM_RIGHT: WidgetId = TOP_LEFT + 1;
-const FOO_LABEL: WidgetId = BOTTOM_RIGHT + 1;
-const BAR_LABEL: WidgetId = FOO_LABEL + 1;
-const BAZ_LABEL: WidgetId = BAR_LABEL + 1;
-const BUTTON: WidgetId = BAZ_LABEL + 1;
-const BING: WidgetId = BUTTON + COLS * ROWS;
-const BONG: WidgetId = BING + 1;
+// Generate a unique `WidgetId` for each widget.
+widget_ids! {
+
+    // Canvas IDs.
+    MASTER,
+    HEADER,
+    BODY,
+    LEFT_COLUMN,
+    MIDDLE_COLUMN,
+    RIGHT_COLUMN,
+    FOOTER,
+    FLOATING_A,
+    FLOATING_B,
+    TABS,
+    TAB_FOO,
+    TAB_BAR,
+    TAB_BAZ,
+
+    // Widget IDs.
+    TITLE,
+    SUBTITLE,
+    TOP_LEFT,
+    BOTTOM_RIGHT,
+    FOO_LABEL,
+    BAR_LABEL,
+    BAZ_LABEL,
+    BUTTON with COLS * ROWS,
+    BING,
+    BONG,
+
+}
 

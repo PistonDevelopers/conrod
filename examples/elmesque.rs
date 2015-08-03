@@ -7,7 +7,7 @@
 extern crate piston_window;
 extern crate gfx_graphics;
 extern crate elmesque;
-extern crate conrod;
+#[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate num;
 
@@ -23,7 +23,6 @@ use conrod::{
     Labelable,
     Slider,
     Widget,
-    WidgetId
 };
 use gfx_graphics::GlyphCache;
 
@@ -118,7 +117,7 @@ fn main() {
                 .set(SLIDER, &mut ui);
             
             // Draw all Conrod widgets. (We only have one in this instance.)
-            ui.draw(c, g); 
+            ui.draw_if_changed(c, g); 
         });
         
         e.update(|args| {
@@ -127,4 +126,7 @@ fn main() {
     }
 }
 
-const SLIDER: WidgetId = 0;
+
+widget_ids! {
+    SLIDER,
+}

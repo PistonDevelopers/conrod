@@ -11,7 +11,7 @@
 
 
 extern crate piston;
-extern crate conrod;
+#[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate graphics;
 extern crate opengl_graphics;
@@ -36,7 +36,6 @@ use conrod::{
     TextBox,
     Theme,
     Toggle,
-    WidgetId,
     Widget,
     WidgetMatrix,
     XYPad,
@@ -165,8 +164,8 @@ fn main() {
 /// Draw the User Interface.
 fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
-    // Draw the background.
-    Background::new().color(demo.bg_color).draw(ui, gl);
+    // Sets a color to clear the background with before the Ui draws the widgets.
+    Background::new().color(demo.bg_color).set(ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
@@ -181,7 +180,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
     if demo.show_button {
 
-        // Button widget example button(WidgetId).
+        // Button widget example button.
         Button::new()
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
@@ -205,7 +204,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
             text
         };
 
-        // Slider widget example slider(WidgetId, value, min, max).
+        // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
@@ -224,7 +223,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     // Keep track of the currently shown widget.
     let shown_widget = if demo.show_button { BUTTON } else { TITLE_PAD_SLIDER };
 
-    // Toggle widget example toggle(WidgetId, value).
+    // Toggle widget example toggle(value).
     Toggle::new(demo.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0)
@@ -263,7 +262,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         let mut label = value.to_string();
         if label.len() > 4 { label.truncate(4); }
 
-        // Slider widget examples. slider(WidgetId, value, min, max)
+        // Slider widget examples. slider(value, min, max)
         if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
         else      { Slider::new(value, 0.0, 1.0).right(20.0) }
             .dimensions(40.0, demo.v_slider_height)
@@ -280,7 +279,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
     }
 
-    // Number Dialer widget example. number_dialer(WidgetId, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(value, min, max, precision)
     NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1u8)
         .dimensions(260.0, 60.0)
         .right_from(shown_widget, 30.0)
@@ -291,7 +290,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         .react(|new_height| demo.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
-    // Number Dialer widget example. number_dialer(WidgetId, value, min, max, precision)
+    // Number Dialer widget example. number_dialer(value, min, max, precision)
     NumberDialer::new(demo.frame_width, 0.0, 15.0, 2u8)
         .dimensions(260.0, 60.0)
         .down(20.0)
@@ -344,13 +343,6 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         },
         None => purple(),
     };
-
-    // Draw the circle that's controlled by the XYPad.
-    graphics::Ellipse::new(ddl_color.to_fsa())
-        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
-              graphics::default_draw_state(),
-              graphics::math::abs_transform(ui.win_w, ui.win_h),
-              gl);
 
     // A demonstration using drop_down_list.
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
@@ -422,22 +414,39 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
     }
 
     // Draw our Ui!
-    ui.draw(c, gl);
+    // The `draw_if_changed` method only re-draws the GUI if some state has changed or if
+    // `ui.needs_redraw();` was called.
+    // If you need to re-draw your conrod GUI every frame, use `Ui::draw`.
+    ui.draw_if_changed(c, gl);
+
+
+    // Draw the circle that's controlled by the XYPad.
+    graphics::Ellipse::new(ddl_color.to_fsa())
+        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
+              graphics::default_draw_state(),
+              graphics::math::abs_transform(ui.win_w, ui.win_h),
+              gl);
 
 }
 
 
-// As each widget must have it's own unique identifier, it can be useful to create these
-// identifiers relative to each other in order to make refactoring easier.
-const TITLE: WidgetId = 0;
-const BUTTON: WidgetId = TITLE + 1;
-const TITLE_PAD_SLIDER: WidgetId = BUTTON + 1;
-const TOGGLE: WidgetId = TITLE_PAD_SLIDER + 1;
-const COLOR_SLIDER: WidgetId = TOGGLE + 1;
-const SLIDER_HEIGHT: WidgetId = COLOR_SLIDER + 3;
-const FRAME_WIDTH: WidgetId = SLIDER_HEIGHT + 1;
-const TOGGLE_MATRIX: WidgetId = FRAME_WIDTH + 1;
-const COLOR_SELECT: WidgetId = TOGGLE_MATRIX + 64;
-const CIRCLE_POSITION: WidgetId = COLOR_SELECT + 1;
-const ENVELOPE_EDITOR: WidgetId = CIRCLE_POSITION + 1;
+// In conrod, each widget must have its own unique identifier so that the `Ui` can keep track of
+// its state between updates.
+// To make this easier, conrod provides the `widget_ids` macro, which generates a unique `WidgetId`
+// for each identifier given in the list.
+// The `with n` syntax reserves `n` number of WidgetIds for that identifier, rather than just one.
+// This is often useful when using `widget::Matrix`.
+widget_ids! {
+    TITLE,
+    BUTTON,
+    TITLE_PAD_SLIDER,
+    TOGGLE,
+    COLOR_SLIDER with 3,
+    SLIDER_HEIGHT,
+    FRAME_WIDTH,
+    TOGGLE_MATRIX with 64,
+    COLOR_SELECT,
+    CIRCLE_POSITION,
+    ENVELOPE_EDITOR with 4
+}
 
