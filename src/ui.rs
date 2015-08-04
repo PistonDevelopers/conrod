@@ -339,7 +339,6 @@ impl<C> Ui<C> {
         }
     }
 
-
     /// Set the number of frames that the `Ui` should draw in the case that `needs_redraw` is
     /// called. The default is `3` (see the SAFE_REDRAW_COUNT docs for details).
     pub fn set_num_redraw_frames(&mut self, num_frames: u8) {
@@ -391,11 +390,11 @@ impl<C> Ui<C> {
         use elmesque::Renderer;
         use std::ops::DerefMut;
 
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+
         let Ui {
             ref mut widget_graph,
             ref glyph_cache,
-            maybe_captured_mouse,
-            maybe_captured_keyboard,
             ref mut maybe_background_color,
             ref mut redraw_count,
             ..
@@ -405,16 +404,6 @@ impl<C> Ui<C> {
         if let Some(color) = maybe_background_color.take() {
             ::graphics::clear(color.to_fsa(), graphics);
         }
-
-        let maybe_captured_mouse = match maybe_captured_mouse {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-
-        let maybe_captured_keyboard = match maybe_captured_keyboard {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
 
         // Construct the elmesque Renderer for rendering the Elements.
         let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
@@ -429,6 +418,33 @@ impl<C> Ui<C> {
         }
     }
 
+    /// Compiles the `Ui` in its current state into an `elmesque::Element`.
+    /// - The order of drawing is as follows:
+    ///     1. Canvas splits.
+    ///     2. Widgets on Canvas splits.
+    ///     3. Floating Canvasses.
+    ///     4. Widgets on Floating Canvasses.
+    /// - Widgets are sorted by capturing and then render depth (depth first).
+    pub fn element(&mut self) -> Element {
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+        self.widget_graph.element(maybe_captured_mouse, maybe_captured_keyboard)
+    }
+
+    // Helper method for logic shared between draw() and element().
+    // Returns (maybe_captured_mouse, maybe_captured_keyboard).
+    fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
+        (
+            match self.maybe_captured_mouse {
+                Some(Capturing::Captured(id)) => Some(id),
+                _                             => None,
+            },
+
+            match self.maybe_captured_keyboard {
+                Some(Capturing::Captured(id)) => Some(id),
+                _                             => None,
+            }
+        )
+    }
 }
 
 
