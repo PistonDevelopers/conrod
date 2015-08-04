@@ -206,8 +206,25 @@ pub trait Widget: Sized {
     /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
-    fn scrollable(mut self, is_scrollable: bool) -> Self {
-        self.common_mut().is_scrollable = is_scrollable;
+    fn scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().is_v_scrollable = scrollable;
+        self.common_mut().is_h_scrollable = scrollable;
+        self
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn vertical_scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().is_v_scrollable = scrollable;
+        self
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn horizontal_scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().is_h_scrollable = scrollable;
         self
     }
 
@@ -247,6 +264,7 @@ pub trait Widget: Sized {
                 depth,
                 drag_state,
                 maybe_floating,
+                maybe_scrolling,
                 //kid_area,
                 ..
             } = prev;
@@ -259,6 +277,7 @@ pub trait Widget: Sized {
                 depth: depth,
                 drag_state: drag_state,
                 maybe_floating: maybe_floating,
+                maybe_scrolling: maybe_scrolling,
             };
 
             (Some(prev_state), Some(style))
@@ -441,6 +460,30 @@ pub trait Widget: Sized {
         // Retrieve the area upon which kid widgets will be placed.
         let kid_area = Self::kid_area(&new_state, &new_style, &ui.theme);
 
+
+        // Determine whether or not we have scrolling.
+        let is_h_scrolling = self.common().is_h_scrolling;
+        let is_v_scrolling = self.common().is_v_scrolling;
+        let maybe_mouse = ui::get_mouse_state(ui, id);
+
+        let maybe_new_scrolling = if let Some(prev_scrolling) = new_state.maybe_scrolling {
+            let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(None, id);
+            let total_bounding_height = top_y - bottom_y;
+            let total_bounding_width = right_x - left_x;
+            let max_y_offset = total_bounding_height - new_state.dim[1];
+            let max_x_offset = total_bounding_width - new_state.dim[0];
+            let y_offset = top_y - (new_state.xy[1] + new_state.dim[1] / 2.0);
+            let x_offset = (new_state.xy[0] - new_state.dim[0] / 2.0) - left_x;
+            scroll::update(&kid_area, &prev_scrolling, maybe_mouse, &ui.theme)
+        } else {
+            let init_scrolling = scroll::State {
+                maybe_horizontal: if is_h_scrolling { Some(scroll::Bar::new()) } else { None },
+                maybe_vertical: if is_v_scrolling { Some(scroll::Bar::new()) } else { None },
+            };
+            scroll::update(&kid_area, &init_scrolling, maybe_mouse, &ui.theme)
+        };
+
+
         // Construct the widget's element.
         let maybe_new_element = if style_has_changed || state_has_changed {
 
@@ -459,7 +502,16 @@ pub trait Widget: Sized {
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth, drag_state, maybe_floating } = new_state;
+        let State {
+            state,
+            dim,
+            xy,
+            depth,
+            drag_state,
+            maybe_floating,
+            maybe_scrolling,
+        } = new_state;
+
         let cached: Cached<Self> = Cached {
             state: state,
             style: new_style,
@@ -556,8 +608,10 @@ pub struct CommonBuilder {
     pub maybe_parent_id: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
-    /// Whether or not the Widget's `KidArea` is scrollable.
-    pub is_scrollable: bool,
+    /// Whether or not the Widget's `KidArea` is scrollable along the y axis.
+    pub is_v_scrollable: bool,
+    /// Whether or not the Widget's `KidArea` is scrollable along the x axis.
+    pub is_h_scrollable: bool,
 }
 
 /// Represents the unique cached state of a widget.

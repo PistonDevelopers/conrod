@@ -82,7 +82,7 @@ pub enum Visitable {
     /// The index of some widget in the graph.
     Widget(NodeIndex),
     /// The scrollbar for the widget at the given NodeIndex.
-    ScrollbarFor(NodeIndex),
+    Scrollbar(NodeIndex),
 }
 
 /// Stores the dynamic state of a UI tree of Widgets.
@@ -241,10 +241,14 @@ impl Graph {
             None => root,
         };
 
-        // Walk our incoming edges and remove any that aren't connected to our requested parent.
+        // Check to see if the node already has some parent.
+        // Remove the parent if it's not the same as our new parent_node_idx.
+        // Keep it if it's the one we want.
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
         let mut already_connected = false;
-        while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        // Note that we only need to check for *one* parent as there can only ever be one parent
+        // per node. We know this, as this method is the only public method that adds edges.
+        if let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
             if in_node_idx == parent_node_idx {
                 already_connected = true;
             } else {
@@ -265,6 +269,56 @@ impl Graph {
                 }
             }
         }
+    }
+
+
+    /// The box that bounds the widget with the given ID as well as all its widget kids.
+    /// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
+    /// If no target xy is given, the bounds will be given relative to the centre of the widget.
+    pub fn bounding_box(&self,
+                        target_xy: Option<Point>,
+                        id: WidgetId) -> Option<(Scalar, Scalar, Scalar, Scalar)>
+    {
+        let Graph { ref graph, ref index_map, .. } = *self;
+
+        if let Some(idx) = index_map.get_node_index(id) {
+            if let &Widget(ref container) = graph[idx] {
+
+                let (dim, xy) = (container.dim, container.xy);
+                let target_xy = target_xy.unwrap_or(xy);
+                let bounds = {
+                    let x_diff = xy[0] - target_xy[0];
+                    let y_diff = xy[1] - target_xy[1];
+                    let half_w = dim[0] / 2.0;
+                    let half_h = dim[1] / 2.0;
+                    let top_y = y_diff + half_h;
+                    let bottom_y = -y_diff - half_h;
+                    let left_x = -x_diff - half_w;
+                    let right_x = x_diff + half_w;
+                    (top_y, bottom_y, left_x, right_x)
+                };
+
+                // Filter the neighbours so only widget kids' xy and dim are produced.
+                let mut kids = graph.neighbors_directed(idx, pg::Outgoing)
+                    .filter_map(|kid_idx| self.bounding_box(Some(target_xy), kid_idx));
+
+                return Some(kids.fold(bounds, |max_bounds, kid_bounds| {
+
+                    // max y, min y, min x, max x.
+                    type Bounds = (Scalar, Scalar, Scalar, Scalar);
+
+                    // Returns the bounds for the two given sets of bounds.
+                    fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
+                        use std::cmp::{min, max};
+                        (max(a.0, b.0), min(a.1, b.1), min(a.2, b.2), max(a.3, b.3))
+                    }
+
+                    max_bounds(max_bounds, kid_bounds)
+                }));
+            }
+        }
+
+        None
     }
 
 
@@ -428,12 +482,24 @@ impl Graph {
                            floating_deque);
 
         // Draw the widgets in order of depth (starting with the deepest).
-        for &idx in depth_order.iter() {
-            if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                if container.has_updated {
-                    container.element.draw(renderer);
-                    container.has_updated = false;
-                }
+        for &visitable in depth_order.iter() {
+            match visitable {
+                Visitable::Widget(idx) => {
+                    if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
+                        if container.has_updated {
+                            container.element.draw(renderer);
+                            container.has_updated = false;
+                        }
+                    }
+                },
+                Visitable::Scrollbar(idx) => {
+                    if let &Node::Widget(ref container) = &graph[idx] {
+                        if let Some(scrolling) = container.maybe_scrolling {
+                            let element = widget::scroll::element(container.kid_area, scrolling);
+                            element.draw(renderer);
+                        }
+                    }
+                },
             }
         }
     }
@@ -500,7 +566,8 @@ fn visit_by_depth(idx: NodeIndex,
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_updated => depth_order.push(idx),
+        &Node::Widget(ref container) if container.has_updated =>
+            depth_order.push(Visitable::Widget(idx)),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.
         _ => return,
@@ -545,6 +612,9 @@ fn visit_by_depth(idx: NodeIndex,
 
     // If the widget is scrollable, we should add its scrollbar to the visit order also.
     if let &Node::Widget(ref container) = &graph[idx] {
+        if container.maybe_scrolling.is_some() {
+            depth_order.push(Visitable::Scrollbar(idx));
+        }
     }
 }
 
