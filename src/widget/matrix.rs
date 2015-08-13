@@ -60,7 +60,7 @@ impl Matrix {
         let dim = self.dim;
         let h_align = self.maybe_h_align.unwrap_or(ui.theme.align.horizontal);
         let v_align = self.maybe_v_align.unwrap_or(ui.theme.align.vertical);
-        let xy = ui.get_xy(self.pos, dim, h_align, v_align);
+        let xy = ui.get_xy(None, self.pos, dim, h_align, v_align);
         let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
         let widget_w = dim[0] / self.cols as f64;
         let widget_h = dim[1] / self.rows as f64;

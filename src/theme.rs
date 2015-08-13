@@ -40,8 +40,6 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// Optional style defaults for a Scrollbar.
-    pub maybe_scroll: Option<widget::scroll::Style>,
     /// Optional style defaults for a Button widget.
     pub maybe_button: Option<WidgetDefault<widget::button::Style>>,
     /// Optional style defaults for a Canvas widget.
@@ -52,6 +50,8 @@ pub struct Theme {
     pub maybe_envelope_editor: Option<WidgetDefault<widget::envelope_editor::Style>>,
     /// Optional style defaults for a NumberDialer.
     pub maybe_number_dialer: Option<WidgetDefault<widget::number_dialer::Style>>,
+    /// Optional style defaults for a Scrollbar.
+    pub maybe_scrollbar: Option<widget::scroll::Style>,
     /// Optional style defaults for a Slider.
     pub maybe_slider: Option<WidgetDefault<widget::slider::Style>>,
     /// Optional style defaults for a Tabs widget.
@@ -125,7 +125,7 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            maybe_scroll: None,
+            maybe_scrollbar: None,
             maybe_button: None,
             maybe_canvas: None,
             maybe_drop_down_list: None,

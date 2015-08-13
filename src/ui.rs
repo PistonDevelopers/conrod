@@ -68,6 +68,8 @@ pub struct Ui<C> {
     maybe_current_parent_id: Option<WidgetId>,
     /// If the mouse is currently over a widget, its ID will be here.
     maybe_widget_under_mouse: Option<WidgetId>,
+    /// The ID of the top-most scrollable widget under the cursor (if there is one).
+    maybe_top_scrollable_widget_under_mouse: Option<WidgetId>,
     /// The WidgetId of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
@@ -146,6 +148,7 @@ impl<C> Ui<C> {
             maybe_prev_widget_id: None,
             maybe_current_parent_id: None,
             maybe_widget_under_mouse: None,
+            maybe_top_scrollable_widget_under_mouse: None,
             maybe_captured_mouse: None,
             maybe_captured_keyboard: None,
             num_redraw_frames: SAFE_REDRAW_COUNT,
@@ -187,6 +190,8 @@ impl<C> Ui<C> {
             self.win_h = args.height as f64;
             self.prev_event_was_render = true;
             self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
+            self.maybe_top_scrollable_widget_under_mouse =
+                self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
         });
 
         event.mouse_cursor(|x, y| {
@@ -237,19 +242,25 @@ impl<C> Ui<C> {
     }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
+    /// If getting the xy for a widget, its ID should be specified so that we can also consider the
+    /// scroll offset of the scrollable parent widgets.
     pub fn get_xy(&self,
+                  maybe_id: Option<WidgetId>,
                   position: Position,
                   dim: Dimensions,
                   h_align: HorizontalAlign,
-                  v_align: VerticalAlign) -> Point {
-        match position {
+                  v_align: VerticalAlign) -> Point
+    {
+        use vecmath::vec2_add;
+
+        let xy = match position {
 
             Position::Absolute(x, y) => [x, y],
 
             Position::Relative(x, y, maybe_id) => {
                 match maybe_id.or(self.maybe_prev_widget_id.map(|id| id)) {
                     None => [0.0, 0.0],
-                    Some(id) => ::vecmath::vec2_add(self.widget_graph[id].xy, [x, y]),
+                    Some(id) => vec2_add(self.widget_graph[id].xy, [x, y]),
                 }
             },
 
@@ -332,10 +343,21 @@ impl<C> Ui<C> {
                     None => window(),
                 };
                 let place_xy = place.within(target_dim, dim);
-                let relative_xy = ::vecmath::vec2_add(place_xy, pad.offset_from(place));
-                ::vecmath::vec2_add(xy, relative_xy)
+                let relative_xy = vec2_add(place_xy, pad.offset_from(place));
+                vec2_add(xy, relative_xy)
             },
 
+        };
+
+        match maybe_id {
+            // When getting the xy for some widget, we'll need to consider the graph for scrolling.
+            Some(id) => {
+                // Sum each scrollable parent widget's scrolling offset to the resulting xy.
+                let scroll_offset = self.widget_graph.scroll_offset(id);
+                vec2_add(xy, scroll_offset)
+            },
+            // Otherwise, we return the calculated `xy` as is.
+            None => xy,
         }
     }
 
@@ -390,6 +412,7 @@ impl<C> Ui<C> {
         use elmesque::Renderer;
         use std::ops::DerefMut;
 
+        // The graph needs to consider captured widgets when calculating the render depth order.
         let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
 
         let Ui {
@@ -418,6 +441,7 @@ impl<C> Ui<C> {
         }
     }
 
+
     /// Compiles the `Ui` in its current state into an `elmesque::Element`.
     /// - The order of drawing is as follows:
     ///     1. Canvas splits.
@@ -426,12 +450,37 @@ impl<C> Ui<C> {
     ///     4. Widgets on Floating Canvasses.
     /// - Widgets are sorted by capturing and then render depth (depth first).
     pub fn element(&mut self) -> Element {
+        // The graph needs to consider captured widgets when calculating the render depth order.
         let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-        self.widget_graph.element(maybe_captured_mouse, maybe_captured_keyboard)
+
+        let Ui {
+            ref mut widget_graph,
+            ref mut maybe_background_color,
+            ref mut redraw_count,
+            ..
+        } = *self;
+
+        // TODO: Need to construct the "background" or "clear" `Element` here to be combined with
+        // the widget graph `Element`.
+
+        // Because we're about to draw everything, take one from the redraw count.
+        if *redraw_count > 0 {
+            *redraw_count = *redraw_count - 1;
+        }
+
+        // Construct the GUI `Element`.
+        let element = widget_graph.element(maybe_captured_mouse, maybe_captured_keyboard);
+
+        // If we've been given a background color for the gui, construct a Cleared element.
+        match *maybe_background_color {
+            Some(color) => element.clear(color),
+            None => element
+        }
     }
 
-    // Helper method for logic shared between draw() and element().
-    // Returns (maybe_captured_mouse, maybe_captured_keyboard).
+
+    /// Helper method for logic shared between draw() and element().
+    /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
     fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
         (
             match self.maybe_captured_mouse {
@@ -517,7 +566,12 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, id: WidgetId) -> Option<Mouse> {
             Some(Capturing::Captured(captured_id)) =>
                 if id == captured_id { Some(ui.mouse) } else { None },
             _ =>
-                if Some(id) == ui.maybe_widget_under_mouse { Some(ui.mouse) } else { None },
+                if Some(id) == ui.maybe_widget_under_mouse 
+                || Some(id) == ui.maybe_top_scrollable_widget_under_mouse {
+                    Some(ui.mouse)
+                } else {
+                    None
+                },
         },
     }
 }
@@ -655,4 +709,9 @@ pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
 
+
+/// Return an immutable reference to the given `Ui`'s `Graph`.
+pub fn graph<C>(ui: &Ui<C>) -> &Graph {
+    &ui.widget_graph
+}
 

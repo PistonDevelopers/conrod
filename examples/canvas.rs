@@ -51,7 +51,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
             Split::new(MIDDLE_COLUMN).color(orange()),
             Split::new(RIGHT_COLUMN).color(dark_orange()).pad(20.0),
         ]),
-        Split::new(FOOTER).color(blue())
+        Split::new(FOOTER).color(blue()).vertical_scrolling(true)
     ]).set(ui);
 
     Canvas::new()
@@ -98,9 +98,10 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Label::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
     Label::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
+    let footer_dim = ui.widget_size(FOOTER);
     WidgetMatrix::new(COLS, ROWS)
-        .dim(ui.widget_size(FOOTER))
-        .middle_of(FOOTER)
+        .dimensions(footer_dim[0], footer_dim[1] * 2.0)
+        .mid_top_of(FOOTER)
         .each_widget(ui, |ui, n, _col, _row, xy, dim| {
             Button::new()
                 .color(blue().with_luminance(n as f32 / (COLS * ROWS) as f32))
@@ -109,7 +110,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
                 .react(|| println!("Hey! {:?}", n))
                 .set(BUTTON + n, ui);
         });
-    
+
     Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_A)
         .react(|| println!("Bing!"))
         .set(BING, ui);
@@ -122,7 +123,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
 
 
 // Button matrix dimensions.
-const ROWS: usize = 5;
+const ROWS: usize = 10;
 const COLS: usize = 24;
 
 

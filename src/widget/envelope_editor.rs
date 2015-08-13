@@ -80,8 +80,8 @@ pub enum Elem {
     /// as well as the last mouse pos for comparison
     /// in determining new value.
     EnvPoint(usize, (f64, f64)),
-    /// Represents an EnvelopePoint's `curve` value.
-    CurvePoint(usize, (f64, f64)),
+    // /// Represents an EnvelopePoint's `curve` value.
+    // CurvePoint(usize, (f64, f64)),
 }
 
 /// An enum to define which button is clicked.
@@ -199,7 +199,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                        prev: Interaction,
                        mouse: Mouse) -> Interaction {
     use mouse::ButtonState::{Down, Up};
-    use self::Elem::{EnvPoint, CurvePoint};
+    use self::Elem::{EnvPoint};//, CurvePoint};
     use self::MouseButton::{Left, Right};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left, mouse.right) {
@@ -210,8 +210,8 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
         (Some(_), Clicked(p_elem, m_button), Up, Down) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
-                CurvePoint(idx, _) =>
-                    Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
+                // CurvePoint(idx, _) =>
+                //     Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
                 _ => Clicked(p_elem, m_button),
             }
         },
@@ -219,15 +219,15 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
             match (p_elem, m_button) {
                 (EnvPoint(idx, _), Left) =>
                     Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
-                (CurvePoint(idx, _), Left) =>
-                    Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
+                // (CurvePoint(idx, _), Left) =>
+                //     Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
                 _ => Clicked(p_elem, Left),
             }
         },
         (Some(_), Highlighted(p_elem), Up, Down) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
-                CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
+                // CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
                 _ => Clicked(p_elem, Right),
             }
         },
