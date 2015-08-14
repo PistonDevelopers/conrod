@@ -278,7 +278,7 @@ impl Graph {
 
             if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                 if let Some(ref scrolling) = container.maybe_scrolling {
-                    let maybe_bounds = self.bounding_box(None, true, idx);
+                    let maybe_bounds = self.bounding_box(false, None, true, idx);
                     if let Some((top_y, bottom_y, left_x, right_x)) = maybe_bounds {
 
                         // Vertical offset.
@@ -369,8 +369,11 @@ impl Graph {
     /// If no target xy is given, the bounds will be given relative to the centre of the widget.
     /// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
     /// `kid_area` of the widget, rather than the regular dimensions.
-    pub fn bounding_box<I: GraphIndex>(&self, target_xy: Option<Point>, use_kid_area: bool, idx: I)
-        -> Option<(Scalar, Scalar, Scalar, Scalar)>
+    pub fn bounding_box<I: GraphIndex>(&self,
+                                       include_self: bool,
+                                       target_xy: Option<Point>,
+                                       use_kid_area: bool,
+                                       idx: I) -> Option<(Scalar, Scalar, Scalar, Scalar)>
     {
         let Graph { ref graph, ref index_map, .. } = *self;
 
@@ -387,7 +390,7 @@ impl Graph {
                 };
 
                 let target_xy = target_xy.unwrap_or(xy);
-                let bounds = {
+                let self_bounds = || {
                     let x_diff = xy[0] - target_xy[0];
                     let y_diff = xy[1] - target_xy[1];
                     let half_w = dim[0] / 2.0;
@@ -400,10 +403,20 @@ impl Graph {
                 };
 
                 // Filter the neighbours so only widget kids' xy and dim are produced.
-                let kids = graph.neighbors_directed(idx, pg::Outgoing)
-                    .filter_map(|kid_idx| self.bounding_box(Some(target_xy), false, kid_idx));
+                let mut kids = graph.neighbors_directed(idx, pg::Outgoing)
+                    .filter_map(|kid_idx| self.bounding_box(true, Some(target_xy), false, kid_idx));
 
-                return Some(kids.fold(bounds, |max_so_far, kid_bounds| {
+                // Work out the initial bounds to use for our max_bounds fold.
+                let init_bounds = if include_self {
+                    self_bounds()
+                } else {
+                    match kids.next() {
+                        Some(first_kid_bounds) => first_kid_bounds,
+                        None => return None,
+                    }
+                };
+
+                return Some(kids.fold(init_bounds, |max_so_far, kid_bounds| {
 
                     // max y, min y, min x, max x.
                     type Bounds = (Scalar, Scalar, Scalar, Scalar);

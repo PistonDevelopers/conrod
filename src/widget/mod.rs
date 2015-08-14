@@ -486,7 +486,7 @@ pub trait Widget: Sized {
 
             // Else if we have some previous scrolling, use it in determining the new scrolling.
             } else if let Some(prev_scrollable) = maybe_scrolling {
-                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(None, true, id)
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
                 let scroll_state = scroll::State {
@@ -534,7 +534,7 @@ pub trait Widget: Sized {
 
             // Otherwise, we'll make a brand new scrolling.
             } else {
-                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(None, true, id)
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
                 let scroll_state = scroll::State {
