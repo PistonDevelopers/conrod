@@ -50,8 +50,8 @@ pub struct Container {
     pub drag_state: widget::drag::State,
     /// The element used for drawing the widget.
     pub element: Element,
-    /// Whether or not the widget has been updated since the last time it was drawn.
-    pub has_updated: bool,
+    /// Whether or not the `Widget` has had `.set` called since the last cycle.
+    pub has_set: bool,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
@@ -59,6 +59,9 @@ pub struct Container {
     pub maybe_floating: Option<widget::Floating>,
     /// Scroll related state (is only `Some` if the widget is scrollable)..
     pub maybe_scrolling: Option<widget::scroll::State>,
+    /// Whether or not the `Element` for the widget has changed since the last time an `Element`
+    /// was requested from the graph.
+    pub element_has_changed: bool,
 }
 
 /// A node within the UI Graph.
@@ -499,10 +502,11 @@ impl Graph {
                 depth: depth,
                 drag_state: drag_state,
                 element: maybe_new_element.unwrap_or_else(|| ::elmesque::element::empty()),
-                has_updated: true,
+                has_set: true,
                 kid_area: kid_area,
                 maybe_floating: maybe_floating,
                 maybe_scrolling: maybe_scrolling,
+                element_has_changed: true,
             }
         };
 
@@ -547,12 +551,13 @@ impl Graph {
                         container.dim = dim;
                         container.depth = depth;
                         container.drag_state = drag_state;
-                        container.has_updated = true;
+                        container.has_set = true;
                         container.kid_area = kid_area;
                         container.maybe_floating = maybe_floating;
                         container.maybe_scrolling = maybe_scrolling;
                         if let Some(new_element) = maybe_new_element {
                             container.element = new_element;
+                            container.element_has_changed = true;
                         }
                     },
 
@@ -565,44 +570,6 @@ impl Graph {
     }
 
 
-    /// Draw all widgets within the entire Graph.
-    ///
-    /// The order in which we will draw all widgets will be a akin to a depth-first search, where
-    /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
-    /// widget, which will always be drawn last).
-    pub fn draw<'a, C, G>(&mut self,
-                          maybe_captured_mouse: Option<WidgetId>,
-                          maybe_captured_keyboard: Option<WidgetId>,
-                          renderer: &mut Renderer<'a, C, G>) where
-        C: CharacterCache,
-        G: Graphics<Texture = C::Texture>,
-    {                   
-        self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
-
-        // Draw the widgets in order of depth (starting with the deepest).
-        for &visitable in self.depth_order.iter() {
-            match visitable {
-                Visitable::Widget(idx) => {
-                    if let &mut Node::Widget(ref mut container) = &mut self.graph[idx] {
-                        if container.has_updated {
-                            container.element.draw(renderer);
-                            container.has_updated = false;
-                        }
-                    }
-                },
-                Visitable::Scrollbar(idx) => {
-                    if let &Node::Widget(ref container) = &self.graph[idx] {
-                        if let Some(scrolling) = container.maybe_scrolling {
-                            widget::scroll::element(&container.kid_area, scrolling)
-                                .draw(renderer);
-                        }
-                    }
-                },
-            }
-        }
-
-    }
-    
     /// Return an `elmesque::Element` containing all widgets within the entire Graph.
     ///
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
@@ -614,19 +581,16 @@ impl Graph {
     {
         self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
 
-        let Graph {
-            ref mut graph,
-            ref mut depth_order,
-            ..
-        } = *self;
+        let Graph { ref mut graph, ref depth_order, .. } = *self;
 
         // Collect the elements in order of depth.
         let elements: Vec<Element> = depth_order.iter().filter_map(|&visitable| {
             match visitable {
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                        if container.has_updated {
-                            container.has_updated = false;
+                        if container.has_set {
+                            container.has_set = false;
+                            container.element_has_changed = false;
                             return Some(container.element.clone());
                         }
                     }
@@ -645,6 +609,31 @@ impl Graph {
         // Convert the Vec<Element> into a single `Element` and return it.
         layers(elements)
     }
+
+
+    /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
+    /// `Element`s in the graph have changed.
+    pub fn element_if_changed(&mut self,
+                              maybe_captured_mouse: Option<WidgetId>,
+                              maybe_captured_keyboard: Option<WidgetId>) -> Option<Element>
+    {
+        // Check whether or not any of the widget's `Element`s have changed.
+        let mut has_changed = false;
+        for node in self.graph.raw_nodes().iter() {
+            if let Node::Widget(ref container) = node.weight {
+                if container.element_has_changed {
+                    has_changed = true;
+                    break;
+                }
+            }
+        }
+
+        match has_changed {
+            true => Some(self.element(maybe_captured_mouse, maybe_captured_keyboard)),
+            false => None,
+        }
+    }
+
 
     // Helper method for logic shared between draw() and element().
     fn prepare_to_draw(&mut self,
@@ -730,7 +719,7 @@ fn visit_by_depth(idx: NodeIndex,
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_updated =>
+        &Node::Widget(ref container) if container.has_set =>
             depth_order.push(Visitable::Widget(idx)),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.

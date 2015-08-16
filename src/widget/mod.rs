@@ -464,6 +464,7 @@ pub trait Widget: Sized {
 
         // Calc the max offset given the length of the visible area along with the total length.
         fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
+            println!("visible_len: {:?} | total_len: {:?}", visible_len, total_len);
             visible_len - (visible_len / total_len) * visible_len
         }
 
@@ -486,7 +487,8 @@ pub trait Widget: Sized {
 
             // Else if we have some previous scrolling, use it in determining the new scrolling.
             } else if let Some(prev_scrollable) = maybe_scrolling {
-                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(false, None, true, id)
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
+                    .bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
                 let scroll_state = scroll::State {
@@ -502,7 +504,9 @@ pub trait Widget: Sized {
                                 .unwrap_or_else(|| {
                                     top_y - (kid_area.xy[1] + kid_area.dim[1] / 2.0)
                                 }),
-                            max_offset: calc_max_offset(kid_area.dim[1], top_y - bottom_y),
+                            max_offset: {
+                                calc_max_offset(kid_area.dim[1], top_y - bottom_y)
+                            },
                         })
                     } else {
                         None
@@ -534,7 +538,8 @@ pub trait Widget: Sized {
 
             // Otherwise, we'll make a brand new scrolling.
             } else {
-                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui).bounding_box(false, None, true, id)
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
+                    .bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
                 let scroll_state = scroll::State {

@@ -81,6 +81,8 @@ pub struct Ui<C> {
     redraw_count: u8,
     /// A background color to clear the screen with before drawing if one was given.
     maybe_background_color: Option<Color>,
+    /// The latest element returned/drawn that represents the entire widget graph.
+    maybe_element: Option<Element>,
 }
 
 /// A wrapper over the current user input state.
@@ -131,6 +133,7 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 impl<C> Ui<C> {
 
+
     /// Constructor for a UiContext.
     pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
         const GRAPH_CAPACITY: usize = 512;
@@ -154,13 +157,16 @@ impl<C> Ui<C> {
             num_redraw_frames: SAFE_REDRAW_COUNT,
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
+            maybe_element: None,
         }
     }
+
 
     /// Return the dimensions of a widget.
     pub fn widget_size(&self, id: WidgetId) -> Dimensions {
         self.widget_graph[id].dim
     }
+
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
@@ -240,6 +246,7 @@ impl<C> Ui<C> {
             self.text_just_entered.push(text.to_string())
         });
     }
+
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     /// If getting the xy for a widget, its ID should be specified so that we can also consider the
@@ -361,17 +368,172 @@ impl<C> Ui<C> {
         }
     }
 
+
     /// Set the number of frames that the `Ui` should draw in the case that `needs_redraw` is
     /// called. The default is `3` (see the SAFE_REDRAW_COUNT docs for details).
     pub fn set_num_redraw_frames(&mut self, num_frames: u8) {
         self.num_redraw_frames = num_frames;
     }
 
+
     /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
     /// count to a `SAFE_REDRAW_COUNT`. See the docs for SAFE_REDRAW_COUNT or `draw_if_changed` for
     /// more info on how/why the redraw count is used.
     pub fn needs_redraw(&mut self) {
         self.redraw_count = self.num_redraw_frames;
+    }
+
+
+    /// Helper method for logic shared between draw() and element().
+    /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
+    fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
+        let maybe_captured_mouse = match self.maybe_captured_mouse {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+        let maybe_captured_keyboard = match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+        (maybe_captured_mouse, maybe_captured_keyboard)
+    }
+
+
+    /// Compiles the `Ui`'s entire widget `Graph` in its current state into a single
+    /// `elmesque::Element` and returns a reference to it.
+    ///
+    /// This allows a user to take all information necessary for drawing within a single type,
+    /// which can be sent across threads or used to draw later on rather than drawing the whole
+    /// graph immediately (as does the `Ui::draw` method).
+    ///
+    /// Producing an `Element` also allows for simpler interoperation with `elmesque` (a purely
+    /// functional graphics layout crate which conrod uses internally).
+    pub fn element(&mut self) -> &Element {
+        // The graph needs to consider captured widgets when calculating the render depth order.
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+
+        let Ui {
+            ref mut widget_graph,
+            ref mut maybe_background_color,
+            ref mut maybe_element,
+            ..
+        } = *self;
+
+        let maybe_bg_color = maybe_background_color.take();
+
+        // A function to simplify combining an element with the given background color.
+        let with_background_color = |element: Element| -> Element {
+            match maybe_bg_color {
+                Some(color) => element.clear(color),
+                None => element,
+            }
+        };
+
+        // Check to see whether or not there is a new element to be stored.
+        match widget_graph.element_if_changed(maybe_captured_mouse, maybe_captured_keyboard) {
+
+            // If there's been some change in element, we'll store the new one and return a
+            // reference to it.
+            Some(new_element) => {
+                *maybe_element = Some(with_background_color(new_element));
+                maybe_element.as_ref().unwrap()
+            },
+
+            // Otherwise, we'll check to see if we have a pre-stored one that we can return a
+            // reference to.
+            None => match maybe_element {
+
+                // If we do have some stored element, we'll clone that.
+                &mut Some(ref element) => element,
+
+                // Otherwise this must be the first time an `element` is requested so we'll
+                // request a new `Element` from our widget graph.
+                maybe_element @ &mut None => {
+
+                    let element = widget_graph
+                        .element(maybe_captured_mouse, maybe_captured_keyboard);
+
+                    // Store the new `Element` (along with it's background color).
+                    *maybe_element = Some(with_background_color(element));
+
+                    // We can unwrap here as we *know* that we have `Some` element.
+                    maybe_element.as_ref().unwrap()
+                },
+            },
+        }
+    }
+
+
+    /// Same as `Ui::element`, but only returns an `&Element` if the stored `&Element` has changed
+    /// since the last time `Ui::element` or `Ui::element_if_changed` was called.
+    pub fn element_if_changed(&mut self) -> Option<&Element> {
+        // The graph needs to consider captured widgets when calculating the render depth order.
+        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
+
+        let Ui {
+            ref mut widget_graph,
+            ref mut maybe_background_color,
+            ref mut maybe_element,
+            ..
+        } = *self;
+
+        // Request a new `Element` from the graph if there has been some change.
+        let maybe_new_element = widget_graph
+            .element_if_changed(maybe_captured_mouse, maybe_captured_keyboard)
+            .map(|element| match maybe_background_color.take() {
+                // If we've been given a background color for the gui, construct a Cleared Element.
+                Some(color) => element.clear(color),
+                None => element
+            });
+
+        // If we have a new `Element` we'll update our stored `Element`.
+        maybe_new_element.map(move |new_element| {
+            *maybe_element = Some(new_element.clone());
+            maybe_element.as_ref().unwrap()
+        })
+    }
+
+
+    /// Draw the `Ui` in it's current state.
+    /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
+    /// `Ui::draw_if_changed` method instead.
+    /// See the `Graph::draw` method for more details on how Widgets are drawn.
+    /// See the `graph::update_visit_order` function for details on how the render order is
+    /// determined.
+    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
+        where
+            C: CharacterCache,
+            G: Graphics<Texture = C::Texture>,
+    {
+        use elmesque::Renderer;
+        use std::ops::DerefMut;
+
+        // Ensure that `maybe_element` is `Some(element)` with the latest `Element`.
+        self.element();
+
+        let Ui {
+            ref mut glyph_cache,
+            ref mut redraw_count,
+            ref maybe_element,
+            ..
+        } = *self;
+
+        // We know that `maybe_element` is `Some` due to calling `self.element` above, thus we can
+        // safely unwrap our reference to it to use for drawing.
+        let element = maybe_element.as_ref().unwrap();
+
+        // Construct the elmesque Renderer for rendering the Elements.
+        let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
+        let character_cache = ref_mut_character_cache.deref_mut();
+        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
+
+        // Renderer the `Element` to the screen.
+        element.draw(&mut renderer);
+
+        // Because we're about to draw everything, take one from the redraw count.
+        if *redraw_count > 0 {
+            *redraw_count = *redraw_count - 1;
+        }
     }
 
 
@@ -397,103 +559,6 @@ impl<C> Ui<C> {
         }
     }
 
-
-    /// Draw the `Ui` in it's current state.
-    /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
-    /// `Ui::draw_if_changed` method instead.
-    /// See the `Graph::draw` method for more details on how Widgets are drawn.
-    /// See the `graph::update_visit_order` function for details on how the render order is
-    /// determined.
-    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where
-            C: CharacterCache,
-            G: Graphics<Texture = C::Texture>,
-    {
-        use elmesque::Renderer;
-        use std::ops::DerefMut;
-
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
-        let Ui {
-            ref mut widget_graph,
-            ref glyph_cache,
-            ref mut maybe_background_color,
-            ref mut redraw_count,
-            ..
-        } = *self;
-
-        // If some background color was given to clear the screen with, clear it.
-        if let Some(color) = maybe_background_color.take() {
-            ::graphics::clear(color.to_fsa(), graphics);
-        }
-
-        // Construct the elmesque Renderer for rendering the Elements.
-        let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
-        let character_cache = ref_mut_character_cache.deref_mut();
-        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
-
-        widget_graph.draw(maybe_captured_mouse, maybe_captured_keyboard, &mut renderer);
-
-        // Now that we've drawn everything, take one from the redraw count.
-        if *redraw_count > 0 {
-            *redraw_count = *redraw_count - 1;
-        }
-    }
-
-
-    /// Compiles the `Ui` in its current state into an `elmesque::Element`.
-    /// - The order of drawing is as follows:
-    ///     1. Canvas splits.
-    ///     2. Widgets on Canvas splits.
-    ///     3. Floating Canvasses.
-    ///     4. Widgets on Floating Canvasses.
-    /// - Widgets are sorted by capturing and then render depth (depth first).
-    pub fn element(&mut self) -> Element {
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
-        let Ui {
-            ref mut widget_graph,
-            ref mut maybe_background_color,
-            ref mut redraw_count,
-            ..
-        } = *self;
-
-        // TODO: Need to construct the "background" or "clear" `Element` here to be combined with
-        // the widget graph `Element`.
-
-        // Because we're about to draw everything, take one from the redraw count.
-        if *redraw_count > 0 {
-            *redraw_count = *redraw_count - 1;
-        }
-
-        // Construct the GUI `Element`.
-        let element = widget_graph.element(maybe_captured_mouse, maybe_captured_keyboard);
-
-        // If we've been given a background color for the gui, construct a Cleared element.
-        match *maybe_background_color {
-            Some(color) => element.clear(color),
-            None => element
-        }
-    }
-
-
-    /// Helper method for logic shared between draw() and element().
-    /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
-    fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
-        (
-            match self.maybe_captured_mouse {
-                Some(Capturing::Captured(id)) => Some(id),
-                _                             => None,
-            },
-
-            match self.maybe_captured_keyboard {
-                Some(Capturing::Captured(id)) => Some(id),
-                _                             => None,
-            }
-        )
-    }
 }
 
 
@@ -622,6 +687,7 @@ pub fn mouse_captured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
     }
 }
 
+
 /// Indicate that the widget is no longer capturing the mouse.
 pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
     match ui.maybe_captured_mouse {
@@ -661,6 +727,7 @@ pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
         None => ui.maybe_captured_keyboard = Some(Capturing::Captured(id)),
     }
 }
+
 
 /// Indicate that the widget is no longer capturing the keyboard.
 pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
