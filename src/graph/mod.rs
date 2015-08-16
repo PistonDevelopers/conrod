@@ -1,10 +1,8 @@
 
 
 use {Scalar};
-use elmesque::{Element, Renderer};
+use elmesque::Element;
 use elmesque::element::layers;
-use graphics::Graphics;
-use graphics::character::CharacterCache;
 use petgraph as pg;
 use position::{Depth, Dimensions, Point};
 use self::index_map::{IndexMap, GraphIndex};
