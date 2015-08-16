@@ -281,26 +281,21 @@ impl Graph {
 
             if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                 if let Some(ref scrolling) = container.maybe_scrolling {
-                    let maybe_bounds = self.bounding_box(false, None, true, idx);
-                    if let Some((top_y, bottom_y, left_x, right_x)) = maybe_bounds {
 
-                        // Vertical offset.
-                        if let Some(ref bar) = scrolling.maybe_vertical {
-                            let offset_frac = bar.offset / bar.max_offset;
-                            let visible_height = container.kid_area.dim[1];
-                            let total_height = top_y - bottom_y;
-                            let y_offset = offset_frac * (total_height - visible_height);
-                            offset[1] += y_offset;
-                        }
+                    // Vertical offset.
+                    if let Some(ref bar) = scrolling.maybe_vertical {
+                        let offset_frac = bar.offset / bar.max_offset;
+                        let visible_height = container.kid_area.dim[1];
+                        let y_offset = offset_frac * (bar.total_length - visible_height);
+                        offset[1] += y_offset;
+                    }
 
-                        // Horizontal offset.
-                        if let Some(ref bar) = scrolling.maybe_horizontal {
-                            let offset_frac = bar.offset / bar.max_offset;
-                            let visible_width = container.kid_area.dim[0];
-                            let total_width = right_x - left_x;
-                            let x_offset = offset_frac * (total_width - visible_width);
-                            offset[0] -= x_offset;
-                        }
+                    // Horizontal offset.
+                    if let Some(ref bar) = scrolling.maybe_horizontal {
+                        let offset_frac = bar.offset / bar.max_offset;
+                        let visible_width = container.kid_area.dim[0];
+                        let x_offset = offset_frac * (bar.total_length - visible_width);
+                        offset[0] -= x_offset;
                     }
                 }
             }

@@ -53,6 +53,8 @@ pub struct Bar {
     pub offset: Scalar,
     /// The maximum possible offset for the handle.
     pub max_offset: Scalar,
+    /// The total length of the area occupied by child widgets.
+    pub total_length: Scalar,
 }
 
 
@@ -173,6 +175,7 @@ pub fn update(kid_area: &widget::KidArea,
                 interaction: new_interaction,
                 offset: new_offset,
                 max_offset: bar.max_offset,
+                total_length: bar.total_length,
             })
         } else {
             None

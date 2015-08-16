@@ -464,7 +464,6 @@ pub trait Widget: Sized {
 
         // Calc the max offset given the length of the visible area along with the total length.
         fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
-            println!("visible_len: {:?} | total_len: {:?}", visible_len, total_len);
             visible_len - (visible_len / total_len) * visible_len
         }
 
@@ -491,6 +490,10 @@ pub trait Widget: Sized {
                     .bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
+                // The total length of the area occupied by child widgets that is scrolled.
+                let total_v_length = top_y - bottom_y;
+                let total_h_length = right_x - left_x;
+
                 let scroll_state = scroll::State {
 
                     // Vertical scrollbar state.
@@ -504,9 +507,8 @@ pub trait Widget: Sized {
                                 .unwrap_or_else(|| {
                                     top_y - (kid_area.xy[1] + kid_area.dim[1] / 2.0)
                                 }),
-                            max_offset: {
-                                calc_max_offset(kid_area.dim[1], top_y - bottom_y)
-                            },
+                            max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
+                            total_length: total_v_length,
                         })
                     } else {
                         None
@@ -523,7 +525,8 @@ pub trait Widget: Sized {
                                 .unwrap_or_else(|| {
                                     (kid_area.xy[0] - kid_area.dim[0] / 2.0) - left_x
                                 }),
-                            max_offset: calc_max_offset(kid_area.dim[0], right_x - left_x),
+                            max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
+                            total_length: total_h_length,
                         })
                     } else {
                         None
@@ -542,6 +545,10 @@ pub trait Widget: Sized {
                     .bounding_box(false, None, true, id)
                     .unwrap_or_else(init_bounds);
 
+                // The total length of the area occupied by child widgets that is scrolled.
+                let total_v_length = top_y - bottom_y;
+                let total_h_length = right_x - left_x;
+
                 let scroll_state = scroll::State {
 
                     // The initial vertical scrollbar state.
@@ -549,7 +556,8 @@ pub trait Widget: Sized {
                         Some(scroll::Bar {
                             interaction: scroll::Interaction::Normal,
                             offset: 0.0,
-                            max_offset: calc_max_offset(kid_area.dim[1], top_y - bottom_y),
+                            max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
+                            total_length: total_v_length,
                         })
                     } else {
                         None
@@ -560,7 +568,8 @@ pub trait Widget: Sized {
                         Some(scroll::Bar {
                             interaction: scroll::Interaction::Normal,
                             offset: 0.0,
-                            max_offset: calc_max_offset(kid_area.dim[0], right_x - left_x),
+                            max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
+                            total_length: total_h_length,
                         })
                     } else {
                         None
