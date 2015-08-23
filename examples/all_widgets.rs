@@ -137,7 +137,8 @@ fn main() {
         .opengl(opengl)
         .exit_on_esc(true)
         .samples(4)
-        .into();
+        .build()
+        .unwrap();
     let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
