@@ -16,7 +16,7 @@ fn main() {
     // Construct the window.
     let window: PistonWindow =
         WindowSettings::new("Canvas Demo", [800, 600])
-            .exit_on_esc(true).into();
+            .exit_on_esc(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
