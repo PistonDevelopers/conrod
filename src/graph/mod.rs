@@ -576,28 +576,68 @@ impl Graph {
 
         let Graph { ref mut graph, ref depth_order, .. } = *self;
 
-        // Collect the elements in order of depth.
-        let elements: Vec<Element> = depth_order.iter().filter_map(|&visitable| {
+        // The main Vec in which we'll collect all `Element`s.
+        let mut elements = Vec::with_capacity(depth_order.len());
+
+        // We'll use our scroll_stack to group children of scrollable widgets so that they may be
+        // cropped to their parent's scrollable area.
+        // - If we come across a scrollable widget, we push a new "scroll group" Vec to our stack.
+        // - If the stack isn't empty we'll push our `Element`s into the topmost (current)
+        // "scroll group".
+        // - If we come across a `Scrollbar`, we'll pop the top "scroll group", combine them and
+        // crop them to the parent's scrollable area before adding them to the main elements Vec.
+        let mut scroll_stack: Vec<Vec<Element>> = Vec::new();
+
+        for &visitable in depth_order.iter() {
             match visitable {
+
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
                         if container.has_set {
+
                             container.has_set = false;
                             container.element_has_changed = false;
-                            return Some(container.element.clone());
+
+                            if let Some(scroll_group) = scroll_stack.last_mut() {
+                                // If there is some current scroll group, we'll push to that.
+                                scroll_group.push(container.element.clone());
+                            } else {
+                                // Otherwise, we'll push straight to our main elements Vec.
+                                elements.push(container.element.clone());
+                            }
+
+                            // If the current widget is some scrollable widget, we need to add a
+                            // new group to the top of our scroll stack.
+                            if container.maybe_scrolling.is_some() {
+                                scroll_stack.push(Vec::new());
+                            }
                         }
                     }
                 },
+
                 Visitable::Scrollbar(idx) => {
                     if let &Node::Widget(ref container) = &graph[idx] {
                         if let Some(scrolling) = container.maybe_scrolling {
-                            return Some(widget::scroll::element(&container.kid_area, scrolling));
+
+                            // Now that we've come across a scrollbar, we should pop the group of
+                            // elements from the top of our scrollstack for cropping.
+                            if let Some(scroll_group) = scroll_stack.pop() {
+                                let xy = container.kid_area.xy;
+                                let dim = container.kid_area.dim;
+                                let element = layers(scroll_group)
+                                    .crop(xy[0], xy[1], dim[0], dim[1]);
+                                elements.push(element);
+                            }
+
+                            // Construct the element for the scrollbar itself.
+                            let element = widget::scroll::element(&container.kid_area, scrolling);
+                            elements.push(element);
                         }
                     }
                 },
+
             }
-            None
-        }).collect();
+        }
 
         // Convert the Vec<Element> into a single `Element` and return it.
         layers(elements)
