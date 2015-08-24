@@ -340,6 +340,10 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
 
     // The element for a vertical slider.
     let vertical = |bar: Bar| -> Element {
+        // We only want to see the scrollbar if it's highlighted or clicked.
+        if let Interaction::Normal = bar.interaction {
+            return empty();
+        }
         let color = bar.interaction.color(color);
         let (track_dim, track_xy) = vertical_track_area(kid_area, width);
         let (handle_dim, handle_xy) =
@@ -353,6 +357,10 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
 
     // An element for a horizontal slider.
     let horizontal = |bar: Bar| -> Element {
+        // We only want to see the scrollbar if it's highlighted or clicked.
+        if let Interaction::Normal = bar.interaction {
+            return empty();
+        }
         let color = bar.interaction.color(color);
         let (track_dim, track_xy) = horizontal_track_area(kid_area, width);
         let (handle_dim, handle_xy) =
