@@ -485,7 +485,7 @@ fn main() {
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let window: PistonWindow = window_settings.into();
+    let window: PistonWindow = window_settings.build().unwrap();
 
     // Load a font. GlyphCache is provided by gfx_graphics. Other Piston backends provide
     // similar types.
