@@ -17,6 +17,7 @@ pub mod envelope_editor;
 pub mod label;
 pub mod matrix;
 pub mod number_dialer;
+pub mod scroll;
 pub mod slider;
 pub mod split;
 pub mod tabs;
@@ -202,6 +203,31 @@ pub trait Widget: Sized {
         self
     }
 
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().scrolling.vertical = scrollable;
+        self.common_mut().scrolling.horizontal = scrollable;
+        self
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn vertical_scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().scrolling.vertical = scrollable;
+        self
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn horizontal_scrolling(mut self, scrollable: bool) -> Self {
+        self.common_mut().scrolling.horizontal = scrollable;
+        self
+    }
+
     /// An optionally overridable method for setting child widgets.
     /// This will be called immediately after the widget itself is updated.
     /// NOTE: The API for this will probably changed somehow, as there is probably a nicer way to
@@ -227,7 +253,7 @@ pub trait Widget: Sized {
 
         // Collect the previous state and style or initialise both if none exist.
         let maybe_widget_state = ui::get_widget_state::<C, Self>(ui, id, kind);
-        let (maybe_prev_state, maybe_prev_style) = maybe_widget_state.map(|prev|{
+        let (maybe_prev_state, maybe_prev_style, maybe_scrolling) = maybe_widget_state.map(|prev|{
 
             // Destructure the cached state.
             let Cached {
@@ -238,6 +264,7 @@ pub trait Widget: Sized {
                 depth,
                 drag_state,
                 maybe_floating,
+                maybe_scrolling,
                 //kid_area,
                 ..
             } = prev;
@@ -252,8 +279,8 @@ pub trait Widget: Sized {
                 maybe_floating: maybe_floating,
             };
 
-            (Some(prev_state), Some(style))
-        }).unwrap_or_else(|| (None, None));
+            (Some(prev_state), Some(style), maybe_scrolling)
+        }).unwrap_or_else(|| (None, None, None));
 
         let new_style = self.style();
         let depth = self.get_depth();
@@ -264,7 +291,7 @@ pub trait Widget: Sized {
             // A function for generating the xy coords from the given alignment and Position.
             let gen_xy = || {
                 let (h_align, v_align) = self.get_alignment(&ui.theme);
-                let new_xy = ui.get_xy(pos, dim, h_align, v_align);
+                let new_xy = ui.get_xy(Some(id), pos, dim, h_align, v_align);
                 new_xy
             };
 
@@ -347,6 +374,9 @@ pub trait Widget: Sized {
         // Determine whether or not this is the first time set has been called.
         // We'll use this to determine whether or not we need to call Widget::draw.
         let is_first_set = maybe_prev_state.is_none();
+
+        // Check whether or not our widget is scrollable before self is moved into `update`.
+        let scrolling = self.common().scrolling;
 
         // Unwrap the previous state. If there is no previous state to unwrap, call the
         // `init_state` method to use the initial state as the prev_state.
@@ -432,8 +462,143 @@ pub trait Widget: Sized {
         // Retrieve the area upon which kid widgets will be placed.
         let kid_area = Self::kid_area(&new_state, &new_style, &ui.theme);
 
+        // Calc the max offset given the length of the visible area along with the total length.
+        fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
+            visible_len - (visible_len / total_len) * visible_len
+        }
+
+        // Determine whether or not we have state for scrolling.
+        let maybe_new_scrolling = {
+
+            let maybe_mouse = ui::get_mouse_state(ui, id);
+
+            // If we haven't been placed in the graph yet (and bounding_box returns None),
+            // we'll just use our current dimensions as the bounding box.
+            let init_bounds = || {
+                let half_h = kid_area.dim[1] / 2.0;
+                let half_w = kid_area.dim[0] / 2.0;
+                (half_h, -half_h, -half_w, half_w)
+            };
+
+            // If we have neither vertical or horizontal scrolling, return None.
+            if !scrolling.horizontal && !scrolling.vertical {
+                None
+
+            // Else if we have some previous scrolling, use it in determining the new scrolling.
+            } else if let Some(prev_scrollable) = maybe_scrolling {
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
+                    .bounding_box(false, None, true, id)
+                    .unwrap_or_else(init_bounds);
+
+                // The total length of the area occupied by child widgets that is scrolled.
+                let total_v_length = top_y - bottom_y;
+                let total_h_length = right_x - left_x;
+
+                let scroll_state = scroll::State {
+
+                    // Vertical scrollbar state.
+                    maybe_vertical: if scrolling.vertical {
+                        Some(scroll::Bar {
+                            interaction: prev_scrollable.maybe_vertical.as_ref()
+                                .map(|bar| bar.interaction)
+                                .unwrap_or(scroll::Interaction::Normal),
+                            offset: prev_scrollable.maybe_vertical.as_ref()
+                                .map(|bar| bar.offset)
+                                .unwrap_or_else(|| {
+                                    top_y - (kid_area.xy[1] + kid_area.dim[1] / 2.0)
+                                }),
+                            max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
+                            total_length: total_v_length,
+                        })
+                    } else {
+                        None
+                    },
+
+                    // Horizontal scrollbar state.
+                    maybe_horizontal: if scrolling.horizontal {
+                        Some(scroll::Bar {
+                            interaction: prev_scrollable.maybe_horizontal.as_ref()
+                                .map(|bar| bar.interaction)
+                                .unwrap_or(scroll::Interaction::Normal),
+                            offset: prev_scrollable.maybe_horizontal.as_ref()
+                                .map(|bar| bar.offset)
+                                .unwrap_or_else(|| {
+                                    (kid_area.xy[0] - kid_area.dim[0] / 2.0) - left_x
+                                }),
+                            max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
+                            total_length: total_h_length,
+                        })
+                    } else {
+                        None
+                    },
+
+                    width: scrolling.style.width(&ui.theme),
+                    color: scrolling.style.color(&ui.theme),
+                };
+
+                Some(scroll::update(&kid_area, &scroll_state, maybe_mouse)
+                    .unwrap_or_else(|| scroll_state))
+
+            // Otherwise, we'll make a brand new scrolling.
+            } else {
+                let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
+                    .bounding_box(false, None, true, id)
+                    .unwrap_or_else(init_bounds);
+
+                // The total length of the area occupied by child widgets that is scrolled.
+                let total_v_length = top_y - bottom_y;
+                let total_h_length = right_x - left_x;
+
+                let scroll_state = scroll::State {
+
+                    // The initial vertical scrollbar state.
+                    maybe_vertical: if scrolling.vertical {
+                        Some(scroll::Bar {
+                            interaction: scroll::Interaction::Normal,
+                            offset: 0.0,
+                            max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
+                            total_length: total_v_length,
+                        })
+                    } else {
+                        None
+                    },
+
+                    // The initial horizontal scrollbar state.
+                    maybe_horizontal: if scrolling.horizontal {
+                        Some(scroll::Bar {
+                            interaction: scroll::Interaction::Normal,
+                            offset: 0.0,
+                            max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
+                            total_length: total_h_length,
+                        })
+                    } else {
+                        None
+                    },
+
+                    width: scrolling.style.width(&ui.theme),
+                    color: scrolling.style.color(&ui.theme),
+                };
+
+                Some(scroll::update(&kid_area, &scroll_state, maybe_mouse)
+                    .unwrap_or_else(|| scroll_state))
+            }
+        };
+
+        // Check whether or not our new scrolling state should capture or uncapture the mouse.
+        if let (Some(ref prev), Some(ref new)) = (maybe_scrolling, maybe_new_scrolling) {
+            if scroll::capture_mouse(prev, new) {
+                ui::mouse_captured_by(ui, id);
+            }
+            if scroll::uncapture_mouse(prev, new) {
+                ui::mouse_uncaptured_by(ui, id);
+            }
+        }
+
+        // We need to know if the scroll state has changed to see if we need to redraw.
+        let scroll_has_changed = maybe_new_scrolling != maybe_scrolling;
+
         // Construct the widget's element.
-        let maybe_new_element = if style_has_changed || state_has_changed {
+        let maybe_new_element = if style_has_changed || state_has_changed || scroll_has_changed {
 
             // Inform the `Ui` that we'll need a redraw.
             ui.needs_redraw();
@@ -450,7 +615,16 @@ pub trait Widget: Sized {
         };
 
         // Store the new `State` and `Style` within the cache.
-        let State { state, dim, xy, depth, drag_state, maybe_floating } = new_state;
+        let State {
+            state,
+            dim,
+            xy,
+            depth,
+            drag_state,
+            maybe_floating,
+            //maybe_scrolling,
+        } = new_state;
+
         let cached: Cached<Self> = Cached {
             state: state,
             style: new_style,
@@ -460,6 +634,7 @@ pub trait Widget: Sized {
             drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
+            maybe_scrolling: maybe_new_scrolling,
         };
         ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
 
@@ -546,6 +721,8 @@ pub struct CommonBuilder {
     pub maybe_parent_id: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
+    /// Builder data for scrollable widgets.
+    pub scrolling: scroll::Scrolling,
 }
 
 /// Represents the unique cached state of a widget.
@@ -583,6 +760,8 @@ pub struct Cached<W> where W: Widget {
     pub kid_area: KidArea,
     /// Whether or not the Widget is a "floating" Widget.
     pub maybe_floating: Option<Floating>,
+    /// The state for scrollable widgets.
+    pub maybe_scrolling: Option<scroll::State>,
 }
 
 
@@ -598,6 +777,7 @@ impl CommonBuilder {
             maybe_depth: None,
             maybe_parent_id: MaybeParent::Unspecified,
             is_floating: false,
+            scrolling: scroll::Scrolling::new(),
         }
     }
 }

@@ -436,7 +436,8 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 // To make this easier, conrod provides the `widget_ids` macro, which generates a unique `WidgetId`
 // for each identifier given in the list.
 // The `with n` syntax reserves `n` number of WidgetIds for that identifier, rather than just one.
-// This is often useful when using `widget::Matrix`.
+// This is often useful when you need to use an identifier in some kind of loop (i.e. like within 
+// the use of `WidgetMatrix` as above).
 widget_ids! {
     TITLE,
     BUTTON,

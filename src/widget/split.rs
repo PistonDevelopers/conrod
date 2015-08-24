@@ -14,6 +14,9 @@ pub struct Split<'a> {
     style: canvas::Style,
     maybe_splits: Option<(Direction, &'a [Split<'a>])>,
     maybe_length: Option<Scalar>,
+    // TODO: Maybe use the `CommonBuilder` (to be used for the wrapped `Canvas`) here instead?
+    is_h_scrollable: bool,
+    is_v_scrollable: bool,
 }
 
 
@@ -26,6 +29,8 @@ impl<'a> Split<'a> {
             style: canvas::Style::new(),
             maybe_splits: None,
             maybe_length: None,
+            is_h_scrollable: false,
+            is_v_scrollable: false,
         }
     }
 
@@ -119,6 +124,22 @@ impl<'a> Split<'a> {
         self.margin_left(mgn).margin_right(mgn).margin_top(mgn).margin_bottom(mgn)
     }
 
+    /// Set whether or not the Canvas' `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    pub fn vertical_scrolling(mut self, scrollable: bool) -> Self {
+        self.is_v_scrollable = scrollable;
+        self
+    }
+
+    /// Set whether or not the Canvas' `KidArea` is scrollable (the default is false).
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    pub fn horizontal_scrolling(mut self, scrollable: bool) -> Self {
+        self.is_h_scrollable = scrollable;
+        self
+    }
+
     /// Store the Canvas and its children within the `Ui`.
     pub fn set<C>(self, ui: &mut Ui<C>) where C: CharacterCache {
         let dim = [ui.win_w as f64, ui.win_h as f64];
@@ -136,7 +157,14 @@ impl<'a> Split<'a> {
     {
         use vecmath::{vec2_add, vec2_sub};
 
-        let Split { id, ref style, ref maybe_splits, .. } = *self;
+        let Split {
+            id,
+            ref style,
+            ref maybe_splits,
+            is_v_scrollable,
+            is_h_scrollable,
+            ..
+        } = *self;
 
         let frame = style.frame(&ui.theme);
         let pad = style.padding(&ui.theme);
@@ -237,7 +265,11 @@ impl<'a> Split<'a> {
         match maybe_parent {
             Some(parent_id) => canvas.parent(Some(parent_id)),
             None            => canvas.parent(None),
-        }.point(xy).dim(dim).set(id, ui);
+        }.point(xy)
+            .dim(dim)
+            .vertical_scrolling(is_v_scrollable)
+            .horizontal_scrolling(is_h_scrollable)
+            .set(id, ui);
     }
 
 }

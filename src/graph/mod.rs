@@ -1,9 +1,8 @@
 
 
-use elmesque::{Element, Renderer};
+use {Scalar};
+use elmesque::Element;
 use elmesque::element::layers;
-use graphics::Graphics;
-use graphics::character::CharacterCache;
 use petgraph as pg;
 use position::{Depth, Dimensions, Point};
 use self::index_map::{IndexMap, GraphIndex};
@@ -49,13 +48,18 @@ pub struct Container {
     pub drag_state: widget::drag::State,
     /// The element used for drawing the widget.
     pub element: Element,
-    /// Whether or not the widget has been updated since the last time it was drawn.
-    pub has_updated: bool,
+    /// Whether or not the `Widget` has had `.set` called since the last cycle.
+    pub has_set: bool,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
+    /// Scroll related state (is only `Some` if the widget is scrollable)..
+    pub maybe_scrolling: Option<widget::scroll::State>,
+    /// Whether or not the `Element` for the widget has changed since the last time an `Element`
+    /// was requested from the graph.
+    pub element_has_changed: bool,
 }
 
 /// A node within the UI Graph.
@@ -73,6 +77,17 @@ enum Node {
 /// An alias for the petgraph::Graph used within our Ui Graph.
 type PetGraph = pg::Graph<Node, (), pg::Directed>;
 
+/// Parts of the graph that are significant when visiting and sorting by depth.
+/// The reason a widget and its scrollbar are separate here is because a widget's scrollbar may
+/// sometimes appear on *top* of the widget's children.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Visitable {
+    /// The index of some widget in the graph.
+    Widget(NodeIndex),
+    /// The scrollbar for the widget at the given NodeIndex.
+    Scrollbar(NodeIndex),
+}
+
 /// Stores the dynamic state of a UI tree of Widgets.
 #[derive(Debug)]
 pub struct Graph {
@@ -84,7 +99,7 @@ pub struct Graph {
     root: NodeIndex,
     /// Contains Node indices in order of depth, starting with the deepest.
     /// This is updated at the beginning of the `Graph::draw` method.
-    depth_order: Vec<NodeIndex>,
+    depth_order: Vec<Visitable>,
     /// Used for storing indices of "floating" widgets during depth sorting so that they may be
     /// visited after widgets of the root tree.
     floating_deque: Vec<NodeIndex>,
@@ -109,6 +124,7 @@ impl Container {
             drag_state,
             kid_area,
             maybe_floating,
+            maybe_scrolling,
             ..
         } = *self;
 
@@ -126,6 +142,7 @@ impl Container {
                 drag_state: drag_state,
                 kid_area: kid_area,
                 maybe_floating: maybe_floating,
+                maybe_scrolling: maybe_scrolling,
             }
         })
     }
@@ -188,14 +205,99 @@ impl Graph {
     /// If the given Point is currently on a Widget, return an index to that widget.
     pub fn pick_widget<I: GraphIndex>(&self, xy: Point) -> Option<I> {
         let Graph { ref depth_order, ref graph, ref index_map, .. } = *self;
-        depth_order.iter().rev().find(|&&idx| {
+        depth_order.iter().rev()
+            .find(|&&visitable| {
+                match visitable {
+                    Visitable::Widget(idx) => {
+                        if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
+                            if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                                return true
+                            }
+                        }
+                    },
+                    Visitable::Scrollbar(idx) => {
+                        if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
+                            if let Some(ref scrolling) = container.maybe_scrolling {
+                                if widget::scroll::is_over(scrolling, &container.kid_area, xy) {
+                                    return true;
+                                }
+                            }
+                        }
+                    },
+                }
+                false
+            })
+            .map(|&visitable| match visitable {
+                Visitable::Widget(idx) | Visitable::Scrollbar(idx) =>
+                    I::from_idx(idx, index_map).expect("No matching index"),
+            })
+    }
+
+
+    /// If the given Point is currently over a scrollable widget, return an index to that widget.
+    pub fn pick_top_scrollable_widget<I: GraphIndex>(&self, xy: Point) -> Option<I> {
+        let Graph { ref depth_order, ref graph, ref index_map, .. } = *self;
+        depth_order.iter().rev()
+            .filter_map(|&visitable| match visitable {
+                Visitable::Widget(idx) => Some(idx),
+                Visitable::Scrollbar(_) => None,
+            })
+            .find(|&idx| {
+                if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
+                    if container.maybe_scrolling.is_some() {
+                        if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            })
+            .map(|idx| I::from_idx(idx, index_map).expect("No matching index"))
+    }
+
+
+    /// Calculate the total scroll offset for the widget with the given WidgetId.
+    pub fn scroll_offset(&self, id: WidgetId) -> Point {
+        let Graph { ref graph, ref index_map, .. } = *self;
+        
+        let mut offset = [0.0, 0.0];
+        let mut idx = match index_map.to_node_index(id) {
+            Some(idx) => idx,
+            // If the ID is not yet present within the graph, return the zeroed offset.
+            None => return offset,
+        };
+
+        // We know that our graph shouldn't cycle at all, so we can safely use loop to traverse all
+        // parent widget nodes and return when there are no more.
+        loop {
+
+            // We know that we should only have one incoming edge as we only have one parent.
+            idx = match graph.neighbors_directed(idx, pg::Incoming).next() {
+                None => return offset,
+                Some(parent_idx) => parent_idx,
+            };
+
             if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
-                if ::utils::is_over_rect(container.xy, xy, container.dim) {
-                    return true
+                if let Some(ref scrolling) = container.maybe_scrolling {
+
+                    // Vertical offset.
+                    if let Some(ref bar) = scrolling.maybe_vertical {
+                        let offset_frac = bar.offset / bar.max_offset;
+                        let visible_height = container.kid_area.dim[1];
+                        let y_offset = offset_frac * (bar.total_length - visible_height);
+                        offset[1] += y_offset;
+                    }
+
+                    // Horizontal offset.
+                    if let Some(ref bar) = scrolling.maybe_horizontal {
+                        let offset_frac = bar.offset / bar.max_offset;
+                        let visible_width = container.kid_area.dim[0];
+                        let x_offset = offset_frac * (bar.total_length - visible_width);
+                        offset[0] -= x_offset;
+                    }
                 }
             }
-            false
-        }).map(|&idx| I::from_idx(idx, index_map).expect("No matching index"))
+        }
     }
 
 
@@ -227,10 +329,14 @@ impl Graph {
             None => root,
         };
 
-        // Walk our incoming edges and remove any that aren't connected to our requested parent.
+        // Check to see if the node already has some parent.
+        // Remove the parent if it's not the same as our new parent_node_idx.
+        // Keep it if it's the one we want.
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
         let mut already_connected = false;
-        while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        // Note that we only need to check for *one* parent as there can only ever be one parent
+        // per node. We know this, as this method is the only public method that adds edges.
+        if let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
             if in_node_idx == parent_node_idx {
                 already_connected = true;
             } else {
@@ -251,6 +357,77 @@ impl Graph {
                 }
             }
         }
+    }
+
+
+    /// The box that bounds the widget with the given ID as well as all its widget kids.
+    /// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
+    /// If no target xy is given, the bounds will be given relative to the centre of the widget.
+    /// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
+    /// `kid_area` of the widget, rather than the regular dimensions.
+    pub fn bounding_box<I: GraphIndex>(&self,
+                                       include_self: bool,
+                                       target_xy: Option<Point>,
+                                       use_kid_area: bool,
+                                       idx: I) -> Option<(Scalar, Scalar, Scalar, Scalar)>
+    {
+        let Graph { ref graph, ref index_map, .. } = *self;
+
+        if let Some(idx) = index_map.to_node_index(idx) {
+            if let &Node::Widget(ref container) = &graph[idx] {
+
+                // If we're to use the kid area, we'll get the dim and xy from that.
+                let (dim, xy) = if use_kid_area {
+                    (container.kid_area.dim, container.kid_area.xy)
+
+                // Otherwise we'll use the regular dim and xy.
+                } else {
+                    (container.dim, container.xy)
+                };
+
+                let target_xy = target_xy.unwrap_or(xy);
+                let self_bounds = || {
+                    let x_diff = xy[0] - target_xy[0];
+                    let y_diff = xy[1] - target_xy[1];
+                    let half_w = dim[0] / 2.0;
+                    let half_h = dim[1] / 2.0;
+                    let top_y = y_diff + half_h;
+                    let bottom_y = y_diff - half_h;
+                    let left_x = x_diff - half_w;
+                    let right_x = x_diff + half_w;
+                    (top_y, bottom_y, left_x, right_x)
+                };
+
+                // Filter the neighbours so only widget kids' xy and dim are produced.
+                let mut kids = graph.neighbors_directed(idx, pg::Outgoing)
+                    .filter_map(|kid_idx| self.bounding_box(true, Some(target_xy), false, kid_idx));
+
+                // Work out the initial bounds to use for our max_bounds fold.
+                let init_bounds = if include_self {
+                    self_bounds()
+                } else {
+                    match kids.next() {
+                        Some(first_kid_bounds) => first_kid_bounds,
+                        None => return None,
+                    }
+                };
+
+                return Some(kids.fold(init_bounds, |max_so_far, kid_bounds| {
+
+                    // max y, min y, min x, max x.
+                    type Bounds = (Scalar, Scalar, Scalar, Scalar);
+
+                    // Returns the bounds for the two given sets of bounds.
+                    fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
+                        (a.0.max(b.0), a.1.min(b.1), a.2.min(b.2), a.3.max(b.3))
+                    }
+
+                    max_bounds(max_so_far, kid_bounds)
+                }));
+            }
+        }
+
+        None
     }
 
 
@@ -299,6 +476,7 @@ impl Graph {
             drag_state,
             kid_area,
             maybe_floating,
+            maybe_scrolling,
         } = cached;
 
         let stored: StoredWidget<W::State, W::Style> =
@@ -317,9 +495,11 @@ impl Graph {
                 depth: depth,
                 drag_state: drag_state,
                 element: maybe_new_element.unwrap_or_else(|| ::elmesque::element::empty()),
-                has_updated: true,
+                has_set: true,
                 kid_area: kid_area,
                 maybe_floating: maybe_floating,
+                maybe_scrolling: maybe_scrolling,
+                element_has_changed: true,
             }
         };
 
@@ -364,11 +544,13 @@ impl Graph {
                         container.dim = dim;
                         container.depth = depth;
                         container.drag_state = drag_state;
-                        container.has_updated = true;
+                        container.has_set = true;
                         container.kid_area = kid_area;
                         container.maybe_floating = maybe_floating;
+                        container.maybe_scrolling = maybe_scrolling;
                         if let Some(new_element) = maybe_new_element {
                             container.element = new_element;
+                            container.element_has_changed = true;
                         }
                     },
 
@@ -381,31 +563,6 @@ impl Graph {
     }
 
 
-    /// Draw all widgets within the entire Graph.
-    ///
-    /// The order in which we will draw all widgets will be a akin to a depth-first search, where
-    /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
-    /// widget, which will always be drawn last).
-    pub fn draw<'a, C, G>(&mut self,
-                          maybe_captured_mouse: Option<WidgetId>,
-                          maybe_captured_keyboard: Option<WidgetId>,
-                          renderer: &mut Renderer<'a, C, G>) where
-        C: CharacterCache,
-        G: Graphics<Texture = C::Texture>,
-    {                   
-        self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
-
-        // Draw the widgets in order of depth (starting with the deepest).
-        for &idx in self.depth_order.iter() {
-            if let &mut Node::Widget(ref mut container) = &mut self.graph[idx] {
-                if container.has_updated {
-                    container.element.draw(renderer);
-                    container.has_updated = false;
-                }
-            }
-        }
-    }
-    
     /// Return an `elmesque::Element` containing all widgets within the entire Graph.
     ///
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
@@ -417,23 +574,99 @@ impl Graph {
     {
         self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
 
-        let Graph {
-            ref mut graph,
-            ref mut depth_order,
-            ..
-        } = *self;
+        let Graph { ref mut graph, ref depth_order, .. } = *self;
 
-        let elements = depth_order.iter().filter_map(|&idx| {
-            if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                if container.has_updated {
-                    container.has_updated = false;
-                    return Some(container.element.clone());
-                }
+        // The main Vec in which we'll collect all `Element`s.
+        let mut elements = Vec::with_capacity(depth_order.len());
+
+        // We'll use our scroll_stack to group children of scrollable widgets so that they may be
+        // cropped to their parent's scrollable area.
+        // - If we come across a scrollable widget, we push a new "scroll group" Vec to our stack.
+        // - If the stack isn't empty we'll push our `Element`s into the topmost (current)
+        // "scroll group".
+        // - If we come across a `Scrollbar`, we'll pop the top "scroll group", combine them and
+        // crop them to the parent's scrollable area before adding them to the main elements Vec.
+        let mut scroll_stack: Vec<Vec<Element>> = Vec::new();
+
+        for &visitable in depth_order.iter() {
+            match visitable {
+
+                Visitable::Widget(idx) => {
+                    if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
+                        if container.has_set {
+
+                            container.has_set = false;
+                            container.element_has_changed = false;
+
+                            if let Some(scroll_group) = scroll_stack.last_mut() {
+                                // If there is some current scroll group, we'll push to that.
+                                scroll_group.push(container.element.clone());
+                            } else {
+                                // Otherwise, we'll push straight to our main elements Vec.
+                                elements.push(container.element.clone());
+                            }
+
+                            // If the current widget is some scrollable widget, we need to add a
+                            // new group to the top of our scroll stack.
+                            if container.maybe_scrolling.is_some() {
+                                scroll_stack.push(Vec::new());
+                            }
+                        }
+                    }
+                },
+
+                Visitable::Scrollbar(idx) => {
+                    if let &Node::Widget(ref container) = &graph[idx] {
+                        if let Some(scrolling) = container.maybe_scrolling {
+
+                            // Now that we've come across a scrollbar, we should pop the group of
+                            // elements from the top of our scrollstack for cropping.
+                            if let Some(scroll_group) = scroll_stack.pop() {
+                                let xy = container.kid_area.xy;
+                                let dim = container.kid_area.dim;
+                                let element = layers(scroll_group)
+                                    .crop(xy[0], xy[1], dim[0], dim[1]);
+                                elements.push(element);
+                            }
+
+                            // Construct the element for the scrollbar itself.
+                            let element = widget::scroll::element(&container.kid_area, scrolling);
+                            elements.push(element);
+                        }
+                    }
+                },
+
             }
-            None
-        }).collect();
+        }
+
+        // Convert the Vec<Element> into a single `Element` and return it.
         layers(elements)
     }
+
+
+    /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
+    /// `Element`s in the graph have changed.
+    pub fn element_if_changed(&mut self,
+                              maybe_captured_mouse: Option<WidgetId>,
+                              maybe_captured_keyboard: Option<WidgetId>) -> Option<Element>
+    {
+        // Check whether or not any of the widget's `Element`s have changed.
+        let mut has_changed = false;
+        for node in self.graph.raw_nodes().iter() {
+            if let Node::Widget(ref container) = node.weight {
+                if container.element_has_changed {
+                    has_changed = true;
+                    break;
+                }
+            }
+        }
+
+        match has_changed {
+            true => Some(self.element(maybe_captured_mouse, maybe_captured_keyboard)),
+            false => None,
+        }
+    }
+
 
     // Helper method for logic shared between draw() and element().
     fn prepare_to_draw(&mut self,
@@ -466,7 +699,7 @@ fn update_depth_order(root: NodeIndex,
                       maybe_captured_mouse: Option<NodeIndex>,
                       maybe_captured_keyboard: Option<NodeIndex>,
                       graph: &PetGraph,
-                      depth_order: &mut Vec<NodeIndex>,
+                      depth_order: &mut Vec<Visitable>,
                       floating_deque: &mut Vec<NodeIndex>)
 {
 
@@ -514,14 +747,13 @@ fn visit_by_depth(idx: NodeIndex,
                   maybe_captured_mouse: Option<NodeIndex>,
                   maybe_captured_keyboard: Option<NodeIndex>,
                   graph: &PetGraph,
-                  depth_order: &mut Vec<NodeIndex>,
+                  depth_order: &mut Vec<Visitable>,
                   floating_deque: &mut Vec<NodeIndex>)
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_updated => {
-            depth_order.push(idx);
-        },
+        &Node::Widget(ref container) if container.has_set =>
+            depth_order.push(Visitable::Widget(idx)),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.
         _ => return,
@@ -561,6 +793,13 @@ fn visit_by_depth(idx: NodeIndex,
                                          graph,
                                          depth_order,
                                          floating_deque),
+        }
+    }
+
+    // If the widget is scrollable, we should add its scrollbar to the visit order also.
+    if let &Node::Widget(ref container) = &graph[idx] {
+        if container.maybe_scrolling.is_some() {
+            depth_order.push(Visitable::Scrollbar(idx));
         }
     }
 }
