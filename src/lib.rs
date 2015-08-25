@@ -107,6 +107,15 @@ mod widget;
 ///
 /// `#[macro_use] extern crate conrod;`
 ///
+/// Also, if your list has a large number of identifiers (~64 or more) you may find this macro
+/// hitting rustc's recursion limit (this will show as a compile error). To fix this you can try
+/// adding the following to your crate root.
+///
+/// `#![recursion_limit="512"]`
+///
+/// This will raise the recursion limit from the default (~64) to 512. You should be able to set it
+/// to a higher number if you find it necessary.
+///
 #[macro_export]
 macro_rules! widget_ids {
 
