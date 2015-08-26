@@ -1,4 +1,4 @@
-# Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod)
+# Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod) [![Crates.io](https://img.shields.io/crates/v/conrod.svg)](https://crates.io/crates/conrod) [![Crates.io](https://img.shields.io/crates/l/conrod.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE)
 
 An easy-to-use, 2D GUI library written entirely in Rust.
 
