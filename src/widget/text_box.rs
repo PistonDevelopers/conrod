@@ -7,7 +7,7 @@ use graphics::math::Scalar;
 use label::FontSize;
 use mouse::Mouse;
 use num::Float;
-use input::keyboard::Key::{Backspace, Left, Right, Return, A, LCtrl, RCtrl};
+use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use position::{self, Dimensions, Point};
 use theme::Theme;
 use ui::GlyphCache;
@@ -479,6 +479,12 @@ impl<'a, F> Widget for TextBox<'a, F>
                     A if new_control_pressed => {
                         if cursor.is_cursor() {
                             cursor.start = 0;
+                            cursor.end = self.text.chars().count();
+                        }
+                    },
+                    E if new_control_pressed => {
+                        if cursor.is_cursor() {
+                            cursor.start = self.text.chars().count();
                             cursor.end = self.text.chars().count();
                         }
                     },
