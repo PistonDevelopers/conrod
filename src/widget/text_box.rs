@@ -7,7 +7,7 @@ use graphics::math::Scalar;
 use label::FontSize;
 use mouse::Mouse;
 use num::Float;
-use input::keyboard::Key::{Backspace, Left, Right, Return};
+use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use position::{self, Dimensions, Point};
 use theme::Theme;
 use ui::GlyphCache;
@@ -45,6 +45,7 @@ pub struct Style {
 pub struct State {
     interaction: Interaction,
     text: String,
+    control_pressed: bool
 }
 
 /// Represents the state of the text_box widget.
@@ -330,6 +331,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         State {
             interaction: Interaction::Uncaptured(Uncaptured::Normal),
             text: String::new(),
+            control_pressed: false,
         }
     }
     fn style(&self) -> Style { self.style.clone() }
@@ -378,6 +380,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         let text_w = glyph_cache.width(font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
+        let mut new_control_pressed = state.control_pressed;
         let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
             (true, Some(mouse)) => {
@@ -423,6 +426,7 @@ impl<'a, F> Widget for TextBox<'a, F>
 
             // Check for entered text.
             for text in input.entered_text {
+                if new_control_pressed { break; }
                 if text.chars().count() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
@@ -469,6 +473,30 @@ impl<'a, F> Widget for TextBox<'a, F>
                             react(*text);
                         }
                     },
+                    LCtrl | RCtrl if !new_control_pressed => {
+                        new_control_pressed = true;
+                    },
+                    A if new_control_pressed => {
+                        if cursor.is_cursor() {
+                            cursor.start = 0;
+                            cursor.end = self.text.chars().count();
+                        }
+                    },
+                    E if new_control_pressed => {
+                        if cursor.is_cursor() {
+                            cursor.start = self.text.chars().count();
+                            cursor.end = self.text.chars().count();
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            for key in input.released_keys.iter() {
+                match *key {
+                    LCtrl | RCtrl if new_control_pressed => {
+                        new_control_pressed = false;
+                    },
                     _ => (),
                 }
             }
@@ -485,12 +513,14 @@ impl<'a, F> Widget for TextBox<'a, F>
             State {
                 interaction: new_interaction,
                 text: self.text.clone(),
+                control_pressed: new_control_pressed,
             }
         };
 
         // Check whether or not the state has changed since the previous update.
         let state_has_changed = state.interaction != new_interaction
-            || &state.text[..] != &self.text[..];
+            || &state.text[..] != &self.text[..]
+            || state.control_pressed != new_control_pressed;
 
         // Construct the new state if there was a change.
         if state_has_changed { Some(new_state()) } else { None }
@@ -561,7 +591,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                                      .height(font_size as f64)).shift_x(text_x.floor());
             (None, text_form)
         };
- 
+
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(inner_form))
