@@ -503,63 +503,59 @@ impl Graph {
             }
         };
 
-        match self.contains(id) {
+        // If we already have a Widget for the given ID, we need to update it.
+        if self.contains(id) {
+            self.set_parent_for_widget(id, maybe_parent_idx);
 
-            // If there is no Widget for the given ID we need to add one.
-            false => {
-                let container = new_container(stored, maybe_new_element);
-                self.add_widget(container, Some(id), maybe_parent_idx);
-            },
+            // We can unwrap here because we know that there is a matching index.
+            let node_idx = self.index_map.get_node_index(id)
+                .expect("No matching NodeIndex");
 
-            // If we already have a Widget for the given ID, we need to update it.
-            true => {
-                self.set_parent_for_widget(id, maybe_parent_idx);
+            match &mut self.graph[node_idx] {
 
-                // We can unwrap here because we know that there is a matching index.
-                let node_idx = self.index_map.get_node_index(id)
-                    .expect("No matching NodeIndex");
+                // If the node is currently a placeholder, construct the widget variant.
+                node @ &mut Node::Placeholder => {
+                    let container = new_container(stored, maybe_new_element);
+                    *node = Node::Widget(container);
+                },
 
-                match &mut self.graph[node_idx] {
+                // Otherwise, update the container that already exists.
+                &mut Node::Widget(ref mut container) => {
+                    // If the container already exists with the state of some other kind of
+                    // widget, we can assume there's been a mistake with the given Id.
+                    if container.kind != kind && container.kind != "EMPTY" {
+                        panic!("A widget of a different kind already exists at the given UiId \
+                                ({:?}). You tried to insert a {:?}, however the existing \
+                                widget is a {:?}. Check your widgets' `UiId`s for errors.",
+                                id, &kind, container.kind);
+                    }
 
-                    // If the node is currently a placeholder, construct the widget variant.
-                    node @ &mut Node::Placeholder => {
-                        let container = new_container(stored, maybe_new_element);
-                        *node = Node::Widget(container);
-                    },
+                    container.maybe_state = Some(Box::new(stored));
+                    container.kind = kind;
+                    container.xy = xy;
+                    container.dim = dim;
+                    container.depth = depth;
+                    container.drag_state = drag_state;
+                    container.has_set = true;
+                    container.kid_area = kid_area;
+                    container.maybe_floating = maybe_floating;
+                    container.maybe_scrolling = maybe_scrolling;
+                    if let Some(new_element) = maybe_new_element {
+                        container.element = new_element;
+                        container.element_has_changed = true;
+                    }
+                },
 
-                    // Otherwise, update the container that already exists.
-                    &mut Node::Widget(ref mut container) => {
-                        // If the container already exists with the state of some other kind of
-                        // widget, we can assume there's been a mistake with the given Id.
-                        if container.kind != kind && container.kind != "EMPTY" {
-                            panic!("A widget of a different kind already exists at the given UiId \
-                                    ({:?}). You tried to insert a {:?}, however the existing \
-                                    widget is a {:?}. Check your widgets' `UiId`s for errors.",
-                                    id, &kind, container.kind);
-                        }
+                // The node that we're updating should only be either a Placeholder or a Widget.
+                _ => unreachable!(),
+            }
 
-                        container.maybe_state = Some(Box::new(stored));
-                        container.kind = kind;
-                        container.xy = xy;
-                        container.dim = dim;
-                        container.depth = depth;
-                        container.drag_state = drag_state;
-                        container.has_set = true;
-                        container.kid_area = kid_area;
-                        container.maybe_floating = maybe_floating;
-                        container.maybe_scrolling = maybe_scrolling;
-                        if let Some(new_element) = maybe_new_element {
-                            container.element = new_element;
-                            container.element_has_changed = true;
-                        }
-                    },
+        // Otherwise if there is no Widget for the given ID we need to add one.
+        } else {
+            let container = new_container(stored, maybe_new_element);
+            self.add_widget(container, Some(id), maybe_parent_idx);
+        }
 
-                    // The node that we're updating should only be either a Placeholder or a Widget.
-                    _ => unreachable!(),
-                }
-            },
-
-        };
     }
 
 
