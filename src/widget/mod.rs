@@ -50,18 +50,21 @@ pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
     pub input: UserInput<'b>,
     /// The Widget's current Style.
     pub style: &'a W::Style,
-    /// The active `Theme` within the `Ui`.
-    pub theme: &'a Theme,
-    /// The `Ui`'s GlyphCache (for determining text width, etc).
-    pub glyph_cache: &'a GlyphCache<C>,
-    // /// Limited access to the `Ui`.
-    // pub ui: UiCell<'a, C>,
+    /// Restricted access to the `Ui`.
+    /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.
+    /// Also allows calling `Widget::set_internal` within the `Widget::update` method.
+    pub ui: UiCell<'a, C>,
 }
 
 /// A wrapper around a `Ui` that only exposes the functionality necessary for the `Widget::update`
 /// method. Its primary role is to allow for widget designers to compose their own unique widgets
 /// from other widgets by calling the `Widget::set_internal` method within their own `Widget`'s
-/// update method.
+/// update method. It also provides methods for accessing the `Ui`'s `Theme` and `GlyphCache` via
+/// immutable reference.
+///
+/// BTW - if you have a better name for this type, please post an issue or PR! "Cell" was the best
+/// I could come up with as it's kind of like a jail cell for the `Ui` - restricting a user's
+/// access to it.
 pub struct UiCell<'a, C: 'a> {
     ui: &'a mut Ui<C>,
 }
@@ -603,8 +606,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
             dim: dim,
             input: input,
             style: &new_style,
-            theme: &ui.theme,
-            glyph_cache: &ui.glyph_cache,
+            ui: UiCell { ui: ui },
         };
         widget.update(args)
     };
@@ -844,6 +846,16 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     ui::update_widget(ui, idx, maybe_parent_idx, kind, cached, maybe_new_element);
 }
 
+
+impl<'a, C> UiCell<'a, C> {
+
+    /// A reference to the `Theme` that is currently active within the `Ui`.
+    pub fn theme(&self) -> &Theme { &self.ui.theme }
+
+    /// A reference to the `Ui`'s `GlyphCache`.
+    pub fn glyph_cache(&self) -> &GlyphCache<C> { &self.ui.glyph_cache }
+
+}
 
 
 impl CommonBuilder {

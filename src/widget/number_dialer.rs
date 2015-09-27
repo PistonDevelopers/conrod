@@ -265,15 +265,15 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         where C: CharacterCache,
     {
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, glyph_cache } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
         let widget::State { ref state, .. } = *prev_state;
 
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(theme);
+        let frame = style.frame(ui.theme());
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
-        let font_size = style.label_font_size(theme);
+        let font_size = style.label_font_size(ui.theme());
         let label_string = self.maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
-        let label_dim = [glyph_cache.width(font_size, &label_string), font_size as f64];
+        let label_dim = [ui.glyph_cache().width(font_size, &label_string), font_size as f64];
         let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0 }
                                                           else { 1 + self.precision as usize };
         let val_string = create_val_string(self.value, val_string_len, self.precision);
