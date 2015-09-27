@@ -250,12 +250,12 @@ impl<'a> Widget for Tabs<'a> {
     fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, theme, style, glyph_cache, .. } = args;
+        let widget::UpdateArgs { idx, prev_state, xy, dim, input, style, ui } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let layout = style.layout(theme);
-        let font_size = style.font_size(theme);
+        let layout = style.layout(ui.theme());
+        let font_size = style.font_size(ui.theme());
         let max_text_width = self.tabs.iter().fold(0.0, |max_w, &(_, string)| {
-            let w = glyph_cache.width(font_size, &string);
+            let w = ui.glyph_cache().width(font_size, &string);
             if w > max_w { w } else { max_w }
         });
 
@@ -339,6 +339,26 @@ impl<'a> Widget for Tabs<'a> {
                 else if self.tabs.len() > 0 { Some(0) }
                 else { None },
         };
+
+        // If we do have some selected tab, we'll draw a Canvas for it.
+        if let Some(selected_idx) = maybe_selected_tab_idx {
+            use position::{Positionable, Sizeable};
+
+            let &(child_id, _) = &self.tabs[selected_idx];
+            let mut canvas = Canvas::new();
+            let canvas_dim = match style.layout(ui.theme()) {
+                Layout::Horizontal => [dim[0], dim[1] - tab_bar_dim[1]],
+                Layout::Vertical   => [dim[0] - tab_bar_dim[0], dim[1]],
+            };
+            canvas.style = style.canvas.clone();
+            canvas
+                .show_title_bar(false)
+                .dim(canvas_dim)
+                .floating(false)
+                .middle_of(idx)
+                .parent(Some(idx))
+                .set(child_id, ui);
+        }
 
         // A function for constructing new state.
         let new_state = || State {

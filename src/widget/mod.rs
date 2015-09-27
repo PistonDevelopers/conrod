@@ -40,6 +40,8 @@ pub type WidgetId = usize;
 
 /// Arguments for the `Widget::update` method in a struct to simplify the method signature.
 pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
+    /// W's unique index.
+    pub idx: Index,
     /// The Widget's state that was last returned by the update method.
     pub prev_state: &'a State<W::State>,
     /// The absolute (centered origin) screen position of the widget.
@@ -171,6 +173,21 @@ pub struct Cached<W> where W: Widget {
     pub maybe_floating: Option<Floating>,
     /// The state for scrollable widgets.
     pub maybe_scrolling: Option<scroll::State>,
+}
+
+
+/// This allows us to be generic over both Ui and UiCell in the `Widget::set` arguments.
+trait UiRefMut<C> {
+    /// A mutable reference to the `Ui`.
+    fn ui_ref_mut(&mut self) -> &mut Ui<C>;
+}
+
+impl<C> UiRefMut<C> for Ui<C> {
+    fn ui_ref_mut(&mut self) -> &mut Ui<C> { self }
+}
+
+impl<'a, C> UiRefMut<C> for UiCell<'a, C> {
+    fn ui_ref_mut(&mut self) -> &mut Ui<C> { self.ui }
 }
 
 
@@ -395,8 +412,9 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
-    fn set<C>(self, id: WidgetId, ui: &mut Ui<C>)
-        where C: CharacterCache
+    fn set<C, U>(self, id: WidgetId, ui: &mut U) where
+        C: CharacterCache,
+        U: UiRefMut<C>,
     {
         set_widget(self, Index::Public(id), ui);
     }

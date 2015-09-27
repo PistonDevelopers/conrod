@@ -182,7 +182,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     {
         use utils::{is_over_rect, map_range};
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
@@ -195,7 +195,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
         let new_value = if let Some(mouse) = maybe_mouse {
             let Slider { value, min, max, skew, .. } = self;
-            let frame = style.frame(theme);
+            let frame = style.frame(ui.theme());
             let frame_2 = frame * 2.0;
             let (inner_w, inner_h) = (dim[0] - frame_2, dim[1] - frame_2);
             let (half_inner_w, half_inner_h) = (inner_w / 2.0, inner_h / 2.0);
