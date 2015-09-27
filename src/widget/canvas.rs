@@ -272,11 +272,11 @@ impl<'a> Widget for Canvas<'a> {
     fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, theme, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, input, ui } = args;
         let widget::State { ref state, .. } = *prev_state;
         let State { interaction, time_last_clicked, ref maybe_title_bar } = *state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let title_bar_font_size = self.style.title_bar_font_size(theme);
+        let title_bar_font_size = self.style.title_bar_font_size(ui.theme());
 
         // Calculate the height and y coord of the title bar.
         let (title_bar_h, title_bar_y) = if self.show_title_bar {
