@@ -408,10 +408,10 @@ impl<'a, F> Widget for DropDownList<'a, F>
     fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
         where C: CharacterCache
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(theme);
+        let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
         // Check for a new interaction with the DropDownList.
@@ -423,7 +423,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let bottom_win_y = (-input.window_dim[1]) / 2.0;
                 const WINDOW_PADDING: Scalar = 20.0;
                 let max_max_visible_height = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
-                let max_visible_height = match style.max_visible_height(theme) {
+                let max_visible_height = match style.max_visible_height(ui.theme()) {
                     Some(max_height) => {
                         let height = match max_height {
                             MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
