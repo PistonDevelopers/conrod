@@ -264,7 +264,7 @@ impl<'a> Split<'a> {
         canvas.style = style.clone();
         match maybe_parent {
             Some(parent_id) => canvas.parent(Some(parent_id)),
-            None            => canvas.parent(None),
+            None            => canvas.parent(None::<WidgetId>),
         }.point(xy)
             .dim(dim)
             .vertical_scrolling(is_v_scrollable)

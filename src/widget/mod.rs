@@ -10,15 +10,20 @@ use std::any::Any;
 use theme::Theme;
 use ui::{self, GlyphCache, Ui, UserInput};
 
+pub use self::index::Index;
+
+pub mod drag;
+mod index;
+pub mod scroll;
+
+// Widget Modules.
 pub mod button;
 pub mod canvas;
-pub mod drag;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod label;
 pub mod matrix;
 pub mod number_dialer;
-pub mod scroll;
 pub mod slider;
 pub mod split;
 pub mod tabs;
@@ -31,6 +36,7 @@ pub mod xy_pad;
 /// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
 /// a `Vec`, which is limited to a size of `usize` elements.
 pub type WidgetId = usize;
+
 
 /// Arguments for the `Widget::update` method in a struct to simplify the method signature.
 pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
@@ -89,7 +95,7 @@ pub enum MaybeParent {
     /// The user specified the widget should not have any parents, so the Root will be used.
     None,
     /// The user gave a specific parent widget.
-    Some(WidgetId),
+    Some(Index),
     /// No parent widget was specified, so we will assume they want the last parent.
     Unspecified,
 }
@@ -118,7 +124,7 @@ pub struct CommonBuilder {
     /// The rendering Depth of the Widget.
     pub maybe_depth: Option<Depth>,
     /// The parent widget of the Widget.
-    pub maybe_parent_id: MaybeParent,
+    pub maybe_parent_idx: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
     /// Builder data for scrollable widgets.
@@ -319,10 +325,10 @@ pub trait Widget: Sized {
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
     /// This will attach this Widget to the parent widget.
-    fn parent(mut self, maybe_parent_id: Option<WidgetId>) -> Self {
-        self.common_mut().maybe_parent_id = match maybe_parent_id {
+    fn parent<I: Into<Index>>(mut self, maybe_parent_idx: Option<I>) -> Self {
+        self.common_mut().maybe_parent_idx = match maybe_parent_idx {
             None => MaybeParent::None,
-            Some(id) => MaybeParent::Some(id),
+            Some(idx) => MaybeParent::Some(idx.into()),
         };
         self
     }
@@ -368,7 +374,9 @@ pub trait Widget: Sized {
     /// This will be called immediately after the widget itself is updated.
     /// NOTE: The API for this will probably changed somehow, as there is probably a nicer way to
     /// do this than give the widget designer mutable access to the entire `Ui`.
-    fn set_children<C>(_id: WidgetId,
+    ///
+    /// FIXME: This should no longer be necessary after the `set_internal` method is implemented.
+    fn set_children<C>(_idx: Index,
                        _state: &State<Self::State>,
                        _style: &Self::Style,
                        _ui: &mut Ui<C>)
@@ -398,33 +406,24 @@ pub trait Widget: Sized {
     fn set_internal<'a, C>(self, maybe_idx: &mut Option<NodeIndex>, ui_cell: &mut UiCell<'a, C>)
         where C: CharacterCache
     {
-        set_widget(self, Index::Internal(maybe_idx), &mut ui_cell.ui);
+
+        let idx = match maybe_idx {
+            // If we don't yet have a NodeIndex for our internal `Widget` we'll add a placeholder
+            // to the `Graph` and use the returned `NodeIndex`.
+            maybe_idx @ &mut None => {
+                let idx = ui::widget_graph_mut(&mut ui_cell.ui).add_placeholder();
+                *maybe_idx = Some(idx);
+                idx
+            },
+            // Otherwise, we'll use the index we already have.
+            &mut Some(idx) => idx,
+        };
+
+        set_widget(self, Index::Internal(idx), &mut ui_cell.ui);
     }
 
 }
 
-
-/// A trait so that both `Widget::set` and `Widget::set_internal` can be used to set widgets both
-/// externally and internally using either `&mut Ui` directly or a `UiCell`.
-trait ToRefMutUi<C> {
-    fn to_ref_mut_ui<'a>(&'a mut self) -> &'a mut Ui<C>;
-}
-impl<C> ToRefMutUi<C> for Ui<C> {
-    fn to_ref_mut_ui<'a>(&'a mut self) -> &'a mut Ui<C> { self }
-}
-impl<'a, C> ToRefMutUi<C> for UiCell<'a, C> {
-    fn to_ref_mut_ui<'b>(&'b mut self) -> &'b mut Ui<C> { &mut self.ui }
-}
-
-
-/// An index either given in the form of a WidgetId, or a mutable reference to an Option<NodeIndex>.
-enum Index<'a> {
-    /// A WidgetId given from a user.
-    Public(WidgetId),
-    /// A mutable reference to an internal NodeIndex directly into the widget graph. This is given
-    /// when setting a widget within some other widget, avoiding occupying the WidgetId space.
-    Internal(&'a mut Option<NodeIndex>),
-}
 
 
 /// Sets a given widget within the given `Ui`.
@@ -436,13 +435,28 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
 {
     let kind = widget.unique_kind();
 
-    let id = match idx {
-        Index::Public(id) => id,
-        _ => panic!(),
+    // Collect the previous state of the widget if there is some to collect.
+    let maybe_widget_state: Option<Cached<W>> = {
+
+        // If the cache is already initialised for a widget of a different kind, warn the user.
+        let check_container_kind = |container: &mut ::graph::Container| {
+            use std::io::Write;
+            if container.kind != kind {
+                writeln!(::std::io::stderr(),
+                         "A widget of a different kind already exists at the given WidgetId \
+                         ({:?}). You tried to insert a {:?}, however the existing widget is a \
+                         {:?}. Check your widgets' `WidgetId`s for errors.",
+                          idx, kind, container.kind).unwrap();
+                return None;
+            } else {
+                container.take_widget_state()
+            }
+        };
+
+        ui::widget_graph_mut(ui).get_widget_mut(idx).and_then(check_container_kind)
     };
 
-    // Collect the previous state and style or initialise both if none exist.
-    let maybe_widget_state = ui::get_widget_state::<C, W>(ui, id, kind);
+    // Seperate the Widget's previous state into it's unique state, style and scrolling.
     let (maybe_prev_state, maybe_prev_style, maybe_scrolling) = maybe_widget_state.map(|prev|{
 
         // Destructure the cached state.
@@ -481,7 +495,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
         // A function for generating the xy coords from the given alignment and Position.
         let gen_xy = || {
             let (h_align, v_align) = widget.get_alignment(&ui.theme);
-            let new_xy = ui.get_xy(Some(id), pos, dim, h_align, v_align);
+            let new_xy = ui.get_xy(Some(idx), pos, dim, h_align, v_align);
             new_xy
         };
 
@@ -490,7 +504,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
             // If there is no previous state to compare for dragging, return an initial state.
             None => (gen_xy(), drag::State::Normal),
             Some(ref prev_state) => {
-                let maybe_mouse = ui::get_mouse_state(ui, id);
+                let maybe_mouse = ui::get_mouse_state(ui, idx);
                 let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
                 match maybe_drag_area {
                     // If the widget isn't draggable, generate its position the normal way.
@@ -521,17 +535,17 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // we need to capture the mouse.
     match (maybe_prev_state.as_ref().map(|prev| prev.drag_state), drag_state) {
         (Some(drag::State::Highlighted), drag::State::Clicked(_)) =>
-            ui::mouse_captured_by(ui, id),
+            ui::mouse_captured_by(ui, idx),
         (Some(drag::State::Clicked(_)), drag::State::Highlighted) |
         (Some(drag::State::Clicked(_)), drag::State::Normal)      =>
-            ui::mouse_uncaptured_by(ui, id),
+            ui::mouse_uncaptured_by(ui, idx),
         _ => (),
     }
 
     // Determine the id of the canvas that the widget is attached to. If not given explicitly,
     // check the positioning to retrieve the Id from there.
-    let maybe_parent_id = match widget.common().maybe_parent_id {
-        MaybeParent::Some(id) => Some(id),
+    let maybe_parent_idx = match widget.common().maybe_parent_idx {
+        MaybeParent::Some(idx) => Some(idx),
         MaybeParent::None => None,
         MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
     };
@@ -545,7 +559,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let maybe_floating = match (is_floating, maybe_prev_state.as_ref()) {
         (false, _) => None,
         (true, Some(prev)) => {
-            let maybe_mouse = ui::get_mouse_state(ui, id);
+            let maybe_mouse = ui::get_mouse_state(ui, idx);
             match (prev.maybe_floating, maybe_mouse) {
                 (Some(prev_floating), Some(mouse)) => {
                     if mouse.left == ::mouse::ButtonState::Down {
@@ -582,7 +596,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Update the widget's state.
     let maybe_new_state = {
         // Construct a UserInput for the widget.
-        let input = ui::user_input(ui, id);
+        let input = ui::user_input(ui, idx);
         let args = UpdateArgs {
             prev_state: &prev_state,
             xy: xy,
@@ -602,16 +616,16 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
             None => &prev_state.state
         };
         if W::capture_mouse(&prev_state.state, new_state) {
-            ui::mouse_captured_by(ui, id);
+            ui::mouse_captured_by(ui, idx);
         }
         if W::uncapture_mouse(&prev_state.state, new_state) {
-            ui::mouse_uncaptured_by(ui, id);
+            ui::mouse_uncaptured_by(ui, idx);
         }
         if W::capture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_captured_by(ui, id);
+            ui::keyboard_captured_by(ui, idx);
         }
         if W::uncapture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_uncaptured_by(ui, id);
+            ui::keyboard_uncaptured_by(ui, idx);
         }
     }
 
@@ -647,7 +661,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // set here.
     // FIXME: There must be a better way to allow third-party widget designers to set child
     // widgets without requiring mutable access to the entire `Ui`.
-    W::set_children(id, &new_state, &new_style, ui);
+    W::set_children(idx, &new_state, &new_style, ui);
 
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = W::kid_area(&new_state, &new_style, &ui.theme);
@@ -660,7 +674,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Determine whether or not we have state for scrolling.
     let maybe_new_scrolling = {
 
-        let maybe_mouse = ui::get_mouse_state(ui, id);
+        let maybe_mouse = ui::get_mouse_state(ui, idx);
 
         // If we haven't been placed in the graph yet (and bounding_box returns None),
         // we'll just use our current dimensions as the bounding box.
@@ -676,8 +690,8 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         // Else if we have some previous scrolling, use it in determining the new scrolling.
         } else if let Some(prev_scrollable) = maybe_scrolling {
-            let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
-                .bounding_box(false, None, true, id)
+            let (top_y, bottom_y, left_x, right_x) = ui::widget_graph(ui)
+                .bounding_box(false, None, true, idx)
                 .unwrap_or_else(init_bounds);
 
             // The total length of the area occupied by child widgets that is scrolled.
@@ -731,8 +745,8 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         // Otherwise, we'll make a brand new scrolling.
         } else {
-            let (top_y, bottom_y, left_x, right_x) = ui::graph(ui)
-                .bounding_box(false, None, true, id)
+            let (top_y, bottom_y, left_x, right_x) = ui::widget_graph(ui)
+                .bounding_box(false, None, true, idx)
                 .unwrap_or_else(init_bounds);
 
             // The total length of the area occupied by child widgets that is scrolled.
@@ -777,10 +791,10 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Check whether or not our new scrolling state should capture or uncapture the mouse.
     if let (Some(ref prev), Some(ref new)) = (maybe_scrolling, maybe_new_scrolling) {
         if scroll::capture_mouse(prev, new) {
-            ui::mouse_captured_by(ui, id);
+            ui::mouse_captured_by(ui, idx);
         }
         if scroll::uncapture_mouse(prev, new) {
-            ui::mouse_uncaptured_by(ui, id);
+            ui::mouse_uncaptured_by(ui, idx);
         }
     }
 
@@ -827,7 +841,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
         maybe_scrolling: maybe_new_scrolling,
     };
 
-    ui::update_widget(ui, id, maybe_parent_id, kind, cached, maybe_new_element);
+    ui::update_widget(ui, idx, maybe_parent_idx, kind, cached, maybe_new_element);
 }
 
 
@@ -842,7 +856,7 @@ impl CommonBuilder {
             maybe_h_align: None,
             maybe_v_align: None,
             maybe_depth: None,
-            maybe_parent_id: MaybeParent::Unspecified,
+            maybe_parent_idx: MaybeParent::Unspecified,
             is_floating: false,
             scrolling: scroll::Scrolling::new(),
         }

@@ -468,30 +468,33 @@ impl<'a> Widget for Tabs<'a> {
 
 
     /// Set the currently active canvas as a child (called directly after update).
-    fn set_children<C>(id: WidgetId,
+    fn set_children<C>(idx: widget::Index,
                        state: &widget::State<State>,
                        style: &Style,
                        ui: &mut Ui<C>)
         where C: CharacterCache,
     {
-        if let Some(idx) = state.state.maybe_selected_tab_idx {
-            use position::{Positionable, Sizeable};
+        // FIXME: Move the following commented code into the `update` method.
+        unimplemented!();
 
-            let &(child_id, _) = &state.state.tabs[idx];
-            let mut canvas = Canvas::new();
-            let dim = match style.layout(&ui.theme) {
-                Layout::Horizontal => [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
-                Layout::Vertical   => [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
-            };
-            canvas.style = style.canvas.clone();
-            canvas
-                .show_title_bar(false)
-                .dim(dim)
-                .floating(false)
-                .middle_of(id)
-                .parent(Some(id))
-                .set(child_id, ui);
-        }
+        // if let Some(idx) = state.state.maybe_selected_tab_idx {
+        //     use position::{Positionable, Sizeable};
+
+        //     let &(child_id, _) = &state.state.tabs[idx];
+        //     let mut canvas = Canvas::new();
+        //     let dim = match style.layout(&ui.theme) {
+        //         Layout::Horizontal => [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
+        //         Layout::Vertical   => [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
+        //     };
+        //     canvas.style = style.canvas.clone();
+        //     canvas
+        //         .show_title_bar(false)
+        //         .dim(dim)
+        //         .floating(false)
+        //         .middle_of(id)
+        //         .parent(Some(id))
+        //         .set(child_id, ui);
+        // }
     }
 
 }

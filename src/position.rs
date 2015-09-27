@@ -3,7 +3,7 @@ use graphics::character::CharacterCache;
 use graphics::math::Scalar;
 use theme::Theme;
 use ui::GlyphCache;
-use widget::WidgetId;
+use widget;
 
 /// The depth at which the widget will be rendered. This determines the order of rendering where
 /// widgets with a greater depth will be rendered first. 0.0 is the default depth.
@@ -21,11 +21,11 @@ pub enum Position {
     /// A specific position.
     Absolute(Scalar, Scalar),
     /// A position relative to some other Widget.
-    Relative(Scalar, Scalar, Option<WidgetId>),
+    Relative(Scalar, Scalar, Option<widget::Index>),
     /// A direction relative to some other Widget.
-    Direction(Direction, Scalar, Option<WidgetId>),
+    Direction(Direction, Scalar, Option<widget::Index>),
     /// A position at a place on some other Widget.
-    Place(Place, Option<WidgetId>),
+    Place(Place, Option<widget::Index>),
 }
 
 impl Position {
@@ -50,7 +50,7 @@ pub enum Direction {
 
 /// The horizontal alignment of a widget positioned relatively to another UI element on the y axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub struct HorizontalAlign(pub Horizontal, pub Option<WidgetId>);
+pub struct HorizontalAlign(pub Horizontal, pub Option<widget::Index>);
 
 /// The orientation of a HorizontalAlign.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
@@ -65,7 +65,7 @@ pub enum Horizontal {
 
 /// The vertical alignment of a widget positioned relatively to another UI element on the x axis.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub struct VerticalAlign(pub Vertical, pub Option<WidgetId>);
+pub struct VerticalAlign(pub Vertical, pub Option<widget::Index>);
 
 /// The orientation of a VerticalAlign.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
@@ -130,14 +130,14 @@ pub trait Positionable: Sized {
         self.position(Position::Relative(x, y, None))
     }
 
-    /// Set the position relative to the widget with the given WidgetId.
-    fn relative_to(self, other: WidgetId, point: Point) -> Self {
-        self.position(Position::Relative(point[0], point[1], Some(other)))
+    /// Set the position relative to the widget with the given widget::Index.
+    fn relative_to<I: Into<widget::Index>>(self, other: I, point: Point) -> Self {
+        self.position(Position::Relative(point[0], point[1], Some(other.into())))
     }
 
-    /// Set the position relative to the widget with the given WidgetId.
-    fn relative_xy_to(self, other: WidgetId, x: Scalar, y: Scalar) -> Self {
-        self.position(Position::Relative(x, y, Some(other)))
+    /// Set the position relative to the widget with the given widget::Index.
+    fn relative_xy_to<I: Into<widget::Index>>(self, other: I, x: Scalar, y: Scalar) -> Self {
+        self.position(Position::Relative(x, y, Some(other.into())))
     }
 
     /// Set the position as below the previous widget.
@@ -160,24 +160,24 @@ pub trait Positionable: Sized {
         self.position(Position::Direction(Direction::Right, pixels, None))
     }
 
-    /// Set the position as below the widget with the given WidgetId.
-    fn down_from(self, other: WidgetId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Down, pixels, Some(other)))
+    /// Set the position as below the widget with the given widget::Index.
+    fn down_from<I: Into<widget::Index>>(self, other: I, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Down, pixels, Some(other.into())))
     }
 
-    /// Set the position as above the widget with the given WidgetId.
-    fn up_from(self, other: WidgetId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Up, pixels, Some(other)))
+    /// Set the position as above the widget with the given widget::Index.
+    fn up_from<I: Into<widget::Index>>(self, other: I, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Up, pixels, Some(other.into())))
     }
 
-    /// Set the position to the left of the widget with the given WidgetId.
-    fn left_from(self, other: WidgetId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Left, pixels, Some(other)))
+    /// Set the position to the left of the widget with the given widget::Index.
+    fn left_from<I: Into<widget::Index>>(self, other: I, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Left, pixels, Some(other.into())))
     }
 
-    /// Set the position to the right of the widget with the given WidgetId.
-    fn right_from(self, other: WidgetId, pixels: Scalar) -> Self {
-        self.position(Position::Direction(Direction::Right, pixels, Some(other)))
+    /// Set the position to the right of the widget with the given widget::Index.
+    fn right_from<I: Into<widget::Index>>(self, other: I, pixels: Scalar) -> Self {
+        self.position(Position::Direction(Direction::Right, pixels, Some(other.into())))
     }
 
     ///// `Align` methods. /////
@@ -230,68 +230,86 @@ pub trait Positionable: Sized {
     }
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
-    fn align_left_of(self, other: WidgetId) -> Self {
-        self.horizontal_align(HorizontalAlign(Horizontal::Left, Some(other)))
+    fn align_left_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Left, Some(other.into())))
     }
 
     /// Align the position to the middle (only effective for Up or Down `Direction`s).
-    fn align_middle_x_of(self, other: WidgetId) -> Self {
-        self.horizontal_align(HorizontalAlign(Horizontal::Middle, Some(other)))
+    fn align_middle_x_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Middle, Some(other.into())))
     }
 
     /// Align the position to the right (only effective for Up or Down `Direction`s).
-    fn align_right_of(self, other: WidgetId) -> Self {
-        self.horizontal_align(HorizontalAlign(Horizontal::Right, Some(other)))
+    fn align_right_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.horizontal_align(HorizontalAlign(Horizontal::Right, Some(other.into())))
     }
 
     /// Align the position to the top (only effective for Left or Right `Direction`s).
-    fn align_top_of(self, other: WidgetId) -> Self {
-        self.vertical_align(VerticalAlign(Vertical::Top, Some(other)))
+    fn align_top_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Top, Some(other.into())))
     }
 
     /// Align the position to the middle (only effective for Left or Right `Direction`s).
-    fn align_middle_y_of(self, other: WidgetId) -> Self {
-        self.vertical_align(VerticalAlign(Vertical::Middle, Some(other)))
+    fn align_middle_y_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Middle, Some(other.into())))
     }
 
     /// Align the position to the bottom (only effective for Left or Right `Direction`s).
-    fn align_bottom_of(self, other: WidgetId) -> Self {
-        self.vertical_align(VerticalAlign(Vertical::Bottom, Some(other)))
+    fn align_bottom_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.vertical_align(VerticalAlign(Vertical::Bottom, Some(other.into())))
     }
 
     ///// `Place` methods. /////
 
     /// Place the widget at some position on the Widget.
-    fn place(self, place: Place, maybe_id: Option<WidgetId>) -> Self {
-        self.position(Position::Place(place, maybe_id))
+    fn place(self, place: Place, maybe_idx: Option<widget::Index>) -> Self {
+        self.position(Position::Place(place, maybe_idx))
     }
 
     /// Place the widget in the middle of the given Widget.
-    fn middle_of(self, id: WidgetId) -> Self { self.place(Place::Middle, Some(id)) }
+    fn middle_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::Middle, Some(other.into()))
+    }
 
     /// Place the widget in the top left corner of the given Widget.
-    fn top_left_of(self, id: WidgetId) -> Self { self.place(Place::TopLeft, Some(id)) }
+    fn top_left_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::TopLeft, Some(other.into()))
+    }
 
     /// Place the widget in the top right corner of the given Widget.
-    fn top_right_of(self, id: WidgetId) -> Self { self.place(Place::TopRight, Some(id)) }
+    fn top_right_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::TopRight, Some(other.into()))
+    }
 
     /// Place the widget in the bottom left corner of the given Widget.
-    fn bottom_left_of(self, id: WidgetId) -> Self { self.place(Place::BottomLeft, Some(id)) }
+    fn bottom_left_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::BottomLeft, Some(other.into()))
+    }
 
     /// Place the widget in the bottom right corner of the given Widget.
-    fn bottom_right_of(self, id: WidgetId) -> Self { self.place(Place::BottomRight, Some(id)) }
+    fn bottom_right_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::BottomRight, Some(other.into()))
+    }
 
     /// Place the widget in the middle of the top edge of the given Widget.
-    fn mid_top_of(self, id: WidgetId) -> Self { self.place(Place::MidTop, Some(id)) }
+    fn mid_top_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::MidTop, Some(other.into()))
+    }
 
     /// Place the widget in the middle of the bottom edge of the given Widget.
-    fn mid_bottom_of(self, id: WidgetId) -> Self { self.place(Place::MidBottom, Some(id)) }
+    fn mid_bottom_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::MidBottom, Some(other.into()))
+    }
 
     /// Place the widget in the middle of the left edge of the given Widget.
-    fn mid_left_of(self, id: WidgetId) -> Self { self.place(Place::MidLeft, Some(id)) }
+    fn mid_left_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::MidLeft, Some(other.into()))
+    }
 
     /// Place the widget in the middle of the right edge of the given Widget.
-    fn mid_right_of(self, id: WidgetId) -> Self { self.place(Place::MidRight, Some(id)) }
+    fn mid_right_of<I: Into<widget::Index>>(self, other: I) -> Self {
+        self.place(Place::MidRight, Some(other.into()))
+    }
 
     /// Place the widget in the middle of the current parent Widget.
     fn middle(self) -> Self { self.place(Place::Middle, None) }
