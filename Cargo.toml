@@ -12,6 +12,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "http://docs.piston.rs/conrod/conrod/"
 
 
 [lib]
