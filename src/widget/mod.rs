@@ -666,12 +666,6 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
         maybe_floating: maybe_floating,
     };
 
-    // In the case that this widget is the owner of a set of children widgets, those will be
-    // set here.
-    // FIXME: There must be a better way to allow third-party widget designers to set child
-    // widgets without requiring mutable access to the entire `Ui`.
-    W::set_children(idx, &new_state, &new_style, ui);
-
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = W::kid_area(&new_state, &new_style, &ui.theme);
 

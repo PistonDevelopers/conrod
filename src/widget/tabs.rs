@@ -8,7 +8,6 @@ use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};
 use theme::Theme;
 use widget::{self, WidgetId, Widget};
-use ui::Ui;
 
 
 /// A wrapper around a list of canvasses that displays thema s a list of selectable tabs.
