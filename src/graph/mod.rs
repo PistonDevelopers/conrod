@@ -5,11 +5,13 @@ use elmesque::Element;
 use elmesque::element::layers;
 use petgraph as pg;
 use position::{Depth, Dimensions, Point};
-use self::index_map::{IndexMap, GraphIndex};
+use self::index_map::IndexMap;
 use std::any::Any;
 use std::fmt::Debug;
 use widget::{self, Widget, WidgetId};
 
+
+pub use self::index_map::GraphIndex;
 
 mod index_map;
 
@@ -164,11 +166,19 @@ impl Graph {
             floating_deque: Vec::with_capacity(capacity),
         }
     }
+    
+    /// Add a new placeholder node and return it's `NodeIndex` into the `Graph`.
+    ///
+    /// This method is used by the `widget::set_widget` function when some internal widget does not
+    /// yet have it's own `NodeIndex`.
+    pub fn add_placeholder(&mut self) -> NodeIndex {
+        self.graph.add_node(Node::Placeholder)
+    }
 
     /// If there is a Widget for the given index, return a reference to it.
     pub fn get_widget<I: GraphIndex>(&self, idx: I) -> Option<&Container> {
         let Graph { ref index_map, ref graph, .. } = *self;
-        index_map.to_node_index(idx).and_then(|idx| match &graph[idx] {
+        idx.to_node_index(index_map).and_then(|idx| match &graph[idx] {
             &Node::Widget(ref container) => Some(container),
             &Node::Placeholder => None,
             _ => unreachable!(),
@@ -178,7 +188,7 @@ impl Graph {
     /// If there is a Widget for the given Id, return a mutable reference to it.
     pub fn get_widget_mut<I: GraphIndex>(&mut self, idx: I) -> Option<&mut Container> {
         let Graph { ref index_map, ref mut graph, .. } = *self;
-        index_map.to_node_index(idx).and_then(move |idx| match &mut graph[idx] {
+        idx.to_node_index(index_map).and_then(move |idx| match &mut graph[idx] {
             &mut Node::Widget(ref mut container) => Some(container),
             &mut Node::Placeholder => None,
             _ => unreachable!(),
@@ -190,7 +200,7 @@ impl Graph {
         I: GraphIndex,
         J: GraphIndex,
     {
-        self.index_map.to_node_index(idx).and_then(|idx| {
+        idx.to_node_index(&self.index_map).and_then(|idx| {
             self.graph.neighbors_directed(idx, pg::Incoming).next()
                 .and_then(|parent_idx| J::from_idx(parent_idx, &self.index_map))
         })
@@ -198,7 +208,7 @@ impl Graph {
 
     /// Returns whether or not the graph contains a widget with the given ID.
     pub fn contains<I: GraphIndex>(&self, idx: I) -> bool {
-        self.index_map.to_node_index(idx).is_some()
+        idx.to_node_index(&self.index_map).is_some()
     }
 
 
@@ -257,11 +267,11 @@ impl Graph {
 
 
     /// Calculate the total scroll offset for the widget with the given WidgetId.
-    pub fn scroll_offset(&self, id: WidgetId) -> Point {
+    pub fn scroll_offset<I: GraphIndex>(&self, idx: I) -> Point {
         let Graph { ref graph, ref index_map, .. } = *self;
         
         let mut offset = [0.0, 0.0];
-        let mut idx = match index_map.to_node_index(id) {
+        let mut idx = match idx.to_node_index(index_map) {
             Some(idx) => idx,
             // If the ID is not yet present within the graph, return the zeroed offset.
             None => return offset,
@@ -309,17 +319,19 @@ impl Graph {
         P: GraphIndex,
     {
         let Graph { ref mut graph, ref mut index_map, root, .. } = *self;
-        let node_idx = index_map.to_node_index(idx).expect("No NodeIndex for given GraphIndex");
+
+        let node_idx = idx.to_node_index(index_map).expect("No NodeIndex for given GraphIndex");
         // If no parent id was given, we will set the root as the parent.
         let parent_node_idx = match maybe_parent_idx {
-            Some(parent_idx) => match index_map.to_node_index(parent_idx) {
+            Some(parent_idx) => match parent_idx.to_node_index(index_map) {
                 Some(parent_node_idx) => parent_node_idx,
                 // Add a temporary node to the graph at the given parent index so that we can add
                 // the edge even in the parent widget's absense. The temporary node should be
                 // replaced by the proper widget when it is updated later in the cycle.
                 None => {
                     // We *know* that this must be a WidgetId as `.to_node_indx` returned None.
-                    let parent_widget_id = parent_idx.expect_widget_id();
+                    let parent_widget_id = parent_idx.to_widget_id(index_map)
+                        .expect("No matching WidgetId for parent_idx");
                     // Add a placeholder node to act as a parent until the actual parent is placed.
                     let parent_node_idx = graph.add_node(Node::Placeholder);
                     index_map.insert(parent_widget_id, parent_node_idx);
@@ -373,7 +385,7 @@ impl Graph {
     {
         let Graph { ref graph, ref index_map, .. } = *self;
 
-        if let Some(idx) = index_map.to_node_index(idx) {
+        if let Some(idx) = idx.to_node_index(index_map) {
             if let &Node::Widget(ref container) = &graph[idx] {
 
                 // If we're to use the kid area, we'll get the dim and xy from that.
@@ -453,14 +465,15 @@ impl Graph {
 
     /// Update the state of the widget with the given WidgetId.
     /// If there is no widget for the given WidgetId, add it to the graph.
-    pub fn update_widget<I, W>(&mut self,
-                               id: WidgetId,
-                               maybe_parent_idx: Option<I>,
-                               kind: &'static str,
-                               cached: widget::Cached<W>,
-                               maybe_new_element: Option<Element>)
+    pub fn update_widget<I, P, W>(&mut self,
+                                  idx: I,
+                                  maybe_parent_idx: Option<P>,
+                                  kind: &'static str,
+                                  cached: widget::Cached<W>,
+                                  maybe_new_element: Option<Element>)
         where
             I: GraphIndex,
+            P: GraphIndex,
             W: Widget,
             W::State: 'static,
             W::Style: 'static,
@@ -503,63 +516,65 @@ impl Graph {
             }
         };
 
-        match self.contains(id) {
+        // If we already have a Widget for the given ID, we need to update it.
+        if self.contains(idx) {
+            self.set_parent_for_widget(idx, maybe_parent_idx);
 
-            // If there is no Widget for the given ID we need to add one.
-            false => {
-                let container = new_container(stored, maybe_new_element);
-                self.add_widget(container, Some(id), maybe_parent_idx);
-            },
+            // We can unwrap here because we know that there is a matching index.
+            let node_idx = idx.to_node_index(&self.index_map)
+                .expect("No matching NodeIndex");
 
-            // If we already have a Widget for the given ID, we need to update it.
-            true => {
-                self.set_parent_for_widget(id, maybe_parent_idx);
+            match &mut self.graph[node_idx] {
 
-                // We can unwrap here because we know that there is a matching index.
-                let node_idx = self.index_map.get_node_index(id)
-                    .expect("No matching NodeIndex");
+                // If the node is currently a placeholder, construct the widget variant.
+                node @ &mut Node::Placeholder => {
+                    let container = new_container(stored, maybe_new_element);
+                    *node = Node::Widget(container);
+                },
 
-                match &mut self.graph[node_idx] {
+                // Otherwise, update the container that already exists.
+                &mut Node::Widget(ref mut container) => {
+                    // If the container already exists with the state of some other kind of
+                    // widget, we can assume there's been a mistake with the given Id.
+                    if container.kind != kind && container.kind != "EMPTY" {
+                        panic!("A widget of a different kind already exists at the given UiId \
+                                ({:?}). You tried to insert a {:?}, however the existing \
+                                widget is a {:?}. Check your widgets' `UiId`s for errors.",
+                                idx, &kind, container.kind);
+                    }
 
-                    // If the node is currently a placeholder, construct the widget variant.
-                    node @ &mut Node::Placeholder => {
-                        let container = new_container(stored, maybe_new_element);
-                        *node = Node::Widget(container);
-                    },
+                    container.maybe_state = Some(Box::new(stored));
+                    container.kind = kind;
+                    container.xy = xy;
+                    container.dim = dim;
+                    container.depth = depth;
+                    container.drag_state = drag_state;
+                    container.has_set = true;
+                    container.kid_area = kid_area;
+                    container.maybe_floating = maybe_floating;
+                    container.maybe_scrolling = maybe_scrolling;
+                    if let Some(new_element) = maybe_new_element {
+                        container.element = new_element;
+                        container.element_has_changed = true;
+                    }
+                },
 
-                    // Otherwise, update the container that already exists.
-                    &mut Node::Widget(ref mut container) => {
-                        // If the container already exists with the state of some other kind of
-                        // widget, we can assume there's been a mistake with the given Id.
-                        if container.kind != kind && container.kind != "EMPTY" {
-                            panic!("A widget of a different kind already exists at the given UiId \
-                                    ({:?}). You tried to insert a {:?}, however the existing \
-                                    widget is a {:?}. Check your widgets' `UiId`s for errors.",
-                                    id, &kind, container.kind);
-                        }
+                // The node that we're updating should only be either a Placeholder or a Widget.
+                _ => unreachable!(),
+            }
 
-                        container.maybe_state = Some(Box::new(stored));
-                        container.kind = kind;
-                        container.xy = xy;
-                        container.dim = dim;
-                        container.depth = depth;
-                        container.drag_state = drag_state;
-                        container.has_set = true;
-                        container.kid_area = kid_area;
-                        container.maybe_floating = maybe_floating;
-                        container.maybe_scrolling = maybe_scrolling;
-                        if let Some(new_element) = maybe_new_element {
-                            container.element = new_element;
-                            container.element_has_changed = true;
-                        }
-                    },
+        // Otherwise if there is no Widget for the given index we need to add one.
+        } else {
+            // If there is no widget for the given index we can assume that the index is a
+            // `WidgetId`, as the only way to procure a NodeIndex is by adding a Widget to the
+            // Graph.
+            let id = idx.to_widget_id(&self.index_map)
+                .expect("Expected a `WidgetId` but the given idx was not one, nor did it match any \
+                        known `WidgetId`s within the `Graph`'s `IndexMap`.");
+            let container = new_container(stored, maybe_new_element);
+            self.add_widget(container, Some(id), maybe_parent_idx);
+        }
 
-                    // The node that we're updating should only be either a Placeholder or a Widget.
-                    _ => unreachable!(),
-                }
-            },
-
-        };
     }
 
 
@@ -568,10 +583,20 @@ impl Graph {
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
     /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
     /// widget, which will always be drawn last).
-    pub fn element(&mut self,
-                   maybe_captured_mouse: Option<WidgetId>,
-                   maybe_captured_keyboard: Option<WidgetId>) -> Element
+    pub fn element<M, K>(&mut self,
+                         maybe_captured_mouse: Option<M>,
+                         maybe_captured_keyboard: Option<K>) -> Element
+        where
+            M: GraphIndex,
+            K: GraphIndex,
     {
+        // Convert the GraphIndex for the widget capturing the mouse into a NodeIndex.
+        let maybe_captured_mouse = maybe_captured_mouse
+            .and_then(|idx| idx.to_node_index(&self.index_map));
+        // Convert the GraphIndex for the widget capturing the keyboard into a NodeIndex.
+        let maybe_captured_keyboard = maybe_captured_keyboard
+            .and_then(|idx| idx.to_node_index(&self.index_map));
+
         self.prepare_to_draw(maybe_captured_mouse, maybe_captured_keyboard);
 
         let Graph { ref mut graph, ref depth_order, .. } = *self;
@@ -646,9 +671,12 @@ impl Graph {
 
     /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
     /// `Element`s in the graph have changed.
-    pub fn element_if_changed(&mut self,
-                              maybe_captured_mouse: Option<WidgetId>,
-                              maybe_captured_keyboard: Option<WidgetId>) -> Option<Element>
+    pub fn element_if_changed<M, K>(&mut self,
+                                    maybe_captured_mouse: Option<M>,
+                                    maybe_captured_keyboard: Option<K>) -> Option<Element>
+        where
+            M: GraphIndex,
+            K: GraphIndex,
     {
         // Check whether or not any of the widget's `Element`s have changed.
         let mut has_changed = false;
@@ -670,12 +698,11 @@ impl Graph {
 
     // Helper method for logic shared between draw() and element().
     fn prepare_to_draw(&mut self,
-                       maybe_captured_mouse: Option<WidgetId>,
-                       maybe_captured_keyboard: Option<WidgetId>)
+                       maybe_captured_mouse: Option<NodeIndex>,
+                       maybe_captured_keyboard: Option<NodeIndex>)
     {
         let Graph {
             ref mut graph,
-            ref index_map,
             root,
             ref mut depth_order,
             ref mut floating_deque,
@@ -684,8 +711,8 @@ impl Graph {
 
         // Ensure that the depth order is up to date.
         update_depth_order(root,
-                           maybe_captured_mouse.and_then(|i| index_map.get_node_index(i)),
-                           maybe_captured_keyboard.and_then(|i| index_map.get_node_index(i)),
+                           maybe_captured_mouse,
+                           maybe_captured_keyboard,
                            graph,
                            depth_order,
                            floating_deque);
@@ -805,16 +832,16 @@ fn visit_by_depth(idx: NodeIndex,
 }
 
 
-impl ::std::ops::Index<WidgetId> for Graph {
+impl<I: GraphIndex> ::std::ops::Index<I> for Graph {
     type Output = Container;
-    fn index<'a>(&'a self, id: WidgetId) -> &'a Container {
-        self.get_widget(id).expect("No Widget matching the given ID")
+    fn index<'a>(&'a self, idx: I) -> &'a Container {
+        self.get_widget(idx).expect("No Widget matching the given ID")
     }
 }
 
-impl ::std::ops::IndexMut<WidgetId> for Graph {
-    fn index_mut<'a>(&'a mut self, id: WidgetId) -> &'a mut Container {
-        self.get_widget_mut(id).expect("No Widget matching the given ID")
+impl<I: GraphIndex> ::std::ops::IndexMut<I> for Graph {
+    fn index_mut<'a>(&'a mut self, idx: I) -> &'a mut Container {
+        self.get_widget_mut(idx).expect("No Widget matching the given ID")
     }
 }
 

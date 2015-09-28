@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use std::ops::Index;
 use super::NodeIndex;
-use widget::WidgetId;
+use widget::{self, WidgetId};
 
 
 /// Maps a WidgetId given by the user to a NodeIndex into the Graph (and vice versa).
@@ -41,18 +41,6 @@ impl IndexMap {
         self.widgets.get(&idx).map(|&id| id)
     }
 
-    /// Takes an arbitrary GraphIndex and converts it to a node index.
-    #[inline]
-    pub fn to_node_index<I: GraphIndex>(&self, idx: I) -> Option<NodeIndex> {
-        idx.to_node_index(self)
-    }
-
-    // /// Takes an arbitrary GraphIndex and converts it to a node index.
-    // #[inline]
-    // pub fn to_widget_id<I: GraphIndex>(&self, idx: I) -> Option<WidgetId> {
-    //     idx.to_widget_id(self)
-    // }
-
 }
 
 impl Index<WidgetId> for IndexMap {
@@ -73,61 +61,69 @@ impl Index<NodeIndex> for IndexMap {
 /// A trait for being generic over both WidgetId and NodeIndex.
 /// Each method should only return `Some` if they are contained as a key within the given IndexMap.
 pub trait GraphIndex: ::std::fmt::Debug + Copy + Clone {
-    /// Convert Self to a WidgetId if it exists within the IndexMap.
+    /// If not one already, convert Self to a WidgetId if it exists within the IndexMap.
     fn to_widget_id(self, map: &IndexMap) -> Option<WidgetId>;
-    /// Convert Self to a NodeIndex if it exists within the IndexMap.
+    /// If not one already, convert Self to a NodeIndex if it exists within the IndexMap.
     fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex>;
-    /// Convert some index to Self if it exists within the IndexMap.
+    /// Convert some GraphIndex type to Self.
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self>;
-    /// Force the type to a WidgetId.
-    fn expect_widget_id(self) -> WidgetId;
-    /// Force the type to a NodeIndex.
-    fn expect_node_index(self) -> NodeIndex;
 }
 
+
 impl GraphIndex for WidgetId {
-    #[inline]
-    fn to_widget_id(self, map: &IndexMap) -> Option<WidgetId> {
-        if map.nodes.contains_key(&self) { Some(self) } else { None }
+    fn to_widget_id(self, _map: &IndexMap) -> Option<WidgetId> {
+        Some(self)
     }
-    #[inline]
     fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex> {
         map.get_node_index(self)
     }
-    #[inline]
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
         other.to_widget_id(map)
-    }
-    #[inline]
-    fn expect_widget_id(self) -> WidgetId {
-        self
-    }
-    #[inline]
-    fn expect_node_index(self) -> NodeIndex {
-        panic!("expect_node_indx was called on a WidgetId");
     }
 }
 
 impl GraphIndex for NodeIndex {
-    #[inline]
     fn to_widget_id(self, map: &IndexMap) -> Option<WidgetId> {
         map.get_widget_id(self)
     }
-    #[inline]
-    fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex> {
-        if map.widgets.contains_key(&self) { Some(self) } else { None }
+    fn to_node_index(self, _map: &IndexMap) -> Option<NodeIndex> {
+        Some(self)
     }
-    #[inline]
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
         other.to_node_index(map)
     }
-    #[inline]
-    fn expect_widget_id(self) -> WidgetId {
-        panic!("expect_widget_id was called on a NodeIndex");
-    }
-    #[inline]
-    fn expect_node_index(self) -> NodeIndex {
-        self
-    }
 }
 
+impl GraphIndex for widget::Index {
+
+    /// Coerce a widget::Index into an Option<NodeIndex>.
+    /// If the Index is the Internal variant, that idx will be used directly.
+    /// If the Index is the Public variant, the index_map will be used to find the matching
+    /// NodeIndex.
+    fn to_node_index(self, map: &IndexMap) -> Option<NodeIndex> {
+        match self {
+            widget::Index::Internal(idx) => Some(idx),
+            widget::Index::Public(id) => id.to_node_index(map),
+        }
+    }
+
+    /// Coerce a widget::Index into an Option<WidgetId>.
+    /// If the Index is the Public variant, that id will be used directly.
+    /// If the Index is the Internal variant, the index_map will be used to find the matching
+    /// WidgetId.
+    fn to_widget_id(self, map: &IndexMap) -> Option<WidgetId> {
+        match self {
+            widget::Index::Internal(idx) => idx.to_widget_id(map),
+            widget::Index::Public(id) => Some(id),
+        }
+    }
+
+    /// Construct a widget::Index from some GraphIndex.
+    /// First tries to construct a Public variant by checking the IndexMap for a matching WidgetId.
+    /// If not WidgetId is found, then tries to find a matching NodeIndex.
+    fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
+        other.to_widget_id(map).map(|id| widget::Index::Public(id))
+            .or(other.to_node_index(map).map(|idx| widget::Index::Internal(idx)))
+    }
+
+}

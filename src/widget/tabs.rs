@@ -8,7 +8,6 @@ use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};
 use theme::Theme;
 use widget::{self, WidgetId, Widget};
-use ui::Ui;
 
 
 /// A wrapper around a list of canvasses that displays thema s a list of selectable tabs.
@@ -247,15 +246,15 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// Update the state of the Tabs.
-    fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, theme, style, glyph_cache, .. } = args;
+        let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let layout = style.layout(theme);
-        let font_size = style.font_size(theme);
+        let layout = style.layout(ui.theme());
+        let font_size = style.font_size(ui.theme());
         let max_text_width = self.tabs.iter().fold(0.0, |max_w, &(_, string)| {
-            let w = glyph_cache.width(font_size, &string);
+            let w = ui.glyph_cache().width(font_size, &string);
             if w > max_w { w } else { max_w }
         });
 
@@ -273,7 +272,7 @@ impl<'a> Widget for Tabs<'a> {
         };
 
         // Get the mouse relative to the `Tabs` widget's position.
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Determine whether the mouse is currently over part of the widget..
         let is_over_elem = || if let Some(mouse) = maybe_mouse {
@@ -339,6 +338,26 @@ impl<'a> Widget for Tabs<'a> {
                 else if self.tabs.len() > 0 { Some(0) }
                 else { None },
         };
+
+        // If we do have some selected tab, we'll draw a Canvas for it.
+        if let Some(selected_idx) = maybe_selected_tab_idx {
+            use position::{Positionable, Sizeable};
+
+            let &(child_id, _) = &self.tabs[selected_idx];
+            let mut canvas = Canvas::new();
+            let canvas_dim = match style.layout(ui.theme()) {
+                Layout::Horizontal => [dim[0], dim[1] - tab_bar_dim[1]],
+                Layout::Vertical   => [dim[0] - tab_bar_dim[0], dim[1]],
+            };
+            canvas.style = style.canvas.clone();
+            canvas
+                .show_title_bar(false)
+                .dim(canvas_dim)
+                .floating(false)
+                .middle_of(idx)
+                .parent(Some(idx))
+                .set(child_id, &mut ui);
+        }
 
         // A function for constructing new state.
         let new_state = || State {
@@ -463,34 +482,6 @@ impl<'a> Widget for Tabs<'a> {
         else {
             let form_chain = base_forms.map(|form| form.shift(xy[0], xy[1]));
             collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-        }
-    }
-
-
-    /// Set the currently active canvas as a child (called directly after update).
-    fn set_children<C>(id: WidgetId,
-                       state: &widget::State<State>,
-                       style: &Style,
-                       ui: &mut Ui<C>)
-        where C: CharacterCache,
-    {
-        if let Some(idx) = state.state.maybe_selected_tab_idx {
-            use position::{Positionable, Sizeable};
-
-            let &(child_id, _) = &state.state.tabs[idx];
-            let mut canvas = Canvas::new();
-            let dim = match style.layout(&ui.theme) {
-                Layout::Horizontal => [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
-                Layout::Vertical   => [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
-            };
-            canvas.style = style.canvas.clone();
-            canvas
-                .show_title_bar(false)
-                .dim(dim)
-                .floating(false)
-                .middle_of(id)
-                .parent(Some(id))
-                .set(child_id, ui);
         }
     }
 

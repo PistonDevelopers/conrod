@@ -17,7 +17,6 @@ use input::{
     TextEvent,
 };
 use position::{Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
-use std::any::Any;
 use std::cell::RefCell;
 use std::io::Write;
 use theme::Theme;
@@ -28,7 +27,7 @@ use widget::{self, Widget, WidgetId};
 #[derive(Copy, Clone, Debug)]
 enum Capturing {
     /// The Ui is captured by the Ui element with the given WidgetId.
-    Captured(WidgetId),
+    Captured(widget::Index),
     /// The Ui has just been uncaptured.
     JustReleased,
 }
@@ -63,13 +62,13 @@ pub struct Ui<C> {
     /// Tracks whether or not the previous event was a Render event.
     prev_event_was_render: bool,
     /// The WidgetId of the widget that was last updated/set.
-    maybe_prev_widget_id: Option<WidgetId>,
+    maybe_prev_widget_idx: Option<widget::Index>,
     /// The WidgetId of the last widget used as a parent for another widget.
-    maybe_current_parent_id: Option<WidgetId>,
+    maybe_current_parent_idx: Option<widget::Index>,
     /// If the mouse is currently over a widget, its ID will be here.
-    maybe_widget_under_mouse: Option<WidgetId>,
+    maybe_widget_under_mouse: Option<widget::Index>,
     /// The ID of the top-most scrollable widget under the cursor (if there is one).
-    maybe_top_scrollable_widget_under_mouse: Option<WidgetId>,
+    maybe_top_scrollable_widget_under_mouse: Option<widget::Index>,
     /// The WidgetId of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
     /// The WidgetId of the widget currently capturing keyboard input if there is one.
@@ -148,8 +147,8 @@ impl<C> Ui<C> {
             prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
-            maybe_prev_widget_id: None,
-            maybe_current_parent_id: None,
+            maybe_prev_widget_idx: None,
+            maybe_current_parent_idx: None,
             maybe_widget_under_mouse: None,
             maybe_top_scrollable_widget_under_mouse: None,
             maybe_captured_mouse: None,
@@ -180,8 +179,8 @@ impl<C> Ui<C> {
             self.text_just_entered.clear();
             self.mouse.scroll = Scroll { x: 0.0, y: 0.0 };
 
-            self.maybe_prev_widget_id = None;
-            self.maybe_current_parent_id = None;
+            self.maybe_prev_widget_idx = None;
+            self.maybe_current_parent_idx = None;
             self.prev_event_was_render = false;
             if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
                 self.maybe_captured_mouse = None;
@@ -252,7 +251,7 @@ impl<C> Ui<C> {
     /// If getting the xy for a widget, its ID should be specified so that we can also consider the
     /// scroll offset of the scrollable parent widgets.
     pub fn get_xy(&self,
-                  maybe_id: Option<WidgetId>,
+                  maybe_idx: Option<widget::Index>,
                   position: Position,
                   dim: Dimensions,
                   h_align: HorizontalAlign,
@@ -264,20 +263,20 @@ impl<C> Ui<C> {
 
             Position::Absolute(x, y) => [x, y],
 
-            Position::Relative(x, y, maybe_id) => {
-                match maybe_id.or(self.maybe_prev_widget_id.map(|id| id)) {
+            Position::Relative(x, y, maybe_idx) => {
+                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
                     None => [0.0, 0.0],
-                    Some(id) => vec2_add(self.widget_graph[id].xy, [x, y]),
+                    Some(idx) => vec2_add(self.widget_graph[idx].xy, [x, y]),
                 }
             },
 
-            Position::Direction(direction, px, maybe_id) => {
-                match maybe_id.or(self.maybe_prev_widget_id.map(|id| id)) {
+            Position::Direction(direction, px, maybe_idx) => {
+                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
                     None => [0.0, 0.0],
-                    Some(rel_id) => {
+                    Some(rel_idx) => {
                         use position::Direction;
                         let (rel_xy, element) = {
-                            let widget = &self.widget_graph[rel_id];
+                            let widget = &self.widget_graph[rel_idx];
                             (widget.xy, &widget.element)
                         };
                         let (rel_w, rel_h) = element.get_size();
@@ -289,9 +288,9 @@ impl<C> Ui<C> {
                             Direction::Up | Direction::Down => {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_x, other_w) = match h_align.1 {
-                                    Some(other_id) => {
+                                    Some(other_idx) => {
                                         let (x, elem) = {
-                                            let widget = &self.widget_graph[other_id];
+                                            let widget = &self.widget_graph[other_idx];
                                             (widget.xy[0], &widget.element)
                                         };
                                         let w = elem.get_width() as f64;
@@ -312,9 +311,9 @@ impl<C> Ui<C> {
                             Direction::Left | Direction::Right => {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_y, other_h) = match h_align.1 {
-                                    Some(other_id) => {
+                                    Some(other_idx) => {
                                         let (y, elem) = {
-                                            let widget = &self.widget_graph[other_id];
+                                            let widget = &self.widget_graph[other_idx];
                                             (widget.xy[1], &widget.element)
                                         };
                                         let h = elem.get_height() as f64;
@@ -336,10 +335,10 @@ impl<C> Ui<C> {
                 }
             },
 
-            Position::Place(place, maybe_parent_id) => {
+            Position::Place(place, maybe_parent_idx) => {
                 let window = || ([0.0, 0.0], [self.win_w, self.win_h], Padding::none());
-                let (xy, target_dim, pad) = match maybe_parent_id.or(self.maybe_current_parent_id) {
-                    Some(parent_id) => match self.widget_graph.get_widget(parent_id) {
+                let (xy, target_dim, pad) = match maybe_parent_idx.or(self.maybe_current_parent_idx) {
+                    Some(parent_idx) => match self.widget_graph.get_widget(parent_idx) {
                         Some(parent) =>
                             (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad),
                         // Sometimes the children are placed prior to their parents being set for
@@ -356,11 +355,14 @@ impl<C> Ui<C> {
 
         };
 
-        match maybe_id {
+        match maybe_idx {
             // When getting the xy for some widget, we'll need to consider the graph for scrolling.
-            Some(id) => {
+            Some(idx) => {
                 // Sum each scrollable parent widget's scrolling offset to the resulting xy.
-                let scroll_offset = self.widget_graph.scroll_offset(id);
+                let scroll_offset = match idx {
+                    widget::Index::Public(id) => self.widget_graph.scroll_offset(id),
+                    widget::Index::Internal(idx) => self.widget_graph.scroll_offset(idx),
+                };
                 vec2_add(xy, scroll_offset)
             },
             // Otherwise, we return the calculated `xy` as is.
@@ -386,7 +388,7 @@ impl<C> Ui<C> {
 
     /// Helper method for logic shared between draw() and element().
     /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
-    fn captures_for_draw(&self) -> (Option<WidgetId>, Option<WidgetId>) {
+    fn captures_for_draw(&self) -> (Option<widget::Index>, Option<widget::Index>) {
         let maybe_captured_mouse = match self.maybe_captured_mouse {
             Some(Capturing::Captured(id)) => Some(id),
             _                             => None,
@@ -562,39 +564,50 @@ impl<C> Ui<C> {
 }
 
 
+/// Return an immutable reference to the given `Ui`'s `Graph`.
+pub fn widget_graph<C>(ui: &Ui<C>) -> &Graph {
+    &ui.widget_graph
+}
+
+/// A mutable reference to the given `Ui`'s widget `Graph`.
+pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
+    &mut ui.widget_graph
+}
+
+
 /// Set the ID of the current canvas.
-pub fn set_current_parent_id<C>(ui: &mut Ui<C>, id: WidgetId) {
-    ui.maybe_current_parent_id = Some(id);
+pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
+    ui.maybe_current_parent_idx = Some(idx);
 }
 
 
 /// Check the given position for an attached parent widget.
-pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<WidgetId> {
+pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
     match position {
-        Position::Relative(_, _, maybe_id) => match maybe_id {
-            Some(id) => ui.widget_graph.parent_of(id),
-            None     => match ui.maybe_prev_widget_id {
-                Some(id) => ui.widget_graph.parent_of(id),
-                None     => ui.maybe_current_parent_id,
+        Position::Relative(_, _, maybe_idx) => match maybe_idx {
+            Some(idx) => ui.widget_graph.parent_of(idx),
+            None     => match ui.maybe_prev_widget_idx {
+                Some(idx) => ui.widget_graph.parent_of(idx),
+                None     => ui.maybe_current_parent_idx,
             },
         },
-        Position::Direction(_, _, maybe_id) => match maybe_id {
-            Some(id) => ui.widget_graph.parent_of(id),
-            None     => match ui.maybe_prev_widget_id {
-                Some(id) => ui.widget_graph.parent_of(id),
-                None     => ui.maybe_current_parent_id,
+        Position::Direction(_, _, maybe_idx) => match maybe_idx {
+            Some(idx) => ui.widget_graph.parent_of(idx),
+            None     => match ui.maybe_prev_widget_idx {
+                Some(idx) => ui.widget_graph.parent_of(idx),
+                None     => ui.maybe_current_parent_idx,
             },
         },
-        Position::Place(_, maybe_parent_id) => maybe_parent_id.or(ui.maybe_current_parent_id),
-        _ => ui.maybe_current_parent_id,
+        Position::Place(_, maybe_parent_idx) => maybe_parent_idx.or(ui.maybe_current_parent_idx),
+        _ => ui.maybe_current_parent_idx,
     }
 }
 
 
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
-pub fn user_input<'a, C>(ui: &'a Ui<C>, id: WidgetId) -> UserInput<'a> {
-    let maybe_mouse = get_mouse_state(ui, id);
+pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
+    let maybe_mouse = get_mouse_state(ui, idx);
     let without_keys = || UserInput {
         maybe_mouse: maybe_mouse,
         pressed_keys: &[],
@@ -610,8 +623,9 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, id: WidgetId) -> UserInput<'a> {
         window_dim: [ui.win_w, ui.win_h],
     };
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_id)) => if id == captured_id { with_keys()    }
-                                                  else                 { without_keys() },
+        Some(Capturing::Captured(captured_idx)) =>
+            if idx == captured_idx { with_keys()    }
+            else                   { without_keys() },
         Some(Capturing::JustReleased) => without_keys(),
         None => with_keys(),
     }
@@ -621,18 +635,18 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, id: WidgetId) -> UserInput<'a> {
 /// Return the current mouse state.
 ///
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
-pub fn get_mouse_state<C>(ui: &Ui<C>, id: WidgetId) -> Option<Mouse> {
+pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_id)) =>
-            if id == captured_id { Some(ui.mouse) } else { None },
+        Some(Capturing::Captured(captured_idx)) =>
+            if idx == captured_idx { Some(ui.mouse) } else { None },
         Some(Capturing::JustReleased) =>
             None,
         None => match ui.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_id)) =>
-                if id == captured_id { Some(ui.mouse) } else { None },
+            Some(Capturing::Captured(captured_idx)) =>
+                if idx == captured_idx { Some(ui.mouse) } else { None },
             _ =>
-                if Some(id) == ui.maybe_widget_under_mouse 
-                || Some(id) == ui.maybe_top_scrollable_widget_under_mouse {
+                if Some(idx) == ui.maybe_widget_under_mouse 
+                || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
                     Some(ui.mouse)
                 } else {
                     None
@@ -642,112 +656,84 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, id: WidgetId) -> Option<Mouse> {
 }
 
 
-/// Get the state of a widget with the given type and WidgetId.
-///
-/// If the widget doesn't already have a position within the Cache, Create and initialise a
-/// cache position before returning None.
-pub fn get_widget_state<C, W>(ui: &mut Ui<C>,
-                              id: WidgetId,
-                              kind: &'static str) -> Option<widget::Cached<W>>
-    where
-        W: Widget,
-        W::State: Any + 'static,
-        W::Style: Any + 'static,
-{
-    ui.widget_graph.get_widget_mut(id).and_then(|container| {
-        // If the cache is already initialised for a widget of a different kind, warn the user.
-        if container.kind != kind {
-            writeln!(::std::io::stderr(),
-                     "A widget of a different kind already exists at the given WidgetId ({:?}).
-                      You tried to insert a {:?}, however the existing widget is a {:?}.
-                      Check your widgets' `WidgetId`s for errors.",
-                      id, kind, container.kind).unwrap();
-            return None;
-        } else {
-            container.take_widget_state()
-        }
-    })
-}
-
-
 /// Indicate that the widget with the given WidgetId has captured the mouse.
-pub fn mouse_captured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
+pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_id)) => if id != captured_id {
+        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to capture the mouse, however it is \
-                     already captured by {:?}.", id, captured_id).unwrap();
+                     already captured by {:?}.", idx, captured_idx).unwrap();
         },
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to capture the mouse, however it was \
-                     already captured.", id).unwrap();
+                     already captured.", idx).unwrap();
         },
-        None => ui.maybe_captured_mouse = Some(Capturing::Captured(id)),
+        None => ui.maybe_captured_mouse = Some(Capturing::Captured(idx)),
     }
 }
 
 
 /// Indicate that the widget is no longer capturing the mouse.
-pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
+pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_id)) => if id != captured_id {
+        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the mouse, however it is \
-                     actually captured by {:?}.", id, captured_id).unwrap();
+                     actually captured by {:?}.", idx, captured_idx).unwrap();
         } else {
             ui.maybe_captured_mouse = Some(Capturing::JustReleased);
         },
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the mouse, however it had \
-                     already been released this cycle.", id).unwrap();
+                     already been released this cycle.", idx).unwrap();
         },
         None => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the mouse, however the mouse \
-                     was not captured", id).unwrap();
+                     was not captured", idx).unwrap();
         },
     }
 }
 
 /// Indicate that the widget with the given WidgetId has captured the keyboard.
-pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
+pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_id)) => if id != captured_id {
+        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to capture the keyboard, however it is \
-                     already captured by {:?}.", id, captured_id).unwrap();
+                     already captured by {:?}.", idx, captured_idx).unwrap();
         },
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to capture the keyboard, however it was \
-                     already captured.", id).unwrap();
+                     already captured.", idx).unwrap();
         },
-        None => ui.maybe_captured_keyboard = Some(Capturing::Captured(id)),
+        None => ui.maybe_captured_keyboard = Some(Capturing::Captured(idx)),
     }
 }
 
 
 /// Indicate that the widget is no longer capturing the keyboard.
-pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
+pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_id)) => if id != captured_id {
+        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the keyboard, however it is \
-                     actually captured by {:?}.", id, captured_id).unwrap();
+                     actually captured by {:?}.", idx, captured_idx).unwrap();
         } else {
             ui.maybe_captured_keyboard = Some(Capturing::JustReleased);
         },
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the keyboard, however it had \
-                     already been released this cycle.", id).unwrap();
+                     already been released this cycle.", idx).unwrap();
         },
         None => {
             writeln!(::std::io::stderr(),
                     "Warning: {:?} tried to uncapture the keyboard, however the mouse \
-                     was not captured", id).unwrap();
+                     was not captured", idx).unwrap();
         },
     }
 }
@@ -755,8 +741,8 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, id: WidgetId) {
 
 /// Update the given widget at the given WidgetId.
 pub fn update_widget<C, W>(ui: &mut Ui<C>,
-                           id: WidgetId,
-                           maybe_parent_id: Option<WidgetId>,
+                           idx: widget::Index,
+                           maybe_parent_idx: Option<widget::Index>,
                            kind: &'static str,
                            cached: widget::Cached<W>,
                            maybe_new_element: Option<Element>)
@@ -765,9 +751,9 @@ pub fn update_widget<C, W>(ui: &mut Ui<C>,
         W::State: 'static,
         W::Style: 'static,
 {
-    ui.widget_graph.update_widget(id, maybe_parent_id, kind, cached, maybe_new_element);
-    ui.maybe_prev_widget_id = Some(id);
-    ui.maybe_current_parent_id = maybe_parent_id;
+    ui.widget_graph.update_widget(idx, maybe_parent_idx, kind, cached, maybe_new_element);
+    ui.maybe_prev_widget_idx = Some(idx);
+    ui.maybe_current_parent_idx = maybe_parent_idx;
 }
 
 
@@ -776,9 +762,4 @@ pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
 
-
-/// Return an immutable reference to the given `Ui`'s `Graph`.
-pub fn graph<C>(ui: &Ui<C>) -> &Graph {
-    &ui.widget_graph
-}
 

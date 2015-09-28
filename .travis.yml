@@ -9,7 +9,6 @@ notifications:
 
 os:
     - linux
-    - osx
 
 install:
     - sudo apt-get install libXxf86vm-dev libosmesa6-dev

@@ -182,15 +182,15 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<X, Y>>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<X, Y>>
         where C: CharacterCache,
     {
         use utils::is_over_rect;
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(theme);
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let frame = style.frame(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,

@@ -1,3 +1,6 @@
+//! 
+//! Types and functionality related to the scrolling behaviour of widgets.
+//!
 
 use {Element, Scalar};
 use color::Color;

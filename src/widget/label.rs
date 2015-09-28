@@ -71,7 +71,7 @@ impl<'a> Widget for Label<'a> {
     }
 
     /// Update the state of the Label.
-    fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
         let widget::UpdateArgs { prev_state, .. } = args;

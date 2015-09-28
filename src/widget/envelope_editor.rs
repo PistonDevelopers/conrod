@@ -365,17 +365,17 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<E>>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<E>>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
 
-        let pt_radius = style.point_radius(theme);
-        let frame = style.frame(theme);
+        let pt_radius = style.point_radius(ui.theme());
+        let frame = style.frame(ui.theme());
         let frame_2 = frame * 2.0;
         let pad_dim = vec2_sub(dim, [frame_2; 2]);
         let half_pad_w = pad_dim[0] / 2.0;
