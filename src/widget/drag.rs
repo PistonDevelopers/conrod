@@ -1,3 +1,6 @@
+//! 
+//! Types and functionality related to the dragging behaviour of Widgets.
+//!
 
 use mouse::Mouse;
 use position::{Dimensions, Point};
@@ -15,8 +18,11 @@ pub struct Area {
 /// The current drag interaction for the Widget.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum State {
+    /// Idle drag state.
     Normal,
+    /// The drag area is highlighted.
     Highlighted,
+    /// The drag area is clicked at the given point.
     Clicked(Point),
 }
 

@@ -57,10 +57,10 @@ pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
 }
 
 /// A wrapper around a `Ui` that only exposes the functionality necessary for the `Widget::update`
-/// method. Its primary role is to allow for widget designers to compose their own unique widgets
-/// from other widgets by calling the `Widget::set_internal` method within their own `Widget`'s
-/// update method. It also provides methods for accessing the `Ui`'s `Theme` and `GlyphCache` via
-/// immutable reference.
+/// method. Its primary role is to allow for widget designers to compose their own unique `Widget`s
+/// from other `Widget`s by calling the `Widget::set_internal` method within their own `Widget`'s
+/// update method. It also provides methods for accessing the `Ui`'s `Theme`, `GlyphCache` and
+/// `UserInput` via immutable reference.
 ///
 /// BTW - if you have a better name for this type, please post an issue or PR! "Cell" was the best
 /// I could come up with as it's kind of like a jail cell for the `Ui` - restricting a user's
@@ -178,7 +178,7 @@ pub struct Cached<W> where W: Widget {
 }
 
 
-/// This allows us to be generic over both Ui and UiCell in the `Widget::set` arguments.
+/// A trait that allows us to be generic over both Ui and UiCell in the `Widget::set` arguments.
 trait UiRefMut<C> {
     /// A mutable reference to the `Ui`.
     fn ui_ref_mut(&mut self) -> &mut Ui<C>;
@@ -259,14 +259,14 @@ pub trait Widget: Sized {
     /// up to date `Element`.
     ///
     /// # Arguments
+    /// * idx - The `Widget`'s unique index (whether `Public` or `Internal`).
     /// * prev - The previous state of the Widget. If none existed, `Widget::init_state` will be
     /// used to pass the initial state instead.
     /// * xy - The coordinates representing the middle of the widget.
     /// * dim - The dimensions of the widget.
-    /// * input - A view into the current state of the user input (i.e. mouse and keyboard).
-    /// * current_style - The style just produced by the `Widget::style` method.
-    /// * theme - The currently active `Theme` within the `Ui`.
-    /// * glyph_cache - Used for determining the size of rendered text if necessary.
+    /// * style - The style produced by the `Widget::style` method.
+    /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
+    /// docs for `UiCell` for more details.
     fn update<'a, C>(self, args: UpdateArgs<'a, Self, C>) -> Option<Self::State>
         where C: CharacterCache;
 
@@ -430,7 +430,7 @@ pub trait Widget: Sized {
             &mut Some(idx) => idx,
         };
 
-        set_widget(self, Index::Internal(idx), &mut ui_cell.ui);
+        set_widget(self, Index::Internal(idx), ui_cell.ui);
     }
 
 }

@@ -257,12 +257,12 @@ mod circular_button {
         /// Update the state of the button. The state may or may not have changed since
         /// the last update. (E.g. it may have changed because the user moused over the
         /// button.) If the state has changed, return the new state. Else, return None.
-        fn update<'b, 'c, C>(mut self, args: UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+        fn update<'b, C>(mut self, args: UpdateArgs<'b, Self, C>) -> Option<State>
             where C: CharacterCache,
         {
-            let UpdateArgs { prev_state, xy, dim, input, .. } = args;
+            let UpdateArgs { prev_state, xy, dim, ui, .. } = args;
             let WidgetState { ref state, .. } = *prev_state;
-            let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+            let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
             // Check whether or not a new interaction has occurred.
             let new_interaction = match (self.enabled, maybe_mouse) {
