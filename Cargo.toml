@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.14.0"
+version = "0.15.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -12,6 +12,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "http://docs.piston.rs/conrod/conrod/"
 
 
 [lib]
@@ -23,11 +24,11 @@ path = "./src/lib.rs"
 [dependencies]
 bitflags = "*"
 clock_ticks = "0.0.6"
-elmesque = "0.7.0"
+elmesque = "0.8.1"
 json_io = "0.1.2"
 petgraph = "0.1.10"
 pistoncore-input = "0.5.0"
-piston2d-graphics = "0.8.0"
+piston2d-graphics = "0.9.0"
 num = "*"
 rand = "*"
 rustc-serialize = "*"
@@ -38,9 +39,9 @@ find_folder = "0.2.0"
 gfx = "0.7.0"
 gfx_device_gl = "0.5.0"
 piston-viewport = "0.1.0"
-piston_window = "0.19.0"
-piston2d-gfx_graphics = "0.8.0"
-piston2d-opengl_graphics = "0.10.0"
+piston_window = "0.20.0"
+piston2d-gfx_graphics = "0.9.0"
+piston2d-opengl_graphics = "0.11.0"
 pistoncore-glutin_window = "0.12.0"
-piston = "0.10.0"
+piston = "0.10.1"
 
