@@ -177,14 +177,14 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<T>>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {

@@ -152,13 +152,13 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
         use utils::is_over_rect;
-        let widget::UpdateArgs { prev_state, xy, dim, input, .. } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Check whether or not a new interaction has occurred.
         let new_interaction = match (self.enabled, maybe_mouse) {

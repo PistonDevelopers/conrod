@@ -365,23 +365,23 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextBox.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, theme, glyph_cache } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-        let frame = style.frame(theme);
-        let font_size = style.font_size(theme);
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let frame = style.frame(ui.theme());
+        let font_size = style.font_size(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let text_w = glyph_cache.width(font_size, &self.text);
+        let text_w = ui.glyph_cache().width(font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
             (true, Some(mouse)) => {
-                let over_elem = over_elem(glyph_cache, mouse.xy, dim, pad_dim, text_start_x,
+                let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
                                           text_w, font_size, &self.text);
                 get_new_interaction(over_elem, state.interaction, mouse)
             },
@@ -400,7 +400,8 @@ impl<'a, F> Widget for TextBox<'a, F>
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &self.text);
+            let cursor_x = cursor_position(ui.glyph_cache(), cursor_idx, text_start_x, font_size,
+                                           &self.text);
 
             if cursor.is_cursor() || cursor.anchor != Anchor::None {
                 let cursor_x_view = cursor_x - v_offset;
@@ -420,13 +421,14 @@ impl<'a, F> Widget for TextBox<'a, F>
         // If TextBox is captured, check for recent input and update the text accordingly.
         if let Interaction::Captured(captured) = new_interaction {
             let mut cursor = captured.cursor;
+            let input = ui.input();
 
             // Check for entered text.
             for text in input.entered_text {
                 if text.chars().count() == 0 { continue; }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
-                if text_w + glyph_cache.width(font_size, &text) > max_w { continue; }
+                if text_w + ui.glyph_cache().width(font_size, &text) > max_w { continue; }
 
                 let end: String = self.text.chars().skip(cursor.end).collect();
                 let start: String = self.text.chars().take(cursor.start).collect();

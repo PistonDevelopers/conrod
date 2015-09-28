@@ -39,7 +39,7 @@ pub type WidgetId = usize;
 
 
 /// Arguments for the `Widget::update` method in a struct to simplify the method signature.
-pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
+pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
     /// W's unique index.
     pub idx: Index,
     /// The Widget's state that was last returned by the update method.
@@ -48,8 +48,6 @@ pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
     pub xy: Point,
     /// The dimensions of the Widget.
     pub dim: Dimensions,
-    /// The current state of user input (i.e. mouse, keys pressed, etc).
-    pub input: UserInput<'b>,
     /// The Widget's current Style.
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
@@ -68,7 +66,11 @@ pub struct UpdateArgs<'a, 'b, W, C: 'a> where W: Widget {
 /// I could come up with as it's kind of like a jail cell for the `Ui` - restricting a user's
 /// access to it.
 pub struct UiCell<'a, C: 'a> {
+    /// A mutable reference to a `Ui`.
     ui: &'a mut Ui<C>,
+    /// The index of the Widget that "owns" the `UiCell`. The index is needed so that we can
+    /// correctly retrieve user input information for the specific widget.
+    idx: Index,
 }
 
 /// Arguments for the `Widget::draw` method in a struct to simplify the method signature.
@@ -265,7 +267,7 @@ pub trait Widget: Sized {
     /// * current_style - The style just produced by the `Widget::style` method.
     /// * theme - The currently active `Theme` within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn update<'a, 'b, C>(self, args: UpdateArgs<'a, 'b, Self, C>) -> Option<Self::State>
+    fn update<'a, C>(self, args: UpdateArgs<'a, Self, C>) -> Option<Self::State>
         where C: CharacterCache;
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
@@ -390,18 +392,6 @@ pub trait Widget: Sized {
         self
     }
 
-    /// An optionally overridable method for setting child widgets.
-    /// This will be called immediately after the widget itself is updated.
-    /// NOTE: The API for this will probably changed somehow, as there is probably a nicer way to
-    /// do this than give the widget designer mutable access to the entire `Ui`.
-    ///
-    /// FIXME: This should no longer be necessary after the `set_internal` method is implemented.
-    fn set_children<C>(_idx: Index,
-                       _state: &State<Self::State>,
-                       _style: &Self::Style,
-                       _ui: &mut Ui<C>)
-        where C: CharacterCache {}
-
     /// Note: There should be no need to override this method.
     ///
     /// After building the widget, you call this method to set its current state into the given
@@ -416,7 +406,7 @@ pub trait Widget: Sized {
         C: CharacterCache,
         U: UiRefMut<C>,
     {
-        set_widget(self, Index::Public(id), ui);
+        set_widget(self, Index::Public(id), ui.ui_ref_mut());
     }
 
     /// Set the widget within the `Ui` that is stored within the given `UiCell` without occupying
@@ -617,14 +607,13 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Update the widget's state.
     let maybe_new_state = {
         // Construct a UserInput for the widget.
-        let input = ui::user_input(ui, idx);
         let args = UpdateArgs {
+            idx: idx,
             prev_state: &prev_state,
             xy: xy,
             dim: dim,
-            input: input,
             style: &new_style,
-            ui: UiCell { ui: ui },
+            ui: UiCell { ui: ui, idx: idx },
         };
         widget.update(args)
     };
@@ -872,6 +861,11 @@ impl<'a, C> UiCell<'a, C> {
 
     /// A reference to the `Ui`'s `GlyphCache`.
     pub fn glyph_cache(&self) -> &GlyphCache<C> { &self.ui.glyph_cache }
+
+    /// A struct representing the user input that has occurred since the last update.
+    pub fn input(&self) -> UserInput {
+        ui::user_input(self.ui, self.idx)
+    }
 
 }
 

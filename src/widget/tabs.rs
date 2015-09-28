@@ -247,10 +247,10 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// Update the state of the Tabs.
-    fn update<'b, 'c, C>(self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { idx, prev_state, xy, dim, input, style, ui } = args;
+        let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
         let widget::State { ref state, .. } = *prev_state;
         let layout = style.layout(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -273,7 +273,7 @@ impl<'a> Widget for Tabs<'a> {
         };
 
         // Get the mouse relative to the `Tabs` widget's position.
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
         // Determine whether the mouse is currently over part of the widget..
         let is_over_elem = || if let Some(mouse) = maybe_mouse {
@@ -357,7 +357,7 @@ impl<'a> Widget for Tabs<'a> {
                 .floating(false)
                 .middle_of(idx)
                 .parent(Some(idx))
-                .set(child_id, ui);
+                .set(child_id, &mut ui);
         }
 
         // A function for constructing new state.
@@ -484,37 +484,6 @@ impl<'a> Widget for Tabs<'a> {
             let form_chain = base_forms.map(|form| form.shift(xy[0], xy[1]));
             collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
         }
-    }
-
-
-    /// Set the currently active canvas as a child (called directly after update).
-    fn set_children<C>(idx: widget::Index,
-                       state: &widget::State<State>,
-                       style: &Style,
-                       ui: &mut Ui<C>)
-        where C: CharacterCache,
-    {
-        // FIXME: Move the following commented code into the `update` method.
-        unimplemented!();
-
-        // if let Some(idx) = state.state.maybe_selected_tab_idx {
-        //     use position::{Positionable, Sizeable};
-
-        //     let &(child_id, _) = &state.state.tabs[idx];
-        //     let mut canvas = Canvas::new();
-        //     let dim = match style.layout(&ui.theme) {
-        //         Layout::Horizontal => [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
-        //         Layout::Vertical   => [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
-        //     };
-        //     canvas.style = style.canvas.clone();
-        //     canvas
-        //         .show_title_bar(false)
-        //         .dim(dim)
-        //         .floating(false)
-        //         .middle_of(id)
-        //         .parent(Some(id))
-        //         .set(child_id, ui);
-        // }
     }
 
 }

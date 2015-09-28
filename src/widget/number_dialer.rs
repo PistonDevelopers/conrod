@@ -261,14 +261,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State<T>>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
 
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
 
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let font_size = style.label_font_size(ui.theme());

@@ -405,12 +405,16 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update<'b, 'c, C>(mut self, args: widget::UpdateArgs<'b, 'c, Self, C>) -> Option<State>
+    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache
     {
-        let widget::UpdateArgs { prev_state, xy, dim, input, style, ui } = args;
+        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let (window_dim, maybe_mouse) = {
+            let input = ui.input();
+            let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
+            (input.window_dim, maybe_mouse)
+        };
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
@@ -420,7 +424,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
             (true, Some(mouse)) => {
 
                 // Determine the maximum visible height before the scrollbar should appear.
-                let bottom_win_y = (-input.window_dim[1]) / 2.0;
+                let bottom_win_y = (-window_dim[1]) / 2.0;
                 const WINDOW_PADDING: Scalar = 20.0;
                 let max_max_visible_height = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
                 let max_visible_height = match style.max_visible_height(ui.theme()) {
