@@ -25,9 +25,6 @@ pub type Idx = usize;
 /// The number of items in a list.
 pub type Len = usize;
 
-/// The width of the scrollbar when visible.
-pub const SCROLLBAR_WIDTH: f64 = 10.0;
-
 /// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
 /// selection of a list item.
 pub struct DropDownList<'a, F> {
