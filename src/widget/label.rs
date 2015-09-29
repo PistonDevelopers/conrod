@@ -6,7 +6,7 @@ use graphics::character::CharacterCache;
 use label::FontSize;
 use theme::Theme;
 use ui::GlyphCache;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Displays some given text centred within a rectangle.
@@ -15,7 +15,6 @@ pub struct Label<'a> {
     common: widget::CommonBuilder,
     text: &'a str,
     style: Style,
-    maybe_parent_id: Option<WidgetId>,
 }
 
 /// The styling for a Label's renderable Element.
@@ -39,7 +38,6 @@ impl<'a> Label<'a> {
             common: widget::CommonBuilder::new(),
             text: text,
             style: Style::new(),
-            maybe_parent_id: None,
         }
     }
 

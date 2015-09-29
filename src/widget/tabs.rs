@@ -7,12 +7,12 @@ use label::FontSize;
 use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};
 use theme::Theme;
-use widget::{self, WidgetId, Widget};
+use widget::{self, Widget};
 
 
 /// A wrapper around a list of canvasses that displays thema s a list of selectable tabs.
 pub struct Tabs<'a> {
-    tabs: &'a [(WidgetId, &'a str)],
+    tabs: &'a [(widget::Id, &'a str)],
     style: Style,
     common: widget::CommonBuilder,
     maybe_starting_tab_idx: Option<usize>,
@@ -22,8 +22,8 @@ pub struct Tabs<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// An owned, ordered list of the Widget/String pairs.
-    tabs: Vec<(WidgetId, String)>,
-    /// The WidgetId of the currently selected Canvas.
+    tabs: Vec<(widget::Id, String)>,
+    /// The widget::Id of the currently selected Canvas.
     maybe_selected_tab_idx: Option<usize>,
     /// The current interaction with the Tabs.
     interaction: Interaction,
@@ -88,7 +88,7 @@ pub enum Layout {
 impl<'a> Tabs<'a> {
 
     /// Construct some new Canvas Tabs.
-    pub fn new(tabs: &'a [(WidgetId, &'a str)]) -> Tabs<'a> {
+    pub fn new(tabs: &'a [(widget::Id, &'a str)]) -> Tabs<'a> {
         Tabs {
             common: widget::CommonBuilder::new(),
             tabs: tabs,
@@ -109,8 +109,8 @@ impl<'a> Tabs<'a> {
         self
     }
 
-    /// Set the initially selected tab with a Canvas via its WidgetId.
-    pub fn starting_canvas(mut self, canvas_id: WidgetId) -> Self {
+    /// Set the initially selected tab with a Canvas via its widget::Id.
+    pub fn starting_canvas(mut self, canvas_id: widget::Id) -> Self {
         let maybe_idx = self.tabs.iter().enumerate()
             .find(|&(_, &(id, _))| canvas_id == id)
             .map(|(idx, &(_, _))| idx);

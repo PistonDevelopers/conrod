@@ -68,7 +68,8 @@ pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalA
                    VerticalAlign};
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
-pub use widget::{drag, scroll, CommonBuilder, DrawArgs, UiCell, UpdateArgs, Widget, WidgetId};
+pub use widget::{drag, scroll, CommonBuilder, DrawArgs, UiCell, UpdateArgs, Widget};
+pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
 pub use widget::State as WidgetState;
 
@@ -124,26 +125,26 @@ macro_rules! widget_ids {
 
     // Handle the first ID.
     ( $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = 0;
-        widget_ids!($widget_id => $($rest)*);
+        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle the first ID with some given step between it and the next ID.
     ( $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = 0;
-        widget_ids!($widget_id + $step => $($rest)*);
+        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
     // Handle some consecutive ID.
     ( $prev_id:expr => $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $prev_id + 1;
-        widget_ids!($widget_id => $($rest)*);
+        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle some consecutive ID with some given step between it and the next ID.
     ( $prev_id:expr => $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $prev_id + 1;
-        widget_ids!($widget_id + $step => $($rest)*);
+        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
 
@@ -162,22 +163,22 @@ macro_rules! widget_ids {
 
     // Handle a single ID without a trailing comma.
     ( $widget_id:ident ) => (
-        const $widget_id: $crate::WidgetId = 0;
+        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
     );
 
     // Handle a single ID with some given step without a trailing comma.
     ( $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::WidgetId = 0;
+        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
     );
 
     // Handle the last ID without a trailing comma.
     ( $prev_id:expr => $widget_id:ident ) => (
-        const $widget_id: $crate::WidgetId = $prev_id + 1;
+        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
     );
 
     // Handle the last ID with some given step without a trailing comma.
     ( $prev_id:expr => $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::WidgetId = $prev_id + 1;
+        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
     );
 
 }
@@ -192,9 +193,9 @@ fn test() {
         D,
         E with 8,
     }
-    assert_eq!(A, 0);
-    assert_eq!(B, 1);
-    assert_eq!(C, 66);
-    assert_eq!(D, 99);
-    assert_eq!(E, 100);
+    assert_eq!(A, WidgetId(0));
+    assert_eq!(B, WidgetId(1));
+    assert_eq!(C, WidgetId(66));
+    assert_eq!(D, WidgetId(99));
+    assert_eq!(E, WidgetId(100));
 }
