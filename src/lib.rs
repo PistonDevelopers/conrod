@@ -58,6 +58,7 @@ pub use graphics::math::Scalar;
 pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
+pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
 pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
 pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
