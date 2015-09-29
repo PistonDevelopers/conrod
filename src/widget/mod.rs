@@ -402,11 +402,12 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
-    fn set<C, U>(self, id: WidgetId, ui: &mut U) where
+    fn set<I, C, U>(self, idx: I, ui: &mut U) where
+        I: Into<Index>,
         C: CharacterCache,
         U: UiRefMut<C>,
     {
-        set_widget(self, Index::Public(id), ui.ui_ref_mut());
+        set_widget(self, idx.into(), ui.ui_ref_mut());
     }
 
     /// Set the widget within the `Ui` that is stored within the given `UiCell` without occupying
@@ -414,22 +415,9 @@ pub trait Widget: Sized {
     ///
     /// This method is designed to be an alternative to `Widget::set`, to be used by Widget
     /// designers when composing `Widget`s out of other `Widgets`.
-    fn set_internal<'a, C>(self, maybe_idx: &mut Option<NodeIndex>, ui_cell: &mut UiCell<'a, C>)
+    fn set_internal<'a, C>(self, idx: NodeIndex, ui_cell: &mut UiCell<'a, C>)
         where C: CharacterCache
     {
-
-        let idx = match maybe_idx {
-            // If we don't yet have a NodeIndex for our internal `Widget` we'll add a placeholder
-            // to the `Graph` and use the returned `NodeIndex`.
-            maybe_idx @ &mut None => {
-                let idx = ui::widget_graph_mut(&mut ui_cell.ui).add_placeholder();
-                *maybe_idx = Some(idx);
-                idx
-            },
-            // Otherwise, we'll use the index we already have.
-            &mut Some(idx) => idx,
-        };
-
         set_widget(self, Index::Internal(idx), ui_cell.ui);
     }
 
@@ -859,6 +847,16 @@ impl<'a, C> UiCell<'a, C> {
     /// A struct representing the user input that has occurred since the last update.
     pub fn input(&self) -> UserInput {
         ui::user_input(self.ui, self.idx)
+    }
+
+    /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
+    /// This should only be called once for each unique widget needed to avoid unnecessary bloat
+    /// within the `Ui`'s widget graph.
+    ///
+    /// When using this method in your `Widget`'s `update` method, be sure to store the returned
+    /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
+    pub fn new_unique_node_index(&mut self) -> NodeIndex {
+        ui::widget_graph_mut(&mut self.ui).add_placeholder()
     }
 
 }

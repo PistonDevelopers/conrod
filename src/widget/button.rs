@@ -17,7 +17,8 @@ pub struct Button<'a, F> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
     maybe_react: Option<F>,
-    style: Style,
+    /// Unique styling for the Button.
+    pub style: Style,
     enabled: bool,
 }
 

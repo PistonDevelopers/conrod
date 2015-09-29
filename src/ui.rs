@@ -275,12 +275,10 @@ impl<C> Ui<C> {
                     None => [0.0, 0.0],
                     Some(rel_idx) => {
                         use position::Direction;
-                        let (rel_xy, element) = {
+                        let (rel_xy, rel_w, rel_h) = {
                             let widget = &self.widget_graph[rel_idx];
-                            (widget.xy, &widget.element)
+                            (widget.xy, widget.dim[0], widget.dim[1])
                         };
-                        let (rel_w, rel_h) = element.get_size();
-                        let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
 
                         match direction {
 
@@ -660,14 +658,14 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_mouse {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the mouse, however it is \
-                     already captured by {:?}.", idx, captured_idx).unwrap();
+            //writeln!(::std::io::stderr(),
+            //        "Warning: {:?} tried to capture the mouse, however it is \
+            //         already captured by {:?}.", idx, captured_idx).unwrap();
         },
         Some(Capturing::JustReleased) => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the mouse, however it was \
-                     already captured.", idx).unwrap();
+            //writeln!(::std::io::stderr(),
+            //        "Warning: {:?} tried to capture the mouse, however it was \
+            //         already captured.", idx).unwrap();
         },
         None => ui.maybe_captured_mouse = Some(Capturing::Captured(idx)),
     }
@@ -678,21 +676,21 @@ pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
 pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_mouse {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however it is \
-                     actually captured by {:?}.", idx, captured_idx).unwrap();
+            //writeln!(::std::io::stderr(),
+            //        "Warning: {:?} tried to uncapture the mouse, however it is \
+            //         actually captured by {:?}.", idx, captured_idx).unwrap();
         } else {
             ui.maybe_captured_mouse = Some(Capturing::JustReleased);
         },
         Some(Capturing::JustReleased) => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however it had \
-                     already been released this cycle.", idx).unwrap();
+            //writeln!(::std::io::stderr(),
+            //        "Warning: {:?} tried to uncapture the mouse, however it had \
+            //         already been released this cycle.", idx).unwrap();
         },
         None => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however the mouse \
-                     was not captured", idx).unwrap();
+            //writeln!(::std::io::stderr(),
+            //        "Warning: {:?} tried to uncapture the mouse, however the mouse \
+            //         was not captured", idx).unwrap();
         },
     }
 }
