@@ -52,13 +52,13 @@ pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
     /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.
-    /// Also allows calling `Widget::set_internal` within the `Widget::update` method.
+    /// Also allows calling `Widget::set` within the `Widget::update` method.
     pub ui: UiCell<'a, C>,
 }
 
 /// A wrapper around a `Ui` that only exposes the functionality necessary for the `Widget::update`
 /// method. Its primary role is to allow for widget designers to compose their own unique `Widget`s
-/// from other `Widget`s by calling the `Widget::set_internal` method within their own `Widget`'s
+/// from other `Widget`s by calling the `Widget::set` method within their own `Widget`'s
 /// update method. It also provides methods for accessing the `Ui`'s `Theme`, `GlyphCache` and
 /// `UserInput` via immutable reference.
 ///
@@ -219,7 +219,6 @@ impl<'a, C> UiRefMut<C> for UiCell<'a, C> {
 /// Methods that should not be overridden:
 /// - parent
 /// - set
-/// - set_internal
 pub trait Widget: Sized {
     /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
     /// allocations that you would like to avoid repeating between updates, or any calculations
@@ -408,17 +407,6 @@ pub trait Widget: Sized {
         U: UiRefMut<C>,
     {
         set_widget(self, idx.into(), ui.ui_ref_mut());
-    }
-
-    /// Set the widget within the `Ui` that is stored within the given `UiCell` without occupying
-    /// the `WidgetId` space.
-    ///
-    /// This method is designed to be an alternative to `Widget::set`, to be used by Widget
-    /// designers when composing `Widget`s out of other `Widgets`.
-    fn set_internal<'a, C>(self, idx: NodeIndex, ui_cell: &mut UiCell<'a, C>)
-        where C: CharacterCache
-    {
-        set_widget(self, Index::Internal(idx), ui_cell.ui);
     }
 
 }

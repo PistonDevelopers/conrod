@@ -210,7 +210,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                         .react(|| was_clicked = true);
                     let is_selected = false;
                     button.style = style.button_style(is_selected);
-                    button.set_internal(button_idx, &mut ui);
+                    button.set(button_idx, &mut ui);
                 }
 
                 // If the closed menu was clicked, we want to open it.
@@ -257,7 +257,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                         .point(button_xy)
                         .react(|| was_clicked = Some(i));
                     button.style = style.button_style(Some(i) == selected);
-                    button.set_internal(button_node_idx, &mut ui);
+                    button.set(button_node_idx, &mut ui);
                 }
 
                 // If one of the buttons was clicked, we want to close the menu.
