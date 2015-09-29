@@ -222,12 +222,12 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
 
 /// Check and return the current state of the TextBox.
 fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonState::{Down, Up};
+    use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Captured, Uncaptured};
     use self::Uncaptured::{Normal, Highlighted};
 
     match prev_interaction {
-        Interaction::Captured(mut prev) => match mouse.left {
+        Interaction::Captured(mut prev) => match mouse.left.position {
             Down => match over_elem {
                 Elem::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
@@ -255,7 +255,7 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
             },
         },
 
-        Interaction::Uncaptured(prev) => match mouse.left {
+        Interaction::Uncaptured(prev) => match mouse.left.position {
             Down => match over_elem {
                 Elem::Nill => Uncaptured(Normal),
                 Elem::Rect => match prev {

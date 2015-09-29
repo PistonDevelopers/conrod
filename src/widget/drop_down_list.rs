@@ -3,18 +3,20 @@ use ::{
     Button,
     ButtonStyle,
     Canvas,
+    CharacterCache,
+    Color,
+    Colorable,
+    Element,
+    FontSize,
+    Frameable,
+    GlyphCache,
+    Labelable,
+    Positionable,
     NodeIndex,
+    Scalar,
+    Sizeable,
+    Theme,
 };
-use color::{Color, Colorable};
-use elmesque::Element;
-use frame::Frameable;
-use graphics::character::CharacterCache;
-use graphics::math::Scalar;
-use label::{FontSize, Labelable};
-use mouse::Mouse;
-use position::{self, Dimensions, Point, Positionable, Sizeable};
-use theme::Theme;
-use ui::GlyphCache;
 use widget::{self, Widget};
 
 
@@ -158,22 +160,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-    /// Capture the mouse if the menu was opened.
-    fn capture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.menu_state, new.menu_state) {
-            (MenuState::Closed, MenuState::Open) => true,
-            _ => false,
-        }
-    }
-
-    /// Uncapture the mouse if the menu was closed.
-    fn uncapture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.menu_state, new.menu_state) {
-            (MenuState::Open, MenuState::Closed) => true,
-            _ => false,
-        }
-    }
-
     /// Update the state of the DropDownList.
     fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
         where C: CharacterCache
@@ -182,10 +168,9 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let (window_dim, maybe_mouse) = {
+        let (global_mouse, window_dim) = {
             let input = ui.input();
-            let maybe_mouse = input.maybe_mouse.map(|mouse| mouse.relative_to(xy));
-            (input.window_dim, maybe_mouse)
+            (input.global_mouse, input.window_dim)
         };
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
@@ -258,6 +243,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     .frame_color(::color::black().alpha(0.0))
                     .dim([dim[0], max_visible_height])
                     .point(canvas_xy)
+                    .floating(true)
                     .vertical_scrolling(true)
                     .set(canvas_idx, &mut ui);
 
@@ -287,8 +273,10 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     }
 
                     MenuState::Closed
-                } else if let Some(mouse) = maybe_mouse {
-                    // TODO: Check if the mouse was just released.
+                // Otherwise if the mouse was released somewhere else we should close the menu.
+                } else if global_mouse.left.was_just_released
+                && !::utils::is_over_rect(canvas_xy, global_mouse.xy, canvas_dim) {
+                    MenuState::Closed
                 } else {
                     MenuState::Open
                 }

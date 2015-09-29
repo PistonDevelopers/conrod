@@ -315,9 +315,9 @@ impl<'a> Widget for Tabs<'a> {
 
         // Determine the new current `Interaction` for the widget.
         let new_interaction = if let Some(mouse) = maybe_mouse {
-            use mouse::ButtonState::{Down, Up};
+            use mouse::ButtonPosition::{Down, Up};
             use self::Interaction::{Normal, Highlighted, Clicked};
-            match (is_over_elem(), state.interaction, mouse.left) {
+            match (is_over_elem(), state.interaction, mouse.left.position) {
                 (Some(_),    Normal,          Down) => Normal,
                 (Some(elem), _,               Up)   => Highlighted(elem),
                 (Some(elem), Highlighted(_),  Down) => Clicked(elem),

@@ -198,11 +198,11 @@ fn closest_elem(mouse_xy: Point, pad_dim: Dimensions, perc_env: &[(f32, f32, f32
 fn get_new_interaction(is_over_elem: Option<Elem>,
                        prev: Interaction,
                        mouse: Mouse) -> Interaction {
-    use mouse::ButtonState::{Down, Up};
+    use mouse::ButtonPosition::{Down, Up};
     use self::Elem::{EnvPoint};//, CurvePoint};
     use self::MouseButton::{Left, Right};
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left, mouse.right) {
+    match (is_over_elem, prev, mouse.left.position, mouse.right.position) {
         (Some(_), Normal, Down, Up) => Normal,
         (Some(elem), _, Up, Up) => Highlighted(elem),
         (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),

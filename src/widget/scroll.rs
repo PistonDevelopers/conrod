@@ -154,8 +154,8 @@ pub fn update(kid_area: &widget::KidArea,
                                mouse_scalar: Scalar| -> Interaction
     {
         if let Some(mouse) = maybe_mouse {
-            use mouse::ButtonState::{Down, Up};
-            match (is_over_elem, bar.interaction, mouse.left) {
+            use mouse::ButtonPosition::{Down, Up};
+            match (is_over_elem, bar.interaction, mouse.left.position) {
                 (Some(_),    Normal,             Down) => Normal,
                 (Some(elem), _,                  Up)   => Highlighted(elem),
                 (Some(_),    Highlighted(_),     Down) |

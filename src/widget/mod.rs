@@ -561,7 +561,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
             let maybe_mouse = ui::get_mouse_state(ui, idx);
             match (prev.maybe_floating, maybe_mouse) {
                 (Some(prev_floating), Some(mouse)) => {
-                    if mouse.left == ::mouse::ButtonState::Down {
+                    if mouse.left.position == ::mouse::ButtonPosition::Down {
                         Some(new_floating())
                     } else {
                         Some(prev_floating)
@@ -847,6 +847,12 @@ impl<'a, C> UiCell<'a, C> {
     /// A struct representing the user input that has occurred since the last update.
     pub fn input(&self) -> UserInput {
         ui::user_input(self.ui, self.idx)
+    }
+
+    /// A struct representing the user input that has occurred since the last update for the
+    /// `Widget` with the given index..
+    pub fn input_for<I: Into<Index>>(&self, idx: I) -> UserInput {
+        ui::user_input(self.ui, idx.into())
     }
 
     /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.

@@ -6,12 +6,23 @@
 
 use position::Point;
 
+/// The current state of a Mouse button.
+#[derive(Copy, Clone, Debug)]
+pub struct ButtonState {
+    /// The button has been pressed since the last update.
+    pub was_just_pressed: bool,
+    /// The button has been released since the last update.
+    pub was_just_released: bool,
+    /// The current position of the button.
+    pub position: ButtonPosition,
+}
+
 /// Represents the current state of a mouse button.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ButtonState {
-    /// The mouse is currently up.
+pub enum ButtonPosition {
+    /// The mouse button is currently up.
     Up,
-    /// The mouse is currently down (pressed).
+    /// The mouse button is currently down (pressed).
     Down,
 }
 
@@ -41,19 +52,37 @@ pub struct Scroll {
     pub y: f64,
 }
 
+
+impl ButtonState {
+
+    /// Constructor for a default ButtonState.
+    pub fn new() -> ButtonState {
+        ButtonState {
+            was_just_released: false,
+            was_just_pressed: false,
+            position: ButtonPosition::Up,
+        }
+    }
+
+    /// Reset the `was_just_released` and `was_just_pressed` flags.
+    pub fn reset_pressed_and_released(&mut self) {
+        self.was_just_released = false;
+        self.was_just_pressed = false;
+    }
+
+}
+
+
 impl Mouse {
 
-    /// Constructor for a Mouse struct.
-    pub fn new(xy: Point,
-               left: ButtonState,
-               middle: ButtonState,
-               right: ButtonState) -> Mouse {
+    /// Constructor for a default Mouse struct.
+    pub fn new() -> Mouse {
         Mouse {
-            xy: xy,
-            left: left,
-            middle: middle,
-            right: right,
-            unknown: ButtonState::Up,
+            xy: [0.0, 0.0],
+            left: ButtonState::new(),
+            middle: ButtonState::new(),
+            right: ButtonState::new(),
+            unknown: ButtonState::new(),
             scroll: Scroll { x: 0.0, y: 0.0 },
         }
     }
@@ -64,3 +93,4 @@ impl Mouse {
     }
 
 }
+

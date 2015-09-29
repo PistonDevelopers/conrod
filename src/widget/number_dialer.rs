@@ -153,10 +153,10 @@ fn is_over(mouse_xy: Point,
 
 /// Check and return the current state of the NumberDialer.
 fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonState::{Down, Up};
+    use mouse::ButtonPosition::{Down, Up};
     use self::Elem::ValueGlyph;
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left) {
+    match (is_over_elem, prev, mouse.left.position) {
         (Some(_),    Normal,          Down) => Normal,
         (Some(elem), _,               Up)   => Highlighted(elem),
         (Some(elem), Highlighted(_),  Down) => Clicked(elem),
