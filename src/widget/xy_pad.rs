@@ -75,9 +75,9 @@ impl<X, Y> State<X, Y> {
 fn get_new_interaction(is_over: bool,
                        prev: Interaction,
                        mouse: Mouse) -> Interaction {
-    use mouse::ButtonState::{Down, Up};
+    use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left) {
+    match (is_over, prev, mouse.left.position) {
         (true,  Normal,  Down) => Normal,
         (true,  _,       Down) => Clicked,
         (true,  _,       Up)   => Highlighted,

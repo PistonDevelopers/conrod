@@ -421,9 +421,9 @@ fn is_over(mouse_xy: Point,
 
 /// Determine the new interaction given the mouse state and previous interaction.
 fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonState::{Down, Up};
+    use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left) {
+    match (is_over_elem, prev, mouse.left.position) {
         (Some(_),    Normal,          Down)  => Normal,
         (Some(elem), _,               Up)    => Highlighted(elem),
         (Some(elem), Highlighted(_),  Down)  => Clicked(elem, mouse.xy),

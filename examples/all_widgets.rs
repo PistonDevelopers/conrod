@@ -355,7 +355,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
-        .react(|selected_idx: &mut Option<usize>, new_idx, _string| {
+        .react(|selected_idx: &mut Option<usize>, new_idx, _string: &str| {
             *selected_idx = Some(new_idx)
         })
         .set(COLOR_SELECT, ui);

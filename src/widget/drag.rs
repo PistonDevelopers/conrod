@@ -34,7 +34,7 @@ pub fn drag_widget(xy: Point,
                    mouse: Mouse) -> (Point, State)
 {
     use self::State::{Normal, Highlighted, Clicked};
-    use mouse::ButtonState::{Up, Down};
+    use mouse::ButtonPosition::{Up, Down};
     use utils::is_over_rect;
 
     // Find the absolute position of the draggable area.
@@ -44,7 +44,7 @@ pub fn drag_widget(xy: Point,
     let is_over = is_over_rect(abs_area_xy, mouse.xy, area.dim);
 
     // Determine the new drag state.
-    let new_state = match (is_over, state, mouse.left) {
+    let new_state = match (is_over, state, mouse.left.position) {
         (true,  Normal,     Down) => Normal,
         (true,  _,          Up)   => Highlighted,
         (true,  _,          Down) |

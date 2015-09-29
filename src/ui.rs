@@ -5,7 +5,7 @@ use graph::Graph;
 use graphics::{Context, Graphics};
 use graphics::character::CharacterCache;
 use label::FontSize;
-use mouse::{ButtonState, Mouse, Scroll};
+use mouse::{self, Mouse};
 use input;
 use input::{
     GenericEvent,
@@ -24,7 +24,7 @@ use widget::{self, Widget, WidgetId};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Capturing {
     /// The Ui is captured by the Ui element with the given WidgetId.
     Captured(widget::Index),
@@ -87,8 +87,10 @@ pub struct Ui<C> {
 /// A wrapper over the current user input state.
 #[derive(Clone, Debug)]
 pub struct UserInput<'a> {
-    /// Mouse state if it is available.
+    /// Mouse state only if it is currently available to the widget after considering capturing.
     pub maybe_mouse: Option<Mouse>,
+    /// The universal state of the Mouse, regardless of capturing.
+    pub global_mouse: Mouse,
     /// Keys pressed since the last cycle.
     pub pressed_keys: &'a [input::keyboard::Key],
     /// Keys released since the last cycle.
@@ -139,7 +141,7 @@ impl<C> Ui<C> {
         Ui {
             widget_graph: Graph::with_capacity(GRAPH_CAPACITY),
             theme: theme,
-            mouse: Mouse::new([0.0, 0.0], ButtonState::Up, ButtonState::Up, ButtonState::Up),
+            mouse: Mouse::new(),
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
@@ -172,16 +174,25 @@ impl<C> Ui<C> {
 
         // The `Ui` tracks various things during a frame - we'll reset those things here.
         if self.prev_event_was_render {
+            self.prev_event_was_render = false;
 
-            // Flush input.
+            // Clear text and key buffers.
             self.keys_just_pressed.clear();
             self.keys_just_released.clear();
             self.text_just_entered.clear();
-            self.mouse.scroll = Scroll { x: 0.0, y: 0.0 };
+
+            // Reset the mouse state.
+            self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
+            self.mouse.left.reset_pressed_and_released();
+            self.mouse.middle.reset_pressed_and_released();
+            self.mouse.right.reset_pressed_and_released();
+            self.mouse.unknown.reset_pressed_and_released();
 
             self.maybe_prev_widget_idx = None;
             self.maybe_current_parent_idx = None;
-            self.prev_event_was_render = false;
+
+            // If the mouse / keyboard capturing was just released by a widget, reset to None ready
+            // for capturing once again.
             if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
                 self.maybe_captured_mouse = None;
             }
@@ -215,12 +226,14 @@ impl<C> Ui<C> {
 
             match button_type {
                 Button::Mouse(button) => {
-                    *match button {
+                    let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
                         Middle => &mut self.mouse.middle,
                         _ => &mut self.mouse.unknown,
-                    } = ButtonState::Down;
+                    };
+                    mouse_button.position = mouse::ButtonPosition::Down;
+                    mouse_button.was_just_pressed = true;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
             }
@@ -228,14 +241,17 @@ impl<C> Ui<C> {
 
         event.release(|button_type| {
             use input::Button;
-            use input::MouseButton::Left;
+            use input::MouseButton::{Left, Middle, Right};
             match button_type {
                 Button::Mouse(button) => {
-                    *match button {
+                    let mouse_button = match button {
                         Left => &mut self.mouse.left,
-                        _/*input::mouse::Right*/ => &mut self.mouse.right,
-                        //Middle => &mut self.mouse.middle,
-                    } = ButtonState::Up;
+                        Right => &mut self.mouse.right,
+                        Middle => &mut self.mouse.middle,
+                        _ => &mut self.mouse.unknown,
+                    };
+                    mouse_button.position = mouse::ButtonPosition::Up;
+                    mouse_button.was_just_released = true;
                 },
                 Button::Keyboard(key) => self.keys_just_released.push(key),
             }
@@ -275,12 +291,10 @@ impl<C> Ui<C> {
                     None => [0.0, 0.0],
                     Some(rel_idx) => {
                         use position::Direction;
-                        let (rel_xy, element) = {
+                        let (rel_xy, rel_w, rel_h) = {
                             let widget = &self.widget_graph[rel_idx];
-                            (widget.xy, &widget.element)
+                            (widget.xy, widget.dim[0], widget.dim[1])
                         };
-                        let (rel_w, rel_h) = element.get_size();
-                        let (rel_w, rel_h) = (rel_w as f64, rel_h as f64);
 
                         match direction {
 
@@ -608,8 +622,10 @@ pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget:
 /// Take into consideration whether or not each input type is captured.
 pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
     let maybe_mouse = get_mouse_state(ui, idx);
+    let global_mouse = ui.mouse;
     let without_keys = || UserInput {
         maybe_mouse: maybe_mouse,
+        global_mouse: global_mouse,
         pressed_keys: &[],
         released_keys: &[],
         entered_text: &[],
@@ -617,6 +633,7 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
     };
     let with_keys = || UserInput {
         maybe_mouse: maybe_mouse,
+        global_mouse: global_mouse,
         pressed_keys: &ui.keys_just_pressed,
         released_keys: &ui.keys_just_released,
         entered_text: &ui.text_just_entered,
@@ -658,42 +675,18 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 
 /// Indicate that the widget with the given WidgetId has captured the mouse.
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
-    match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the mouse, however it is \
-                     already captured by {:?}.", idx, captured_idx).unwrap();
-        },
-        Some(Capturing::JustReleased) => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the mouse, however it was \
-                     already captured.", idx).unwrap();
-        },
-        None => ui.maybe_captured_mouse = Some(Capturing::Captured(idx)),
+    // If the mouse isn't already captured, set idx as the capturing widget.
+    if let None = ui.maybe_captured_mouse {
+        ui.maybe_captured_mouse = Some(Capturing::Captured(idx));
     }
 }
 
 
 /// Indicate that the widget is no longer capturing the mouse.
 pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
-    match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however it is \
-                     actually captured by {:?}.", idx, captured_idx).unwrap();
-        } else {
-            ui.maybe_captured_mouse = Some(Capturing::JustReleased);
-        },
-        Some(Capturing::JustReleased) => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however it had \
-                     already been released this cycle.", idx).unwrap();
-        },
-        None => {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the mouse, however the mouse \
-                     was not captured", idx).unwrap();
-        },
+    // Check that we are indeed the widget that is currently capturing the Mouse before releasing.
+    if ui.maybe_captured_mouse == Some(Capturing::Captured(idx)) {
+        ui.maybe_captured_mouse = Some(Capturing::JustReleased)
     }
 }
 
