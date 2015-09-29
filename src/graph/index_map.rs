@@ -2,7 +2,8 @@
 use std::collections::HashMap;
 use std::ops::Index;
 use super::NodeIndex;
-use widget::{self, WidgetId};
+use widget;
+use widget::Id as WidgetId;
 
 
 /// Maps a WidgetId given by the user to a NodeIndex into the Graph (and vice versa).

@@ -8,7 +8,7 @@ use position::{Depth, Dimensions, Point};
 use self::index_map::IndexMap;
 use std::any::Any;
 use std::fmt::Debug;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 pub use self::index_map::GraphIndex;
@@ -266,7 +266,7 @@ impl Graph {
     }
 
 
-    /// Calculate the total scroll offset for the widget with the given WidgetId.
+    /// Calculate the total scroll offset for the widget with the given widget::Index.
     pub fn scroll_offset<I: GraphIndex>(&self, idx: I) -> Point {
         let Graph { ref graph, ref index_map, .. } = *self;
         
@@ -451,7 +451,7 @@ impl Graph {
     /// index is given). Return the NodeIndex for the Widget's position within the Graph.
     pub fn add_widget<I: GraphIndex>(&mut self,
                                      container: Container,
-                                     maybe_id: Option<WidgetId>,
+                                     maybe_id: Option<widget::Id>,
                                      maybe_parent_idx: Option<I>) -> NodeIndex
     {
         let node_idx = self.graph.add_node(Node::Widget(container));
@@ -463,8 +463,8 @@ impl Graph {
     }
 
 
-    /// Update the state of the widget with the given WidgetId.
-    /// If there is no widget for the given WidgetId, add it to the graph.
+    /// Update the state of the widget with the given widget::Index.
+    /// If there is no widget for the given widget::Index, add it to the graph.
     pub fn update_widget<I, P, W>(&mut self,
                                   idx: I,
                                   maybe_parent_idx: Option<P>,
@@ -566,7 +566,7 @@ impl Graph {
         // Otherwise if there is no Widget for the given index we need to add one.
         } else {
             // If there is no widget for the given index we can assume that the index is a
-            // `WidgetId`, as the only way to procure a NodeIndex is by adding a Widget to the
+            // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
             // Graph.
             let id = idx.to_widget_id(&self.index_map)
                 .expect("Expected a `WidgetId` but the given idx was not one, nor did it match any \

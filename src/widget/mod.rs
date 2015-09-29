@@ -10,9 +10,11 @@ use std::any::Any;
 use theme::Theme;
 use ui::{self, GlyphCache, Ui, UserInput};
 
+pub use self::id::Id;
 pub use self::index::Index;
 
 pub mod drag;
+mod id;
 mod index;
 pub mod scroll;
 
@@ -30,12 +32,6 @@ pub mod tabs;
 pub mod text_box;
 pub mod toggle;
 pub mod xy_pad;
-
-
-/// Unique widget identifier. Each widget must use a unique `WidgetId` so that it's state can be
-/// cached within the `Ui` type. The reason we use a usize is because widgets are cached within
-/// a `Vec`, which is limited to a size of `usize` elements.
-pub type WidgetId = usize;
 
 
 /// Arguments for the `Widget::update` method in a struct to simplify the method signature.

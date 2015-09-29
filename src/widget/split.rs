@@ -4,13 +4,13 @@ use color::Color;
 use graphics::character::CharacterCache;
 use position::{Dimensions, Direction, Point, Positionable, Sizeable};
 use super::canvas;
-use widget::{Widget, WidgetId};
+use widget::{self, Widget};
 use ui::Ui;
 
 
 /// A type of Canvas for flexibly designing and guiding widget layout as splits of a window.
 pub struct Split<'a> {
-    id: WidgetId,
+    id: widget::Id,
     style: canvas::Style,
     maybe_splits: Option<(Direction, &'a [Split<'a>])>,
     maybe_length: Option<Scalar>,
@@ -23,7 +23,7 @@ pub struct Split<'a> {
 impl<'a> Split<'a> {
 
     /// Construct a default Canvas Split.
-    pub fn new(id: WidgetId) -> Split<'a> {
+    pub fn new(id: widget::Id) -> Split<'a> {
         Split {
             id: id,
             style: canvas::Style::new(),
@@ -150,7 +150,7 @@ impl<'a> Split<'a> {
     fn into_ui<C>(&self,
                   dim: Dimensions,
                   xy: Point,
-                  maybe_parent: Option<WidgetId>,
+                  maybe_parent: Option<widget::Id>,
                   ui: &mut Ui<C>)
         where
             C: CharacterCache,
@@ -264,7 +264,7 @@ impl<'a> Split<'a> {
         canvas.style = style.clone();
         match maybe_parent {
             Some(parent_id) => canvas.parent(Some(parent_id)),
-            None            => canvas.parent(None::<WidgetId>),
+            None            => canvas.parent(None::<widget::Id>),
         }.point(xy)
             .dim(dim)
             .vertical_scrolling(is_v_scrollable)

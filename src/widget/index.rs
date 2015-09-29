@@ -1,7 +1,6 @@
 
-use graph::NodeIndex;
+use ::{NodeIndex, WidgetId};
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
-use widget::WidgetId;
 
 
 /// An index either given in the form of a publicly instantiated `Widget`'s `WidgetId`, or an
@@ -34,7 +33,7 @@ impl Encodable for Index {
             match *self {
                 Index::Public(id) =>
                     encoder.emit_enum_variant("Public", 0, 2, |encoder| {
-                        encoder.emit_enum_variant_arg(0, |encoder| encoder.emit_usize(id))
+                        encoder.emit_enum_variant_arg(0, |encoder| encoder.emit_usize(id.0))
                     }),
                 Index::Internal(idx) =>
                     encoder.emit_enum_variant("Internal", 1, 2, |encoder| {
@@ -51,7 +50,7 @@ impl Decodable for Index {
             decoder.read_enum_variant(&["Public", "Internal"], |decoder, i| {
                 Ok(match i {
                     0 => Index::Public(try!(decoder.read_enum_variant_arg(0, |decoder| {
-                        decoder.read_usize()
+                        Ok(WidgetId(try!(decoder.read_usize())))
                     }))),
                     1 => Index::Internal(try!(decoder.read_enum_variant_arg(0, |decoder| {
                         Ok(NodeIndex::new(try!(decoder.read_usize())))

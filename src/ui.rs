@@ -20,13 +20,13 @@ use position::{Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAl
 use std::cell::RefCell;
 use std::io::Write;
 use theme::Theme;
-use widget::{self, Widget, WidgetId};
+use widget::{self, Widget};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Capturing {
-    /// The Ui is captured by the Ui element with the given WidgetId.
+    /// The Ui is captured by the Ui element with the given widget::Index.
     Captured(widget::Index),
     /// The Ui has just been uncaptured.
     JustReleased,
@@ -35,7 +35,7 @@ enum Capturing {
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
 /// # Ui Handles the following:
-/// * Contains the state of all widgets which can be indexed via their WidgetId.
+/// * Contains the state of all widgets which can be indexed via their widget::Index.
 /// * Stores rendering state for each widget until the end of each render cycle.
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
@@ -61,17 +61,17 @@ pub struct Ui<C> {
     text_just_entered: Vec<String>,
     /// Tracks whether or not the previous event was a Render event.
     prev_event_was_render: bool,
-    /// The WidgetId of the widget that was last updated/set.
+    /// The widget::Index of the widget that was last updated/set.
     maybe_prev_widget_idx: Option<widget::Index>,
-    /// The WidgetId of the last widget used as a parent for another widget.
+    /// The widget::Index of the last widget used as a parent for another widget.
     maybe_current_parent_idx: Option<widget::Index>,
     /// If the mouse is currently over a widget, its ID will be here.
     maybe_widget_under_mouse: Option<widget::Index>,
     /// The ID of the top-most scrollable widget under the cursor (if there is one).
     maybe_top_scrollable_widget_under_mouse: Option<widget::Index>,
-    /// The WidgetId of the widget currently capturing mouse input if there is one.
+    /// The widget::Index of the widget currently capturing mouse input if there is one.
     maybe_captured_mouse: Option<Capturing>,
-    /// The WidgetId of the widget currently capturing keyboard input if there is one.
+    /// The widget::Index of the widget currently capturing keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>,
     /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
@@ -164,7 +164,7 @@ impl<C> Ui<C> {
 
 
     /// Return the dimensions of a widget.
-    pub fn widget_size(&self, id: WidgetId) -> Dimensions {
+    pub fn widget_size(&self, id: widget::Id) -> Dimensions {
         self.widget_graph[id].dim
     }
 
@@ -673,7 +673,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 }
 
 
-/// Indicate that the widget with the given WidgetId has captured the mouse.
+/// Indicate that the widget with the given widget::Index has captured the mouse.
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     // If the mouse isn't already captured, set idx as the capturing widget.
     if let None = ui.maybe_captured_mouse {
@@ -690,7 +690,7 @@ pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     }
 }
 
-/// Indicate that the widget with the given WidgetId has captured the keyboard.
+/// Indicate that the widget with the given widget::Index has captured the keyboard.
 pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
@@ -732,7 +732,7 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
 }
 
 
-/// Update the given widget at the given WidgetId.
+/// Update the given widget at the given widget::Index.
 pub fn update_widget<C, W>(ui: &mut Ui<C>,
                            idx: widget::Index,
                            maybe_parent_idx: Option<widget::Index>,
