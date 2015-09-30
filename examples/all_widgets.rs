@@ -19,7 +19,6 @@ extern crate glutin_window;
 extern crate vecmath;
 
 use conrod::{
-    Background,
     Button,
     Color,
     Colorable,
@@ -33,6 +32,7 @@ use conrod::{
     Positionable,
     Slider,
     Sizeable,
+    Split,
     TextBox,
     Theme,
     Toggle,
@@ -42,7 +42,6 @@ use conrod::{
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
 use glutin_window::GlutinWindow;
-use graphics::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use opengl_graphics::glyph_cache::GlyphCache;
 use piston::event_loop::{Events, EventLoop};
@@ -74,9 +73,11 @@ struct DemoApp {
     /// and number_dialer).
     frame_width: f64,
     /// Bool matrix for widget_matrix demonstration.
-    bool_matrix: Vec<Vec<bool>>,
+    bool_matrix: [[bool; 8]; 8],
     /// A vector of strings for drop_down_list demonstration.
     ddl_colors: Vec<String>,
+    /// The currently selected DropDownList color.
+    ddl_color: Color,
     /// We also need an Option<idx> to indicate whether or not an
     /// item is selected.
     selected_idx: Option<usize>,
@@ -98,19 +99,20 @@ impl DemoApp {
             title_pad: 350.0,
             v_slider_height: 230.0,
             frame_width: 1.0,
-            bool_matrix: vec![ vec![true, true, true, true, true, true, true, true],
-                               vec![true, false, false, false, false, false, false, true],
-                               vec![true, false, true, false, true, true, true, true],
-                               vec![true, false, true, false, true, true, true, true],
-                               vec![true, false, false, false, true, true, true, true],
-                               vec![true, true, true, true, true, true, true, true],
-                               vec![true, true, false, true, false, false, false, true],
-                               vec![true, true, true, true, true, true, true, true] ],
+            bool_matrix: [ [true, true, true, true, true, true, true, true],
+                           [true, false, false, false, false, false, false, true],
+                           [true, false, true, false, true, true, true, true],
+                           [true, false, true, false, true, true, true, true],
+                           [true, false, false, false, true, true, true, true],
+                           [true, true, true, true, true, true, true, true],
+                           [true, true, false, true, false, false, false, true],
+                           [true, true, true, true, true, true, true, true] ],
             ddl_colors: vec!["Black".to_string(),
                               "White".to_string(),
                               "Red".to_string(),
                               "Green".to_string(),
                               "Blue".to_string()],
+            ddl_color: purple(),
             selected_idx: None,
             circle_pos: [560.0, 310.0],
             envelopes: vec![(vec![ [0.0, 0.0],
@@ -154,7 +156,29 @@ fn main() {
         ui.handle_event(&event);
         if let Some(args) = event.render_args() {
             gl.draw(args.viewport(), |c, gl| {
-                draw_ui(c, gl, &mut ui, &mut demo);
+
+                // We'll set all our widgets in a single function called `set_widgets`.
+                // At the moment conrod requires that we set our widgets in the Render loop,
+                // however soon we'll add support so that you can set your Widgets at any arbitrary
+                // update rate.
+                set_widgets(&mut ui, &mut demo);
+
+                // Draw our Ui!
+                //
+                // The `draw_if_changed` method only re-draws the GUI if some `Widget`'s `Element`
+                // representation has changed. Normally, a `Widget`'s `Element` should only change
+                // if a Widget was interacted with in some way, however this is up to the `Widget`
+                // designer's discretion.
+                //
+                // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
+                ui.draw_if_changed(c, gl);
+
+                // Draw the circle that's controlled by our XYPad.
+                graphics::Ellipse::new(demo.ddl_color.to_fsa())
+                    .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
+                          graphics::default_draw_state(),
+                          graphics::math::abs_transform(ui.win_w, ui.win_h),
+                          gl);
             });
         }
     }
@@ -162,11 +186,19 @@ fn main() {
 
 
 
-/// Draw the User Interface.
-fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
+/// Set all `Widget`s within the User Interface.
+///
+/// The first time this gets called, each `Widget`'s `State` will be initialised and cached within
+/// the `Ui` at their given indices. Every other time this get called, the `Widget`s will avoid any
+/// allocations by updating the pre-existing cached state. A new graphical `Element` is only
+/// retrieved from a `Widget` in the case that it's `State` has changed in some way.
+fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
 
-    // Sets a color to clear the background with before the Ui draws the widgets.
-    Background::new().color(demo.bg_color).set(ui);
+    // Normally, `Split`s can be used to describe the layout of `Canvas`ses within a window (see
+    // the canvas.rs example for a demonstration of this). However, when only one `Split` is used
+    // (as in this case) a single `Canvas` will simply fill the screen.
+    // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
+    Split::new(CANVAS).frame(demo.frame_width).color(demo.bg_color).set(ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
@@ -177,6 +209,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         .xy(title_x, title_y)
         .font_size(32)
         .color(demo.bg_color.plain_contrast())
+        .parent(Some(CANVAS))
         .set(TITLE, ui);
 
     if demo.show_button {
@@ -332,20 +365,8 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
         });
 
-    // Translate the selected color string into a usable color.
-    let ddl_color = match demo.selected_idx {
-        Some(idx) => match demo.ddl_colors[idx].as_ref() {
-            "Black" => black(),
-            "White" => white(),
-            "Red"   => red(),
-            "Green" => green(),
-            "Blue"  => blue(),
-            _ => purple(),
-        },
-        None => purple(),
-    };
-
-    // A demonstration using drop_down_list.
+    // A demonstration using a DropDownList to select its own color.
+    let mut ddl_color = demo.ddl_color;
     DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
         .dimensions(150.0, 40.0)
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
@@ -355,10 +376,19 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
-        .react(|selected_idx: &mut Option<usize>, new_idx, _string: &str| {
-            *selected_idx = Some(new_idx)
+        .react(|selected_idx: &mut Option<usize>, new_idx, string: &str| {
+            *selected_idx = Some(new_idx);
+            ddl_color = match string {
+                "Black" => black(),
+                "White" => white(),
+                "Red"   => red(),
+                "Green" => green(),
+                "Blue"  => blue(),
+                _       => purple(),
+            };
         })
         .set(COLOR_SELECT, ui);
+    demo.ddl_color = ddl_color;
 
     // Draw an xy_pad.
     XYPad::new(demo.circle_pos[0], 550.0, 700.0, // x range.
@@ -414,19 +444,6 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 
     }
 
-    // Draw our Ui!
-    // The `draw_if_changed` method only re-draws the GUI if some state has changed or if
-    // `ui.needs_redraw();` was called.
-    // If you need to re-draw your conrod GUI every frame, use `Ui::draw`.
-    ui.draw_if_changed(c, gl);
-
-
-    // Draw the circle that's controlled by the XYPad.
-    graphics::Ellipse::new(ddl_color.to_fsa())
-        .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
-              graphics::default_draw_state(),
-              graphics::math::abs_transform(ui.win_w, ui.win_h),
-              gl);
 
 }
 
@@ -439,6 +456,7 @@ fn draw_ui(c: Context, gl: &mut GlGraphics, ui: &mut Ui, demo: &mut DemoApp) {
 // This is often useful when you need to use an identifier in some kind of loop (i.e. like within 
 // the use of `WidgetMatrix` as above).
 widget_ids! {
+    CANVAS,
     TITLE,
     BUTTON,
     TITLE_PAD_SLIDER,

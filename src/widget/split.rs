@@ -127,14 +127,19 @@ impl<'a> Split<'a> {
     /// Set whether or not the Canvas' `KidArea` is scrollable (the default is false).
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
+    pub fn scrolling(mut self, scrollable: bool) -> Self {
+        self.is_v_scrollable = scrollable;
+        self.is_h_scrollable = scrollable;
+        self
+    }
+
+    /// Same as `Split::scrolling`, however only activates vertical scrolling.
     pub fn vertical_scrolling(mut self, scrollable: bool) -> Self {
         self.is_v_scrollable = scrollable;
         self
     }
 
-    /// Set whether or not the Canvas' `KidArea` is scrollable (the default is false).
-    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
-    /// the `KidArea` will become scrollable.
+    /// Same as `Split::scrolling`, however only activates horizontal scrolling.
     pub fn horizontal_scrolling(mut self, scrollable: bool) -> Self {
         self.is_h_scrollable = scrollable;
         self
