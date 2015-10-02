@@ -169,6 +169,12 @@ impl<C> Ui<C> {
     }
 
 
+    /// An index to the previously updated widget if there is one.
+    pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
+        self.maybe_prev_widget_idx
+    }
+
+
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
 
@@ -279,15 +285,13 @@ impl<C> Ui<C> {
 
             Position::Absolute(x, y) => [x, y],
 
-            Position::Relative(x, y, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
-                    None => [0.0, 0.0],
-                    Some(idx) => vec2_add(self.widget_graph[idx].xy, [x, y]),
-                }
+            Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
+                None => [x, y],
+                Some(idx) => vec2_add(self.widget_graph[idx].xy, [x, y]),
             },
 
             Position::Direction(direction, px, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
+                match maybe_idx.or(self.maybe_prev_widget()) {
                     None => [0.0, 0.0],
                     Some(rel_idx) => {
                         use position::Direction;
@@ -369,19 +373,10 @@ impl<C> Ui<C> {
 
         };
 
-        match maybe_idx {
-            // When getting the xy for some widget, we'll need to consider the graph for scrolling.
-            Some(idx) => {
-                // Sum each scrollable parent widget's scrolling offset to the resulting xy.
-                let scroll_offset = match idx {
-                    widget::Index::Public(id) => self.widget_graph.scroll_offset(id),
-                    widget::Index::Internal(idx) => self.widget_graph.scroll_offset(idx),
-                };
-                vec2_add(xy, scroll_offset)
-            },
-            // Otherwise, we return the calculated `xy` as is.
-            None => xy,
-        }
+        // Add the widget's parents' total combined scroll offset to the given xy.
+        maybe_idx
+            .map(|idx| vec2_add(xy, self.widget_graph.scroll_offset(idx)))
+            .unwrap_or(xy)
     }
 
 
@@ -737,6 +732,7 @@ pub fn update_widget<C, W>(ui: &mut Ui<C>,
                            idx: widget::Index,
                            maybe_parent_idx: Option<widget::Index>,
                            kind: &'static str,
+                           maybe_relatively_positioned: Option<widget::Index>,
                            cached: widget::Cached<W>,
                            maybe_new_element: Option<Element>)
     where
@@ -744,7 +740,8 @@ pub fn update_widget<C, W>(ui: &mut Ui<C>,
         W::State: 'static,
         W::Style: 'static,
 {
-    ui.widget_graph.update_widget(idx, maybe_parent_idx, kind, cached, maybe_new_element);
+    ui.widget_graph.update_widget(idx, maybe_parent_idx, kind, maybe_relatively_positioned,
+                                  cached, maybe_new_element);
     ui.maybe_prev_widget_idx = Some(idx);
     ui.maybe_current_parent_idx = maybe_parent_idx;
 }

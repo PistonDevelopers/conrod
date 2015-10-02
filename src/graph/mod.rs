@@ -76,8 +76,19 @@ enum Node {
     Placeholder,
 }
 
+/// An edge between nodes within the UI Graph.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Edge {
+    /// A widget is positioned relatively to another.
+    /// When adding an edge a -> b, b is positioned relatively to a.
+    RelativePosition,
+    /// A widget is a child of another.
+    /// When adding an edge a -> b, a is the parent of b.
+    Child,
+}
+
 /// An alias for the petgraph::Graph used within our Ui Graph.
-type PetGraph = pg::Graph<Node, (), pg::Directed>;
+type PetGraph = pg::Graph<Node, Edge, pg::Directed>;
 
 /// Parts of the graph that are significant when visiting and sorting by depth.
 /// The reason a widget and its scrollbar are separate here is because a widget's scrollbar may
@@ -201,8 +212,8 @@ impl Graph {
         J: GraphIndex,
     {
         idx.to_node_index(&self.index_map).and_then(|idx| {
-            self.graph.neighbors_directed(idx, pg::Incoming).next()
-                .and_then(|parent_idx| J::from_idx(parent_idx, &self.index_map))
+            maybe_incoming_child_edge(&self.graph, idx)
+                .and_then(|(_, parent_idx)| J::from_idx(parent_idx, &self.index_map))
         })
     }
 
@@ -269,43 +280,64 @@ impl Graph {
     /// Calculate the total scroll offset for the widget with the given widget::Index.
     pub fn scroll_offset<I: GraphIndex>(&self, idx: I) -> Point {
         let Graph { ref graph, ref index_map, .. } = *self;
-        
+
         let mut offset = [0.0, 0.0];
         let mut idx = match idx.to_node_index(index_map) {
             Some(idx) => idx,
-            // If the ID is not yet present within the graph, return the zeroed offset.
+            // If the ID is not yet present within the graph, just return the zeroed offset.
             None => return offset,
         };
 
         // We know that our graph shouldn't cycle at all, so we can safely use loop to traverse all
         // parent widget nodes and return when there are no more.
-        loop {
+        'child_edge_traversal: loop {
 
-            // We know that we should only have one incoming edge as we only have one parent.
-            idx = match graph.neighbors_directed(idx, pg::Incoming).next() {
-                None => return offset,
-                Some(parent_idx) => parent_idx,
-            };
+            // We only need to worry about calculating any offset if there is some parent widget.
+            if let Some((_, parent_idx)) = maybe_incoming_child_edge(graph, idx) {
 
-            if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
-                if let Some(ref scrolling) = container.maybe_scrolling {
-
-                    // Vertical offset.
-                    if let Some(ref bar) = scrolling.maybe_vertical {
-                        let offset_frac = bar.offset / bar.max_offset;
-                        let visible_height = container.kid_area.dim[1];
-                        let y_offset = offset_frac * (bar.total_length - visible_height);
-                        offset[1] += y_offset;
-                    }
-
-                    // Horizontal offset.
-                    if let Some(ref bar) = scrolling.maybe_horizontal {
-                        let offset_frac = bar.offset / bar.max_offset;
-                        let visible_width = container.kid_area.dim[0];
-                        let x_offset = offset_frac * (bar.total_length - visible_width);
-                        offset[0] -= x_offset;
+                // Recursively check all nodes with incoming `RelativePosition` edges for a parent that
+                // matches our own parent. If any match, then we don't need to calculate any additional
+                // offset as the widget we are being positioned relatively to has already applied the
+                // necessary scroll offset.
+                let mut current_node = idx;
+                'relative_position_edge_traversal: loop {
+                    match maybe_incoming_relative_position_edge(graph, current_node) {
+                        Some((_, node)) => match maybe_incoming_child_edge(graph, node) {
+                            Some((_, parent_node)) if parent_node == parent_idx => return offset,
+                            _ => current_node = node,
+                        },
+                        None => break 'relative_position_edge_traversal,
                     }
                 }
+
+                // Set the parent as the new current idx and continue traversing.
+                idx = parent_idx;
+
+                // Check the current widget for any scroll offset.
+                if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
+                    if let Some(ref scrolling) = container.maybe_scrolling {
+
+                        // Vertical offset.
+                        if let Some(ref bar) = scrolling.maybe_vertical {
+                            let offset_frac = bar.offset / bar.max_offset;
+                            let visible_height = container.kid_area.dim[1];
+                            let y_offset = offset_frac * (bar.total_length - visible_height);
+                            offset[1] += y_offset;
+                        }
+
+                        // Horizontal offset.
+                        if let Some(ref bar) = scrolling.maybe_horizontal {
+                            let offset_frac = bar.offset / bar.max_offset;
+                            let visible_width = container.kid_area.dim[0];
+                            let x_offset = offset_frac * (bar.total_length - visible_width);
+                            offset[0] -= x_offset;
+                        }
+                    }
+                }
+
+            // Otherwise if there are no more parent widgets, we're done calculating the offset.
+            } else {
+                return offset;
             }
         }
     }
@@ -314,7 +346,7 @@ impl Graph {
     /// Set the parent for the given Widget Id.
     /// This method clears all other incoming edges and ensures that the widget only has a single
     /// parent (incoming edge). This means we can be sure of retaining a tree structure.
-    pub fn set_parent_for_widget<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
+    fn set_parent_for_widget<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
         I: GraphIndex,
         P: GraphIndex,
     {
@@ -341,32 +373,35 @@ impl Graph {
             None => root,
         };
 
-        // Check to see if the node already has some parent.
-        // Remove the parent if it's not the same as our new parent_node_idx.
-        // Keep it if it's the one we want.
+        set_edge(graph, parent_node_idx, node_idx, Edge::Child);
+    }
+
+
+    /// Set's an `Edge::RelativePosition` from a to b. This edge represents the fact that b is
+    /// positioned relatively to a's position.
+    fn set_relative_position_edge<A, B>(&mut self, a: A, b: B) where
+        A: GraphIndex,
+        B: GraphIndex,
+    {
+        let a_idx = a.to_node_index(&self.index_map).expect("No NodeIndex for given GraphIndex");
+        let b_idx = b.to_node_index(&self.index_map).expect("No NodeIndex for given GraphIndex");
+
+        set_edge(&mut self.graph, a_idx, b_idx, Edge::RelativePosition);
+    }
+
+
+    /// Remove the incoming relative position edge (if there is one) to the widget at the given
+    /// index.
+    fn remove_incoming_relative_position_edge<I: GraphIndex>(&mut self, idx: I) {
+        let Graph { ref mut graph, ref index_map, .. } = *self;
+        let node_idx = idx.to_node_index(index_map).expect("No NodeIndex for given GraphIndex");
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
-        let mut already_connected = false;
-        // Note that we only need to check for *one* parent as there can only ever be one parent
-        // per node. We know this, as this method is the only public method that adds edges.
-        if let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
-            if in_node_idx == parent_node_idx {
-                already_connected = true;
-            } else {
+        while let Some((in_edge_idx, _)) = incoming_edges.next_neighbor(graph) {
+            if let Edge::RelativePosition = graph[in_edge_idx] {
                 graph.remove_edge(in_edge_idx);
-            }
-        }
-
-        // If we don't already have an incoming edge from the requested parent, add one.
-        if !already_connected {
-            graph.add_edge(parent_node_idx, node_idx, ());
-
-            // We can't allow the new connection to cause a cycle.
-            if let Some(parent_idx) = maybe_parent_idx {
-                if pg::algo::is_cyclic_directed(graph) {
-                    panic!("Adding widget (WidgetId: {:?}, NodeIndex: {:?}) with the given \
-                            parent (WidgetId: {:?}, NodeIndex: {:?}) caused a cycle within the \
-                            Ui Graph.\n{:?}", idx, node_idx, parent_idx, parent_node_idx, graph);
-                }
+                // Note that we only need to check for *one* edge as there can only ever be one
+                // incoming relative position edge per node.
+                break;
             }
         }
     }
@@ -469,6 +504,7 @@ impl Graph {
                                   idx: I,
                                   maybe_parent_idx: Option<P>,
                                   kind: &'static str,
+                                  maybe_positioned_relatively_to: Option<widget::Index>,
                                   cached: widget::Cached<W>,
                                   maybe_new_element: Option<Element>)
         where
@@ -573,6 +609,16 @@ impl Graph {
                         known `WidgetId`s within the `Graph`'s `IndexMap`.");
             let container = new_container(stored, maybe_new_element);
             self.add_widget(container, Some(id), maybe_parent_idx);
+        }
+
+        // Now that we've updated the widget's cached data, we need to check if we should add a
+        // `Edge::RelativePosition`.
+        if let Some(relative_idx) = maybe_positioned_relatively_to {
+            self.set_relative_position_edge(relative_idx, idx);
+        // Otherwise if the widget is not positioned relatively to any other widget, we should
+        // ensure that there are no incoming `RelativePosition` edges.
+        } else {
+            self.remove_incoming_relative_position_edge(idx);
         }
 
     }
@@ -718,6 +764,83 @@ impl Graph {
                            floating_deque);
     }
 }
+
+
+
+/// Set some given `Edge` between `a` -> `b`, so that it is the only `Edge` of its variant.
+fn set_edge(graph: &mut PetGraph, a: NodeIndex, b: NodeIndex, edge: Edge) {
+
+    // Check to see if the node already has some matching incoming edge.
+    // Keep it if it's the one we want. Otherwise, remove any incoming edge that matches the given
+    // edge kind but isn't coming from the node that we desire.
+    let mut incoming_edges = graph.walk_edges_directed(b, pg::Incoming);
+    let mut already_set = false;
+
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if edge == graph[in_edge_idx] {
+            if in_node_idx == a {
+                already_set = true;
+            } else {
+                graph.remove_edge(in_edge_idx);
+            }
+            // Note that we only need to check for *one* edge as there can only ever be one
+            // parent or relative position per node. We know this, as this method is the only
+            // function used by a public method that adds edges.
+            break;
+        }
+    }
+
+    // If we don't already have an incoming edge from the requested parent, add one.
+    if !already_set {
+
+        // Add a Child edge from a -> b.
+        let new_edge = graph.add_edge(a, b, edge);
+
+        // We can't allow the new connection to cause a cycle, so we'll check.
+        if pg::algo::is_cyclic_directed(graph) {
+            use std::io::Write;
+
+            // If there was a cycle, remove the edge and report the error.
+            graph.remove_edge(new_edge);
+            writeln!(::std::io::stderr(),
+                     "Error: Adding a connection from node {:?} to node {:?} would cause a cycle \
+                     within the Graph.\n{:?}", a, b, graph).unwrap();
+        }
+    }
+
+}
+
+
+/// Return the incoming relative position edge (and the attached Node) if one exists.
+/// We know that there may be at most one incoming relative position edge, as the only
+/// publicly exposed way to add an edge to the graph is via the `set_edge` method.
+fn maybe_incoming_relative_position_edge(graph: &PetGraph, idx: NodeIndex)
+    -> Option<(EdgeIndex, NodeIndex)>
+{
+    let mut incoming_edges = graph.walk_edges_directed(idx, pg::Incoming);
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if let Edge::RelativePosition = graph[in_edge_idx] {
+            return Some((in_edge_idx, in_node_idx));
+        }
+    }
+    None
+}
+
+/// Return the incoming child edge (and the attached parent Node) if one exists.
+/// We know that there may be at most one incoming child edge, as the only publicly
+/// exposed way to add an edge to the graph is via the `set_edge` method.
+fn maybe_incoming_child_edge(graph: &PetGraph, idx: NodeIndex)
+    -> Option<(EdgeIndex, NodeIndex)>
+{
+    let mut incoming_edges = graph.walk_edges_directed(idx, pg::Incoming);
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if let Edge::Child = graph[in_edge_idx] {
+            return Some((in_edge_idx, in_node_idx));
+        }
+    }
+    None
+}
+
 
 /// Update the depth_order (starting with the deepest) for all nodes in the graph.
 /// The floating_deque is a pre-allocated deque used for collecting the floating widgets during

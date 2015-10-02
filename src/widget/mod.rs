@@ -340,6 +340,10 @@ pub trait Widget: Sized {
         }
     }
 
+
+    // None of the following methods should require overriding.
+
+
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
     /// This will attach this Widget to the parent widget.
     fn parent<I: Into<Index>>(mut self, maybe_parent_idx: Option<I>) -> Self {
@@ -538,7 +542,10 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let is_floating = widget.common().is_floating;
 
     // If it is floating, check to see if we need to update the last time it was clicked.
-    let new_floating = || Floating { time_last_clicked: precise_time_ns() };
+    fn new_floating() -> Floating {
+        Floating { time_last_clicked: precise_time_ns() }
+    }
+
     let maybe_floating = match (is_floating, maybe_prev_state.as_ref()) {
         (false, _) => None,
         (true, Some(prev)) => {
@@ -816,7 +823,20 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
         maybe_scrolling: maybe_new_scrolling,
     };
 
-    ui::update_widget(ui, idx, maybe_parent_idx, kind, cached, maybe_new_element);
+    // Some widget to which this widget is relatively positioned (if there is one).
+    let maybe_relatively_positioned = match pos {
+        Position::Relative(_, _, maybe_idx)  |
+        Position::Direction(_, _, maybe_idx) => maybe_idx.or(ui.maybe_prev_widget()),
+        _ => None,
+    };
+
+    // Update the widget's cached data.
+    // If the widget is relatively positioned, the Graph will ensure there is an Edge describing
+    // the relative positioning.
+    // The Ui will set this Widget's idx as the previous set widget.
+    // If there is Some parent idx, the Ui will set that as the previous parent widget.
+    ui::update_widget(ui, idx, maybe_parent_idx, kind, maybe_relatively_positioned, cached,
+                      maybe_new_element);
 }
 
 

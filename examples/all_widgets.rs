@@ -198,7 +198,7 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
     // the canvas.rs example for a demonstration of this). However, when only one `Split` is used
     // (as in this case) a single `Canvas` will simply fill the screen.
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Split::new(CANVAS).frame(demo.frame_width).color(demo.bg_color).set(ui);
+    Split::new(CANVAS).frame(demo.frame_width).color(demo.bg_color).scrolling(true).set(ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
     let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
@@ -335,7 +335,6 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
         .label_color(demo.bg_color.plain_contrast())
         .react(|new_width| demo.frame_width = new_width)
         .set(FRAME_WIDTH, ui);
-
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
