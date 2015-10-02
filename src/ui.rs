@@ -584,12 +584,6 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 }
 
 
-/// Set the ID of the current canvas.
-pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
-    ui.maybe_current_parent_idx = Some(idx);
-}
-
-
 /// Check the given position for an attached parent widget.
 pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
     match position {

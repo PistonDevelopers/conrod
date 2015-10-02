@@ -615,12 +615,11 @@ impl Graph {
         // `Edge::RelativePosition`.
         if let Some(relative_idx) = maybe_positioned_relatively_to {
             self.set_relative_position_edge(relative_idx, idx);
-        // Otherwise if the widget is not positioned relatively to any other widget, we should
-        // ensure that there are no incoming `RelativePosition` edges.
         } else {
+            // Otherwise if the widget is not positioned relatively to any other widget, we should
+            // ensure that there are no incoming `RelativePosition` edges.
             self.remove_incoming_relative_position_edge(idx);
         }
-
     }
 
 
@@ -804,7 +803,7 @@ fn set_edge(graph: &mut PetGraph, a: NodeIndex, b: NodeIndex, edge: Edge) {
             graph.remove_edge(new_edge);
             writeln!(::std::io::stderr(),
                      "Error: Adding a connection from node {:?} to node {:?} would cause a cycle \
-                     within the Graph.\n{:?}", a, b, graph).unwrap();
+                     within the Graph.", a, b).unwrap();
         }
     }
 

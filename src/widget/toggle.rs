@@ -107,10 +107,7 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
-impl<'a, F> Widget for Toggle<'a, F>
-    where
-        F: FnMut(bool),
-{
+impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
     type State = State;
     type Style = Style;
     fn common(&self) -> &widget::CommonBuilder { &self.common }
@@ -155,9 +152,7 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Update the state of the Toggle.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State> {
         use utils::is_over_rect;
 
         let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
@@ -202,7 +197,7 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};

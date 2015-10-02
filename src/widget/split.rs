@@ -157,8 +157,7 @@ impl<'a> Split<'a> {
                   xy: Point,
                   maybe_parent: Option<widget::Id>,
                   ui: &mut Ui<C>)
-        where
-            C: CharacterCache,
+        where C: CharacterCache
     {
         use vecmath::{vec2_add, vec2_sub};
 

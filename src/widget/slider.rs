@@ -125,10 +125,9 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F>
-    where
-        F: FnMut(T),
-        T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+impl<'a, T, F> Widget for Slider<'a, T, F> where
+    F: FnMut(T),
+    T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
 {
     type State = State<T>;
     type Style = Style;
@@ -177,7 +176,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
         use utils::{is_over_rect, map_range};
@@ -273,7 +272,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Construct an Element from the given Slider State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};

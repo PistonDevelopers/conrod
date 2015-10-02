@@ -246,7 +246,7 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// Update the state of the Tabs.
-    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
         let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
@@ -385,7 +385,7 @@ impl<'a> Widget for Tabs<'a> {
 
 
     /// Construct an Element from the given Button State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};

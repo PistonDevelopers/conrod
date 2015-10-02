@@ -365,7 +365,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<E>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<E>>
         where C: CharacterCache,
     {
         let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
@@ -569,7 +569,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Construct an Element from the given EnvelopeEditor State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{circle, collage, Form, line, rect, solid, text};

@@ -123,9 +123,8 @@ impl<'a, F> DropDownList<'a, F> {
 }
 
 
-impl<'a, F> Widget for DropDownList<'a, F>
-    where
-        F: FnMut(&mut Option<Idx>, Idx, &str),
+impl<'a, F> Widget for DropDownList<'a, F> where
+    F: FnMut(&mut Option<Idx>, Idx, &str),
 {
     type State = State;
     type Style = Style;
@@ -158,8 +157,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
-        where C: CharacterCache
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
+        where C: CharacterCache,
     {
         use std::borrow::Cow;
 
@@ -303,9 +302,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
         if state_has_changed { Some(new_state(buttons)) } else { None }
     }
 
-
     /// Construct an Element from the given DropDownList State.
-    fn draw<'b, C>(_args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(_args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         // We don't need to draw anything, as DropDownList is entirely composed of other widgets.

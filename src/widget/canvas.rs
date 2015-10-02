@@ -269,7 +269,7 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Update the state of the Canvas.
-    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
         let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
@@ -340,8 +340,8 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Draw the canvas.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
-        where C: CharacterCache
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
+        where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};
 

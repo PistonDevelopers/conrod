@@ -318,10 +318,7 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F>
-    where
-        F: FnMut(&mut String)
-{
+impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
     type Style = Style;
     fn common(&self) -> &widget::CommonBuilder { &self.common }
@@ -367,7 +364,7 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextBox.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
 
@@ -529,7 +526,7 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Construct an Element from the given TextBox State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};

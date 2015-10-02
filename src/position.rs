@@ -376,9 +376,9 @@ pub trait Sizeable: Sized {
     }
 
     /// The dimensions for the widget.
-    fn get_dimensions<C: CharacterCache>(&self,
-                                         theme: &Theme,
-                                         glyph_cache: &GlyphCache<C>) -> Dimensions {
+    fn get_dimensions<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>)
+        -> Dimensions
+    {
         [self.get_width(theme, glyph_cache), self.get_height(theme)]
     }
 

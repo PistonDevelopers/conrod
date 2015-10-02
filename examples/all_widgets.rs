@@ -342,7 +342,7 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
     WidgetMatrix::new(cols, rows)
         .down(20.0)
         .dimensions(260.0, 260.0) // matrix width and height.
-        .each_widget(ui, |ui, num, col, row, pos, dim| { // This is called for every widget.
+        .each_widget(|_n, col: usize, row: usize| { // called for every matrix elem.
 
             // Color effect for fun.
             let (r, g, b, a) = (
@@ -352,17 +352,13 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
                 1.0
             );
 
-            // Now draw the widgets with the given.react.
-            let val = demo.bool_matrix[col][row];
-            Toggle::new(val)
-                .dim(dim)
-                .point(pos)
+            // Now return the widget we want to set in each element position.
+            Toggle::new(demo.bool_matrix[col][row])
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
                 .react(|new_val: bool| demo.bool_matrix[col][row] = new_val)
-                .set(TOGGLE_MATRIX + num, ui);
-
-        });
+        })
+        .set(TOGGLE_MATRIX, ui);
 
     // A demonstration using a DropDownList to select its own color.
     let mut ddl_color = demo.ddl_color;
@@ -393,7 +389,7 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
     XYPad::new(demo.circle_pos[0], 550.0, 700.0, // x range.
                demo.circle_pos[1], 320.0, 170.0) // y range.
         .dimensions(150.0, 150.0)
-        .right_from(TOGGLE_MATRIX + 63, 30.0)
+        .right_from(TOGGLE_MATRIX, 30.0)
         .align_bottom() // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
         .frame(demo.frame_width)
@@ -443,7 +439,6 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
 
     }
 
-
 }
 
 
@@ -463,7 +458,7 @@ widget_ids! {
     COLOR_SLIDER with 3,
     SLIDER_HEIGHT,
     FRAME_WIDTH,
-    TOGGLE_MATRIX with 64,
+    TOGGLE_MATRIX,
     COLOR_SELECT,
     CIRCLE_POSITION,
     ENVELOPE_EDITOR with 4

@@ -1,9 +1,8 @@
 
-use Scalar;
+use ::{CharacterCache, Scalar};
 use clock_ticks::precise_time_ns;
 use elmesque::Element;
 use graph::NodeIndex;
-use graphics::character::CharacterCache;
 use position::{Depth, Dimensions, Direction, Padding, Point, Position, Positionable, Sizeable,
                HorizontalAlign, VerticalAlign};
 use std::any::Any;
@@ -175,16 +174,19 @@ pub struct Cached<W> where W: Widget {
 
 
 /// A trait that allows us to be generic over both Ui and UiCell in the `Widget::set` arguments.
-trait UiRefMut<C> {
+trait UiRefMut {
+    type CharacterCache: CharacterCache;
     /// A mutable reference to the `Ui`.
-    fn ui_ref_mut(&mut self) -> &mut Ui<C>;
+    fn ui_ref_mut(&mut self) -> &mut Ui<Self::CharacterCache>;
 }
 
-impl<C> UiRefMut<C> for Ui<C> {
+impl<C> UiRefMut for Ui<C> where C: CharacterCache {
+    type CharacterCache = C;
     fn ui_ref_mut(&mut self) -> &mut Ui<C> { self }
 }
 
-impl<'a, C> UiRefMut<C> for UiCell<'a, C> {
+impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
+    type CharacterCache = C;
     fn ui_ref_mut(&mut self) -> &mut Ui<C> { self.ui }
 }
 
@@ -262,7 +264,7 @@ pub trait Widget: Sized {
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
-    fn update<'a, C>(self, args: UpdateArgs<'a, Self, C>) -> Option<Self::State>
+    fn update<C>(self, args: UpdateArgs<Self, C>) -> Option<Self::State>
         where C: CharacterCache;
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
@@ -275,7 +277,7 @@ pub trait Widget: Sized {
     /// * current_style - The freshly produced `Style` of the widget.
     /// * theme - The currently active `Theme` within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<'a, C>(args: DrawArgs<'a, Self, C>) -> Element
+    fn draw<C>(args: DrawArgs<Self, C>) -> Element
         where C: CharacterCache;
 
     /// The default Position for the widget.
@@ -401,10 +403,9 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
     /// new Element for rendering.
     /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
-    fn set<I, C, U>(self, idx: I, ui: &mut U) where
+    fn set<I, U>(self, idx: I, ui: &mut U) where
         I: Into<Index>,
-        C: CharacterCache,
-        U: UiRefMut<C>,
+        U: UiRefMut,
     {
         set_widget(self, idx.into(), ui.ui_ref_mut());
     }
@@ -416,9 +417,9 @@ pub trait Widget: Sized {
 /// Sets a given widget within the given `Ui`.
 /// If it is the first time a widget has been set, it will be cached into the `Ui`'s widget_graph.
 /// For all following occasions, the pre-existing cached state will be compared and updated.
-fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
-    W: Widget,
+fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     C: CharacterCache,
+    W: Widget,
 {
     let kind = widget.unique_kind();
 
@@ -472,6 +473,11 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         (Some(prev_state), Some(style), maybe_scrolling)
     }).unwrap_or_else(|| (None, None, None));
+
+    // We need to hold onto the current "previously set widget", as this may change during our
+    // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last
+    // previous widget).
+    let maybe_prev_widget_idx = ui.maybe_prev_widget();
 
     let new_style = widget.style();
     let depth = widget.get_depth();
@@ -826,7 +832,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Some widget to which this widget is relatively positioned (if there is one).
     let maybe_relatively_positioned = match pos {
         Position::Relative(_, _, maybe_idx)  |
-        Position::Direction(_, _, maybe_idx) => maybe_idx.or(ui.maybe_prev_widget()),
+        Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
         _ => None,
     };
 
@@ -890,7 +896,7 @@ impl CommonBuilder {
 }
 
 
-impl<T> Positionable for T where T: Widget {
+impl<W> Positionable for W where W: Widget {
     #[inline]
     fn position(mut self, pos: Position) -> Self {
         self.common_mut().maybe_position = Some(pos);
@@ -930,7 +936,7 @@ impl<T> Positionable for T where T: Widget {
     }
 }
 
-impl<T> Sizeable for T where T: Widget {
+impl<W> Sizeable for W where W: Widget {
     #[inline]
     fn width(mut self, w: f64) -> Self {
         self.common_mut().maybe_width = Some(w);

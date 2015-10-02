@@ -182,7 +182,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<X, Y>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<X, Y>>
         where C: CharacterCache,
     {
         use utils::is_over_rect;
@@ -246,7 +246,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Construct an Element from the given XYPad State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, line, rect, solid, text};

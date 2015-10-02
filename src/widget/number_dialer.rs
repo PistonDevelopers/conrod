@@ -177,7 +177,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mou
 }
 
 
-impl<'a, T: Float, F> NumberDialer<'a, T, F> {
+impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
@@ -209,10 +209,9 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for NumberDialer<'a, T, F>
-    where
-        F: FnMut(T),
-        T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
+impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
+    F: FnMut(T),
+    T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
     type State = State<T>;
     type Style = Style;
@@ -261,7 +260,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
 
@@ -365,7 +364,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Construct an Element from the given NumberDialer State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{collage, rect, text};

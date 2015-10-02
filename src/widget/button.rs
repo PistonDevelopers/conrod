@@ -108,10 +108,7 @@ impl<'a, F> Button<'a, F> {
 }
 
 
-impl<'a, F> Widget for Button<'a, F>
-    where
-        F: FnMut()
-{
+impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     type State = State;
     type Style = Style;
 
@@ -153,8 +150,8 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
-        where C: CharacterCache,
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
+        where C: CharacterCache
     {
         use utils::is_over_rect;
         let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
@@ -193,8 +190,8 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
-        where C: CharacterCache,
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
+        where C: CharacterCache
     {
         use elmesque::form::{collage, rect, text};
 
