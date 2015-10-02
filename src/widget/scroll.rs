@@ -31,7 +31,7 @@ pub struct State {
     /// Horizontal scrollbar.
     pub maybe_horizontal: Option<Bar>,
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
-    pub width: Scalar,
+    pub thickness: Scalar,
     /// The color of the scrollbar.
     pub color: Color,
 }
@@ -41,7 +41,7 @@ pub struct State {
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
-    pub maybe_width: Option<Scalar>,
+    pub maybe_thickness: Option<Scalar>,
     /// The color of the scrollbar.
     pub maybe_color: Option<Color>,
 }
@@ -100,17 +100,17 @@ impl Style {
     /// Construct a new default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
+            maybe_thickness: None,
             maybe_color: None,
         }
     }
 
-    /// Get the width of the scrollbar or a default from the theme.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 10.0;
-        self.maybe_width.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
+    /// Get the thickness of the scrollbar or a default from the theme.
+    pub fn thickness(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_THICKNESS: Scalar = 10.0;
+        self.maybe_thickness.or(theme.maybe_scrollbar.as_ref().map(|style| {
+            style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
+        })).unwrap_or(DEFAULT_THICKNESS)
     }
 
     /// Get the Color for an Element.
@@ -144,7 +144,7 @@ pub fn update(kid_area: &widget::KidArea,
     use self::Interaction::{Normal, Highlighted, Clicked};
     use utils::clamp;
 
-    let width = state.width;
+    let thickness = state.thickness;
 
     // Determine the new current `Interaction` for a Scrollbar.
     // The given mouse_scalar is the position of the mouse to be recorded by the Handle.
@@ -188,9 +188,9 @@ pub fn update(kid_area: &widget::KidArea,
     // Gives the updated vertical `Bar` if it has changed.
     let vertical = |bar: &Bar| -> Option<Bar> {
 
-        let (track_dim, track_xy) = vertical_track_area(kid_area, width);
+        let (track_dim, track_xy) = vertical_track_area(kid_area, thickness);
         let (handle_dim, handle_xy) =
-            vertical_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
+            vertical_handle_area(track_dim, track_xy, thickness, bar.offset, bar.max_offset);
 
         // Determine whether or not the mouse is over part of the Scrollbar.
         let is_over_elem = maybe_mouse.and_then(|mouse| {
@@ -245,9 +245,9 @@ pub fn update(kid_area: &widget::KidArea,
     // Gives the updated horizontal `Bar` if it has changed.
     let horizontal = |bar: &Bar| -> Option<Bar> {
 
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, width);
+        let (track_dim, track_xy) = horizontal_track_area(kid_area, thickness);
         let (handle_dim, handle_xy) =
-            horizontal_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
+            horizontal_handle_area(track_dim, track_xy, thickness, bar.offset, bar.max_offset);
 
         // Determine whether or not the mouse is over part of the Scrollbar.
         let is_over_elem = maybe_mouse.and_then(|mouse| {
@@ -274,20 +274,20 @@ pub fn update(kid_area: &widget::KidArea,
             // When the track is clicked and the handle snaps to the cursor.
             (Highlighted(Track), Clicked(Handle(mouse_x)), _) => {
                 // Should try snap the handle so that the mouse is in the middle of it.
-                let track_left = track_xy[0] - track_dim[1] / 2.0;
-                let target_offset = (mouse_x - track_left) + handle_dim[0] / 2.0;
+                let track_left = track_xy[0] - track_dim[0] / 2.0;
+                let target_offset = (mouse_x - track_left) - handle_dim[0] / 2.0;
                 clamp(target_offset, 0.0, bar.max_offset)
             },
 
             // When the handle is dragged.
             (Clicked(Handle(prev_mouse_x)), Clicked(Handle(mouse_x)), _) => {
-                let diff = prev_mouse_x - mouse_x;
+                let diff = mouse_x - prev_mouse_x;
                 clamp(bar.offset + diff, 0.0, bar.max_offset)
             },
 
             // The mouse has been scrolled using a wheel/trackpad/touchpad.
             (_, _, Some(mouse)) if mouse.scroll.x != 0.0 => {
-                clamp(bar.offset + mouse.scroll.x, 0.0, bar.max_offset)
+                clamp(bar.offset - mouse.scroll.x, 0.0, bar.max_offset)
             },
 
             // Otherwise, we'll assume the offset is unchanged.
@@ -339,7 +339,7 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
     // Get the color via the current interaction.
     let color = state.color;
     let track_color = color.alpha(0.2);
-    let width = state.width;
+    let thickness = state.thickness;
 
     // The element for a vertical slider.
     let vertical = |bar: Bar| -> Element {
@@ -348,9 +348,9 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
             return empty();
         }
         let color = bar.interaction.color(color);
-        let (track_dim, track_xy) = vertical_track_area(kid_area, width);
+        let (track_dim, track_xy) = vertical_track_area(kid_area, thickness);
         let (handle_dim, handle_xy) =
-            vertical_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
+            vertical_handle_area(track_dim, track_xy, thickness, bar.offset, bar.max_offset);
         let track_form = rect(track_dim[0], track_dim[1]).filled(track_color)
             .shift(track_xy[0], track_xy[1]);
         let handle_form = rect(handle_dim[0], handle_dim[1]).filled(color)
@@ -365,9 +365,9 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
             return empty();
         }
         let color = bar.interaction.color(color);
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, width);
+        let (track_dim, track_xy) = horizontal_track_area(kid_area, thickness);
         let (handle_dim, handle_xy) =
-            horizontal_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
+            horizontal_handle_area(track_dim, track_xy, thickness, bar.offset, bar.max_offset);
         let track_form = rect(track_dim[0], track_dim[1]).filled(track_color)
             .shift(track_xy[0], track_xy[1]);
         let handle_form = rect(handle_dim[0], handle_dim[1]).filled(color)
@@ -386,8 +386,8 @@ pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
 
 
 /// The area for a vertical scrollbar track as its dimensions and position.
-fn vertical_track_area(container: &widget::KidArea, width: Scalar) -> (Dimensions, Point) {
-    let w = width;
+fn vertical_track_area(container: &widget::KidArea, thickness: Scalar) -> (Dimensions, Point) {
+    let w = thickness;
     let h = container.dim[1];
     let x = container.xy[0] + container.dim[0] / 2.0 - w / 2.0;
     let y = container.xy[1];
@@ -397,11 +397,11 @@ fn vertical_track_area(container: &widget::KidArea, width: Scalar) -> (Dimension
 /// The area for a vertical scrollbar handle as its dimensions and position.
 fn vertical_handle_area(track_dim: Dimensions,
                         track_xy: Point,
-                        width: Scalar,
+                        thickness: Scalar,
                         offset: Scalar,
                         max_offset: Scalar) -> (Dimensions, Point)
 {
-    let w = width;
+    let w = thickness;
     let h = track_dim[1] - max_offset;
     let x = track_xy[0];
     let top_of_track = track_xy[1] + track_dim[1] / 2.0;
@@ -410,9 +410,9 @@ fn vertical_handle_area(track_dim: Dimensions,
 }
 
 /// The area for a horizontal scrollbar track as its dimensions and position.
-fn horizontal_track_area(container: &widget::KidArea, width: Scalar) -> (Dimensions, Point) {
+fn horizontal_track_area(container: &widget::KidArea, thickness: Scalar) -> (Dimensions, Point) {
     let w = container.dim[0];
-    let h = width;
+    let h = thickness;
     let x = container.xy[0];
     let y = container.xy[1] - container.dim[1] / 2.0 + h / 2.0;
     ([w, h], [x, y])
@@ -421,12 +421,12 @@ fn horizontal_track_area(container: &widget::KidArea, width: Scalar) -> (Dimensi
 /// The area for a horizontal scrollbar handle as its dimensions and position.
 fn horizontal_handle_area(track_dim: Dimensions,
                           track_xy: Point,
-                          width: Scalar,
+                          thickness: Scalar,
                           offset: Scalar,
                           max_offset: Scalar) -> (Dimensions, Point)
 {
-    let w = track_dim[1] - max_offset;
-    let h = width;
+    let w = track_dim[0] - max_offset;
+    let h = thickness;
     let left_of_track = track_xy[0] - track_dim[0] / 2.0;
     let x = left_of_track + offset + (w / 2.0);
     let y = track_xy[1];
@@ -437,12 +437,12 @@ fn horizontal_handle_area(track_dim: Dimensions,
 /// Is the given xy over the area of a scrollbar with the given state.
 pub fn is_over(state: &State, kid_area: &widget::KidArea, target_xy: Point) -> bool {
     if state.maybe_vertical.is_some() {
-        let (track_dim, track_xy) = vertical_track_area(kid_area, state.width);
+        let (track_dim, track_xy) = vertical_track_area(kid_area, state.thickness);
         if is_over_rect(track_xy, target_xy, track_dim) {
             return true;
         }
     } else if state.maybe_horizontal.is_some() {
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, state.width);
+        let (track_dim, track_xy) = horizontal_track_area(kid_area, state.thickness);
         if is_over_rect(track_xy, target_xy, track_dim) {
             return true;
         }

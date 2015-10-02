@@ -718,7 +718,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
                     None
                 },
 
-                width: scrolling.style.width(&ui.theme),
+                thickness: scrolling.style.thickness(&ui.theme),
                 color: scrolling.style.color(&ui.theme),
             };
 
@@ -761,7 +761,7 @@ fn set_widget<'a, W, C>(widget: W, idx: Index, ui: &mut Ui<C>) where
                     None
                 },
 
-                width: scrolling.style.width(&ui.theme),
+                thickness: scrolling.style.thickness(&ui.theme),
                 color: scrolling.style.color(&ui.theme),
             };
 
