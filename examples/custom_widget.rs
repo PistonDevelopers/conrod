@@ -336,8 +336,7 @@ mod circular_button {
             use elmesque::form::{collage, circle, text};
 
             // Unwrap the args and state structs into individual variables.
-            let DrawArgs { state, style, theme, .. } = args;
-            let WidgetState { ref state, dim, xy, .. } = *state;
+            let DrawArgs { dim, xy, state, style, theme, .. } = args;
 
             // Retrieve the styling for the Element.
             let color = state.color(style.color(theme));
