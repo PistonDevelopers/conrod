@@ -195,8 +195,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { state, style, theme, dim, xy, .. } = args;
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));

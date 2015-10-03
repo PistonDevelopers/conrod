@@ -397,8 +397,7 @@ impl<'a> Widget for Tabs<'a> {
         use elmesque::form::{collage, rect, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, .. } = args;
         let State {
             ref tabs,
             ref interaction,

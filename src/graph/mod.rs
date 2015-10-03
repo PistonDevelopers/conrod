@@ -22,18 +22,17 @@ pub type NodeIndex = pg::graph::NodeIndex<u32>;
 /// An alias for our Graph's Edge Index.
 type EdgeIndex = pg::graph::EdgeIndex<u32>;
 
-/// The state type that we'll dynamically cast to and from Any for storage within the Cache.
+/// The state type that we'll dynamically cast to and from `Any` for storage within the cache.
 #[derive(Debug)]
-pub struct StoredWidget<Sta, Sty>
-    where
-        Sta: Any + Debug,
-        Sty: Any + Debug,
+pub struct UniqueWidgetState<State, Style> where
+    State: Any + Debug,
+    Style: Any + Debug,
 {
-    pub state: Sta,
-    pub style: Sty,
+    pub state: State,
+    pub style: Style,
 }
 
-/// A container for storing a Widget's state inside the Cache.
+/// A container for caching a Widget's state inside a Graph Node.
 #[derive(Debug)]
 pub struct Container {
     /// Dynamically stored widget state.
@@ -48,10 +47,6 @@ pub struct Container {
     pub depth: Depth,
     /// The drag state of the Widget.
     pub drag_state: widget::drag::State,
-    /// The element used for drawing the widget.
-    pub element: Element,
-    /// Whether or not the `Widget` has had `.set` called since the last cycle.
-    pub has_set: bool,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
@@ -62,6 +57,14 @@ pub struct Container {
     /// Whether or not the `Element` for the widget has changed since the last time an `Element`
     /// was requested from the graph.
     pub element_has_changed: bool,
+    /// The latest `Element` that has been used for drawing the `Widget`.
+    pub maybe_element: Option<Element>,
+    /// Whether or not the `Widget`'s cache has been updated since the last update cycle.
+    /// We need to keep track of this as we only want to draw the widget if it has been set.
+    pub is_updated: bool,
+    /// Whether or not the `Widget`'s cache has was updated during the last update cycle.
+    /// We need to know this so we can check whether or not a widget has been removed.
+    pub was_previously_updated: bool,
 }
 
 /// A node within the UI Graph.
@@ -119,45 +122,51 @@ pub struct Graph {
 }
 
 
+/// A common argument when expecting that there is a `NodeIndex`.
+const NO_MATCHING_NODE_INDEX: &'static str = "No matching NodeIndex";
+/// A common argument when expecting that there is a `WidgetId`.
+const NO_MATCHING_WIDGET_ID: &'static str = "No matching WidgetId";
+
+
 impl Container {
 
-    /// Take the widget state from the container and cast it to type W.
-    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>>
-        where
-            W: Widget,
-            W::State: Any + 'static,
-            W::Style: Any + 'static,
+    /// A method for taking only the unique state from the container.
+    pub fn take_unique_widget_state<W>(&mut self)
+        -> Option<Box<UniqueWidgetState<W::State, W::Style>>> where
+        W: Widget,
+        W::State: Any + 'static,
+        W::Style: Any + 'static,
     {
+        self.maybe_state.take().map(|any_state| {
+            any_state.downcast().ok()
+                .expect("Failed to downcast from Box<Any> to required UniqueWidgetState")
+        })
+    }
 
-        let Container {
-            ref mut maybe_state,
-            dim,
-            xy,
-            depth,
-            drag_state,
-            kid_area,
-            maybe_floating,
-            maybe_scrolling,
-            ..
-        } = *self;
-
-        maybe_state.take().map(|any_state| {
-            let store: Box<StoredWidget<W::State, W::Style>> = any_state.downcast()
-                .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
-            let store: StoredWidget<W::State, W::Style> = *store;
-            let StoredWidget { state, style } = store;
-            widget::Cached {
+    /// Take the widget state from the container and cast it to type W.
+    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>> where
+        W: Widget,
+        W::State: Any + 'static,
+        W::Style: Any + 'static,
+    {
+        if self.maybe_state.is_some() {
+            let boxed_unique_state = self.take_unique_widget_state::<W>().unwrap();
+            let unique_state: UniqueWidgetState<W::State, W::Style> = *boxed_unique_state;
+            let UniqueWidgetState { state, style } = unique_state;
+            Some(widget::Cached {
                 state: state,
                 style: style,
-                dim: dim,
-                xy: xy,
-                depth: depth,
-                drag_state: drag_state,
-                kid_area: kid_area,
-                maybe_floating: maybe_floating,
-                maybe_scrolling: maybe_scrolling,
-            }
-        })
+                dim: self.dim,
+                xy: self.xy,
+                depth: self.depth,
+                drag_state: self.drag_state,
+                kid_area: self.kid_area,
+                maybe_floating: self.maybe_floating,
+                maybe_scrolling: self.maybe_scrolling,
+            })
+        } else {
+            None
+        }
     }
 
 }
@@ -217,11 +226,6 @@ impl Graph {
         })
     }
 
-    /// Returns whether or not the graph contains a widget with the given ID.
-    pub fn contains<I: GraphIndex>(&self, idx: I) -> bool {
-        idx.to_node_index(&self.index_map).is_some()
-    }
-
 
     /// If the given Point is currently on a Widget, return an index to that widget.
     pub fn pick_widget<I: GraphIndex>(&self, xy: Point) -> Option<I> {
@@ -250,7 +254,7 @@ impl Graph {
             })
             .map(|&visitable| match visitable {
                 Visitable::Widget(idx) | Visitable::Scrollbar(idx) =>
-                    I::from_idx(idx, index_map).expect("No matching index"),
+                    I::from_idx(idx, index_map).expect(NO_MATCHING_NODE_INDEX),
             })
     }
 
@@ -273,7 +277,7 @@ impl Graph {
                 }
                 false
             })
-            .map(|idx| I::from_idx(idx, index_map).expect("No matching index"))
+            .map(|idx| I::from_idx(idx, index_map).expect(NO_MATCHING_NODE_INDEX))
     }
 
 
@@ -352,7 +356,7 @@ impl Graph {
     {
         let Graph { ref mut graph, ref mut index_map, root, .. } = *self;
 
-        let node_idx = idx.to_node_index(index_map).expect("No NodeIndex for given GraphIndex");
+        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
         // If no parent id was given, we will set the root as the parent.
         let parent_node_idx = match maybe_parent_idx {
             Some(parent_idx) => match parent_idx.to_node_index(index_map) {
@@ -363,7 +367,7 @@ impl Graph {
                 None => {
                     // We *know* that this must be a WidgetId as `.to_node_indx` returned None.
                     let parent_widget_id = parent_idx.to_widget_id(index_map)
-                        .expect("No matching WidgetId for parent_idx");
+                        .expect(NO_MATCHING_WIDGET_ID);
                     // Add a placeholder node to act as a parent until the actual parent is placed.
                     let parent_node_idx = graph.add_node(Node::Placeholder);
                     index_map.insert(parent_widget_id, parent_node_idx);
@@ -383,8 +387,8 @@ impl Graph {
         A: GraphIndex,
         B: GraphIndex,
     {
-        let a_idx = a.to_node_index(&self.index_map).expect("No NodeIndex for given GraphIndex");
-        let b_idx = b.to_node_index(&self.index_map).expect("No NodeIndex for given GraphIndex");
+        let a_idx = a.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
+        let b_idx = b.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
 
         set_edge(&mut self.graph, a_idx, b_idx, Edge::RelativePosition);
     }
@@ -394,7 +398,7 @@ impl Graph {
     /// index.
     fn remove_incoming_relative_position_edge<I: GraphIndex>(&mut self, idx: I) {
         let Graph { ref mut graph, ref index_map, .. } = *self;
-        let node_idx = idx.to_node_index(index_map).expect("No NodeIndex for given GraphIndex");
+        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
         while let Some((in_edge_idx, _)) = incoming_edges.next_neighbor(graph) {
             if let Edge::RelativePosition = graph[in_edge_idx] {
@@ -486,11 +490,11 @@ impl Graph {
     /// index is given). Return the NodeIndex for the Widget's position within the Graph.
     pub fn add_widget<I: GraphIndex>(&mut self,
                                      container: Container,
-                                     maybe_id: Option<widget::Id>,
+                                     maybe_widget_id: Option<widget::Id>,
                                      maybe_parent_idx: Option<I>) -> NodeIndex
     {
         let node_idx = self.graph.add_node(Node::Widget(container));
-        if let Some(id) = maybe_id {
+        if let Some(id) = maybe_widget_id {
             self.index_map.insert(id, node_idx);
         }
         self.set_parent_for_widget(node_idx, maybe_parent_idx);
@@ -498,127 +502,129 @@ impl Graph {
     }
 
 
-    /// Update the state of the widget with the given widget::Index.
-    /// If there is no widget for the given widget::Index, add it to the graph.
-    pub fn update_widget<I, P, W>(&mut self,
-                                  idx: I,
-                                  maybe_parent_idx: Option<P>,
-                                  kind: &'static str,
-                                  maybe_positioned_relatively_to: Option<widget::Index>,
-                                  cached: widget::Cached<W>,
-                                  maybe_new_element: Option<Element>)
-        where
-            I: GraphIndex,
-            P: GraphIndex,
-            W: Widget,
-            W::State: 'static,
-            W::Style: 'static,
-    {
+    /// Cache some `PreUpdateCache` widget data into the graph.
+    ///
+    /// This is called (via the `ui` module) from within the `widget::set_widget` function prior to
+    /// the `Widget::update` method being called.
+    ///
+    /// This is done so that if this Widget were to internally `set` some other `Widget`s within
+    /// its own `update` method, this `Widget`s positioning and dimension data already exists
+    /// within the `Graph` for reference.
+    pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
+        let widget::PreUpdateCache {
+            kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, xy, dim, depth, kid_area,
+            drag_state, maybe_floating, maybe_scrolling,
+        } = widget;
 
-        // Destructure the members from the Cached.
-        let widget::Cached {
-            state,
-            style,
-            xy,
-            dim,
-            depth,
-            drag_state,
-            kid_area,
-            maybe_floating,
-            maybe_scrolling,
-        } = cached;
-
-        let stored: StoredWidget<W::State, W::Style> =
-            StoredWidget { state: state, style: style };
-
-        // Construct a new container. This is used if:
-        // - There is not yet any node matching the given ID or
-        // - The node at the given ID is a placeholder.
-        let new_container = |stored: StoredWidget<W::State, W::Style>,
-                             maybe_new_element: Option<Element>| {
-            Container {
-                maybe_state: Some(Box::new(stored)),
-                kind: kind,
-                xy: xy,
-                dim: dim,
-                depth: depth,
-                drag_state: drag_state,
-                element: maybe_new_element.unwrap_or_else(|| ::elmesque::element::empty()),
-                has_set: true,
-                kid_area: kid_area,
-                maybe_floating: maybe_floating,
-                maybe_scrolling: maybe_scrolling,
-                element_has_changed: true,
-            }
+        // Construct a new `Container` to place in the `Graph`.
+        let new_container = || Container {
+            maybe_state: None,
+            kind: kind,
+            xy: xy,
+            dim: dim,
+            depth: depth,
+            drag_state: drag_state,
+            kid_area: kid_area,
+            maybe_floating: maybe_floating,
+            maybe_scrolling: maybe_scrolling,
+            maybe_element: None,
+            element_has_changed: false,
+            is_updated: true,
+            was_previously_updated: false,
         };
 
-        // If we already have a Widget for the given ID, we need to update it.
-        if self.contains(idx) {
-            self.set_parent_for_widget(idx, maybe_parent_idx);
+        // If we already have a `Node` in the graph for the given `idx`, we need to update it.
+        if let Some(node_idx) = idx.to_node_index(&self.index_map) {
 
-            // We can unwrap here because we know that there is a matching index.
-            let node_idx = idx.to_node_index(&self.index_map)
-                .expect("No matching NodeIndex");
+            // Ensure that we have an `Edge::Child` in the graph representing the parent.
+            self.set_parent_for_widget(idx, maybe_parent_idx);
 
             match &mut self.graph[node_idx] {
 
-                // If the node is currently a placeholder, construct the widget variant.
-                node @ &mut Node::Placeholder => {
-                    let container = new_container(stored, maybe_new_element);
-                    *node = Node::Widget(container);
-                },
+                // If the node is currently a `Placeholder`, construct a new container and use this
+                // to set it as the `Widget` variant.
+                node @ &mut Node::Placeholder => *node = Node::Widget(new_container()),
 
-                // Otherwise, update the container that already exists.
+                // Otherwise, update the data in the container that already exists.
                 &mut Node::Widget(ref mut container) => {
+
                     // If the container already exists with the state of some other kind of
                     // widget, we can assume there's been a mistake with the given Id.
+                    // TODO: It might be overkill to panic here.
                     if container.kind != kind && container.kind != "EMPTY" {
-                        panic!("A widget of a different kind already exists at the given UiId \
+                        panic!("A widget of a different kind already exists at the given idx \
                                 ({:?}). You tried to insert a {:?}, however the existing \
-                                widget is a {:?}. Check your widgets' `UiId`s for errors.",
+                                widget is a {:?}. Check your `WidgetId`s for errors.",
                                 idx, &kind, container.kind);
                     }
 
-                    container.maybe_state = Some(Box::new(stored));
                     container.kind = kind;
                     container.xy = xy;
                     container.dim = dim;
                     container.depth = depth;
                     container.drag_state = drag_state;
-                    container.has_set = true;
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
                     container.maybe_scrolling = maybe_scrolling;
-                    if let Some(new_element) = maybe_new_element {
-                        container.element = new_element;
-                        container.element_has_changed = true;
-                    }
+                    container.is_updated = true;
                 },
 
-                // The node that we're updating should only be either a Placeholder or a Widget.
+                // The node that we're updating should only be either a `Placeholder` or a `Widget`.
                 _ => unreachable!(),
             }
 
         // Otherwise if there is no Widget for the given index we need to add one.
         } else {
+
             // If there is no widget for the given index we can assume that the index is a
             // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
             // Graph.
-            let id = idx.to_widget_id(&self.index_map)
-                .expect("Expected a `WidgetId` but the given idx was not one, nor did it match any \
-                        known `WidgetId`s within the `Graph`'s `IndexMap`.");
-            let container = new_container(stored, maybe_new_element);
-            self.add_widget(container, Some(id), maybe_parent_idx);
+            let id = idx.to_widget_id(&self.index_map).expect(NO_MATCHING_WIDGET_ID);
+            self.add_widget(new_container(), Some(id), maybe_parent_idx);
         }
 
-        // Now that we've updated the widget's cached data, we need to check if we should add a
+        // Now that we've updated the widget's cached data, we need to check if we should add an
         // `Edge::RelativePosition`.
-        if let Some(relative_idx) = maybe_positioned_relatively_to {
+        if let Some(relative_idx) = maybe_positioned_relatively_idx {
             self.set_relative_position_edge(relative_idx, idx);
+
+        // Otherwise if the widget is not positioned relatively to any other widget, we should
+        // ensure that there are no incoming `RelativePosition` edges.
         } else {
-            // Otherwise if the widget is not positioned relatively to any other widget, we should
-            // ensure that there are no incoming `RelativePosition` edges.
             self.remove_incoming_relative_position_edge(idx);
+        }
+
+    }
+
+
+    /// Cache some `PostUpdateCache` widget data into the graph.
+    ///
+    /// This is called (via the `ui` module) from within the `widget::set_widget` function after
+    /// the `Widget::update` method is called and some new state is returned.
+    pub fn post_update_cache<W>(&mut self, widget: widget::PostUpdateCache<W>) where
+        W: Widget,
+        W::State: 'static,
+        W::Style: 'static,
+    {
+        let widget::PostUpdateCache { idx, state, style, maybe_element, .. } = widget;
+
+        // We know that their must be a NodeIndex for this idx, as `Graph::pre_update_cache` will
+        // always be called prior to this method being called.
+        if let Some(ref mut container) = self.get_widget_mut(idx) {
+
+            // If we've been given some new `Element`
+            if maybe_element.is_some() {
+                container.maybe_element = maybe_element;
+                container.element_has_changed = true;
+            }
+
+            // Construct the `UniqueWidgetState` ready to store as an `Any` within the container.
+            let unique_state: UniqueWidgetState<W::State, W::Style> = UniqueWidgetState {
+                state: state,
+                style: style,
+            };
+
+            container.maybe_state = Some(Box::new(unique_state));
         }
     }
 
@@ -663,24 +669,33 @@ impl Graph {
 
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                        if container.has_set {
+                        container.was_previously_updated = container.is_updated;
+                        if container.is_updated {
 
-                            container.has_set = false;
-                            container.element_has_changed = false;
+                            // Push back our `Element` to one of the stacks (if we have one).
+                            if let Some(ref element) = container.maybe_element {
 
-                            if let Some(scroll_group) = scroll_stack.last_mut() {
                                 // If there is some current scroll group, we'll push to that.
-                                scroll_group.push(container.element.clone());
-                            } else {
+                                if let Some(scroll_group) = scroll_stack.last_mut() {
+                                    scroll_group.push(element.clone());
+
                                 // Otherwise, we'll push straight to our main elements Vec.
-                                elements.push(container.element.clone());
+                                } else {
+                                    elements.push(element.clone());
+                                }
                             }
+
+                            // Reset the flags for checking whether or not our `Element` has changed or
+                            // if the `Widget` has been `set` between calls to `draw`.
+                            container.element_has_changed = false;
+                            container.is_updated = false;
 
                             // If the current widget is some scrollable widget, we need to add a
                             // new group to the top of our scroll stack.
                             if container.maybe_scrolling.is_some() {
                                 scroll_stack.push(Vec::new());
                             }
+
                         }
                     }
                 },
@@ -714,6 +729,21 @@ impl Graph {
     }
 
 
+    /// Whether or not any of the Widget `Element`s have changed since the previous call to
+    /// `Graph::element`.
+    pub fn have_any_elements_changed(&self) -> bool {
+        for node in self.graph.raw_nodes().iter() {
+            if let Node::Widget(ref container) = node.weight {
+                if container.element_has_changed
+                || (!container.is_updated && container.was_previously_updated) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+
     /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
     /// `Element`s in the graph have changed.
     pub fn element_if_changed<M, K>(&mut self,
@@ -723,18 +753,8 @@ impl Graph {
             M: GraphIndex,
             K: GraphIndex,
     {
-        // Check whether or not any of the widget's `Element`s have changed.
-        let mut has_changed = false;
-        for node in self.graph.raw_nodes().iter() {
-            if let Node::Widget(ref container) = node.weight {
-                if container.element_has_changed {
-                    has_changed = true;
-                    break;
-                }
-            }
-        }
-
-        match has_changed {
+        // Only return a new element if one or more of the `Widget` `Element`s have changed.
+        match self.have_any_elements_changed() {
             true => Some(self.element(maybe_captured_mouse, maybe_captured_keyboard)),
             false => None,
         }
@@ -901,7 +921,7 @@ fn visit_by_depth(idx: NodeIndex,
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_set =>
+        &Node::Widget(ref container) if container.is_updated =>
             depth_order.push(Visitable::Widget(idx)),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.

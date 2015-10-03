@@ -532,8 +532,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         use elmesque::form::{collage, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, glyph_cache, .. } = args;
 
         // Construct the frame and inner rectangle Forms.
         let frame = style.frame(theme);

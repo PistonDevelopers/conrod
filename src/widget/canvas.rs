@@ -348,8 +348,7 @@ impl<'a> Widget for Canvas<'a> {
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, glyph_cache, .. } = args;
 
         let frame = style.frame(theme);
         let inner_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);

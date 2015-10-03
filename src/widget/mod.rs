@@ -71,13 +71,23 @@ pub struct UiCell<'a, C: 'a> {
 /// Arguments for the `Widget::draw` method in a struct to simplify the method signature.
 pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
     /// The current state of the Widget.
-    pub state: &'a State<W::State>,
+    pub state: &'a W::State,
     /// The current style of the Widget.
     pub style: &'a W::Style,
     /// The active `Theme` within the `Ui`.
     pub theme: &'a Theme,
     /// The `Ui`'s GlyphCache (for determining text width, etc).
     pub glyph_cache: &'a GlyphCache<C>,
+    /// The rectangular dimensions of the Widget.
+    pub dim: Dimensions,
+    /// The position of the Widget given as [x, y] coordinates.
+    pub xy: Point,
+    /// The rendering depth for the Widget (the default is 0.0).
+    pub depth: Depth,
+    /// The current state of the dragged widget, if it is draggable.
+    pub drag_state: drag::State,
+    /// Floating state for the widget if it is floating.
+    pub maybe_floating: Option<Floating>,
 }
 
 /// Arguments to the `Widget::kid_area` method in a struct to simplify the method signature.
@@ -184,6 +194,51 @@ pub struct Cached<W> where W: Widget {
     pub maybe_floating: Option<Floating>,
     /// The state for scrollable widgets.
     pub maybe_scrolling: Option<scroll::State>,
+}
+
+/// Widget data to be cached prior to the `Widget::update` call in the `set_widget` function.
+/// We do this so that if this Widget were to internally `set` some other `Widget`s, this
+/// `Widget`s positioning and dimension data already exists within the `Graph` for reference.
+pub struct PreUpdateCache {
+    /// The `Widget`'s unique kind.
+    pub kind: &'static str,
+    /// The `Widget`'s unique Index.
+    pub idx: Index,
+    /// The widget's parent's unique index (if it has a parent).
+    pub maybe_parent_idx: Option<Index>,
+    /// If this widget is relatively positioned to another `Widget`, this will be the index of
+    /// the `Widget` to which this `Widget` is relatively positioned
+    pub maybe_positioned_relatively_idx: Option<Index>,
+    /// The new position of the Widget.
+    pub xy: Point,
+    /// The new dimensions of the Widget.
+    pub dim: Dimensions,
+    /// The z-axis depth - affects the render order of sibling widgets.
+    pub depth: Depth,
+    /// The new KidArea for the Widget.
+    pub kid_area: KidArea,
+    /// The current state of the dragged widget, if it is draggable.
+    pub drag_state: drag::State,
+    /// Scrolling data for the Widget if there is some.
+    pub maybe_floating: Option<Floating>,
+    /// Scrolling data for the Widget if there is some.
+    pub maybe_scrolling: Option<scroll::State>,
+}
+
+/// Widget data to be cached after the `Widget::update` call in the `set_widget` function.
+/// We do this so that if this Widget were to internally `set` some other `Widget`s, this
+/// `Widget`s positioning and dimension data already exists within the `Graph` for reference.
+pub struct PostUpdateCache<W> where W: Widget {
+    /// The `Widget`'s unique Index.
+    pub idx: Index,
+    /// The widget's parent's unique index (if it has a parent).
+    pub maybe_parent_idx: Option<Index>,
+    /// The newly produced unique `State` associated with the `Widget`.
+    pub state: W::State,
+    /// The newly produced unique `Style` associated with the `Widget`.
+    pub style: W::Style,
+    /// A new `Element` to use for the `Widget` if a new one has been produced.
+    pub maybe_element: Option<Element>,
 }
 
 
@@ -428,9 +483,16 @@ pub trait Widget: Sized {
 
 
 
-/// Sets a given widget within the given `Ui`.
+/// Updates the given widget and caches it within the given `Ui`'s `widget_graph`.
+///
 /// If it is the first time a widget has been set, it will be cached into the `Ui`'s widget_graph.
 /// For all following occasions, the pre-existing cached state will be compared and updated.
+///
+/// Note that this is a very imperative, mutation oriented segment of code. We try to move as much
+/// imperativeness and mutation out of the users hands and into this function as possible, so that 
+/// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
+/// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
+/// with concerns/improvements to the github repo.
 fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     C: CharacterCache,
     W: Widget,
@@ -556,31 +618,33 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
     };
 
-    // Collect whether or not the widget is "floating" before `widget` gets consumed so that we
-    // can store it in our widget::Cached later in the function.
-    let is_floating = widget.common().is_floating;
+    // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
+    let maybe_floating = if widget.common().is_floating {
 
-    // If it is floating, check to see if we need to update the last time it was clicked.
-    fn new_floating() -> Floating {
-        Floating { time_last_clicked: precise_time_ns() }
-    }
-    let maybe_floating = match (is_floating, maybe_prev_state.as_ref()) {
-        (false, _) => None,
-        (true, Some(prev)) => {
-            let maybe_mouse = ui::get_mouse_state(ui, idx);
-            match (prev.maybe_floating, maybe_mouse) {
-                (Some(prev_floating), Some(mouse)) => {
-                    if mouse.left.position == ::mouse::ButtonPosition::Down {
-                        Some(new_floating())
-                    } else {
-                        Some(prev_floating)
-                    }
-                },
-                (Some(prev_floating), None) => Some(prev_floating),
-                _ => Some(new_floating()),
-            }
-        },
-        (true, None) => Some(new_floating()),
+        fn new_floating() -> Floating {
+            Floating { time_last_clicked: precise_time_ns() }
+        }
+
+        // If it is floating, check to see if we need to update the last time it was clicked.
+        match maybe_prev_state.as_ref() {
+            Some(prev) => {
+                let maybe_mouse = ui::get_mouse_state(ui, idx);
+                match (prev.maybe_floating, maybe_mouse) {
+                    (Some(prev_floating), Some(mouse)) => {
+                        if mouse.left.position == ::mouse::ButtonPosition::Down {
+                            Some(new_floating())
+                        } else {
+                            Some(prev_floating)
+                        }
+                    },
+                    (Some(prev_floating), None) => Some(prev_floating),
+                    _ => Some(new_floating()),
+                }
+            },
+            None => Some(new_floating()),
+        }
+    } else {
+        None
     };
 
     // Retrieve the area upon which kid widgets will be placed.
@@ -595,93 +659,16 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         widget.kid_area(args)
     };
 
-    // Determine whether or not this is the first time set has been called.
-    // We'll use this to determine whether or not we need to call Widget::draw.
-    let is_first_set = maybe_prev_state.is_none();
-
-    // Check whether or not our widget is scrollable before widget is moved into `update`.
-    let scrolling = widget.common().scrolling;
-
-    // Unwrap the previous state. If there is no previous state to unwrap, call the
-    // `init_state` method to use the initial state as the prev_state.
-    let prev_state = maybe_prev_state.unwrap_or_else(|| State {
-        state: widget.init_state(),
-        xy: xy,
-        dim: dim,
-        depth: depth,
-        drag_state: drag_state,
-        maybe_floating: maybe_floating,
-    });
-
-    // Update the widget's state.
-    let maybe_new_state = {
-        // Construct a UserInput for the widget.
-        let args = UpdateArgs {
-            idx: idx,
-            prev_state: &prev_state,
-            xy: xy,
-            dim: dim,
-            style: &new_style,
-            ui: UiCell { ui: ui, idx: idx },
-        };
-        widget.update(args)
-    };
-
-    // Check for whether or not the user input needs to be captured or uncaptured.
-    {
-        let new_state = match maybe_new_state {
-            Some(ref new_state) => new_state,
-            None => &prev_state.state
-        };
-        if W::capture_mouse(&prev_state.state, new_state) {
-            ui::mouse_captured_by(ui, idx);
-        }
-        if W::uncapture_mouse(&prev_state.state, new_state) {
-            ui::mouse_uncaptured_by(ui, idx);
-        }
-        if W::capture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_captured_by(ui, idx);
-        }
-        if W::uncapture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_uncaptured_by(ui, idx);
-        }
-    }
-
-    // Determine whether or not the `State` has changed.
-    let state_has_changed = match maybe_new_state {
-        Some(_) => true,
-        None => xy != prev_state.xy
-            || dim != prev_state.dim
-            || depth != prev_state.depth
-            || is_first_set,
-    };
-
-    // Determine whether or not the widget's `Style` has changed.
-    let style_has_changed = match maybe_prev_style {
-        Some(prev_style) => prev_style != new_style,
-        None => false,
-    };
-
-    // Construct the resulting new State to be passed to the `draw` method.
-    let new_state = State {
-        state: maybe_new_state.unwrap_or_else(move || {
-            let State { state, .. } = prev_state;
-            state
-        }),
-        dim: dim,
-        xy: xy,
-        depth: depth,
-        drag_state: drag_state,
-        maybe_floating: maybe_floating,
-    };
-
-    // Calc the max offset given the length of the visible area along with the total length.
-    fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
-        visible_len - (visible_len / total_len) * visible_len
-    }
-
     // Determine whether or not we have state for scrolling.
     let maybe_new_scrolling = {
+
+        // Collect the scrolling input given via the widgets builder methods.
+        let scrolling = widget.common().scrolling;
+
+        // Calc the max offset given the length of the visible area along with the total length.
+        fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
+            visible_len - (visible_len / total_len) * visible_len
+        }
 
         let maybe_mouse = ui::get_mouse_state(ui, idx);
 
@@ -807,63 +794,129 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         }
     }
 
+    // Determine whether or not this is the first time set has been called.
+    // We'll use this to determine whether or not we need to call Widget::draw.
+    let is_first_set = maybe_prev_state.is_none();
+
+    // Unwrap the previous state. If there is no previous state to unwrap, call the
+    // `init_state` method to use the initial state as the prev_state.
+    let prev_state = maybe_prev_state.unwrap_or_else(|| State {
+        state: widget.init_state(),
+        xy: xy,
+        dim: dim,
+        depth: depth,
+        drag_state: drag_state,
+        maybe_floating: maybe_floating,
+    });
+
+    // Update all positioning and dimension related data prior to calling `Widget::update`.
+    // We do this so that if this widget were to internally `set` some other `Widget`s, this
+    // `Widget`s positioning and dimension data already exists within the `Graph`.
+    {
+        // Some widget to which this widget is relatively positioned (if there is one).
+        let maybe_positioned_relatively_idx = match pos {
+            Position::Relative(_, _, maybe_idx)  |
+            Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
+            _ => None,
+        };
+
+        // This will cache the given data into the `ui`'s `widget_graph`.
+        ui::pre_update_cache(ui, PreUpdateCache {
+            kind: kind,
+            idx: idx,
+            maybe_parent_idx: maybe_parent_idx,
+            maybe_positioned_relatively_idx: maybe_positioned_relatively_idx,
+            dim: dim,
+            xy: xy,
+            depth: depth,
+            drag_state: drag_state,
+            kid_area: kid_area,
+            maybe_floating: maybe_floating,
+            maybe_scrolling: maybe_new_scrolling,
+        });
+    }
+
+    // Update the widget's state.
+    let maybe_new_state = {
+        // Construct a UserInput for the widget.
+        let args = UpdateArgs {
+            idx: idx,
+            prev_state: &prev_state,
+            xy: xy,
+            dim: dim,
+            style: &new_style,
+            ui: UiCell { ui: ui, idx: idx },
+        };
+        widget.update(args)
+    };
+
+    // Check for whether or not the user input needs to be captured or uncaptured. We check after
+    // the widget update so that child widgets get the first oppotunity to capture input.
+    {
+        let new_state = match maybe_new_state {
+            Some(ref new_state) => new_state,
+            None => &prev_state.state
+        };
+        if W::capture_mouse(&prev_state.state, new_state) {
+            ui::mouse_captured_by(ui, idx);
+        }
+        if W::uncapture_mouse(&prev_state.state, new_state) {
+            ui::mouse_uncaptured_by(ui, idx);
+        }
+        if W::capture_keyboard(&prev_state.state, new_state) {
+            ui::keyboard_captured_by(ui, idx);
+        }
+        if W::uncapture_keyboard(&prev_state.state, new_state) {
+            ui::keyboard_uncaptured_by(ui, idx);
+        }
+    }
+
+    // Determine whether or not the `State` has changed.
+    let state_has_changed = maybe_new_state.is_some()
+            || xy != prev_state.xy
+            || dim != prev_state.dim
+            || depth != prev_state.depth
+            || is_first_set;
+
+    // Determine whether or not the widget's `Style` has changed.
+    let style_has_changed = maybe_prev_style.map(|style| style != new_style).unwrap_or(false);
+
     // We need to know if the scroll state has changed to see if we need to redraw.
     let scroll_has_changed = maybe_new_scrolling != maybe_scrolling;
 
-    // Construct the widget's element.
-    let maybe_new_element = if style_has_changed || state_has_changed || scroll_has_changed {
+    // We only need to redraw the `Element` if some visible part of our widget has changed.
+    let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
 
-        // Inform the `Ui` that we'll need a redraw.
-        ui.needs_redraw();
+    // Our resulting `State` after having updated.
+    let resulting_state = maybe_new_state
+        .unwrap_or_else(move || { let State { state, .. } = prev_state; state });
 
-        let args = DrawArgs {
-            state: &new_state,
+    // If we require a redraw, we should draw a new `Element`.
+    let maybe_new_element = if requires_redraw {
+        Some(W::draw(DrawArgs {
+            state: &resulting_state,
             style: &new_style,
             theme: &ui.theme,
             glyph_cache: &ui.glyph_cache,
-        };
-        Some(W::draw(args))
+            dim: dim,
+            xy: xy,
+            depth: depth,
+            drag_state: drag_state,
+            maybe_floating: maybe_floating,
+        }))
     } else {
         None
     };
 
-    // Store the new `State` and `Style` within the cache.
-    let State {
-        state,
-        dim,
-        xy,
-        depth,
-        drag_state,
-        maybe_floating,
-        //maybe_scrolling,
-    } = new_state;
-
-    let cached: Cached<W> = Cached {
-        state: state,
+    // Finally, cache the `Widget`'s newly updated `State` and `Style` within the `ui`'s
+    // `widget_graph`.
+    ui::post_update_cache::<C, W>(ui, PostUpdateCache {
+        idx: idx,
+        maybe_parent_idx: maybe_parent_idx,
+        state: resulting_state,
         style: new_style,
-        dim: dim,
-        xy: xy,
-        depth: depth,
-        drag_state: drag_state,
-        kid_area: kid_area,
-        maybe_floating: maybe_floating,
-        maybe_scrolling: maybe_new_scrolling,
-    };
-
-    // Some widget to which this widget is relatively positioned (if there is one).
-    let maybe_relatively_positioned = match pos {
-        Position::Relative(_, _, maybe_idx)  |
-        Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
-        _ => None,
-    };
-
-    // Update the widget's cached data.
-    // If the widget is relatively positioned, the Graph will ensure there is an Edge describing
-    // the relative positioning.
-    // The Ui will set this Widget's idx as the previous set widget.
-    // If there is Some parent idx, the Ui will set that as the previous parent widget.
-    ui::update_widget(ui, idx, maybe_parent_idx, kind, maybe_relatively_positioned, cached,
-                      maybe_new_element);
+        maybe_element: maybe_new_element,
+    });
 }
 
 

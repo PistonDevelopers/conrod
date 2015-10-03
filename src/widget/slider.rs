@@ -277,8 +277,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, glyph_cache, .. } = args;
         let frame = style.frame(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_color = state.color(style.frame_color(theme));

@@ -307,12 +307,8 @@ impl<C> Ui<C> {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_x, other_w) = match h_align.1 {
                                     Some(other_idx) => {
-                                        let (x, elem) = {
-                                            let widget = &self.widget_graph[other_idx];
-                                            (widget.xy[0], &widget.element)
-                                        };
-                                        let w = elem.get_width() as f64;
-                                        (x, w)
+                                        let widget = &self.widget_graph[other_idx];
+                                        (widget.xy[0], widget.dim[0])
                                     },
                                     None => (rel_xy[0], rel_w),
                                 };
@@ -330,12 +326,8 @@ impl<C> Ui<C> {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_y, other_h) = match h_align.1 {
                                     Some(other_idx) => {
-                                        let (y, elem) = {
-                                            let widget = &self.widget_graph[other_idx];
-                                            (widget.xy[1], &widget.element)
-                                        };
-                                        let h = elem.get_height() as f64;
-                                        (y, h)
+                                        let widget = &self.widget_graph[other_idx];
+                                        (widget.xy[1], widget.dim[1])
                                     },
                                     None => (rel_xy[1], rel_h),
                                 };
@@ -388,8 +380,8 @@ impl<C> Ui<C> {
 
 
     /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
-    /// count to a `SAFE_REDRAW_COUNT`. See the docs for SAFE_REDRAW_COUNT or `draw_if_changed` for
-    /// more info on how/why the redraw count is used.
+    /// count to `num_redraw_frames`. See the docs for `set_num_redraw_frames`, SAFE_REDRAW_COUNT
+    /// or `draw_if_changed` for more info on how/why the redraw count is used.
     pub fn needs_redraw(&mut self) {
         self.redraw_count = self.num_redraw_frames;
     }
@@ -489,19 +481,19 @@ impl<C> Ui<C> {
         } = *self;
 
         // Request a new `Element` from the graph if there has been some change.
-        let maybe_new_element = widget_graph
+        widget_graph
             .element_if_changed(maybe_captured_mouse, maybe_captured_keyboard)
-            .map(|element| match maybe_background_color.take() {
-                // If we've been given a background color for the gui, construct a Cleared Element.
-                Some(color) => element.clear(color),
-                None => element
-            });
-
-        // If we have a new `Element` we'll update our stored `Element`.
-        maybe_new_element.map(move |new_element| {
-            *maybe_element = Some(new_element.clone());
-            maybe_element.as_ref().unwrap()
-        })
+            .map(move |element| {
+                let element = match maybe_background_color.take() {
+                    // If we've been given a background color for the gui, construct a Cleared Element.
+                    Some(color) => element.clear(color),
+                    None => element
+                };
+                // If we have a new `Element` we'll update our stored `Element` and reset the
+                // redraw_count to num_redraw_frames.
+                *maybe_element = Some(element.clone());
+                maybe_element.as_ref().unwrap()
+            })
     }
 
 
@@ -565,6 +557,9 @@ impl<C> Ui<C> {
             C: CharacterCache,
             G: Graphics<Texture = C::Texture>,
     {
+        if self.widget_graph.have_any_elements_changed() {
+            self.redraw_count = self.num_redraw_frames;
+        }
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
@@ -721,23 +716,29 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
 }
 
 
-/// Update the given widget at the given widget::Index.
-pub fn update_widget<C, W>(ui: &mut Ui<C>,
-                           idx: widget::Index,
-                           maybe_parent_idx: Option<widget::Index>,
-                           kind: &'static str,
-                           maybe_relatively_positioned: Option<widget::Index>,
-                           cached: widget::Cached<W>,
-                           maybe_new_element: Option<Element>)
-    where
-        W: Widget,
-        W::State: 'static,
-        W::Style: 'static,
+/// Cache some `PreUpdateCache` widget data into the widget graph.
+/// Set the widget that is being cached as the new `prev_widget`.
+/// Set the widget's parent as the new `current_parent`.
+pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
+    C: CharacterCache,
 {
-    ui.widget_graph.update_widget(idx, maybe_parent_idx, kind, maybe_relatively_positioned,
-                                  cached, maybe_new_element);
-    ui.maybe_prev_widget_idx = Some(idx);
-    ui.maybe_current_parent_idx = maybe_parent_idx;
+    ui.maybe_prev_widget_idx = Some(widget.idx);
+    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    ui.widget_graph.pre_update_cache(widget);
+}
+
+/// Cache some `PostUpdateCache` widget data into the widget graph.
+/// Set the widget that is being cached as the new `prev_widget`.
+/// Set the widget's parent as the new `current_parent`.
+pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>) where
+    C: CharacterCache,
+    W: Widget,
+    W::State: 'static,
+    W::Style: 'static,
+{
+    ui.maybe_prev_widget_idx = Some(widget.idx);
+    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    ui.widget_graph.post_update_cache(widget);
 }
 
 

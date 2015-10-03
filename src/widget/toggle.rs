@@ -202,8 +202,7 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
     {
         use elmesque::form::{collage, rect, text};
 
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, .. } = args;
 
         // Construct the frame and pressable forms.
         let frame = style.frame(theme);

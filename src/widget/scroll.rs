@@ -116,8 +116,8 @@ impl Style {
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color.complement())
-        })).unwrap_or(theme.shape_color.complement())
+            style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())
+        })).unwrap_or(theme.shape_color.plain_contrast())
     }
 
 }

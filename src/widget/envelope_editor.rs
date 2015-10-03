@@ -575,8 +575,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         use elmesque::form::{circle, collage, Form, line, rect, solid, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state, style, theme, glyph_cache, .. } = args;
         let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);

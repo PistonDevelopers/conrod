@@ -83,8 +83,7 @@ impl<'a> Widget for Label<'a> {
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { state: State(ref string), dim, xy, .. } = *state;
+        let widget::DrawArgs { dim, xy, state: &State(ref string), style, theme, .. } = args;
         let size = style.font_size(theme);
         let color = style.color(theme);
         let form = text(Text::from_string(string.clone())
