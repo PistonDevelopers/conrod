@@ -252,19 +252,22 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// The area of the widget below the title bar, upon which child widgets will be placed.
-    fn kid_area(state: &widget::State<State>, style: &Style, theme: &Theme) -> widget::KidArea {
-        let widget::State { ref state, xy, dim, .. } = *state;
-        match state.maybe_title_bar {
-            None => widget::KidArea {
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+        let widget::KidAreaArgs { xy, dim, style, theme, .. } = args;
+        if self.show_title_bar {
+            let font_size = style.title_bar_font_size(theme);
+            let (title_bar_h, _) = title_bar_h_y(dim, font_size as f64);
+            widget::KidArea {
+                xy: [xy[0], xy[1] - (title_bar_h / 2.0)],
+                dim: [dim[0], dim[1] - title_bar_h],
+                pad: style.padding(theme),
+            }
+        } else {
+            widget::KidArea {
                 xy: xy,
                 dim: dim,
                 pad: style.padding(theme),
-            },
-            Some(ref title_bar) => widget::KidArea {
-                xy: [xy[0], xy[1] - (title_bar.h / 2.0)],
-                dim: [dim[0], dim[1] - title_bar.h],
-                pad: style.padding(theme),
-            },
+            }
         }
     }
 

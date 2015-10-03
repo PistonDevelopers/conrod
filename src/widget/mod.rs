@@ -80,6 +80,20 @@ pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
     pub glyph_cache: &'a GlyphCache<C>,
 }
 
+/// Arguments to the `Widget::kid_area` method in a struct to simplify the method signature.
+pub struct KidAreaArgs<'a, W, C: 'a> where W: Widget {
+    /// Current position of the Widget.
+    pub xy: Point,
+    /// Current Widget dimensions.
+    pub dim: Dimensions,
+    /// Current Style of the Widget.
+    pub style: &'a W::Style,
+    /// The active `Theme` within the `Ui`.
+    pub theme: &'a Theme,
+    /// The `Ui`'s GlyphCache (for determining text width, etc).
+    pub glyph_cache: &'a GlyphCache<C>,
+}
+
 /// The area upon which a Widget's child widgets will be placed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct KidArea {
@@ -334,10 +348,10 @@ pub trait Widget: Sized {
     }
 
     /// The area on which child widgets will be placed when using the `Place` `Position` methods.
-    fn kid_area(state: &State<Self::State>, _style: &Self::Style, _theme: &Theme) -> KidArea {
+    fn kid_area<C: CharacterCache>(&self, args: KidAreaArgs<Self, C>) -> KidArea {
         KidArea {
-            xy: state.xy,
-            dim: state.dim,
+            xy: args.xy,
+            dim: args.dim,
             pad: Padding::none(),
         }
     }
@@ -423,7 +437,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 {
     let kind = widget.unique_kind();
 
-    // Collect the previous state of the widget if there is some to collect.
+    // Take the previous state of the widget from the cache if there is some to collect.
     let maybe_widget_state: Option<Cached<W>> = {
 
         // If the cache is already initialised for a widget of a different kind, warn the user.
@@ -457,7 +471,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             drag_state,
             maybe_floating,
             maybe_scrolling,
-            //kid_area,
             ..
         } = prev;
 
@@ -551,7 +564,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     fn new_floating() -> Floating {
         Floating { time_last_clicked: precise_time_ns() }
     }
-
     let maybe_floating = match (is_floating, maybe_prev_state.as_ref()) {
         (false, _) => None,
         (true, Some(prev)) => {
@@ -569,6 +581,18 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             }
         },
         (true, None) => Some(new_floating()),
+    };
+
+    // Retrieve the area upon which kid widgets will be placed.
+    let kid_area = {
+        let args = KidAreaArgs {
+            xy: xy,
+            dim: dim,
+            style: &new_style,
+            theme: &ui.theme,
+            glyph_cache: &ui.glyph_cache,
+        };
+        widget.kid_area(args)
     };
 
     // Determine whether or not this is the first time set has been called.
@@ -650,9 +674,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         drag_state: drag_state,
         maybe_floating: maybe_floating,
     };
-
-    // Retrieve the area upon which kid widgets will be placed.
-    let kid_area = W::kid_area(&new_state, &new_style, &ui.theme);
 
     // Calc the max offset given the length of the visible area along with the total length.
     fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {

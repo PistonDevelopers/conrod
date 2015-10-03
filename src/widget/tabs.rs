@@ -1,5 +1,5 @@
 
-use Scalar;
+use ::{GlyphCache, Scalar};
 use color::Color;
 use elmesque::Element;
 use graphics::character::CharacterCache;
@@ -229,18 +229,27 @@ impl<'a> Widget for Tabs<'a> {
     }
     fn style(&self) -> Style { self.style.clone() }
 
-    /// The area on which child widgets will be placed when using the `Place` `Position` methods.
-    fn kid_area(state: &widget::State<State>, style: &Style, theme: &Theme) -> widget::KidArea {
+    /// The area on which child widgets will be placed when using the `Place` Positionable methods.
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+        let widget::KidAreaArgs { xy, dim, style, theme, glyph_cache } = args;
+        let font_size = style.font_size(theme);
         match style.layout(theme) {
-            Layout::Horizontal => widget::KidArea {
-                xy: [state.xy[0], state.xy[1] - state.state.tab_bar_dim[1] / 2.0],
-                dim: [state.dim[0], state.dim[1] - state.state.tab_bar_dim[1]],
-                pad: style.canvas.padding(theme),
+            Layout::Horizontal => {
+                let tab_bar_h = horizontal_tab_bar_h(style.maybe_bar_width, font_size as Scalar);
+                widget::KidArea {
+                    xy: [xy[0], xy[1] - tab_bar_h / 2.0],
+                    dim: [dim[0], dim[1] - tab_bar_h],
+                    pad: style.canvas.padding(theme),
+                }
             },
-            Layout::Vertical => widget::KidArea {
-                xy: [state.xy[0] + state.state.tab_bar_dim[0] / 2.0, state.xy[1]],
-                dim: [state.dim[0] - state.state.tab_bar_dim[0], state.dim[1]],
-                pad: style.canvas.padding(theme),
+            Layout::Vertical => {
+                let max_text_width = max_text_width(self.tabs.iter(), font_size, glyph_cache);
+                let tab_bar_w = vertical_tab_bar_w(style.maybe_bar_width, max_text_width as Scalar);
+                widget::KidArea {
+                    xy: [xy[0] + tab_bar_w / 2.0, xy[1]],
+                    dim: [dim[0] - tab_bar_w, dim[1]],
+                    pad: style.canvas.padding(theme),
+                }
             },
         }
     }
@@ -253,10 +262,7 @@ impl<'a> Widget for Tabs<'a> {
         let widget::State { ref state, .. } = *prev_state;
         let layout = style.layout(ui.theme());
         let font_size = style.font_size(ui.theme());
-        let max_text_width = self.tabs.iter().fold(0.0, |max_w, &(_, string)| {
-            let w = ui.glyph_cache().width(font_size, &string);
-            if w > max_w { w } else { max_w }
-        });
+        let max_text_width = max_text_width(self.tabs.iter(), font_size, ui.glyph_cache());
 
         // Calculate the area of the tab bar.
         let (tab_bar_dim, tab_bar_rel_xy) =
@@ -488,6 +494,18 @@ impl<'a> Widget for Tabs<'a> {
 }
 
 
+/// Calculate the max text width yielded by a string in the tabs slice.
+fn max_text_width<'a, I, C>(tabs: I, font_size: FontSize, glyph_cache: &GlyphCache<C>) -> Scalar
+    where I: Iterator<Item=&'a (widget::Id, &'a str)>,
+          C: CharacterCache,
+{
+    tabs.fold(0.0, |max_w, &(_, string)| {
+        let w = glyph_cache.width(font_size, &string);
+        if w > max_w { w } else { max_w }
+    })
+}
+
+
 /// Calculate the dimensions and position of the Tab Bar relative to the center of the widget.
 fn tab_bar_area(dim: Dimensions,
                 layout: Layout,
@@ -497,16 +515,14 @@ fn tab_bar_area(dim: Dimensions,
 {
     match layout {
         Layout::Horizontal => {
-            let h = maybe_bar_width
-                .unwrap_or_else(|| font_size + TAB_BAR_LABEL_PADDING * 2.0);
+            let h = horizontal_tab_bar_h(maybe_bar_width, font_size);
             let tab_bar_dim = [dim[0], h];
             let y = dim[1] / 2.0 - h / 2.0;
             let tab_bar_rel_xy = [0.0, y];
             (tab_bar_dim, tab_bar_rel_xy)
         },
         Layout::Vertical => {
-            let w = maybe_bar_width
-                .unwrap_or_else(|| max_text_width + TAB_BAR_LABEL_PADDING * 2.0);
+            let w = vertical_tab_bar_w(maybe_bar_width, max_text_width);
             let tab_bar_dim = [w, dim[1]];
             let x = -dim[0] / 2.0 + w / 2.0;
             let tab_bar_rel_xy = [x, 0.0];
@@ -515,6 +531,15 @@ fn tab_bar_area(dim: Dimensions,
     }
 }
 
+/// The height of a horizontally laid out tab bar area.
+fn horizontal_tab_bar_h(maybe_bar_width: Option<Scalar>, font_size: Scalar) -> Scalar {
+    maybe_bar_width.unwrap_or_else(|| font_size + TAB_BAR_LABEL_PADDING * 2.0)
+}
+
+/// The width of a vertically laid out tab bar area.
+fn vertical_tab_bar_w(maybe_bar_width: Option<Scalar>, max_text_width: Scalar) -> Scalar {
+    maybe_bar_width.unwrap_or_else(|| max_text_width + TAB_BAR_LABEL_PADDING * 2.0)
+}
 
 impl Style {
 

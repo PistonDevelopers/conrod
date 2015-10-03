@@ -313,8 +313,8 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
 
     }
 
-    // Number Dialer widget example. number_dialer(value, min, max, precision)
-    NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1u8)
+    // Number Dialer widget example. (value, min, max, precision)
+    NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1)
         .dimensions(260.0, 60.0)
         .right_from(shown_widget, 30.0)
         .color(demo.bg_color.invert())
@@ -324,8 +324,8 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
         .react(|new_height| demo.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
-    // Number Dialer widget example. number_dialer(value, min, max, precision)
-    NumberDialer::new(demo.frame_width, 0.0, 15.0, 2u8)
+    // Number Dialer widget example. (value, min, max, precision)
+    NumberDialer::new(demo.frame_width, 0.0, 15.0, 2)
         .dimensions(260.0, 60.0)
         .down(20.0)
         .color(demo.bg_color.invert().plain_contrast())
@@ -353,6 +353,9 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             );
 
             // Now return the widget we want to set in each element position.
+            // You can return any type that implements `Widget`.
+            // The returned widget will automatically be positioned and sized to the matrix
+            // element's rectangle.
             Toggle::new(demo.bool_matrix[col][row])
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)

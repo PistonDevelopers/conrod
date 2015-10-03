@@ -150,18 +150,19 @@ impl<'a, F, W> Widget for Matrix<F> where
 
         // We only need to worry about element calculations if we actually have rows and columns.
         if rows > 0 && cols > 0 {
-            let cell_pad_w = style.cell_pad_w(ui.theme());
-            let cell_pad_h = style.cell_pad_h(ui.theme());
-            let widget_w = dim[0] / cols as Scalar;
-            let widget_h = dim[1] / rows as Scalar;
-            let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
-            let x_min = -half_w + widget_w / 2.0;
-            let x_max = half_w + widget_w / 2.0;
-            let y_min = -half_h - widget_h / 2.0;
-            let y_max = half_h - widget_h / 2.0;
-
-            let mut widget_num = 0;
+            // Likewise, there must also be some function to give us the widgets.
             if let Some(mut each_widget) = maybe_each_widget {
+                let cell_pad_w = style.cell_pad_w(ui.theme());
+                let cell_pad_h = style.cell_pad_h(ui.theme());
+                let widget_w = dim[0] / cols as Scalar;
+                let widget_h = dim[1] / rows as Scalar;
+                let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
+                let x_min = -half_w + widget_w / 2.0;
+                let x_max = half_w + widget_w / 2.0;
+                let y_min = -half_h - widget_h / 2.0;
+                let y_max = half_h - widget_h / 2.0;
+
+                let mut widget_num = 0;
                 for col in 0..cols {
                     for row in 0..rows {
                         use position::{Positionable, Sizeable};
