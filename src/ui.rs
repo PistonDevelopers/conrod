@@ -489,8 +489,7 @@ impl<C> Ui<C> {
                     Some(color) => element.clear(color),
                     None => element
                 };
-                // If we have a new `Element` we'll update our stored `Element` and reset the
-                // redraw_count to num_redraw_frames.
+                // If we have a new `Element` we'll update our stored `Element`.
                 *maybe_element = Some(element.clone());
                 maybe_element.as_ref().unwrap()
             })

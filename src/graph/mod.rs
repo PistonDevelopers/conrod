@@ -449,32 +449,35 @@ impl Graph {
                     (top_y, bottom_y, left_x, right_x)
                 };
 
-                // Filter the neighbours so only widget kids' xy and dim are produced.
-                let mut kids = graph.neighbors_directed(idx, pg::Outgoing)
-                    .filter_map(|kid_idx| self.bounding_box(true, Some(target_xy), false, kid_idx));
+                // An iterator yielding the bounding_box returned by each of our children.
+                let mut kids_bounds = graph.neighbors_directed(idx, pg::Outgoing)
+                    .filter_map(|kid_idx| graph.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
+                        if let Edge::Child = graph[kid_edge_idx] {
+                            self.bounding_box(true, Some(target_xy), false, kid_idx)
+                        } else {
+                            None
+                        }
+                    }));
 
                 // Work out the initial bounds to use for our max_bounds fold.
                 let init_bounds = if include_self {
                     self_bounds()
                 } else {
-                    match kids.next() {
+                    match kids_bounds.next() {
                         Some(first_kid_bounds) => first_kid_bounds,
                         None => return None,
                     }
                 };
 
-                return Some(kids.fold(init_bounds, |max_so_far, kid_bounds| {
+                // max y, min y, min x, max x.
+                type Bounds = (Scalar, Scalar, Scalar, Scalar);
 
-                    // max y, min y, min x, max x.
-                    type Bounds = (Scalar, Scalar, Scalar, Scalar);
+                // Returns the bounds for the two given sets of bounds.
+                fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
+                    (a.0.max(b.0), a.1.min(b.1), a.2.min(b.2), a.3.max(b.3))
+                }
 
-                    // Returns the bounds for the two given sets of bounds.
-                    fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
-                        (a.0.max(b.0), a.1.min(b.1), a.2.min(b.2), a.3.max(b.3))
-                    }
-
-                    max_bounds(max_so_far, kid_bounds)
-                }));
+                return Some(kids_bounds.fold(init_bounds, max_bounds));
             }
         }
 

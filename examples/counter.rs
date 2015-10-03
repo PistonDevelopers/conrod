@@ -32,7 +32,7 @@ fn main() {
             // Set the background color to use for clearing the screen.
             conrod::Background::new().rgb(0.2, 0.25, 0.4).set(&mut ui);
 
-            // Generate the ID for BUTTON.
+            // Generate the ID for the Button COUNTER.
             widget_ids!(COUNTER);
 
             // Draw the button and increment `count` if pressed.

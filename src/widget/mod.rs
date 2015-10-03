@@ -674,11 +674,16 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         // If we haven't been placed in the graph yet (and bounding_box returns None),
         // we'll just use our current dimensions as the bounding box.
-        let init_bounds = || {
+        let self_bounds = || {
             let half_h = kid_area.dim[1] / 2.0;
             let half_w = kid_area.dim[0] / 2.0;
             (half_h, -half_h, -half_w, half_w)
         };
+
+        // Calculate the scroll bounds for the widget.
+        let bounds = || ui::widget_graph(ui)
+            .bounding_box(false, None, true, idx)
+            .unwrap_or_else(self_bounds);
 
         // If we have neither vertical or horizontal scrolling, return None.
         if !scrolling.horizontal && !scrolling.vertical {
@@ -686,9 +691,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         // Else if we have some previous scrolling, use it in determining the new scrolling.
         } else if let Some(prev_scrollable) = maybe_scrolling {
-            let (top_y, bottom_y, left_x, right_x) = ui::widget_graph(ui)
-                .bounding_box(false, None, true, idx)
-                .unwrap_or_else(init_bounds);
+            let (top_y, bottom_y, left_x, right_x) = bounds();
 
             // The total length of the area occupied by child widgets that is scrolled.
             let total_v_length = top_y - bottom_y;
@@ -741,9 +744,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
         // Otherwise, we'll make a brand new scrolling.
         } else {
-            let (top_y, bottom_y, left_x, right_x) = ui::widget_graph(ui)
-                .bounding_box(false, None, true, idx)
-                .unwrap_or_else(init_bounds);
+            let (top_y, bottom_y, left_x, right_x) = bounds();
 
             // The total length of the area occupied by child widgets that is scrolled.
             let total_v_length = top_y - bottom_y;
