@@ -3,7 +3,7 @@ use ::{CharacterCache, Scalar};
 use clock_ticks::precise_time_ns;
 use elmesque::Element;
 use graph::NodeIndex;
-use position::{Depth, Dimensions, Direction, Padding, Point, Position, Positionable, Sizeable,
+use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
                HorizontalAlign, VerticalAlign};
 use std::any::Any;
 use theme::Theme;
@@ -39,10 +39,8 @@ pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
     pub idx: Index,
     /// The Widget's state that was last returned by the update method.
     pub prev_state: &'a State<W::State>,
-    /// The absolute (centered origin) screen position of the widget.
-    pub xy: Point,
-    /// The dimensions of the Widget.
-    pub dim: Dimensions,
+    /// The rectangle describing the `Widget`'s area.
+    pub rect: Rect,
     /// The Widget's current Style.
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
@@ -78,12 +76,10 @@ pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
     pub theme: &'a Theme,
     /// The `Ui`'s GlyphCache (for determining text width, etc).
     pub glyph_cache: &'a GlyphCache<C>,
-    /// The rectangular dimensions of the Widget.
-    pub dim: Dimensions,
-    /// The position of the Widget given as [x, y] coordinates.
-    pub xy: Point,
-    /// The rendering depth for the Widget (the default is 0.0).
+    /// The widget's z-axis position relative to its sibling widgets.
     pub depth: Depth,
+    /// The rectangle describing the `Widget`'s area.
+    pub rect: Rect,
     /// The current state of the dragged widget, if it is draggable.
     pub drag_state: drag::State,
     /// Floating state for the widget if it is floating.
@@ -92,10 +88,8 @@ pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
 
 /// Arguments to the `Widget::kid_area` method in a struct to simplify the method signature.
 pub struct KidAreaArgs<'a, W, C: 'a> where W: Widget {
-    /// Current position of the Widget.
-    pub xy: Point,
-    /// Current Widget dimensions.
-    pub dim: Dimensions,
+    /// The rectangle describing the `Widget`'s area.
+    pub rect: Rect,
     /// Current Style of the Widget.
     pub style: &'a W::Style,
     /// The active `Theme` within the `Ui`.
@@ -107,10 +101,8 @@ pub struct KidAreaArgs<'a, W, C: 'a> where W: Widget {
 /// The area upon which a Widget's child widgets will be placed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct KidArea {
-    /// The coords of the centre of the rectangle.
-    pub xy: Point,
-    /// The dimensions of the area.
-    pub dim: Dimensions,
+    /// The Rectangle bounds describing the area.
+    pub rect: Rect,
     /// The distance between the edge of the area and where the widgets will be placed.
     pub pad: Padding,
 }
@@ -162,10 +154,8 @@ pub struct CommonBuilder {
 pub struct State<T> {
     /// The state of the Widget.
     pub state: T,
-    /// The rectangular dimensions of the Widget.
-    pub dim: Dimensions,
-    /// The position of the Widget given as [x, y] coordinates.
-    pub xy: Point,
+    /// The rectangle describing the `Widget`'s area.
+    pub rect: Rect,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
     /// The current state of the dragged widget, if it is draggable.
@@ -176,14 +166,12 @@ pub struct State<T> {
 
 /// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
 pub struct Cached<W> where W: Widget {
-    /// State that is unique to the widget.
+    /// State that is unique to the Widget.
     pub state: W::State,
-    /// Unique styling state for the widget.
+    /// Unique styling state for the Widget.
     pub style: W::Style,
-    /// Previous dimensions of the Widget.
-    pub dim: Dimensions,
-    /// Previous position of the Widget.
-    pub xy: Point,
+    /// The rectangle representing the Widget's area.
+    pub rect: Rect,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
     /// The current state of the dragged widget, if it is draggable.
@@ -209,10 +197,8 @@ pub struct PreUpdateCache {
     /// If this widget is relatively positioned to another `Widget`, this will be the index of
     /// the `Widget` to which this `Widget` is relatively positioned
     pub maybe_positioned_relatively_idx: Option<Index>,
-    /// The new position of the Widget.
-    pub xy: Point,
-    /// The new dimensions of the Widget.
-    pub dim: Dimensions,
+    /// The rectangle describing the Widget's area.
+    pub rect: Rect,
     /// The z-axis depth - affects the render order of sibling widgets.
     pub depth: Depth,
     /// The new KidArea for the Widget.
@@ -397,7 +383,7 @@ pub trait Widget: Sized {
     fn drag_area(&self,
                  _dim: Dimensions,
                  _style: &Self::Style,
-                 _theme: &Theme) -> Option<drag::Area>
+                 _theme: &Theme) -> Option<Rect>
     {
         None
     }
@@ -405,14 +391,14 @@ pub trait Widget: Sized {
     /// The area on which child widgets will be placed when using the `Place` `Position` methods.
     fn kid_area<C: CharacterCache>(&self, args: KidAreaArgs<Self, C>) -> KidArea {
         KidArea {
-            xy: args.xy,
-            dim: args.dim,
+            rect: args.rect,
             pad: Padding::none(),
         }
     }
 
 
-    // None of the following methods should require overriding.
+    // None of the following methods should require overriding. Perhaps they should be split off
+    // into a separate trait which is impl'ed for W: Widget to make this clearer?
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
@@ -521,14 +507,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
-    let (maybe_prev_state, maybe_prev_style, maybe_scrolling) = maybe_widget_state.map(|prev|{
+    let (maybe_prev_state, maybe_prev_style, maybe_prev_scrolling) = maybe_widget_state.map(|prev|{
 
         // Destructure the cached state.
         let Cached {
             state,
             style,
-            xy,
-            dim,
+            rect,
             depth,
             drag_state,
             maybe_floating,
@@ -539,8 +524,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         // Use the cached state to construct the prev_state (to be fed to Widget::update).
         let prev_state = State {
             state: state,
-            xy: xy,
-            dim: dim,
+            rect: rect,
             depth: depth,
             drag_state: drag_state,
             maybe_floating: maybe_floating,
@@ -589,15 +573,18 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                             let drag_state = prev_state.drag_state;
 
                             // Drag the xy of the widget and return the new xy.
-                            drag::drag_widget(prev_state.xy, drag_area, drag_state, mouse)
+                            drag::drag_widget(prev_state.rect.xy(), drag_area, drag_state, mouse)
                         },
                         // Otherwise just return the regular xy and drag state.
-                        None => (prev_state.xy, drag::State::Normal),
+                        None => (prev_state.rect.xy(), drag::State::Normal),
                     },
                 }
             },
         }
     };
+
+    // Construct the rectangle describing our Widget's area.
+    let rect = Rect::from_xy_dim(xy, dim);
 
     // Check whether we have stopped / started dragging the widget and in turn whether or not
     // we need to capture the mouse.
@@ -650,8 +637,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = {
         let args = KidAreaArgs {
-            xy: xy,
-            dim: dim,
+            rect: rect,
             style: &new_style,
             theme: &ui.theme,
             glyph_cache: &ui.glyph_cache,
@@ -659,134 +645,26 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         widget.kid_area(args)
     };
 
-    // Determine whether or not we have state for scrolling.
+    // Determine whether or not we have some state for scrolling.
     let maybe_new_scrolling = {
-
-        // Collect the scrolling input given via the widgets builder methods.
         let scrolling = widget.common().scrolling;
-
-        // Calc the max offset given the length of the visible area along with the total length.
-        fn calc_max_offset(visible_len: Scalar, total_len: Scalar) -> Scalar {
-            visible_len - (visible_len / total_len) * visible_len
-        }
-
-        let maybe_mouse = ui::get_mouse_state(ui, idx);
-
-        // If we haven't been placed in the graph yet (and bounding_box returns None),
-        // we'll just use our current dimensions as the bounding box.
-        let self_bounds = || {
-            let half_h = kid_area.dim[1] / 2.0;
-            let half_w = kid_area.dim[0] / 2.0;
-            (half_h, -half_h, -half_w, half_w)
-        };
-
-        // Calculate the scroll bounds for the widget.
-        let bounds = || ui::widget_graph(ui)
-            .bounding_box(false, None, true, idx)
-            .unwrap_or_else(self_bounds);
-
-        // If we have neither vertical or horizontal scrolling, return None.
         if !scrolling.horizontal && !scrolling.vertical {
             None
-
-        // Else if we have some previous scrolling, use it in determining the new scrolling.
-        } else if let Some(prev_scrollable) = maybe_scrolling {
-            let (top_y, bottom_y, left_x, right_x) = bounds();
-
-            // The total length of the area occupied by child widgets that is scrolled.
-            let total_v_length = top_y - bottom_y;
-            let total_h_length = right_x - left_x;
-
-            let scroll_state = scroll::State {
-
-                // Vertical scrollbar state.
-                maybe_vertical: if scrolling.vertical {
-                    Some(scroll::Bar {
-                        interaction: prev_scrollable.maybe_vertical.as_ref()
-                            .map(|bar| bar.interaction)
-                            .unwrap_or(scroll::Interaction::Normal),
-                        offset: prev_scrollable.maybe_vertical.as_ref()
-                            .map(|bar| bar.offset)
-                            .unwrap_or_else(|| {
-                                top_y - (kid_area.xy[1] + kid_area.dim[1] / 2.0)
-                            }),
-                        max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
-                        total_length: total_v_length,
-                    })
-                } else {
-                    None
-                },
-
-                // Horizontal scrollbar state.
-                maybe_horizontal: if scrolling.horizontal {
-                    Some(scroll::Bar {
-                        interaction: prev_scrollable.maybe_horizontal.as_ref()
-                            .map(|bar| bar.interaction)
-                            .unwrap_or(scroll::Interaction::Normal),
-                        offset: prev_scrollable.maybe_horizontal.as_ref()
-                            .map(|bar| bar.offset)
-                            .unwrap_or_else(|| {
-                                (kid_area.xy[0] - kid_area.dim[0] / 2.0) - left_x
-                            }),
-                        max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
-                        total_length: total_h_length,
-                    })
-                } else {
-                    None
-                },
-
-                thickness: scrolling.style.thickness(&ui.theme),
-                color: scrolling.style.color(&ui.theme),
-            };
-
-            Some(scroll::update(&kid_area, &scroll_state, maybe_mouse)
-                .unwrap_or_else(|| scroll_state))
-
-        // Otherwise, we'll make a brand new scrolling.
+        // Otherwise, construct our new Scroll state!
         } else {
-            let (top_y, bottom_y, left_x, right_x) = bounds();
-
-            // The total length of the area occupied by child widgets that is scrolled.
-            let total_v_length = top_y - bottom_y;
-            let total_h_length = right_x - left_x;
-
-            let scroll_state = scroll::State {
-
-                // The initial vertical scrollbar state.
-                maybe_vertical: if scrolling.vertical {
-                    Some(scroll::Bar {
-                        interaction: scroll::Interaction::Normal,
-                        offset: 0.0,
-                        max_offset: calc_max_offset(kid_area.dim[1], total_v_length),
-                        total_length: total_v_length,
-                    })
-                } else {
-                    None
-                },
-
-                // The initial horizontal scrollbar state.
-                maybe_horizontal: if scrolling.horizontal {
-                    Some(scroll::Bar {
-                        interaction: scroll::Interaction::Normal,
-                        offset: 0.0,
-                        max_offset: calc_max_offset(kid_area.dim[0], total_h_length),
-                        total_length: total_h_length,
-                    })
-                } else {
-                    None
-                },
-
-                thickness: scrolling.style.thickness(&ui.theme),
-                color: scrolling.style.color(&ui.theme),
-            };
-
-            Some(scroll::update(&kid_area, &scroll_state, maybe_mouse)
+            let maybe_mouse = ui::get_mouse_state(ui, idx);
+            let visible = kid_area.rect;
+            let kids = ui::widget_graph(ui).bounding_box(false, None, true, idx)
+                .unwrap_or_else(|| kid_area.rect);
+            let maybe_prev = maybe_prev_scrolling.as_ref();
+            let scroll_state = scroll::State::new(scrolling, visible, kids, &ui.theme, maybe_prev);
+            Some(maybe_mouse.map(|mouse| scroll_state.handle_input(mouse))
                 .unwrap_or_else(|| scroll_state))
         }
     };
 
     // Check whether or not our new scrolling state should capture or uncapture the mouse.
-    if let (Some(ref prev), Some(ref new)) = (maybe_scrolling, maybe_new_scrolling) {
+    if let (Some(ref prev), Some(ref new)) = (maybe_prev_scrolling, maybe_new_scrolling) {
         if scroll::capture_mouse(prev, new) {
             ui::mouse_captured_by(ui, idx);
         }
@@ -803,8 +681,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // `init_state` method to use the initial state as the prev_state.
     let prev_state = maybe_prev_state.unwrap_or_else(|| State {
         state: widget.init_state(),
-        xy: xy,
-        dim: dim,
+        rect: rect,
         depth: depth,
         drag_state: drag_state,
         maybe_floating: maybe_floating,
@@ -827,8 +704,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             idx: idx,
             maybe_parent_idx: maybe_parent_idx,
             maybe_positioned_relatively_idx: maybe_positioned_relatively_idx,
-            dim: dim,
-            xy: xy,
+            rect: rect,
             depth: depth,
             drag_state: drag_state,
             kid_area: kid_area,
@@ -843,8 +719,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         let args = UpdateArgs {
             idx: idx,
             prev_state: &prev_state,
-            xy: xy,
-            dim: dim,
+            rect: rect,
             style: &new_style,
             ui: UiCell { ui: ui, idx: idx },
         };
@@ -874,8 +749,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine whether or not the `State` has changed.
     let state_has_changed = maybe_new_state.is_some()
-            || xy != prev_state.xy
-            || dim != prev_state.dim
+            || rect != prev_state.rect
             || depth != prev_state.depth
             || is_first_set;
 
@@ -883,7 +757,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let style_has_changed = maybe_prev_style.map(|style| style != new_style).unwrap_or(false);
 
     // We need to know if the scroll state has changed to see if we need to redraw.
-    let scroll_has_changed = maybe_new_scrolling != maybe_scrolling;
+    let scroll_has_changed = maybe_new_scrolling != maybe_prev_scrolling;
 
     // We only need to redraw the `Element` if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
@@ -899,8 +773,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             style: &new_style,
             theme: &ui.theme,
             glyph_cache: &ui.glyph_cache,
-            dim: dim,
-            xy: xy,
+            rect: rect,
             depth: depth,
             drag_state: drag_state,
             maybe_floating: maybe_floating,
