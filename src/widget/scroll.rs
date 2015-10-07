@@ -170,8 +170,6 @@ impl State {
         // };
         // println!("\tshifted kids_bounds: {:?}", kids_bounds);
 
-
-
         State {
             maybe_vertical: if scrolling.vertical {
                 let maybe_prev = maybe_prev.as_ref()
@@ -195,6 +193,7 @@ impl State {
         }
     }
 
+
     /// Given some mouse input, update the State and return the resulting State.
     pub fn handle_input(self, mouse: Mouse) -> State {
         use self::Elem::{Handle, Track};
@@ -202,7 +201,7 @@ impl State {
         use utils::clamp;
 
         // Whether or not the mouse is currently over the Bar, and if so, which Elem.
-        let is_over_elem = |track: Rect, handle: Rect, mouse_scalar: Scalar| {
+        let is_over_elem = |track: Rect, handle: Rect, mouse_scalar| {
             if handle.is_over(mouse.xy) {
                 Some(Handle(mouse_scalar))
             } else if track.is_over(mouse.xy) {
@@ -215,7 +214,7 @@ impl State {
         // Determine the new current `Interaction` for a Bar.
         // The given mouse_scalar is the position of the mouse to be recorded by the Handle.
         // For vertical handle this is mouse.y, for horizontal this is mouse.x.
-        let new_interaction = |bar: &Bar, is_over_elem: Option<Elem>, mouse_scalar: Scalar| {
+        let new_interaction = |bar: &Bar, is_over_elem: Option<Elem>, mouse_scalar| {
             // If there's no need for a scroll bar, leave the interaction as `Normal`.
             if bar.max_offset == 0.0 {
                 Normal
@@ -258,83 +257,61 @@ impl State {
         }
 
 
-        State {
+        // Handle mouse input for a Bar and return the result.
+        let update_bar = |bar, visible: Range, track, handle, mouse_scalar, mouse_scroll_scalar| {
 
+            // Determine whether or not the mouse is over part of the Scrollbar.
+            let is_over_elem = is_over_elem(track, handle, mouse_scalar);
+
+            // Determine the new current `Interaction`.
+            let new_interaction = new_interaction(&bar, is_over_elem, mouse_scalar);
+
+            // Determine the new offset for the scrollbar.
+            let new_offset = match (bar.interaction, new_interaction) {
+
+                // When the track is clicked and the handle snaps to the cursor.
+                (Highlighted(Track), Clicked(Handle(mouse_scalar))) => {
+                    // Should try snap the handle so that the mouse is in the middle of it.
+                    let direction = visible.direction();
+                    let half_len = handle.len() * direction / 2.0;
+                    let target_offset = (mouse_scalar - visible.start) * direction - half_len;
+                    clamp(target_offset, 0.0, bar.max_offset)
+                },
+
+                // When the handle is dragged.
+                (Clicked(Handle(prev_mouse_scalar)), Clicked(Handle(mouse_scalar))) => {
+                    let scroll_amount = (mouse_scalar - prev_mouse_scalar) * visible.direction();
+                    scroll_offset(bar.offset, bar.max_offset, scroll_amount)
+                },
+
+                // The mouse has been scrolled using a wheel/trackpad/touchpad.
+                (_, _) if mouse.scroll.y != 0.0 =>
+                    scroll_offset(bar.offset, bar.max_offset, mouse_scroll_scalar),
+
+                // Otherwise, we'll assume the offset is unchanged.
+                _ => bar.offset,
+            };
+
+            Bar { interaction: new_interaction, offset: new_offset, ..bar }
+        };
+
+
+        State {
             maybe_vertical: self.maybe_vertical.map(|bar| {
                 let track = vertical_track(self.visible, self.thickness);
                 let handle = vertical_handle(track, bar.offset, bar.max_offset);
-
-                // Determine whether or not the mouse is over part of the Scrollbar.
-                let is_over_elem = is_over_elem(track, handle, mouse.xy[1]);
-
-                // Determine the new current `Interaction`.
-                let new_interaction = new_interaction(&bar, is_over_elem, mouse.xy[1]);
-
-                // Determine the new offset for the scrollbar.
-                let new_offset = match (bar.interaction, new_interaction) {
-
-                    // When the track is clicked and the handle snaps to the cursor.
-                    (Highlighted(Track), Clicked(Handle(mouse_y))) => {
-                        // Should try snap the handle so that the mouse is in the middle of it.
-                        let target_offset = -((mouse_y - track.top()) + handle.h() / 2.0);
-                        clamp(target_offset, 0.0, bar.max_offset)
-                    },
-
-                    // When the handle is dragged.
-                    (Clicked(Handle(prev_mouse_y)), Clicked(Handle(mouse_y))) =>
-                        scroll_offset(bar.offset, bar.max_offset, prev_mouse_y - mouse_y),
-
-                    // The mouse has been scrolled using a wheel/trackpad/touchpad.
-                    (_, _) if mouse.scroll.y != 0.0 =>
-                        scroll_offset(bar.offset, bar.max_offset, mouse.scroll.y),
-
-                    // Otherwise, we'll assume the offset is unchanged.
-                    _ => bar.offset,
-                };
-
-                Bar { interaction: new_interaction, offset: new_offset, ..bar }
+                // Invert the visible y axis so that it points downward for vertical scrolling.
+                update_bar(bar, self.visible.y.invert(), track, handle, mouse.xy[1], mouse.scroll.y)
             }),
-
             maybe_horizontal: self.maybe_horizontal.map(|bar| {
                 let track = horizontal_track(self.visible, self.thickness);
                 let handle = horizontal_handle(track, bar.offset, bar.max_offset);
-
-                // Determine whether or not the mouse is over part of the Scrollbar.
-                let is_over_elem = is_over_elem(track, handle, mouse.xy[0]);
-
-                // Determine the new current `Interaction`.
-                let new_interaction = new_interaction(&bar, is_over_elem, mouse.xy[0]);
-
-                // Determine the new offset for the scrollbar.
-                let new_offset = match (bar.interaction, new_interaction) {
-
-                    // When the track is clicked and the handle snaps to the cursor.
-                    (Highlighted(Track), Clicked(Handle(mouse_x))) => {
-                        // Should try snap the handle so that the mouse is in the middle of it.
-                        let target_offset = (mouse_x - track.left()) - handle.w() / 2.0;
-                        clamp(target_offset, 0.0, bar.max_offset)
-                    },
-
-                    // When the handle is dragged.
-                    (Clicked(Handle(prev_mouse_x)), Clicked(Handle(mouse_x))) =>
-                        scroll_offset(bar.offset, bar.max_offset, mouse_x - prev_mouse_x),
-
-                    // The mouse has been scrolled using a wheel/trackpad/touchpad.
-                    (_, _) if mouse.scroll.x != 0.0 => {
-                        println!("Scroll X: {:?}", -mouse.scroll.x);
-                        scroll_offset(bar.offset, bar.max_offset, -mouse.scroll.x)
-                    },
-
-                    // Otherwise, we'll assume the offset is unchanged.
-                    _ => bar.offset,
-                };
-
-                Bar { interaction: new_interaction, offset: new_offset, ..bar }
+                update_bar(bar, self.visible.x, track, handle, mouse.xy[0], -mouse.scroll.x)
             }),
-
             .. self
         }
     }
+
 
     /// Converts the Bars' current offset to a positional offset along its visible area.
     pub fn pos_offset(&self) -> Dimensions {
@@ -343,58 +320,54 @@ impl State {
         [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
     }
 
-}
+    /// Produce a graphical element for the current scroll State.
+    pub fn element(&self) -> Element {
+        use elmesque::element::{empty, layers};
+        use elmesque::form::{collage, rect};
 
+        // Get the color via the current interaction.
+        let color = self.color;
+        let track_color = color.alpha(0.2);
+        let thickness = self.thickness;
+        let visible = self.visible;
 
-/// Construct a renderable Element from the state for the given widget's kid area.
-pub fn element(container: Rect, state: State) -> Element {
-    use elmesque::element::{empty, layers};
-    use elmesque::form::{collage, rect};
+        // An element for a scroll Bar.
+        let bar_element = |bar: Bar, track: Rect, handle: Rect| -> Element {
+            // We only want to see the scrollbar if it's highlighted or clicked.
+            if let Interaction::Normal = bar.interaction {
+                return empty();
+            }
+            let color = bar.interaction.color(color);
+            let track_form = rect(track.w(), track.h()).filled(track_color)
+                .shift(track.x(), track.y());
+            let handle_form = rect(handle.w(), handle.h()).filled(color)
+                .shift(handle.x(), handle.y());
+            collage(visible.w() as i32, visible.h() as i32, vec![track_form, handle_form])
+        };
 
-    // Get the color via the current interaction.
-    let color = state.color;
-    let track_color = color.alpha(0.2);
-    let thickness = state.thickness;
+        // The element for a vertical scroll Bar.
+        let vertical = |bar: Bar| -> Element {
+            let track = vertical_track(visible, thickness);
+            let handle = vertical_handle(track, bar.offset, bar.max_offset);
+            bar_element(bar, track, handle)
+        };
 
-    // The element for a vertical slider.
-    let vertical = |bar: Bar| -> Element {
-        // We only want to see the scrollbar if it's highlighted or clicked.
-        if let Interaction::Normal = bar.interaction {
-            return empty();
+        // An element for a horizontal scroll Bar.
+        let horizontal = |bar: Bar| -> Element {
+            let track = horizontal_track(visible, thickness);
+            let handle = horizontal_handle(track, bar.offset, bar.max_offset);
+            bar_element(bar, track, handle)
+        };
+
+        // Whether we draw horizontal or vertical or both depends on our state.
+        match (self.maybe_vertical, self.maybe_horizontal) {
+            (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
+            (Some(bar), None) => vertical(bar),
+            (None, Some(bar)) => horizontal(bar),
+            (None, None) => empty(),
         }
-        let color = bar.interaction.color(color);
-        let track = vertical_track(container, thickness);
-        let handle = vertical_handle(track, bar.offset, bar.max_offset);
-        let track_form = rect(track.w(), track.h()).filled(track_color)
-            .shift(track.x(), track.y());
-        let handle_form = rect(handle.w(), handle.h()).filled(color)
-            .shift(handle.x(), handle.y());
-        collage(container.w() as i32, container.h() as i32, vec![track_form, handle_form])
-    };
-
-    // An element for a horizontal slider.
-    let horizontal = |bar: Bar| -> Element {
-        // We only want to see the scrollbar if it's highlighted or clicked.
-        if let Interaction::Normal = bar.interaction {
-            return empty();
-        }
-        let color = bar.interaction.color(color);
-        let track = horizontal_track(container, thickness);
-        let handle = horizontal_handle(track, bar.offset, bar.max_offset);
-        let track_form = rect(track.w(), track.h()).filled(track_color)
-            .shift(track.x(), track.y());
-        let handle_form = rect(handle.w(), handle.h()).filled(color)
-            .shift(handle.x(), handle.y());
-        collage(container.w() as i32, container.h() as i32, vec![track_form, handle_form])
-    };
-
-    // Whether we draw horizontal or vertical or both depends on our state.
-    match (state.maybe_vertical, state.maybe_horizontal) {
-        (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
-        (Some(bar), None) => vertical(bar),
-        (None, Some(bar)) => horizontal(bar),
-        (None, None) => empty(),
     }
+
 }
 
 

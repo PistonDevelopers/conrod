@@ -794,6 +794,11 @@ impl Rect {
         (xy[0], xy[1], dim[0], dim[1])
     }
 
+    /// The length of the longest side of the rectangle.
+    pub fn len(&self) -> Scalar {
+        ::utils::partial_max(self.w(), self.h())
+    }
+
     /// The Rect's lowest y value.
     pub fn bottom(&self) -> Scalar {
         self.y.undirected().start

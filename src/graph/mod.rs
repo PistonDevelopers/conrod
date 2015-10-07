@@ -599,12 +599,9 @@ impl Graph {
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
     /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
     /// widget, which will always be drawn last).
-    pub fn element<M, K>(&mut self,
-                         maybe_captured_mouse: Option<M>,
-                         maybe_captured_keyboard: Option<K>) -> Element
-        where
-            M: GraphIndex,
-            K: GraphIndex,
+    pub fn element(&mut self,
+                   maybe_captured_mouse: Option<widget::Index>,
+                   maybe_captured_keyboard: Option<widget::Index>) -> Element
     {
         // Convert the GraphIndex for the widget capturing the mouse into a NodeIndex.
         let maybe_captured_mouse = maybe_captured_mouse
@@ -672,13 +669,13 @@ impl Graph {
                             // Now that we've come across a scrollbar, we should pop the group of
                             // elements from the top of our scrollstack for cropping.
                             if let Some(scroll_group) = scroll_stack.pop() {
-                                let (x, y, w, h) = container.kid_area.rect.x_y_w_h();
+                                let (x, y, w, h) = scrolling.visible.x_y_w_h();
                                 let element = layers(scroll_group).crop(x, y, w, h);
                                 elements.push(element);
                             }
 
                             // Construct the element for the scrollbar itself.
-                            let element = widget::scroll::element(container.kid_area.rect, scrolling);
+                            let element = scrolling.element();
                             elements.push(element);
                         }
                     }
