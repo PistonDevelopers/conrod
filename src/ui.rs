@@ -165,7 +165,7 @@ impl<C> Ui<C> {
 
     /// Return the dimensions of a widget.
     pub fn widget_size(&self, id: widget::Id) -> Dimensions {
-        self.widget_graph[id].dim
+        self.widget_graph[id].rect.dim()
     }
 
 
@@ -287,7 +287,7 @@ impl<C> Ui<C> {
 
             Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
                 None => [x, y],
-                Some(idx) => vec2_add(self.widget_graph[idx].xy, [x, y]),
+                Some(idx) => vec2_add(self.widget_graph[idx].rect.xy(), [x, y]),
             },
 
             Position::Direction(direction, px, maybe_idx) => {
@@ -297,7 +297,7 @@ impl<C> Ui<C> {
                         use position::Direction;
                         let (rel_xy, rel_w, rel_h) = {
                             let widget = &self.widget_graph[rel_idx];
-                            (widget.xy, widget.dim[0], widget.dim[1])
+                            (widget.rect.xy(), widget.rect.w(), widget.rect.h())
                         };
 
                         match direction {
@@ -308,7 +308,7 @@ impl<C> Ui<C> {
                                 let (other_x, other_w) = match h_align.1 {
                                     Some(other_idx) => {
                                         let widget = &self.widget_graph[other_idx];
-                                        (widget.xy[0], widget.dim[0])
+                                        (widget.rect.x(), widget.rect.w())
                                     },
                                     None => (rel_xy[0], rel_w),
                                 };
@@ -327,7 +327,7 @@ impl<C> Ui<C> {
                                 let (other_y, other_h) = match h_align.1 {
                                     Some(other_idx) => {
                                         let widget = &self.widget_graph[other_idx];
-                                        (widget.xy[1], widget.dim[1])
+                                        (widget.rect.y(), widget.rect.h())
                                     },
                                     None => (rel_xy[1], rel_h),
                                 };
@@ -346,11 +346,12 @@ impl<C> Ui<C> {
             },
 
             Position::Place(place, maybe_parent_idx) => {
-                let window = || ([0.0, 0.0], [self.win_w, self.win_h], Padding::none());
-                let (xy, target_dim, pad) = match maybe_parent_idx.or(self.maybe_current_parent_idx) {
+                let window = || (([0.0, 0.0], [self.win_w, self.win_h]), Padding::none());
+                let maybe_parent = maybe_parent_idx.or(self.maybe_current_parent_idx);
+                let ((target_xy, target_dim), pad) = match maybe_parent {
                     Some(parent_idx) => match self.widget_graph.get_widget(parent_idx) {
                         Some(parent) =>
-                            (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad),
+                            (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
                         // Sometimes the children are placed prior to their parents being set for
                         // the first time. If this is the case, we'll just place them on the window
                         // until we have information about the parents on the next update.
@@ -360,7 +361,7 @@ impl<C> Ui<C> {
                 };
                 let place_xy = place.within(target_dim, dim);
                 let relative_xy = vec2_add(place_xy, pad.offset_from(place));
-                vec2_add(xy, relative_xy)
+                vec2_add(target_xy, relative_xy)
             },
 
         };
