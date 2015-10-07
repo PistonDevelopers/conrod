@@ -65,7 +65,7 @@ pub struct MarginBuilder {
     pub maybe_bottom: Option<Scalar>,
 }
 
-/// Describes the style of a Canvas Floating.
+/// Describes the style of a Canvas.
 #[allow(missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct Style {
@@ -87,7 +87,7 @@ pub struct Style {
     pub margin: MarginBuilder,
 }
 
-/// Describes an interaction with the Floating Canvas.
+/// Describes an interaction with the Canvas.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Interaction {
     Normal,
@@ -453,7 +453,7 @@ impl Style {
         }
     }
 
-    /// Get the color for the Floating's Element.
+    /// Get the color for the Canvas' Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_canvas.as_ref().map(|default| {
             default.style.maybe_color.unwrap_or(theme.background_color)
