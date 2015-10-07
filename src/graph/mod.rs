@@ -1,10 +1,9 @@
 
 
-use {Scalar};
 use elmesque::Element;
 use elmesque::element::layers;
 use petgraph as pg;
-use position::{Depth, Dimensions, Point};
+use position::{Depth, Dimensions, is_over_rect, Point, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
 use std::fmt::Debug;
@@ -39,10 +38,8 @@ pub struct Container {
     pub maybe_state: Option<Box<Any>>,
     /// A unique widget kind identifier.
     pub kind: &'static str,
-    /// The dimensions of the Widget's bounding rectangle.
-    pub dim: Dimensions,
-    /// Centered coords of the widget's position.
-    pub xy: Point,
+    /// The rectangle describing the Widget's area.
+    pub rect: Rect,
     /// The depth at which the widget will be rendered comparatively to its siblings.
     pub depth: Depth,
     /// The drag state of the Widget.
@@ -156,8 +153,7 @@ impl Container {
             Some(widget::Cached {
                 state: state,
                 style: style,
-                dim: self.dim,
-                xy: self.xy,
+                rect: self.rect,
                 depth: self.depth,
                 drag_state: self.drag_state,
                 kid_area: self.kid_area,
@@ -235,7 +231,7 @@ impl Graph {
                 match visitable {
                     Visitable::Widget(idx) => {
                         if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
-                            if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                            if container.rect.is_over(xy) {
                                 return true
                             }
                         }
@@ -243,7 +239,7 @@ impl Graph {
                     Visitable::Scrollbar(idx) => {
                         if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                             if let Some(ref scrolling) = container.maybe_scrolling {
-                                if widget::scroll::is_over(scrolling, &container.kid_area, xy) {
+                                if widget::scroll::is_over(scrolling, container.kid_area.rect, xy) {
                                     return true;
                                 }
                             }
@@ -270,7 +266,7 @@ impl Graph {
             .find(|&idx| {
                 if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                     if container.maybe_scrolling.is_some() {
-                        if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                        if container.rect.is_over(xy) {
                             return true;
                         }
                     }
@@ -323,18 +319,12 @@ impl Graph {
 
                         // Vertical offset.
                         if let Some(ref bar) = scrolling.maybe_vertical {
-                            let offset_frac = bar.offset / bar.max_offset;
-                            let visible_height = container.kid_area.dim[1];
-                            let y_offset = offset_frac * (bar.total_length - visible_height);
-                            offset[1] += y_offset;
+                            offset[1] += bar.pos_offset(container.kid_area.rect.h()).round();
                         }
 
                         // Horizontal offset.
                         if let Some(ref bar) = scrolling.maybe_horizontal {
-                            let offset_frac = bar.offset / bar.max_offset;
-                            let visible_width = container.kid_area.dim[0];
-                            let x_offset = offset_frac * (bar.total_length - visible_width);
-                            offset[0] -= x_offset;
+                            offset[0] += bar.pos_offset(container.kid_area.rect.w()).round();
                         }
                     }
                 }
@@ -420,34 +410,22 @@ impl Graph {
                                        include_self: bool,
                                        target_xy: Option<Point>,
                                        use_kid_area: bool,
-                                       idx: I) -> Option<(Scalar, Scalar, Scalar, Scalar)>
+                                       idx: I) -> Option<Rect>
     {
         let Graph { ref graph, ref index_map, .. } = *self;
 
         if let Some(idx) = idx.to_node_index(index_map) {
             if let &Node::Widget(ref container) = &graph[idx] {
 
-                // If we're to use the kid area, we'll get the dim and xy from that.
-                let (dim, xy) = if use_kid_area {
-                    (container.kid_area.dim, container.kid_area.xy)
+                // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
+                // the regular dim and xy.
+                let rect = if use_kid_area { container.kid_area.rect } else { container.rect };
 
-                // Otherwise we'll use the regular dim and xy.
-                } else {
-                    (container.dim, container.xy)
-                };
-
+                // Determine the our bounds relative to the target_xy position.
+                let (xy, dim) = rect.xy_dim();
                 let target_xy = target_xy.unwrap_or(xy);
-                let self_bounds = || {
-                    let x_diff = xy[0] - target_xy[0];
-                    let y_diff = xy[1] - target_xy[1];
-                    let half_w = dim[0] / 2.0;
-                    let half_h = dim[1] / 2.0;
-                    let top_y = y_diff + half_h;
-                    let bottom_y = y_diff - half_h;
-                    let left_x = x_diff - half_w;
-                    let right_x = x_diff + half_w;
-                    (top_y, bottom_y, left_x, right_x)
-                };
+                let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
+                let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
 
                 // An iterator yielding the bounding_box returned by each of our children.
                 let mut kids_bounds = graph.neighbors_directed(idx, pg::Outgoing)
@@ -461,7 +439,7 @@ impl Graph {
 
                 // Work out the initial bounds to use for our max_bounds fold.
                 let init_bounds = if include_self {
-                    self_bounds()
+                    relative_bounds()
                 } else {
                     match kids_bounds.next() {
                         Some(first_kid_bounds) => first_kid_bounds,
@@ -469,15 +447,8 @@ impl Graph {
                     }
                 };
 
-                // max y, min y, min x, max x.
-                type Bounds = (Scalar, Scalar, Scalar, Scalar);
-
-                // Returns the bounds for the two given sets of bounds.
-                fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
-                    (a.0.max(b.0), a.1.min(b.1), a.2.min(b.2), a.3.max(b.3))
-                }
-
-                return Some(kids_bounds.fold(init_bounds, max_bounds));
+                // Fold the Rect for each kid into the total encompassing bounds.
+                return Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)));
             }
         }
 
@@ -515,7 +486,7 @@ impl Graph {
     /// within the `Graph` for reference.
     pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
         let widget::PreUpdateCache {
-            kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, xy, dim, depth, kid_area,
+            kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
             drag_state, maybe_floating, maybe_scrolling,
         } = widget;
 
@@ -523,8 +494,7 @@ impl Graph {
         let new_container = || Container {
             maybe_state: None,
             kind: kind,
-            xy: xy,
-            dim: dim,
+            rect: rect,
             depth: depth,
             drag_state: drag_state,
             kid_area: kid_area,
@@ -562,8 +532,7 @@ impl Graph {
                     }
 
                     container.kind = kind;
-                    container.xy = xy;
-                    container.dim = dim;
+                    container.rect = rect;
                     container.depth = depth;
                     container.drag_state = drag_state;
                     container.kid_area = kid_area;
@@ -710,15 +679,13 @@ impl Graph {
                             // Now that we've come across a scrollbar, we should pop the group of
                             // elements from the top of our scrollstack for cropping.
                             if let Some(scroll_group) = scroll_stack.pop() {
-                                let xy = container.kid_area.xy;
-                                let dim = container.kid_area.dim;
-                                let element = layers(scroll_group)
-                                    .crop(xy[0], xy[1], dim[0], dim[1]);
+                                let (x, y, w, h) = container.kid_area.rect.x_y_w_h();
+                                let element = layers(scroll_group).crop(x, y, w, h);
                                 elements.push(element);
                             }
 
                             // Construct the element for the scrollbar itself.
-                            let element = widget::scroll::element(&container.kid_area, scrolling);
+                            let element = widget::scroll::element(container.kid_area.rect, scrolling);
                             elements.push(element);
                         }
                     }
