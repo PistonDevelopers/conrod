@@ -111,7 +111,7 @@ impl<'a, F, W> Widget for Matrix<F> where
     {
         use std::borrow::Cow;
 
-        let widget::UpdateArgs { idx, prev_state, dim, style, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 
@@ -154,9 +154,10 @@ impl<'a, F, W> Widget for Matrix<F> where
             if let Some(mut each_widget) = maybe_each_widget {
                 let cell_pad_w = style.cell_pad_w(ui.theme());
                 let cell_pad_h = style.cell_pad_h(ui.theme());
-                let widget_w = dim[0] / cols as Scalar;
-                let widget_h = dim[1] / rows as Scalar;
-                let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
+                let (w, h) = rect.w_h();
+                let widget_w = w / cols as Scalar;
+                let widget_h = h / rows as Scalar;
+                let (half_w, half_h) = (w / 2.0, h / 2.0);
                 let x_min = -half_w + widget_w / 2.0;
                 let x_max = half_w + widget_w / 2.0;
                 let y_min = -half_h - widget_h / 2.0;

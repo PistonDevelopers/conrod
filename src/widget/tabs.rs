@@ -4,7 +4,7 @@ use color::Color;
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
-use position::{Dimensions, Point};
+use position::{Dimensions, Point, Rect};
 use super::canvas::{self, Canvas};
 use theme::Theme;
 use widget::{self, Widget};
@@ -231,23 +231,26 @@ impl<'a> Widget for Tabs<'a> {
 
     /// The area on which child widgets will be placed when using the `Place` Positionable methods.
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
-        let widget::KidAreaArgs { xy, dim, style, theme, glyph_cache } = args;
+        let widget::KidAreaArgs { rect, style, theme, glyph_cache } = args;
         let font_size = style.font_size(theme);
+        let (x, y, w, h) = rect.x_y_w_h();
         match style.layout(theme) {
             Layout::Horizontal => {
                 let tab_bar_h = horizontal_tab_bar_h(style.maybe_bar_width, font_size as Scalar);
+                let xy = [x, y - tab_bar_h / 2.0];
+                let dim = [w, h - tab_bar_h];
                 widget::KidArea {
-                    xy: [xy[0], xy[1] - tab_bar_h / 2.0],
-                    dim: [dim[0], dim[1] - tab_bar_h],
+                    rect: Rect::from_xy_dim(xy, dim),
                     pad: style.canvas.padding(theme),
                 }
             },
             Layout::Vertical => {
                 let max_text_width = max_text_width(self.tabs.iter(), font_size, glyph_cache);
                 let tab_bar_w = vertical_tab_bar_w(style.maybe_bar_width, max_text_width as Scalar);
+                let xy = [x + tab_bar_w / 2.0, y];
+                let dim = [w - tab_bar_w, h];
                 widget::KidArea {
-                    xy: [xy[0] + tab_bar_w / 2.0, xy[1]],
-                    dim: [dim[0] - tab_bar_w, dim[1]],
+                    rect: Rect::from_xy_dim(xy, dim),
                     pad: style.canvas.padding(theme),
                 }
             },
@@ -258,8 +261,9 @@ impl<'a> Widget for Tabs<'a> {
     fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
+        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui } = args;
         let widget::State { ref state, .. } = *prev_state;
+        let (xy, dim) = rect.xy_dim();
         let layout = style.layout(ui.theme());
         let font_size = style.font_size(ui.theme());
         let max_text_width = max_text_width(self.tabs.iter(), font_size, ui.glyph_cache());
@@ -282,9 +286,9 @@ impl<'a> Widget for Tabs<'a> {
 
         // Determine whether the mouse is currently over part of the widget..
         let is_over_elem = || if let Some(mouse) = maybe_mouse {
-            use utils::is_over_rect;
-            if is_over_rect([0.0, 0.0], mouse.xy, dim) {
-                if is_over_rect(tab_bar_rel_xy, mouse.xy, tab_bar_dim) {
+            use position::is_over_rect;
+            if is_over_rect([0.0, 0.0], dim, mouse.xy) {
+                if is_over_rect(tab_bar_rel_xy, tab_bar_dim, mouse.xy) {
                     match layout {
                         Layout::Horizontal => {
                             let start_tab_x = -dim[0] / 2.0 + tab_dim[0] / 2.0;
@@ -394,10 +398,10 @@ impl<'a> Widget for Tabs<'a> {
     fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { dim, xy, state, style, theme, .. } = args;
+        let widget::DrawArgs { rect, state, style, theme, .. } = args;
         let State {
             ref tabs,
             ref interaction,
@@ -407,12 +411,13 @@ impl<'a> Widget for Tabs<'a> {
             ..
         } = *state;
 
+        let (xy, dim) = rect.xy_dim();
         let frame = style.canvas.frame(theme);
         let inner_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let color = style.canvas.color(theme);
         let frame_color = style.canvas.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let rect_form = rect(inner_dim[0], inner_dim[1]).filled(color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+        let rect_form = form::rect(inner_dim[0], inner_dim[1]).filled(color);
         let font_size = style.font_size(theme);
         let label_color = style.label_color(theme);
         let layout = style.layout(theme);
@@ -433,7 +438,7 @@ impl<'a> Widget for Tabs<'a> {
             let width_multi = 1.0 / num_tabs as f64;
 
             // Function for producing the rectangular tab forms.
-            let rect_form = |dim: Dimensions, color: Color| rect(dim[0], dim[1]).filled(color);
+            let rect_form = |dim: Dimensions, color: Color| form::rect(dim[0], dim[1]).filled(color);
 
             // Produces the label form for a tab.
             let label_form = |label: &str| text(Text::from_string(label.to_owned())

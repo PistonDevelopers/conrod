@@ -11,8 +11,9 @@ use ::{
     Frameable,
     GlyphCache,
     Labelable,
-    Positionable,
     NodeIndex,
+    Positionable,
+    Rect,
     Scalar,
     Sizeable,
     Theme,
@@ -162,7 +163,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
     {
         use std::borrow::Cow;
 
-        let widget::UpdateArgs { idx, prev_state, xy, dim, style, mut ui } = args;
+        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui } = args;
         let widget::State { ref state, .. } = *prev_state;
         let (global_mouse, window_dim) = {
             let input = ui.input();
@@ -202,8 +203,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let mut was_clicked = false;
                 {
                     let mut button = Button::new()
-                        .point(xy)
-                        .dim(dim)
+                        .point(rect.xy())
+                        .dim(rect.dim())
                         .label(label)
                         .parent(Some(idx))
                         .react(|| was_clicked = true);
@@ -219,6 +220,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             // Otherwise if open, we want to set all the buttons that would be currently visible.
             MenuState::Open => {
 
+                let (xy, dim) = rect.xy_dim();
                 let max_visible_height = {
                     let bottom_win_y = (-window_dim[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
@@ -234,6 +236,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let canvas_dim = [dim[0], max_visible_height];
                 let canvas_shift_y = ::position::align_top_of(dim[1], canvas_dim[1]);
                 let canvas_xy = [xy[0], xy[1] + canvas_shift_y];
+                let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
                 Canvas::new()
                     .color(::color::black().alpha(0.0))
                     .frame_color(::color::black().alpha(0.0))
@@ -271,7 +274,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     MenuState::Closed
                 // Otherwise if the mouse was released somewhere else we should close the menu.
                 } else if global_mouse.left.was_just_pressed
-                && !::utils::is_over_rect(canvas_xy, global_mouse.xy, canvas_dim) {
+                && !canvas_rect.is_over(global_mouse.xy) {
                     MenuState::Closed
                 } else {
                     MenuState::Open

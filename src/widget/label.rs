@@ -83,13 +83,14 @@ impl<'a> Widget for Label<'a> {
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
-        let widget::DrawArgs { dim, xy, state: &State(ref string), style, theme, .. } = args;
+        let widget::DrawArgs { rect, state: &State(ref string), style, theme, .. } = args;
         let size = style.font_size(theme);
         let color = style.color(theme);
+        let (x, y, w, h) = rect.x_y_w_h();
         let form = text(Text::from_string(string.clone())
                             .color(color)
-                            .height(size as f64)).shift(xy[0].floor(), xy[1].floor());
-        collage(dim[0] as i32, dim[1] as i32, vec![form])
+                            .height(size as f64)).shift(x.floor(), y.floor());
+        collage(w as i32, h as i32, vec![form])
     }
     
 }

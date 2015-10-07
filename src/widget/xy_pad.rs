@@ -185,17 +185,16 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<X, Y>>
         where C: CharacterCache,
     {
-        use utils::is_over_rect;
-
-        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
+        let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
-                let is_over_pad = is_over_rect([0.0, 0.0], mouse.xy, pad_dim);
+                let is_over_pad = position::is_over_rect([0.0, 0.0], pad_dim, mouse.xy);
                 get_new_interaction(is_over_pad, state.interaction, mouse)
             },
         };
@@ -249,10 +248,11 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, line, rect, solid, text};
+        use elmesque::form::{self, collage, line, solid, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { dim, xy, state, style, theme, glyph_cache, .. } = args;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
+        let (xy, dim) = rect.xy_dim();
         let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
@@ -260,8 +260,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         // Construct the frame and inner rectangle Forms.
         let color = state.color(style.color(theme));
         let frame_color = style.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+        let pressable_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
 
         // Construct the label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {

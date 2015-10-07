@@ -153,17 +153,16 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
 
     /// Update the state of the Toggle.
     fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State> {
-        use utils::is_over_rect;
 
-        let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
-                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
+                let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, state.interaction, mouse)
             },
         };
@@ -200,19 +199,20 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
     fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
 
-        let widget::DrawArgs { dim, xy, state, style, theme, .. } = args;
+        let widget::DrawArgs { rect, state, style, theme, .. } = args;
 
         // Construct the frame and pressable forms.
+        let (x, y, w, h) = rect.x_y_w_h();
         let frame = style.frame(theme);
         let frame_color = style.frame_color(theme);
-        let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let (inner_w, inner_h) = (w - frame * 2.0, h - frame * 2.0);
+        let frame_form = form::rect(w, h).filled(frame_color);
         let color = style.color(theme);
         let color = state.color(if state.value { color }
                                     else { color.with_luminance(0.1) });
-        let pressable_form = rect(inner_w, inner_h).filled(color);
+        let pressable_form = form::rect(inner_w, inner_h).filled(color);
 
         // Construct the label's Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
@@ -220,17 +220,17 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
             let label_color = style.label_color(theme);
             let font_size = style.label_font_size(theme) as f64;
             text(Text::from_string(label_text.clone()).color(label_color).height(font_size))
-                .shift(xy[0].floor(), xy[1].floor())
+                .shift(x.floor(), y.floor())
         });
 
         // Chain the Forms and shift them into position.
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(pressable_form).into_iter())
-            .map(|form| form.shift(xy[0], xy[1]))
+            .map(|form| form.shift(x, y))
             .chain(maybe_label_form.into_iter());
 
         // Collect the Forms into a renderable Element.
-        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+        collage(w as i32, h as i32, form_chain.collect())
     }
 
 }
