@@ -316,16 +316,9 @@ impl Graph {
                 // Check the current widget for any scroll offset.
                 if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                     if let Some(ref scrolling) = container.maybe_scrolling {
-
-                        // Vertical offset.
-                        if let Some(ref bar) = scrolling.maybe_vertical {
-                            offset[1] += bar.pos_offset(container.kid_area.rect.h()).round();
-                        }
-
-                        // Horizontal offset.
-                        if let Some(ref bar) = scrolling.maybe_horizontal {
-                            offset[0] += bar.pos_offset(container.kid_area.rect.w()).round();
-                        }
+                        let scroll_offset = scrolling.pos_offset();
+                        offset[0] += scroll_offset[0].round();
+                        offset[1] += scroll_offset[1].round();
                     }
                 }
 

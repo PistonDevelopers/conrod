@@ -5,7 +5,7 @@
 use {Element, Scalar};
 use color::Color;
 use mouse::Mouse;
-use position::{Point, Range, Rect};
+use position::{Dimensions, Point, Range, Rect};
 use theme::Theme;
 use utils::map_range;
 
@@ -336,58 +336,14 @@ impl State {
         }
     }
 
+    /// Converts the Bars' current offset to a positional offset along its visible area.
+    pub fn pos_offset(&self) -> Dimensions {
+        let maybe_x_offset = self.maybe_horizontal.map(|bar| bar.pos_offset(self.visible.x.len()));
+        let maybe_y_offset = self.maybe_vertical.map(|bar| bar.pos_offset(self.visible.y.len()));
+        [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
+    }
+
 }
-
-
-// /// The new state of the given scrollbar if it has changed.
-// pub fn update(container: Rect, state: &State, maybe_mouse: Option<Mouse>) -> Option<State> {
-//     use self::Elem::{Handle, Track};
-//     use self::Interaction::{Normal, Highlighted, Clicked};
-//     use utils::clamp;
-// 
-//     // Gives the updated vertical `Bar` if it has changed.
-//     let vertical = |bar: &Bar| -> Option<Bar> {
-//         // Check to see if the bar has changed and return a new bar if it has.
-//         maybe_new_bar(bar, new_interaction, new_offset)
-//     };
-// 
-//     // Gives the updated horizontal `Bar` if it has changed.
-//     let horizontal = |bar: &Bar| -> Option<Bar> {
-// 
-//         // Check to see if the bar has changed and return a new bar if it has.
-//         maybe_new_bar(bar, new_interaction, new_offset)
-//     };
-// 
-//     // Produce a new scroll state if there has been any changes in either bar.
-//     match (&state.maybe_vertical, &state.maybe_horizontal) {
-// 
-//         // We have both vertical and horizontal bars.
-//         (&Some(ref v_bar), &Some(ref h_bar)) => match (vertical(v_bar), horizontal(h_bar)) {
-//             (None, None) => None,
-//             (Some(new_v_bar), None) => Some(State { maybe_vertical: Some(new_v_bar), ..*state }),
-//             (None, Some(new_h_bar)) => Some(State { maybe_horizontal: Some(new_h_bar), ..*state }),
-//             (Some(new_v_bar), Some(new_h_bar)) =>
-//                 Some(State {
-//                     maybe_vertical: Some(new_v_bar),
-//                     maybe_horizontal: Some(new_h_bar),
-//                     ..*state
-//                 }),
-//         },
-// 
-//         // We only have a vertical scrollbar.
-//         (&Some(ref v_bar), &None) => vertical(v_bar).map(|new_v_bar| {
-//             State { maybe_vertical: Some(new_v_bar), ..*state }
-//         }),
-// 
-//         // We only have a horizontal scrollbar.
-//         (&None, &Some(ref h_bar)) => horizontal(h_bar).map(|new_h_bar| {
-//             State { maybe_horizontal: Some(new_h_bar), ..*state }
-//         }),
-// 
-//         // We don't have any scrollbars.
-//         (&None, &None) => None,
-//     }
-// }
 
 
 /// Construct a renderable Element from the state for the given widget's kid area.
