@@ -706,12 +706,9 @@ impl Graph {
 
     /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
     /// `Element`s in the graph have changed.
-    pub fn element_if_changed<M, K>(&mut self,
-                                    maybe_captured_mouse: Option<M>,
-                                    maybe_captured_keyboard: Option<K>) -> Option<Element>
-        where
-            M: GraphIndex,
-            K: GraphIndex,
+    pub fn element_if_changed(&mut self,
+                              maybe_captured_mouse: Option<widget::Index>,
+                              maybe_captured_keyboard: Option<widget::Index>) -> Option<Element>
     {
         // Only return a new element if one or more of the `Widget` `Element`s have changed.
         match self.have_any_elements_changed() {
