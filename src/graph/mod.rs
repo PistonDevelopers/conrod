@@ -3,7 +3,7 @@
 use elmesque::Element;
 use elmesque::element::layers;
 use petgraph as pg;
-use position::{Depth, Dimensions, is_over_rect, Point, Rect};
+use position::{Depth, Point, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
 use std::fmt::Debug;
