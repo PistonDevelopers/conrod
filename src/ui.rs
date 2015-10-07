@@ -242,6 +242,7 @@ impl<C> Ui<C> {
                     mouse_button.was_just_pressed = true;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
+                _ => {}
             }
         });
 
@@ -260,6 +261,7 @@ impl<C> Ui<C> {
                     mouse_button.was_just_released = true;
                 },
                 Button::Keyboard(key) => self.keys_just_released.push(key),
+                _ => {}
             }
         });
 
