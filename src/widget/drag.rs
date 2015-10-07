@@ -3,7 +3,7 @@
 //!
 
 use mouse::Mouse;
-use position::{is_over_rect, Dimensions, Point, Rect};
+use position::{Point, Rect};
 
 
 

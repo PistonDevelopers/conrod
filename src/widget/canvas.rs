@@ -7,7 +7,6 @@ use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::Mouse;
 use position::{self, Dimensions, Horizontal, Margin, Padding, Place, Point, Position, Rect};
-use super::drag;
 use theme::Theme;
 use widget::{self, Widget};
 use ui::GlyphCache;
@@ -400,7 +399,6 @@ fn title_bar(canvas: Rect, font_size: FontSize) -> Rect {
 
 /// Is the mouse over the canvas, if so which Elem.
 fn is_over(canvas: Rect, maybe_title_bar_rect: Option<Rect>, mouse_xy: Point) -> Option<Elem> {
-    use position::is_over_rect;
     if let Some(rect) = maybe_title_bar_rect {
         if rect.is_over(mouse_xy) {
             return Some(Elem::TitleBar);

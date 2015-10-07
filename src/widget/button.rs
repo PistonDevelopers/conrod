@@ -6,7 +6,7 @@ use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::{self, Positionable};
+use position::Positionable;
 use theme::Theme;
 use ui::GlyphCache;
 use widget::{self, Widget};
