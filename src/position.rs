@@ -575,3 +575,316 @@ impl Margin {
         Margin { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
     }
 }
+
+
+/// Some start and end position along a single axis.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Range {
+    /// The start of some `Range` along an axis.
+    pub start: Scalar,
+    /// The end of some `Range` along an axis.
+    pub end: Scalar,
+}
+
+
+impl Range {
+
+    /// Construct a new `Range` from a given range, i.e. `Range::new(start..end)`.
+    pub fn new(range: ::std::ops::Range<Scalar>) -> Range {
+        Range { start: range.start, end: range.end }
+    }
+
+    /// Construct a new `Range` from a given length and its centered position.
+    pub fn from_pos_and_len(pos: Scalar, len: Scalar) -> Range {
+        let half_len = len / 2.0;
+        let start = pos - half_len;
+        let end = pos + half_len;
+        Range::new(start..end)
+    }
+
+    /// The `start` value subtracted from the `end` value.
+    pub fn magnitude(&self) -> Scalar {
+        self.end - self.start
+    }
+
+    /// The absolute length of the Range aka the absolute magnitude.
+    pub fn len(&self) -> Scalar {
+        self.magnitude().abs()
+    }
+
+    /// Return the value directly between the start and end values.
+    pub fn middle(&self) -> Scalar {
+        (self.end + self.start) / 2.0
+    }
+
+    /// The current range with its start and end values swapped.
+    pub fn invert(self) -> Range {
+        Range { start: self.end, end: self.start }
+    }
+
+    /// Map the given Scalar from `Self` to some other given `Range`.
+    pub fn map_value_to(&self, value: Scalar, other: &Range) -> Scalar {
+        ::utils::map_range(value, self.start, self.end, other.start, other.end)
+    }
+
+    /// Shift the `Range` start and end points by a given `Scalar`.
+    pub fn shift(self, amount: Scalar) -> Range {
+        Range { start: self.start + amount, end: self.end + amount }
+    }
+
+    /// The direction of the Range represented as a normalised scalar.
+    pub fn direction(&self) -> Scalar {
+        if      self.start < self.end { 1.0 }
+        else if self.start > self.end { -1.0 }
+        else                          { 0.0 }
+    }
+
+    /// Converts the Range to an undirected Range. By ensuring that `start` <= `end`.
+    /// If `start` > `end`, then the start and end points will be swapped.
+    pub fn undirected(self) -> Range {
+        if self.start > self.end { self.invert() } else { self }
+    }
+
+    /// The Range that encompasses both self and the given Range.
+    /// The returned Range's `start` will always be <= its `end`.
+    pub fn max(self, other: Range) -> Range {
+        let start = self.start.min(self.end).min(other.start).min(other.end);
+        let end = self.start.max(self.end).max(other.start).max(other.end);
+        Range::new(start..end)
+    }
+
+    /// The Range that encompasses both self and the given Range.
+    /// The returned Range will retain `self`'s original direction.
+    pub fn max_directed(self, other: Range) -> Range {
+        if self.start <= self.end { self.max(other) }
+        else                      { self.max(other).invert() }
+    }
+
+    /// Is the given scalar within our range.
+    pub fn is_over(&self, pos: Scalar) -> bool {
+        let Range { start, end } = self.undirected();
+        pos >= start && pos <= end
+    }
+
+    /// Shorten the Range from both ends by the given Scalar amount.
+    pub fn sub_frame(self, frame: Scalar) -> Range {
+        if self.direction() >= 0.0 {
+            Range::new(self.start + frame .. self.end - frame)
+        } else {
+            Range::new(self.start - frame .. self.end + frame)
+        }
+    }
+
+    /// Lengthen the Range from both ends by the given Scalar amount.
+    pub fn add_frame(self, frame: Scalar) -> Range {
+        if self.start <= self.end {
+            Range::new(self.start - frame .. self.end + frame)
+        } else {
+            Range::new(self.start + frame .. self.end - frame)
+        }
+    }
+
+    /// The Range with some padding given for each end.
+    pub fn padded(self, pad_start: Scalar, pad_end: Scalar) -> Range {
+        if self.start <= self.end {
+            Range::new(self.start + pad_start .. self.end - pad_end)
+        } else {
+            Range::new(self.start - pad_start .. self.end + pad_end)
+        }
+    }
+
+}
+
+impl ::std::ops::Add<Range> for Range {
+    type Output = Range;
+    fn add(self, rhs: Range) -> Range {
+        Range::new(self.start + rhs.start .. self.end + rhs.end)
+    }
+}
+
+impl ::std::ops::Sub<Range> for Range {
+    type Output = Range;
+    fn sub(self, rhs: Range) -> Range {
+        Range::new(self.start - rhs.start .. self.end - rhs.end)
+    }
+}
+
+
+
+/// Start and end bounds on a single axis.
+pub type Bounds = Range;
+
+/// Defines a Rectangle's bounds across the x and y axes.
+/// This is a conrod-specific Rectangle in that it's designed to help with layout.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Rect {
+    /// The start and end positions of the Rectangle on the x axis.
+    pub x: Bounds,
+    /// The start and end positions of the Rectangle on the y axis.
+    pub y: Bounds,
+}
+
+
+impl Rect {
+
+    /// Construct a Rect from a given `Point` and `Dimensions`.
+    pub fn from_xy_dim(xy: Point, dim: Dimensions) -> Rect {
+        Rect {
+            x: Range::from_pos_and_len(xy[0], dim[0]),
+            y: Range::from_pos_and_len(xy[1], dim[1]),
+        }
+    }
+
+    /// The Rect that encompass the two given sets of Rect.
+    pub fn max(self, other: Rect) -> Rect {
+        Rect {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+        }
+    }
+
+    /// The position in the middle of the x bounds.
+    pub fn x(&self) -> Scalar {
+        self.x.middle()
+    }
+
+    /// The position in the middle of the y bounds.
+    pub fn y(&self) -> Scalar {
+        self.y.middle()
+    }
+
+    /// The xy position in the middle of the bounds.
+    pub fn xy(&self) -> Point {
+        [self.x(), self.y()]
+    }
+
+    /// The centered x and y coordinates as a tuple.
+    pub fn x_y(&self) -> (Scalar, Scalar) {
+        (self.x(), self.y())
+    }
+
+    /// The width of the Rect.
+    pub fn w(&self) -> Scalar {
+        self.x.len()
+    }
+
+    /// The height of the Rect.
+    pub fn h(&self) -> Scalar {
+        self.y.len()
+    }
+
+    /// The total dimensions of the Rect.
+    pub fn dim(&self) -> Dimensions {
+        [self.w(), self.h()]
+    }
+
+    /// The width and height of the Rect as a tuple.
+    pub fn w_h(&self) -> (Scalar, Scalar) {
+        (self.w(), self.h())
+    }
+
+    /// Convert the Rect to a `Point` and `Dimensions`.
+    pub fn xy_dim(&self) -> (Point, Dimensions) {
+        (self.xy(), self.dim())
+    }
+
+    /// The Rect's centered coordinates and dimensions in a tuple.
+    pub fn x_y_w_h(&self) -> (Scalar, Scalar, Scalar, Scalar) {
+        let (xy, dim) = self.xy_dim();
+        (xy[0], xy[1], dim[0], dim[1])
+    }
+
+    /// The Rect's lowest y value.
+    pub fn bottom(&self) -> Scalar {
+        self.y.undirected().start
+    }
+
+    /// The Rect's highest y value.
+    pub fn top(&self) -> Scalar {
+        self.y.undirected().end
+    }
+
+    /// The Rect's lowest x value.
+    pub fn left(&self) -> Scalar {
+        self.x.undirected().start
+    }
+
+    /// The Rect's highest x value.
+    pub fn right(&self) -> Scalar {
+        self.x.undirected().end
+    }
+
+    /// Shift the Rect along the x axis.
+    pub fn shift_x(self, x: Scalar) -> Rect {
+        Rect { x: self.x.shift(x), ..self }
+    }
+
+    /// Shift the Rect along the y axis.
+    pub fn shift_y(self, y: Scalar) -> Rect {
+        Rect { y: self.y.shift(y), ..self }
+    }
+
+    /// Shift the Rect by the given Point.
+    pub fn shift(self, xy: Point) -> Rect {
+        self.shift_x(xy[0]).shift_y(xy[1])
+    }
+
+    /// Does the given point touch the Rectangle.
+    pub fn is_over(&self, xy: Point) -> bool {
+        self.x.is_over(xy[0]) && self.y.is_over(xy[1])
+    }
+
+    /// Shorten the x and y lengths by the given Scalar amount.
+    pub fn sub_frame(self, frame: Scalar) -> Rect {
+        Rect {
+            x: self.x.sub_frame(frame),
+            y: self.y.sub_frame(frame),
+        }
+    }
+
+    /// Lengthen the x and y lengths by the given Scalar amount.
+    pub fn add_frame(self, frame: Scalar) -> Rect {
+        Rect {
+            x: self.x.add_frame(frame),
+            y: self.y.add_frame(frame),
+        }
+    }
+
+    /// The Rect with some padding applied.
+    pub fn padded(self, padding: Padding) -> Rect {
+        Rect {
+            x: self.x.padded(padding.left, padding.right),
+            y: self.y.padded(padding.bottom, padding.top),
+        }
+    }
+
+}
+
+impl ::std::ops::Add<Rect> for Rect {
+    type Output = Rect;
+    fn add(self, rhs: Rect) -> Rect {
+        Rect {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl ::std::ops::Sub<Rect> for Rect {
+    type Output = Rect;
+    fn sub(self, rhs: Rect) -> Rect {
+        Rect {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+
+
+/// A function to simplify determining whether or not a point `xy` is over a rectangle.
+/// `rect_xy` is the centered coordinatees of the rectangle.
+pub fn is_over_rect(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
+    Rect::from_xy_dim(rect_xy, rect_dim).is_over(xy)
+}
+
