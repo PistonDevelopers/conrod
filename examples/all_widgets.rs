@@ -48,6 +48,7 @@ use piston::event_loop::{Events, EventLoop};
 use piston::input::{RenderEvent};
 use piston::window::{WindowSettings, Size};
 
+
 type Ui = conrod::Ui<GlyphCache<'static>>;
 
 /// This struct holds all of the variables used to demonstrate
@@ -128,6 +129,7 @@ impl DemoApp {
     }
 
 }
+
 
 fn main() {
     let opengl = OpenGL::V3_2;

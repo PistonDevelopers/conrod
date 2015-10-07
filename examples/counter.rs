@@ -8,9 +8,8 @@ use piston_window::*;
 fn main() {
 
     // Construct the window.
-    let window: PistonWindow =
-        WindowSettings::new("Click me!", [200, 100])
-            .exit_on_esc(true).build().unwrap();
+    let window: PistonWindow = WindowSettings::new("Click me!", [200, 100])
+        .exit_on_esc(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
