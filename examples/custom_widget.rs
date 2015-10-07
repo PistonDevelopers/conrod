@@ -260,8 +260,9 @@ mod circular_button {
         fn update<'b, C>(mut self, args: UpdateArgs<'b, Self, C>) -> Option<State>
             where C: CharacterCache,
         {
-            let UpdateArgs { prev_state, xy, dim, ui, .. } = args;
+            let UpdateArgs { prev_state, rect, ui, .. } = args;
             let WidgetState { ref state, .. } = *prev_state;
+            let (xy, dim) = rect.xy_dim();
             let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
             // Check whether or not a new interaction has occurred.
@@ -336,7 +337,8 @@ mod circular_button {
             use elmesque::form::{collage, circle, text};
 
             // Unwrap the args and state structs into individual variables.
-            let DrawArgs { dim, xy, state, style, theme, .. } = args;
+            let DrawArgs { rect, state, style, theme, .. } = args;
+            let (xy, dim) = rect.xy_dim();
 
             // Retrieve the styling for the Element.
             let color = state.color(style.color(theme));
