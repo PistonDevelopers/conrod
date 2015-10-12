@@ -239,7 +239,7 @@ impl Graph {
                     Visitable::Scrollbar(idx) => {
                         if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                             if let Some(ref scrolling) = container.maybe_scrolling {
-                                if widget::scroll::is_over(scrolling, container.kid_area.rect, xy) {
+                                if scrolling.is_over(xy) {
                                     return true;
                                 }
                             }
@@ -316,7 +316,7 @@ impl Graph {
                 // Check the current widget for any scroll offset.
                 if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                     if let Some(ref scrolling) = container.maybe_scrolling {
-                        let scroll_offset = scrolling.pos_offset();
+                        let scroll_offset = scrolling.kids_pos_offset();
                         offset[0] += scroll_offset[0].round();
                         offset[1] += scroll_offset[1].round();
                     }

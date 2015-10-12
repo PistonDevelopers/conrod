@@ -749,9 +749,9 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine whether or not the `State` has changed.
     let state_has_changed = maybe_new_state.is_some()
-            || rect != prev_state.rect
-            || depth != prev_state.depth
-            || is_first_set;
+        || rect != prev_state.rect
+        || depth != prev_state.depth
+        || is_first_set;
 
     // Determine whether or not the widget's `Style` has changed.
     let style_has_changed = maybe_prev_style.map(|style| style != new_style).unwrap_or(false);

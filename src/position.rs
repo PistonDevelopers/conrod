@@ -666,6 +666,16 @@ impl Range {
         pos >= start && pos <= end
     }
 
+    /// Round the values at both ends of the Range and return the result.
+    pub fn round(self) -> Range {
+        Range::new(self.start.round()..self.end.round())
+    }
+
+    /// Floor the values at both ends of the Range and return the result.
+    pub fn floor(self) -> Range {
+        Range::new(self.start.floor()..self.end.floor())
+    }
+
     /// Shorten the Range from both ends by the given Scalar amount.
     pub fn sub_frame(self, frame: Scalar) -> Range {
         if self.direction() >= 0.0 {
@@ -708,7 +718,6 @@ impl ::std::ops::Sub<Range> for Range {
         Range::new(self.start - rhs.start .. self.end - rhs.end)
     }
 }
-
 
 
 /// Start and end bounds on a single axis.
@@ -884,7 +893,6 @@ impl ::std::ops::Sub<Rect> for Rect {
         }
     }
 }
-
 
 
 /// A function to simplify determining whether or not a point `xy` is over a rectangle.

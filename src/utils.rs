@@ -89,3 +89,45 @@ pub fn val_to_string<T: ToString + NumCast>
     }
 }
 
+
+#[test]
+fn test_map_range() {
+
+    // Normal positive to normal positive.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 0.0, 10.0), 10.0);
+
+    // Normal positive to normal negative.
+    assert_eq!(map_range(0.0, 0.0, 5.0, -10.0, 0.0), -10.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, -10.0, 0.0), -5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, -10.0, 0.0), 0.0);
+
+    // Normal positive to inverse positive.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 10.0, 0.0), 10.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 10.0, 0.0), 5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 10.0, 0.0), 0.0);
+
+    // Normal positive to inverse negative.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 0.0, -10.0), 0.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 0.0, -10.0), -5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 0.0, -10.0), -10.0);
+
+
+    // Normal negative to normal positive.
+    assert_eq!(map_range(-5.0, -5.0, 0.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(-2.5, -5.0, 0.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(0.0, -5.0, 0.0, 0.0, 10.0), 10.0);
+
+    // Normal negative to normal negative.
+    assert_eq!(map_range(-5.0, -5.0, 0.0, -10.0, 0.0), -10.0);
+    assert_eq!(map_range(-2.5, -5.0, 0.0, -10.0, 0.0), -5.0);
+    assert_eq!(map_range(0.0, -5.0, 0.0, -10.0, 0.0), 0.0);
+
+
+    // Inverse positive to normal positive.
+    assert_eq!(map_range(5.0, 5.0, 0.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(2.5, 5.0, 0.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(0.0, 5.0, 0.0, 0.0, 10.0), 10.0);
+
+}
