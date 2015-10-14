@@ -694,13 +694,26 @@ impl Range {
         }
     }
 
+    /// The Range with some padding given to the `start` value.
+    pub fn pad_start(mut self, pad: Scalar) -> Range {
+        self.start += if self.start <= self.end { pad } else { -pad };
+        self
+    }
+
+    /// The Range with some padding given to the `end` value.
+    pub fn pad_end(mut self, pad: Scalar) -> Range {
+        self.end += if self.start <= self.end { -pad } else { pad };
+        self
+    }
+
+    /// The Range with some given padding to be applied to each end.
+    pub fn pad(self, pad: Scalar) -> Range {
+        self.pad_start(pad).pad_end(pad)
+    }
+
     /// The Range with some padding given for each end.
-    pub fn padded(self, pad_start: Scalar, pad_end: Scalar) -> Range {
-        if self.start <= self.end {
-            Range::new(self.start + pad_start .. self.end - pad_end)
-        } else {
-            Range::new(self.start - pad_start .. self.end + pad_end)
-        }
+    pub fn padding(self, start: Scalar, end: Scalar) -> Range {
+        self.pad_start(start).pad_end(end)
     }
 
 }
@@ -864,11 +877,37 @@ impl Rect {
         }
     }
 
+    /// The Rect with some padding applied to the left edge.
+    pub fn pad_left(self, pad: Scalar) -> Rect {
+        Rect { x: self.x.pad_start(pad), ..self }
+    }
+
+    /// The Rect with some padding applied to the right edge.
+    pub fn pad_right(self, pad: Scalar) -> Rect {
+        Rect { x: self.x.pad_end(pad), ..self }
+    }
+
+    /// The rect with some padding applied to the bottom edge.
+    pub fn pad_bottom(self, pad: Scalar) -> Rect {
+        Rect { y: self.y.pad_start(pad), ..self }
+    }
+
+    /// The Rect with some padding applied to the top edge.
+    pub fn pad_top(self, pad: Scalar) -> Rect {
+        Rect { y: self.y.pad_end(pad), ..self }
+    }
+
+    /// The Rect with some padding amount applied to each edge.
+    pub fn pad(self, pad: Scalar) -> Rect {
+        let Rect { x, y } = self;
+        Rect { x: x.pad(pad), y: y.pad(pad) }
+    }
+
     /// The Rect with some padding applied.
-    pub fn padded(self, padding: Padding) -> Rect {
+    pub fn padding(self, padding: Padding) -> Rect {
         Rect {
-            x: self.x.padded(padding.left, padding.right),
-            y: self.y.padded(padding.bottom, padding.top),
+            x: self.x.padding(padding.left, padding.right),
+            y: self.y.padding(padding.bottom, padding.top),
         }
     }
 

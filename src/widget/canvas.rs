@@ -253,7 +253,7 @@ impl<'a> Widget for Canvas<'a> {
             let font_size = style.title_bar_font_size(theme);
             let title_bar = title_bar(rect, font_size);
             widget::KidArea {
-                rect: rect - title_bar,
+                rect: rect.pad_top(title_bar.h()),
                 pad: style.padding(theme),
             }
         } else {
