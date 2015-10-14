@@ -21,7 +21,7 @@ pub struct Canvas<'a> {
     show_title_bar: bool,
 }
 
-/// Canvas state to be cached.
+/// **Canvas** state to be cached.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     interaction: Interaction,
@@ -36,6 +36,7 @@ const TITLE_BAR_LABEL_PADDING: f64 = 4.0;
 #[derive(Clone, Debug, PartialEq)]
 pub struct TitleBar {
     maybe_label: Option<(String, FontSize)>,
+    /// The rectangle representing the **TitleBar**'s area relative to that of the **Canvas**.
     rect: Rect,
 }
 
@@ -345,16 +346,17 @@ impl<'a> Widget for Canvas<'a> {
         // Check whether or not to draw the title bar.
         let maybe_title_bar_form = if let Some(ref title_bar) = state.maybe_title_bar {
             let inner = title_bar.rect.sub_frame(frame);
-            let (w, h) = title_bar.rect.w_h();
+            let (_, rel_y, w, h) = title_bar.rect.x_y_w_h();
+            let (inner_w, inner_h) = inner.w_h();
             let title_bar_frame_form = form::rect(w, h).filled(frame_color);
-            let title_bar_rect_form = form::rect(inner.w(), inner.h()).filled(color);
+            let title_bar_rect_form = form::rect(inner_w, inner_h).filled(color);
             // Check whether or not to draw the title bar's label.
             let maybe_label_form = title_bar.maybe_label.as_ref().map(|&(ref label, font_size)| {
                 use elmesque::text::Text;
                 let label_color = style.title_bar_label_color(theme);
                 let align = style.title_bar_label_align(theme);
                 let label_width = glyph_cache.width(font_size, label);
-                let label_x = align.to(inner.w(), label_width) + TITLE_BAR_LABEL_PADDING;
+                let label_x = align.to(inner_w, label_width) + TITLE_BAR_LABEL_PADDING;
                 text(Text::from_string(label.clone())
                         .color(label_color)
                         .height(font_size as f64)).shift_x(label_x)
@@ -362,7 +364,7 @@ impl<'a> Widget for Canvas<'a> {
             Some(Some(title_bar_frame_form).into_iter()
                 .chain(Some(title_bar_rect_form).into_iter())
                 .chain(maybe_label_form)
-                .map(move |form| form.shift_y(title_bar.rect.y())))
+                .map(move |form| form.shift_y(rel_y)))
         } else {
             None
         };
@@ -390,9 +392,10 @@ fn title_bar_h_rel_y(canvas_h: Scalar, font_size: FontSize) -> (Scalar, Scalar) 
 
 /// The Rect for the Canvas' title bar.
 fn title_bar(canvas: Rect, font_size: FontSize) -> Rect {
-    let (h, rel_y) = title_bar_h_rel_y(canvas.h(), font_size);
-    let xy = [canvas.x(), canvas.y() + rel_y];
-    let dim = [canvas.w(), h];
+    let (c_w, c_h) = canvas.w_h();
+    let (h, rel_y) = title_bar_h_rel_y(c_h, font_size);
+    let xy = [0.0, rel_y];
+    let dim = [c_w, h];
     Rect::from_xy_dim(xy, dim)
 }
 
