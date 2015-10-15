@@ -9,11 +9,11 @@
 
 #[macro_use] extern crate bitflags;
 extern crate clock_ticks;
+extern crate daggy;
 extern crate elmesque;
 extern crate graphics;
 extern crate json_io;
 extern crate num;
-extern crate petgraph;
 extern crate input;
 extern crate rand;
 extern crate rustc_serialize;
