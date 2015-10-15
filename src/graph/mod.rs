@@ -81,7 +81,7 @@ enum Node {
 enum Edge {
     /// A widget is positioned relatively to another.
     /// When adding an edge a -> b, b is positioned relatively to a.
-    RelativePosition,
+    Position,
     /// A widget is a child of another.
     /// When adding an edge a -> b, a is the parent of (and will be rendered before) b.
     Depth,
@@ -218,7 +218,7 @@ impl Graph {
         J: GraphIndex,
     {
         idx.to_node_index(&self.index_map).and_then(|idx| {
-            maybe_incoming_depth_edge(&self.dag, idx)
+            maybe_parent_depth_edge(&self.dag, idx)
                 .and_then(|(_, parent_idx)| J::from_idx(parent_idx, &self.index_map))
         })
     }
@@ -294,16 +294,16 @@ impl Graph {
         'child_edge_traversal: loop {
 
             // We only need to worry about calculating any offset if there is some parent widget.
-            if let Some((_, parent_idx)) = maybe_incoming_depth_edge(dag, idx) {
+            if let Some((_, parent_idx)) = maybe_parent_depth_edge(dag, idx) {
 
-                // Recursively check all nodes with incoming `RelativePosition` edges for a parent that
+                // Recursively check all nodes with incoming `Position` edges for a parent that
                 // matches our own parent. If any match, then we don't need to calculate any additional
                 // offset as the widget we are being positioned relatively to has already applied the
                 // necessary scroll offset.
                 let mut current_node = idx;
                 'relative_position_edge_traversal: loop {
-                    match maybe_incoming_relative_position_edge(dag, current_node) {
-                        Some((_, node)) => match maybe_incoming_depth_edge(dag, node) {
+                    match maybe_parent_position_edge(dag, current_node) {
+                        Some((_, node)) => match maybe_parent_depth_edge(dag, node) {
                             Some((_, parent_node)) if parent_node == parent_idx => return offset,
                             _ => current_node = node,
                         },
@@ -365,7 +365,7 @@ impl Graph {
     }
 
 
-    /// Set's an `Edge::RelativePosition` from a to b. This edge represents the fact that b is
+    /// Set's an `Edge::Position` from a to b. This edge represents the fact that b is
     /// positioned relatively to a's position.
     fn set_relative_position_edge<A, B>(&mut self, a: A, b: B) where
         A: GraphIndex,
@@ -374,7 +374,7 @@ impl Graph {
         let a_idx = a.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
         let b_idx = b.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
 
-        set_edge(&mut self.dag, a_idx, b_idx, Edge::RelativePosition);
+        set_edge(&mut self.dag, a_idx, b_idx, Edge::Position);
     }
 
 
@@ -385,7 +385,7 @@ impl Graph {
         let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
         let mut parents = dag.walk_parents(node_idx);
         while let Some((in_edge_idx, _)) = parents.next_parent(dag) {
-            if let Edge::RelativePosition = dag[in_edge_idx] {
+            if let Edge::Position = dag[in_edge_idx] {
                 dag.remove_edge(in_edge_idx);
                 // Note that we only need to check for *one* edge as there can only ever be one
                 // incoming relative position edge per node.
@@ -550,12 +550,12 @@ impl Graph {
         }
 
         // Now that we've updated the widget's cached data, we need to check if we should add an
-        // `Edge::RelativePosition`.
+        // `Edge::Position`.
         if let Some(relative_idx) = maybe_positioned_relatively_idx {
             self.set_relative_position_edge(relative_idx, idx);
 
         // Otherwise if the widget is not positioned relatively to any other widget, we should
-        // ensure that there are no incoming `RelativePosition` edges.
+        // ensure that there are no incoming `Position` edges.
         } else {
             self.remove_incoming_relative_position_edge(idx);
         }
@@ -784,12 +784,12 @@ fn set_edge(dag: &mut Dag, a: NodeIndex, b: NodeIndex, edge: Edge) {
 /// Return the incoming relative position edge (and the attached Node) if one exists.
 /// We know that there may be at most one incoming relative position edge, as the only
 /// publicly exposed way to add an edge to the graph is via the `set_edge` method.
-fn maybe_incoming_relative_position_edge(dag: &Dag, idx: NodeIndex)
+fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
     let mut parents = dag.walk_parents(idx);
     while let Some((in_edge_idx, in_node_idx)) = parents.next_parent(dag) {
-        if let Edge::RelativePosition = dag[in_edge_idx] {
+        if let Edge::Position = dag[in_edge_idx] {
             return Some((in_edge_idx, in_node_idx));
         }
     }
@@ -799,7 +799,7 @@ fn maybe_incoming_relative_position_edge(dag: &Dag, idx: NodeIndex)
 /// Return the incoming child edge (and the attached parent Node) if one exists.
 /// We know that there may be at most one incoming child edge, as the only publicly
 /// exposed way to add an edge to the graph is via the `set_edge` method.
-fn maybe_incoming_depth_edge(dag: &Dag, idx: NodeIndex)
+fn maybe_parent_depth_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
     let mut parents = dag.walk_parents(idx);
