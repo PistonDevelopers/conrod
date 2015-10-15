@@ -6,8 +6,7 @@ use elmesque::element::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::Mouse;
-use position::{self, Dimensions, Horizontal, Margin, Padding, Place, Point, Position};
-use super::drag;
+use position::{self, Dimensions, Horizontal, Margin, Padding, Place, Point, Position, Rect};
 use theme::Theme;
 use widget::{self, Widget};
 use ui::GlyphCache;
@@ -22,7 +21,7 @@ pub struct Canvas<'a> {
     show_title_bar: bool,
 }
 
-/// Canvas state to be cached.
+/// **Canvas** state to be cached.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     interaction: Interaction,
@@ -37,8 +36,8 @@ const TITLE_BAR_LABEL_PADDING: f64 = 4.0;
 #[derive(Clone, Debug, PartialEq)]
 pub struct TitleBar {
     maybe_label: Option<(String, FontSize)>,
-    y: Scalar,
-    h: Scalar,
+    /// The rectangle representing the **TitleBar**'s area relative to that of the **Canvas**.
+    rect: Rect,
 }
 
 /// A builder for the padding of the area where child widgets will be placed.
@@ -67,7 +66,7 @@ pub struct MarginBuilder {
     pub maybe_bottom: Option<Scalar>,
 }
 
-/// Describes the style of a Canvas Floating.
+/// Describes the style of a Canvas.
 #[allow(missing_copy_implementations)]
 #[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct Style {
@@ -89,7 +88,7 @@ pub struct Style {
     pub margin: MarginBuilder,
 }
 
-/// Describes an interaction with the Floating Canvas.
+/// Describes an interaction with the Canvas.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Interaction {
     Normal,
@@ -238,56 +237,52 @@ impl<'a> Widget for Canvas<'a> {
 
     /// The title bar area at which the Canvas can be clicked and dragged.
     /// The position of the area should be relative to the center of the widget..
-    fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<drag::Area> {
+    fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<Rect> {
         if self.show_title_bar {
             let font_size = style.title_bar_font_size(theme);
-            let (h, y) = title_bar_h_y(dim, font_size as f64);
-            Some(drag::Area {
-                xy: [0.0, y],
-                dim: [dim[0], h],
-            })
+            let (h, y) = title_bar_h_rel_y(dim[1], font_size);
+            Some(Rect::from_xy_dim([0.0, y], [dim[0], h]))
         } else {
             None
         }
     }
 
     /// The area of the widget below the title bar, upon which child widgets will be placed.
-    fn kid_area(state: &widget::State<State>, style: &Style, theme: &Theme) -> widget::KidArea {
-        let widget::State { ref state, xy, dim, .. } = *state;
-        match state.maybe_title_bar {
-            None => widget::KidArea {
-                xy: xy,
-                dim: dim,
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+        let widget::KidAreaArgs { rect, style, theme, .. } = args;
+        if self.show_title_bar {
+            let font_size = style.title_bar_font_size(theme);
+            let title_bar = title_bar(rect, font_size);
+            widget::KidArea {
+                rect: rect.pad_top(title_bar.h()),
                 pad: style.padding(theme),
-            },
-            Some(ref title_bar) => widget::KidArea {
-                xy: [xy[0], xy[1] - (title_bar.h / 2.0)],
-                dim: [dim[0], dim[1] - title_bar.h],
+            }
+        } else {
+            widget::KidArea {
+                rect: rect,
                 pad: style.padding(theme),
-            },
+            }
         }
     }
 
     /// Update the state of the Canvas.
-    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
         let State { interaction, time_last_clicked, ref maybe_title_bar } = *state;
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse;
         let title_bar_font_size = self.style.title_bar_font_size(ui.theme());
-
-        // Calculate the height and y coord of the title bar.
-        let (title_bar_h, title_bar_y) = if self.show_title_bar {
-            title_bar_h_y(dim, title_bar_font_size as f64)
+        let maybe_title_bar_rect = if self.show_title_bar {
+            Some(title_bar(rect, title_bar_font_size))
         } else {
-            (0.0, 0.0)
+            None
         };
 
         // If there is new mouse state, check for a new interaction.
         let new_interaction = if let Some(mouse) = maybe_mouse {
-            let is_over_elem = is_over(mouse.xy, dim, title_bar_y, title_bar_h);
+            let is_over_elem = is_over(rect, maybe_title_bar_rect, mouse.xy);
             get_new_interaction(is_over_elem, interaction, mouse)
         } else {
             Interaction::Normal
@@ -305,16 +300,11 @@ impl<'a> Widget for Canvas<'a> {
         let new_state = || State {
             interaction: new_interaction,
             time_last_clicked: new_time_last_clicked,
-            maybe_title_bar: if self.show_title_bar {
-                Some(TitleBar {
-                    maybe_label: self.maybe_title_bar_label.as_ref()
-                        .map(|label| (label.to_string(), title_bar_font_size)),
-                    h: title_bar_h,
-                    y: title_bar_y,
-                })
-            } else {
-                None
-            },
+            maybe_title_bar: maybe_title_bar_rect.map(|rect| TitleBar {
+                maybe_label: self.maybe_title_bar_label.as_ref()
+                    .map(|label| (label.to_string(), title_bar_font_size)),
+                rect: rect,
+            }),
         };
 
         // Check whether or not the state has changed since the previous update.
@@ -323,8 +313,7 @@ impl<'a> Widget for Canvas<'a> {
             || match *maybe_title_bar {
                 None => self.show_title_bar,
                 Some(ref title_bar) => {
-                    title_bar.y != title_bar_y
-                    || title_bar.h != title_bar_h
+                    Some(title_bar.rect) != maybe_title_bar_rect
                     || match title_bar.maybe_label {
                         None => false,
                         Some((ref label, font_size)) => {
@@ -340,33 +329,34 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Draw the canvas.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
-        where C: CharacterCache
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
+        where C: CharacterCache,
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
 
         let frame = style.frame(theme);
-        let inner_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
+        let inner = rect.sub_frame(frame);
         let color = style.color(theme);
         let frame_color = style.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let rect_form = rect(inner_dim[0], inner_dim[1]).filled(color);
+        let frame_form = form::rect(rect.w(), rect.h()).filled(frame_color);
+        let rect_form = form::rect(inner.w(), inner.h()).filled(color);
 
         // Check whether or not to draw the title bar.
         let maybe_title_bar_form = if let Some(ref title_bar) = state.maybe_title_bar {
-            let inner_dim = ::vecmath::vec2_sub([dim[0], title_bar.h], [frame * 2.0; 2]);
-            let title_bar_frame_form = rect(dim[0], title_bar.h).filled(frame_color);
-            let title_bar_rect_form = rect(inner_dim[0], inner_dim[1]).filled(color);
+            let inner = title_bar.rect.sub_frame(frame);
+            let (_, rel_y, w, h) = title_bar.rect.x_y_w_h();
+            let (inner_w, inner_h) = inner.w_h();
+            let title_bar_frame_form = form::rect(w, h).filled(frame_color);
+            let title_bar_rect_form = form::rect(inner_w, inner_h).filled(color);
             // Check whether or not to draw the title bar's label.
             let maybe_label_form = title_bar.maybe_label.as_ref().map(|&(ref label, font_size)| {
                 use elmesque::text::Text;
                 let label_color = style.title_bar_label_color(theme);
                 let align = style.title_bar_label_align(theme);
                 let label_width = glyph_cache.width(font_size, label);
-                let label_x = align.to(inner_dim[0], label_width) + TITLE_BAR_LABEL_PADDING;
+                let label_x = align.to(inner_w, label_width) + TITLE_BAR_LABEL_PADDING;
                 text(Text::from_string(label.clone())
                         .color(label_color)
                         .height(font_size as f64)).shift_x(label_x)
@@ -374,7 +364,7 @@ impl<'a> Widget for Canvas<'a> {
             Some(Some(title_bar_frame_form).into_iter()
                 .chain(Some(title_bar_rect_form).into_iter())
                 .chain(maybe_label_form)
-                .map(move |form| form.shift_y(title_bar.y)))
+                .map(move |form| form.shift_y(rel_y)))
         } else {
             None
         };
@@ -383,36 +373,42 @@ impl<'a> Widget for Canvas<'a> {
         let form_chain = Some(frame_form).into_iter()
             .chain(Some(rect_form).into_iter())
             .chain(maybe_title_bar_form.into_iter().flat_map(|it| it))
-            .map(|form| form.shift(xy[0], xy[1]));
+            .map(|form| form.shift(rect.x(), rect.y()));
 
         // Construct the renderable element.
-        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+        collage(rect.w() as i32, rect.h() as i32, form_chain.collect())
     }
 
 }
 
 
-/// Calculate the height and y position of the Title Bar.
-fn title_bar_h_y(dim: Dimensions, font_size: f64) -> (Scalar, Scalar) {
-    let h = font_size as f64 + TITLE_BAR_LABEL_PADDING * 2.0;
-    let y = position::align_top_of(dim[1], h);
-    (h, y)
+/// The height and relative y coordinate of a Canvas' title bar given some canvas height and font
+/// size for the title bar.
+fn title_bar_h_rel_y(canvas_h: Scalar, font_size: FontSize) -> (Scalar, Scalar) {
+    let h = font_size as Scalar + TITLE_BAR_LABEL_PADDING * 2.0;
+    let rel_y = position::align_top_of(canvas_h, h);
+    (h, rel_y)
+}
+
+/// The Rect for the Canvas' title bar.
+fn title_bar(canvas: Rect, font_size: FontSize) -> Rect {
+    let (c_w, c_h) = canvas.w_h();
+    let (h, rel_y) = title_bar_h_rel_y(c_h, font_size);
+    let xy = [0.0, rel_y];
+    let dim = [c_w, h];
+    Rect::from_xy_dim(xy, dim)
 }
 
 
 /// Is the mouse over the canvas, if so which Elem.
-fn is_over(mouse_xy: Point,
-           dim: Dimensions,
-           title_bar_y: f64,
-           title_bar_h: f64) -> Option<Elem>
-{
-    use utils::is_over_rect;
-    if is_over_rect([0.0, 0.0], mouse_xy, dim) {
-        if is_over_rect([0.0, title_bar_y], mouse_xy, [dim[0], title_bar_h]) {
-            Some(Elem::TitleBar)
-        } else {
-            Some(Elem::WidgetArea)
+fn is_over(canvas: Rect, maybe_title_bar_rect: Option<Rect>, mouse_xy: Point) -> Option<Elem> {
+    if let Some(rect) = maybe_title_bar_rect {
+        if rect.is_over(mouse_xy) {
+            return Some(Elem::TitleBar);
         }
+    }
+    if canvas.is_over(mouse_xy) {
+        Some(Elem::WidgetArea)
     } else {
         None
     }
@@ -460,7 +456,7 @@ impl Style {
         }
     }
 
-    /// Get the color for the Floating's Element.
+    /// Get the color for the Canvas' Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_canvas.as_ref().map(|default| {
             default.style.maybe_color.unwrap_or(theme.background_color)

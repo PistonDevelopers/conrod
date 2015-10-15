@@ -48,6 +48,8 @@ pub struct Theme {
     pub maybe_drop_down_list: Option<WidgetDefault<widget::drop_down_list::Style>>,
     /// Optional style defaults for an EnvelopeEditor.
     pub maybe_envelope_editor: Option<WidgetDefault<widget::envelope_editor::Style>>,
+    /// Optional style defaults for a Matrix.
+    pub maybe_matrix: Option<WidgetDefault<widget::matrix::Style>>,
     /// Optional style defaults for a NumberDialer.
     pub maybe_number_dialer: Option<WidgetDefault<widget::number_dialer::Style>>,
     /// Optional style defaults for a Scrollbar.
@@ -130,6 +132,7 @@ impl Theme {
             maybe_canvas: None,
             maybe_drop_down_list: None,
             maybe_envelope_editor: None,
+            maybe_matrix: None,
             maybe_number_dialer: None,
             maybe_slider: None,
             maybe_tabs: None,

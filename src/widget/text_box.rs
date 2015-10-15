@@ -185,9 +185,9 @@ fn over_elem<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                 text_w: f64,
                                 font_size: FontSize,
                                 text: &str) -> Elem {
-    use utils::is_over_rect;
-    if is_over_rect([0.0, 0.0], mouse_xy, dim) {
-        if is_over_rect([0.0, 0.0], mouse_xy, pad_dim) {
+    use position::is_over_rect;
+    if is_over_rect([0.0, 0.0], dim, mouse_xy) {
+        if is_over_rect([0.0, 0.0], pad_dim, mouse_xy) {
             let (idx, _) = closest_idx(glyph_cache, mouse_xy, text_start_x, text_w, font_size, text);
             Elem::Char(idx)
         } else {
@@ -318,10 +318,7 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F>
-    where
-        F: FnMut(&mut String)
-{
+impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
     type Style = Style;
     fn common(&self) -> &widget::CommonBuilder { &self.common }
@@ -367,12 +364,13 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextBox.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
 
-        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
+        let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -529,22 +527,22 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Construct an Element from the given TextBox State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, line, rect, solid, text};
+        use elmesque::form::{self, collage, line, solid, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
 
         // Construct the frame and inner rectangle Forms.
+        let (xy, dim) = rect.xy_dim();
         let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let color = state.interaction.color(style.color(theme));
         let frame_color = style.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+        let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
         let font_size = style.font_size(theme);
         let text_w = glyph_cache.width(font_size, &state.text[..]);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
@@ -575,7 +573,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                     let htext_w = glyph_cache.width(font_size, &htext);
                     ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
                 };
-                rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
+                form::rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
                     .shift(block_xy[0], block_xy[1])
             };
 

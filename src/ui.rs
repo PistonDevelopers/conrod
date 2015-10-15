@@ -165,7 +165,13 @@ impl<C> Ui<C> {
 
     /// Return the dimensions of a widget.
     pub fn widget_size(&self, id: widget::Id) -> Dimensions {
-        self.widget_graph[id].dim
+        self.widget_graph[id].rect.dim()
+    }
+
+
+    /// An index to the previously updated widget if there is one.
+    pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
+        self.maybe_prev_widget_idx
     }
 
 
@@ -281,21 +287,19 @@ impl<C> Ui<C> {
 
             Position::Absolute(x, y) => [x, y],
 
-            Position::Relative(x, y, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
-                    None => [0.0, 0.0],
-                    Some(idx) => vec2_add(self.widget_graph[idx].xy, [x, y]),
-                }
+            Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
+                None => [x, y],
+                Some(idx) => vec2_add(self.widget_graph[idx].rect.xy(), [x, y]),
             },
 
             Position::Direction(direction, px, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget_idx.map(|id| id)) {
+                match maybe_idx.or(self.maybe_prev_widget()) {
                     None => [0.0, 0.0],
                     Some(rel_idx) => {
                         use position::Direction;
                         let (rel_xy, rel_w, rel_h) = {
                             let widget = &self.widget_graph[rel_idx];
-                            (widget.xy, widget.dim[0], widget.dim[1])
+                            (widget.rect.xy(), widget.rect.w(), widget.rect.h())
                         };
 
                         match direction {
@@ -305,12 +309,8 @@ impl<C> Ui<C> {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_x, other_w) = match h_align.1 {
                                     Some(other_idx) => {
-                                        let (x, elem) = {
-                                            let widget = &self.widget_graph[other_idx];
-                                            (widget.xy[0], &widget.element)
-                                        };
-                                        let w = elem.get_width() as f64;
-                                        (x, w)
+                                        let widget = &self.widget_graph[other_idx];
+                                        (widget.rect.x(), widget.rect.w())
                                     },
                                     None => (rel_xy[0], rel_w),
                                 };
@@ -328,12 +328,8 @@ impl<C> Ui<C> {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_y, other_h) = match h_align.1 {
                                     Some(other_idx) => {
-                                        let (y, elem) = {
-                                            let widget = &self.widget_graph[other_idx];
-                                            (widget.xy[1], &widget.element)
-                                        };
-                                        let h = elem.get_height() as f64;
-                                        (y, h)
+                                        let widget = &self.widget_graph[other_idx];
+                                        (widget.rect.y(), widget.rect.h())
                                     },
                                     None => (rel_xy[1], rel_h),
                                 };
@@ -352,11 +348,12 @@ impl<C> Ui<C> {
             },
 
             Position::Place(place, maybe_parent_idx) => {
-                let window = || ([0.0, 0.0], [self.win_w, self.win_h], Padding::none());
-                let (xy, target_dim, pad) = match maybe_parent_idx.or(self.maybe_current_parent_idx) {
+                let window = || (([0.0, 0.0], [self.win_w, self.win_h]), Padding::none());
+                let maybe_parent = maybe_parent_idx.or(self.maybe_current_parent_idx);
+                let ((target_xy, target_dim), pad) = match maybe_parent {
                     Some(parent_idx) => match self.widget_graph.get_widget(parent_idx) {
                         Some(parent) =>
-                            (parent.kid_area.xy, parent.kid_area.dim, parent.kid_area.pad),
+                            (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
                         // Sometimes the children are placed prior to their parents being set for
                         // the first time. If this is the case, we'll just place them on the window
                         // until we have information about the parents on the next update.
@@ -366,24 +363,15 @@ impl<C> Ui<C> {
                 };
                 let place_xy = place.within(target_dim, dim);
                 let relative_xy = vec2_add(place_xy, pad.offset_from(place));
-                vec2_add(xy, relative_xy)
+                vec2_add(target_xy, relative_xy)
             },
 
         };
 
-        match maybe_idx {
-            // When getting the xy for some widget, we'll need to consider the graph for scrolling.
-            Some(idx) => {
-                // Sum each scrollable parent widget's scrolling offset to the resulting xy.
-                let scroll_offset = match idx {
-                    widget::Index::Public(id) => self.widget_graph.scroll_offset(id),
-                    widget::Index::Internal(idx) => self.widget_graph.scroll_offset(idx),
-                };
-                vec2_add(xy, scroll_offset)
-            },
-            // Otherwise, we return the calculated `xy` as is.
-            None => xy,
-        }
+        // Add the widget's parents' total combined scroll offset to the given xy.
+        maybe_idx
+            .map(|idx| vec2_add(xy, self.widget_graph.scroll_offset(idx)))
+            .unwrap_or(xy)
     }
 
 
@@ -395,8 +383,8 @@ impl<C> Ui<C> {
 
 
     /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
-    /// count to a `SAFE_REDRAW_COUNT`. See the docs for SAFE_REDRAW_COUNT or `draw_if_changed` for
-    /// more info on how/why the redraw count is used.
+    /// count to `num_redraw_frames`. See the docs for `set_num_redraw_frames`, SAFE_REDRAW_COUNT
+    /// or `draw_if_changed` for more info on how/why the redraw count is used.
     pub fn needs_redraw(&mut self) {
         self.redraw_count = self.num_redraw_frames;
     }
@@ -496,19 +484,18 @@ impl<C> Ui<C> {
         } = *self;
 
         // Request a new `Element` from the graph if there has been some change.
-        let maybe_new_element = widget_graph
+        widget_graph
             .element_if_changed(maybe_captured_mouse, maybe_captured_keyboard)
-            .map(|element| match maybe_background_color.take() {
-                // If we've been given a background color for the gui, construct a Cleared Element.
-                Some(color) => element.clear(color),
-                None => element
-            });
-
-        // If we have a new `Element` we'll update our stored `Element`.
-        maybe_new_element.map(move |new_element| {
-            *maybe_element = Some(new_element.clone());
-            maybe_element.as_ref().unwrap()
-        })
+            .map(move |element| {
+                let element = match maybe_background_color.take() {
+                    // If we've been given a background color for the gui, construct a Cleared Element.
+                    Some(color) => element.clear(color),
+                    None => element
+                };
+                // If we have a new `Element` we'll update our stored `Element`.
+                *maybe_element = Some(element.clone());
+                maybe_element.as_ref().unwrap()
+            })
     }
 
 
@@ -572,6 +559,9 @@ impl<C> Ui<C> {
             C: CharacterCache,
             G: Graphics<Texture = C::Texture>,
     {
+        if self.widget_graph.have_any_elements_changed() {
+            self.redraw_count = self.num_redraw_frames;
+        }
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
@@ -588,12 +578,6 @@ pub fn widget_graph<C>(ui: &Ui<C>) -> &Graph {
 /// A mutable reference to the given `Ui`'s widget `Graph`.
 pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
     &mut ui.widget_graph
-}
-
-
-/// Set the ID of the current canvas.
-pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
-    ui.maybe_current_parent_idx = Some(idx);
 }
 
 
@@ -617,6 +601,12 @@ pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget:
         Position::Place(_, maybe_parent_idx) => maybe_parent_idx.or(ui.maybe_current_parent_idx),
         _ => ui.maybe_current_parent_idx,
     }
+}
+
+
+/// A function to allow the position matrix to set the current parent within the `Ui`.
+pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
+    ui.maybe_current_parent_idx = Some(idx);
 }
 
 
@@ -734,21 +724,29 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
 }
 
 
-/// Update the given widget at the given widget::Index.
-pub fn update_widget<C, W>(ui: &mut Ui<C>,
-                           idx: widget::Index,
-                           maybe_parent_idx: Option<widget::Index>,
-                           kind: &'static str,
-                           cached: widget::Cached<W>,
-                           maybe_new_element: Option<Element>)
-    where
-        W: Widget,
-        W::State: 'static,
-        W::Style: 'static,
+/// Cache some `PreUpdateCache` widget data into the widget graph.
+/// Set the widget that is being cached as the new `prev_widget`.
+/// Set the widget's parent as the new `current_parent`.
+pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
+    C: CharacterCache,
 {
-    ui.widget_graph.update_widget(idx, maybe_parent_idx, kind, cached, maybe_new_element);
-    ui.maybe_prev_widget_idx = Some(idx);
-    ui.maybe_current_parent_idx = maybe_parent_idx;
+    ui.maybe_prev_widget_idx = Some(widget.idx);
+    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    ui.widget_graph.pre_update_cache(widget);
+}
+
+/// Cache some `PostUpdateCache` widget data into the widget graph.
+/// Set the widget that is being cached as the new `prev_widget`.
+/// Set the widget's parent as the new `current_parent`.
+pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>) where
+    C: CharacterCache,
+    W: Widget,
+    W::State: 'static,
+    W::Style: 'static,
+{
+    ui.maybe_prev_widget_idx = Some(widget.idx);
+    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    ui.widget_graph.post_update_cache(widget);
 }
 
 

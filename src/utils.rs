@@ -4,8 +4,7 @@
 
 
 use num::{Float, NumCast, PrimInt, ToPrimitive};
-use position::{Dimensions, Point};
-use vecmath::vec2_sub;
+
 
 /// Compare to PartialOrd values and return the min.
 pub fn partial_min<T: PartialOrd>(a: T, b: T) -> T {
@@ -17,16 +16,13 @@ pub fn partial_max<T: PartialOrd>(a: T, b: T) -> T {
     if a >= b { a } else { b }
 }
 
-/// Clamp a value between a given min and max.
-pub fn clamp<T: PartialOrd>(n: T, min: T, max: T) -> T {
-    if n < min { min } else if n > max { max } else { n }
-}
-
-/// Return whether or not a given point is over a rectangle at a given point on a cartesian plane.
-pub fn is_over_rect(rect_point: Point, mouse_point: Point, rect_dim: Dimensions) -> bool {
-    let point = vec2_sub(rect_point, mouse_point);
-    if point[0].abs() < rect_dim[0] / 2.0 && point[1].abs() < rect_dim[1] / 2.0 { true }
-    else { false }
+/// Clamp a value between some range.
+pub fn clamp<T: PartialOrd>(n: T, start: T, end: T) -> T {
+    if start <= end {
+        if n < start { start } else if n > end { end } else { n }
+    } else {
+        if n < end { end } else if n > start { start } else { n }
+    }
 }
 
 /// Get value percentage between max and min.
@@ -93,3 +89,45 @@ pub fn val_to_string<T: ToString + NumCast>
     }
 }
 
+
+#[test]
+fn test_map_range() {
+
+    // Normal positive to normal positive.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 0.0, 10.0), 10.0);
+
+    // Normal positive to normal negative.
+    assert_eq!(map_range(0.0, 0.0, 5.0, -10.0, 0.0), -10.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, -10.0, 0.0), -5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, -10.0, 0.0), 0.0);
+
+    // Normal positive to inverse positive.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 10.0, 0.0), 10.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 10.0, 0.0), 5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 10.0, 0.0), 0.0);
+
+    // Normal positive to inverse negative.
+    assert_eq!(map_range(0.0, 0.0, 5.0, 0.0, -10.0), 0.0);
+    assert_eq!(map_range(2.5, 0.0, 5.0, 0.0, -10.0), -5.0);
+    assert_eq!(map_range(5.0, 0.0, 5.0, 0.0, -10.0), -10.0);
+
+
+    // Normal negative to normal positive.
+    assert_eq!(map_range(-5.0, -5.0, 0.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(-2.5, -5.0, 0.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(0.0, -5.0, 0.0, 0.0, 10.0), 10.0);
+
+    // Normal negative to normal negative.
+    assert_eq!(map_range(-5.0, -5.0, 0.0, -10.0, 0.0), -10.0);
+    assert_eq!(map_range(-2.5, -5.0, 0.0, -10.0, 0.0), -5.0);
+    assert_eq!(map_range(0.0, -5.0, 0.0, -10.0, 0.0), 0.0);
+
+
+    // Inverse positive to normal positive.
+    assert_eq!(map_range(5.0, 5.0, 0.0, 0.0, 10.0), 0.0);
+    assert_eq!(map_range(2.5, 5.0, 0.0, 0.0, 10.0), 5.0);
+    assert_eq!(map_range(0.0, 5.0, 0.0, 0.0, 10.0), 10.0);
+
+}

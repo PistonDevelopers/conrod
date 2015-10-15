@@ -1,65 +1,50 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate glutin_window;
-extern crate opengl_graphics;
-extern crate piston;
+extern crate piston_window;
 
-use conrod::{Background, Button, color, Colorable, Labelable, Sizeable, Theme, Ui, Widget};
-use glutin_window::GlutinWindow;
-use opengl_graphics::{GlGraphics, OpenGL};
-use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event_loop::{Events, EventLoop};
-use piston::input::{RenderEvent};
-use piston::window::{WindowSettings, Size};
+use conrod::{Colorable, Labelable, Sizeable, Theme, Ui, Widget};
+use piston_window::*;
 
 fn main() {
 
-    let opengl = OpenGL::V3_2;
-    let window: GlutinWindow =
-        WindowSettings::new(
-            "Hello Conrod".to_string(),
-            Size { width: 200, height: 100 }
-        )
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .samples(4)
-        .build()
-        .unwrap();
-    let event_iter = window.events().ups(180).max_fps(60);
-    let mut gl = GlGraphics::new(opengl);
-    let assets = find_folder::Search::ParentsThenKids(3, 3)
-        .for_folder("assets").unwrap();
-    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    let theme = Theme::default();
-    let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let ui = &mut Ui::new(glyph_cache, theme);
+    // Construct the window.
+    let window: PistonWindow = WindowSettings::new("Click me!", [200, 100])
+        .exit_on_esc(true).build().unwrap();
 
-    let mut count: u32 = 0;
+    // construct our `Ui`.
+    let mut ui = {
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let theme = Theme::default();
+        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        Ui::new(glyph_cache.unwrap(), theme)
+    };
 
-    for event in event_iter {
+    let mut count = 0;
+
+    // Poll events from the window.
+    for event in window {
         ui.handle_event(&event);
-        if let Some(args) = event.render_args() {
-            gl.draw(args.viewport(), |c, gl| {
+        event.draw_2d(|c, g| {
 
-                // Set the background color to use for clearing the screen.
-                Background::new().rgb(0.2, 0.25, 0.4).set(ui);
+            // Set the background color to use for clearing the screen.
+            conrod::Background::new().rgb(0.2, 0.25, 0.4).set(&mut ui);
 
-                // Generate the ID for BUTTON.
-                widget_ids!(COUNTER);
+            // Generate the ID for the Button COUNTER.
+            widget_ids!(COUNTER);
 
-                // Draw the button and increment count if pressed..
-                Button::new()
-                    .color(color::red())
-                    .dimensions(80.0, 80.0)
-                    .label(&count.to_string())
-                    .react(|| count += 1)
-                    .set(COUNTER, ui);
+            // Draw the button and increment `count` if pressed.
+            conrod::Button::new()
+                .color(conrod::color::red())
+                .dimensions(80.0, 80.0)
+                .label(&count.to_string())
+                .react(|| count += 1)
+                .set(COUNTER, &mut ui);
 
-                // Draw our Ui!
-                ui.draw_if_changed(c, gl);
-
-            });
-        }
+            // Draw our Ui!
+            ui.draw_if_changed(c, g);
+        });
     }
 
 }

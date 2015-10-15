@@ -150,9 +150,9 @@ fn is_over_elem(mouse_xy: Point,
                 pad_dim: Dimensions,
                 perc_env: &[(f32, f32, f32)],
                 point_radius: Scalar) -> Option<Elem> {
-    use utils::is_over_rect;
-    if is_over_rect([0.0, 0.0], mouse_xy, dim) {
-        if is_over_rect([0.0, 0.0], mouse_xy, pad_dim) {
+    use position::is_over_rect;
+    if is_over_rect([0.0, 0.0], dim, mouse_xy) {
+        if is_over_rect([0.0, 0.0], pad_dim, mouse_xy) {
             for (i, p) in perc_env.iter().enumerate() {
                 let (x, y, _) = *p;
                 let half_pad_w = pad_dim[0] / 2.0;
@@ -365,10 +365,11 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<E>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<E>>
         where C: CharacterCache,
     {
-        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
+        let (xy, dim) = rect.xy_dim();
         let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let skew = self.skew_y_range;
@@ -569,14 +570,14 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Construct an Element from the given EnvelopeEditor State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{circle, collage, Form, line, rect, solid, text};
+        use elmesque::form::{self, circle, collage, Form, line, solid, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
+        let (xy, dim) = rect.xy_dim();
         let frame = style.frame(theme);
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
@@ -586,9 +587,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         // Construct the frame and inner rectangle Forms.
         let value_font_size = style.value_font_size(theme);
         let frame_color = style.frame_color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
         let color = state.interaction.color(style.color(theme));
-        let pressable_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let pressable_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
 
         // Construct the label Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {

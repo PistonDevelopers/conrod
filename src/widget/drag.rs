@@ -3,17 +3,9 @@
 //!
 
 use mouse::Mouse;
-use position::{Dimensions, Point};
+use position::{Point, Rect};
 
 
-/// Represents the draggable area of a widget by its coordinates and dimensions.
-#[derive(Copy, Clone, Debug)]
-pub struct Area {
-    /// The absolute center position of the area.
-    pub xy: Point,
-    /// The dimensions of the area.
-    pub dim: Dimensions,
-}
 
 /// The current drag interaction for the Widget.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -28,20 +20,15 @@ pub enum State {
 
 
 /// Drag the widget from its position `xy` and return the new position.
-pub fn drag_widget(xy: Point,
-                   area: Area,
-                   state: State,
-                   mouse: Mouse) -> (Point, State)
-{
+pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Point, State) {
     use self::State::{Normal, Highlighted, Clicked};
     use mouse::ButtonPosition::{Up, Down};
-    use utils::is_over_rect;
 
     // Find the absolute position of the draggable area.
-    let abs_area_xy = ::vecmath::vec2_add(xy, area.xy);
+    let abs_rect = rel_rect.shift(xy);
 
     // Check whether or not the cursor is over the drag area.
-    let is_over = is_over_rect(abs_area_xy, mouse.xy, area.dim);
+    let is_over = abs_rect.is_over(mouse.xy);
 
     // Determine the new drag state.
     let new_state = match (is_over, state, mouse.left.position) {

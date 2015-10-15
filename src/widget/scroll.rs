@@ -5,10 +5,9 @@
 use {Element, Scalar};
 use color::Color;
 use mouse::Mouse;
-use position::{Dimensions, Point};
+use position::{Dimensions, Point, Range, Rect};
 use theme::Theme;
-use utils::is_over_rect;
-use widget;
+use utils::{map_range, partial_max};
 
 
 /// A type for building a scrollbar widget.
@@ -30,8 +29,12 @@ pub struct State {
     pub maybe_vertical: Option<Bar>,
     /// Horizontal scrollbar.
     pub maybe_horizontal: Option<Bar>,
+    /// The rectangle representing the Visible area used tot calculate the Bar offsets.
+    pub visible: Rect,
+    /// The dimensions of the maximum bounding box around both the visible and kids Rects.
+    pub total_dim: Dimensions,
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
-    pub width: Scalar,
+    pub thickness: Scalar,
     /// The color of the scrollbar.
     pub color: Color,
 }
@@ -41,7 +44,7 @@ pub struct State {
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
-    pub maybe_width: Option<Scalar>,
+    pub maybe_thickness: Option<Scalar>,
     /// The color of the scrollbar.
     pub maybe_color: Option<Color>,
 }
@@ -52,12 +55,19 @@ pub struct Style {
 pub struct Bar {
     /// The current interaction with the Scrollbar.
     pub interaction: Interaction,
-    /// The current scroll position as an offset from the top left.
+    /// The range to which the start of the visible range is bounded.
+    pub scrollable: Range,
+    /// The distance from the start of the scrollable range and the start of the visible range.
+    /// i.e. visible.start - scrollable.start
     pub offset: Scalar,
-    /// The maximum possible offset for the handle.
-    pub max_offset: Scalar,
-    /// The total length of the area occupied by child widgets.
-    pub total_length: Scalar,
+    /// If the start of the visible range would start before the range of the widget's kids'
+    /// bounding box, this amount will represent the difference as a positive scalar value.
+    ///
+    /// Otherwise, it will remain 0.0.
+    ///
+    /// We need to keep track of this as we should never let the offset become before the start
+    /// overlap when being scrolled.
+    pub start_overlap: Scalar,
 }
 
 
@@ -100,24 +110,24 @@ impl Style {
     /// Construct a new default Style.
     pub fn new() -> Style {
         Style {
-            maybe_width: None,
+            maybe_thickness: None,
             maybe_color: None,
         }
     }
 
-    /// Get the width of the scrollbar or a default from the theme.
-    pub fn width(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 10.0;
-        self.maybe_width.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
+    /// Get the thickness of the scrollbar or a default from the theme.
+    pub fn thickness(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_THICKNESS: Scalar = 10.0;
+        self.maybe_thickness.or(theme.maybe_scrollbar.as_ref().map(|style| {
+            style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
+        })).unwrap_or(DEFAULT_THICKNESS)
     }
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color.complement())
-        })).unwrap_or(theme.shape_color.complement())
+            style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())
+        })).unwrap_or(theme.shape_color.plain_contrast())
     }
 
 }
@@ -135,320 +145,390 @@ impl Interaction {
 }
 
 
-/// The new state of the given scrollbar if it has changed.
-pub fn update(kid_area: &widget::KidArea,
-              state: &State,
-              maybe_mouse: Option<Mouse>) -> Option<State>
-{
-    use self::Elem::{Handle, Track};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    use utils::clamp;
+impl State {
 
-    let width = state.width;
-
-    // Determine the new current `Interaction` for a Scrollbar.
-    // The given mouse_scalar is the position of the mouse to be recorded by the Handle.
-    // For vertical handle this is mouse.y, for horizontal this is mouse.x.
-    let get_new_interaction = |bar: &Bar,
-                               is_over_elem: Option<Elem>,
-                               mouse_scalar: Scalar| -> Interaction
+    /// Construct a new State.
+    /// The `visible` rect corresponds to a Widget's `kid_area` aka the viewable container.
+    /// The `kids` rect is the area *actually occupied* by the children widgets.
+    pub fn new(scrolling: Scrolling, 
+               visible: Rect,
+               kids: Rect,
+               theme: &Theme,
+               maybe_prev: Option<&State>) -> State
     {
-        if let Some(mouse) = maybe_mouse {
-            use mouse::ButtonPosition::{Down, Up};
-            match (is_over_elem, bar.interaction, mouse.left.position) {
-                (Some(_),    Normal,             Down) => Normal,
-                (Some(elem), _,                  Up)   => Highlighted(elem),
-                (Some(_),    Highlighted(_),     Down) |
-                (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
-                (_,          Clicked(elem),      Down) => Clicked(elem),
-                _                                      => Normal,
-            }
-        } else {
-            Normal
-        }
-    };
+        State {
 
-    // Simplify construction of a new Bar.
-    let maybe_new_bar = |bar: &Bar, new_interaction: Interaction, new_offset: Scalar| {
-        // Has the `Bar` changed at all.
-        let has_changed = bar.interaction != new_interaction || bar.offset != new_offset;
-        // Construct a new `Bar` if it has changed.
-        if has_changed {
-            Some(Bar {
-                interaction: new_interaction,
-                offset: new_offset,
-                max_offset: bar.max_offset,
-                total_length: bar.total_length,
-            })
-        } else {
-            None
-        }
-    };
-
-    // Gives the updated vertical `Bar` if it has changed.
-    let vertical = |bar: &Bar| -> Option<Bar> {
-
-        let (track_dim, track_xy) = vertical_track_area(kid_area, width);
-        let (handle_dim, handle_xy) =
-            vertical_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
-
-        // Determine whether or not the mouse is over part of the Scrollbar.
-        let is_over_elem = maybe_mouse.and_then(|mouse| {
-            if is_over_rect(track_xy, mouse.xy, track_dim) {
-                if is_over_rect(handle_xy, mouse.xy, handle_dim) {
-                    Some(Handle(mouse.xy[1]))
-                } else {
-                    Some(Track)
-                }
+            maybe_vertical: if scrolling.vertical {
+                let maybe_prev = maybe_prev.as_ref()
+                    .and_then(|prev| prev.maybe_vertical.as_ref());
+                // For a vertical scrollbar, we want the range to start at the top and end at
+                // the bottom. To do this, we will use the invert of our visible and kids y ranges.
+                Bar::new_if_scrollable(visible.y.invert(), kids.y.invert(), maybe_prev)
             } else {
                 None
-            }
-        });
-
-        // Determine the new current `Interaction`.
-        let new_interaction = match maybe_mouse {
-            Some(mouse) => get_new_interaction(bar, is_over_elem, mouse.xy[1]),
-            None => Normal,
-        };
-
-        // Determine the new offset for the scrollbar.
-        let new_offset = match (bar.interaction, new_interaction, maybe_mouse) {
-
-            // When the track is clicked and the handle snaps to the cursor.
-            (Highlighted(Track), Clicked(Handle(mouse_y)), _) => {
-                // Should try snap the handle so that the mouse is in the middle of it.
-                let track_top = track_xy[1] + track_dim[1] / 2.0;
-                let target_offset = -((mouse_y - track_top) + handle_dim[1] / 2.0);
-                clamp(target_offset, 0.0, bar.max_offset)
             },
 
-            // When the handle is dragged.
-            (Clicked(Handle(prev_mouse_y)), Clicked(Handle(mouse_y)), _) => {
-                let diff = prev_mouse_y - mouse_y;
-                clamp(bar.offset + diff, 0.0, bar.max_offset)
-            },
-
-            // The mouse has been scrolled using a wheel/trackpad/touchpad.
-            (_, _, Some(mouse)) if mouse.scroll.y != 0.0 => {
-                clamp(bar.offset - mouse.scroll.y, 0.0, bar.max_offset)
-            },
-
-            // Otherwise, we'll assume the offset is unchanged.
-            _ => bar.offset,
-
-        };
-
-        // Check to see if the bar has changed and return a new bar if it has.
-        maybe_new_bar(bar, new_interaction, new_offset)
-    };
-
-    // Gives the updated horizontal `Bar` if it has changed.
-    let horizontal = |bar: &Bar| -> Option<Bar> {
-
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, width);
-        let (handle_dim, handle_xy) =
-            horizontal_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
-
-        // Determine whether or not the mouse is over part of the Scrollbar.
-        let is_over_elem = maybe_mouse.and_then(|mouse| {
-            if is_over_rect(track_xy, mouse.xy, track_dim) {
-                if is_over_rect(handle_xy, mouse.xy, handle_dim) {
-                    Some(Handle(mouse.xy[0]))
-                } else {
-                    Some(Track)
-                }
+            maybe_horizontal: if scrolling.horizontal {
+                let maybe_prev = maybe_prev.as_ref()
+                    .and_then(|prev| prev.maybe_horizontal.as_ref());
+                Bar::new_if_scrollable(visible.x, kids.x, maybe_prev)
             } else {
                 None
-            }
-        });
-
-        // Determine the new current `Interaction`.
-        let new_interaction = match maybe_mouse {
-            Some(mouse) => get_new_interaction(bar, is_over_elem, mouse.xy[0]),
-            None => Normal,
-        };
-
-        // Determine the new offset for the scrollbar.
-        let new_offset = match (bar.interaction, new_interaction, maybe_mouse) {
-
-            // When the track is clicked and the handle snaps to the cursor.
-            (Highlighted(Track), Clicked(Handle(mouse_x)), _) => {
-                // Should try snap the handle so that the mouse is in the middle of it.
-                let track_left = track_xy[0] - track_dim[1] / 2.0;
-                let target_offset = (mouse_x - track_left) + handle_dim[0] / 2.0;
-                clamp(target_offset, 0.0, bar.max_offset)
             },
 
-            // When the handle is dragged.
-            (Clicked(Handle(prev_mouse_x)), Clicked(Handle(mouse_x)), _) => {
-                let diff = prev_mouse_x - mouse_x;
-                clamp(bar.offset + diff, 0.0, bar.max_offset)
-            },
-
-            // The mouse has been scrolled using a wheel/trackpad/touchpad.
-            (_, _, Some(mouse)) if mouse.scroll.x != 0.0 => {
-                clamp(bar.offset + mouse.scroll.x, 0.0, bar.max_offset)
-            },
-
-            // Otherwise, we'll assume the offset is unchanged.
-            _ => bar.offset,
-
-        };
-
-        // Check to see if the bar has changed and return a new bar if it has.
-        maybe_new_bar(bar, new_interaction, new_offset)
-    };
-
-    // Produce a new scroll state if there has been any changes in either bar.
-    match (&state.maybe_vertical, &state.maybe_horizontal) {
-
-        // We have both vertical and horizontal bars.
-        (&Some(ref v_bar), &Some(ref h_bar)) => match (vertical(v_bar), horizontal(h_bar)) {
-            (None, None) => None,
-            (Some(new_v_bar), None) => Some(State { maybe_vertical: Some(new_v_bar), ..*state }),
-            (None, Some(new_h_bar)) => Some(State { maybe_horizontal: Some(new_h_bar), ..*state }),
-            (Some(new_v_bar), Some(new_h_bar)) =>
-                Some(State {
-                    maybe_vertical: Some(new_v_bar),
-                    maybe_horizontal: Some(new_h_bar),
-                    ..*state
-                }),
-        },
-
-        // We only have a vertical scrollbar.
-        (&Some(ref v_bar), &None) => vertical(v_bar).map(|new_v_bar| {
-            State { maybe_vertical: Some(new_v_bar), ..*state }
-        }),
-
-        // We only have a horizontal scrollbar.
-        (&None, &Some(ref h_bar)) => horizontal(h_bar).map(|new_h_bar| {
-            State { maybe_horizontal: Some(new_h_bar), ..*state }
-        }),
-
-        // We don't have any scrollbars.
-        (&None, &None) => None,
+            total_dim: visible.max(kids).dim(),
+            visible: visible,
+            thickness: scrolling.style.thickness(theme),
+            color: scrolling.style.color(theme),
+        }
     }
+
+    /// Given some mouse input, update the State and return the resulting State.
+    pub fn handle_input(self, mouse: Mouse) -> State {
+        State {
+
+            maybe_vertical: self.maybe_vertical.map(|bar| {
+                let track = vertical_track(self.visible, self.thickness);
+                let handle = vertical_handle(&bar, track, self.total_dim[1]);
+                // Invert the visible y axis so that it points downward for vertical scrolling.
+                let visible = self.visible.y.invert();
+                let mouse_pos_scalar = mouse.xy[1] - track.top();
+                bar.handle_input(visible, track, handle, &mouse, mouse_pos_scalar, mouse.scroll.y)
+            }),
+
+            maybe_horizontal: self.maybe_horizontal.map(|bar| {
+                let track = horizontal_track(self.visible, self.thickness);
+                let handle = horizontal_handle(&bar, track, self.total_dim[0]);
+                let visible = self.visible.x;
+                let mouse_pos_scalar = mouse.xy[0] - track.left();
+                bar.handle_input(visible, track, handle, &mouse, mouse_pos_scalar, -mouse.scroll.x)
+            }),
+
+            .. self
+        }
+    }
+
+    /// Is the given xy over either scroll Bars.
+    pub fn is_over(&self, target_xy: Point) -> bool {
+        if self.maybe_vertical.is_some() {
+            if vertical_track(self.visible, self.thickness).is_over(target_xy) {
+                return true;
+            }
+        }
+        if self.maybe_horizontal.is_some() {
+            if horizontal_track(self.visible, self.thickness).is_over(target_xy) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Converts the Bars' current offset to a positional offset along its visible area.
+    pub fn kids_pos_offset(&self) -> Dimensions {
+        let maybe_x_offset = self.maybe_horizontal.map(|bar| bar.kids_pos_offset());
+        let maybe_y_offset = self.maybe_vertical.map(|bar| bar.kids_pos_offset());
+        [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
+    }
+
+    /// Produce a graphical element for the current scroll State.
+    pub fn element(&self) -> Element {
+        use elmesque::element::{empty, layers};
+        use elmesque::form::{collage, rect};
+
+        // Get the color via the current interaction.
+        let color = self.color;
+        let track_color = color.alpha(0.2);
+        let thickness = self.thickness;
+        let visible = self.visible;
+
+        // An element for a scroll Bar.
+        let bar_element = |bar: Bar, track: Rect, handle: Rect| -> Element {
+            // We only want to see the scrollbar if it's highlighted or clicked.
+            if let Interaction::Normal = bar.interaction {
+                return empty();
+            }
+            let color = bar.interaction.color(color);
+            let track_form = rect(track.w(), track.h()).filled(track_color)
+                .shift(track.x(), track.y());
+            let handle_form = rect(handle.w(), handle.h()).filled(color)
+                .shift(handle.x(), handle.y());
+            collage(visible.w() as i32, visible.h() as i32, vec![track_form, handle_form])
+        };
+
+        // The element for a vertical scroll Bar.
+        let vertical = |bar: Bar| -> Element {
+            let track = vertical_track(visible, thickness);
+            let handle = vertical_handle(&bar, track, self.total_dim[1]);
+            bar_element(bar, track, handle)
+        };
+
+        // An element for a horizontal scroll Bar.
+        let horizontal = |bar: Bar| -> Element {
+            let track = horizontal_track(visible, thickness);
+            let handle = horizontal_handle(&bar, track, self.total_dim[0]);
+            bar_element(bar, track, handle)
+        };
+
+        // Whether we draw horizontal or vertical or both depends on our state.
+        match (self.maybe_vertical, self.maybe_horizontal) {
+            (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
+            (Some(bar), None) => vertical(bar),
+            (None, Some(bar)) => horizontal(bar),
+            (None, None) => empty(),
+        }
+    }
+
 }
 
 
-/// Construct a renderable Element from the state for the given widget's kid area.
-pub fn element(kid_area: &widget::KidArea, state: State) -> Element {
-    use elmesque::element::{empty, layers};
-    use elmesque::form::{collage, rect};
+impl Bar {
 
-    // Get the color via the current interaction.
-    let color = state.color;
-    let track_color = color.alpha(0.2);
-    let width = state.width;
+    /// Construct a new Bar for a widget from a given visible range as well as the range occuppied
+    /// by the widget's child widgets.
+    ///
+    /// The given `kids` Range should be relative to the visible range.
+    ///
+    /// If there is some previous Bar its interaction will be carried through to the Bar.
+    pub fn new_if_scrollable(visible: Range, kids: Range, maybe_prev: Option<&Bar>) -> Option<Bar> {
 
-    // The element for a vertical slider.
-    let vertical = |bar: Bar| -> Element {
-        // We only want to see the scrollbar if it's highlighted or clicked.
-        if let Interaction::Normal = bar.interaction {
-            return empty();
+        // The range occuppied by kid widgets when the scroll offset is at 0.0.
+        let kids_at_origin = {
+            let offset_from_origin = maybe_prev.map(|bar| bar.kids_pos_offset()).unwrap_or(0.0);
+            kids.shift(-offset_from_origin)
+        };
+
+        // Total combined range of the visible and kids_at_origin ranges.
+        let total = visible.max_directed(kids_at_origin);
+
+        // The range that describes the area upon which the start of the visible range can scroll.
+        let scrollable = Range::new(total.start .. total.end - visible.magnitude());
+
+        // We only need to calculate offsets if we actually have some scrollable area.
+        if scrollable.magnitude().is_normal() && scrollable.direction() == kids.direction() {
+
+            let interaction = maybe_prev.map(|bar| bar.interaction)
+                .unwrap_or(Interaction::Normal);
+
+            // The amount that the visible range overlaps the start of the kids range when at its
+            // origin position (non-scrolled).
+            let start_overlap = {
+                let start_diff_at_origin = kids_at_origin.start - visible.start;
+                if start_diff_at_origin.signum() == visible.direction() {
+                    start_diff_at_origin
+                } else {
+                    0.0
+                }
+            };
+
+            // The positional scroll offset.
+            let offset = maybe_prev.map(|bar| bar.offset).unwrap_or(0.0);
+
+            Some(Bar {
+                interaction: interaction,
+                scrollable: scrollable,
+                offset: offset,
+                start_overlap: start_overlap,
+            })
+        // Otherwise our offsets are zeroed.
+        } else {
+            None
         }
-        let color = bar.interaction.color(color);
-        let (track_dim, track_xy) = vertical_track_area(kid_area, width);
-        let (handle_dim, handle_xy) =
-            vertical_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
-        let track_form = rect(track_dim[0], track_dim[1]).filled(track_color)
-            .shift(track_xy[0], track_xy[1]);
-        let handle_form = rect(handle_dim[0], handle_dim[1]).filled(color)
-            .shift(handle_xy[0], handle_xy[1]);
-        collage(kid_area.dim[0] as i32, kid_area.dim[1] as i32, vec![track_form, handle_form])
-    };
-
-    // An element for a horizontal slider.
-    let horizontal = |bar: Bar| -> Element {
-        // We only want to see the scrollbar if it's highlighted or clicked.
-        if let Interaction::Normal = bar.interaction {
-            return empty();
-        }
-        let color = bar.interaction.color(color);
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, width);
-        let (handle_dim, handle_xy) =
-            horizontal_handle_area(track_dim, track_xy, width, bar.offset, bar.max_offset);
-        let track_form = rect(track_dim[0], track_dim[1]).filled(track_color)
-            .shift(track_xy[0], track_xy[1]);
-        let handle_form = rect(handle_dim[0], handle_dim[1]).filled(color)
-            .shift(handle_xy[0], handle_xy[1]);
-        collage(kid_area.dim[0] as i32, kid_area.dim[1] as i32, vec![track_form, handle_form])
-    };
-
-    // Whether we draw horizontal or vertical or both depends on our state.
-    match (state.maybe_vertical, state.maybe_horizontal) {
-        (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
-        (Some(bar), None) => vertical(bar),
-        (None, Some(bar)) => horizontal(bar),
-        (None, None) => empty(),
     }
+
+
+    /// Update a scroll `Bar` with the given mouse input.
+    pub fn handle_input(self,
+                        visible: Range,
+                        track: Rect,
+                        handle: Rect,
+                        mouse: &Mouse,
+                        mouse_pos_scalar: Scalar,
+                        mouse_scroll_scalar: Scalar) -> Bar
+    {
+        use self::Elem::{Handle, Track};
+        use self::Interaction::{Highlighted, Clicked};
+
+        // Determine whether or not the mouse is over part of the Scrollbar.
+        let is_over_elem = is_over_elem(track, handle, mouse, mouse_pos_scalar);
+
+        // Determine the new current `Interaction`.
+        let new_interaction = new_interaction(&self, is_over_elem, mouse, mouse_pos_scalar);
+
+        // Calculate the maximum bar offset.
+        let bar_offset_max = || {
+            let bar_mag = handle.len() * visible.direction();
+            track.len() * visible.direction() - bar_mag
+        };
+
+        // Calculate a positional offset given some bar offset.
+        let pos_offset_from_bar_offset = |bar_offset: Scalar, bar_offset_max: Scalar| {
+            map_range(bar_offset, 0.0, bar_offset_max, 0.0, self.scrollable.magnitude())
+        };
+
+        // Determine the new offset for the scrollbar.
+        let new_offset = match (self.interaction, new_interaction) {
+
+            // When the track is clicked and the handle snaps to the cursor.
+            (Highlighted(Track), Clicked(Handle(mouse_pos_scalar))) => {
+                // Should try snap the handle so that the mouse is in the middle of it.
+                let direction = visible.direction();
+                let half_handle_len = handle.len() * direction / 2.0;
+                let target_offset = mouse_pos_scalar - half_handle_len;
+                let target_pos_offset = pos_offset_from_bar_offset(target_offset, bar_offset_max());
+                ::utils::clamp(target_pos_offset, 0.0, self.scrollable.magnitude())
+            },
+
+            // When the handle is dragged.
+            (Clicked(Handle(prev_mouse_scalar)), Clicked(Handle(mouse_pos_scalar))) => {
+                let scroll_amount = mouse_pos_scalar - prev_mouse_scalar;// * visible.direction();
+                let pos_scroll_amount = pos_offset_from_bar_offset(scroll_amount, bar_offset_max());
+                self.add_to_scroll_offset(pos_scroll_amount)
+            },
+
+            // The mouse has been scrolled using a wheel/trackpad/touchpad.
+            (_, _) if mouse_scroll_scalar != 0.0 =>
+                self.add_to_scroll_offset(mouse_scroll_scalar),
+
+            // Otherwise, we'll assume the offset is unchanged.
+            _ => self.offset,
+        };
+
+        Bar { interaction: new_interaction, offset: new_offset, ..self }
+    }
+
+
+    /// A function for shifting some current offset by some amount while ensuring it remains within the
+    /// Bar's Range.
+    fn add_to_scroll_offset(&self, amount: Scalar) -> Scalar {
+        use utils::clamp;
+        let target_offset = self.offset + amount;
+        let min_offset = self.start_overlap;
+        let max_offset = self.scrollable.magnitude();
+
+        // If the offset is before the start, only let it be dragged towards the end.
+        let clamp_current_to_max = || clamp(target_offset, self.offset, max_offset);
+        // If the offset is past the end, only let it be dragged towards the start.
+        let clamp_min_to_current = || clamp(target_offset, min_offset, self.offset);
+        // Otherwise, clamp it between 0.0 and the max.
+        let clamp_min_to_max = || clamp(target_offset, min_offset, max_offset);
+
+        // For a positive range, check the start and end of the range normally.
+        if max_offset >= 0.0 {
+            if      self.offset < min_offset { clamp_current_to_max() }
+            else if self.offset > max_offset { clamp_min_to_current() }
+            else                             { clamp_min_to_max() }
+
+        // Otherwise, check the inverse.
+        } else {
+            if      self.offset > min_offset { clamp_current_to_max() }
+            else if self.offset < max_offset { clamp_min_to_current() }
+            else                             { clamp_min_to_max() }
+        }
+    }
+
+
+    /// Converts the Bar's current offset to the positional offset required to shift the children
+    /// widgets in accordance with the scrolling.
+    pub fn kids_pos_offset(&self) -> Scalar {
+        let Bar { offset, scrollable, .. } = *self;
+        if scrollable.len() == 0.0 { 0.0 } else { -offset }
+    }
+
+    /// Converts the given bar offset to a positional offset.
+    ///
+    /// TODO: Needs testing.
+    pub fn pos_offset_from_bar_offset(&self, bar_offset: Scalar, bar_len: Scalar) -> Scalar {
+        map_range(bar_offset, 0.0, bar_len, 0.0, self.scrollable.magnitude())
+    }
+
 }
 
 
 /// The area for a vertical scrollbar track as its dimensions and position.
-fn vertical_track_area(container: &widget::KidArea, width: Scalar) -> (Dimensions, Point) {
-    let w = width;
-    let h = container.dim[1];
-    let x = container.xy[0] + container.dim[0] / 2.0 - w / 2.0;
-    let y = container.xy[1];
-    ([w, h], [x, y])
+fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
+    let w = thickness;
+    let x = container.x() + container.w() / 2.0 - w / 2.0;
+    Rect {
+        x: Range::from_pos_and_len(x, w),
+        y: container.y,
+    }
 }
 
 /// The area for a vertical scrollbar handle as its dimensions and position.
-fn vertical_handle_area(track_dim: Dimensions,
-                        track_xy: Point,
-                        width: Scalar,
-                        offset: Scalar,
-                        max_offset: Scalar) -> (Dimensions, Point)
-{
-    let w = width;
-    let h = track_dim[1] - max_offset;
-    let x = track_xy[0];
-    let top_of_track = track_xy[1] + track_dim[1] / 2.0;
-    let y = top_of_track - offset - (h / 2.0);
-    ([w, h], [x, y])
+fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+    let offset = partial_max(bar.start_overlap - bar.offset, 0.0);
+    let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
+    let track_h = track.h();
+    let h = map_range(track_h, 0.0, total_len, 0.0, track_h);
+    let y = map_range(offset, 0.0, max_offset, track.top(), track.bottom() + h) - h / 2.0;
+    Rect {
+        x: track.x,
+        y: Range::from_pos_and_len(y, h),
+    }
 }
 
 /// The area for a horizontal scrollbar track as its dimensions and position.
-fn horizontal_track_area(container: &widget::KidArea, width: Scalar) -> (Dimensions, Point) {
-    let w = container.dim[0];
-    let h = width;
-    let x = container.xy[0];
-    let y = container.xy[1] - container.dim[1] / 2.0 + h / 2.0;
-    ([w, h], [x, y])
+fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
+    let h = thickness;
+    let y = container.y() - container.h() / 2.0 + h / 2.0;
+    Rect {
+        x: container.x,
+        y: Range::from_pos_and_len(y, h),
+    }
 }
 
 /// The area for a horizontal scrollbar handle as its dimensions and position.
-fn horizontal_handle_area(track_dim: Dimensions,
-                          track_xy: Point,
-                          width: Scalar,
-                          offset: Scalar,
-                          max_offset: Scalar) -> (Dimensions, Point)
-{
-    let w = track_dim[1] - max_offset;
-    let h = width;
-    let left_of_track = track_xy[0] - track_dim[0] / 2.0;
-    let x = left_of_track + offset + (w / 2.0);
-    let y = track_xy[1];
-    ([w, h], [x, y])
+fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+    let offset = partial_max(bar.offset - bar.start_overlap, 0.0);
+    let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
+    let track_w = track.w();
+    let w = map_range(track_w, 0.0, total_len, 0.0, track_w);
+    let x = map_range(offset, 0.0, max_offset, track.left(), track.right() - w) + w / 2.0;
+    Rect {
+        x: Range::from_pos_and_len(x, w),
+        y: track.y,
+    }
 }
 
 
-/// Is the given xy over the area of a scrollbar with the given state.
-pub fn is_over(state: &State, kid_area: &widget::KidArea, target_xy: Point) -> bool {
-    if state.maybe_vertical.is_some() {
-        let (track_dim, track_xy) = vertical_track_area(kid_area, state.width);
-        if is_over_rect(track_xy, target_xy, track_dim) {
-            return true;
-        }
-    } else if state.maybe_horizontal.is_some() {
-        let (track_dim, track_xy) = horizontal_track_area(kid_area, state.width);
-        if is_over_rect(track_xy, target_xy, track_dim) {
-            return true;
+/// Whether or not the mouse is currently over the Bar, and if so, which Elem.
+fn is_over_elem(track: Rect, handle: Rect, mouse: &Mouse, mouse_scalar: Scalar) -> Option<Elem> {
+    if handle.is_over(mouse.xy) {
+        Some(Elem::Handle(mouse_scalar))
+    } else if track.is_over(mouse.xy) {
+        Some(Elem::Track)
+    } else {
+        None
+    }
+}
+
+/// Determine the new current `Interaction` for a Bar.
+/// The given mouse_scalar is the position of the mouse to be recorded by the Handle.
+/// For vertical handle this is mouse.y, for horizontal this is mouse.x.
+fn new_interaction(bar: &Bar,
+                   is_over_elem: Option<Elem>,
+                   mouse: &Mouse,
+                   mouse_scalar: Scalar) -> Interaction
+{
+    use self::Interaction::{Normal, Highlighted, Clicked};
+
+    // If there's no need for a scroll bar, leave the interaction as `Normal`.
+    if bar.scrollable.len() == 0.0 {
+        Normal
+    } else {
+        use self::Elem::Handle;
+        use mouse::ButtonPosition::{Down, Up};
+        match (is_over_elem, bar.interaction, mouse.left.position) {
+            (Some(_),    Normal,             Down) => Normal,
+            (Some(elem), _,                  Up)   => Highlighted(elem),
+            (Some(_),    Highlighted(_),     Down) |
+            (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
+            (_,          Clicked(elem),      Down) => Clicked(elem),
+            _                                      => Normal,
         }
     }
-    false
 }
+
 
 
 /// Whether or not the scrollbar should capture the mouse given previous and new states.
@@ -494,5 +574,24 @@ pub fn uncapture_mouse(prev: &State, new: &State) -> bool {
         _ => (),
     }
     false
+}
+
+
+#[test]
+fn test_bar_new_no_scroll() {
+    // Create a `Bar` that shouldn't scroll.
+    let visible = Range::new(-5.0..5.0);
+    let kids = Range::new(-3.0..3.0);
+    let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
+    assert_eq!(maybe_bar, None);
+}
+
+#[test]
+fn test_bar_new_no_scroll_rev_range() {
+    // Now with a reversed range.
+    let visible = Range::new(5.0..-5.0);
+    let kids = Range::new(3.0..-3.0);
+    let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
+    assert_eq!(maybe_bar, None);
 }
 

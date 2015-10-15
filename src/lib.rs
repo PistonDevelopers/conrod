@@ -64,8 +64,9 @@ pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of}
 pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
                    mid_top_of, mid_bottom_of, mid_left_of, mid_right_of};
 pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalAlign, Margin,
-                   Padding, Place, Point, Position, Positionable, Sizeable, Vertical,
-                   VerticalAlign};
+                   Padding, Place, Point, Position, Positionable, Range, Rect, Sizeable,
+                   Vertical, VerticalAlign};
+pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
 pub use widget::{drag, scroll, CommonBuilder, DrawArgs, UiCell, UpdateArgs, Widget};

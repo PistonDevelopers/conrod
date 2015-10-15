@@ -125,10 +125,9 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F>
-    where
-        F: FnMut(T),
-        T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+impl<'a, T, F> Widget for Slider<'a, T, F> where
+    F: FnMut(T),
+    T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
 {
     type State = State<T>;
     type Style = Style;
@@ -177,18 +176,19 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
-        use utils::{is_over_rect, map_range};
+        use utils::map_range;
 
-        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
+        let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
-                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
+                let is_over = ::position::is_over_rect([0.0, 0.0], dim, mouse.xy);
                 get_new_interaction(is_over, state.interaction, mouse)
             },
         };
@@ -273,13 +273,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Construct an Element from the given Slider State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
+        let (xy, dim) = rect.xy_dim();
         let frame = style.frame(theme);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
         let frame_color = state.color(style.frame_color(theme));
@@ -302,10 +302,10 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         };
 
         // Rectangle frame / backdrop Form.
-        let frame_form = rect(dim[0], dim[1])
+        let frame_form = form::rect(dim[0], dim[1])
             .filled(frame_color);
         // Slider rectangle Form.
-        let pad_form = rect(pad_dim[0], pad_dim[1])
+        let pad_form = form::rect(pad_dim[0], pad_dim[1])
             .filled(color)
             .shift(pad_rel_xy[0], pad_rel_xy[1]);
 

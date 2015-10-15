@@ -1,10 +1,9 @@
 
 
-use {Scalar};
 use elmesque::Element;
 use elmesque::element::layers;
 use petgraph as pg;
-use position::{Depth, Dimensions, Point};
+use position::{Depth, Point, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
 use std::fmt::Debug;
@@ -22,36 +21,29 @@ pub type NodeIndex = pg::graph::NodeIndex<u32>;
 /// An alias for our Graph's Edge Index.
 type EdgeIndex = pg::graph::EdgeIndex<u32>;
 
-/// The state type that we'll dynamically cast to and from Any for storage within the Cache.
+/// The state type that we'll dynamically cast to and from `Any` for storage within the cache.
 #[derive(Debug)]
-pub struct StoredWidget<Sta, Sty>
-    where
-        Sta: Any + Debug,
-        Sty: Any + Debug,
+pub struct UniqueWidgetState<State, Style> where
+    State: Any + Debug,
+    Style: Any + Debug,
 {
-    pub state: Sta,
-    pub style: Sty,
+    pub state: State,
+    pub style: Style,
 }
 
-/// A container for storing a Widget's state inside the Cache.
+/// A container for caching a Widget's state inside a Graph Node.
 #[derive(Debug)]
 pub struct Container {
     /// Dynamically stored widget state.
     pub maybe_state: Option<Box<Any>>,
     /// A unique widget kind identifier.
     pub kind: &'static str,
-    /// The dimensions of the Widget's bounding rectangle.
-    pub dim: Dimensions,
-    /// Centered coords of the widget's position.
-    pub xy: Point,
+    /// The rectangle describing the Widget's area.
+    pub rect: Rect,
     /// The depth at which the widget will be rendered comparatively to its siblings.
     pub depth: Depth,
     /// The drag state of the Widget.
     pub drag_state: widget::drag::State,
-    /// The element used for drawing the widget.
-    pub element: Element,
-    /// Whether or not the `Widget` has had `.set` called since the last cycle.
-    pub has_set: bool,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
@@ -62,6 +54,14 @@ pub struct Container {
     /// Whether or not the `Element` for the widget has changed since the last time an `Element`
     /// was requested from the graph.
     pub element_has_changed: bool,
+    /// The latest `Element` that has been used for drawing the `Widget`.
+    pub maybe_element: Option<Element>,
+    /// Whether or not the `Widget`'s cache has been updated since the last update cycle.
+    /// We need to keep track of this as we only want to draw the widget if it has been set.
+    pub is_updated: bool,
+    /// Whether or not the `Widget`'s cache has was updated during the last update cycle.
+    /// We need to know this so we can check whether or not a widget has been removed.
+    pub was_previously_updated: bool,
 }
 
 /// A node within the UI Graph.
@@ -76,8 +76,19 @@ enum Node {
     Placeholder,
 }
 
+/// An edge between nodes within the UI Graph.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Edge {
+    /// A widget is positioned relatively to another.
+    /// When adding an edge a -> b, b is positioned relatively to a.
+    RelativePosition,
+    /// A widget is a child of another.
+    /// When adding an edge a -> b, a is the parent of b.
+    Child,
+}
+
 /// An alias for the petgraph::Graph used within our Ui Graph.
-type PetGraph = pg::Graph<Node, (), pg::Directed>;
+type PetGraph = pg::Graph<Node, Edge, pg::Directed>;
 
 /// Parts of the graph that are significant when visiting and sorting by depth.
 /// The reason a widget and its scrollbar are separate here is because a widget's scrollbar may
@@ -108,45 +119,50 @@ pub struct Graph {
 }
 
 
+/// A common argument when expecting that there is a `NodeIndex`.
+const NO_MATCHING_NODE_INDEX: &'static str = "No matching NodeIndex";
+/// A common argument when expecting that there is a `WidgetId`.
+const NO_MATCHING_WIDGET_ID: &'static str = "No matching WidgetId";
+
+
 impl Container {
 
-    /// Take the widget state from the container and cast it to type W.
-    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>>
-        where
-            W: Widget,
-            W::State: Any + 'static,
-            W::Style: Any + 'static,
+    /// A method for taking only the unique state from the container.
+    pub fn take_unique_widget_state<W>(&mut self)
+        -> Option<Box<UniqueWidgetState<W::State, W::Style>>> where
+        W: Widget,
+        W::State: Any + 'static,
+        W::Style: Any + 'static,
     {
+        self.maybe_state.take().map(|any_state| {
+            any_state.downcast().ok()
+                .expect("Failed to downcast from Box<Any> to required UniqueWidgetState")
+        })
+    }
 
-        let Container {
-            ref mut maybe_state,
-            dim,
-            xy,
-            depth,
-            drag_state,
-            kid_area,
-            maybe_floating,
-            maybe_scrolling,
-            ..
-        } = *self;
-
-        maybe_state.take().map(|any_state| {
-            let store: Box<StoredWidget<W::State, W::Style>> = any_state.downcast()
-                .ok().expect("Failed to downcast from Box<Any> to required widget::Store.");
-            let store: StoredWidget<W::State, W::Style> = *store;
-            let StoredWidget { state, style } = store;
-            widget::Cached {
+    /// Take the widget state from the container and cast it to type W.
+    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>> where
+        W: Widget,
+        W::State: Any + 'static,
+        W::Style: Any + 'static,
+    {
+        if self.maybe_state.is_some() {
+            let boxed_unique_state = self.take_unique_widget_state::<W>().unwrap();
+            let unique_state: UniqueWidgetState<W::State, W::Style> = *boxed_unique_state;
+            let UniqueWidgetState { state, style } = unique_state;
+            Some(widget::Cached {
                 state: state,
                 style: style,
-                dim: dim,
-                xy: xy,
-                depth: depth,
-                drag_state: drag_state,
-                kid_area: kid_area,
-                maybe_floating: maybe_floating,
-                maybe_scrolling: maybe_scrolling,
-            }
-        })
+                rect: self.rect,
+                depth: self.depth,
+                drag_state: self.drag_state,
+                kid_area: self.kid_area,
+                maybe_floating: self.maybe_floating,
+                maybe_scrolling: self.maybe_scrolling,
+            })
+        } else {
+            None
+        }
     }
 
 }
@@ -201,14 +217,9 @@ impl Graph {
         J: GraphIndex,
     {
         idx.to_node_index(&self.index_map).and_then(|idx| {
-            self.graph.neighbors_directed(idx, pg::Incoming).next()
-                .and_then(|parent_idx| J::from_idx(parent_idx, &self.index_map))
+            maybe_incoming_child_edge(&self.graph, idx)
+                .and_then(|(_, parent_idx)| J::from_idx(parent_idx, &self.index_map))
         })
-    }
-
-    /// Returns whether or not the graph contains a widget with the given ID.
-    pub fn contains<I: GraphIndex>(&self, idx: I) -> bool {
-        idx.to_node_index(&self.index_map).is_some()
     }
 
 
@@ -220,7 +231,7 @@ impl Graph {
                 match visitable {
                     Visitable::Widget(idx) => {
                         if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
-                            if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                            if container.rect.is_over(xy) {
                                 return true
                             }
                         }
@@ -228,7 +239,7 @@ impl Graph {
                     Visitable::Scrollbar(idx) => {
                         if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                             if let Some(ref scrolling) = container.maybe_scrolling {
-                                if widget::scroll::is_over(scrolling, &container.kid_area, xy) {
+                                if scrolling.is_over(xy) {
                                     return true;
                                 }
                             }
@@ -239,7 +250,7 @@ impl Graph {
             })
             .map(|&visitable| match visitable {
                 Visitable::Widget(idx) | Visitable::Scrollbar(idx) =>
-                    I::from_idx(idx, index_map).expect("No matching index"),
+                    I::from_idx(idx, index_map).expect(NO_MATCHING_NODE_INDEX),
             })
     }
 
@@ -255,57 +266,65 @@ impl Graph {
             .find(|&idx| {
                 if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
                     if container.maybe_scrolling.is_some() {
-                        if ::utils::is_over_rect(container.xy, xy, container.dim) {
+                        if container.rect.is_over(xy) {
                             return true;
                         }
                     }
                 }
                 false
             })
-            .map(|idx| I::from_idx(idx, index_map).expect("No matching index"))
+            .map(|idx| I::from_idx(idx, index_map).expect(NO_MATCHING_NODE_INDEX))
     }
 
 
     /// Calculate the total scroll offset for the widget with the given widget::Index.
     pub fn scroll_offset<I: GraphIndex>(&self, idx: I) -> Point {
         let Graph { ref graph, ref index_map, .. } = *self;
-        
+
         let mut offset = [0.0, 0.0];
         let mut idx = match idx.to_node_index(index_map) {
             Some(idx) => idx,
-            // If the ID is not yet present within the graph, return the zeroed offset.
+            // If the ID is not yet present within the graph, just return the zeroed offset.
             None => return offset,
         };
 
         // We know that our graph shouldn't cycle at all, so we can safely use loop to traverse all
         // parent widget nodes and return when there are no more.
-        loop {
+        'child_edge_traversal: loop {
 
-            // We know that we should only have one incoming edge as we only have one parent.
-            idx = match graph.neighbors_directed(idx, pg::Incoming).next() {
-                None => return offset,
-                Some(parent_idx) => parent_idx,
-            };
+            // We only need to worry about calculating any offset if there is some parent widget.
+            if let Some((_, parent_idx)) = maybe_incoming_child_edge(graph, idx) {
 
-            if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
-                if let Some(ref scrolling) = container.maybe_scrolling {
-
-                    // Vertical offset.
-                    if let Some(ref bar) = scrolling.maybe_vertical {
-                        let offset_frac = bar.offset / bar.max_offset;
-                        let visible_height = container.kid_area.dim[1];
-                        let y_offset = offset_frac * (bar.total_length - visible_height);
-                        offset[1] += y_offset;
-                    }
-
-                    // Horizontal offset.
-                    if let Some(ref bar) = scrolling.maybe_horizontal {
-                        let offset_frac = bar.offset / bar.max_offset;
-                        let visible_width = container.kid_area.dim[0];
-                        let x_offset = offset_frac * (bar.total_length - visible_width);
-                        offset[0] -= x_offset;
+                // Recursively check all nodes with incoming `RelativePosition` edges for a parent that
+                // matches our own parent. If any match, then we don't need to calculate any additional
+                // offset as the widget we are being positioned relatively to has already applied the
+                // necessary scroll offset.
+                let mut current_node = idx;
+                'relative_position_edge_traversal: loop {
+                    match maybe_incoming_relative_position_edge(graph, current_node) {
+                        Some((_, node)) => match maybe_incoming_child_edge(graph, node) {
+                            Some((_, parent_node)) if parent_node == parent_idx => return offset,
+                            _ => current_node = node,
+                        },
+                        None => break 'relative_position_edge_traversal,
                     }
                 }
+
+                // Set the parent as the new current idx and continue traversing.
+                idx = parent_idx;
+
+                // Check the current widget for any scroll offset.
+                if let Some(&Node::Widget(ref container)) = graph.node_weight(idx) {
+                    if let Some(ref scrolling) = container.maybe_scrolling {
+                        let scroll_offset = scrolling.kids_pos_offset();
+                        offset[0] += scroll_offset[0].round();
+                        offset[1] += scroll_offset[1].round();
+                    }
+                }
+
+            // Otherwise if there are no more parent widgets, we're done calculating the offset.
+            } else {
+                return offset;
             }
         }
     }
@@ -314,13 +333,13 @@ impl Graph {
     /// Set the parent for the given Widget Id.
     /// This method clears all other incoming edges and ensures that the widget only has a single
     /// parent (incoming edge). This means we can be sure of retaining a tree structure.
-    pub fn set_parent_for_widget<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
+    fn set_parent_for_widget<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
         I: GraphIndex,
         P: GraphIndex,
     {
         let Graph { ref mut graph, ref mut index_map, root, .. } = *self;
 
-        let node_idx = idx.to_node_index(index_map).expect("No NodeIndex for given GraphIndex");
+        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
         // If no parent id was given, we will set the root as the parent.
         let parent_node_idx = match maybe_parent_idx {
             Some(parent_idx) => match parent_idx.to_node_index(index_map) {
@@ -331,7 +350,7 @@ impl Graph {
                 None => {
                     // We *know* that this must be a WidgetId as `.to_node_indx` returned None.
                     let parent_widget_id = parent_idx.to_widget_id(index_map)
-                        .expect("No matching WidgetId for parent_idx");
+                        .expect(NO_MATCHING_WIDGET_ID);
                     // Add a placeholder node to act as a parent until the actual parent is placed.
                     let parent_node_idx = graph.add_node(Node::Placeholder);
                     index_map.insert(parent_widget_id, parent_node_idx);
@@ -341,32 +360,35 @@ impl Graph {
             None => root,
         };
 
-        // Check to see if the node already has some parent.
-        // Remove the parent if it's not the same as our new parent_node_idx.
-        // Keep it if it's the one we want.
+        set_edge(graph, parent_node_idx, node_idx, Edge::Child);
+    }
+
+
+    /// Set's an `Edge::RelativePosition` from a to b. This edge represents the fact that b is
+    /// positioned relatively to a's position.
+    fn set_relative_position_edge<A, B>(&mut self, a: A, b: B) where
+        A: GraphIndex,
+        B: GraphIndex,
+    {
+        let a_idx = a.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
+        let b_idx = b.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
+
+        set_edge(&mut self.graph, a_idx, b_idx, Edge::RelativePosition);
+    }
+
+
+    /// Remove the incoming relative position edge (if there is one) to the widget at the given
+    /// index.
+    fn remove_incoming_relative_position_edge<I: GraphIndex>(&mut self, idx: I) {
+        let Graph { ref mut graph, ref index_map, .. } = *self;
+        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
         let mut incoming_edges = graph.walk_edges_directed(node_idx, pg::Incoming);
-        let mut already_connected = false;
-        // Note that we only need to check for *one* parent as there can only ever be one parent
-        // per node. We know this, as this method is the only public method that adds edges.
-        if let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
-            if in_node_idx == parent_node_idx {
-                already_connected = true;
-            } else {
+        while let Some((in_edge_idx, _)) = incoming_edges.next_neighbor(graph) {
+            if let Edge::RelativePosition = graph[in_edge_idx] {
                 graph.remove_edge(in_edge_idx);
-            }
-        }
-
-        // If we don't already have an incoming edge from the requested parent, add one.
-        if !already_connected {
-            graph.add_edge(parent_node_idx, node_idx, ());
-
-            // We can't allow the new connection to cause a cycle.
-            if let Some(parent_idx) = maybe_parent_idx {
-                if pg::algo::is_cyclic_directed(graph) {
-                    panic!("Adding widget (WidgetId: {:?}, NodeIndex: {:?}) with the given \
-                            parent (WidgetId: {:?}, NodeIndex: {:?}) caused a cycle within the \
-                            Ui Graph.\n{:?}", idx, node_idx, parent_idx, parent_node_idx, graph);
-                }
+                // Note that we only need to check for *one* edge as there can only ever be one
+                // incoming relative position edge per node.
+                break;
             }
         }
     }
@@ -381,61 +403,45 @@ impl Graph {
                                        include_self: bool,
                                        target_xy: Option<Point>,
                                        use_kid_area: bool,
-                                       idx: I) -> Option<(Scalar, Scalar, Scalar, Scalar)>
+                                       idx: I) -> Option<Rect>
     {
         let Graph { ref graph, ref index_map, .. } = *self;
 
         if let Some(idx) = idx.to_node_index(index_map) {
             if let &Node::Widget(ref container) = &graph[idx] {
 
-                // If we're to use the kid area, we'll get the dim and xy from that.
-                let (dim, xy) = if use_kid_area {
-                    (container.kid_area.dim, container.kid_area.xy)
+                // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
+                // the regular dim and xy.
+                let rect = if use_kid_area { container.kid_area.rect } else { container.rect };
 
-                // Otherwise we'll use the regular dim and xy.
-                } else {
-                    (container.dim, container.xy)
-                };
-
+                // Determine the our bounds relative to the target_xy position.
+                let (xy, dim) = rect.xy_dim();
                 let target_xy = target_xy.unwrap_or(xy);
-                let self_bounds = || {
-                    let x_diff = xy[0] - target_xy[0];
-                    let y_diff = xy[1] - target_xy[1];
-                    let half_w = dim[0] / 2.0;
-                    let half_h = dim[1] / 2.0;
-                    let top_y = y_diff + half_h;
-                    let bottom_y = y_diff - half_h;
-                    let left_x = x_diff - half_w;
-                    let right_x = x_diff + half_w;
-                    (top_y, bottom_y, left_x, right_x)
-                };
+                let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
+                let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
 
-                // Filter the neighbours so only widget kids' xy and dim are produced.
-                let mut kids = graph.neighbors_directed(idx, pg::Outgoing)
-                    .filter_map(|kid_idx| self.bounding_box(true, Some(target_xy), false, kid_idx));
+                // An iterator yielding the bounding_box returned by each of our children.
+                let mut kids_bounds = graph.neighbors_directed(idx, pg::Outgoing)
+                    .filter_map(|kid_idx| graph.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
+                        if let Edge::Child = graph[kid_edge_idx] {
+                            self.bounding_box(true, Some(target_xy), false, kid_idx)
+                        } else {
+                            None
+                        }
+                    }));
 
                 // Work out the initial bounds to use for our max_bounds fold.
                 let init_bounds = if include_self {
-                    self_bounds()
+                    relative_bounds()
                 } else {
-                    match kids.next() {
+                    match kids_bounds.next() {
                         Some(first_kid_bounds) => first_kid_bounds,
                         None => return None,
                     }
                 };
 
-                return Some(kids.fold(init_bounds, |max_so_far, kid_bounds| {
-
-                    // max y, min y, min x, max x.
-                    type Bounds = (Scalar, Scalar, Scalar, Scalar);
-
-                    // Returns the bounds for the two given sets of bounds.
-                    fn max_bounds(a: Bounds, b: Bounds) -> Bounds {
-                        (a.0.max(b.0), a.1.min(b.1), a.2.min(b.2), a.3.max(b.3))
-                    }
-
-                    max_bounds(max_so_far, kid_bounds)
-                }));
+                // Fold the Rect for each kid into the total encompassing bounds.
+                return Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)));
             }
         }
 
@@ -451,11 +457,11 @@ impl Graph {
     /// index is given). Return the NodeIndex for the Widget's position within the Graph.
     pub fn add_widget<I: GraphIndex>(&mut self,
                                      container: Container,
-                                     maybe_id: Option<widget::Id>,
+                                     maybe_widget_id: Option<widget::Id>,
                                      maybe_parent_idx: Option<I>) -> NodeIndex
     {
         let node_idx = self.graph.add_node(Node::Widget(container));
-        if let Some(id) = maybe_id {
+        if let Some(id) = maybe_widget_id {
             self.index_map.insert(id, node_idx);
         }
         self.set_parent_for_widget(node_idx, maybe_parent_idx);
@@ -463,118 +469,128 @@ impl Graph {
     }
 
 
-    /// Update the state of the widget with the given widget::Index.
-    /// If there is no widget for the given widget::Index, add it to the graph.
-    pub fn update_widget<I, P, W>(&mut self,
-                                  idx: I,
-                                  maybe_parent_idx: Option<P>,
-                                  kind: &'static str,
-                                  cached: widget::Cached<W>,
-                                  maybe_new_element: Option<Element>)
-        where
-            I: GraphIndex,
-            P: GraphIndex,
-            W: Widget,
-            W::State: 'static,
-            W::Style: 'static,
-    {
+    /// Cache some `PreUpdateCache` widget data into the graph.
+    ///
+    /// This is called (via the `ui` module) from within the `widget::set_widget` function prior to
+    /// the `Widget::update` method being called.
+    ///
+    /// This is done so that if this Widget were to internally `set` some other `Widget`s within
+    /// its own `update` method, this `Widget`s positioning and dimension data already exists
+    /// within the `Graph` for reference.
+    pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
+        let widget::PreUpdateCache {
+            kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
+            drag_state, maybe_floating, maybe_scrolling,
+        } = widget;
 
-        // Destructure the members from the Cached.
-        let widget::Cached {
-            state,
-            style,
-            xy,
-            dim,
-            depth,
-            drag_state,
-            kid_area,
-            maybe_floating,
-            maybe_scrolling,
-        } = cached;
-
-        let stored: StoredWidget<W::State, W::Style> =
-            StoredWidget { state: state, style: style };
-
-        // Construct a new container. This is used if:
-        // - There is not yet any node matching the given ID or
-        // - The node at the given ID is a placeholder.
-        let new_container = |stored: StoredWidget<W::State, W::Style>,
-                             maybe_new_element: Option<Element>| {
-            Container {
-                maybe_state: Some(Box::new(stored)),
-                kind: kind,
-                xy: xy,
-                dim: dim,
-                depth: depth,
-                drag_state: drag_state,
-                element: maybe_new_element.unwrap_or_else(|| ::elmesque::element::empty()),
-                has_set: true,
-                kid_area: kid_area,
-                maybe_floating: maybe_floating,
-                maybe_scrolling: maybe_scrolling,
-                element_has_changed: true,
-            }
+        // Construct a new `Container` to place in the `Graph`.
+        let new_container = || Container {
+            maybe_state: None,
+            kind: kind,
+            rect: rect,
+            depth: depth,
+            drag_state: drag_state,
+            kid_area: kid_area,
+            maybe_floating: maybe_floating,
+            maybe_scrolling: maybe_scrolling,
+            maybe_element: None,
+            element_has_changed: false,
+            is_updated: true,
+            was_previously_updated: false,
         };
 
-        // If we already have a Widget for the given ID, we need to update it.
-        if self.contains(idx) {
-            self.set_parent_for_widget(idx, maybe_parent_idx);
+        // If we already have a `Node` in the graph for the given `idx`, we need to update it.
+        if let Some(node_idx) = idx.to_node_index(&self.index_map) {
 
-            // We can unwrap here because we know that there is a matching index.
-            let node_idx = idx.to_node_index(&self.index_map)
-                .expect("No matching NodeIndex");
+            // Ensure that we have an `Edge::Child` in the graph representing the parent.
+            self.set_parent_for_widget(idx, maybe_parent_idx);
 
             match &mut self.graph[node_idx] {
 
-                // If the node is currently a placeholder, construct the widget variant.
-                node @ &mut Node::Placeholder => {
-                    let container = new_container(stored, maybe_new_element);
-                    *node = Node::Widget(container);
-                },
+                // If the node is currently a `Placeholder`, construct a new container and use this
+                // to set it as the `Widget` variant.
+                node @ &mut Node::Placeholder => *node = Node::Widget(new_container()),
 
-                // Otherwise, update the container that already exists.
+                // Otherwise, update the data in the container that already exists.
                 &mut Node::Widget(ref mut container) => {
+
                     // If the container already exists with the state of some other kind of
                     // widget, we can assume there's been a mistake with the given Id.
+                    // TODO: It might be overkill to panic here.
                     if container.kind != kind && container.kind != "EMPTY" {
-                        panic!("A widget of a different kind already exists at the given UiId \
+                        panic!("A widget of a different kind already exists at the given idx \
                                 ({:?}). You tried to insert a {:?}, however the existing \
-                                widget is a {:?}. Check your widgets' `UiId`s for errors.",
+                                widget is a {:?}. Check your `WidgetId`s for errors.",
                                 idx, &kind, container.kind);
                     }
 
-                    container.maybe_state = Some(Box::new(stored));
                     container.kind = kind;
-                    container.xy = xy;
-                    container.dim = dim;
+                    container.rect = rect;
                     container.depth = depth;
                     container.drag_state = drag_state;
-                    container.has_set = true;
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
                     container.maybe_scrolling = maybe_scrolling;
-                    if let Some(new_element) = maybe_new_element {
-                        container.element = new_element;
-                        container.element_has_changed = true;
-                    }
+                    container.is_updated = true;
                 },
 
-                // The node that we're updating should only be either a Placeholder or a Widget.
+                // The node that we're updating should only be either a `Placeholder` or a `Widget`.
                 _ => unreachable!(),
             }
 
         // Otherwise if there is no Widget for the given index we need to add one.
         } else {
+
             // If there is no widget for the given index we can assume that the index is a
             // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
             // Graph.
-            let id = idx.to_widget_id(&self.index_map)
-                .expect("Expected a `WidgetId` but the given idx was not one, nor did it match any \
-                        known `WidgetId`s within the `Graph`'s `IndexMap`.");
-            let container = new_container(stored, maybe_new_element);
-            self.add_widget(container, Some(id), maybe_parent_idx);
+            let id = idx.to_widget_id(&self.index_map).expect(NO_MATCHING_WIDGET_ID);
+            self.add_widget(new_container(), Some(id), maybe_parent_idx);
         }
 
+        // Now that we've updated the widget's cached data, we need to check if we should add an
+        // `Edge::RelativePosition`.
+        if let Some(relative_idx) = maybe_positioned_relatively_idx {
+            self.set_relative_position_edge(relative_idx, idx);
+
+        // Otherwise if the widget is not positioned relatively to any other widget, we should
+        // ensure that there are no incoming `RelativePosition` edges.
+        } else {
+            self.remove_incoming_relative_position_edge(idx);
+        }
+
+    }
+
+
+    /// Cache some `PostUpdateCache` widget data into the graph.
+    ///
+    /// This is called (via the `ui` module) from within the `widget::set_widget` function after
+    /// the `Widget::update` method is called and some new state is returned.
+    pub fn post_update_cache<W>(&mut self, widget: widget::PostUpdateCache<W>) where
+        W: Widget,
+        W::State: 'static,
+        W::Style: 'static,
+    {
+        let widget::PostUpdateCache { idx, state, style, maybe_element, .. } = widget;
+
+        // We know that their must be a NodeIndex for this idx, as `Graph::pre_update_cache` will
+        // always be called prior to this method being called.
+        if let Some(ref mut container) = self.get_widget_mut(idx) {
+
+            // If we've been given some new `Element`
+            if maybe_element.is_some() {
+                container.maybe_element = maybe_element;
+                container.element_has_changed = true;
+            }
+
+            // Construct the `UniqueWidgetState` ready to store as an `Any` within the container.
+            let unique_state: UniqueWidgetState<W::State, W::Style> = UniqueWidgetState {
+                state: state,
+                style: style,
+            };
+
+            container.maybe_state = Some(Box::new(unique_state));
+        }
     }
 
 
@@ -583,12 +599,9 @@ impl Graph {
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
     /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
     /// widget, which will always be drawn last).
-    pub fn element<M, K>(&mut self,
-                         maybe_captured_mouse: Option<M>,
-                         maybe_captured_keyboard: Option<K>) -> Element
-        where
-            M: GraphIndex,
-            K: GraphIndex,
+    pub fn element(&mut self,
+                   maybe_captured_mouse: Option<widget::Index>,
+                   maybe_captured_keyboard: Option<widget::Index>) -> Element
     {
         // Convert the GraphIndex for the widget capturing the mouse into a NodeIndex.
         let maybe_captured_mouse = maybe_captured_mouse
@@ -618,24 +631,33 @@ impl Graph {
 
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut graph[idx] {
-                        if container.has_set {
+                        container.was_previously_updated = container.is_updated;
+                        if container.is_updated {
 
-                            container.has_set = false;
-                            container.element_has_changed = false;
+                            // Push back our `Element` to one of the stacks (if we have one).
+                            if let Some(ref element) = container.maybe_element {
 
-                            if let Some(scroll_group) = scroll_stack.last_mut() {
                                 // If there is some current scroll group, we'll push to that.
-                                scroll_group.push(container.element.clone());
-                            } else {
+                                if let Some(scroll_group) = scroll_stack.last_mut() {
+                                    scroll_group.push(element.clone());
+
                                 // Otherwise, we'll push straight to our main elements Vec.
-                                elements.push(container.element.clone());
+                                } else {
+                                    elements.push(element.clone());
+                                }
                             }
+
+                            // Reset the flags for checking whether or not our `Element` has changed or
+                            // if the `Widget` has been `set` between calls to `draw`.
+                            container.element_has_changed = false;
+                            container.is_updated = false;
 
                             // If the current widget is some scrollable widget, we need to add a
                             // new group to the top of our scroll stack.
                             if container.maybe_scrolling.is_some() {
                                 scroll_stack.push(Vec::new());
                             }
+
                         }
                     }
                 },
@@ -647,15 +669,13 @@ impl Graph {
                             // Now that we've come across a scrollbar, we should pop the group of
                             // elements from the top of our scrollstack for cropping.
                             if let Some(scroll_group) = scroll_stack.pop() {
-                                let xy = container.kid_area.xy;
-                                let dim = container.kid_area.dim;
-                                let element = layers(scroll_group)
-                                    .crop(xy[0], xy[1], dim[0], dim[1]);
+                                let (x, y, w, h) = scrolling.visible.x_y_w_h();
+                                let element = layers(scroll_group).crop(x, y, w, h);
                                 elements.push(element);
                             }
 
                             // Construct the element for the scrollbar itself.
-                            let element = widget::scroll::element(&container.kid_area, scrolling);
+                            let element = scrolling.element();
                             elements.push(element);
                         }
                     }
@@ -669,27 +689,29 @@ impl Graph {
     }
 
 
-    /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
-    /// `Element`s in the graph have changed.
-    pub fn element_if_changed<M, K>(&mut self,
-                                    maybe_captured_mouse: Option<M>,
-                                    maybe_captured_keyboard: Option<K>) -> Option<Element>
-        where
-            M: GraphIndex,
-            K: GraphIndex,
-    {
-        // Check whether or not any of the widget's `Element`s have changed.
-        let mut has_changed = false;
+    /// Whether or not any of the Widget `Element`s have changed since the previous call to
+    /// `Graph::element`.
+    pub fn have_any_elements_changed(&self) -> bool {
         for node in self.graph.raw_nodes().iter() {
             if let Node::Widget(ref container) = node.weight {
-                if container.element_has_changed {
-                    has_changed = true;
-                    break;
+                if container.element_has_changed
+                || (!container.is_updated && container.was_previously_updated) {
+                    return true;
                 }
             }
         }
+        false
+    }
 
-        match has_changed {
+
+    /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
+    /// `Element`s in the graph have changed.
+    pub fn element_if_changed(&mut self,
+                              maybe_captured_mouse: Option<widget::Index>,
+                              maybe_captured_keyboard: Option<widget::Index>) -> Option<Element>
+    {
+        // Only return a new element if one or more of the `Widget` `Element`s have changed.
+        match self.have_any_elements_changed() {
             true => Some(self.element(maybe_captured_mouse, maybe_captured_keyboard)),
             false => None,
         }
@@ -718,6 +740,83 @@ impl Graph {
                            floating_deque);
     }
 }
+
+
+
+/// Set some given `Edge` between `a` -> `b`, so that it is the only `Edge` of its variant.
+fn set_edge(graph: &mut PetGraph, a: NodeIndex, b: NodeIndex, edge: Edge) {
+
+    // Check to see if the node already has some matching incoming edge.
+    // Keep it if it's the one we want. Otherwise, remove any incoming edge that matches the given
+    // edge kind but isn't coming from the node that we desire.
+    let mut incoming_edges = graph.walk_edges_directed(b, pg::Incoming);
+    let mut already_set = false;
+
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if edge == graph[in_edge_idx] {
+            if in_node_idx == a {
+                already_set = true;
+            } else {
+                graph.remove_edge(in_edge_idx);
+            }
+            // Note that we only need to check for *one* edge as there can only ever be one
+            // parent or relative position per node. We know this, as this method is the only
+            // function used by a public method that adds edges.
+            break;
+        }
+    }
+
+    // If we don't already have an incoming edge from the requested parent, add one.
+    if !already_set {
+
+        // Add a Child edge from a -> b.
+        let new_edge = graph.add_edge(a, b, edge);
+
+        // We can't allow the new connection to cause a cycle, so we'll check.
+        if pg::algo::is_cyclic_directed(graph) {
+            use std::io::Write;
+
+            // If there was a cycle, remove the edge and report the error.
+            graph.remove_edge(new_edge);
+            writeln!(::std::io::stderr(),
+                     "Error: Adding a connection from node {:?} to node {:?} would cause a cycle \
+                     within the Graph.", a, b).unwrap();
+        }
+    }
+
+}
+
+
+/// Return the incoming relative position edge (and the attached Node) if one exists.
+/// We know that there may be at most one incoming relative position edge, as the only
+/// publicly exposed way to add an edge to the graph is via the `set_edge` method.
+fn maybe_incoming_relative_position_edge(graph: &PetGraph, idx: NodeIndex)
+    -> Option<(EdgeIndex, NodeIndex)>
+{
+    let mut incoming_edges = graph.walk_edges_directed(idx, pg::Incoming);
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if let Edge::RelativePosition = graph[in_edge_idx] {
+            return Some((in_edge_idx, in_node_idx));
+        }
+    }
+    None
+}
+
+/// Return the incoming child edge (and the attached parent Node) if one exists.
+/// We know that there may be at most one incoming child edge, as the only publicly
+/// exposed way to add an edge to the graph is via the `set_edge` method.
+fn maybe_incoming_child_edge(graph: &PetGraph, idx: NodeIndex)
+    -> Option<(EdgeIndex, NodeIndex)>
+{
+    let mut incoming_edges = graph.walk_edges_directed(idx, pg::Incoming);
+    while let Some((in_edge_idx, in_node_idx)) = incoming_edges.next_neighbor(graph) {
+        if let Edge::Child = graph[in_edge_idx] {
+            return Some((in_edge_idx, in_node_idx));
+        }
+    }
+    None
+}
+
 
 /// Update the depth_order (starting with the deepest) for all nodes in the graph.
 /// The floating_deque is a pre-allocated deque used for collecting the floating widgets during
@@ -779,7 +878,7 @@ fn visit_by_depth(idx: NodeIndex,
 {
     // First, store the index of the current node.
     match &graph[idx] {
-        &Node::Widget(ref container) if container.has_set =>
+        &Node::Widget(ref container) if container.is_updated =>
             depth_order.push(Visitable::Widget(idx)),
         &Node::Root => (),
         // If the node is neither an updated widget or the Root, we are done with this branch.

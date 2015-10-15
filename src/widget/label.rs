@@ -69,7 +69,7 @@ impl<'a> Widget for Label<'a> {
     }
 
     /// Update the state of the Label.
-    fn update<'b, C>(self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
+    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
         where C: CharacterCache,
     {
         let widget::UpdateArgs { prev_state, .. } = args;
@@ -78,19 +78,19 @@ impl<'a> Widget for Label<'a> {
     }
 
     /// Construct an Element for the Label.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { state: State(ref string), dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state: &State(ref string), style, theme, .. } = args;
         let size = style.font_size(theme);
         let color = style.color(theme);
+        let (x, y, w, h) = rect.x_y_w_h();
         let form = text(Text::from_string(string.clone())
                             .color(color)
-                            .height(size as f64)).shift(xy[0].floor(), xy[1].floor());
-        collage(dim[0] as i32, dim[1] as i32, vec![form])
+                            .height(size as f64)).shift(x.floor(), y.floor());
+        collage(w as i32, h as i32, vec![form])
     }
     
 }

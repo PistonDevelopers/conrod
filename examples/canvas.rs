@@ -103,14 +103,12 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     WidgetMatrix::new(COLS, ROWS)
         .dimensions(footer_dim[0], footer_dim[1] * 2.0)
         .mid_top_of(FOOTER)
-        .each_widget(ui, |ui, n, _col, _row, xy, dim| {
+        .each_widget(|n, _col, _row| {
             Button::new()
                 .color(blue().with_luminance(n as f32 / (COLS * ROWS) as f32))
-                .dim(dim)
-                .point(xy)
-                .react(|| println!("Hey! {:?}", n))
-                .set(BUTTON + n, ui);
-        });
+                .react(move || println!("Hey! {:?}", n))
+        })
+        .set(BUTTON_MATRIX, ui);
 
     Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_A)
         .react(|| println!("Bing!"))
@@ -154,7 +152,7 @@ widget_ids! {
     FOO_LABEL,
     BAR_LABEL,
     BAZ_LABEL,
-    BUTTON with COLS * ROWS,
+    BUTTON_MATRIX,
     BING,
     BONG,
 

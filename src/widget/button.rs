@@ -108,10 +108,7 @@ impl<'a, F> Button<'a, F> {
 }
 
 
-impl<'a, F> Widget for Button<'a, F>
-    where
-        F: FnMut()
-{
+impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     type State = State;
     type Style = Style;
 
@@ -153,19 +150,18 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State>
-        where C: CharacterCache,
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
+        where C: CharacterCache
     {
-        use utils::is_over_rect;
-        let widget::UpdateArgs { prev_state, xy, dim, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
         let new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
-                let is_over = is_over_rect([0.0, 0.0], mouse.xy, dim);
+                let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, state.interaction, mouse)
             },
         };
@@ -193,13 +189,14 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
-        where C: CharacterCache,
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
+        where C: CharacterCache
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
 
-        let widget::DrawArgs { state, style, theme, .. } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { state, style, theme, rect, .. } = args;
+        let xy = rect.xy();
+        let dim = rect.dim();
 
         // Retrieve the styling for the Element..
         let color = state.color(style.color(theme));
@@ -207,9 +204,9 @@ impl<'a, F> Widget for Button<'a, F>
         let frame_color = style.frame_color(theme);
 
         // Construct the frame and inner rectangle forms.
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
         let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-        let pressable_form = rect(inner_w, inner_h).filled(color);
+        let pressable_form = form::rect(inner_w, inner_h).filled(color);
 
         // Construct the label's Form.
         let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {

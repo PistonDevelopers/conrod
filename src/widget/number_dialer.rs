@@ -125,18 +125,18 @@ fn is_over(mouse_xy: Point,
            label_dim: Dimensions,
            val_string_dim: Point,
            val_string_len: usize) -> Option<Elem> {
-    use utils::is_over_rect;
-    if is_over_rect([0.0, 0.0], mouse_xy, dim) {
-        if is_over_rect([label_x, 0.0], mouse_xy, label_dim) {
+    use position::is_over_rect;
+    if is_over_rect([0.0, 0.0], dim, mouse_xy) {
+        if is_over_rect([label_x, 0.0], label_dim, mouse_xy) {
             Some(Elem::LabelGlyphs)
         } else {
             let slot_w = value_glyph_slot_width(val_string_dim[1] as u32);
             let slot_rect_xy = [label_x + label_dim[0] / 2.0 + slot_w / 2.0, 0.0];
             let val_string_xy = [slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0, 0.0];
-            if is_over_rect(val_string_xy, mouse_xy, [val_string_dim[0], pad_dim[1]]) {
+            if is_over_rect(val_string_xy, [val_string_dim[0], pad_dim[1]], mouse_xy) {
                 let mut slot_xy = slot_rect_xy;
                 for i in 0..val_string_len {
-                    if is_over_rect(slot_xy, mouse_xy, [slot_w, pad_dim[1]]) {
+                    if is_over_rect(slot_xy, [slot_w, pad_dim[1]], mouse_xy) {
                         return Some(Elem::ValueGlyph(i, mouse_xy[1]))
                     }
                     slot_xy[0] += slot_w;
@@ -177,7 +177,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mou
 }
 
 
-impl<'a, T: Float, F> NumberDialer<'a, T, F> {
+impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
@@ -209,10 +209,9 @@ impl<'a, T: Float, F> NumberDialer<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for NumberDialer<'a, T, F>
-    where
-        F: FnMut(T),
-        T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
+impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
+    F: FnMut(T),
+    T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
     type State = State<T>;
     type Style = Style;
@@ -261,13 +260,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update<'b, C>(mut self, args: widget::UpdateArgs<'b, Self, C>) -> Option<State<T>>
+    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<T>>
         where C: CharacterCache,
     {
 
-        let widget::UpdateArgs { prev_state, xy, dim, style, ui, .. } = args;
+        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
         let widget::State { ref state, .. } = *prev_state;
 
+        let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
@@ -365,22 +365,22 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Construct an Element from the given NumberDialer State.
-    fn draw<'b, C>(args: widget::DrawArgs<'b, Self, C>) -> Element
+    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
         where C: CharacterCache,
     {
-        use elmesque::form::{collage, rect, text};
+        use elmesque::form::{self, collage, text};
         use elmesque::text::Text;
 
-        let widget::DrawArgs { state, style, theme, glyph_cache } = args;
-        let widget::State { ref state, dim, xy, .. } = *state;
+        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
 
         // Construct the frame and inner rectangle Forms.
+        let (xy, dim) = rect.xy_dim();
         let frame = style.frame(theme);
         let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
         let frame_color = style.frame_color(theme);
         let color = style.color(theme);
-        let frame_form = rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = rect(pad_dim[0], pad_dim[1]).filled(color);
+        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+        let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
         let val_string_len = state.max.to_string().len() + if state.precision == 0 { 0 }
                                                           else { 1 + state.precision as usize };
         let label_string = state.maybe_label.as_ref()
@@ -409,7 +409,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
                     Interaction::Highlighted(elem) => if let Elem::ValueGlyph(idx, _) = elem {
                         let rect_color = if idx == i { color.highlighted() }
                                          else { color };
-                        Some(rect(slot_w, pad_dim[1]).filled(rect_color)
+                        Some(form::rect(slot_w, pad_dim[1]).filled(rect_color)
                              .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
                              .shift_x(x.floor()))
                     } else {
@@ -418,7 +418,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
                     Interaction::Clicked(elem) => if let Elem::ValueGlyph(idx, _) = elem {
                         let rect_color = if idx == i { color.clicked() }
                                          else { color };
-                        Some(rect(slot_w, pad_dim[1]).filled(rect_color)
+                        Some(form::rect(slot_w, pad_dim[1]).filled(rect_color)
                              .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
                              .shift_x(x.floor()))
                     } else {
