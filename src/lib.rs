@@ -66,6 +66,7 @@ pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_
 pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalAlign, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Sizeable,
                    Vertical, VerticalAlign};
+pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
 pub use widget::{drag, scroll, CommonBuilder, DrawArgs, UiCell, UpdateArgs, Widget};

@@ -1,9 +1,11 @@
 
 use graphics::character::CharacterCache;
-use graphics::math::Scalar;
 use theme::Theme;
 use ui::GlyphCache;
 use widget;
+
+pub use graphics::math::Scalar;
+pub use self::matrix::Matrix;
 
 /// The depth at which the widget will be rendered. This determines the order of rendering where
 /// widgets with a greater depth will be rendered first. 0.0 is the default depth.
@@ -933,3 +935,164 @@ pub fn is_over_rect(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
 }
 
 
+pub mod matrix {
+    use ::{CharacterCache, GlyphCache};
+    use super::{Depth, Dimensions, HorizontalAlign, VerticalAlign, Point, Position, Positionable,
+                Scalar, Sizeable};
+    use theme::Theme;
+    use ui::{self, Ui};
+
+    pub type WidgetNum = usize;
+    pub type ColNum = usize;
+    pub type RowNum = usize;
+    pub type Width = f64;
+    pub type Height = f64;
+    pub type PosX = f64;
+    pub type PosY = f64;
+
+    /// A type to simplify placement of various widgets in a matrix or grid layout.
+    #[derive(Copy, Clone, Debug)]
+    pub struct Matrix {
+        cols: usize,
+        rows: usize,
+        maybe_position: Option<Position>,
+        maybe_width: Option<Scalar>,
+        maybe_height: Option<Scalar>,
+        maybe_h_align: Option<HorizontalAlign>,
+        maybe_v_align: Option<VerticalAlign>,
+        cell_pad_w: Scalar,
+        cell_pad_h: Scalar,
+    }
+
+    impl Matrix {
+
+        /// Start building a new position **Matrix**.
+        pub fn new(cols: usize, rows: usize) -> Matrix {
+            Matrix {
+                cols: cols,
+                rows: rows,
+                maybe_position: None,
+                maybe_width: None,
+                maybe_height: None,
+                maybe_h_align: None,
+                maybe_v_align: None,
+                cell_pad_w: 0.0,
+                cell_pad_h: 0.0,
+            }
+        }
+
+        /// Produce the matrix with the given cell padding.
+        pub fn cell_padding(mut self, w: Scalar, h: Scalar) -> Matrix {
+            self.cell_pad_w = w;
+            self.cell_pad_h = h;
+            self
+        }
+
+        /// Call the given function for every element in the Matrix.
+        pub fn each_widget<C, F>(self, ui: &mut Ui<C>, mut f: F) where
+            C: CharacterCache,
+            F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions),
+        {
+            use utils::map_range;
+
+            let pos = self.get_position(&ui.theme);
+            let dim = self.get_dimensions(&ui.theme, &ui.glyph_cache);
+            let (h_align, v_align) = self.get_alignment(&ui.theme);
+
+            // If we can infer some new current parent from the position, set that as the current
+            // parent within the given `Ui`.
+            if let Some(id) = ui::parent_from_position(ui, pos) {
+                ui::set_current_parent_idx(ui, id);
+            }
+
+            let xy = ui.get_xy(None, pos, dim, h_align, v_align);
+            let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
+            let widget_w = dim[0] / self.cols as f64;
+            let widget_h = dim[1] / self.rows as f64;
+            let x_min = -half_w + widget_w / 2.0;
+            let x_max = half_w + widget_w / 2.0;
+            let y_min = -half_h - widget_h / 2.0;
+            let y_max = half_h - widget_h / 2.0;
+            let mut widget_num = 0;
+            for col in 0..self.cols {
+                for row in 0..self.rows {
+                    let x = xy[0] + map_range(col as f64, 0.0, self.cols as f64, x_min, x_max);
+                    let y = xy[1] + map_range(row as f64, 0.0, self.rows as f64, y_max, y_min);
+                    let w = widget_w - self.cell_pad_w * 2.0;
+                    let h = widget_h - self.cell_pad_h * 2.0;
+                    f(ui, widget_num, col, row, [x, y], [w, h]);
+                    widget_num += 1;
+                }
+            }
+        }
+
+    }
+
+    impl Positionable for Matrix {
+        #[inline]
+        fn position(mut self, pos: Position) -> Self {
+            self.maybe_position = Some(pos);
+            self
+        }
+        #[inline]
+        fn get_position(&self, theme: &Theme) -> Position {
+            self.maybe_position.unwrap_or(theme.position)
+        }
+        #[inline]
+        fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
+            self.maybe_h_align = Some(h_align);
+            self
+        }
+        #[inline]
+        fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
+            self.maybe_v_align = Some(v_align);
+            self
+        }
+        #[inline]
+        fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
+            self.maybe_h_align.unwrap_or(theme.align.horizontal)
+        }
+        #[inline]
+        fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
+            self.maybe_v_align.unwrap_or(theme.align.vertical)
+        }
+        #[inline]
+        fn depth(self, _: Depth) -> Self {
+            unimplemented!();
+        }
+        #[inline]
+        fn get_depth(&self) -> Depth {
+            unimplemented!();
+        }
+    }
+
+    impl Sizeable for Matrix {
+        #[inline]
+        fn width(mut self, w: f64) -> Self {
+            self.maybe_width = Some(w);
+            self
+        }
+        #[inline]
+        fn height(mut self, h: f64) -> Self {
+            self.maybe_height = Some(h);
+            self
+        }
+        #[inline]
+        fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> f64 {
+            const DEFAULT_WIDTH: Scalar = 256.0;
+            self.maybe_width.or_else(|| {
+                theme.maybe_matrix.as_ref()
+                    .map(|default| default.common.maybe_width.unwrap_or(DEFAULT_WIDTH))
+            }).unwrap_or(DEFAULT_WIDTH)
+        }
+        #[inline]
+        fn get_height(&self, theme: &Theme) -> f64 {
+            const DEFAULT_HEIGHT: Scalar = 256.0;
+            self.maybe_height.or_else(|| {
+                theme.maybe_matrix.as_ref()
+                    .map(|default| default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT))
+            }).unwrap_or(DEFAULT_HEIGHT)
+        }
+    }
+
+}

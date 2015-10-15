@@ -604,6 +604,12 @@ pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget:
 }
 
 
+/// A function to allow the position matrix to set the current parent within the `Ui`.
+pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
+    ui.maybe_current_parent_idx = Some(idx);
+}
+
+
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
 pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
