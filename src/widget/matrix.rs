@@ -152,6 +152,7 @@ impl<'a, F, W> Widget for Matrix<F> where
         if rows > 0 && cols > 0 {
             // Likewise, there must also be some function to give us the widgets.
             if let Some(mut each_widget) = maybe_each_widget {
+
                 let cell_pad_w = style.cell_pad_w(ui.theme());
                 let cell_pad_h = style.cell_pad_h(ui.theme());
                 let (w, h) = rect.w_h();
@@ -177,7 +178,6 @@ impl<'a, F, W> Widget for Matrix<F> where
                             .dim([w, h])
                             .relative_to(idx, [rel_x, rel_y])
                             .set(widget_idx, &mut ui);
-
                         widget_num += 1;
                     }
                 }

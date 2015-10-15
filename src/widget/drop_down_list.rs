@@ -241,8 +241,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     .color(::color::black().alpha(0.0))
                     .frame_color(::color::black().alpha(0.0))
                     .dim([dim[0], max_visible_height])
-                    .parent(Some(idx))
                     .point(canvas_xy)
+                    .parent(Some(idx))
                     .floating(true)
                     .vertical_scrolling(true)
                     .set(canvas_idx, &mut ui);

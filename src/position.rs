@@ -678,20 +678,12 @@ impl Range {
 
     /// Shorten the Range from both ends by the given Scalar amount.
     pub fn sub_frame(self, frame: Scalar) -> Range {
-        if self.direction() >= 0.0 {
-            Range::new(self.start + frame .. self.end - frame)
-        } else {
-            Range::new(self.start - frame .. self.end + frame)
-        }
+        self.pad(frame)
     }
 
     /// Lengthen the Range from both ends by the given Scalar amount.
     pub fn add_frame(self, frame: Scalar) -> Range {
-        if self.start <= self.end {
-            Range::new(self.start - frame .. self.end + frame)
-        } else {
-            Range::new(self.start + frame .. self.end - frame)
-        }
+        self.pad(-frame)
     }
 
     /// The Range with some padding given to the `start` value.
@@ -939,4 +931,5 @@ impl ::std::ops::Sub<Rect> for Rect {
 pub fn is_over_rect(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
     Rect::from_xy_dim(rect_xy, rect_dim).is_over(xy)
 }
+
 

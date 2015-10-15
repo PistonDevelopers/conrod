@@ -7,7 +7,7 @@ use color::Color;
 use mouse::Mouse;
 use position::{Dimensions, Point, Range, Rect};
 use theme::Theme;
-use utils::map_range;
+use utils::{map_range, partial_max};
 
 
 /// A type for building a scrollbar widget.
@@ -291,13 +291,14 @@ impl Bar {
     /// If there is some previous Bar its interaction will be carried through to the Bar.
     pub fn new_if_scrollable(visible: Range, kids: Range, maybe_prev: Option<&Bar>) -> Option<Bar> {
 
+        // The range occuppied by kid widgets when the scroll offset is at 0.0.
         let kids_at_origin = {
             let offset_from_origin = maybe_prev.map(|bar| bar.kids_pos_offset()).unwrap_or(0.0);
             kids.shift(-offset_from_origin)
         };
 
+        // Total combined range of the visible and kids_at_origin ranges.
         let total = visible.max_directed(kids_at_origin);
-        //let total = visible.max_directed(kids);
 
         // The range that describes the area upon which the start of the visible range can scroll.
         let scrollable = Range::new(total.start .. total.end - visible.magnitude());
@@ -307,8 +308,9 @@ impl Bar {
 
             let interaction = maybe_prev.map(|bar| bar.interaction)
                 .unwrap_or(Interaction::Normal);
-            let offset = maybe_prev.map(|bar| bar.offset)
-                .unwrap_or_else(|| visible.start - scrollable.start);
+
+            // The amount that the visible range overlaps the start of the kids range when at its
+            // origin position (non-scrolled).
             let start_overlap = {
                 let start_diff_at_origin = kids_at_origin.start - visible.start;
                 if start_diff_at_origin.signum() == visible.direction() {
@@ -317,6 +319,9 @@ impl Bar {
                     0.0
                 }
             };
+
+            // The positional scroll offset.
+            let offset = maybe_prev.map(|bar| bar.offset).unwrap_or(0.0);
 
             Some(Bar {
                 interaction: interaction,
@@ -434,13 +439,6 @@ impl Bar {
     /// TODO: Needs testing.
     pub fn pos_offset_from_bar_offset(&self, bar_offset: Scalar, bar_len: Scalar) -> Scalar {
         map_range(bar_offset, 0.0, bar_len, 0.0, self.scrollable.magnitude())
-        // let offset = if bar_offset >= 0.0 {
-        //     ::utils::partial_max(bar_offset - self.start_overlap, 0.0)
-        // } else {
-        //     ::utils::partial_min(bar_offset - self.start_overlap, 0.0)
-        // };
-        // let max_offset = self.scrollable.magnitude() - (bar_offset - offset);
-        // map_range(bar_offset, 0.0, max_offset, 0.0, self.scrollable.magnitude())
     }
 
 }
@@ -458,7 +456,7 @@ fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
 
 /// The area for a vertical scrollbar handle as its dimensions and position.
 fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
-    let offset = ::utils::partial_max(bar.start_overlap - bar.offset, 0.0);
+    let offset = partial_max(bar.start_overlap - bar.offset, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_h = track.h();
     let h = map_range(track_h, 0.0, total_len, 0.0, track_h);
@@ -481,7 +479,7 @@ fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
 
 /// The area for a horizontal scrollbar handle as its dimensions and position.
 fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
-    let offset = ::utils::partial_max(bar.offset - bar.start_overlap, 0.0);
+    let offset = partial_max(bar.offset - bar.start_overlap, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_w = track.w();
     let w = map_range(track_w, 0.0, total_len, 0.0, track_w);
