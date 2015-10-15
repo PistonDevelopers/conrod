@@ -4,7 +4,7 @@ use color::Color;
 use elmesque::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
-use position::{Dimensions, Point, Rect};
+use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};
 use theme::Theme;
 use widget::{self, Widget};
@@ -233,24 +233,19 @@ impl<'a> Widget for Tabs<'a> {
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, glyph_cache } = args;
         let font_size = style.font_size(theme);
-        let (x, y, w, h) = rect.x_y_w_h();
         match style.layout(theme) {
             Layout::Horizontal => {
                 let tab_bar_h = horizontal_tab_bar_h(style.maybe_bar_width, font_size as Scalar);
-                let xy = [x, y - tab_bar_h / 2.0];
-                let dim = [w, h - tab_bar_h];
                 widget::KidArea {
-                    rect: Rect::from_xy_dim(xy, dim),
+                    rect: rect.pad_top(tab_bar_h),
                     pad: style.canvas.padding(theme),
                 }
             },
             Layout::Vertical => {
                 let max_text_width = max_text_width(self.tabs.iter(), font_size, glyph_cache);
                 let tab_bar_w = vertical_tab_bar_w(style.maybe_bar_width, max_text_width as Scalar);
-                let xy = [x + tab_bar_w / 2.0, y];
-                let dim = [w - tab_bar_w, h];
                 widget::KidArea {
-                    rect: Rect::from_xy_dim(xy, dim),
+                    rect: rect.pad_left(tab_bar_w),
                     pad: style.canvas.padding(theme),
                 }
             },
@@ -295,7 +290,7 @@ impl<'a> Widget for Tabs<'a> {
                             for i in 0..self.tabs.len() {
                                 let tab_x = start_tab_x + i as f64 * tab_dim[0];
                                 let tab_xy = [tab_x, tab_bar_rel_xy[1]];
-                                if is_over_rect(tab_xy, mouse.xy, tab_dim) {
+                                if is_over_rect(tab_xy, tab_dim, mouse.xy) {
                                     return Some(Elem::Tab(i));
                                 }
                             }
@@ -306,7 +301,7 @@ impl<'a> Widget for Tabs<'a> {
                             for i in 0..self.tabs.len() {
                                 let tab_y = start_tab_y - i as f64 * tab_dim[1];
                                 let tab_xy = [tab_bar_rel_xy[0], tab_y];
-                                if is_over_rect(tab_xy, mouse.xy, tab_dim) {
+                                if is_over_rect(tab_xy, tab_dim, mouse.xy) {
                                     return Some(Elem::Tab(i));
                                 }
                             }
