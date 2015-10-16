@@ -393,58 +393,10 @@ impl Graph {
     }
 
 
-    /// The box that bounds the widget with the given ID as well as all its widget kids.
-    /// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
-    /// If no target xy is given, the bounds will be given relative to the centre of the widget.
-    /// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
-    /// `kid_area` of the widget, rather than the regular dimensions.
-    pub fn bounding_box<I: GraphIndex>(&self,
-                                       include_self: bool,
-                                       target_xy: Option<Point>,
-                                       use_kid_area: bool,
-                                       idx: I) -> Option<Rect>
-    {
-        let Graph { ref dag, ref index_map, .. } = *self;
-
-        if let Some(idx) = idx.to_node_index(index_map) {
-            if let &Node::Widget(ref container) = &dag[idx] {
-
-                // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
-                // the regular dim and xy.
-                let rect = if use_kid_area { container.kid_area.rect } else { container.rect };
-
-                // Determine the our bounds relative to the target_xy position.
-                let (xy, dim) = rect.xy_dim();
-                let target_xy = target_xy.unwrap_or(xy);
-                let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
-                let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
-
-                // An iterator yielding the bounding_box returned by each of our children.
-                let mut kids_bounds = dag.children(idx)
-                    .filter_map(|kid_idx| dag.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
-                        if let Edge::Depth = dag[kid_edge_idx] {
-                            self.bounding_box(true, Some(target_xy), false, kid_idx)
-                        } else {
-                            None
-                        }
-                    }));
-
-                // Work out the initial bounds to use for our max_bounds fold.
-                let init_bounds = if include_self {
-                    relative_bounds()
-                } else {
-                    match kids_bounds.next() {
-                        Some(first_kid_bounds) => first_kid_bounds,
-                        None => return None,
-                    }
-                };
-
-                // Fold the Rect for each kid into the total encompassing bounds.
-                return Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)));
-            }
-        }
-
-        None
+    /// The Rect that bounds the kids of the widget with the given ID.
+    pub fn kids_bounding_box<I: GraphIndex>(&self, idx: I) -> Option<Rect> {
+        idx.to_node_index(&self.index_map)
+            .and_then(|idx| bounding_box(self, false, None, true, idx, None))
     }
 
 
@@ -453,28 +405,8 @@ impl Graph {
     ///
     /// Otherwise, return None if the widget is hidden.
     pub fn visible_area<I: GraphIndex>(&self, idx: I) -> Option<Rect> {
-        let mut current = idx.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
-        let mut overlapping_rect = self[current].rect;
-        loop {
-            match maybe_parent_depth_edge(&self.dag, current) {
-                Some((_, parent)) => match self.get_widget(parent) {
-                    Some(parent_widget) => match parent_widget.maybe_scrolling {
-                        Some(_) => {
-                            match overlapping_rect.overlap(parent_widget.kid_area.rect) {
-                                Some(overlap) => {
-                                    overlapping_rect = overlap;
-                                    current = parent;
-                                },
-                                None => return None,
-                            }
-                        },
-                        None => current = parent,
-                    },
-                    None => current = parent,
-                },
-                None => return Some(overlapping_rect),
-            }
-        }
+        idx.to_node_index(&self.index_map)
+            .and_then(|idx| visible_area_within_depth(self, idx, None))
     }
 
     /// Add a widget to the Graph.
@@ -769,6 +701,134 @@ impl Graph {
     }
 }
 
+
+/// The box that bounds the widget with the given ID as well as all its widget kids.
+///
+/// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
+///
+/// If no target xy is given, the bounds will be given relative to the centre of the widget.
+///
+/// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
+/// `kid_area` of the widget, rather than the regular dimensions.
+///
+/// The `maybe_deepest_parent_idx` refers to the index of the parent that began the recursion, and
+/// is used when calculating the "visible area" for each widget. If `None` is given, it means we
+/// are the first widget in the recursion, and we will use ourselves as the deepest_parent_idx.
+fn bounding_box(graph: &Graph,
+                include_self: bool,
+                target_xy: Option<Point>,
+                use_kid_area: bool,
+                idx: NodeIndex,
+                maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
+{
+    let dag = &graph.dag;
+
+    if let &Node::Widget(ref container) = &dag[idx] {
+
+        // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
+        // the regular dim and xy.
+        //
+        // If we're given some deepest parent index, we must only use the visible area within the
+        // depth range that approaches it.
+        let rect = if let Some(deepest_parent_idx) = maybe_deepest_parent_idx {
+            match visible_area_within_depth(graph, idx, Some(deepest_parent_idx)) {
+                Some(visible_rect) => if use_kid_area {
+                    match visible_rect.overlap(container.kid_area.rect) {
+                        Some(visible_kid_area) => visible_kid_area,
+                        None => return None,
+                    }
+                } else {
+                    visible_rect
+                },
+                None => return None,
+            }
+        } else {
+            if use_kid_area { container.kid_area.rect } else { container.rect }
+        };
+
+        // Determine our bounds relative to the target_xy position.
+        let (xy, dim) = rect.xy_dim();
+        let target_xy = target_xy.unwrap_or(xy);
+        let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
+        let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
+
+        // Get the deepest parent so that we can consider it in the calculation of the kids bounds.
+        let deepest_parent_idx = maybe_deepest_parent_idx.or(Some(idx));
+
+        // An iterator yielding the bounding_box returned by each of our children.
+        let mut kids_bounds = dag.children(idx)
+            .filter_map(|kid_idx| dag.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
+                if let Edge::Depth = dag[kid_edge_idx] {
+                    bounding_box(graph, true, Some(target_xy), false, kid_idx, deepest_parent_idx)
+                } else {
+                    None
+                }
+            }));
+
+        // Work out the initial bounds to use for our max_bounds fold.
+        let init_bounds = if include_self {
+            relative_bounds()
+        } else {
+            match kids_bounds.next() {
+                Some(first_kid_bounds) => first_kid_bounds,
+                None => return None,
+            }
+        };
+
+        // Fold the Rect for each kid into the total encompassing bounds.
+        return Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)));
+    }
+
+    None
+}
+
+
+/// The rectangle that represents the maximum fully visible area for the widget with the given
+/// index, including consideration of the cropped scroll area for all parents until (and not
+/// including) the deepest_parent_idx is reached (if one is given).
+///
+/// Otherwise, return None if the widget is hidden.
+fn visible_area_within_depth(graph: &Graph,
+                             idx: NodeIndex,
+                             maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
+{
+    let mut current = idx;
+    let mut overlapping_rect = graph[current].rect;
+    loop {
+        match maybe_parent_depth_edge(&graph.dag, current) {
+            // If we have a parent, keep traversing to check for cropped scroll areas.
+            Some((_, parent)) => {
+
+                // If the parent's index matches that of the deepest, we're done.
+                if Some(parent) == maybe_deepest_parent_idx {
+                    return Some(overlapping_rect);
+                }
+
+                // Otherwise, continue traversal.
+                match graph.get_widget(parent) {
+                    Some(parent_widget) => match parent_widget.maybe_scrolling {
+
+                        // We only need to update the overlap if the parent is scrollable.
+                        Some(_) => match overlapping_rect.overlap(parent_widget.kid_area.rect) {
+                            Some(overlap) => {
+                                overlapping_rect = overlap;
+                                current = parent;
+                            },
+                            None => return None,
+                        },
+
+                        // Otherwise, just continue traversing.
+                        None => current = parent,
+                    },
+                    None => current = parent,
+                }
+            },
+
+            // If there are no more parents, we are done.
+            None => return Some(overlapping_rect),
+        }
+    }
+}
 
 
 /// Set some given `Edge` between `a` -> `b`, so that it is the only `Edge` of its variant.

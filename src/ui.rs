@@ -567,10 +567,18 @@ impl<C> Ui<C> {
         }
     }
 
-    /// The rectangle that represents the maximum fully visible area for the widget with the given
-    /// index, including considering cropped scroll area.
+
+    /// The **Rect** that bounds the kids of the widget with the given index.
+    pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.kids_bounding_box(idx)
+    }
+
+
+    /// The **Rect** that represents the maximum fully visible area for the widget with the given
+    /// index, including consideration of cropped scroll area.
     ///
-    /// Otherwise, return None if the widget is hidden.
+    /// Otherwise, return None if the widget is not visible.
     pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
         self.widget_graph.visible_area(idx)
@@ -578,11 +586,6 @@ impl<C> Ui<C> {
 
 }
 
-
-/// Return an immutable reference to the given `Ui`'s `Graph`.
-pub fn widget_graph<C>(ui: &Ui<C>) -> &Graph {
-    &ui.widget_graph
-}
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
 pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
