@@ -229,8 +229,8 @@ impl Graph {
             .find(|&&visitable| {
                 match visitable {
                     Visitable::Widget(idx) => {
-                        if let Some(&Node::Widget(ref container)) = dag.node_weight(idx) {
-                            if container.rect.is_over(xy) {
+                        if let Some(visible_rect) = self.visible_area(idx) {
+                            if visible_rect.is_over(xy) {
                                 return true
                             }
                         }
@@ -456,12 +456,10 @@ impl Graph {
         let mut current = idx.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
         let mut overlapping_rect = self[current].rect;
         loop {
-            println!("\toverlapping_rect: {:?}", overlapping_rect);
             match maybe_parent_depth_edge(&self.dag, current) {
                 Some((_, parent)) => match self.get_widget(parent) {
                     Some(parent_widget) => match parent_widget.maybe_scrolling {
                         Some(_) => {
-                            println!("\tparent.kid_area.rect: {:?}", parent_widget.kid_area.rect);
                             match overlapping_rect.overlap(parent_widget.kid_area.rect) {
                                 Some(overlap) => {
                                     overlapping_rect = overlap;
