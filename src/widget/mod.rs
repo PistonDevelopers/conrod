@@ -654,7 +654,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         } else {
             let maybe_mouse = ui::get_mouse_state(ui, idx);
             let visible = kid_area.rect;
-            let kids = ui::widget_graph(ui).bounding_box(false, None, true, idx)
+            let kids = ui.kids_bounding_box(idx)
                 .map(|kids| kids.shift(visible.xy()))
                 .unwrap_or_else(|| kid_area.rect);
             let maybe_prev = maybe_prev_scrolling.as_ref();

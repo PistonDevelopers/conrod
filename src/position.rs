@@ -655,6 +655,21 @@ impl Range {
         Range::new(start..end)
     }
 
+    /// The Range that represents the range of the overlap between two Ranges if there is some.
+    /// The returned Range's `start` will always be <= its `end`.
+    pub fn overlap(mut self, mut other: Range) -> Option<Range> {
+        self = self.undirected();
+        other = other.undirected();
+        let start = ::utils::partial_max(self.start, other.start);
+        let end = ::utils::partial_min(self.end, other.end);
+        let magnitude = end - start;
+        if magnitude > 0.0 {
+            Some(Range::new(start..end))
+        } else {
+            None
+        }
+    }
+
     /// The Range that encompasses both self and the given Range.
     /// The returned Range will retain `self`'s original direction.
     pub fn max_directed(self, other: Range) -> Range {
@@ -749,6 +764,11 @@ impl Rect {
             x: Range::from_pos_and_len(xy[0], dim[0]),
             y: Range::from_pos_and_len(xy[1], dim[1]),
         }
+    }
+
+    /// The Rect representing the area in which two Rects overlap.
+    pub fn overlap(self, other: Rect) -> Option<Rect> {
+        self.x.overlap(other.x).and_then(|x| self.y.overlap(other.y).map(|y| Rect { x: x, y: y }))
     }
 
     /// The Rect that encompass the two given sets of Rect.
