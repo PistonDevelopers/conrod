@@ -16,7 +16,7 @@ use input::{
     RenderEvent,
     TextEvent,
 };
-use position::{Dimensions, HorizontalAlign, Padding, Point, Position, VerticalAlign};
+use position::{Dimensions, HorizontalAlign, Padding, Point, Position, Rect, VerticalAlign};
 use std::cell::RefCell;
 use std::io::Write;
 use theme::Theme;
@@ -565,6 +565,15 @@ impl<C> Ui<C> {
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
+    }
+
+    /// The rectangle that represents the maximum fully visible area for the widget with the given
+    /// index, including considering cropped scroll area.
+    ///
+    /// Otherwise, return None if the widget is hidden.
+    pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.visible_area(idx)
     }
 
 }

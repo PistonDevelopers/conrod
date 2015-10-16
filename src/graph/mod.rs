@@ -197,8 +197,7 @@ impl Graph {
         let Graph { ref index_map, ref dag, .. } = *self;
         idx.to_node_index(index_map).and_then(|idx| match &dag[idx] {
             &Node::Widget(ref container) => Some(container),
-            &Node::Placeholder => None,
-            _ => unreachable!(),
+            _ => None,
         })
     }
 
@@ -207,8 +206,7 @@ impl Graph {
         let Graph { ref index_map, ref mut dag, .. } = *self;
         idx.to_node_index(index_map).and_then(move |idx| match &mut dag[idx] {
             &mut Node::Widget(ref mut container) => Some(container),
-            &mut Node::Placeholder => None,
-            _ => unreachable!(),
+            _ => None,
         })
     }
 
@@ -449,6 +447,37 @@ impl Graph {
         None
     }
 
+
+    /// The rectangle that represents the maximum fully visible area for the widget with the given
+    /// index, including considering cropped scroll area.
+    ///
+    /// Otherwise, return None if the widget is hidden.
+    pub fn visible_area<I: GraphIndex>(&self, idx: I) -> Option<Rect> {
+        let mut current = idx.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
+        let mut overlapping_rect = self[current].rect;
+        loop {
+            println!("\toverlapping_rect: {:?}", overlapping_rect);
+            match maybe_parent_depth_edge(&self.dag, current) {
+                Some((_, parent)) => match self.get_widget(parent) {
+                    Some(parent_widget) => match parent_widget.maybe_scrolling {
+                        Some(_) => {
+                            println!("\tparent.kid_area.rect: {:?}", parent_widget.kid_area.rect);
+                            match overlapping_rect.overlap(parent_widget.kid_area.rect) {
+                                Some(overlap) => {
+                                    overlapping_rect = overlap;
+                                    current = parent;
+                                },
+                                None => return None,
+                            }
+                        },
+                        None => current = parent,
+                    },
+                    None => current = parent,
+                },
+                None => return Some(overlapping_rect),
+            }
+        }
+    }
 
     /// Add a widget to the Graph.
     ///
