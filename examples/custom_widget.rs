@@ -1,30 +1,32 @@
 //!
-//! Demonstration of custom widgets. Although this file is long, much of the code is
-//! boilerplate that can be copied to almost any custom widget. For the most interesting
-//! parts, search for:
+//! 
+//! A demonstration of designing a custom, third-party widget.
 //!
-//! - `struct CircularButton`
-//! - `fn draw`
-//! - `fn update`
-//! - `fn is_over_circ`
-//! - `fn get_new_interaction`
+//! In this case, we'll design a simple circular button.
 //!
-//! As of July 28, 2015, this is broken on retina displays due to
-//! https://github.com/tomaka/glutin/issues/503.
+//! All of the custom widget design will occur within the `circular_button` module.
+//!
+//! We'll *use* our fancy circular button in the `main` function (below the circular_button module).
+//!
+//! Note that in this case, we use `piston_window` to draw our widget, however in practise you may
+//! use any backend you wish.
+//!
+//! For more information, please see the `Widget` trait documentation.
 //!
 
-extern crate piston_window;
-extern crate graphics;
-extern crate gfx_graphics;
-extern crate elmesque;
+
 #[macro_use] extern crate conrod;
-extern crate vecmath;
+extern crate elmesque;
 extern crate find_folder;
+extern crate piston_window;
 extern crate rustc_serialize;
+extern crate vecmath;
 
 
+/// The module in which we'll implement our own custom circular button.
 mod circular_button {
     use conrod::{
+        CharacterCache,
         Color,
         Colorable,
         CommonBuilder,
@@ -36,16 +38,15 @@ mod circular_button {
         Dimensions,
         Mouse,
         Point,
+        Scalar,
         Theme,
         UpdateArgs,
         Widget,
-        WidgetState // Alias for widget::State.
+        WidgetState,
     };
-    use graphics::character::CharacterCache;
-    use vecmath::{vec2_sub, vec2_len};
-    use graphics::math::Scalar;
 
 
+    /// The type upon which we'll implement the `Widget` trait.
     pub struct CircularButton<'a, F> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
@@ -62,6 +63,7 @@ mod circular_button {
         enabled: bool
     }
 
+    /// Represents the unique styling for our CircularButton widget.
     #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
     pub struct Style {
         /// Color of the button.
@@ -74,7 +76,7 @@ mod circular_button {
         pub maybe_label_font_size: Option<u32>,
     }
 
-    /// Represents the state of the CircularButton widget.
+    /// Represents the unique, cached state for our CircularButton widget.
     #[derive(Clone, Debug, PartialEq)]
     pub struct State {
         maybe_label: Option<String>,
@@ -101,7 +103,7 @@ mod circular_button {
         }
     }
 
-    /// Represents an interaction with the CircularButton widget.
+    /// A type to keep track of interaction between updates.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub enum Interaction {
         Normal,
@@ -109,7 +111,7 @@ mod circular_button {
         Clicked,
     }
 
-    /// Check the current state of the button. Takes into account whether the mouse is
+    /// Check the current interaction with the button. Takes into account whether the mouse is
     /// over the button and the previous interaction state.
     fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
         use conrod::MouseButtonPosition::{Down, Up};
@@ -142,6 +144,18 @@ mod circular_button {
         }
     }
 
+    /// Return whether or not a given point is over a circle at a given point on a
+    /// Cartesian plane. We use this to determine whether the mouse is over the button.
+    pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
+        // Offset vector from the center of the circle to the mouse.
+        let offset = ::vecmath::vec2_sub(mouse_point, circ_center);
+
+        // If the length of the offset vector is less than or equal to the circle's
+        // radius, then the mouse is inside the circle. We assume that dim is a square
+        // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
+        ::vecmath::vec2_len(offset) <= dim[0] / 2.0
+    }
+
     impl<'a, F> CircularButton<'a, F> {
         /// Create a button context to be built upon.
         pub fn new() -> CircularButton<'a, F> {
@@ -171,21 +185,8 @@ mod circular_button {
         }
     }
 
-    /// Return whether or not a given point is over a circle at a given point on a
-    /// Cartesian plane. We use this to determine whether the mouse is over the button.
-    pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
-        // Offset vector from the center of the circle to the mouse.
-        let offset = vec2_sub(mouse_point, circ_center);
-
-        // If the length of the offset vector is less than or equal to the circle's
-        // radius, then the mouse is inside the circle. We assume that dim is a square
-        // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
-        vec2_len(offset) <= dim[0] / 2.0
-    }
-
-
-    /// A custom Conrod widget must implement the Widget trait. See
-    /// conrod/src/widget/mod.rs for comments on each required type and method.
+    /// A custom Conrod widget must implement the Widget trait. See the **Widget** trait
+    /// documentation for more details.
     impl<'a, F> Widget for CircularButton<'a, F>
         where F: FnMut()
     {
@@ -234,11 +235,9 @@ mod circular_button {
 
             // Defaults can come from several places. Here, we define how certain defaults
             // take precedence over others.
-            self.common.maybe_width
-                .or(theme.maybe_button.as_ref().map(|default| {
-                    default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-                }))
-                .unwrap_or(DEFAULT_WIDTH)
+            self.common.maybe_width.or(theme.maybe_button.as_ref().map(|default| {
+                default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
+            })).unwrap_or(DEFAULT_WIDTH)
         }
 
         /// Default width of the widget. This method is optional. The Widget trait
@@ -247,11 +246,9 @@ mod circular_button {
             const DEFAULT_HEIGHT: Scalar = 64.0;
 
             // See default_width for comments on this logic.
-            self.common.maybe_height
-                .or(theme.maybe_button.as_ref().map(|default| {
-                    default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-                }))
-                .unwrap_or(DEFAULT_HEIGHT)
+            self.common.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
+                default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
+            })).unwrap_or(DEFAULT_HEIGHT)
         }
 
         /// Update the state of the button. The state may or may not have changed since
@@ -297,17 +294,15 @@ mod circular_button {
 
             // A function for constructing a new state. We'll call this function below
             // if we determine that the state has changed.
-            let new_state = || {
-                State {
-                    // Recall that our CircularButton struct includes maybe_label, which
-                    // stores either an &str or None. If there's something there, we
-                    // copy the &str into an owned String for the State object.
-                    maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
+            let new_state = || State {
+                // Recall that our CircularButton struct includes maybe_label, which
+                // stores either an &str or None. If there's something there, we
+                // copy the &str into an owned String for the State object.
+                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
 
-                    // We constructed new_interaction above. This is the interaction state
-                    // as of this update.
-                    interaction: new_interaction,
-                }
+                // We constructed new_interaction above. This is the interaction state
+                // as of this update.
+                interaction: new_interaction,
             };
 
             // Check whether or not the state has changed since the previous update. The
@@ -328,8 +323,7 @@ mod circular_button {
             if state_has_changed { Some(new_state()) } else { None }
         }
 
-        /// Construct and return an Element from the given button state. Conrod will draw
-        /// take the returned Element and draw it to the screen.
+        /// Construct and return a renderable `Element` for the given button state.
         fn draw<'b, C>(args: DrawArgs<'b, Self, C>) -> Element
             where C: CharacterCache,
         {
@@ -346,17 +340,13 @@ mod circular_button {
             // Construct the frame and inner rectangle forms. We assume that dim is a
             // square bounding box, thus 2 * radius == dim[0] == dim[1].
             let radius = dim[0] / 2.0;
-            let pressable_form: elmesque::Form =
-                circle(radius).filled(color);
+            let pressable_form: elmesque::Form = circle(radius).filled(color);
 
-            // Construct the label's Form. Recall that State has maybe_label,
-            // which stores either a String or None.
+            // If we have a label, construct its Form. Recall that State has maybe_label,
+            // which may or may not store a String for some label.
             let maybe_label_form: Option<elmesque::Form> =
-                state.maybe_label
-                // Convert the Option<String> to an Option<&str>.
-                .as_ref()
                 // Convert the Option<&str> to an Option<elmesque::Form>.
-                .map(|label_text| {
+                state.maybe_label.as_ref().map(|label_text| {
                     use elmesque::text::Text;
                     let label_color = style.label_color(theme);
                     let size = style.label_font_size(theme);
@@ -445,12 +435,10 @@ mod circular_button {
             self.maybe_label = Some(text);
             self
         }
-
         fn label_color(mut self, color: Color) -> Self {
             self.style.maybe_label_color = Some(color);
             self
         }
-
         fn label_font_size(mut self, size: FontSize) -> Self {
             self.style.maybe_label_font_size = Some(size);
             self
@@ -459,50 +447,32 @@ mod circular_button {
 }
 
 fn main() {
-    use piston_window::{
-        PistonWindow,
-        WindowSettings
-    };
-    use conrod::{
-        Colorable,
-        Labelable,
-        Sizeable,
-        Widget
-    };
-    use gfx_graphics::GlyphCache;
-
+    use piston_window::{Glyphs, PistonWindow, OpenGL, WindowSettings};
+    use conrod::{Colorable, Labelable, Sizeable, Widget};
     use circular_button::CircularButton;
-
-    let opengl_version = piston_window::OpenGL::V3_2;
-
-    let window_settings = WindowSettings::new(
-          "Control Panel",
-            [1200, 800]
-        )
-        .opengl(opengl_version)
-        .exit_on_esc(true);
 
     // PistonWindow has two type parameters, but the default type is
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let window: PistonWindow = window_settings.build().unwrap();
-
-    // Load a font. GlyphCache is provided by gfx_graphics. Other Piston backends provide
-    // similar types.
-    let assets = find_folder::Search::ParentsThenKids(3, 3)
-        .for_folder("assets").unwrap();
-    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    let glyph_cache = GlyphCache::new(
-        &font_path,
-        window.factory.borrow().clone()
-    ).unwrap();
+    let window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
+        .opengl(OpenGL::V3_2)
+        .exit_on_esc(true)
+        .build().unwrap();
 
     // Conrod's main object.
-    let mut ui = conrod::Ui::new(glyph_cache, conrod::Theme::default());
+    let mut ui = {
+        // Load a font. `Glyphs` is provided to us via piston_window and gfx, though you may use
+        // any type that implements `CharacterCache`.
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone()).unwrap();
+        conrod::Ui::new(glyph_cache, conrod::Theme::default())
+    };
 
     for e in window {
-        // Invoke Conrod's user input handler.
+        // Pass each `Event` to the `Ui`.
         ui.handle_event(e.event.as_ref().unwrap());
 
         e.draw_2d(|c, g| {
