@@ -6,12 +6,10 @@
 #[macro_use] extern crate conrod;
 extern crate elmesque;
 extern crate find_folder;
-extern crate num;
 extern crate piston_window;
 
 
 use conrod::{Colorable, Labelable, Slider, Widget};
-use num::Float;
 use piston_window::{Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 use std::iter::once;
 use std::ops::DerefMut;
@@ -40,7 +38,7 @@ fn main() {
     };
 
     // Total time elapsed since the app started. We'll use this for animation.
-    let mut secs = 0.0;
+    let mut secs: f64 = 0.0;
 
     // A value controlled by our slider.
     let mut slider_val: f64 = 50.0;
