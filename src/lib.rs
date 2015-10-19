@@ -70,6 +70,7 @@ pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
 pub use widget::{drag, scroll, CommonBuilder, DrawArgs, UiCell, UpdateArgs, Widget};
+pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
 pub use widget::State as WidgetState;

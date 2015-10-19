@@ -69,18 +69,15 @@ impl<'a> Widget for Label<'a> {
     }
 
     /// Update the state of the Label.
-    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
-        let widget::UpdateArgs { prev_state, .. } = args;
-        let widget::State { state: State(ref string), .. } = *prev_state;
-        if &string[..] != self.text { Some(State(self.text.to_string())) } else { None }
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, .. } = args;
+        if &state.view().0[..] != self.text {
+            state.update(|state| *state = State(self.text.to_owned()));
+        }
     }
 
     /// Construct an Element for the Label.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{text, collage};
         use elmesque::text::Text;
         let widget::DrawArgs { rect, state: &State(ref string), style, theme, .. } = args;

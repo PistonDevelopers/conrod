@@ -347,29 +347,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-    /// Capture the keyboard if the Interaction has become `Captured`.
-    fn capture_keyboard(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Uncaptured(_), Interaction::Captured(_)) => true,
-            _ => false,
-        }
-    }
-
-    /// Uncapture the keyboard if the Interaction has become `Uncaptured`.
-    fn uncapture_keyboard(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Captured(_), Interaction::Uncaptured(_)) => true,
-            _ => false,
-        }
-    }
-
     /// Update the state of the TextBox.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
 
-        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
         let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
@@ -378,13 +359,13 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let text_w = ui.glyph_cache().width(font_size, &self.text);
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
-        let mut new_control_pressed = state.control_pressed;
+        let mut new_control_pressed = state.view().control_pressed;
         let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
             (true, Some(mouse)) => {
                 let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
                                           text_w, font_size, &self.text);
-                get_new_interaction(over_elem, state.interaction, mouse)
+                get_new_interaction(over_elem, state.view().interaction, mouse)
             },
         };
 
@@ -508,28 +489,28 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
         }
 
-        // Function for constructing a new state.
-        let new_state = || {
-            State {
-                interaction: new_interaction,
-                text: self.text.clone(),
-                control_pressed: new_control_pressed,
-            }
-        };
+        // Check the interactions to determine whether we need to capture or uncapture the keyboard.
+        match (state.view().interaction, new_interaction) {
+            (Interaction::Uncaptured(_), Interaction::Captured(_)) => { ui.capture_keyboard(); },
+            (Interaction::Captured(_), Interaction::Uncaptured(_)) => { ui.uncapture_keyboard(); },
+            _ => (),
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || &state.text[..] != &self.text[..]
-            || state.control_pressed != new_control_pressed;
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
 
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        if &state.view().text[..] != &self.text[..] {
+            state.update(|state| state.text = self.text.clone());
+        }
+
+        if state.view().control_pressed != new_control_pressed {
+            state.update(|state| state.control_pressed = new_control_pressed);
+        }
     }
 
     /// Construct an Element from the given TextBox State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, collage, line, solid, text};
         use elmesque::text::Text;
 

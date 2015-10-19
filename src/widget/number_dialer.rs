@@ -230,21 +230,6 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
     }
     fn style(&self) -> Style { self.style.clone() }
 
-    fn capture_mouse(prev: &State<T>, new: &State<T>) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Highlighted(_), Interaction::Clicked(_)) => true,
-            _ => false,
-        }
-    }
-
-    fn uncapture_mouse(prev: &State<T>, new: &State<T>) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Clicked(_), Interaction::Highlighted(_)) => true,
-            (Interaction::Clicked(_), Interaction::Normal) => true,
-            _ => false,
-        }
-    }
-
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 128.0;
         self.common.maybe_width.or(theme.maybe_number_dialer.as_ref().map(|default| {
@@ -260,12 +245,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
     }
 
     /// Update the state of the NumberDialer.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<T>>
-        where C: CharacterCache,
-    {
-
-        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
@@ -284,14 +265,22 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             (true, Some(mouse)) => {
                 let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_x, label_dim,
                                            val_string_dim, val_string_len);
-                get_new_interaction(is_over_elem, state.interaction, mouse)
+                get_new_interaction(is_over_elem, state.view().interaction, mouse)
             },
         };
+
+        // Capture the mouse if clicked, uncapture if released.
+        match (state.view().interaction, new_interaction) {
+            (Interaction::Highlighted(_), Interaction::Clicked(_)) => { ui.capture_mouse(); },
+            (Interaction::Clicked(_), Interaction::Highlighted(_)) |
+            (Interaction::Clicked(_), Interaction::Normal)         => { ui.uncapture_mouse(); },
+            _ => (),
+        }
 
         // Determine new value from the initial state and the new state.
         let mut new_val = self.value;
         if let (Interaction::Clicked(elem), Interaction::Clicked(new_elem)) =
-            (state.interaction, new_interaction) {
+            (state.view().interaction, new_interaction) {
             if let (Elem::ValueGlyph(idx, y), Elem::ValueGlyph(_, new_y)) = (elem, new_elem) {
                 let ord = new_y.partial_cmp(&y).unwrap_or(Ordering::Equal);
                 if ord != Ordering::Equal {
@@ -333,7 +322,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
 
         // Call the `react` with the new value if the mouse is pressed/released on the widget
         // or if the value has changed.
-        if self.value != new_val || match (state.interaction, new_interaction) {
+        if self.value != new_val || match (state.view().interaction, new_interaction) {
             (Interaction::Highlighted(_), Interaction::Clicked(_)) |
             (Interaction::Clicked(_), Interaction::Highlighted(_)) => true,
             _ => false,
@@ -341,27 +330,31 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             if let Some(ref mut react) = self.maybe_react { react(new_val) }
         }
 
-        // A function for constructing a new State.
-        let new_state = || {
-            State {
-                value: new_val,
-                min: self.min,
-                max: self.max,
-                precision: self.precision,
-                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-                interaction: new_interaction,
-            }
-        };
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || state.value != new_val
-            || state.min != self.min || state.max != self.max
-            || state.precision != self.precision
-            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+        if state.view().value != new_val {
+            state.update(|state| state.value = new_val);
+        }
 
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        if state.view().min != self.min {
+            state.update(|state| state.min = self.min);
+        }
+
+        if state.view().max != self.max {
+            state.update(|state| state.max = self.max);
+        }
+
+        if state.view().precision != self.precision {
+            state.update(|state| state.precision = self.precision);
+        }
+
+        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+            state.update(|state| {
+                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+            });
+        }
     }
 
     /// Construct an Element from the given NumberDialer State.

@@ -122,21 +122,6 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
     }
     fn style(&self) -> Style { self.style.clone() }
 
-    fn capture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => true,
-            _ => false,
-        }
-    }
-
-    fn uncapture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Clicked, Interaction::Highlighted) => true,
-            (Interaction::Clicked, Interaction::Normal) => true,
-            _ => false,
-        }
-    }
-
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 64.0;
         self.common.maybe_width.or(theme.maybe_toggle.as_ref().map(|default| {
@@ -152,10 +137,9 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
     }
 
     /// Update the state of the Toggle.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State> {
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, mut ui, .. } = args;
 
-        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
@@ -163,12 +147,20 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
-                get_new_interaction(is_over, state.interaction, mouse)
+                get_new_interaction(is_over, state.view().interaction, mouse)
             },
         };
 
+        // Capture the mouse if clicked, uncapture if released.
+        match (state.view().interaction, new_interaction) {
+            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
+            (Interaction::Clicked, Interaction::Highlighted) |
+            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+            _ => (),
+        }
+
         // React and determine the new value.
-        let new_value = match (state.interaction, new_interaction) {
+        let new_value = match (state.view().interaction, new_interaction) {
             (Interaction::Clicked, Interaction::Highlighted) => {
                 let new_value = !self.value;
                 if let Some(ref mut react) = self.maybe_react { react(!self.value) }
@@ -177,28 +169,23 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
             _ => self.value,
         };
 
-        // A function for constructing a new Toggle State.
-        let new_state = || {
-            State {
-                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-                value: new_value,
-                interaction: new_interaction,
-            }
-        };
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || state.value != self.value
-            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+        if state.view().value != new_value {
+            state.update(|state| state.value = new_value);
+        }
 
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+            state.update(|state| {
+                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+            })
+        }
     }
 
     /// Construct an Element from the given Toggle State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, collage, text};
 
         let widget::DrawArgs { rect, state, style, theme, .. } = args;
