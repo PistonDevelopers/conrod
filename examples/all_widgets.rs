@@ -10,12 +10,12 @@
 //!
 
 
-extern crate piston;
 #[macro_use] extern crate conrod;
 extern crate find_folder;
+extern crate glutin_window;
 extern crate graphics;
 extern crate opengl_graphics;
-extern crate glutin_window;
+extern crate piston;
 extern crate vecmath;
 
 use conrod::{
