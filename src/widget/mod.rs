@@ -289,6 +289,10 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 
 /// A trait to be implemented by all **Widget** types.
 ///
+/// A type that implements **Widget** can be thought of as a collection of arguments to the
+/// **Widget**'s **Widget::update** method. They type itself is not stored between updates, but
+/// rather is used to update an instance of the **Widget**'s **Widget::State**, which *is* stored.
+///
 /// Methods that *must* be overridden:
 /// - common
 /// - common_mut
