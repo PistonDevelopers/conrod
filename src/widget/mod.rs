@@ -35,7 +35,7 @@ pub mod xy_pad;
 
 /// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
 /// simplify the method signature.
-pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
+pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     /// The **Widget**'s unique index.
     pub idx: Index,
     /// The **Widget**'s previous state. Specifically, the state that is common between all widgets,
@@ -50,7 +50,7 @@ pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
     /// If **State::update** is called, we assume that there has been some mutation and in turn will
     /// produce a new **Element** for the **Widget**. Thus, it is recommended that you *only* call
     /// **State::update** if you need to update the unique state in some way.
-    pub state: &'a mut State<'a, W::State>,
+    pub state: &'a mut State<'b, W::State>,
     /// The rectangle describing the **Widget**'s area.
     pub rect: Rect,
     /// The **Widget**'s current **Widget::Style**.
@@ -774,28 +774,14 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 has_updated: false,
             };
 
-            {
-                // TODO / FIXME: For some reason passing a `&mut state` directly to the `state`
-                // field of the UpdateArgs causes the borrow checker to consider state has being
-                // borrowed even past the end of this scope, making it impossible to get the
-                // `has_updated` flag out of the state. This mutable ptr cast is a temporary
-                // hack until we can work out why this happens. It is likely the problem has
-                // something to do with UpdateArgs' lifetime intersection - I attempted various
-                // other lifetime combinations but failed to get anything working that would
-                // appease the borrow checker. As far as I can see the current intersection should
-                // be fine and safe, however the borrow checker isn't convinced.
-                //
-                // - mindtree.
-                let state_mut_ptr: *mut State<W::State> = &mut state;
-                widget.update(UpdateArgs {
-                    idx: idx,
-                    state: unsafe { ::std::mem::transmute(state_mut_ptr) },
-                    prev: &prev_common,
-                    rect: rect,
-                    style: &new_style,
-                    ui: UiCell { ui: ui, idx: idx },
-                });
-            }
+            widget.update(UpdateArgs {
+                idx: idx,
+                state: &mut state,
+                prev: &prev_common,
+                rect: rect,
+                style: &new_style,
+                ui: UiCell { ui: ui, idx: idx },
+            });
 
             state.has_updated
         };
