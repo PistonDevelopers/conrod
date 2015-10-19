@@ -678,24 +678,40 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 
 
 /// Indicate that the widget with the given widget::Index has captured the mouse.
-pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
+///
+/// Returns true if the mouse was successfully captured.
+/// 
+/// Returns false if the mouse was already captured.
+pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     // If the mouse isn't already captured, set idx as the capturing widget.
     if let None = ui.maybe_captured_mouse {
         ui.maybe_captured_mouse = Some(Capturing::Captured(idx));
+        return true;
     }
+    false
 }
 
 
 /// Indicate that the widget is no longer capturing the mouse.
-pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
+///
+/// Returns true if the mouse was sucessfully released.
+///
+/// Returns false if the mouse wasn't captured by the widget in the first place.
+pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     // Check that we are indeed the widget that is currently capturing the Mouse before releasing.
     if ui.maybe_captured_mouse == Some(Capturing::Captured(idx)) {
-        ui.maybe_captured_mouse = Some(Capturing::JustReleased)
+        ui.maybe_captured_mouse = Some(Capturing::JustReleased);
+        return true;
     }
+    false
 }
 
 /// Indicate that the widget with the given widget::Index has captured the keyboard.
-pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
+///
+/// Returns true if the keyboard was successfully captured.
+///
+/// Returns false if the keyboard was already captured by another widget.
+pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -707,13 +723,21 @@ pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
                     "Warning: {:?} tried to capture the keyboard, however it was \
                      already captured.", idx).unwrap();
         },
-        None => ui.maybe_captured_keyboard = Some(Capturing::Captured(idx)),
+        None => {
+            ui.maybe_captured_keyboard = Some(Capturing::Captured(idx));
+            return true;
+        },
     }
+    false
 }
 
 
 /// Indicate that the widget is no longer capturing the keyboard.
-pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
+///
+/// Returns true if the keyboard was successfully released.
+///
+/// Returns false if the keyboard wasn't captured by the given widget in the first place.
+pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -721,6 +745,7 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
                      actually captured by {:?}.", idx, captured_idx).unwrap();
         } else {
             ui.maybe_captured_keyboard = Some(Capturing::JustReleased);
+            return true;
         },
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
@@ -733,6 +758,7 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) {
                      was not captured", idx).unwrap();
         },
     }
+    false
 }
 
 

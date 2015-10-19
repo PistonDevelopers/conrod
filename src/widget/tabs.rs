@@ -253,11 +253,8 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// Update the state of the Tabs.
-    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
-        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui } = args;
-        let widget::State { ref state, .. } = *prev_state;
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let (xy, dim) = rect.xy_dim();
         let layout = style.layout(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -322,7 +319,7 @@ impl<'a> Widget for Tabs<'a> {
         let new_interaction = if let Some(mouse) = maybe_mouse {
             use mouse::ButtonPosition::{Down, Up};
             use self::Interaction::{Normal, Highlighted, Clicked};
-            match (is_over_elem(), state.interaction, mouse.left.position) {
+            match (is_over_elem(), state.view().interaction, mouse.left.position) {
                 (Some(_),    Normal,          Down) => Normal,
                 (Some(elem), _,               Up)   => Highlighted(elem),
                 (Some(elem), Highlighted(_),  Down) => Clicked(elem),
@@ -334,11 +331,11 @@ impl<'a> Widget for Tabs<'a> {
         };
 
         // Determine the currently selected tab by comparing our current and previous interactions.
-        let maybe_selected_tab_idx = match (state.interaction, new_interaction) {
+        let maybe_selected_tab_idx = match (state.view().interaction, new_interaction) {
             (Interaction::Clicked(Elem::Tab(prev_idx)), Interaction::Highlighted(Elem::Tab(idx)))
                 if prev_idx == idx => Some(idx),
             _ =>
-                if let Some(idx) = state.maybe_selected_tab_idx { Some(idx) }
+                if let Some(idx) = state.view().maybe_selected_tab_idx { Some(idx) }
                 else if let Some(idx) = self.maybe_starting_tab_idx { Some(idx) }
                 else if self.tabs.len() > 0 { Some(0) }
                 else { None },
@@ -364,35 +361,38 @@ impl<'a> Widget for Tabs<'a> {
                 .set(child_id, &mut ui);
         }
 
-        // A function for constructing new state.
-        let new_state = || State {
-            tabs: self.tabs.iter().map(|&(id, s)| (id, s.to_owned())).collect(),
-            interaction: new_interaction,
-            maybe_selected_tab_idx: maybe_selected_tab_idx,
-            tab_bar_dim: tab_bar_dim,
-            tab_bar_rel_xy: tab_bar_rel_xy,
-        };
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || state.tab_bar_dim != tab_bar_dim
-            || state.tab_bar_rel_xy != tab_bar_rel_xy
-            || state.maybe_selected_tab_idx != maybe_selected_tab_idx
-            || state.tabs.len() != self.tabs.len()
-            || state.tabs.iter().zip(self.tabs.iter())
+        if state.view().tab_bar_dim != tab_bar_dim {
+            state.update(|state| state.tab_bar_dim = tab_bar_dim);
+        }
+
+        if state.view().tab_bar_rel_xy != tab_bar_rel_xy {
+            state.update(|state| state.tab_bar_rel_xy = tab_bar_rel_xy);
+        }
+
+        if state.view().maybe_selected_tab_idx != maybe_selected_tab_idx {
+            state.update(|state| state.maybe_selected_tab_idx = maybe_selected_tab_idx);
+        }
+
+        let tabs_have_changed = state.view().tabs.len() != self.tabs.len()
+            || state.view().tabs.iter().zip(self.tabs.iter())
                 .any(|(&(prev_id, ref prev_label), &(id, label))| {
                     prev_id != id || &prev_label[..] != label
                 });
 
-        // Construct the new state if there has been a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        if tabs_have_changed {
+            state.update(|state| {
+                state.tabs = self.tabs.iter().map(|&(id, s)| (id, s.to_owned())).collect();
+            });
+        }
     }
 
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, collage, text};
         use elmesque::text::Text;
 

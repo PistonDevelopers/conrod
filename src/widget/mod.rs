@@ -35,10 +35,18 @@ pub mod xy_pad;
 
 /// Arguments for the `Widget::update` method in a struct to simplify the method signature.
 pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
-    /// W's unique index.
+    /// The Widget's unique index.
     pub idx: Index,
-    /// The Widget's state that was last returned by the update method.
-    pub prev_state: &'a State<W::State>,
+    /// The Widget's previous state. Specifically, the state that is common between all widgets.
+    pub prev: &'a CommonState,
+    /// A wrapper around the Widget's unique state, providing methods for both immutably viewing
+    /// and mutably updating the state.
+    ///
+    /// We wrap mutation in a method so that we can keep track of whether or not the unique state
+    /// has been updated. If `State::update` is called, we assume that there has been some mutation
+    /// and in turn will produce a new `Element` for the `Widget`. Thus, it is recommended that you
+    /// *only* call `State::update` if you need to update the unique state in some way.
+    pub state: &'a mut State<'a, W::State>,
     /// The rectangle describing the `Widget`'s area.
     pub rect: Rect,
     /// The Widget's current Style.
@@ -149,11 +157,27 @@ pub struct CommonBuilder {
     pub scrolling: scroll::Scrolling,
 }
 
-/// Represents the unique cached state of a widget.
-#[derive(PartialEq)]
-pub struct State<T> {
-    /// The state of the Widget.
-    pub state: T,
+/// A wrapper around a `Widget`'s unique `Widget::State`.
+///
+/// This type is used to provide limited access to the `Widget::State` within the `Widget::update`
+/// method (to which it is passed via the `UpdateArgs`).
+///
+/// The type provides only two methods. One for viewing the state, and one for mutating the state.
+///
+/// We do this so that we can keep track of whether or not the `Widget::State` has been mutated
+/// (using an internal `has_updated` flag). This allows us to know whether or not we need to
+/// produce a new `Element` for the widget, without having to compare previous and new states.
+#[derive(Debug)]
+pub struct State<'a, T: 'a> {
+    state: &'a mut T,
+    /// A flag indicating whether or not the widget's State has been updated.
+    has_updated: bool,
+}
+
+/// A wrapper around a Widget's common state. Particularly, that state which was produced via the
+/// previous time that the Widget was set.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct CommonState {
     /// The rectangle describing the `Widget`'s area.
     pub rect: Rect,
     /// The rendering depth for the Widget (the default is 0.0).
@@ -259,10 +283,6 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 ///
 /// Methods that can be optionally overridden:
 /// - parent_id
-/// - capture_mouse
-/// - uncapture_mouse
-/// - capture_keyboard
-/// - uncapture_keyboard
 /// - default_position
 /// - default_width
 /// - default_height
@@ -319,8 +339,7 @@ pub trait Widget: Sized {
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
-    fn update<C>(self, args: UpdateArgs<Self, C>) -> Option<Self::State>
-        where C: CharacterCache;
+    fn update<C: CharacterCache>(self, args: UpdateArgs<Self, C>);
 
     /// Construct a renderable Element from the current styling and new state. This will *only* be
     /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
@@ -332,8 +351,7 @@ pub trait Widget: Sized {
     /// * current_style - The freshly produced `Style` of the widget.
     /// * theme - The currently active `Theme` within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<C>(args: DrawArgs<Self, C>) -> Element
-        where C: CharacterCache;
+    fn draw<C: CharacterCache>(args: DrawArgs<Self, C>) -> Element;
 
     /// The default Position for the widget.
     /// This is used when no Position is explicitly given when instantiating the Widget.
@@ -365,18 +383,6 @@ pub trait Widget: Sized {
     fn default_height(&self, _theme: &Theme) -> Scalar {
         0.0
     }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn capture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn uncapture_mouse(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn capture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
-
-    /// Optionally override with the case that the widget should capture the mouse.
-    fn uncapture_keyboard(_prev: &Self::State, _new: &Self::State) -> bool { false }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
     /// of the draggable space. The position should be relative to the center of the widget.
@@ -507,31 +513,31 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
-    let (maybe_prev_state, maybe_prev_style, maybe_prev_scrolling) = maybe_widget_state.map(|prev|{
+    let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style, maybe_prev_scrolling) =
+        maybe_widget_state.map(|prev| {
 
-        // Destructure the cached state.
-        let Cached {
-            state,
-            style,
-            rect,
-            depth,
-            drag_state,
-            maybe_floating,
-            maybe_scrolling,
-            ..
-        } = prev;
+            // Destructure the cached state.
+            let Cached {
+                state,
+                style,
+                rect,
+                depth,
+                drag_state,
+                maybe_floating,
+                maybe_scrolling,
+                ..
+            } = prev;
 
-        // Use the cached state to construct the prev_state (to be fed to Widget::update).
-        let prev_state = State {
-            state: state,
-            rect: rect,
-            depth: depth,
-            drag_state: drag_state,
-            maybe_floating: maybe_floating,
-        };
+            // Use the cached state to construct the prev_state (to be fed to Widget::update).
+            let prev_common = CommonState {
+                rect: rect,
+                depth: depth,
+                drag_state: drag_state,
+                maybe_floating: maybe_floating,
+            };
 
-        (Some(prev_state), Some(style), maybe_scrolling)
-    }).unwrap_or_else(|| (None, None, None));
+            (Some(state), Some(prev_common), Some(style), maybe_scrolling)
+        }).unwrap_or_else(|| (None, None, None, None));
 
     // We need to hold onto the current "previously set widget", as this may change during our
     // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last
@@ -552,10 +558,10 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         };
 
         // Check to see if the widget is currently being dragged and return the new xy / drag.
-        match maybe_prev_state {
+        match maybe_prev_common {
             // If there is no previous state to compare for dragging, return an initial state.
             None => (gen_xy(), drag::State::Normal),
-            Some(ref prev_state) => {
+            Some(ref prev) => {
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
                 match maybe_drag_area {
@@ -570,13 +576,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                     Some(drag_area) => match maybe_mouse {
                         // If there is some draggable area and mouse, drag the xy.
                         Some(mouse) => {
-                            let drag_state = prev_state.drag_state;
+                            let drag_state = prev.drag_state;
 
                             // Drag the xy of the widget and return the new xy.
-                            drag::drag_widget(prev_state.rect.xy(), drag_area, drag_state, mouse)
+                            drag::drag_widget(prev.rect.xy(), drag_area, drag_state, mouse)
                         },
                         // Otherwise just return the regular xy and drag state.
-                        None => (prev_state.rect.xy(), drag::State::Normal),
+                        None => (prev.rect.xy(), drag::State::Normal),
                     },
                 }
             },
@@ -588,12 +594,14 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Check whether we have stopped / started dragging the widget and in turn whether or not
     // we need to capture the mouse.
-    match (maybe_prev_state.as_ref().map(|prev| prev.drag_state), drag_state) {
-        (Some(drag::State::Highlighted), drag::State::Clicked(_)) =>
-            ui::mouse_captured_by(ui, idx),
+    match (maybe_prev_common.as_ref().map(|prev| prev.drag_state), drag_state) {
+        (Some(drag::State::Highlighted), drag::State::Clicked(_)) => {
+            ui::mouse_captured_by(ui, idx);
+        },
         (Some(drag::State::Clicked(_)), drag::State::Highlighted) |
-        (Some(drag::State::Clicked(_)), drag::State::Normal)      =>
-            ui::mouse_uncaptured_by(ui, idx),
+        (Some(drag::State::Clicked(_)), drag::State::Normal)      => {
+            ui::mouse_uncaptured_by(ui, idx);
+        },
         _ => (),
     }
 
@@ -613,7 +621,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         }
 
         // If it is floating, check to see if we need to update the last time it was clicked.
-        match maybe_prev_state.as_ref() {
+        match maybe_prev_common.as_ref() {
             Some(prev) => {
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 match (prev.maybe_floating, maybe_mouse) {
@@ -676,17 +684,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine whether or not this is the first time set has been called.
     // We'll use this to determine whether or not we need to call Widget::draw.
-    let is_first_set = maybe_prev_state.is_none();
-
-    // Unwrap the previous state. If there is no previous state to unwrap, call the
-    // `init_state` method to use the initial state as the prev_state.
-    let prev_state = maybe_prev_state.unwrap_or_else(|| State {
-        state: widget.init_state(),
-        rect: rect,
-        depth: depth,
-        drag_state: drag_state,
-        maybe_floating: maybe_floating,
-    });
+    let is_first_set = maybe_prev_common.is_none();
 
     // Update all positioning and dimension related data prior to calling `Widget::update`.
     // We do this so that if this widget were to internally `set` some other `Widget`s, this
@@ -714,44 +712,63 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         });
     }
 
-    // Update the widget's state.
-    let maybe_new_state = {
-        // Construct a UserInput for the widget.
-        let args = UpdateArgs {
-            idx: idx,
-            prev_state: &prev_state,
-            rect: rect,
-            style: &new_style,
-            ui: UiCell { ui: ui, idx: idx },
+    // Unwrap the widget's previous common state. If there is no previous common state, we'll
+    // use the new state in it's place.
+    let prev_common = maybe_prev_common.unwrap_or_else(|| CommonState {
+        rect: rect,
+        depth: depth,
+        drag_state: drag_state,
+        maybe_floating: maybe_floating,
+    });
+
+    // Retrieve the widget's unique state and update it via `Widget::update`.
+    let (unique_state, has_state_updated) = {
+
+        // Unwrap our unique widget state. If there is no previous state to unwrap, call the
+        // `init_state` method to construct some initial state.
+        let mut unique_state = maybe_prev_unique_state.unwrap_or_else(|| widget.init_state());
+        let has_updated = {
+
+            // A wrapper around the widget's unique state in order to keep track of whether or not it
+            // has been updated during the `Widget::update` method.
+            let mut state = State {
+                state: &mut unique_state,
+                has_updated: false,
+            };
+
+            {
+                // TODO / FIXME: For some reason passing a `&mut state` directly to the `state`
+                // field of the UpdateArgs causes the borrow checker to consider state has being
+                // borrowed even past the end of this scope, making it impossible to get the
+                // `has_updated` flag out of the state. This mutable ptr cast is a temporary
+                // hack until we can work out why this happens. It is likely the problem has
+                // something to do with UpdateArgs' lifetime intersection - I attempted various
+                // other lifetime combinations but failed to get anything working that would
+                // appease the borrow checker. As far as I can see the current intersection should
+                // be fine and safe, however the borrow checker isn't convinced.
+                //
+                // - mindtree.
+                let state_mut_ptr: *mut State<W::State> = &mut state;
+                widget.update(UpdateArgs {
+                    idx: idx,
+                    state: unsafe { ::std::mem::transmute(state_mut_ptr) },
+                    prev: &prev_common,
+                    rect: rect,
+                    style: &new_style,
+                    ui: UiCell { ui: ui, idx: idx },
+                });
+            }
+
+            state.has_updated
         };
-        widget.update(args)
+
+        (unique_state, has_updated)
     };
 
-    // Check for whether or not the user input needs to be captured or uncaptured. We check after
-    // the widget update so that child widgets get the first oppotunity to capture input.
-    {
-        let new_state = match maybe_new_state {
-            Some(ref new_state) => new_state,
-            None => &prev_state.state
-        };
-        if W::capture_mouse(&prev_state.state, new_state) {
-            ui::mouse_captured_by(ui, idx);
-        }
-        if W::uncapture_mouse(&prev_state.state, new_state) {
-            ui::mouse_uncaptured_by(ui, idx);
-        }
-        if W::capture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_captured_by(ui, idx);
-        }
-        if W::uncapture_keyboard(&prev_state.state, new_state) {
-            ui::keyboard_uncaptured_by(ui, idx);
-        }
-    }
-
     // Determine whether or not the `State` has changed.
-    let state_has_changed = maybe_new_state.is_some()
-        || rect != prev_state.rect
-        || depth != prev_state.depth
+    let state_has_changed = has_state_updated
+        || rect != prev_common.rect
+        || depth != prev_common.depth
         || is_first_set;
 
     // Determine whether or not the widget's `Style` has changed.
@@ -763,14 +780,10 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // We only need to redraw the `Element` if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
 
-    // Our resulting `State` after having updated.
-    let resulting_state = maybe_new_state
-        .unwrap_or_else(move || { let State { state, .. } = prev_state; state });
-
     // If we require a redraw, we should draw a new `Element`.
     let maybe_new_element = if requires_redraw {
         Some(W::draw(DrawArgs {
-            state: &resulting_state,
+            state: &unique_state,
             style: &new_style,
             theme: &ui.theme,
             glyph_cache: &ui.glyph_cache,
@@ -788,7 +801,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     ui::post_update_cache::<C, W>(ui, PostUpdateCache {
         idx: idx,
         maybe_parent_idx: maybe_parent_idx,
-        state: resulting_state,
+        state: unique_state,
         style: new_style,
         maybe_element: maybe_new_element,
     });
@@ -814,14 +827,76 @@ impl<'a, C> UiCell<'a, C> {
         ui::user_input(self.ui, idx.into())
     }
 
+    /// Have the widget capture the mouse input. The mouse state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the mouse was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_mouse(&mut self) -> bool {
+        ui::mouse_captured_by(self.ui, self.idx)
+    }
+
+    /// Uncapture the mouse input.
+    ///
+    /// Returns true if the mouse was successfully uncaptured.
+    ///
+    /// Returns false if the mouse wasn't captured by our widget in the first place.
+    pub fn uncapture_mouse(&mut self) -> bool {
+        ui::mouse_uncaptured_by(self.ui, self.idx)
+    }
+
+    /// Have the widget capture the keyboard input. The keyboard state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the keyboard was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_keyboard(&mut self) -> bool {
+        ui::keyboard_captured_by(self.ui, self.idx)
+    }
+
+    /// Uncapture the keyboard input.
+    ///
+    /// Returns true if the keyboard was successfully uncaptured.
+    ///
+    /// Returns false if the keyboard wasn't captured by our widget in the first place.
+    pub fn uncapture_keyboard(&mut self) -> bool {
+        ui::keyboard_uncaptured_by(self.ui, self.idx)
+    }
+
     /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
     /// This should only be called once for each unique widget needed to avoid unnecessary bloat
     /// within the `Ui`'s widget graph.
     ///
     /// When using this method in your `Widget`'s `update` method, be sure to store the returned
     /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
+    ///
+    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
     pub fn new_unique_node_index(&mut self) -> NodeIndex {
         ui::widget_graph_mut(&mut self.ui).add_placeholder()
+    }
+
+}
+
+
+impl<'a, T> State<'a, T> {
+
+    /// Immutably borrow the internal widget state.
+    #[inline]
+    pub fn view(&self) -> &T { &self.state }
+
+    /// Mutate the internal widget state and set a flag notifying us that there has been a mutation.
+    ///
+    /// If this method is *not* called, we assume that there has been no mutation and in turn we
+    /// will re-use the Widget's pre-existing `Element`.
+    ///
+    /// If this method *is* called, we assume that there has been some mutation and in turn will
+    /// produce a new `Element` for the `Widget`. Thus, it is recommended that you *only* call
+    /// this method if you need to update the unique state in some way.
+    pub fn update<F>(&mut self, f: F) where F: FnOnce(&mut T) {
+        self.has_updated = true;
+        f(self.state);
     }
 
 }

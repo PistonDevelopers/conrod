@@ -266,12 +266,8 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Update the state of the Canvas.
-    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
-        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
-        let State { interaction, time_last_clicked, ref maybe_title_bar } = *state;
+    fn update<C>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, ui, .. } = args;
         let maybe_mouse = ui.input().maybe_mouse;
         let title_bar_font_size = self.style.title_bar_font_size(ui.theme());
         let maybe_title_bar_rect = if self.show_title_bar {
@@ -283,55 +279,54 @@ impl<'a> Widget for Canvas<'a> {
         // If there is new mouse state, check for a new interaction.
         let new_interaction = if let Some(mouse) = maybe_mouse {
             let is_over_elem = is_over(rect, maybe_title_bar_rect, mouse.xy);
-            get_new_interaction(is_over_elem, interaction, mouse)
+            get_new_interaction(is_over_elem, state.view().interaction, mouse)
         } else {
             Interaction::Normal
         };
 
         // If the canvas was clicked, dragged or released, update the time_last_clicked.
-        let new_time_last_clicked = match (interaction, new_interaction) {
+        let new_time_last_clicked = match (state.view().interaction, new_interaction) {
             (Interaction::Highlighted(_), Interaction::Clicked(_, _)) |
             (Interaction::Clicked(_, _), Interaction::Highlighted(_)) |
             (Interaction::Clicked(_, _), Interaction::Clicked(_, _))  => precise_time_ns(),
-            _ => time_last_clicked,
+            _ => state.view().time_last_clicked,
         };
 
-        // A function for constructing a new state.
-        let new_state = || State {
-            interaction: new_interaction,
-            time_last_clicked: new_time_last_clicked,
-            maybe_title_bar: maybe_title_bar_rect.map(|rect| TitleBar {
-                maybe_label: self.maybe_title_bar_label.as_ref()
-                    .map(|label| (label.to_string(), title_bar_font_size)),
-                rect: rect,
-            }),
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
+
+        if state.view().time_last_clicked != new_time_last_clicked {
+            state.update(|state| state.time_last_clicked = new_time_last_clicked);
+        }
+
+        let title_bar_has_changed = match state.view().maybe_title_bar {
+            None => self.show_title_bar,
+            Some(ref title_bar) => {
+                Some(title_bar.rect) != maybe_title_bar_rect
+                || match title_bar.maybe_label {
+                    None => false,
+                    Some((ref label, font_size)) => {
+                        Some(&label[..]) != self.maybe_title_bar_label
+                        || font_size != title_bar_font_size
+                    },
+                }
+            },
         };
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = interaction != new_interaction
-            || time_last_clicked != new_time_last_clicked
-            || match *maybe_title_bar {
-                None => self.show_title_bar,
-                Some(ref title_bar) => {
-                    Some(title_bar.rect) != maybe_title_bar_rect
-                    || match title_bar.maybe_label {
-                        None => false,
-                        Some((ref label, font_size)) => {
-                            Some(&label[..]) != self.maybe_title_bar_label
-                            || font_size != title_bar_font_size
-                        },
-                    }
-                },
-            };
-
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        if title_bar_has_changed {
+            state.update(|state| {
+                state.maybe_title_bar = maybe_title_bar_rect.map(|rect| TitleBar {
+                    rect: rect,
+                    maybe_label: self.maybe_title_bar_label.as_ref()
+                        .map(|label| (label.to_string(), title_bar_font_size)),
+                });
+            });
+        }
     }
 
     /// Draw the canvas.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, collage, text};
 
         let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;

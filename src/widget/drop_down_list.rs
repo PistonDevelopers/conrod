@@ -158,21 +158,18 @@ impl<'a, F> Widget for DropDownList<'a, F> where
     }
 
     /// Update the state of the DropDownList.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
-        use std::borrow::Cow;
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
-        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui } = args;
-        let widget::State { ref state, .. } = *prev_state;
         let (global_mouse, window_dim) = {
             let input = ui.input();
             (input.global_mouse, input.window_dim)
         };
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
-        let mut buttons = Cow::Borrowed(&state.buttons[..]);
-        let canvas_idx = state.maybe_canvas_idx.unwrap_or_else(|| ui.new_unique_node_index());
+
+        let canvas_idx = state.view().maybe_canvas_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
 
         // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
@@ -180,19 +177,31 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
         // If the number of buttons that we have in our previous state doesn't match the number of
         // strings we've just been given, we need to resize our buttons Vec.
-        if buttons.len() < num_strings {
-            let num_buttons = buttons.len();
-            buttons.to_mut().extend((num_buttons..num_strings).map(|i| {
-                (ui.new_unique_node_index(), self.strings[i].to_owned())
-            }));
+        let num_buttons = state.view().buttons.len();
+        let maybe_new_buttons = if num_buttons < num_strings {
+            let new_buttons = (num_buttons..num_strings)
+                .map(|i| (ui.new_unique_node_index(), self.strings[i].to_owned()));
+            let total_new_buttons = state.view().buttons.iter()
+                .map(|&(idx, ref string)| (idx, string.clone()))
+                .chain(new_buttons);
+            Some(total_new_buttons.collect())
+        } else {
+            None
+        };
+
+        // A function to simplify retrieval of the current list of buttons.
+        fn get_buttons<'a>(maybe_new: &'a Option<Vec<(NodeIndex, String)>>,
+                           state: &'a widget::State<State>) -> &'a [(NodeIndex, String)] {
+            maybe_new.as_ref().map(|vec| &vec[..]).unwrap_or_else(|| &state.view().buttons[..])
         }
 
         // Determine the new menu state by checking whether or not any of our Button's reactions
         // are triggered.
-        let new_menu_state = match state.menu_state {
+        let new_menu_state = match state.view().menu_state {
 
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
+                let buttons = get_buttons(&maybe_new_buttons, state);
 
                 // Get the button index and the label for the closed menu's button.
                 let (button_idx, label) = selected
@@ -248,7 +257,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     .set(canvas_idx, &mut ui);
 
                 let labels = self.strings.iter();
-                let button_indices = state.buttons.iter().map(|&(idx, _)| idx);
+                let button_indices = state.view().buttons.iter().map(|&(idx, _)| idx);
                 let xys = (0..num_strings).map(|i| [xy[0], xy[1] - i as f64 * (dim[1] - frame)]);
                 let iter = labels.zip(button_indices).zip(xys).enumerate();
                 let mut was_clicked = None;
@@ -284,32 +293,31 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
         };
 
-        // Function for constructing a new DropDownList State.
-        let new_state = |buttons: Cow<[(NodeIndex, String)]>| {
-            State {
-                menu_state: new_menu_state,
-                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-                buttons: buttons.into_owned(),
-                maybe_selected: *self.selected,
-                maybe_canvas_idx: Some(canvas_idx),
-            }
-        };
+        if let Some(new_buttons) = maybe_new_buttons {
+            state.update(|state| state.buttons = new_buttons);
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.menu_state != new_menu_state
-            || &state.buttons[..] != &buttons[..]
-            || state.maybe_selected != *self.selected
-            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label
-            || state.maybe_canvas_idx != Some(canvas_idx);
+        if state.view().menu_state != new_menu_state {
+            state.update(|state| state.menu_state = new_menu_state);
+        }
 
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state(buttons)) } else { None }
+        if state.view().maybe_selected != *self.selected {
+            state.update(|state| state.maybe_selected = *self.selected);
+        }
+
+        if state.view().maybe_canvas_idx != Some(canvas_idx) {
+            state.update(|state| state.maybe_canvas_idx = Some(canvas_idx));
+        }
+
+        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+            state.update(|state| {
+                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+            });
+        }
     }
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(_args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> Element {
         // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
         ::elmesque::element::empty()
     }

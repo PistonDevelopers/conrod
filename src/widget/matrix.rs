@@ -106,46 +106,33 @@ impl<'a, F, W> Widget for Matrix<F> where
     }
 
     /// Update the state of the Matrix.
-    fn update<C>(self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache,
-    {
-        use std::borrow::Cow;
-
-        let widget::UpdateArgs { idx, prev_state, rect, style, mut ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 
-        let mut indices = Cow::Borrowed(&state.indices[..]);
-
-        // Work out whether or not this is the first time the Matrix has been set.
-        let is_first_update = indices.len() == 0;
-
-        // First, check that we have the correct number of columns.
-        if indices.len() < cols {
-            let num_cols = indices.len();
-            indices.to_mut().extend((num_cols..cols).map(|_| Vec::with_capacity(rows)));
-        }
-
-        // Then, check that the number of rows in each column is correct.
-        for i in 0..indices.len() {
-            let num_rows = indices[i].len();
-            if num_rows < rows {
-                indices.to_mut()[i].extend((num_rows..rows).map(|_| ui.new_unique_node_index()));
+        // First, check that we have the correct number of columns and rows.
+        let num_cols = state.view().indices.len();
+        let num_rows = state.view().indices.get(0).map(|col| col.len()).unwrap_or(0);
+        let maybe_new_indices = if num_cols < cols || num_rows < rows {
+            let mut total_cols: Vec<_> = state.view().indices.iter()
+                .map(|col| col.clone())
+                .chain((num_cols..cols).map(|_| Vec::with_capacity(rows)))
+                .collect();
+            for col in total_cols.iter_mut() {
+                let rows_in_col = col.len();
+                if rows_in_col < rows {
+                    col.extend((rows_in_col..rows).map(|_| ui.new_unique_node_index()));
+                }
             }
-        }
-
-        // Has anything about the Matrix changed since the last update.
-        let state_has_changed = &state.indices[..] != &indices[..];
-
-        // A function for constructing a new new Matrix::State.
-        let new_state = |indices: Cow<[Vec<NodeIndex>]>| State {
-            indices: indices.into_owned(),
+            Some(total_cols)
+        } else {
+            None
         };
 
-        // If it is the first update, we won't yet call the given `each_widget` function so that we
-        // can ensure that the Matrix exists within the Graph.
-        if is_first_update {
-            return Some(new_state(indices));
+        // A function to simplify getting the current slice of indices.
+        fn get_indices<'a>(maybe_new: &'a Option<Vec<Vec<NodeIndex>>>,
+                           state: &'a widget::State<State>) -> &'a [Vec<NodeIndex>] {
+            maybe_new.as_ref().map(|is| &is[..]).unwrap_or_else(|| &state.view().indices[..])
         }
 
         // We only need to worry about element calculations if we actually have rows and columns.
@@ -165,6 +152,7 @@ impl<'a, F, W> Widget for Matrix<F> where
                 let y_max = half_h - widget_h / 2.0;
 
                 let mut widget_num = 0;
+                let indices = get_indices(&maybe_new_indices, state);
                 for col in 0..cols {
                     for row in 0..rows {
                         use position::{Positionable, Sizeable};
@@ -184,15 +172,13 @@ impl<'a, F, W> Widget for Matrix<F> where
             }
         }
 
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state(indices)) } else { None }
-
+        if let Some(new_indices) = maybe_new_indices {
+            state.update(|state| state.indices = new_indices);
+        }
     }
 
     /// Construct an Element from the given DropDownList State.
-    fn draw<C>(_args: widget::DrawArgs<Self, C>) -> ::Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> ::Element {
         // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
         ::elmesque::element::empty()
     }

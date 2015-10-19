@@ -120,21 +120,6 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     }
     fn style(&self) -> Style { self.style.clone() }
 
-    fn capture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => true,
-            _ => false,
-        }
-    }
-
-    fn uncapture_mouse(prev: &State, new: &State) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Clicked, Interaction::Highlighted) => true,
-            (Interaction::Clicked, Interaction::Normal) => true,
-            _ => false,
-        }
-    }
-
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 64.0;
         self.common.maybe_width.or(theme.maybe_button.as_ref().map(|default| {
@@ -150,11 +135,8 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     }
 
     /// Update the state of the Button.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State>
-        where C: CharacterCache
-    {
-        let widget::UpdateArgs { prev_state, rect, ui, .. } = args;
-        let widget::State { ref state, .. } = *prev_state;
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, mut ui, .. } = args;
         let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
@@ -162,36 +144,39 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
-                get_new_interaction(is_over, state.interaction, mouse)
+                get_new_interaction(is_over, state.view().interaction, mouse)
             },
         };
 
+        // Capture the mouse if it was clicked, uncpature if it was released.
+        match (state.view().interaction, new_interaction) {
+            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
+            (Interaction::Clicked, Interaction::Highlighted) |
+            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+            _ => (),
+        }
+
         // If the mouse was released over button, react.
         if let (Interaction::Clicked, Interaction::Highlighted) =
-            (state.interaction, new_interaction) {
+            (state.view().interaction, new_interaction) {
             if let Some(ref mut react) = self.maybe_react { react() }
         }
 
-        // A function for constructing a new state.
-        let new_state = || {
-            State {
-                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-                interaction: new_interaction,
-            }
-        };
+        // If there has been a change in interaction, set the new one.
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
-
-        // Construct the new state if there was a change.
-        if state_has_changed { Some(new_state()) } else { None }
+        // If the label has changed, update it.
+        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+            state.update(|state| {
+                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string())
+            });
+        }
     }
 
     /// Construct an Element from the given Button State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, collage, text};
 
         let widget::DrawArgs { state, style, theme, rect, .. } = args;

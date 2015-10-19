@@ -349,28 +349,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         })).unwrap_or(DEFAULT_HEIGHT)
     }
 
-    fn capture_mouse(prev: &State<E>, new: &State<E>) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Highlighted(_), Interaction::Clicked(_, _)) => true,
-            _ => false,
-        }
-    }
-
-    fn uncapture_mouse(prev: &State<E>, new: &State<E>) -> bool {
-        match (prev.interaction, new.interaction) {
-            (Interaction::Clicked(_, _), Interaction::Clicked(_, _)) => false,
-            (Interaction::Clicked(_, _), _) => true,
-            _ => false,
-        }
-    }
-
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<C>(mut self, args: widget::UpdateArgs<Self, C>) -> Option<State<E>>
-        where C: CharacterCache,
-    {
-        let widget::UpdateArgs { prev_state, rect, style, ui, .. } = args;
+    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
         let (xy, dim) = rect.xy_dim();
-        let widget::State { ref state, .. } = *prev_state;
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let skew = self.skew_y_range;
         let (min_x, max_x, min_y, max_y) = (self.min_x, self.max_x, self.min_y, self.max_y);
@@ -397,9 +379,17 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
                 let is_over_elem = is_over_elem(mouse.xy, dim, pad_dim, &perc_env[..], pt_radius);
-                get_new_interaction(is_over_elem, state.interaction, mouse)
+                get_new_interaction(is_over_elem, state.view().interaction, mouse)
             },
         };
+
+        // Capture the mouse if clicked or uncapture the mouse if released.
+        match (state.view().interaction, new_interaction) {
+            (Interaction::Highlighted(_), Interaction::Clicked(_, _)) => { ui.capture_mouse(); },
+            (Interaction::Clicked(_, _), Interaction::Highlighted(_)) |
+            (Interaction::Clicked(_, _), Interaction::Normal)         => { ui.uncapture_mouse(); },
+            _ => (),
+        }
 
         // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
         let is_clicked_env_point = match new_interaction {
@@ -430,7 +420,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
                 // Call the `react` closure if mouse was released
                 // on one of the DropDownMenu items.
-                match (state.interaction, new_interaction) {
+                match (state.view().interaction, new_interaction) {
                     (Interaction::Clicked(_, m_button), Interaction::Highlighted(_)) |
                     (Interaction::Clicked(_, m_button), Interaction::Normal) => {
                         match m_button {
@@ -481,7 +471,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 // Check if a there are no points. If so and the mouse was clicked, add a point.
                 if self.env.len() == 0 {
                     if let (Interaction::Clicked(elem, m_button), Interaction::Highlighted(_)) =
-                        (state.interaction, new_interaction) {
+                        (state.view().interaction, new_interaction) {
                         if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
                             let (new_x, new_y) = get_new_value(&perc_env[..], 0);
                             let new_point = EnvelopePoint::new(new_x, new_y);
@@ -496,7 +486,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 else {
                     // Check if a new point should be created.
                     if let (Interaction::Clicked(elem, m_button), Interaction::Highlighted(_)) =
-                        (state.interaction, new_interaction) {
+                        (state.view().interaction, new_interaction) {
                         if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
                             let (new_x, new_y) = {
                                 let mouse_x = clamp(mouse.xy[0], -half_pad_w, half_pad_w);
@@ -541,38 +531,45 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             _ => None,
         };
 
-        // A function for constructing a new State.
-        let new_state = || {
-            State {
-                interaction: new_interaction,
-                env: self.env.clone(),
-                min_x: min_x,
-                max_x: max_x,
-                min_y: min_y,
-                max_y: max_y,
-                skew_y_range: skew,
-                maybe_closest_point: maybe_closest_point,
-                maybe_label: self.maybe_label.as_ref().map(|label| label.to_string()),
-            }
+        if state.view().interaction != new_interaction {
+            state.update(|state| state.interaction = new_interaction);
+        }
+
+        if state.view().maybe_closest_point != maybe_closest_point {
+            state.update(|state| state.maybe_closest_point = maybe_closest_point);
+        }
+
+        if &state.view().env[..] != &self.env[..] {
+            state.update(|state| state.env = self.env.clone());
+        }
+
+        let bounds_have_changed = {
+            let view = state.view();
+            view.min_x != min_x || view.max_x != max_x || view.min_y != min_y || view.max_y != max_y
         };
 
-        // Check whether or not the state has changed since the previous update.
-        let state_has_changed = state.interaction != new_interaction
-            || state.maybe_closest_point != maybe_closest_point
-            || &state.env[..] != &self.env[..]
-            || state.min_x != min_x || state.max_x != max_x
-            || state.min_y != min_y || state.max_y != max_y
-            || state.skew_y_range != skew
-            || state.maybe_label.as_ref().map(|string| &string[..]) != self.maybe_label;
+        if bounds_have_changed {
+            state.update(|state| {
+                state.min_x = min_x;
+                state.max_x = max_x;
+                state.min_y = min_y;
+                state.max_y = max_y;
+            });
+        }
 
-        // If so, construct the new state.
-        if state_has_changed { Some(new_state()) } else { None }
+        if state.view().skew_y_range != skew {
+            state.update(|state| state.skew_y_range = skew);
+        }
+
+        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+            state.update(|state| {
+                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+            })
+        }
     }
 
     /// Construct an Element from the given EnvelopeEditor State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
         use elmesque::form::{self, circle, collage, Form, line, solid, text};
         use elmesque::text::Text;
 
