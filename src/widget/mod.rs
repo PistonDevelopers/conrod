@@ -33,89 +33,99 @@ pub mod toggle;
 pub mod xy_pad;
 
 
-/// Arguments for the `Widget::update` method in a struct to simplify the method signature.
+/// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
+/// simplify the method signature.
 pub struct UpdateArgs<'a, W, C: 'a> where W: Widget {
-    /// The Widget's unique index.
+    /// The **Widget**'s unique index.
     pub idx: Index,
-    /// The Widget's previous state. Specifically, the state that is common between all widgets.
+    /// The **Widget**'s previous state. Specifically, the state that is common between all widgets,
+    /// such as positioning, floatability, draggability, etc.
     pub prev: &'a CommonState,
-    /// A wrapper around the Widget's unique state, providing methods for both immutably viewing
+    /// A wrapper around the **Widget**'s unique state, providing methods for both immutably viewing
     /// and mutably updating the state.
     ///
     /// We wrap mutation in a method so that we can keep track of whether or not the unique state
-    /// has been updated. If `State::update` is called, we assume that there has been some mutation
-    /// and in turn will produce a new `Element` for the `Widget`. Thus, it is recommended that you
-    /// *only* call `State::update` if you need to update the unique state in some way.
+    /// has been updated.
+    ///
+    /// If **State::update** is called, we assume that there has been some mutation and in turn will
+    /// produce a new **Element** for the **Widget**. Thus, it is recommended that you *only* call
+    /// **State::update** if you need to update the unique state in some way.
     pub state: &'a mut State<'a, W::State>,
-    /// The rectangle describing the `Widget`'s area.
+    /// The rectangle describing the **Widget**'s area.
     pub rect: Rect,
-    /// The Widget's current Style.
+    /// The **Widget**'s current **Widget::Style**.
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
+    ///
     /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.
     /// Also allows calling `Widget::set` within the `Widget::update` method.
     pub ui: UiCell<'a, C>,
 }
 
-/// A wrapper around a `Ui` that only exposes the functionality necessary for the `Widget::update`
-/// method. Its primary role is to allow for widget designers to compose their own unique `Widget`s
-/// from other `Widget`s by calling the `Widget::set` method within their own `Widget`'s
-/// update method. It also provides methods for accessing the `Ui`'s `Theme`, `GlyphCache` and
-/// `UserInput` via immutable reference.
+/// A wrapper around a `Ui` that only exposes the functionality necessary for the
+/// **Widget::update** method.
+///
+/// Its primary role is to allow for widget designers to compose their own unique **Widget**s from
+/// other **Widget**s by calling the **Widget::set** method within their own **Widget**'s
+/// update method.
+///
+/// It also provides methods for accessing the **Ui**'s **Theme**, **GlyphCache** and **UserInput**
+/// via immutable reference.
 ///
 /// BTW - if you have a better name for this type, please post an issue or PR! "Cell" was the best
-/// I could come up with as it's kind of like a jail cell for the `Ui` - restricting a user's
+/// I could come up with as it's kind of like a jail cell for the **Ui** - restricting a user's
 /// access to it.
 pub struct UiCell<'a, C: 'a> {
-    /// A mutable reference to a `Ui`.
+    /// A mutable reference to a **Ui**.
     ui: &'a mut Ui<C>,
-    /// The index of the Widget that "owns" the `UiCell`. The index is needed so that we can
+    /// The index of the Widget that "owns" the **UiCell**. The index is needed so that we can
     /// correctly retrieve user input information for the specific widget.
     idx: Index,
 }
 
-/// Arguments for the `Widget::draw` method in a struct to simplify the method signature.
+/// Arguments for the **Widget::draw** method in a struct to simplify the method signature.
 pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
     /// The current state of the Widget.
     pub state: &'a W::State,
     /// The current style of the Widget.
     pub style: &'a W::Style,
-    /// The active `Theme` within the `Ui`.
+    /// The active **Theme** within the **Ui**.
     pub theme: &'a Theme,
-    /// The `Ui`'s GlyphCache (for determining text width, etc).
+    /// The **Ui**'s **GlyphCache** (for determining text width).
     pub glyph_cache: &'a GlyphCache<C>,
-    /// The widget's z-axis position relative to its sibling widgets.
+    /// The **Widget**'s z-axis position relative to its sibling widgets.
     pub depth: Depth,
-    /// The rectangle describing the `Widget`'s area.
+    /// The rectangle describing the **Widget**'s area.
     pub rect: Rect,
-    /// The current state of the dragged widget, if it is draggable.
+    /// The current state of the dragged **Widget**, if it is draggable.
     pub drag_state: drag::State,
     /// Floating state for the widget if it is floating.
     pub maybe_floating: Option<Floating>,
 }
 
-/// Arguments to the `Widget::kid_area` method in a struct to simplify the method signature.
+/// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
+/// simplify the method signature.
 pub struct KidAreaArgs<'a, W, C: 'a> where W: Widget {
-    /// The rectangle describing the `Widget`'s area.
+    /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
-    /// Current Style of the Widget.
+    /// Current **Widget::Style** of the **Widget**.
     pub style: &'a W::Style,
-    /// The active `Theme` within the `Ui`.
+    /// The active **Theme** within the **Ui**.
     pub theme: &'a Theme,
-    /// The `Ui`'s GlyphCache (for determining text width, etc).
+    /// The **Ui**'s **GlyphCache** (for determining text width).
     pub glyph_cache: &'a GlyphCache<C>,
 }
 
-/// The area upon which a Widget's child widgets will be placed.
+/// The area upon which a **Widget**'s child widgets will be placed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct KidArea {
-    /// The Rectangle bounds describing the area.
+    /// The **Rect** bounds describing the position and area.
     pub rect: Rect,
     /// The distance between the edge of the area and where the widgets will be placed.
     pub pad: Padding,
 }
 
-/// The builder argument for the widget's Parent.
+/// The builder argument for the **Widget**'s parent.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum MaybeParent {
     /// The user specified the widget should not have any parents, so the Root will be used.
@@ -126,15 +136,15 @@ pub enum MaybeParent {
     Unspecified,
 }
 
-/// State necessary for Floating widgets.
+/// State necessary for "floating" (pop-up style) widgets.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Floating {
-    /// The time the canvas was last clicked (used for depth sorting in graph).
+    /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
     pub time_last_clicked: u64,
 }
 
-/// A struct containing builder data common to all Widget types.
-/// This type allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+/// A struct containing builder data common to all **Widget** types.
+/// This type allows us to do a blanket impl of **Positionable** and **Sizeable** for `T: Widget`.
 #[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct CommonBuilder {
     /// The width of a Widget.
@@ -157,16 +167,18 @@ pub struct CommonBuilder {
     pub scrolling: scroll::Scrolling,
 }
 
-/// A wrapper around a `Widget`'s unique `Widget::State`.
+/// A wrapper around a **Widget**'s unique **Widget::State**.
 ///
-/// This type is used to provide limited access to the `Widget::State` within the `Widget::update`
-/// method (to which it is passed via the `UpdateArgs`).
+/// This type is used to provide limited access to the **Widget::State** within the
+/// [**Widget::update**](./trait.Widget#method.update) method (to which it is passed via the
+/// [**UpdateArgs**](./struct.UpdateArgs)).
 ///
-/// The type provides only two methods. One for viewing the state, and one for mutating the state.
+/// The type provides only two methods. One for viewing the state, the other for mutating it.
 ///
-/// We do this so that we can keep track of whether or not the `Widget::State` has been mutated
+/// We do this so that we can keep track of whether or not the **Widget::State** has been mutated
 /// (using an internal `has_updated` flag). This allows us to know whether or not we need to
-/// produce a new `Element` for the widget, without having to compare previous and new states.
+/// produce a new **Element** for the **Widget**, without having to compare the previous and
+/// new **Widget::State**s.
 #[derive(Debug)]
 pub struct State<'a, T: 'a> {
     state: &'a mut T,
@@ -174,8 +186,7 @@ pub struct State<'a, T: 'a> {
     has_updated: bool,
 }
 
-/// A wrapper around a Widget's common state. Particularly, that state which was produced via the
-/// previous time that the Widget was set.
+/// A wrapper around state that is common to all **Widget** types.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CommonState {
     /// The rectangle describing the `Widget`'s area.
@@ -188,7 +199,7 @@ pub struct CommonState {
     pub maybe_floating: Option<Floating>,
 }
 
-/// The previous widget state to be returned by the Ui prior to a widget updating it's new state.
+/// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
 pub struct Cached<W> where W: Widget {
     /// State that is unique to the Widget.
     pub state: W::State,
@@ -208,46 +219,52 @@ pub struct Cached<W> where W: Widget {
     pub maybe_scrolling: Option<scroll::State>,
 }
 
-/// Widget data to be cached prior to the `Widget::update` call in the `set_widget` function.
-/// We do this so that if this Widget were to internally `set` some other `Widget`s, this
-/// `Widget`s positioning and dimension data already exists within the `Graph` for reference.
+/// **Widget** data to be cached prior to the **Widget::update** call in the **set_widget**
+/// function.
+///
+/// We do this so that if this **Widget** were to internally `set` some other **Widget**s, this
+/// **Widget**'s positioning and dimension data already exists within the widget **Graph** for
+/// reference.
 pub struct PreUpdateCache {
-    /// The `Widget`'s unique kind.
+    /// The **Widget**'s unique kind.
     pub kind: &'static str,
-    /// The `Widget`'s unique Index.
+    /// The **Widget**'s unique Index.
     pub idx: Index,
-    /// The widget's parent's unique index (if it has a parent).
+    /// The **Widget**'s parent's unique index (if it has a parent).
     pub maybe_parent_idx: Option<Index>,
-    /// If this widget is relatively positioned to another `Widget`, this will be the index of
-    /// the `Widget` to which this `Widget` is relatively positioned
+    /// If this **Widget** is relatively positioned to another **Widget**, this will be the index
+    /// of the **Widget** to which this **Widget** is relatively positioned
     pub maybe_positioned_relatively_idx: Option<Index>,
-    /// The rectangle describing the Widget's area.
+    /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
     /// The z-axis depth - affects the render order of sibling widgets.
     pub depth: Depth,
-    /// The new KidArea for the Widget.
+    /// The area upon which the **Widget**'s children widgets will be placed.
     pub kid_area: KidArea,
-    /// The current state of the dragged widget, if it is draggable.
+    /// The current state of the dragged **Widget**, if it is draggable.
     pub drag_state: drag::State,
-    /// Scrolling data for the Widget if there is some.
+    /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
-    /// Scrolling data for the Widget if there is some.
+    /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
 }
 
-/// Widget data to be cached after the `Widget::update` call in the `set_widget` function.
-/// We do this so that if this Widget were to internally `set` some other `Widget`s, this
-/// `Widget`s positioning and dimension data already exists within the `Graph` for reference.
+/// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
+/// function.
+///
+/// We do this so that if this **Widget** were to internally **Widget::set** some other
+/// **Widget**s, this **Widget**'s positioning and dimension data will already exist within the
+/// widget **Graph** for reference.
 pub struct PostUpdateCache<W> where W: Widget {
-    /// The `Widget`'s unique Index.
+    /// The **Widget**'s unique **Index**.
     pub idx: Index,
-    /// The widget's parent's unique index (if it has a parent).
+    /// The **Widget**'s parent's unique **Index** (if it has a parent).
     pub maybe_parent_idx: Option<Index>,
-    /// The newly produced unique `State` associated with the `Widget`.
+    /// The newly produced unique **Widget::State** associated with the **Widget**.
     pub state: W::State,
-    /// The newly produced unique `Style` associated with the `Widget`.
+    /// The newly produced unique **Widget::Style** associated with the **Widget**.
     pub style: W::Style,
-    /// A new `Element` to use for the `Widget` if a new one has been produced.
+    /// A new **Element** to use for the **Widget** if a new one has been produced.
     pub maybe_element: Option<Element>,
 }
 
@@ -270,11 +287,11 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 }
 
 
-/// A trait to be implemented by all Widget types.
+/// A trait to be implemented by all **Widget** types.
 ///
 /// Methods that *must* be overridden:
-/// - common_mut
 /// - common
+/// - common_mut
 /// - unique_kind
 /// - init_state
 /// - style
@@ -282,7 +299,6 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 /// - draw
 ///
 /// Methods that can be optionally overridden:
-/// - parent_id
 /// - default_position
 /// - default_width
 /// - default_height
@@ -303,20 +319,32 @@ pub trait Widget: Sized {
     /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
     type Style: Any + PartialEq + ::std::fmt::Debug;
 
-    /// Return a reference to a CommonBuilder struct owned by the Widget.
+    /// Return a reference to a **CommonBuilder** struct owned by the Widget.
     /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+    ///
+    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
+    /// accordingly (perhaps under a different name).
     fn common(&self) -> &CommonBuilder;
 
     /// Return a mutable reference to a CommonBuilder struct owned by the Widget.
     /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
+    ///
+    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
+    /// accordingly (perhaps under a different name).
     fn common_mut(&mut self) -> &mut CommonBuilder;
 
-    /// Return the kind of the widget as a &'static str. Note that this must be unique from all
-    /// other widgets' "unique kinds". This is used by conrod to help avoid WidgetId errors and to
-    /// provide better messages for those that do occur.
+    /// Return the kind of the widget as a &'static str.
+    ///
+    /// Note that this must be unique from all other widgets' "unique kinds".
+    ///
+    /// This is used by conrod to help avoid WidgetId errors and to provide better messages for
+    /// those that do occur.
     fn unique_kind(&self) -> &'static str;
 
-    /// Return the initial `State` of the Widget. The `Ui` will only call this once.
+    /// Return the initial **State** of the Widget.
+    ///
+    /// The `Ui` will only call this once, shortly prior to the first time that **Widget::update**
+    /// is first called.
     fn init_state(&self) -> Self::State;
 
     /// Return the styling of the widget. The `Ui` will call this once prior to each `update`. It
@@ -324,18 +352,24 @@ pub trait Widget: Sized {
     /// be constructed.
     fn style(&self) -> Self::Style;
 
-    /// Your widget's previous state is given to you as a parameter and it is your job to
-    /// construct and return an Update that will be used to update the widget's cached state.
-    /// You only have to return `Some` state if the resulting state would be different to `prev`.
-    /// If `Some` new state was returned, `Widget::draw` will be called in order to construct an
-    /// up to date `Element`.
+    /// Update our **Widget**'s unique **Widget::State** via the **State** wrapper type (the
+    /// `state` field within the [**UpdateArgs**](./struct.UpdateArgs)).
+    ///
+    /// Whenever [**State::update**](./struct.State.html#method.update) is called, a `has_updated`
+    /// flag is set within the **State**, indicating that there has been some change to the unique
+    /// **Widget::State** and that we require re-drawing the **Widget**'s **Element** (i.e. calling
+    /// [**Widget::draw**](./trait.Widget#method.draw). As a result, widget designers should only
+    /// call **State::update** when necessary, checking whether or not the state has changed before
+    /// invoking the the method. See the custom_widget.rs example for a demonstration
+    /// of this.
     ///
     /// # Arguments
     /// * idx - The `Widget`'s unique index (whether `Public` or `Internal`).
-    /// * prev - The previous state of the Widget. If none existed, `Widget::init_state` will be
-    /// used to pass the initial state instead.
-    /// * xy - The coordinates representing the middle of the widget.
-    /// * dim - The dimensions of the widget.
+    /// * prev - The previous common state of the Widget. If this is the first time **update** is
+    /// called, `Widget::init_state` will be used to produce some intial state instead.
+    /// * state - A wrapper around the `Widget::State`. See the [**State** docs](./struct.State)
+    /// for more details.
+    /// * rect - The position (centered) and dimensions of the widget.
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
@@ -346,10 +380,10 @@ pub trait Widget: Sized {
     /// when designing your widget's `Style` and `State` types.
     ///
     /// # Arguments
-    /// * new_state - The freshly produced State which contains the unique widget info necessary
-    /// for rendering.
-    /// * current_style - The freshly produced `Style` of the widget.
-    /// * theme - The currently active `Theme` within the `Ui`.
+    /// * state - The current **Widget::State** which should contain all unique state necessary for
+    /// rendering the **Widget**.
+    /// * style - The current **Widget::Style** of the **Widget**.
+    /// * theme - The currently active **Theme** within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
     fn draw<C: CharacterCache>(args: DrawArgs<Self, C>) -> Element;
 
