@@ -901,6 +901,13 @@ impl<'a, C> UiCell<'a, C> {
         ui::widget_graph_mut(&mut self.ui).add_placeholder()
     }
 
+    /// The **Rect** that bounds the kids of the widget with the given index.
+    ///
+    /// Returns `None` if the widget has no children or if there's is no widget for the given index.
+    pub fn kids_bounding_box<I: Into<Index>>(&self, idx: I) -> Option<Rect> {
+        self.ui.kids_bounding_box(idx)
+    }
+
 }
 
 
