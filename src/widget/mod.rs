@@ -38,6 +38,8 @@ pub mod xy_pad;
 pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     /// The **Widget**'s unique index.
     pub idx: Index,
+    /// The **Widget**'s parent unique index, if there is one.
+    pub maybe_parent_idx: Option<Index>,
     /// The **Widget**'s previous state. Specifically, the state that is common between all widgets,
     /// such as positioning, floatability, draggability, etc.
     pub prev: &'a CommonState,
@@ -776,6 +778,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
             widget.update(UpdateArgs {
                 idx: idx,
+                maybe_parent_idx: maybe_parent_idx,
                 state: &mut state,
                 prev: &prev_common,
                 rect: rect,
