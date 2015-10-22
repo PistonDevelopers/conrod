@@ -1,6 +1,6 @@
 
 
-use daggy;
+use daggy::{self, Walker};
 use elmesque::Element;
 use elmesque::element::layers;
 use position::{Depth, Point, Rect};
@@ -381,8 +381,8 @@ impl Graph {
     fn remove_incoming_relative_position_edge<I: GraphIndex>(&mut self, idx: I) {
         let Graph { ref mut dag, ref index_map, .. } = *self;
         let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
-        let mut parents = dag.walk_parents(node_idx);
-        while let Some((in_edge_idx, _)) = parents.next_parent(dag) {
+        let mut parents = dag.parents(node_idx);
+        while let Some((in_edge_idx, _)) = parents.next(dag) {
             if let Edge::Position = dag[in_edge_idx] {
                 dag.remove_edge(in_edge_idx);
                 // Note that we only need to check for *one* edge as there can only ever be one
@@ -756,7 +756,7 @@ fn bounding_box(graph: &Graph,
         let deepest_parent_idx = maybe_deepest_parent_idx.or(Some(idx));
 
         // An iterator yielding the bounding_box returned by each of our children.
-        let mut kids_bounds = dag.children(idx)
+        let mut kids_bounds = dag.children(idx).iter(&dag).nodes()
             .filter_map(|kid_idx| dag.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
                 if let Edge::Depth = dag[kid_edge_idx] {
                     bounding_box(graph, true, Some(target_xy), false, kid_idx, deepest_parent_idx)
@@ -837,10 +837,10 @@ fn set_edge(dag: &mut Dag, a: NodeIndex, b: NodeIndex, edge: Edge) {
     // Check to see if the node already has some matching incoming edge.
     // Keep it if it's the one we want. Otherwise, remove any incoming edge that matches the given
     // edge kind but isn't coming from the node that we desire.
-    let mut parents = dag.walk_parents(b);
+    let mut parents = dag.parents(b);
     let mut already_set = false;
 
-    while let Some((in_edge_idx, in_node_idx)) = parents.next_parent(dag) {
+    while let Some((in_edge_idx, in_node_idx)) = parents.next(dag) {
         if edge == dag[in_edge_idx] {
             if in_node_idx == a {
                 already_set = true;
@@ -874,8 +874,8 @@ fn set_edge(dag: &mut Dag, a: NodeIndex, b: NodeIndex, edge: Edge) {
 fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
-    let mut parents = dag.walk_parents(idx);
-    while let Some((in_edge_idx, in_node_idx)) = parents.next_parent(dag) {
+    let mut parents = dag.parents(idx);
+    while let Some((in_edge_idx, in_node_idx)) = parents.next(dag) {
         if let Edge::Position = dag[in_edge_idx] {
             return Some((in_edge_idx, in_node_idx));
         }
@@ -889,8 +889,8 @@ fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
 fn maybe_parent_depth_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
-    let mut parents = dag.walk_parents(idx);
-    while let Some((in_edge_idx, in_node_idx)) = parents.next_parent(dag) {
+    let mut parents = dag.parents(idx);
+    while let Some((in_edge_idx, in_node_idx)) = parents.next(dag) {
         if let Edge::Depth = dag[in_edge_idx] {
             return Some((in_edge_idx, in_node_idx));
         }
@@ -969,7 +969,14 @@ fn visit_by_depth(idx: NodeIndex,
     // Sort the children of the current node by their `.depth` members.
     // FIXME: We should remove these allocations by storing a `child_sorter` buffer in each Widget
     // node (perhaps in the `Container`).
-    let mut child_sorter: Vec<NodeIndex> = dag.children(idx).collect();
+    let mut child_sorter: Vec<NodeIndex> = dag.children(idx).iter(&dag)
+        .filter(|&(e, _)| dag[e] == Edge::Depth)
+        .map(|(_, n)| n)
+        .collect();
+    // Walking neighbors of a node in our graph returns then in the reverse order in which they
+    // were added. Reversing here will give more predictable render order behaviour i.e. widgets
+    // instantiated after other widgets will also be rendered after them by default.
+    child_sorter.reverse();
     child_sorter.sort_by(|&a, &b| {
         use std::cmp::Ordering;
         if Some(a) == maybe_captured_mouse || Some(a) == maybe_captured_keyboard {
