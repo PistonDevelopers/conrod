@@ -624,6 +624,7 @@ impl Graph {
 
                 Visitable::Scrollbar(idx) => {
                     if let &Node::Widget(ref container) = &dag[idx] {
+
                         if let Some(scrolling) = container.maybe_scrolling {
 
                             // Now that we've come across a scrollbar, we should pop the group of
@@ -631,7 +632,14 @@ impl Graph {
                             if let Some(scroll_group) = scroll_stack.pop() {
                                 let (x, y, w, h) = scrolling.visible.x_y_w_h();
                                 let element = layers(scroll_group).crop(x, y, w, h);
-                                elements.push(element);
+                                if let Some(ref mut group) = scroll_stack.last_mut() {
+                                    // If there's still another layer on the scroll stack, add our
+                                    // layers `Element` to the end of it.
+                                    group.push(element);
+                                } else {
+                                    // Otherwise, push them into the elements Vec.
+                                    elements.push(element);
+                                }
                             }
 
                             // Construct the element for the scrollbar itself.
