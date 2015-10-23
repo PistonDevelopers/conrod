@@ -208,11 +208,17 @@ mod circular_button {
         fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
             const DEFAULT_WIDTH: Scalar = 64.0;
 
-            // Defaults can come from several places. Here, we define how certain defaults
-            // take precedence over others.
-            self.common.maybe_width.or(theme.maybe_button.as_ref().map(|default| {
+            // If no width was given via the `Sizeable` (a trait implemented for all widgets)
+            // methods, some default width must be chosen.
+            //
+            // Defaults can come from several places. Here, we define how certain defaults take
+            // precedence over others.
+            //
+            // Most commonly, defaults are to be retrieved from the `Theme`, however in some cases
+            // some other logic may need to be considered.
+            theme.maybe_button.as_ref().map(|default| {
                 default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-            })).unwrap_or(DEFAULT_WIDTH)
+            }).unwrap_or(DEFAULT_WIDTH)
         }
 
         /// Default width of the widget. This method is optional. The Widget trait
@@ -221,9 +227,9 @@ mod circular_button {
             const DEFAULT_HEIGHT: Scalar = 64.0;
 
             // See default_width for comments on this logic.
-            self.common.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
+            theme.maybe_button.as_ref().map(|default| {
                 default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-            })).unwrap_or(DEFAULT_HEIGHT)
+            }).unwrap_or(DEFAULT_HEIGHT)
         }
 
         /// Update the state of the button. The state may or may not have changed since

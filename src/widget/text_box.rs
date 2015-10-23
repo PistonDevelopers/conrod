@@ -335,16 +335,16 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 192.0;
-        self.common.maybe_width.or(theme.maybe_text_box.as_ref().map(|default| {
+        theme.maybe_text_box.as_ref().map(|default| {
             default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
+        }).unwrap_or(DEFAULT_WIDTH)
     }
 
     fn default_height(&self, theme: &Theme) -> Scalar {
         const DEFAULT_HEIGHT: Scalar = 48.0;
-        self.common.maybe_height.or(theme.maybe_text_box.as_ref().map(|default| {
+        theme.maybe_text_box.as_ref().map(|default| {
             default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
+        }).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// Update the state of the TextBox.

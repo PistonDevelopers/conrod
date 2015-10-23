@@ -223,16 +223,16 @@ impl<'a> Widget for Canvas<'a> {
 
     fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
         const DEFAULT_WIDTH: Scalar = 160.0;
-        self.common.maybe_width.or(theme.maybe_button.as_ref().map(|default| {
+        theme.maybe_button.as_ref().map(|default| {
             default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        })).unwrap_or(DEFAULT_WIDTH)
+        }).unwrap_or(DEFAULT_WIDTH)
     }
 
     fn default_height(&self, theme: &Theme) -> Scalar {
         const DEFAULT_HEIGHT: Scalar = 80.0;
-        self.common.maybe_height.or(theme.maybe_button.as_ref().map(|default| {
+        theme.maybe_button.as_ref().map(|default| {
             default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        })).unwrap_or(DEFAULT_HEIGHT)
+        }).unwrap_or(DEFAULT_HEIGHT)
     }
 
     /// The title bar area at which the Canvas can be clicked and dragged.
