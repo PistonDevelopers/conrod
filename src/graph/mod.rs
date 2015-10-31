@@ -183,7 +183,7 @@ impl Graph {
             floating_deque: Vec::with_capacity(capacity),
         }
     }
-    
+
     /// Add a new placeholder node and return it's `NodeIndex` into the `Graph`.
     ///
     /// This method is used by the `widget::set_widget` function when some internal widget does not
@@ -1039,4 +1039,3 @@ impl<I: GraphIndex> ::std::ops::IndexMut<I> for Graph {
         self.get_widget_mut(idx).expect("No Widget matching the given ID")
     }
 }
-

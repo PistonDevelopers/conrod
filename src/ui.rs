@@ -32,6 +32,20 @@ enum Capturing {
     JustReleased,
 }
 
+/// Indicates if a widget is going to steal focus, for example user is tabbing between input fields
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum StealingFocus {
+
+    /// Indicates that the given widget will steal focus on the next cycle
+    WillFocus(widget::Index),
+
+    /// Indicates that the given widget will be given focus during this cycle
+    IsTakingFocus(widget::Index),
+
+    /// Indicates that no widget should be stealing focus
+    Nothing
+}
+
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
 /// # Ui Handles the following:
@@ -73,6 +87,8 @@ pub struct Ui<C> {
     maybe_captured_mouse: Option<Capturing>,
     /// The widget::Index of the widget currently capturing keyboard input if there is one.
     maybe_captured_keyboard: Option<Capturing>,
+    /// Holds the widget::Index of a widget that should take focus, or Nothing if no widget is stealing focus
+    widget_to_steal_focus: StealingFocus,
     /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
     num_redraw_frames: u8,
@@ -159,9 +175,25 @@ impl<C> Ui<C> {
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
             maybe_element: None,
+            widget_to_steal_focus: StealingFocus::Nothing
         }
     }
 
+    /// Sets the widget that should be given focus at the next opportunity
+    /// The widget must call `Ui::is_focus_changing_to` from its update method
+    /// in order to determine if it should take focus, and then call capture_keyboard
+    /// as appropriate
+    pub fn change_focus_to<T>(&mut self, idx: T) where T: Into<widget::Index> + Sized {
+        let index = idx.into();
+        println!("Widget {:?} will steal focus next frame", index);
+        self.widget_to_steal_focus = StealingFocus::WillFocus(index);
+        upcapture_mouse_and_keyboard(self);
+    }
+
+    /// returns true if the widget with the given index should take focus this cycle
+    pub fn is_focus_changing_to<T>(&mut self, idx: T) -> bool  where T: Into<widget::Index> + Sized {
+        self.widget_to_steal_focus == StealingFocus::IsTakingFocus(idx.into())
+    }
 
     /// Return the dimensions of a widget.
     pub fn widget_size(&self, id: widget::Id) -> Dimensions {
@@ -204,6 +236,18 @@ impl<C> Ui<C> {
             }
             if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
                 self.maybe_captured_keyboard = None;
+            }
+
+            match self.widget_to_steal_focus {
+                StealingFocus::IsTakingFocus(idx) => {
+                    println!("IsTakingFocus({:?}) --> Nothing", idx);
+                    self.widget_to_steal_focus = StealingFocus::Nothing;
+                },
+                StealingFocus::WillFocus(idx) => {
+                    println!("WillFocus({:?}) --> IsTakingFocus", idx.clone());
+                    self.widget_to_steal_focus = StealingFocus::IsTakingFocus(idx.clone());
+                },
+                _ => {}
             }
         }
 
@@ -666,7 +710,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
             Some(Capturing::Captured(captured_idx)) =>
                 if idx == captured_idx { Some(ui.mouse) } else { None },
             _ =>
-                if Some(idx) == ui.maybe_widget_under_mouse 
+                if Some(idx) == ui.maybe_widget_under_mouse
                 || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
                     Some(ui.mouse)
                 } else {
@@ -676,11 +720,19 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
     }
 }
 
+fn upcapture_mouse_and_keyboard<C>(ui: &mut Ui<C>) {
+    if let Some(Capturing::Captured(idx)) = ui.maybe_captured_mouse {
+        mouse_uncaptured_by::<C>(ui, idx);
+    }
+    if let Some(Capturing::Captured(idx)) = ui.maybe_captured_keyboard {
+        keyboard_uncaptured_by::<C>(ui, idx);
+    }
+}
 
 /// Indicate that the widget with the given widget::Index has captured the mouse.
 ///
 /// Returns true if the mouse was successfully captured.
-/// 
+///
 /// Returns false if the mouse was already captured.
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     // If the mouse isn't already captured, set idx as the capturing widget.
@@ -792,5 +844,3 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-
-
