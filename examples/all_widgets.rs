@@ -1,4 +1,4 @@
-//! 
+//!
 //!
 //! A demonstration of all widgets available in Conrod.
 //!
@@ -178,9 +178,7 @@ fn main() {
                 // Draw the circle that's controlled by our XYPad.
                 graphics::Ellipse::new(demo.ddl_color.to_fsa())
                     .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
-                          graphics::default_draw_state(),
-                          graphics::math::abs_transform(ui.win_w, ui.win_h),
-                          gl);
+                          &c.draw_state, c.transform, gl);
             });
         }
     }
@@ -452,7 +450,7 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
 // To make this easier, conrod provides the `widget_ids` macro, which generates a unique `WidgetId`
 // for each identifier given in the list.
 // The `with n` syntax reserves `n` number of WidgetIds for that identifier, rather than just one.
-// This is often useful when you need to use an identifier in some kind of loop (i.e. like within 
+// This is often useful when you need to use an identifier in some kind of loop (i.e. like within
 // the use of `WidgetMatrix` as above).
 widget_ids! {
     CANVAS,
@@ -468,4 +466,3 @@ widget_ids! {
     CIRCLE_POSITION,
     ENVELOPE_EDITOR with 4
 }
-
