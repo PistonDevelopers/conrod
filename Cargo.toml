@@ -23,7 +23,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 bitflags = "0.3.2"
-clock_ticks = "0.0.6"
+clock_ticks = "0.1.0"
 elmesque = "0.9.2"
 json_io = "0.1.2"
 daggy = "0.2.0"
@@ -35,13 +35,13 @@ rustc-serialize = "0.3.16"
 vecmath = "0.2.0"
 
 [dev-dependencies]
-find_folder = "0.2.0"
-gfx = "0.7.1"
-gfx_device_gl = "0.5.0"
+find_folder = "0.3.0"
+gfx = "0.8.0"
+# gfx_device_gl = "0.5.0"
 piston-viewport = "0.2.0"
 piston_window = "0.23.0"
 piston2d-gfx_graphics = "0.10.0"
 piston2d-opengl_graphics = "0.14.0"
 pistoncore-glutin_window = "0.15.0"
-piston = "0.13.0"
+piston = "0.13.1"
 

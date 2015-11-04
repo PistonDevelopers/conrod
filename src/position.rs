@@ -725,6 +725,11 @@ impl Range {
         self.pad_start(start).pad_end(end)
     }
 
+    /// Clamp the given value to the range.
+    pub fn clamp_value(&self, value: Scalar) -> Scalar {
+        ::utils::clamp(value, self.start, self.end)
+    }
+
 }
 
 impl ::std::ops::Add<Range> for Range {
