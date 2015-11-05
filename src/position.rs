@@ -771,6 +771,16 @@ impl Rect {
         }
     }
 
+    /// Construct a Rect from the coordinates of two points.
+    pub fn from_corners(a: Point, b: Point) -> Rect {
+        let (left, right) = if a[0] < b[0] { (a[0], b[0]) } else { (b[0], a[0]) };
+        let (bottom, top) = if a[1] < b[1] { (a[1], b[1]) } else { (b[1], a[1]) };
+        Rect {
+            x: Range { start: left, end: right },
+            y: Range { start: bottom, end: top },
+        }
+    }
+
     /// The Rect representing the area in which two Rects overlap.
     pub fn overlap(self, other: Rect) -> Option<Rect> {
         self.x.overlap(other.x).and_then(|x| self.y.overlap(other.y).map(|y| Rect { x: x, y: y }))

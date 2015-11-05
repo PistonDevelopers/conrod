@@ -23,6 +23,7 @@ pub mod canvas;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod label;
+pub mod line;
 pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
