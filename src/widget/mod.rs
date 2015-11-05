@@ -26,6 +26,7 @@ pub mod label;
 pub mod line;
 pub mod matrix;
 pub mod number_dialer;
+pub mod rectangle;
 pub mod slider;
 pub mod split;
 pub mod tabs;

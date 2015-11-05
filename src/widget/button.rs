@@ -183,7 +183,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         let xy = rect.xy();
         let dim = rect.dim();
 
-        // Retrieve the styling for the Element..
+        // Retrieve the styling for the Element.
         let color = state.color(style.color(theme));
         let frame = style.frame(theme);
         let frame_color = style.frame_color(theme);

@@ -105,7 +105,7 @@ impl Style {
     }
 
     /// The Pattern for the Line.
-    pub fn pattern(&self, theme: &Theme) -> Pattern {
+    pub fn get_pattern(&self, theme: &Theme) -> Pattern {
         const DEFAULT_PATTERN: Pattern = Pattern::Solid;
         self.maybe_pattern.or_else(|| theme.maybe_line.as_ref().map(|default| {
             default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN)
@@ -113,14 +113,14 @@ impl Style {
     }
 
     /// The Color for the Line.
-    pub fn color(&self, theme: &Theme) -> Color {
+    pub fn get_color(&self, theme: &Theme) -> Color {
         self.maybe_color.or_else(|| theme.maybe_line.as_ref().map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// The width or thickness of the Line.
-    pub fn thickness(&self, theme: &Theme) -> Scalar {
+    pub fn get_thickness(&self, theme: &Theme) -> Scalar {
         const DEFAULT_THICKNESS: Scalar = 1.0;
         self.maybe_thickness.or_else(|| theme.maybe_line.as_ref().map(|default| {
             default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
@@ -143,7 +143,7 @@ impl Widget for Line {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "Button"
+        "Line"
     }
 
     fn init_state(&self) -> State {
@@ -176,8 +176,8 @@ impl Widget for Line {
         use elmesque::form::{collage, segment, solid, traced};
         let widget::DrawArgs { rect, state, style, theme, .. } = args;
         let (x, y, w, h) = rect.x_y_w_h();
-        let color = style.color(theme);
-        let thickness = style.thickness(theme);
+        let color = style.get_color(theme);
+        let thickness = style.get_thickness(theme);
         let a = (state.start[0], state.start[1]);
         let b = (state.end[0], state.end[1]);
         let form = traced(solid(color).width(thickness), segment(a, b)).shift(x, y);
