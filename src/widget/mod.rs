@@ -17,16 +17,16 @@ mod id;
 mod index;
 pub mod scroll;
 
-// Widget Modules.
+// Primitive widget modules.
+pub mod primitive;
+
+// Widget modules.
 pub mod button;
 pub mod canvas;
 pub mod drop_down_list;
 pub mod envelope_editor;
-pub mod label;
-pub mod line;
 pub mod matrix;
 pub mod number_dialer;
-pub mod rectangle;
 pub mod slider;
 pub mod split;
 pub mod tabs;
@@ -251,6 +251,8 @@ pub struct PreUpdateCache {
     pub maybe_floating: Option<Floating>,
     /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
+    /// Indicates whether the widget blocks the mouse from interacting with widgets underneath it.
+    pub mouse_passthrough: bool,
 }
 
 /// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
@@ -304,9 +306,10 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 /// - init_state
 /// - style
 /// - update
-/// - draw
 ///
 /// Methods that can be optionally overridden:
+/// - draw
+/// - mouse_passthrough
 /// - default_position
 /// - default_width
 /// - default_height
@@ -387,13 +390,27 @@ pub trait Widget: Sized {
     /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
     /// when designing your widget's `Style` and `State` types.
     ///
+    /// Note that many widgets return nothing here, as they may be composed of other widgets that
+    /// take care of producing the renderable **Element**s.
+    ///
     /// # Arguments
     /// * state - The current **Widget::State** which should contain all unique state necessary for
     /// rendering the **Widget**.
     /// * style - The current **Widget::Style** of the **Widget**.
     /// * theme - The currently active **Theme** within the `Ui`.
     /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<C: CharacterCache>(args: DrawArgs<Self, C>) -> Element;
+    fn draw<C: CharacterCache>(_args: DrawArgs<Self, C>) -> Element {
+        ::elmesque::element::empty()
+    }
+
+    /// Indicates whether or not the **Widget** should block the mouse from interacting with
+    /// widgets underneath it.
+    ///
+    /// It may be useful to override this for widgets that simply act as graphical elements,
+    /// allowing the mouse to pass through itself and interact with the underlying widget.
+    fn mouse_passthrough(&self) -> bool {
+        false
+    }
 
     /// The default Position for the widget.
     /// This is used when no Position is explicitly given when instantiating the Widget.
@@ -751,6 +768,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_new_scrolling,
+            mouse_passthrough: widget.mouse_passthrough(),
         });
     }
 

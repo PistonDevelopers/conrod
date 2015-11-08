@@ -62,6 +62,8 @@ pub struct Container {
     /// Whether or not the `Widget`'s cache has was updated during the last update cycle.
     /// We need to know this so we can check whether or not a widget has been removed.
     pub was_previously_updated: bool,
+    /// Whether or not the widget blocks the mouse from interacting with widgets underneath it.
+    pub mouse_passthrough: bool,
 }
 
 /// A node within the UI Graph.
@@ -440,7 +442,7 @@ impl Graph {
     pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
-            drag_state, maybe_floating, maybe_scrolling,
+            drag_state, maybe_floating, maybe_scrolling, mouse_passthrough,
         } = widget;
 
         // Construct a new `Container` to place in the `Graph`.
@@ -453,6 +455,7 @@ impl Graph {
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_scrolling,
+            mouse_passthrough: mouse_passthrough,
             maybe_element: None,
             element_has_changed: false,
             is_updated: true,
