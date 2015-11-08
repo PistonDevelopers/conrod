@@ -1,0 +1,298 @@
+
+use Scalar;
+use color::{Color, Colorable};
+use elmesque::Element;
+use graphics::character::CharacterCache;
+use position::{Point, Positionable, Rect, Sizeable};
+use theme::Theme;
+use vecmath::{vec2_add, vec2_sub};
+use widget::{self, Widget};
+
+
+/// A simple, non-interactive widget for drawing a single straight Line.
+#[derive(Copy, Clone, Debug)]
+pub struct Line {
+    /// The start of the line.
+    pub start: Point,
+    /// The end of the line.
+    pub end: Point,
+    /// Data necessary and common for all widget builder types.
+    pub common: widget::CommonBuilder,
+    /// Unique styling.
+    pub style: Style,
+    /// Whether or not the line should be automatically centred to the widget position.
+    pub should_centre_points: bool,
+}
+
+/// Unique state for the Line widget.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct State {
+    /// The start of the line.
+    start: Point,
+    /// The end of the line.
+    end: Point,
+}
+
+/// Unique styling for a Line widget.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Style {
+    /// The patter for the line.
+    pub maybe_pattern: Option<Pattern>,
+    /// Color of the Button's pressable area.
+    pub maybe_color: Option<Color>,
+    /// The thickness of the line.
+    pub maybe_thickness: Option<Scalar>,
+}
+
+/// The pattern used to draw the line.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Pattern {
+    Solid,
+    Dashed,
+    Dotted,
+}
+
+
+impl Line {
+
+    /// Build a new **Line** widget with the given style.
+    pub fn styled(start: Point, end: Point, style: Style) -> Self {
+        Line {
+            start: start,
+            end: end,
+            common: widget::CommonBuilder::new(),
+            style: style,
+            should_centre_points: false,
+        }
+    }
+
+    /// Build a new default **Line** widget.
+    pub fn new(start: Point, end: Point) -> Self {
+        Line::styled(start, end, Style::new())
+    }
+
+    /// Build a new **Line** whose bounding box is fit to the absolute co-ordinates of the line
+    /// points.
+    ///
+    /// If you would rather centre the start and end to the middle of the bounding box, use
+    /// [**Line::centred**](./struct.Line#method.centred) instead.
+    pub fn abs(start: Point, end: Point) -> Self {
+        Line::abs_styled(start, end, Style::new())
+    }
+
+    /// The same as [**Line::abs**](./struct.Line#method.abs) but with the given style.
+    pub fn abs_styled(start: Point, end: Point, style: Style) -> Self {
+        let (xy, dim) = Rect::from_corners(start, end).xy_dim();
+        Line::styled(start, end, style).dim(dim).point(xy)
+    }
+
+    /// Build a new **Line** and shift the location of the start and end points so that the centre
+    /// of their bounding rectangle lies at the position determined by the layout for the **Line**
+    /// widget.
+    ///
+    /// This is useful if your points simply describe the line's angle and magnitude, and you want
+    /// to position them using conrod's auto-layout or `Positionable` methods.
+    ///
+    /// If you would rather centre the bounding box to the points, use
+    /// [**Line::abs**](./struct.Line#method.abs) instead.
+    pub fn centred(start: Point, end: Point) -> Self {
+        Line::centred_styled(start, end, Style::new())
+    }
+
+    /// The same as [**Line::centred**](./struct.Line#method.centred) but with the given style.
+    pub fn centred_styled(start: Point, end: Point, style: Style) -> Self {
+        let dim = Rect::from_corners(start, end).dim();
+        let mut line = Line::styled(start, end, style).dim(dim);
+        line.should_centre_points = true;
+        line
+    }
+
+    /// The thickness or width of the Line.
+    ///
+    /// Use this instead of `Positionable::width` for the thickness of the `Line`, as `width` and
+    /// `height` refer to the dimensions of the bounding rectangle.
+    pub fn thickness(mut self, thickness: Scalar) -> Self {
+        self.style.set_thickness(thickness);
+        self
+    }
+
+    /// Make a solid line.
+    pub fn solid(mut self) -> Self {
+        self.style.set_pattern(Pattern::Solid);
+        self
+    }
+
+    /// Make a line with a Dashed pattern.
+    pub fn dashed(mut self) -> Self {
+        self.style.set_pattern(Pattern::Dashed);
+        self
+    }
+
+    /// Make a line with a Dotted pattern.
+    pub fn dotted(mut self) -> Self {
+        self.style.set_pattern(Pattern::Dotted);
+        self
+    }
+
+}
+
+
+impl Style {
+
+    /// Constructor for a default Line Style.
+    pub fn new() -> Self {
+        Style {
+            maybe_pattern: None,
+            maybe_color: None,
+            maybe_thickness: None,
+        }
+    }
+
+    /// Make a solid line.
+    pub fn solid() -> Self {
+        Style::new().pattern(Pattern::Solid)
+    }
+
+    /// Make a line with a Dashed pattern.
+    pub fn dashed() -> Self {
+        Style::new().pattern(Pattern::Dashed)
+    }
+
+    /// Make a line with a Dotted pattern.
+    pub fn dotted() -> Self {
+        Style::new().pattern(Pattern::Dotted)
+    }
+
+    /// The style with some given pattern.
+    pub fn pattern(mut self, pattern: Pattern) -> Self {
+        self.set_pattern(pattern);
+        self
+    }
+
+    /// The style with some given color.
+    pub fn color(mut self, color: Color) -> Self {
+        self.set_color(color);
+        self
+    }
+
+    /// The style with some given thickness.
+    pub fn thickness(mut self, thickness: Scalar) -> Self {
+        self.set_thickness(thickness);
+        self
+    }
+
+    /// Set the pattern for the line.
+    pub fn set_pattern(&mut self, pattern: Pattern) {
+        self.maybe_pattern = Some(pattern);
+    }
+
+    /// Set the color for the line.
+    pub fn set_color(&mut self, color: Color) {
+        self.maybe_color = Some(color);
+    }
+
+    /// Set the thickness for the line.
+    pub fn set_thickness(&mut self, thickness: Scalar) {
+        self.maybe_thickness = Some(thickness);
+    }
+
+    /// The Pattern for the Line.
+    pub fn get_pattern(&self, theme: &Theme) -> Pattern {
+        const DEFAULT_PATTERN: Pattern = Pattern::Solid;
+        self.maybe_pattern.or_else(|| theme.maybe_line.as_ref().map(|default| {
+            default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN)
+        })).unwrap_or(DEFAULT_PATTERN)
+    }
+
+    /// The Color for the Line.
+    pub fn get_color(&self, theme: &Theme) -> Color {
+        self.maybe_color.or_else(|| theme.maybe_line.as_ref().map(|default| {
+            default.style.maybe_color.unwrap_or(theme.shape_color)
+        })).unwrap_or(theme.shape_color)
+    }
+
+    /// The width or thickness of the Line.
+    pub fn get_thickness(&self, theme: &Theme) -> Scalar {
+        const DEFAULT_THICKNESS: Scalar = 1.0;
+        self.maybe_thickness.or_else(|| theme.maybe_line.as_ref().map(|default| {
+            default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
+        })).unwrap_or(DEFAULT_THICKNESS)
+    }
+
+}
+
+
+impl Widget for Line {
+    type State = State;
+    type Style = Style;
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        "Line"
+    }
+
+    fn init_state(&self) -> State {
+        State {
+            start: [0.0, 0.0],
+            end: [0.0, 0.0],
+        }
+    }
+
+    fn style(&self) -> Style {
+        self.style.clone()
+    }
+
+    /// Update the state of the Line.
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { rect, state, .. } = args;
+        let Line { mut start, mut end, should_centre_points, .. } = self;
+
+        // Check whether or not we need to shift the line to the xy position.
+        if should_centre_points {
+            let original = Rect::from_corners(start, end).xy();
+            let xy = rect.xy();
+            let difference = vec2_sub(xy, original);
+            start = vec2_add(start, difference);
+            end = vec2_add(end, difference);
+        }
+
+        if state.view().start != start {
+            state.update(|state| state.start = start);
+        }
+
+        if state.view().end != end {
+            state.update(|state| state.end = end);
+        }
+    }
+
+    /// Construct an Element for the Line.
+    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
+        use elmesque::form::{collage, segment, solid, traced};
+        let widget::DrawArgs { rect, state, style, theme, .. } = args;
+        let (w, h) = rect.w_h();
+        let color = style.get_color(theme);
+        let thickness = style.get_thickness(theme);
+        let a = (state.start[0], state.start[1]);
+        let b = (state.end[0], state.end[1]);
+        let form = traced(solid(color).width(thickness), segment(a, b));
+        collage(w as i32, h as i32, vec![form])
+    }
+
+}
+
+
+impl Colorable for Line {
+    fn color(mut self, color: Color) -> Self {
+        self.style.maybe_color = Some(color);
+        self
+    }
+}
+
+
