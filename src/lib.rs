@@ -20,13 +20,20 @@ extern crate rustc_serialize;
 extern crate vecmath;
 
 
+pub use widget::primitive::label::Label;
+pub use widget::primitive::line::Line;
+pub use widget::primitive::point_path::PointPath;
+pub use widget::primitive::shape::circle::Circle;
+pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
+pub use widget::primitive::shape::polygon::Polygon;
+pub use widget::primitive::shape::oval::Oval;
+pub use widget::primitive::shape::rectangle::Rectangle;
+
 pub use widget::button::Button;
 pub use widget::canvas::Canvas;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
-pub use widget::label::Label;
-pub use widget::line::Line;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::slider::Slider;
@@ -36,12 +43,17 @@ pub use widget::text_box::TextBox;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
 
+
+pub use widget::primitive::label::Style as LabelStyle;
+pub use widget::primitive::line::Style as LineStyle;
+pub use widget::primitive::point_path::Style as PointPathStyle;
+pub use widget::primitive::shape::Style as ShapeStyle;
+pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
+
 pub use widget::button::Style as ButtonStyle;
 pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
-pub use widget::label::Style as LabelStyle;
-pub use widget::line::Style as LineStyle;
 pub use widget::number_dialer::Style as NumberDialerStyle;
 pub use widget::slider::Style as SliderStyle;
 pub use widget::tabs::Style as TabsStyle;
