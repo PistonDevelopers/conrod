@@ -4,6 +4,9 @@
 
 
 use num::{Float, NumCast, PrimInt, ToPrimitive};
+use position::{Point, Range, Rect};
+use std::borrow::Cow;
+use std::iter::{Chain, once, Once};
 
 
 /// Compare to PartialOrd values and return the min.
@@ -86,6 +89,86 @@ pub fn val_to_string<T: ToString + NumCast>
             if s.len() > truncate_len { s.truncate(truncate_len) }
             s
         }
+    }
+}
+
+/// Find the bounding rect for the given series of points.
+pub fn bounding_box_for_points<I>(mut points: I) -> Rect
+    where I: Iterator<Item=Point>,
+{
+    points.next().map(|first| {
+        let start_rect = Rect {
+            x: Range { start: first[0], end: first[0] },
+            y: Range { start: first[1], end: first[1] },
+        };
+        points.fold(start_rect, Rect::stretch_to_point)
+    }).unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
+}
+
+/// A type returned by the `iter_diff` function.
+///
+/// Represents way in which the elements (of type `E`) yielded by the iterator `I` differ to some
+/// other iterator yielding borrowed elements of the same type.
+///
+/// `I` is some `Iterator` yielding elements of type `E`.
+pub enum IterDiff<E, I> {
+    /// The index of the first non-matching element along with the iterator's remaining elements
+    /// starting with the first mis-matched element.
+    FirstMismatch(usize, Chain<Once<E>, I>),
+    /// The remaining elements of the iterator.
+    Longer(Chain<Once<E>, I>),
+    /// The total number of elements that were in the iterator.
+    Shorter(usize),
+}
+
+/// Compares every element yielded by both elems and new_elems in lock-step.
+///
+/// If the number of elements yielded by `b` is less than the number of elements yielded by `a`,
+/// the number of `b` elements yielded will be returned as `IterDiff::Shorter`.
+///
+/// If the two elements of a step differ, the index of those elements along with the remaining
+/// elements are returned as `IterDiff::FirstMismatch`.
+///
+/// If `a` becomes exhausted before `b` becomes exhausted, the remaining `b` elements will be
+/// returned as `IterDiff::Longer`.
+///
+/// This function is useful when comparing a non-`Clone` `Iterator` of elements to some existing
+/// collection. If there is any difference between the elements yielded by the iterator and those
+/// of the collection, a suitable `IterDiff` is returned so that the existing collection may be
+/// updated with the difference using elements from the very same iterator.
+pub fn iter_diff<'a, A, B>(a: A, b: B) -> Option<IterDiff<B::Item, B::IntoIter>>
+    where A: IntoIterator<Item=&'a B::Item>,
+          B: IntoIterator,
+          B::Item: PartialEq + 'a
+{
+    let mut b = b.into_iter();
+    for (i, a_elem) in a.into_iter().enumerate() {
+        match b.next() {
+            None => return Some(IterDiff::Shorter(i)),
+            Some(b_elem) => if *a_elem != b_elem {
+                return Some(IterDiff::FirstMismatch(i, once(b_elem).chain(b)));
+            },
+        }
+    }
+    b.next().map(|elem| IterDiff::Longer(once(elem).chain(b)))
+}
+
+/// Returns `Borrowed` `elems` if `elems` contains the same elements as yielded by `new_elems`.
+///
+/// Allocates a new `Vec<T>` and returns `Owned` if either the number of elements or the elements
+/// themselves differ.
+pub fn write_if_different<T, I>(elems: &[T], new_elems: I) -> Cow<[T]>
+    where T: PartialEq + Clone,
+          I: IntoIterator<Item=T>,
+{
+    match iter_diff(elems.iter(), new_elems.into_iter()) {
+        Some(IterDiff::FirstMismatch(i, mismatch)) =>
+            Cow::Owned(elems[0..i].iter().cloned().chain(mismatch).collect()),
+        Some(IterDiff::Longer(remaining)) =>
+            Cow::Owned(elems.iter().cloned().chain(remaining).collect()),
+        Some(IterDiff::Shorter(num_new_elems)) =>
+            Cow::Owned(elems.iter().cloned().take(num_new_elems).collect()),
+        None => Cow::Borrowed(elems),
     }
 }
 
