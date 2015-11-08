@@ -49,11 +49,13 @@ pub struct Theme {
     /// Optional style defaults for an EnvelopeEditor.
     pub maybe_envelope_editor: Option<WidgetDefault<widget::envelope_editor::Style>>,
     /// Optional style defaults for a Line.
-    pub maybe_line: Option<WidgetDefault<widget::line::Style>>,
+    pub maybe_line: Option<WidgetDefault<widget::primitive::line::Style>>,
     /// Optional style defaults for a Matrix.
     pub maybe_matrix: Option<WidgetDefault<widget::matrix::Style>>,
     /// Optional style defaults for a NumberDialer.
     pub maybe_number_dialer: Option<WidgetDefault<widget::number_dialer::Style>>,
+    /// Optional style defaults for a PointPath.
+    pub maybe_point_path: Option<WidgetDefault<widget::primitive::point_path::Style>>,
     /// Optional style defaults for a Scrollbar.
     pub maybe_scrollbar: Option<widget::scroll::Style>,
     /// Optional style defaults for a Slider.
@@ -137,6 +139,7 @@ impl Theme {
             maybe_line: None,
             maybe_matrix: None,
             maybe_number_dialer: None,
+            maybe_point_path: None,
             maybe_slider: None,
             maybe_tabs: None,
             maybe_text_box: None,
