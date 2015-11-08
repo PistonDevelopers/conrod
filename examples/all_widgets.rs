@@ -146,7 +146,7 @@ fn main() {
     let event_iter = window.events().ups(60).max_fps(60);
     let mut gl = GlGraphics::new(opengl);
 
-    let assets = find_folder::Search::ParentsThenKids(3, 3)
+    let assets = find_folder::Search::KidsThenParents(3, 5)
         .for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     let theme = Theme::default();
