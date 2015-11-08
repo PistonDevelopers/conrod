@@ -730,6 +730,30 @@ impl Range {
         ::utils::clamp(value, self.start, self.end)
     }
 
+    /// Stretch the end that is closest to the given value only if it lies outside the Range.
+    ///
+    /// The resulting Range will retain the direction of the original range.
+    pub fn stretch_to_value(self, value: Scalar) -> Range {
+        let Range { start, end } = self;
+        if start <= end {
+            if value < start {
+                Range { start: value, end: end }
+            } else if value > end {
+                Range { start: start, end: value }
+            } else {
+                self
+            }
+        } else {
+            if value < end {
+                Range { start: start, end: value }
+            } else if value > start {
+                Range { start: value, end: end }
+            } else {
+                self
+            }
+        }
+    }
+
 }
 
 impl ::std::ops::Add<Range> for Range {
@@ -937,6 +961,15 @@ impl Rect {
         Rect {
             x: self.x.padding(padding.left, padding.right),
             y: self.y.padding(padding.bottom, padding.top),
+        }
+    }
+
+    /// Stretches the closest edge(s) to the given point if the point lies outside of the Rect area.
+    pub fn stretch_to_point(self, point: Point) -> Rect {
+        let Rect { x, y } = self;
+        Rect {
+            x: x.stretch_to_value(point[0]),
+            y: y.stretch_to_value(point[1]),
         }
     }
 
