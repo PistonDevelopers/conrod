@@ -2,6 +2,7 @@
 //! Types a functionality for handling Canvas and Widget theming.
 //!
 
+use Scalar;
 use color::{Color, black, white};
 use json_io;
 use position::{Margin, Padding, Position, Horizontal, HorizontalAlign, Vertical, VerticalAlign};
@@ -31,7 +32,7 @@ pub struct Theme {
     /// A default color for widget frames.
     pub frame_color: Color,
     /// A default width for widget frames.
-    pub frame_width: f64,
+    pub frame_width: Scalar,
     /// A default color for widget labels.
     pub label_color: Color,
     /// A default "large" font size.
@@ -40,6 +41,9 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
+
+    //pub widget_styling: HashMap<'static str, widget::Style
+
     /// Optional style defaults for a Button widget.
     pub maybe_button: Option<WidgetDefault<widget::button::Style>>,
     /// Optional style defaults for a Canvas widget.

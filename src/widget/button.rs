@@ -189,8 +189,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
             .point(xy)
-            .depth(1.0)
-            .parent(maybe_parent_idx)
+            .parent(Some(idx))
             .color(color)
             .frame(frame)
             .frame_color(frame_color)
@@ -204,10 +203,9 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
             let font_size = style.label_font_size(ui.theme());
             Label::new(label)
                 .point(xy)
-                .depth(1.0)
                 .color(color)
                 .font_size(font_size)
-                .parent(maybe_parent_idx)
+                .parent(Some(idx))
                 .set(label_idx, &mut ui);
             label_idx
         });
