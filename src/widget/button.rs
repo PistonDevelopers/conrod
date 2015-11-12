@@ -153,7 +153,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
 
     /// Update the state of the Button.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { maybe_parent_idx, idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let Button { enabled, maybe_label, mut maybe_react, .. } = self;
         let maybe_mouse = ui.input().maybe_mouse;
 
@@ -183,13 +183,13 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         // FramedRectangle widget.
         let rectangle_idx = state.view().maybe_rectangle_idx
             .unwrap_or_else(|| ui.new_unique_node_index());
-        let (xy, dim) = rect.xy_dim();
+        let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let color = new_interaction.color(style.color(ui.theme()));
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
-            .point(xy)
-            .parent(Some(idx))
+            .middle_of(idx)
+            .picking_passthrough(true)
             .color(color)
             .frame(frame)
             .frame_color(frame_color)
@@ -202,10 +202,10 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             Label::new(label)
-                .point(xy)
+                .middle_of(rectangle_idx)
+                .picking_passthrough(true)
                 .color(color)
                 .font_size(font_size)
-                .parent(Some(idx))
                 .set(label_idx, &mut ui);
             label_idx
         });

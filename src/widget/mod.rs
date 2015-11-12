@@ -169,6 +169,12 @@ pub struct CommonBuilder {
     pub is_floating: bool,
     /// Builder data for scrollable widgets.
     pub scrolling: scroll::Scrolling,
+    /// Whether or not the widget should be considered when picking the topmost widget at a
+    /// position.
+    ///
+    /// This is useful to indicate whether or not the widget should block the mouse from
+    /// interacting with widgets underneath it.
+    pub picking_passthrough: bool,
 }
 
 /// A wrapper around a **Widget**'s unique **Widget::State**.
@@ -252,7 +258,7 @@ pub struct PreUpdateCache {
     /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
     /// Indicates whether the widget blocks the mouse from interacting with widgets underneath it.
-    pub mouse_passthrough: bool,
+    pub picking_passthrough: bool,
 }
 
 /// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
@@ -309,7 +315,7 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 ///
 /// Methods that can be optionally overridden:
 /// - draw
-/// - mouse_passthrough
+/// - picking_passthrough
 /// - default_position
 /// - default_width
 /// - default_height
@@ -403,15 +409,6 @@ pub trait Widget: Sized {
         ::elmesque::element::empty()
     }
 
-    /// Indicates whether or not the **Widget** should block the mouse from interacting with
-    /// widgets underneath it.
-    ///
-    /// It may be useful to override this for widgets that simply act as graphical elements,
-    /// allowing the mouse to pass through itself and interact with the underlying widget.
-    fn mouse_passthrough(&self) -> bool {
-        false
-    }
-
     /// The default Position for the widget.
     /// This is used when no Position is explicitly given when instantiating the Widget.
     fn default_position(&self, _theme: &Theme) -> Position {
@@ -464,6 +461,8 @@ pub trait Widget: Sized {
 
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
+    // Most of them would benefit by some sort of field inheritance as they are mainly just used to
+    // set sommon data.
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
@@ -473,6 +472,16 @@ pub trait Widget: Sized {
             None => MaybeParent::None,
             Some(idx) => MaybeParent::Some(idx.into()),
         };
+        self
+    }
+
+    /// Whether or not the widget should be considered when picking the topmost widget at a
+    /// position.
+    ///
+    /// This is useful to indicate whether or not the widget should block the mouse from
+    /// interacting with widgets underneath it.
+    fn picking_passthrough(mut self, passthrough: bool) -> Self {
+        self.common_mut().picking_passthrough = passthrough;
         self
     }
 
@@ -768,7 +777,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_new_scrolling,
-            mouse_passthrough: widget.mouse_passthrough(),
+            picking_passthrough: widget.common().picking_passthrough,
         });
     }
 
@@ -967,6 +976,7 @@ impl CommonBuilder {
             maybe_v_align: None,
             maybe_depth: None,
             maybe_parent_idx: MaybeParent::Unspecified,
+            picking_passthrough: false,
             is_floating: false,
             scrolling: scroll::Scrolling::new(),
         }
