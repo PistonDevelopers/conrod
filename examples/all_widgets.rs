@@ -1,25 +1,22 @@
 //!
-//!
-//! A demonstration of all widgets available in Conrod.
+//! A demonstration of all non-primitive widgets available in Conrod.
 //!
 //!
 //! Don't be put off by the number of method calls, they are only for demonstration and almost all
 //! of them are optional. Conrod supports `Theme`s, so if you don't give it an argument, it will
 //! check the current `Theme` within the `Ui` and retrieve defaults from there.
 //!
-//!
 
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate glutin_window;
-extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
-extern crate vecmath;
 
 use conrod::{
     Button,
+    Circle,
     Color,
     Colorable,
     DropDownList,
@@ -115,7 +112,7 @@ impl DemoApp {
                               "Blue".to_string()],
             ddl_color: purple(),
             selected_idx: None,
-            circle_pos: [560.0, 310.0],
+            circle_pos: [-50.0, 110.0],
             envelopes: vec![(vec![ [0.0, 0.0],
                                    [0.1, 17000.0],
                                    [0.25, 8000.0],
@@ -152,7 +149,7 @@ fn main() {
     let theme = Theme::default();
     let glyph_cache = GlyphCache::new(&font_path).unwrap();
     let mut ui = Ui::new(glyph_cache, theme);
-    let mut demo = DemoApp::new();
+    let mut app = DemoApp::new();
 
     for event in event_iter {
         ui.handle_event(&event);
@@ -163,7 +160,7 @@ fn main() {
                 // At the moment conrod requires that we set our widgets in the Render loop,
                 // however soon we'll add support so that you can set your Widgets at any arbitrary
                 // update rate.
-                set_widgets(&mut ui, &mut demo);
+                set_widgets(&mut ui, &mut app);
 
                 // Draw our Ui!
                 //
@@ -174,11 +171,6 @@ fn main() {
                 //
                 // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
                 ui.draw_if_changed(c, gl);
-
-                // Draw the circle that's controlled by our XYPad.
-                graphics::Ellipse::new(demo.ddl_color.to_fsa())
-                    .draw([demo.circle_pos[0], demo.circle_pos[1], 30.0, 30.0],
-                          &c.draw_state, c.transform, gl);
             });
         }
     }
@@ -192,36 +184,36 @@ fn main() {
 /// the `Ui` at their given indices. Every other time this get called, the `Widget`s will avoid any
 /// allocations by updating the pre-existing cached state. A new graphical `Element` is only
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
-fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
+fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // Normally, `Split`s can be used to describe the layout of `Canvas`ses within a window (see
     // the canvas.rs example for a demonstration of this). However, when only one `Split` is used
     // (as in this case) a single `Canvas` will simply fill the screen.
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Split::new(CANVAS).frame(demo.frame_width).color(demo.bg_color).scrolling(true).set(ui);
+    Split::new(CANVAS).frame(app.frame_width).color(app.bg_color).scrolling(true).set(ui);
 
     // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
-    let title_x = demo.title_pad - (ui.win_w / 2.0) + 185.0;
+    let title_x = app.title_pad - (ui.win_w / 2.0) + 185.0;
     let title_y = (ui.win_h / 2.0) - 50.0;
 
     // Label example.
     Label::new("Widget Demonstration")
         .xy(title_x, title_y)
         .font_size(32)
-        .color(demo.bg_color.plain_contrast())
+        .color(app.bg_color.plain_contrast())
         .parent(Some(CANVAS))
         .set(TITLE, ui);
 
-    if demo.show_button {
+    if app.show_button {
 
         // Button widget example button.
         Button::new()
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.4, 0.75, 0.6)
-            .frame(demo.frame_width)
+            .frame(app.frame_width)
             .label("PRESS")
-            .react(|| demo.bg_color = color::random())
+            .react(|| app.bg_color = color::random())
             .set(BUTTON, ui)
 
     }
@@ -230,7 +222,7 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
     else {
 
         // Create the label for the slider.
-        let pad = demo.title_pad as i16;
+        let pad = app.title_pad as i16;
         let pad_string = pad.to_string();
         let label = {
             let mut text = "Padding: ".to_string();
@@ -243,31 +235,31 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             .dimensions(200.0, 50.0)
             .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.5, 0.3, 0.6)
-            .frame(demo.frame_width)
+            .frame(app.frame_width)
             .label(&label)
             .label_color(white())
-            .react(|new_pad: f32| demo.title_pad = new_pad as f64)
+            .react(|new_pad: f32| app.title_pad = new_pad as f64)
             .set(TITLE_PAD_SLIDER, ui);
 
     }
 
     // Clone the label toggle to be drawn.
-    let label = demo.toggle_label.clone();
+    let label = app.toggle_label.clone();
 
     // Keep track of the currently shown widget.
-    let shown_widget = if demo.show_button { BUTTON } else { TITLE_PAD_SLIDER };
+    let shown_widget = if app.show_button { BUTTON } else { TITLE_PAD_SLIDER };
 
     // Toggle widget example toggle(value).
-    Toggle::new(demo.show_button)
+    Toggle::new(app.show_button)
         .dimensions(75.0, 75.0)
         .down(20.0)
         .rgb(0.6, 0.25, 0.75)
-        .frame(demo.frame_width)
+        .frame(app.frame_width)
         .label(&label)
         .label_color(white())
         .react(|value| {
-            demo.show_button = value;
-            demo.toggle_label = match value {
+            app.show_button = value;
+            app.toggle_label = match value {
                 true => "ON".to_string(),
                 false => "OFF".to_string()
             }
@@ -287,9 +279,9 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
 
         // Grab the value of the color element.
         let value = match i {
-            0 => demo.bg_color.red(),
-            1 => demo.bg_color.green(),
-            _ => demo.bg_color.blue(),
+            0 => app.bg_color.red(),
+            1 => app.bg_color.green(),
+            _ => app.bg_color.blue(),
         };
 
         // Create the label to be drawn with the slider.
@@ -299,41 +291,41 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
         // Slider widget examples. slider(value, min, max)
         if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
         else      { Slider::new(value, 0.0, 1.0).right(20.0) }
-            .dimensions(40.0, demo.v_slider_height)
+            .dimensions(40.0, app.v_slider_height)
             .color(color)
-            .frame(demo.frame_width)
+            .frame(app.frame_width)
             .label(&label)
             .label_color(white())
             .react(|color| match i {
-                0 => demo.bg_color.set_red(color),
-                1 => demo.bg_color.set_green(color),
-                _ => demo.bg_color.set_blue(color),
+                0 => app.bg_color.set_red(color),
+                1 => app.bg_color.set_green(color),
+                _ => app.bg_color.set_blue(color),
             })
             .set(COLOR_SLIDER + i, ui);
 
     }
 
     // Number Dialer widget example. (value, min, max, precision)
-    NumberDialer::new(demo.v_slider_height, 25.0, 250.0, 1)
+    NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
         .dimensions(260.0, 60.0)
         .right_from(shown_widget, 30.0)
-        .color(demo.bg_color.invert())
-        .frame(demo.frame_width)
+        .color(app.bg_color.invert())
+        .frame(app.frame_width)
         .label("Height (px)")
-        .label_color(demo.bg_color.invert().plain_contrast())
-        .react(|new_height| demo.v_slider_height = new_height)
+        .label_color(app.bg_color.invert().plain_contrast())
+        .react(|new_height| app.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
     // Number Dialer widget example. (value, min, max, precision)
-    NumberDialer::new(demo.frame_width, 0.0, 15.0, 2)
+    NumberDialer::new(app.frame_width, 0.0, 15.0, 2)
         .dimensions(260.0, 60.0)
         .down(20.0)
-        .color(demo.bg_color.invert().plain_contrast())
-        .frame(demo.frame_width)
-        .frame_color(demo.bg_color.plain_contrast())
+        .color(app.bg_color.invert().plain_contrast())
+        .frame(app.frame_width)
+        .frame_color(app.bg_color.plain_contrast())
         .label("Frame Width (px)")
-        .label_color(demo.bg_color.plain_contrast())
-        .react(|new_width| demo.frame_width = new_width)
+        .label_color(app.bg_color.plain_contrast())
+        .react(|new_width| app.frame_width = new_width)
         .set(FRAME_WIDTH, ui);
 
     // A demonstration using widget_matrix to easily draw
@@ -356,22 +348,22 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             // You can return any type that implements `Widget`.
             // The returned widget will automatically be positioned and sized to the matrix
             // element's rectangle.
-            let elem = &mut demo.bool_matrix[col][row];
+            let elem = &mut app.bool_matrix[col][row];
             Toggle::new(*elem)
                 .rgba(r, g, b, a)
-                .frame(demo.frame_width)
+                .frame(app.frame_width)
                 .react(move |new_val: bool| *elem = new_val)
         })
         .set(TOGGLE_MATRIX, ui);
 
     // A demonstration using a DropDownList to select its own color.
-    let mut ddl_color = demo.ddl_color;
-    DropDownList::new(&mut demo.ddl_colors, &mut demo.selected_idx)
+    let mut ddl_color = app.ddl_color;
+    DropDownList::new(&mut app.ddl_colors, &mut app.selected_idx)
         .dimensions(150.0, 40.0)
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
         .color(ddl_color)
-        .frame(demo.frame_width)
+        .frame(app.frame_width)
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
@@ -387,39 +379,45 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             };
         })
         .set(COLOR_SELECT, ui);
-    demo.ddl_color = ddl_color;
+    app.ddl_color = ddl_color;
 
     // Draw an xy_pad.
-    XYPad::new(demo.circle_pos[0], 550.0, 700.0, // x range.
-               demo.circle_pos[1], 320.0, 170.0) // y range.
+    XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
+               app.circle_pos[1], 95.0, 245.0) // y range.
         .dimensions(150.0, 150.0)
         .right_from(TOGGLE_MATRIX, 30.0)
         .align_bottom() // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
-        .frame(demo.frame_width)
+        .frame(app.frame_width)
         .frame_color(white())
         .label("Circle Position")
         .label_color(ddl_color.plain_contrast().alpha(0.5))
         .line_width(2.0)
         .react(|new_x, new_y| {
-            demo.circle_pos[0] = new_x;
-            demo.circle_pos[1] = new_y;
+            app.circle_pos[0] = new_x;
+            app.circle_pos[1] = new_y;
         })
         .set(CIRCLE_POSITION, ui);
+
+    // Draw a circle at the app's circle_pos.
+    Circle::fill(15.0)
+        .relative_to(CIRCLE_POSITION, app.circle_pos)
+        .color(app.ddl_color)
+        .set(CIRCLE, ui);
 
     // Draw two TextBox and EnvelopeEditor pairs to the right of the DropDownList flowing downward.
     for i in 0..2 {
 
-        let &mut (ref mut env, ref mut text) = &mut demo.envelopes[i];
+        let &mut (ref mut env, ref mut text) = &mut app.envelopes[i];
 
         // Draw a TextBox. text_box(&mut String, FontSize)
         if i == 0 { TextBox::new(text).right_from(COLOR_SELECT, 30.0) }
         else      { TextBox::new(text) }
             .font_size(20)
             .dimensions(320.0, 40.0)
-            .frame(demo.frame_width)
-            .frame_color(demo.bg_color.invert().plain_contrast())
-            .color(demo.bg_color.invert())
+            .frame(app.frame_width)
+            .frame_color(app.bg_color.invert().plain_contrast())
+            .color(app.bg_color.invert())
             .react(|_string: &mut String|{})
             .set(ENVELOPE_EDITOR + (i * 2), ui);
 
@@ -431,11 +429,11 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             .down(10.0)
             .dimensions(320.0, 150.0)
             .skew_y(env_skew_y)
-            .color(demo.bg_color.invert())
-            .frame(demo.frame_width)
-            .frame_color(demo.bg_color.invert().plain_contrast())
+            .color(app.bg_color.invert())
+            .frame(app.frame_width)
+            .frame_color(app.bg_color.invert().plain_contrast())
             .label(&text)
-            .label_color(demo.bg_color.invert().plain_contrast().alpha(0.5))
+            .label_color(app.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
             .line_width(2.0)
             .react(|_points: &mut Vec<Point>, _idx: usize|{})
@@ -465,5 +463,6 @@ widget_ids! {
     TOGGLE_MATRIX,
     COLOR_SELECT,
     CIRCLE_POSITION,
+    CIRCLE,
     ENVELOPE_EDITOR with 4
 }
