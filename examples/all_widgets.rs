@@ -356,10 +356,11 @@ fn set_widgets(ui: &mut Ui, demo: &mut DemoApp) {
             // You can return any type that implements `Widget`.
             // The returned widget will automatically be positioned and sized to the matrix
             // element's rectangle.
-            Toggle::new(demo.bool_matrix[col][row])
+            let elem = &mut demo.bool_matrix[col][row];
+            Toggle::new(*elem)
                 .rgba(r, g, b, a)
                 .frame(demo.frame_width)
-                .react(|new_val: bool| demo.bool_matrix[col][row] = new_val)
+                .react(move |new_val: bool| *elem = new_val)
         })
         .set(TOGGLE_MATRIX, ui);
 
