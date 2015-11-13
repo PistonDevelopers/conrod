@@ -760,6 +760,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     {
         // Some widget to which this widget is relatively positioned (if there is one).
         let maybe_positioned_relatively_idx = match pos {
+            Position::Place(_, maybe_idx)        |
             Position::Relative(_, _, maybe_idx)  |
             Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
             _ => None,

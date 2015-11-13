@@ -1,5 +1,6 @@
 
 
+use Scalar;
 use daggy::{self, Walker};
 use elmesque::Element;
 use elmesque::element::layers;
@@ -139,7 +140,7 @@ impl Container {
     {
         self.maybe_state.take().map(|any_state| {
             any_state.downcast().ok()
-                .expect("Failed to downcast from Box<Any> to required UniqueWidgetState")
+                .expect("Failed to downcast from `Box<Any>` to the required UniqueWidgetState")
         })
     }
 
@@ -293,39 +294,50 @@ impl Graph {
             None => return offset,
         };
 
+        // Check the widget at the given index for any scroll offset and add it to our total offset.
+        let add_to_offset = |offset: &mut [Scalar; 2], idx: NodeIndex| {
+            if let Some(&Node::Widget(ref container)) = dag.node_weight(idx) {
+                if let Some(ref scrolling) = container.maybe_scrolling {
+                    let scroll_offset = scrolling.kids_pos_offset();
+                    offset[0] += scroll_offset[0].round();
+                    offset[1] += scroll_offset[1].round();
+                }
+            }
+        };
+
         // We know that our graph shouldn't cycle at all, so we can safely use loop to traverse all
         // parent widget nodes and return when there are no more.
-        'child_edge_traversal: loop {
+        'parent_depth_edge_traversal: loop {
 
-            // We only need to worry about calculating any offset if there is some parent widget.
+            // We only need to calculate any offset if there is some parent depth widget.
             if let Some((_, parent_idx)) = maybe_parent_depth_edge(dag, idx) {
 
                 // Recursively check all nodes with incoming `Position` edges for a parent that
-                // matches our own parent. If any match, then we don't need to calculate any additional
-                // offset as the widget we are being positioned relatively to has already applied the
-                // necessary scroll offset.
+                // matches our own parent. If any match, then we don't need to calculate any
+                // additional offset as the widget we are being positioned relatively to has
+                // already applied the necessary scroll offset.
                 let mut current_node = idx;
-                'relative_position_edge_traversal: loop {
+                'parent_position_edge_traversal: loop {
                     match maybe_parent_position_edge(dag, current_node) {
-                        Some((_, node)) => match maybe_parent_depth_edge(dag, node) {
-                            Some((_, parent_node)) if parent_node == parent_idx => return offset,
-                            _ => current_node = node,
+                        Some((_, parent_position_node)) => if parent_position_node == parent_idx {
+                            // If our parent depth edge is also the parent position edge, we're
+                            // add offset for that parent - otherwise we're done.
+                            add_to_offset(&mut offset, parent_idx);
+                            return offset;
+                        } else {
+                            match maybe_parent_depth_edge(dag, parent_position_node) {
+                                Some((_, parent_depth_node)) if parent_depth_node == parent_idx =>
+                                    return offset,
+                                _ => current_node = parent_position_node,
+                            }
                         },
-                        None => break 'relative_position_edge_traversal,
+                        None => break 'parent_position_edge_traversal,
                     }
                 }
 
                 // Set the parent as the new current idx and continue traversing.
                 idx = parent_idx;
-
-                // Check the current widget for any scroll offset.
-                if let Some(&Node::Widget(ref container)) = dag.node_weight(idx) {
-                    if let Some(ref scrolling) = container.maybe_scrolling {
-                        let scroll_offset = scrolling.kids_pos_offset();
-                        offset[0] += scroll_offset[0].round();
-                        offset[1] += scroll_offset[1].round();
-                    }
-                }
+                add_to_offset(&mut offset, idx);
 
             // Otherwise if there are no more parent widgets, we're done calculating the offset.
             } else {
@@ -371,7 +383,7 @@ impl Graph {
 
     /// Set's an `Edge::Position` from a to b. This edge represents the fact that b is
     /// positioned relatively to a's position.
-    fn set_relative_position_edge<A, B>(&mut self, a: A, b: B) where
+    fn set_position_edge<A, B>(&mut self, a: A, b: B) where
         A: GraphIndex,
         B: GraphIndex,
     {
@@ -379,23 +391,6 @@ impl Graph {
         let b_idx = b.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
 
         set_edge(&mut self.dag, a_idx, b_idx, Edge::Position);
-    }
-
-
-    /// Remove the incoming relative position edge (if there is one) to the widget at the given
-    /// index.
-    fn remove_incoming_relative_position_edge<I: GraphIndex>(&mut self, idx: I) {
-        let Graph { ref mut dag, ref index_map, .. } = *self;
-        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
-        let mut parents = dag.parents(node_idx);
-        while let Some((in_edge_idx, _)) = parents.next(dag) {
-            if let Edge::Position = dag[in_edge_idx] {
-                dag.remove_edge(in_edge_idx);
-                // Note that we only need to check for *one* edge as there can only ever be one
-                // incoming relative position edge per node.
-                break;
-            }
-        }
     }
 
 
@@ -518,16 +513,15 @@ impl Graph {
         // Now that we've updated the widget's cached data, we need to check if we should add an
         // `Edge::Position`.
         if let Some(relative_idx) = maybe_positioned_relatively_idx {
-            self.set_relative_position_edge(relative_idx, idx);
+            self.set_position_edge(relative_idx, idx);
 
         // Otherwise if the widget is not positioned relatively to any other widget, we should
         // ensure that there are no incoming `Position` edges.
         } else {
-            self.remove_incoming_relative_position_edge(idx);
+            self.remove_parent_position_edge(idx);
         }
 
     }
-
 
     /// Cache some `PostUpdateCache` widget data into the graph.
     ///
@@ -557,6 +551,16 @@ impl Graph {
             };
 
             container.maybe_state = Some(Box::new(unique_state));
+        }
+    }
+
+
+    /// Remove the parent position edge from the widget at the given index.
+    fn remove_parent_position_edge<I: GraphIndex>(&mut self, idx: I) {
+        let Graph { ref mut dag, ref index_map, .. } = *self;
+        let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
+        if let Some((edge_idx, _)) = maybe_parent_position_edge(dag, node_idx) {
+            dag.remove_edge(edge_idx);
         }
     }
 
@@ -717,6 +721,17 @@ impl Graph {
 }
 
 
+/// A predicate to pass to the `Walker::filter` method.
+fn is_position_edge(dag: &Dag, e: EdgeIndex, _: NodeIndex) -> bool {
+    dag[e] == Edge::Position
+}
+
+/// A predicate to pass to the `Walker::filter` method.
+fn is_depth_edge(dag: &Dag, e: EdgeIndex, _: NodeIndex) -> bool {
+    dag[e] == Edge::Depth
+}
+
+
 /// The box that bounds the widget with the given ID as well as all its widget kids.
 ///
 /// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
@@ -731,7 +746,7 @@ impl Graph {
 /// are the first widget in the recursion, and we will use ourselves as the deepest_parent_idx.
 fn bounding_box(graph: &Graph,
                 include_self: bool,
-                target_xy: Option<Point>,
+                maybe_target_xy: Option<Point>,
                 use_kid_area: bool,
                 idx: NodeIndex,
                 maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
@@ -763,7 +778,7 @@ fn bounding_box(graph: &Graph,
 
         // Determine our bounds relative to the target_xy position.
         let (xy, dim) = rect.xy_dim();
-        let target_xy = target_xy.unwrap_or(xy);
+        let target_xy = maybe_target_xy.unwrap_or(xy);
         let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
         let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
 
@@ -771,14 +786,12 @@ fn bounding_box(graph: &Graph,
         let deepest_parent_idx = maybe_deepest_parent_idx.or(Some(idx));
 
         // An iterator yielding the bounding_box returned by each of our children.
-        let mut kids_bounds = dag.children(idx).iter(&dag).nodes()
-            .filter_map(|kid_idx| dag.find_edge(idx, kid_idx).and_then(|kid_edge_idx| {
-                if let Edge::Depth = dag[kid_edge_idx] {
-                    bounding_box(graph, true, Some(target_xy), false, kid_idx, deepest_parent_idx)
-                } else {
-                    None
-                }
-            }));
+        let mut kids_bounds = dag.children(idx)
+            .filter(|g, e, _| g[e] == Edge::Depth)
+            .iter(dag).nodes()
+            .filter_map(|n| {
+                bounding_box(graph, true, Some(target_xy), false, n, deepest_parent_idx)
+            });
 
         // Work out the initial bounds to use for our max_bounds fold.
         let init_bounds = if include_self {
@@ -889,13 +902,7 @@ fn set_edge(dag: &mut Dag, a: NodeIndex, b: NodeIndex, edge: Edge) {
 fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
-    let mut parents = dag.parents(idx);
-    while let Some((in_edge_idx, in_node_idx)) = parents.next(dag) {
-        if let Edge::Position = dag[in_edge_idx] {
-            return Some((in_edge_idx, in_node_idx));
-        }
-    }
-    None
+    dag.parents(idx).find(dag, is_position_edge)
 }
 
 /// Return the incoming child edge (and the attached parent Node) if one exists.
@@ -904,13 +911,7 @@ fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
 fn maybe_parent_depth_edge(dag: &Dag, idx: NodeIndex)
     -> Option<(EdgeIndex, NodeIndex)>
 {
-    let mut parents = dag.parents(idx);
-    while let Some((in_edge_idx, in_node_idx)) = parents.next(dag) {
-        if let Edge::Depth = dag[in_edge_idx] {
-            return Some((in_edge_idx, in_node_idx));
-        }
-    }
-    None
+    dag.parents(idx).find(dag, is_depth_edge)
 }
 
 
