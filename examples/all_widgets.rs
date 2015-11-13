@@ -10,9 +10,7 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate glutin_window;
-extern crate opengl_graphics;
-extern crate piston;
+extern crate piston_window;
 
 use conrod::{
     Button,
@@ -38,22 +36,16 @@ use conrod::{
     XYPad,
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
-use glutin_window::GlutinWindow;
-use opengl_graphics::{GlGraphics, OpenGL};
-use opengl_graphics::glyph_cache::GlyphCache;
-use piston::event_loop::{Events, EventLoop};
-use piston::input::{RenderEvent};
-use piston::window::{WindowSettings, Size};
+use piston_window::{Glyphs, PistonWindow, WindowSettings};
 
 
-type Ui = conrod::Ui<GlyphCache<'static>>;
+type Ui = conrod::Ui<Glyphs>;
 
-/// This struct holds all of the variables used to demonstrate
-/// application data being passed through the widgets. If some
-/// of these seem strange, that's because they are! Most of
-/// these simply represent the aesthetic state of different
-/// parts of the GUI to offer visual feedback during interaction
-/// with the widgets.
+
+/// This struct holds all of the variables used to demonstrate application data being passed
+/// through the widgets. If some of these seem strange, that's because they are! Most of these
+/// simply represent the aesthetic state of different parts of the GUI to offer visual feedback
+/// during interaction with the widgets.
 struct DemoApp {
     /// Background color (for demonstration of button and sliders).
     bg_color: Color,
@@ -129,50 +121,46 @@ impl DemoApp {
 
 
 fn main() {
-    let opengl = OpenGL::V3_2;
-    let window: GlutinWindow =
-        WindowSettings::new(
-            "Hello Conrod".to_string(),
-            Size { width: 1100, height: 550 }
-        )
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .samples(4)
-        .build()
-        .unwrap();
-    let event_iter = window.events().ups(60).max_fps(60);
-    let mut gl = GlGraphics::new(opengl);
 
-    let assets = find_folder::Search::KidsThenParents(3, 5)
-        .for_folder("assets").unwrap();
-    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    let theme = Theme::default();
-    let glyph_cache = GlyphCache::new(&font_path).unwrap();
-    let mut ui = Ui::new(glyph_cache, theme);
+    // Construct the window.
+    let window: PistonWindow =
+        WindowSettings::new("All The Widgets!", [1100, 550])
+            .exit_on_esc(true).build().unwrap();
+
+    // construct our `Ui`.
+    let mut ui = {
+        let assets = find_folder::Search::KidsThenParents(3, 5)
+            .for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let theme = Theme::default();
+        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        Ui::new(glyph_cache.unwrap(), theme)
+    };
+
+    // Our dmonstration app that we'll control with our GUI.
     let mut app = DemoApp::new();
 
-    for event in event_iter {
+    // Poll events from the window.
+    for event in window {
         ui.handle_event(&event);
-        if let Some(args) = event.render_args() {
-            gl.draw(args.viewport(), |c, gl| {
+        event.draw_2d(|c, g| {
 
-                // We'll set all our widgets in a single function called `set_widgets`.
-                // At the moment conrod requires that we set our widgets in the Render loop,
-                // however soon we'll add support so that you can set your Widgets at any arbitrary
-                // update rate.
-                set_widgets(&mut ui, &mut app);
+            // We'll set all our widgets in a single function called `set_widgets`.
+            // At the moment conrod requires that we set our widgets in the Render loop,
+            // however soon we'll add support so that you can set your Widgets at any arbitrary
+            // update rate.
+            set_widgets(&mut ui, &mut app);
 
-                // Draw our Ui!
-                //
-                // The `draw_if_changed` method only re-draws the GUI if some `Widget`'s `Element`
-                // representation has changed. Normally, a `Widget`'s `Element` should only change
-                // if a Widget was interacted with in some way, however this is up to the `Widget`
-                // designer's discretion.
-                //
-                // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
-                ui.draw_if_changed(c, gl);
-            });
-        }
+            // Draw our Ui!
+            //
+            // The `draw_if_changed` method only re-draws the GUI if some `Widget`'s `Element`
+            // representation has changed. Normally, a `Widget`'s `Element` should only change
+            // if a Widget was interacted with in some way, however this is up to the `Widget`
+            // designer's discretion.
+            //
+            // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
+            ui.draw_if_changed(c, g);
+        });
     }
 }
 
@@ -285,8 +273,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         };
 
         // Create the label to be drawn with the slider.
-        let mut label = value.to_string();
-        if label.len() > 4 { label.truncate(4); }
+        let label = format!("{:.*}", 2, value);
 
         // Slider widget examples. slider(value, min, max)
         if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
