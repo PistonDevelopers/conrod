@@ -222,44 +222,6 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         }
     }
 
-    /// Construct an Element from the given Button State.
-    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> Element {
-        ::elmesque::element::empty()
-        // use elmesque::form::{self, collage, text};
-
-        // let widget::DrawArgs { state, style, theme, rect, .. } = args;
-        // let xy = rect.xy();
-        // let dim = rect.dim();
-
-        // // Retrieve the styling for the Element.
-        // let color = state.color(style.color(theme));
-        // let frame = style.frame(theme);
-        // let frame_color = style.frame_color(theme);
-
-        // // Construct the frame and inner rectangle forms.
-        // let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-        // let (inner_w, inner_h) = (dim[0] - frame * 2.0, dim[1] - frame * 2.0);
-        // let pressable_form = form::rect(inner_w, inner_h).filled(color);
-
-        // // Construct the label's Form.
-        // let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
-        //     use elmesque::text::Text;
-        //     let label_color = style.label_color(theme);
-        //     let size = style.label_font_size(theme);
-        //     text(Text::from_string(label_text.to_string()).color(label_color).height(size as f64))
-        //         .shift(xy[0].floor(), xy[1].floor())
-        // });
-
-        // // Construct the button's Form.
-        // let form_chain = Some(frame_form).into_iter()
-        //     .chain(Some(pressable_form))
-        //     .map(|form| form.shift(xy[0], xy[1]))
-        //     .chain(maybe_label_form);
-
-        // // Turn the form into a renderable Element.
-        // collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    }
-
 }
 
 impl Style {
