@@ -1,15 +1,13 @@
-
-use Scalar;
+use {Scalar, Ui};
 use time::precise_time_ns;
 use color::Color;
 use elmesque::element::Element;
 use graphics::character::CharacterCache;
 use label::FontSize;
 use mouse::Mouse;
-use position::{self, Dimensions, Horizontal, Margin, Padding, Place, Point, Position, Rect};
+use position::{self, Dimension, Dimensions, Horizontal, Margin, Padding, Place, Point, Position, Rect};
 use theme::Theme;
 use widget::{self, Widget};
-use ui::GlyphCache;
 
 
 /// A widget designed to be a parent for other widgets.
@@ -31,6 +29,9 @@ pub struct State {
 
 /// The padding between the edge of the title bar and the title bar's label.
 const TITLE_BAR_LABEL_PADDING: f64 = 4.0;
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "Canvas";
 
 /// State of the title bar.
 #[derive(Clone, Debug, PartialEq)]
@@ -203,9 +204,18 @@ impl<'a> Widget for Canvas<'a> {
     type State = State;
     type Style = Style;
 
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "Canvas" }
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> widget::Kind {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State {
             interaction: Interaction::Normal,
@@ -213,6 +223,7 @@ impl<'a> Widget for Canvas<'a> {
             maybe_title_bar: None,
         }
     }
+
     fn style(&self) -> Style {
         self.style.clone()
     }
@@ -221,18 +232,12 @@ impl<'a> Widget for Canvas<'a> {
         Position::Place(Place::Middle, None)
     }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 160.0;
-        theme.maybe_button.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 80.0;
-        theme.maybe_button.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(80.0))
     }
 
     /// The title bar area at which the Canvas can be clicked and dragged.
@@ -453,28 +458,28 @@ impl Style {
 
     /// Get the color for the Canvas' Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.background_color)
         })).unwrap_or(theme.background_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_frame.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_frame_color.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the font size of the title bar.
     pub fn title_bar_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_title_bar_font_size.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_title_bar_font_size.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_title_bar_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
@@ -482,31 +487,32 @@ impl Style {
     /// Get the alignment of the title bar label.
     pub fn title_bar_label_align(&self, theme: &Theme) -> Horizontal {
         const DEFAULT_ALIGN: Horizontal = Horizontal::Middle;
-        self.maybe_title_bar_label_align.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_title_bar_label_align.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_title_bar_label_align.unwrap_or(DEFAULT_ALIGN)
         })).unwrap_or(DEFAULT_ALIGN)
     }
 
     /// Get the color of the title bar label.
     pub fn title_bar_label_color(&self, theme: &Theme) -> Color {
-        self.maybe_title_bar_label_color.or(theme.maybe_canvas.as_ref().map(|default| {
+        self.maybe_title_bar_label_color.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_title_bar_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the Padding for the Canvas' kid area.
     pub fn padding(&self, theme: &Theme) -> position::Padding {
+        let default_style = theme.widget_style::<Style>(KIND);
         position::Padding {
-            top: self.padding.maybe_top.or(theme.maybe_canvas.as_ref().map(|default| {
+            top: self.padding.maybe_top.or_else(|| default_style.as_ref().map(|default| {
                 default.style.padding.maybe_top.unwrap_or(theme.padding.top)
             })).unwrap_or(theme.padding.top),
-            bottom: self.padding.maybe_bottom.or(theme.maybe_canvas.as_ref().map(|default| {
+            bottom: self.padding.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
                 default.style.padding.maybe_bottom.unwrap_or(theme.padding.bottom)
             })).unwrap_or(theme.padding.bottom),
-            left: self.padding.maybe_left.or(theme.maybe_canvas.as_ref().map(|default| {
+            left: self.padding.maybe_left.or_else(|| default_style.as_ref().map(|default| {
                 default.style.padding.maybe_left.unwrap_or(theme.padding.left)
             })).unwrap_or(theme.padding.left),
-            right: self.padding.maybe_right.or(theme.maybe_canvas.as_ref().map(|default| {
+            right: self.padding.maybe_right.or_else(|| default_style.as_ref().map(|default| {
                 default.style.padding.maybe_right.unwrap_or(theme.padding.right)
             })).unwrap_or(theme.padding.right),
         }
@@ -514,17 +520,18 @@ impl Style {
 
     /// Get the Margin for the Canvas' kid area.
     pub fn margin(&self, theme: &Theme) -> position::Margin {
+        let default_style = theme.widget_style::<Style>(KIND);
         position::Margin {
-            top: self.margin.maybe_top.or(theme.maybe_canvas.as_ref().map(|default| {
+            top: self.margin.maybe_top.or_else(|| default_style.as_ref().map(|default| {
                 default.style.margin.maybe_top.unwrap_or(theme.margin.top)
             })).unwrap_or(theme.margin.top),
-            bottom: self.margin.maybe_bottom.or(theme.maybe_canvas.as_ref().map(|default| {
+            bottom: self.margin.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
                 default.style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
             })).unwrap_or(theme.margin.bottom),
-            left: self.margin.maybe_left.or(theme.maybe_canvas.as_ref().map(|default| {
+            left: self.margin.maybe_left.or_else(|| default_style.as_ref().map(|default| {
                 default.style.margin.maybe_left.unwrap_or(theme.margin.left)
             })).unwrap_or(theme.margin.left),
-            right: self.margin.maybe_right.or(theme.maybe_canvas.as_ref().map(|default| {
+            right: self.margin.maybe_right.or_else(|| default_style.as_ref().map(|default| {
                 default.style.margin.maybe_right.unwrap_or(theme.margin.right)
             })).unwrap_or(theme.margin.right),
         }

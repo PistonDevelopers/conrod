@@ -53,14 +53,29 @@ Features
 Available Widgets
 -----------------
 
+### Primitives
+
+- Shapes:
+    - Circle
+    - Rectangle
+    - Oval
+    - Polygon
+    - FramedRectangle
+- Label
+- Line
+- PointPath
+
+### Interactive
+
 - [Button](http://docs.piston.rs/conrod/conrod/struct.Button.html)
 - [Canvas](http://docs.piston.rs/conrod/conrod/struct.Canvas.html) (Can be positioned manually or by using the [Split](http://docs.piston.rs/conrod/conrod/struct.Split.html) or [Tabs](http://docs.piston.rs/conrod/conrod/struct.Tabs.html) wrappers for auto-layout)
 - [DropDownList](http://docs.piston.rs/conrod/conrod/struct.DropDownList.html)
 - [EnvelopeEditor](http://docs.piston.rs/conrod/conrod/struct.EnvelopeEditor.html)
-- [Label](http://docs.piston.rs/conrod/conrod/struct.Label.html)
+- WidgetMatrix
 - [NumberDialer](http://docs.piston.rs/conrod/conrod/struct.NumberDialer.html)
 - [Slider](http://docs.piston.rs/conrod/conrod/struct.Slider.html)
 - [TextBox](http://docs.piston.rs/conrod/conrod/struct.TextBox.html)
+- TitleBar
 - [Toggle](http://docs.piston.rs/conrod/conrod/struct.Toggle.html)
 - [XYPad](http://docs.piston.rs/conrod/conrod/struct.XYPad.html)
 - Custom: Conrod also provides a [Widget trait](http://docs.piston.rs/conrod/conrod/trait.Widget.html) for designing and implementing custom widgets. You can find an annotated demonstration of designing a custom widget implementation [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/custom_widget.rs). All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free to add them in a pull request :)

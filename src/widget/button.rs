@@ -1,14 +1,13 @@
 
-use {Label, NodeIndex, FramedRectangle, Scalar};
+use {Label, NodeIndex, FramedRectangle, Ui};
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
-use position::Positionable;
+use position::{Dimension, Positionable};
 use theme::Theme;
-use ui::GlyphCache;
 use widget::{self, Widget};
 
 
@@ -45,6 +44,9 @@ pub struct State {
     maybe_label_idx: Option<NodeIndex>,
     interaction: Interaction,
 }
+
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "Button";
 
 /// Represents an interaction with the Button widget.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -121,7 +123,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         &mut self.common
     }
 
-    fn unique_kind(&self) -> &'static str {
+    fn unique_kind(&self) -> widget::Kind {
         "Button"
     }
 
@@ -137,18 +139,12 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         self.style.clone()
     }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 64.0;
-        theme.maybe_button.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 64.0;
-        theme.maybe_button.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
     /// Update the state of the Button.
@@ -266,7 +262,6 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
 
 }
 
-
 impl Style {
 
     /// Construct the default Style.
@@ -282,35 +277,35 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_button.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_button.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_button.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_button.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }

@@ -33,6 +33,9 @@ pub struct State {
     tab_bar_rel_xy: Point,
 }
 
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "Tabs";
+
 /// The padding between the edge of the title bar and the title bar's label.
 const TAB_BAR_LABEL_PADDING: f64 = 4.0;
 
@@ -215,9 +218,18 @@ impl<'a> Widget for Tabs<'a> {
     type State = State;
     type Style = Style;
 
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "Tabs" }
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State {
             tabs: Vec::new(),
@@ -227,7 +239,10 @@ impl<'a> Widget for Tabs<'a> {
             tab_bar_rel_xy: [0.0, 0.0],
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
+
+    fn style(&self) -> Style {
+        self.style.clone()
+    }
 
     /// The area on which child widgets will be placed when using the `Place` Positionable methods.
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
@@ -556,21 +571,21 @@ impl Style {
     /// Get the layout of the tabs for the `Tabs` widget.
     pub fn layout(&self, theme: &Theme) -> Layout {
         const DEFAULT_LAYOUT: Layout = Layout::Horizontal;
-        self.maybe_layout.or(theme.maybe_tabs.as_ref().map(|default| {
+        self.maybe_layout.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_layout.unwrap_or(DEFAULT_LAYOUT)
         })).unwrap_or(DEFAULT_LAYOUT)
     }
 
     /// Get the color for the tab labels.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_tabs.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the font size for the tab labels.
     pub fn font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_tabs.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }

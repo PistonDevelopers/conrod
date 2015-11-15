@@ -1,5 +1,5 @@
 
-use color::{Color, Colorable};
+use {Color, Colorable, Dimension, Ui};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
@@ -8,7 +8,6 @@ use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::{Float, NumCast, ToPrimitive};
 use theme::Theme;
-use ui::GlyphCache;
 use utils::{clamp, percentage, value_from_perc};
 use widget::{self, Widget};
 
@@ -50,6 +49,9 @@ pub struct State<T> {
     maybe_label: Option<String>,
     interaction: Interaction,
 }
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "Slider";
 
 /// The ways in which the Slider can be interacted with.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -131,9 +133,19 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
 {
     type State = State<T>;
     type Style = Style;
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "Slider" }
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State<T> {
         State {
             value: self.value,
@@ -144,20 +156,17 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             interaction: Interaction::Normal,
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 192.0;
-        theme.maybe_slider.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 48.0;
-        theme.maybe_slider.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(192.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
     }
 
     /// Update the state of the Slider.
@@ -351,35 +360,35 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_slider.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_slider.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_slider.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_slider.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_slider.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }

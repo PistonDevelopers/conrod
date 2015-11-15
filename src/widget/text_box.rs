@@ -1,5 +1,5 @@
 
-use color::{Color, Colorable};
+use {Color, Colorable, Dimension, Ui};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
@@ -47,6 +47,9 @@ pub struct State {
     text: String,
     control_pressed: bool
 }
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "TextBox";
 
 /// Represents the state of the text_box widget.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -321,9 +324,19 @@ impl<'a, F> TextBox<'a, F> {
 impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
     type Style = Style;
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "TextBox" }
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State {
             interaction: Interaction::Uncaptured(Uncaptured::Normal),
@@ -331,20 +344,17 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             control_pressed: false,
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 192.0;
-        theme.maybe_text_box.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 48.0;
-        theme.maybe_text_box.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(192.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
     }
 
     /// Update the state of the TextBox.
@@ -600,21 +610,21 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
@@ -622,7 +632,7 @@ impl Style {
     /// Get the label font size for an Element.
     pub fn font_size(&self, theme: &Theme) -> FontSize {
         const DEFAULT_FONT_SIZE: u32 = 24;
-        self.maybe_font_size.or(theme.maybe_text_box.as_ref().map(|default| {
+        self.maybe_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
         })).unwrap_or(DEFAULT_FONT_SIZE)
     }

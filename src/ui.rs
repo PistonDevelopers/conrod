@@ -1,10 +1,9 @@
 
+use {CharacterCache, FontSize, Scalar};
 use color::Color;
 use elmesque::Element;
 use graph::Graph;
 use graphics::{Context, Graphics};
-use graphics::character::CharacterCache;
-use label::FontSize;
 use mouse::{self, Mouse};
 use input;
 use input::{
@@ -162,18 +161,34 @@ impl<C> Ui<C> {
         }
     }
 
-
-    /// Return the dimensions of a widget.
-    pub fn widget_size(&self, id: widget::Id) -> Dimensions {
-        self.widget_graph[id].rect.dim()
+    /// The absolute width of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn width_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.get_widget(idx).map(|widget| widget.rect.w())
     }
 
+    /// The absolute height of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn height_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.get_widget(idx).map(|widget| widget.rect.h())
+    }
+
+    /// The absolute dimensions for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn dim_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.get_widget(idx).map(|widget| widget.rect.dim())
+    }
 
     /// An index to the previously updated widget if there is one.
     pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
         self.maybe_prev_widget_idx
     }
-
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
@@ -274,12 +289,12 @@ impl<C> Ui<C> {
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     /// If getting the xy for a widget, its ID should be specified so that we can also consider the
     /// scroll offset of the scrollable parent widgets.
-    pub fn get_xy(&self,
-                  maybe_idx: Option<widget::Index>,
-                  position: Position,
-                  dim: Dimensions,
-                  h_align: HorizontalAlign,
-                  v_align: VerticalAlign) -> Point
+    pub fn calc_xy(&self,
+                   maybe_idx: Option<widget::Index>,
+                   position: Position,
+                   dim: Dimensions,
+                   h_align: HorizontalAlign,
+                   v_align: VerticalAlign) -> Point
     {
         use vecmath::vec2_add;
 

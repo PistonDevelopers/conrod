@@ -34,6 +34,9 @@ pub struct Style {
     pub maybe_kind: Option<StyleKind>,
 }
 
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "PointPath";
+
 /// Whether or not to draw Lines, Points or Both.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum StyleKind {
@@ -182,7 +185,7 @@ impl Style {
         fn default_kind() -> StyleKind {
             StyleKind::Lines(super::line::Style::new())
         }
-        self.maybe_kind.or_else(|| theme.maybe_point_path.as_ref().map(|default| {
+        self.maybe_kind.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_kind.unwrap_or_else(default_kind)
         })).unwrap_or_else(default_kind)
     }
@@ -204,8 +207,8 @@ impl<I> Widget for PointPath<I>
         &mut self.common
     }
 
-    fn unique_kind(&self) -> &'static str {
-        "Line"
+    fn unique_kind(&self) -> widget::Kind {
+        KIND
     }
 
     fn init_state(&self) -> State {

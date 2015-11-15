@@ -1,11 +1,12 @@
-
-use ::{CharacterCache, Scalar};
+use {CharacterCache, Scalar};
 use time::precise_time_ns;
 use elmesque::Element;
 use graph::NodeIndex;
 use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
                HorizontalAlign, VerticalAlign};
+use rustc_serialize::{Decodable, Encodable};
 use std::any::Any;
+use std::fmt::Debug;
 use theme::Theme;
 use ui::{self, GlyphCache, Ui, UserInput};
 
@@ -140,6 +141,19 @@ pub enum MaybeParent {
     Unspecified,
 }
 
+impl MaybeParent {
+    /// Convert the **MaybeParent** into an **Option<Index>**.
+    ///
+    /// If not given explicitly, check the positioning to retrieve the **Index** from there.
+    pub fn get<C>(&self, ui: &Ui<C>, pos: Position) -> Option<Index> {
+        match *self {
+            MaybeParent::Some(idx) => Some(idx),
+            MaybeParent::None => None,
+            MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
+        }
+    }
+}
+
 /// State necessary for "floating" (pop-up style) widgets.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Floating {
@@ -152,9 +166,9 @@ pub struct Floating {
 #[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct CommonBuilder {
     /// The width of a Widget.
-    pub maybe_width: Option<Scalar>,
+    pub maybe_x_dimension: Option<Dimension>,
     /// The height of a Widget.
-    pub maybe_height: Option<Scalar>,
+    pub maybe_y_dimension: Option<Dimension>,
     /// The position of a Widget.
     pub maybe_position: Option<Position>,
     /// The horizontal alignment of a Widget.
@@ -229,6 +243,11 @@ pub struct Cached<W> where W: Widget {
     pub maybe_scrolling: Option<scroll::State>,
 }
 
+/// A unique identifier for a **Widget** type.
+///
+/// Note: This might be replaced with **Any::get_type_id** when it stabilises.
+pub type Kind = &'static str;
+
 /// **Widget** data to be cached prior to the **Widget::update** call in the **set_widget**
 /// function.
 ///
@@ -237,7 +256,7 @@ pub struct Cached<W> where W: Widget {
 /// reference.
 pub struct PreUpdateCache {
     /// The **Widget**'s unique kind.
-    pub kind: &'static str,
+    pub kind: Kind,
     /// The **Widget**'s unique Index.
     pub idx: Index,
     /// The **Widget**'s parent's unique index (if it has a parent).
@@ -299,6 +318,42 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 }
 
 
+/// The necessary bounds for a **Widget**'s associated **Style** type.
+pub trait Style: Any + Decodable + Debug + Encodable + PartialEq + Sized {}
+
+/// Auto-implement the **Style** trait for all applicable types.
+impl<T> Style for T where T: Any + Debug + Decodable + Encodable + PartialEq + Sized {}
+
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// This is called by the default implementations of **Widget::default_x_dimension** and
+/// **Widget::default_y_dimension**.
+///
+/// If you wish to override either **Widget::default_x_dimension** and/or
+/// **Widget::default_y_dimension**, feel free to call this function internally if you partly
+/// require the bahaviour of the default implementations.
+///
+/// Returns **None** if no default can be found.
+pub fn default_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+{
+    ui.theme.widget_style::<W::Style>(widget.unique_kind())
+        .and_then(|default| default.common.maybe_x_dimension)
+        .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx)))
+        .or_else(|| {
+            let pos = widget.get_position(&ui.theme);
+            widget.common().maybe_parent_idx.get(ui, pos).map(|idx| Dimension::Of(idx))
+        })
+}
+
+
 /// A trait to be implemented by all **Widget** types.
 ///
 /// A type that implements **Widget** can be thought of as a collection of arguments to the
@@ -334,7 +389,7 @@ pub trait Widget: Sized {
     /// Styling used by the widget to construct an Element. Styling is useful to have in its own
     /// abstraction in order to making Theme serializing easier. Conrod doesn't yet support
     /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
-    type Style: Any + PartialEq + ::std::fmt::Debug;
+    type Style: Style;
 
     /// Return a reference to a **CommonBuilder** struct owned by the Widget.
     /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
@@ -356,7 +411,7 @@ pub trait Widget: Sized {
     ///
     /// This is used by conrod to help avoid WidgetId errors and to provide better messages for
     /// those that do occur.
-    fn unique_kind(&self) -> &'static str;
+    fn unique_kind(&self) -> Kind;
 
     /// Return the initial **State** of the Widget.
     ///
@@ -427,17 +482,22 @@ pub trait Widget: Sized {
         theme.align.vertical
     }
 
-    /// The default width of the widget.
-    /// A reference to the GlyphCache is provided in case the width should adjust to some text len.
-    /// This method is only used if no width or dimensions are given.
-    fn default_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        0.0
+    /// The default width for the **Widget**.
+    ///
+    /// This method is only used if no height is explicitly given.
+    ///
+    /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
+    /// fallback absolute dimension of 0.0.
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        default_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// The default height of the widget.
-    /// This method is only used if no height or dimensions are given.
-    fn default_height(&self, _theme: &Theme) -> Scalar {
-        0.0
+    ///
+    /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
+    /// fallback absolute dimension of 0.0.
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        default_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
@@ -614,14 +674,14 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     let new_style = widget.style();
     let depth = widget.get_depth();
-    let dim = widget.get_dimensions(&ui.theme, &ui.glyph_cache);
+    let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
     let pos = widget.get_position(&ui.theme);
 
     let (xy, drag_state) = {
         // A function for generating the xy coords from the given alignment and Position.
         let gen_xy = || {
             let (h_align, v_align) = widget.get_alignment(&ui.theme);
-            let new_xy = ui.get_xy(Some(idx), pos, dim, h_align, v_align);
+            let new_xy = ui.calc_xy(Some(idx), pos, dim, h_align, v_align);
             new_xy
         };
 
@@ -675,11 +735,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine the id of the canvas that the widget is attached to. If not given explicitly,
     // check the positioning to retrieve the Id from there.
-    let maybe_parent_idx = match widget.common().maybe_parent_idx {
-        MaybeParent::Some(idx) => Some(idx),
-        MaybeParent::None => None,
-        MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
-    };
+    let maybe_parent_idx = widget.common().maybe_parent_idx.get(ui, pos);
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
@@ -970,8 +1026,8 @@ impl CommonBuilder {
     /// Construct an empty, initialised CommonBuilder.
     pub fn new() -> CommonBuilder {
         CommonBuilder {
-            maybe_width: None,
-            maybe_height: None,
+            maybe_x_dimension: None,
+            maybe_y_dimension: None,
             maybe_position: None,
             maybe_h_align: None,
             maybe_v_align: None,
@@ -1027,22 +1083,47 @@ impl<W> Positionable for W where W: Widget {
 
 impl<W> Sizeable for W where W: Widget {
     #[inline]
-    fn width(mut self, w: f64) -> Self {
-        self.common_mut().maybe_width = Some(w);
+    fn x_dimension(mut self, w: Dimension) -> Self {
+        self.common_mut().maybe_x_dimension = Some(w);
         self
     }
     #[inline]
-    fn height(mut self, h: f64) -> Self {
-        self.common_mut().maybe_height = Some(h);
+    fn y_dimension(mut self, h: Dimension) -> Self {
+        self.common_mut().maybe_y_dimension = Some(h);
         self
     }
     #[inline]
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> f64 {
-        self.common().maybe_width.unwrap_or(self.default_width(theme, glyph_cache))
+    /// We attempt to retrieve the `x` **Dimension** for the widget via the following:
+    /// - Check for specified value at `maybe_x_dimension`
+    /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
+    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        self.common().maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
     #[inline]
-    fn get_height(&self, theme: &Theme) -> f64 {
-        self.common().maybe_height.unwrap_or(self.default_height(theme))
+    /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
+    /// - Check for specified value at `maybe_y_dimension`
+    /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
+    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        self.common().maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }
 
+
+
+// /// A macro to simplify implementation of style retrieval functions.
+// macro_rules! style_retrieval {
+//     ($fn_name:ident, $maybe:ident, $return_type:ty, $default:expr) => {
+//         pub fn $fn_name(&self, theme: &Theme) -> $return_type {
+//             self.$maybe.or_else(|| theme.widget_styling::<Self>(KIND).map(|default| {
+//                 default.style.$maybe.unwrap_or($default)
+//             })).unwrap_or($default)
+//         }
+//     };
+// }
+// 
+// style_retrieval! {
+//     fn_name: color,
+//     member: maybe_color,
+//     type: Color,
+//     default: theme.shape_color
+// };

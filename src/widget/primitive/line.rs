@@ -44,6 +44,9 @@ pub struct Style {
     pub maybe_thickness: Option<Scalar>,
 }
 
+/// Unique kind for the widget.
+pub const KIND: &'static str = "Line";
+
 /// The pattern used to draw the line.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Pattern {
@@ -199,14 +202,14 @@ impl Style {
     /// The Pattern for the Line.
     pub fn get_pattern(&self, theme: &Theme) -> Pattern {
         const DEFAULT_PATTERN: Pattern = Pattern::Solid;
-        self.maybe_pattern.or_else(|| theme.maybe_line.as_ref().map(|default| {
+        self.maybe_pattern.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN)
         })).unwrap_or(DEFAULT_PATTERN)
     }
 
     /// The Color for the Line.
     pub fn get_color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or_else(|| theme.maybe_line.as_ref().map(|default| {
+        self.maybe_color.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
@@ -214,7 +217,7 @@ impl Style {
     /// The width or thickness of the Line.
     pub fn get_thickness(&self, theme: &Theme) -> Scalar {
         const DEFAULT_THICKNESS: Scalar = 1.0;
-        self.maybe_thickness.or_else(|| theme.maybe_line.as_ref().map(|default| {
+        self.maybe_thickness.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
         })).unwrap_or(DEFAULT_THICKNESS)
     }
@@ -235,7 +238,7 @@ impl Widget for Line {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "Line"
+        KIND
     }
 
     fn init_state(&self) -> State {

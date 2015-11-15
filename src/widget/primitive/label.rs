@@ -1,11 +1,10 @@
 
-use Scalar;
+use {CharacterCache, Dimension, Scalar};
 use color::{Color, Colorable};
 use elmesque::Element;
-use graphics::character::CharacterCache;
 use label::FontSize;
 use theme::Theme;
-use ui::GlyphCache;
+use ui::Ui;
 use widget::{self, Widget};
 
 
@@ -84,12 +83,12 @@ impl<'a> Widget for Label<'a> {
         self.style.clone()
     }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> Scalar {
-        glyph_cache.width(self.style.font_size(theme), self.text)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        Dimension::Absolute(ui.glyph_cache.width(self.style.font_size(&ui.theme), self.text))
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        self.style.font_size(theme) as Scalar
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        Dimension::Absolute(self.style.font_size(&ui.theme) as Scalar)
     }
 
     /// Update the state of the Label.

@@ -1,5 +1,5 @@
 
-use color::{Color, Colorable};
+use {Color, Colorable, Dimension, Ui};
 use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
@@ -9,7 +9,6 @@ use mouse::Mouse;
 use num::Float;
 use position::{self, Corner};
 use theme::Theme;
-use ui::GlyphCache;
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
 use widget::{self, Widget};
@@ -49,6 +48,9 @@ pub struct State<X, Y> {
     maybe_label: Option<String>,
     interaction: Interaction,
 }
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "XYPad";
 
 /// The interaction state of the XYPad.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -139,9 +141,19 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 {
     type State = State<X, Y>;
     type Style = Style;
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "XYPad" }
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State<X, Y> {
         State {
             interaction: Interaction::Normal,
@@ -150,20 +162,17 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             maybe_label: None,
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        theme.maybe_xy_pad.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 128.0;
-        theme.maybe_xy_pad.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
     }
 
     /// Update the XYPad's cached state.
@@ -331,35 +340,35 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
@@ -367,7 +376,7 @@ impl Style {
     /// Get the value font size for an Element.
     pub fn value_font_size(&self, theme: &Theme) -> FontSize {
         const DEFAULT_VALUE_FONT_SIZE: u32 = 14;
-        self.maybe_value_font_size.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_value_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_value_font_size.unwrap_or(DEFAULT_VALUE_FONT_SIZE)
         })).unwrap_or(DEFAULT_VALUE_FONT_SIZE)
     }
@@ -375,7 +384,7 @@ impl Style {
     /// Get the point radius size for an Element.
     pub fn line_width(&self, theme: &Theme) -> f64 {
         const DEFAULT_LINE_WIDTH: f64 = 2.0;
-        self.maybe_line_width.or(theme.maybe_xy_pad.as_ref().map(|default| {
+        self.maybe_line_width.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_line_width.unwrap_or(DEFAULT_LINE_WIDTH)
         })).unwrap_or(DEFAULT_LINE_WIDTH)
     }

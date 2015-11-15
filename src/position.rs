@@ -1,7 +1,5 @@
 
-use graphics::character::CharacterCache;
-use theme::Theme;
-use ui::GlyphCache;
+use {CharacterCache, Theme, Ui};
 use widget;
 
 pub use graphics::math::Scalar;
@@ -17,7 +15,15 @@ pub type Dimensions = [Scalar; 2];
 /// General use 2D spatial point.
 pub type Point = [Scalar; 2];
 
-/// A cached widget's position for rendering.
+/// The **Position** argument used to represent the positioning of a **Widget**.
+///
+/// A **Position** is stored internally within the **widget::CommonBuilder** type, allowing all
+/// widgets to be positioned in a variety of different ways.
+///
+/// See the [**Positionable**](./trait.Positionable) trait for methods that allow for setting the
+/// **Position** in various ways.
+///
+/// Note that **Positionable** is implemented for *all* types that implement **Widget**.
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Position {
     /// A specific position.
@@ -30,12 +36,30 @@ pub enum Position {
     Place(Place, Option<widget::Index>),
 }
 
+/// The length of a **Widget** over either the *x* or *y* axes.
+///
+/// This type is used to represent the different ways in which a dimension may be sized.
+///
+/// See the [**Sizeable**](./trait.Sizeable) trait for methods that allow for setting the
+/// `x` and `y` **Dimension**s in various ways.
+///
+/// Note that **Sizeable** is implemented for *all* types that implement **Widget**.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Dimension {
+    /// Some specific length has been given.
+    Absolute(Scalar),
+    /// The dimension should match that of the widget at the given index.
+    Of(widget::Index),
+}
+
+
 impl Position {
     /// The default widget Position.
     pub fn default() -> Position{
         Position::Direction(Direction::Down, 20.0, None)
     }
 }
+
 
 /// Directionally positioned, relative to another widget.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
@@ -104,6 +128,11 @@ pub enum Place {
 }
 
 /// Widgets that are positionable.
+///
+/// A **Position** is stored internally within the **widget::CommonBuilder** type, allowing all
+/// widgets to be positioned in a variety of different ways.
+///
+/// Thus, **Positionable** can be implemented for *all* types that implement **Widget**.
 pub trait Positionable: Sized {
 
     /// Set the Position.
@@ -353,17 +382,45 @@ pub trait Positionable: Sized {
 /// Widgets that support different dimensions.
 pub trait Sizeable: Sized {
 
-    /// Set the width for the widget.
-    fn width(self, width: Scalar) -> Self;
+    // Required implementations.
 
-    /// Set the height for the widget.
-    fn height(self, height: Scalar) -> Self;
+    /// Set the length along the x axis.
+    fn x_dimension(self, x: Dimension) -> Self;
 
-    /// Get the width of the widget.
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> Scalar;
+    /// Set the length along the y axis.
+    fn y_dimension(self, x: Dimension) -> Self;
 
-    /// Get the height of the widget.
-    fn get_height(&self, theme: &Theme) -> Scalar;
+    /// The widget's length along the x axis as a Dimension.
+    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension;
+
+    /// The widget's length along the y axis as a Dimension.
+    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension;
+
+    // Provided defaults.
+
+    /// Set the absolute width for the widget.
+    #[inline]
+    fn width(self, w: Scalar) -> Self {
+        self.x_dimension(Dimension::Absolute(w))
+    }
+
+    /// Set the absolute height for the widget.
+    #[inline]
+    fn height(self, h: Scalar) -> Self {
+        self.y_dimension(Dimension::Absolute(h))
+    }
+
+    /// Set the width as the width of the widget at the given index.
+    #[inline]
+    fn width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.x_dimension(Dimension::Of(idx.into()))
+    }
+
+    /// Set the height as the height of the widget at the given index.
+    #[inline]
+    fn height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.y_dimension(Dimension::Of(idx.into()))
+    }
 
     /// Set the dimensions for the widget.
     #[inline]
@@ -377,11 +434,40 @@ pub trait Sizeable: Sized {
         self.dim([width, height])
     }
 
+    /// Set the dimensions as the dimensions of the widget at the given index.
+    #[inline]
+    fn dim_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
+        self.width_of(idx).height_of(idx)
+    }
+
+    /// Set the dimensions as the dimensions of the widget at the given index.
+    #[inline]
+    fn dimension_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
+        self.dim_of(idx)
+    }
+
+    /// Get the absolute width of the widget as a Scalar value.
+    #[inline]
+    fn get_width<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+        match self.get_x_dimension(ui) {
+            Dimension::Absolute(width) => Some(width),
+            Dimension::Of(idx) => ui.width_of(idx),
+        }
+    }
+
+    /// Get the height of the widget.
+    #[inline]
+    fn get_height<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+        match self.get_y_dimension(ui) {
+            Dimension::Absolute(height) => Some(height),
+            Dimension::Of(idx) => ui.height_of(idx),
+        }
+    }
+
     /// The dimensions for the widget.
-    fn get_dimensions<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>)
-        -> Dimensions
-    {
-        [self.get_width(theme, glyph_cache), self.get_height(theme)]
+    #[inline]
+    fn get_dim<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Dimensions> {
+        self.get_width(ui).and_then(|w| self.get_height(ui).map(|h| [w, h]))
     }
 
 }
@@ -1004,11 +1090,12 @@ pub fn is_over_rect(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
 
 
 pub mod matrix {
-    use ::{CharacterCache, GlyphCache};
+    use {CharacterCache, Dimension};
     use super::{Depth, Dimensions, HorizontalAlign, VerticalAlign, Point, Position, Positionable,
                 Scalar, Sizeable};
     use theme::Theme;
     use ui::{self, Ui};
+    use widget;
 
     pub type WidgetNum = usize;
     pub type ColNum = usize;
@@ -1024,8 +1111,8 @@ pub mod matrix {
         cols: usize,
         rows: usize,
         maybe_position: Option<Position>,
-        maybe_width: Option<Scalar>,
-        maybe_height: Option<Scalar>,
+        maybe_x_dimension: Option<Dimension>,
+        maybe_y_dimension: Option<Dimension>,
         maybe_h_align: Option<HorizontalAlign>,
         maybe_v_align: Option<VerticalAlign>,
         cell_pad_w: Scalar,
@@ -1040,8 +1127,8 @@ pub mod matrix {
                 cols: cols,
                 rows: rows,
                 maybe_position: None,
-                maybe_width: None,
-                maybe_height: None,
+                maybe_x_dimension: None,
+                maybe_y_dimension: None,
                 maybe_h_align: None,
                 maybe_v_align: None,
                 cell_pad_w: 0.0,
@@ -1064,7 +1151,7 @@ pub mod matrix {
             use utils::map_range;
 
             let pos = self.get_position(&ui.theme);
-            let dim = self.get_dimensions(&ui.theme, &ui.glyph_cache);
+            let dim = self.get_dim(ui).unwrap_or([0.0, 0.0]);
             let (h_align, v_align) = self.get_alignment(&ui.theme);
 
             // If we can infer some new current parent from the position, set that as the current
@@ -1073,7 +1160,7 @@ pub mod matrix {
                 ui::set_current_parent_idx(ui, id);
             }
 
-            let xy = ui.get_xy(None, pos, dim, h_align, v_align);
+            let xy = ui.calc_xy(None, pos, dim, h_align, v_align);
             let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
             let widget_w = dim[0] / self.cols as f64;
             let widget_h = dim[1] / self.rows as f64;
@@ -1136,29 +1223,29 @@ pub mod matrix {
 
     impl Sizeable for Matrix {
         #[inline]
-        fn width(mut self, w: f64) -> Self {
-            self.maybe_width = Some(w);
+        fn x_dimension(mut self, w: Dimension) -> Self {
+            self.maybe_x_dimension = Some(w);
             self
         }
         #[inline]
-        fn height(mut self, h: f64) -> Self {
-            self.maybe_height = Some(h);
+        fn y_dimension(mut self, h: Dimension) -> Self {
+            self.maybe_y_dimension = Some(h);
             self
         }
         #[inline]
-        fn get_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> f64 {
-            const DEFAULT_WIDTH: Scalar = 256.0;
-            self.maybe_width.or_else(|| {
-                theme.maybe_matrix.as_ref()
-                    .map(|default| default.common.maybe_width.unwrap_or(DEFAULT_WIDTH))
+        fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+            const DEFAULT_WIDTH: Dimension = Dimension::Absolute(256.0);
+            self.maybe_x_dimension.or_else(|| {
+                ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
+                    .map(|default| default.common.maybe_x_dimension.unwrap_or(DEFAULT_WIDTH))
             }).unwrap_or(DEFAULT_WIDTH)
         }
         #[inline]
-        fn get_height(&self, theme: &Theme) -> f64 {
-            const DEFAULT_HEIGHT: Scalar = 256.0;
-            self.maybe_height.or_else(|| {
-                theme.maybe_matrix.as_ref()
-                    .map(|default| default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT))
+        fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+            const DEFAULT_HEIGHT: Dimension = Dimension::Absolute(256.0);
+            self.maybe_y_dimension.or_else(|| {
+                ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
+                    .map(|default| default.common.maybe_y_dimension.unwrap_or(DEFAULT_HEIGHT))
             }).unwrap_or(DEFAULT_HEIGHT)
         }
     }
