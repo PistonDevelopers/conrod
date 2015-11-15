@@ -76,7 +76,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Tabs::new(&[(TAB_FOO, "FOO"),
                 (TAB_BAR, "BAR"),
                 (TAB_BAZ, "BAZ")])
-        .dim(ui.widget_size(MIDDLE_COLUMN))
+        .dim_of(MIDDLE_COLUMN)
         .color(blue())
         .label_color(white())
         .middle_of(MIDDLE_COLUMN)
@@ -99,7 +99,7 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Label::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
     Label::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
-    let footer_dim = ui.widget_size(FOOTER);
+    let footer_dim = ui.dim_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
         .dimensions(footer_dim[0], footer_dim[1] * 2.0)
         .mid_top_of(FOOTER)

@@ -83,6 +83,7 @@ pub use position::{Corner, Depth, Direction, Dimension, Dimensions, Horizontal, 
 pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
+pub use widget::default_dimension;
 pub use widget::{drag, scroll};
 pub use widget::{CommonBuilder, CommonState, DrawArgs, Floating, MaybeParent, UiCell, UpdateArgs,
                  Widget};
@@ -90,6 +91,7 @@ pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
+pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
 

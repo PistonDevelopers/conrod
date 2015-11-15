@@ -26,14 +26,15 @@ extern crate vecmath;
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
     use conrod::{
+        default_dimension,
         CharacterCache,
         Color,
         Colorable,
         CommonBuilder,
+        Dimension,
         DrawArgs,
         Element,
         FontSize,
-        GlyphCache,
         Labelable,
         Dimensions,
         Mouse,
@@ -42,6 +43,8 @@ mod circular_button {
         Theme,
         UpdateArgs,
         Widget,
+        WidgetKind,
+        Ui,
     };
 
 
@@ -84,6 +87,9 @@ mod circular_button {
         /// between interaction states.
         interaction: Interaction,
     }
+
+    /// A `&'static str` that can be used to uniquely identify our widget type.
+    pub const KIND: WidgetKind = "CircularButton";
 
     impl State {
         /// Alter the widget color depending on the state.
@@ -195,19 +201,36 @@ mod circular_button {
         /// The Style struct that we defined above.
         type Style = Style;
 
-        fn common(&self) -> &CommonBuilder { &self.common }
-        fn common_mut(&mut self) -> &mut CommonBuilder { &mut self.common }
-        fn unique_kind(&self) -> &'static str { "CircularButton" }
-        fn init_state(&self) -> State {
-            State { maybe_label: None, interaction: Interaction::Normal }
+        fn common(&self) -> &CommonBuilder {
+            &self.common
         }
-        fn style(&self) -> Style { self.style.clone() }
 
-        /// Default width of the widget. This method is optional. The Widget trait
-        /// provides a default implementation that always returns zero.
-        fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-            const DEFAULT_WIDTH: Scalar = 64.0;
+        fn common_mut(&mut self) -> &mut CommonBuilder {
+            &mut self.common
+        }
 
+        fn unique_kind(&self) -> &'static str {
+            KIND
+        }
+
+        fn init_state(&self) -> State {
+            State {
+                maybe_label: None,
+                interaction: Interaction::Normal,
+            }
+        }
+
+        fn style(&self) -> Style {
+            self.style.clone()
+        }
+
+        /// Default width of the widget.
+        ///
+        /// This method is optional.
+        ///
+        /// The default implementation is the same as below, but unwraps to an absolute scalar of
+        /// `0.0` instead of `64.0`.
+        fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
             // If no width was given via the `Sizeable` (a trait implemented for all widgets)
             // methods, some default width must be chosen.
             //
@@ -216,20 +239,17 @@ mod circular_button {
             //
             // Most commonly, defaults are to be retrieved from the `Theme`, however in some cases
             // some other logic may need to be considered.
-            theme.maybe_button.as_ref().map(|default| {
-                default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-            }).unwrap_or(DEFAULT_WIDTH)
+            default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
         }
 
-        /// Default width of the widget. This method is optional. The Widget trait
-        /// provides a default implementation that always returns zero.
-        fn default_height(&self, theme: &Theme) -> Scalar {
-            const DEFAULT_HEIGHT: Scalar = 64.0;
-
-            // See default_width for comments on this logic.
-            theme.maybe_button.as_ref().map(|default| {
-                default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-            }).unwrap_or(DEFAULT_HEIGHT)
+        /// Default height of the widget.
+        ///
+        /// This method is optional.
+        ///
+        /// The default implementation is the same as below, but unwraps to an absolute scalar of
+        /// `0.0` instead of `64.0`.
+        fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+            default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
         }
 
         /// Update the state of the button. The state may or may not have changed since
@@ -385,21 +405,21 @@ mod circular_button {
 
         /// Get the Color for an Element.
         pub fn color(&self, theme: &Theme) -> Color {
-            self.maybe_color.or(theme.maybe_button.as_ref().map(|default| {
+            self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
                 default.style.maybe_color.unwrap_or(theme.shape_color)
             })).unwrap_or(theme.shape_color)
         }
 
         /// Get the label Color for an Element.
         pub fn label_color(&self, theme: &Theme) -> Color {
-            self.maybe_label_color.or(theme.maybe_button.as_ref().map(|default| {
+            self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
                 default.style.maybe_label_color.unwrap_or(theme.label_color)
             })).unwrap_or(theme.label_color)
         }
 
         /// Get the label font size for an Element.
         pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-            self.maybe_label_font_size.or(theme.maybe_button.as_ref().map(|default| {
+            self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
                 default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
             })).unwrap_or(theme.font_size_medium)
         }

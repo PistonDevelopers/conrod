@@ -1,7 +1,6 @@
 
 use {Label, NodeIndex, FramedRectangle, Ui};
 use color::{Color, Colorable};
-use elmesque::Element;
 use frame::Frameable;
 use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
