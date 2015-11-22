@@ -1,24 +1,41 @@
-use {CharacterCache, LabelStyle, FramedRectangleStyle, Scalar, Theme};
-use color::{Color, Colorable};
-use elmesque::Element;
-use frame::Frameable;
-use position::{Dimensions, Sizeable};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    FontSize,
+    Frameable,
+    FramedRectangle,
+    FramedRectangleStyle,
+    Label,
+    Labelable,
+    LabelStyle,
+    Mouse,
+    Positionable,
+    NodeIndex,
+    Scalar,
+    Sizeable,
+    Ui,
+};
 use widget::{self, Widget};
 
 
 /// A simple title bar widget that automatically sizes itself to the top of some other widget.
-pub struct TitleBar<'a> {
+pub struct TitleBar<'a, F> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
     /// Unique styling for the **FramedRectangle**.
     pub style: Style,
     /// A label displayed in the middle of the TitleBar.
     pub label: &'a str,
+    /// Some function used to react to interactions with the TitleBar.
+    pub maybe_react: Option<F>,
 }
 
 /// Unique state for the **TitleBar** widget.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct State {
+    interaction: Interaction,
     maybe_rectangle_idx: Option<NodeIndex>,
     maybe_label_idx: Option<NodeIndex>,
 }
@@ -27,10 +44,21 @@ pub struct State {
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// Shape styling for the rectangle.
-    pub framed_rectangle_style: FramedRectangleStyle,
+    pub framed_rectangle: FramedRectangleStyle,
     /// Styling for the label.
-    pub label_style: LabelStyle,
+    pub label: LabelStyle,
 }
+
+/// Some interaction with the **TitleBar**.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Interaction {
+    Normal,
+    Highlighted,
+    Clicked,
+}
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "TitleBar";
 
 /// The padding between the edge of the title bar and the title bar's label.
 ///
@@ -43,36 +71,74 @@ impl Style {
     /// A new default Style.
     pub fn new() -> Self {
         Style {
-            framed_rectangle_style: FramedRectangleStyle::new(),
-            label_style: LabelStyle::new(),
+            framed_rectangle: FramedRectangleStyle::new(),
+            label: LabelStyle::new(),
         }
     }
 
 }
 
 
-impl<'a> TitleBar<'a> {
+/// Check the current state of the button.
+fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
+    use mouse::ButtonPosition::{Down, Up};
+    use self::Interaction::{Normal, Highlighted, Clicked};
+    match (is_over, prev, mouse.left.position) {
+        (true,  Normal,  Down) => Normal,
+        (true,  _,       Down) => Clicked,
+        (true,  _,       Up)   => Highlighted,
+        (false, Clicked, Down) => Clicked,
+        _                      => Normal,
+    }
+}
+
+
+impl<'a, F> TitleBar<'a, F>
+    where F: FnOnce(Interaction),
+{
 
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
     pub fn new<I>(label: &'a str, idx: I) -> Self
-        where I: Into<widget::Index>
+        where I: Into<widget::Index> + Copy,
     {
         TitleBar {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             label: label,
-        }
+            maybe_react: None,
+        }.width_of(idx).mid_top_of(idx)
     }
 
-    /// Get the font size for the **TitleBar**'s label.
-    pub fn font_size(&self, theme: &Theme) -> FontSize {
-        self.label_style.font_size(theme)
+    /// Pass some styling for the **TitleBar**'s **Label**.
+    pub fn label_style(mut self, style: LabelStyle) -> Self {
+        self.style.label = style;
+        self
+    }
+
+    /// Pass some styling for the **TitleBar**'s **FramedRectangle**.
+    pub fn rect_style(mut self, style: FramedRectangleStyle) -> Self {
+        self.style.framed_rectangle = style;
+        self
+    }
+
+    /// Pass the title bar some function to call upon interaction changes.
+    pub fn react(mut self, f: F) -> Self {
+        self.maybe_react = Some(f);
+        self
     }
 
 }
 
 
-impl<'a> Widget for TitleBar<'a> {
+/// Calculate the default height for the **TitleBar**'s rect.
+pub fn calc_height(font_size: FontSize) -> Scalar {
+    font_size as Scalar + LABEL_PADDING * 2.0
+}
+
+
+impl<'a, F> Widget for TitleBar<'a, F>
+    where F: FnOnce(Interaction),
+{
     type State = State;
     type Style = Style;
 
@@ -85,14 +151,14 @@ impl<'a> Widget for TitleBar<'a> {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "Canvas"
+        KIND
     }
 
     fn init_state(&self) -> State {
         State {
+            maybe_rectangle_idx: None,
+            maybe_label_idx: None,
             interaction: Interaction::Normal,
-            time_last_clicked: precise_time_ns(),
-            maybe_title_bar: None,
         }
     }
 
@@ -100,45 +166,97 @@ impl<'a> Widget for TitleBar<'a> {
         self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        let font_size = self.style.font_size(theme);
-        font_size as Scalar + LABEL_PADDING * 2.0;
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        let font_size = self.style.label.font_size(&ui.theme);
+        let h = calc_height(font_size);
+        Dimension::Absolute(h)
     }
 
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { idx, state, rect, style, ui, .. } = args;
-        let TitleBar { label, .. } = self;
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let TitleBar { label, maybe_react, .. } = self;
+
+        // Check whether or not a new interaction has occurred.
+        let new_interaction = match ui.input().maybe_mouse {
+            None => Interaction::Normal,
+            Some(mouse) => {
+                let is_over = rect.is_over(mouse.xy);
+                get_new_interaction(is_over, state.view().interaction, mouse)
+            },
+        };
 
         // FramedRectangle widget.
         let rectangle_idx = state.view().maybe_rectangle_idx
             .unwrap_or_else(|| ui.new_unique_node_index());
         let dim = rect.dim();
-        let mut rectangle = FramedRectangle::new(dim)
+        FramedRectangle::new(dim)
+            .with_style(style.framed_rectangle)
             .middle_of(idx)
-            .picking_passthrough(true);
-        rectangle.style = style.framed_rectangle_style;
-        rectangle.set(rectangle_idx, &mut ui);
+            .graphics_for(idx)
+            .set(rectangle_idx, &mut ui);
 
         // Label widget.
         let label_idx = state.view().maybe_label_idx
             .unwrap_or_else(|| ui.new_unique_node_index());
-        let mut label = Label::new(label)
+        Label::new(label)
+            .with_style(style.label)
             .middle_of(rectangle_idx)
-            .picking_passthrough(true);
-        label.style = style.label_style;
-        label.set(label_idx, &mut ui);
+            .graphics_for(idx)
+            .set(label_idx, &mut ui);
 
-        // If the rectangle index has changed, update it.
+        if state.view().interaction != new_interaction {
+            if let Some(react) = maybe_react {
+                // If there's been some change in interaction and we have some react function, call
+                // the react function with our new interaction.
+                react(new_interaction);
+            }
+            state.update(|state| state.interaction = new_interaction);
+        }
+
         if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
             state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
         }
 
-        // If the label index has changed, update it.
-        if state.view().maybe_label_idx != maybe_label_idx {
-            state.update(|state| state.maybe_label_idx = maybe_label_idx);
+        if state.view().maybe_label_idx != Some(label_idx) {
+            state.update(|state| state.maybe_label_idx = Some(label_idx));
         }
     }
 
 }
 
+
+impl<'a, F> Colorable for TitleBar<'a, F> {
+    fn color(mut self, color: Color) -> Self {
+        self.style.framed_rectangle.maybe_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Frameable for TitleBar<'a, F> {
+    fn frame(mut self, width: f64) -> Self {
+        self.style.framed_rectangle.maybe_frame = Some(width);
+        self
+    }
+    fn frame_color(mut self, color: Color) -> Self {
+        self.style.framed_rectangle.maybe_frame_color = Some(color);
+        self
+    }
+}
+
+impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
+    fn label(mut self, text: &'a str) -> Self {
+        self.label = text;
+        self
+    }
+
+    fn label_color(mut self, color: Color) -> Self {
+        self.style.label.maybe_color = Some(color);
+        self
+    }
+
+    fn label_font_size(mut self, size: FontSize) -> Self {
+        self.style.label.maybe_font_size = Some(size);
+        self
+    }
+}
 
