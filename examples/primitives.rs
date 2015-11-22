@@ -8,6 +8,7 @@ use piston_window::*;
 
 type Ui = conrod::Ui<Glyphs>;
 
+
 fn main() {
 
     // Construct the window.
@@ -28,10 +29,8 @@ fn main() {
     // Poll events from the window.
     for event in window {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| {
-            set_ui(&mut ui);
-            ui.draw_if_changed(c, g);
-        });
+        event.update(|_| ui.set_widgets(set_ui));
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
 }
@@ -83,5 +82,4 @@ fn set_ui(ui: &mut Ui) {
 
     Circle::fill(40.0).down(100.0).align_middle_x().set(CIRCLE, ui);
 }
-
 

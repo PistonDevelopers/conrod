@@ -26,7 +26,8 @@ extern crate vecmath;
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
     use conrod::{
-        default_dimension,
+        default_x_dimension,
+        default_y_dimension,
         CharacterCache,
         Color,
         Colorable,
@@ -239,7 +240,7 @@ mod circular_button {
             //
             // Most commonly, defaults are to be retrieved from the `Theme`, however in some cases
             // some other logic may need to be considered.
-            default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+            default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
         }
 
         /// Default height of the widget.
@@ -249,7 +250,7 @@ mod circular_button {
         /// The default implementation is the same as below, but unwraps to an absolute scalar of
         /// `0.0` instead of `64.0`.
         fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-            default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+            default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
         }
 
         /// Update the state of the button. The state may or may not have changed since
@@ -452,7 +453,7 @@ mod circular_button {
 }
 
 fn main() {
-    use piston_window::{Glyphs, PistonWindow, OpenGL, WindowSettings};
+    use piston_window::{Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use conrod::{Colorable, Labelable, Sizeable, Widget};
     use circular_button::CircularButton;
 
@@ -480,10 +481,10 @@ fn main() {
         // Pass each `Event` to the `Ui`.
         ui.handle_event(e.event.as_ref().unwrap());
 
-        e.draw_2d(|c, g| {
+        e.update(|_| ui.set_widgets(|ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            conrod::Background::new().color(conrod::color::rgb(0.2, 0.1, 0.1)).set(&mut ui);
+            conrod::Background::new().color(conrod::color::rgb(0.2, 0.1, 0.1)).set(ui);
 
             // Create an instance of our custom widget.
             CircularButton::new()
@@ -491,17 +492,15 @@ fn main() {
                 .dimensions(256.0, 256.0)
                 .label_color(conrod::color::white())
                 .label("Circular Button")
-                .react(|| {
-                    // This is called when the user clicks the button.
-                    println!("Click");
-                })
+                // This is called when the user clicks the button.
+                .react(|| println!("Click"))
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
                 // drawn when we call Ui::draw.
-                .set(CIRCLE_BUTTON, &mut ui);
+                .set(CIRCLE_BUTTON, ui);
+        }));
 
-            // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-            ui.draw_if_changed(c, g);
-        });
+        // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
+        e.draw_2d(|c, g| ui.draw_if_changed(c, g))
     }
 }
 

@@ -8,16 +8,17 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Canvas, Theme, Widget};
-use piston_window::*;
+use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 type Ui = conrod::Ui<Glyphs>;
+
 
 fn main() {
 
     // Construct the window.
     let window: PistonWindow =
         WindowSettings::new("Canvas Demo", [800, 600])
-            .exit_on_esc(true).build().unwrap();
+            .exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
@@ -32,14 +33,15 @@ fn main() {
     // Poll events from the window.
     for event in window {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| draw_ui(&mut ui, c, g));
+        event.update(|_| ui.set_widgets(set_widgets));
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
 }
 
 
 // Draw the Ui.
-fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
+fn set_widgets(ui: &mut Ui) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
     use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, Tabs,
                  WidgetMatrix};
@@ -56,18 +58,18 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     ]).set(ui);
 
     Canvas::new()
-        .show_title_bar(true)
+        .title_bar("Blue")
         .floating(true)
-        .label("Blue")
+        .dimensions(110.0, 150.0)
         .middle_of(LEFT_COLUMN)
         .color(blue())
         .label_color(white())
         .set(FLOATING_A, ui);
 
     Canvas::new()
-        .show_title_bar(true)
+        .title_bar("Orange")
         .floating(true)
-        .label("Orange")
+        .dimensions(110.0, 150.0)
         .middle_of(RIGHT_COLUMN)
         .color(light_orange())
         .label_color(white())
@@ -116,8 +118,6 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_B)
         .react(|| println!("Bong!"))
         .set(BONG, ui);
-
-    ui.draw_if_changed(c, g);
 }
 
 

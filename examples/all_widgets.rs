@@ -36,7 +36,7 @@ use conrod::{
     XYPad,
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
-use piston_window::{Glyphs, PistonWindow, WindowSettings};
+use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 
 type Ui = conrod::Ui<Glyphs>;
@@ -125,7 +125,7 @@ fn main() {
     // Construct the window.
     let window: PistonWindow =
         WindowSettings::new("All The Widgets!", [1100, 550])
-            .exit_on_esc(true).build().unwrap();
+            .exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
@@ -143,24 +143,22 @@ fn main() {
     // Poll events from the window.
     for event in window {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| {
 
-            // We'll set all our widgets in a single function called `set_widgets`.
-            // At the moment conrod requires that we set our widgets in the Render loop,
-            // however soon we'll add support so that you can set your Widgets at any arbitrary
-            // update rate.
-            set_widgets(&mut ui, &mut app);
+        // We'll set all our widgets in a single function called `set_widgets`.
+        // At the moment conrod requires that we set our widgets in the Render loop,
+        // however soon we'll add support so that you can set your Widgets at any arbitrary
+        // update rate.
+        event.update(|_| ui.set_widgets(|ui| set_widgets(ui, &mut app)));
 
-            // Draw our Ui!
-            //
-            // The `draw_if_changed` method only re-draws the GUI if some `Widget`'s `Element`
-            // representation has changed. Normally, a `Widget`'s `Element` should only change
-            // if a Widget was interacted with in some way, however this is up to the `Widget`
-            // designer's discretion.
-            //
-            // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
-            ui.draw_if_changed(c, g);
-        });
+        // Draw our Ui!
+        //
+        // The `draw_if_changed` method only re-draws the GUI if some `Widget`'s `Element`
+        // representation has changed. Normally, a `Widget`'s `Element` should only change
+        // if a Widget was interacted with in some way, however this is up to the `Widget`
+        // designer's discretion.
+        //
+        // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 }
 

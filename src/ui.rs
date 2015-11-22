@@ -58,8 +58,6 @@ pub struct Ui<C> {
     keys_just_released: Vec<input::keyboard::Key>,
     /// Text that has been entered since the end of the last render cycle.
     text_just_entered: Vec<String>,
-    /// Tracks whether or not the previous event was a Render event.
-    prev_event_was_render: bool,
     /// The widget::Index of the widget that was last updated/set.
     maybe_prev_widget_idx: Option<widget::Index>,
     /// The widget::Index of the last widget used as a parent for another widget.
@@ -145,7 +143,6 @@ impl<C> Ui<C> {
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
             glyph_cache: GlyphCache(RefCell::new(character_cache)),
-            prev_event_was_render: false,
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_widget_idx: None,
@@ -161,28 +158,40 @@ impl<C> Ui<C> {
         }
     }
 
+    /// The **Rect** for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn rect_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.widget(idx).map(|widget| widget.rect)
+    }
+
     /// The absolute width of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
     pub fn width_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
-        let idx: widget::Index = idx.into();
-        self.widget_graph.get_widget(idx).map(|widget| widget.rect.w())
+        self.rect_of(idx).map(|rect| rect.w())
     }
 
     /// The absolute height of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
     pub fn height_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
-        let idx: widget::Index = idx.into();
-        self.widget_graph.get_widget(idx).map(|widget| widget.rect.h())
+        self.rect_of(idx).map(|rect| rect.h())
     }
 
     /// The absolute dimensions for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
     pub fn dim_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
-        let idx: widget::Index = idx.into();
-        self.widget_graph.get_widget(idx).map(|widget| widget.rect.dim())
+        self.rect_of(idx).map(|rect| rect.dim())
+    }
+
+    /// The coordinates for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn xy_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Point> {
+        self.rect_of(idx).map(|rect| rect.xy())
     }
 
     /// An index to the previously updated widget if there is one.
@@ -193,42 +202,9 @@ impl<C> Ui<C> {
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
 
-        // The `Ui` tracks various things during a frame - we'll reset those things here.
-        if self.prev_event_was_render {
-            self.prev_event_was_render = false;
-
-            // Clear text and key buffers.
-            self.keys_just_pressed.clear();
-            self.keys_just_released.clear();
-            self.text_just_entered.clear();
-
-            // Reset the mouse state.
-            self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
-            self.mouse.left.reset_pressed_and_released();
-            self.mouse.middle.reset_pressed_and_released();
-            self.mouse.right.reset_pressed_and_released();
-            self.mouse.unknown.reset_pressed_and_released();
-
-            self.maybe_prev_widget_idx = None;
-            self.maybe_current_parent_idx = None;
-
-            // If the mouse / keyboard capturing was just released by a widget, reset to None ready
-            // for capturing once again.
-            if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
-                self.maybe_captured_mouse = None;
-            }
-            if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
-                self.maybe_captured_keyboard = None;
-            }
-        }
-
         event.render(|args| {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
-            self.prev_event_was_render = true;
-            self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
-            self.maybe_top_scrollable_widget_under_mouse =
-                self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
         });
 
         event.mouse_cursor(|x, y| {
@@ -287,14 +263,19 @@ impl<C> Ui<C> {
 
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
-    /// If getting the xy for a widget, its ID should be specified so that we can also consider the
-    /// scroll offset of the scrollable parent widgets.
+    ///
+    /// If getting the xy for a specific widget, its `widget::Index` should be specified so that we
+    /// can also consider the scroll offset of the scrollable parent widgets.
+    ///
+    /// The `place_on_kid_area` argument specifies whether or not **Place** **Position** variants
+    /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
     pub fn calc_xy(&self,
                    maybe_idx: Option<widget::Index>,
                    position: Position,
                    dim: Dimensions,
                    h_align: HorizontalAlign,
-                   v_align: VerticalAlign) -> Point
+                   v_align: VerticalAlign,
+                   place_on_kid_area: bool) -> Point
     {
         use vecmath::vec2_add;
 
@@ -366,9 +347,11 @@ impl<C> Ui<C> {
                 let window = || (([0.0, 0.0], [self.win_w, self.win_h]), Padding::none());
                 let maybe_parent = maybe_parent_idx.or(self.maybe_current_parent_idx);
                 let ((target_xy, target_dim), pad) = match maybe_parent {
-                    Some(parent_idx) => match self.widget_graph.get_widget(parent_idx) {
-                        Some(parent) =>
-                            (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
+                    Some(parent_idx) => match self.widget_graph.widget(parent_idx) {
+                        Some(parent) => match place_on_kid_area {
+                            true => (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
+                            false => (parent.rect.xy_dim(), Padding::none()),
+                        },
                         // Sometimes the children are placed prior to their parents being set for
                         // the first time. If this is the case, we'll just place them on the window
                         // until we have information about the parents on the next update.
@@ -387,6 +370,44 @@ impl<C> Ui<C> {
         maybe_idx
             .map(|idx| vec2_add(xy, self.widget_graph.scroll_offset(idx)))
             .unwrap_or(xy)
+    }
+
+
+    /// A function within which all widgets are instantiated by the user, normally situated within
+    /// the "update" stage of an event loop.
+    pub fn set_widgets<F>(&mut self, f: F)
+        where F: FnOnce(&mut Self),
+    {
+
+        self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
+        self.maybe_top_scrollable_widget_under_mouse =
+            self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
+
+        f(self);
+
+        // Clear text and key buffers.
+        self.keys_just_pressed.clear();
+        self.keys_just_released.clear();
+        self.text_just_entered.clear();
+
+        // Reset the mouse state.
+        self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
+        self.mouse.left.reset_pressed_and_released();
+        self.mouse.middle.reset_pressed_and_released();
+        self.mouse.right.reset_pressed_and_released();
+        self.mouse.unknown.reset_pressed_and_released();
+
+        self.maybe_prev_widget_idx = None;
+        self.maybe_current_parent_idx = None;
+
+        // If the mouse / keyboard capturing was just released by a widget, reset to None ready
+        // for capturing once again.
+        if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
+            self.maybe_captured_mouse = None;
+        }
+        if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
+            self.maybe_captured_keyboard = None;
+        }
     }
 
 
@@ -612,16 +633,16 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
     match position {
         Position::Relative(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.parent_of(idx),
+            Some(idx) => ui.widget_graph.depth_parent_of(idx),
             None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.parent_of(idx),
+                Some(idx) => ui.widget_graph.depth_parent_of(idx),
                 None     => ui.maybe_current_parent_idx,
             },
         },
         Position::Direction(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.parent_of(idx),
+            Some(idx) => ui.widget_graph.depth_parent_of(idx),
             None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.parent_of(idx),
+                Some(idx) => ui.widget_graph.depth_parent_of(idx),
                 None     => ui.maybe_current_parent_idx,
             },
         },

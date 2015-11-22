@@ -3,7 +3,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Labelable, Positionable, Sizeable, Theme, Ui, Widget};
-use piston_window::{Glyphs, PistonWindow, WindowSettings};
+use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 fn main() {
 
@@ -26,13 +26,13 @@ fn main() {
     // Poll events from the window.
     for event in window {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| {
+        event.update(|_| ui.set_widgets(|ui| {
 
             // Generate the ID for the Button COUNTER.
             widget_ids!(CANVAS, COUNTER);
 
             // Create a background canvas upon which we'll place the button.
-            conrod::Split::new(CANVAS).pad(40.0).set(&mut ui);
+            conrod::Split::new(CANVAS).pad(40.0).set(ui);
 
             // Draw the button and increment `count` if pressed.
             conrod::Button::new()
@@ -40,11 +40,9 @@ fn main() {
                 .dimensions(80.0, 80.0)
                 .label(&count.to_string())
                 .react(|| count += 1)
-                .set(COUNTER, &mut ui);
-
-            // Draw our Ui!
-            ui.draw_if_changed(c, g);
-        });
+                .set(COUNTER, ui);
+        }));
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
 }
