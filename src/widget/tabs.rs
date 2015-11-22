@@ -368,7 +368,6 @@ impl<'a> Widget for Tabs<'a> {
             };
             canvas.style = style.canvas.clone();
             canvas
-                .show_title_bar(false)
                 .dim(canvas_dim)
                 .floating(false)
                 .middle_of(idx)
@@ -595,18 +594,18 @@ impl Style {
 
 impl<'a> ::color::Colorable for Tabs<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.canvas.maybe_color = Some(color);
+        self.style.canvas.framed_rectangle.maybe_color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Tabs<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.canvas.maybe_frame = Some(width);
+        self.style.canvas.framed_rectangle.maybe_frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.canvas.maybe_frame_color = Some(color);
+        self.style.canvas.framed_rectangle.maybe_frame_color = Some(color);
         self
     }
 }

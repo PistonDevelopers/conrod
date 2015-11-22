@@ -1160,7 +1160,7 @@ pub mod matrix {
                 ui::set_current_parent_idx(ui, id);
             }
 
-            let xy = ui.calc_xy(None, pos, dim, h_align, v_align);
+            let xy = ui.calc_xy(None, pos, dim, h_align, v_align, true);
             let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
             let widget_w = dim[0] / self.cols as f64;
             let widget_h = dim[1] / self.rows as f64;

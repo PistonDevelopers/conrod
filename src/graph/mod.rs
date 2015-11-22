@@ -22,6 +22,15 @@ pub type NodeIndex = daggy::NodeIndex<u32>;
 /// An alias for our Graph's Edge Index.
 type EdgeIndex = daggy::EdgeIndex<u32>;
 
+/// An alias for a tuple containing an associated `Edge/NodeIndex` pair.
+type IndexPair = (EdgeIndex, NodeIndex);
+
+type Parents = daggy::Parents<Node, Edge, u32>;
+type Children = daggy::Children<Node, Edge, u32>;
+
+/// An alias for our Graph's recursive walker.
+type RecursiveWalk<F> = daggy::RecursiveWalk<Node, Edge, u32, F>;
+
 /// The state type that we'll dynamically cast to and from `Any` for storage within the cache.
 #[derive(Debug)]
 pub struct UniqueWidgetState<State, Style> where
@@ -82,12 +91,25 @@ enum Node {
 /// An edge between nodes within the UI Graph.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Edge {
-    /// A widget is positioned relatively to another.
-    /// When adding an edge a -> b, b is positioned relatively to a.
+    /// Describes the relative positioning of widgets.
+    ///
+    /// When adding an edge *a -> b*, *b* is positioned relatively to *a*.
     Position,
-    /// A widget is a child of another.
-    /// When adding an edge a -> b, a is the parent of (and will be rendered before) b.
+    /// Describes the rendering order of the widgets.
+    ///
+    /// When adding an edge *a -> b*, *a* is the parent of (and will be rendered before) *b*.
     Depth,
+    /// Describes when a widget is used solely as a graphical element for another widget.
+    ///
+    /// When adding an edge *a -> b*, *b* is considered to be a graphical element of *a*. This
+    /// implies several things about *b*:
+    ///
+    /// - If *b* is picked within either **Graph::pick_widget** or
+    /// **Graph::pick_top_scrollable_widget**, it will instead return the index for *a*.
+    /// - When determining the **Graph::scroll_offset** for *b*, *a*'s scrolling (if it is
+    /// scrollable, that is) will be skipped.
+    /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
+    Graphic,
 }
 
 /// An alias for the petgraph::Graph used within our Ui Graph.
@@ -115,6 +137,7 @@ pub struct Graph {
     /// The NodeIndex of the root Node.
     root: NodeIndex,
     /// Contains Node indices in order of depth, starting with the deepest.
+    ///
     /// This is updated at the beginning of the `Graph::draw` method.
     depth_order: Vec<Visitable>,
     /// Used for storing indices of "floating" widgets during depth sorting so that they may be
@@ -196,7 +219,7 @@ impl Graph {
     }
 
     /// If there is a Widget for the given index, return a reference to it.
-    pub fn get_widget<I: GraphIndex>(&self, idx: I) -> Option<&Container> {
+    pub fn widget<I: GraphIndex>(&self, idx: I) -> Option<&Container> {
         let Graph { ref index_map, ref dag, .. } = *self;
         idx.to_node_index(index_map).and_then(|idx| match &dag[idx] {
             &Node::Widget(ref container) => Some(container),
@@ -205,7 +228,7 @@ impl Graph {
     }
 
     /// If there is a Widget for the given Id, return a mutable reference to it.
-    pub fn get_widget_mut<I: GraphIndex>(&mut self, idx: I) -> Option<&mut Container> {
+    pub fn widget_mut<I: GraphIndex>(&mut self, idx: I) -> Option<&mut Container> {
         let Graph { ref index_map, ref mut dag, .. } = *self;
         idx.to_node_index(index_map).and_then(move |idx| match &mut dag[idx] {
             &mut Node::Widget(ref mut container) => Some(container),
@@ -213,17 +236,62 @@ impl Graph {
         })
     }
 
-    /// Return the id of the parent for the widget at the given index.
-    pub fn parent_of<I, J>(&self, idx: I) -> Option<J> where
-        I: GraphIndex,
-        J: GraphIndex,
+    /// Converts the given **GraphIndex** into an index of type **J**.
+    ///
+    /// Returns `None` if there is no direct mapping from the given index to an index of type
+    /// **J**.
+    pub fn convert_idx<I, J>(&self, idx: I) -> Option<J>
+        where I: GraphIndex,
+              J: GraphIndex,
     {
-        idx.to_node_index(&self.index_map).and_then(|idx| {
-            maybe_parent_depth_edge(&self.dag, idx)
+        J::from_idx(idx, &self.index_map)
+    }
+
+    /// Get the **NodeIndex** for the given **GraphIndex**.
+    pub fn node_index<I: GraphIndex>(&self, idx: I) -> Option<NodeIndex> {
+        self.convert_idx(idx)
+    }
+
+    /// Get the **WidgetId** for the given **GraphIndex**.
+    pub fn widget_id<I: GraphIndex>(&self, idx: I) -> Option<widget::Id> {
+        self.convert_idx(idx)
+    }
+
+    /// If the widget at the given index has some parent along an **Edge** of the given variant,
+    /// return an index to it.
+    pub fn parent_of<I, J=NodeIndex>(&self, idx: I, edge: Edge) -> Option<J>
+        where I: GraphIndex,
+              J: GraphIndex,
+    {
+        self.node_index(idx).and_then(|idx| {
+            maybe_parent_edge(&self.dag, idx, edge)
                 .and_then(|(_, parent_idx)| J::from_idx(parent_idx, &self.index_map))
         })
     }
 
+    /// Return the index of the parent along the given widget's **Depth** **Edge**.
+    pub fn depth_parent_of<I, J=NodeIndex>(&self, idx: I) -> Option<J> where
+        I: GraphIndex,
+        J: GraphIndex,
+    {
+        self.parent_of(idx, Edge::Depth)
+    }
+
+    /// Return the index of the parent along the given widget's **Depth** **Edge**.
+    pub fn position_parent_of<I, J=NodeIndex>(&self, idx: I) -> Option<J> where
+        I: GraphIndex,
+        J: GraphIndex,
+    {
+        self.parent_of(idx, Edge::Position)
+    }
+
+    /// Return the index of the parent along the given widget's **Depth** **Edge**.
+    pub fn graphic_parent_of<I, J=NodeIndex>(&self, idx: I) -> Option<J> where
+        I: GraphIndex,
+        J: GraphIndex,
+    {
+        self.parent_of(idx, Edge::Graphic)
+    }
 
     /// If the given Point is currently on a Widget, return an index to that widget.
     pub fn pick_widget<I: GraphIndex>(&self, xy: Point) -> Option<I> {
@@ -231,15 +299,9 @@ impl Graph {
         depth_order.iter().rev()
             .find(|&&visitable| {
                 match visitable {
-                    Visitable::Widget(idx) => {
-                        if let Some(&Node::Widget(ref container)) = dag.node_weight(idx) {
-                            if !container.picking_passthrough {
-                                if let Some(visible_rect) = self.visible_area(idx) {
-                                    if visible_rect.is_over(xy) {
-                                        return true
-                                    }
-                                }
-                            }
+                    Visitable::Widget(idx) => if let Some(visible_rect) = self.visible_area(idx) {
+                        if visible_rect.is_over(xy) {
+                            return true
                         }
                     },
                     Visitable::Scrollbar(idx) => {
@@ -254,9 +316,16 @@ impl Graph {
                 }
                 false
             })
-            .map(|&visitable| match visitable {
-                Visitable::Widget(idx) | Visitable::Scrollbar(idx) =>
-                    I::from_idx(idx, index_map).expect(NO_MATCHING_NODE_INDEX),
+            // Extract the node index from the `Visitable`.
+            .map(|&visitable| {
+                let node_idx = match visitable {
+                    // Ensure that if we've picked some widget that is a **Graphic** child of some other
+                    // widget, we return the **Graphic** parent.
+                    Visitable::Widget(idx) =>
+                        parent_graphic_recursion(dag, idx).last_node(dag).unwrap_or(idx),
+                    Visitable::Scrollbar(idx) => idx,
+                };
+                I::from_idx(node_idx, index_map).expect(NO_MATCHING_NODE_INDEX)
             })
     }
 
@@ -305,52 +374,77 @@ impl Graph {
             }
         };
 
-        // We know that our graph shouldn't cycle at all, so we can safely use loop to traverse all
-        // parent widget nodes and return when there are no more.
-        'parent_depth_edge_traversal: loop {
+        // We need to calculate the offset by summing the offset of each scrollable parent, while
+        // considering relative positioning and graphic parents.
+        let mut depth_parents = parent_depth_recursion(dag, idx);
+        while let Some(depth_parent_idx) = depth_parents.next_node(dag) {
 
-            // We only need to calculate any offset if there is some parent depth widget.
-            if let Some((_, parent_idx)) = maybe_parent_depth_edge(dag, idx) {
+            // If the widget has some parent graphic edge, we may need to skip its offset.
+            // This is because **Graphic** edges describe that the child widget is a graphical
+            // element of the parent widget, so despite being instantiated at a higher depth, we
+            // should consider its offset equal to the graphic parent.
+            if let Some(graphic_parent_idx) = maybe_parent_graphic_edge(dag, idx).map(|(_, n)| n) {
+                match maybe_parent_position_edge(dag, idx).map(|(_, n)| n) {
 
-                // Recursively check all nodes with incoming `Position` edges for a parent that
-                // matches our own parent. If any match, then we don't need to calculate any
-                // additional offset as the widget we are being positioned relatively to has
-                // already applied the necessary scroll offset.
-                let mut current_node = idx;
-                'parent_position_edge_traversal: loop {
-                    match maybe_parent_position_edge(dag, current_node) {
-                        Some((_, parent_position_node)) => if parent_position_node == parent_idx {
-                            // If our parent depth edge is also the parent position edge, we're
-                            // add offset for that parent - otherwise we're done.
-                            add_to_offset(&mut offset, parent_idx);
+                    // If we have a graphic parent but no position parent, we should skip straight
+                    // to the graphic parent.
+                    None => {
+                        idx = graphic_parent_idx;
+                        depth_parents = parent_depth_recursion(dag, idx);
+                        continue;
+                    },
+
+                    // Otherwise, we need to consider the given position parent.
+                    Some(position_parent_idx) => {
+
+                        // If our position parent is equal to or some child of our graphic parent,
+                        // we don't need any offset.
+                        // TODO: Review this part of the algorithm.
+                        if position_parent_idx == graphic_parent_idx
+                        || is_depth_parent_of(position_parent_idx, dag, graphic_parent_idx) {
                             return offset;
-                        } else {
-                            match maybe_parent_depth_edge(dag, parent_position_node) {
-                                Some((_, parent_depth_node)) if parent_depth_node == parent_idx =>
-                                    return offset,
-                                _ => current_node = parent_position_node,
-                            }
-                        },
-                        None => break 'parent_position_edge_traversal,
-                    }
+                        }
+                    },
+
+                }
+            }
+
+            // Recursively check all nodes with incoming `Position` edges for a parent that
+            // matches our own parent. If any match, then we don't need to calculate any
+            // additional offset as the widget we are being positioned relatively to has
+            // already applied the necessary scroll offset.
+            let mut position_parents = parent_position_recursion(dag, idx);
+            while let Some(position_parent_idx) = position_parents.next_node(dag) {
+
+                // If our parent depth edge is also the parent position edge, we'll add
+                // offset for that parent before finishing.
+                if depth_parent_idx == position_parent_idx {
+                    add_to_offset(&mut offset, depth_parent_idx);
+                    return offset;
                 }
 
-                // Set the parent as the new current idx and continue traversing.
-                idx = parent_idx;
-                add_to_offset(&mut offset, idx);
-
-            // Otherwise if there are no more parent widgets, we're done calculating the offset.
-            } else {
-                return offset;
+                // If our position_parent has some depth parent or grandparent that matches our
+                // current depth_parent_idx, we can assume that the scroll offset for our widget
+                // has already been calculated by this position_parent.
+                if is_depth_parent_of(position_parent_idx, dag, depth_parent_idx) {
+                    return offset;
+                }
             }
+
+            add_to_offset(&mut offset, depth_parent_idx);
+
+            // Set the parent as the new current idx and continue traversing.
+            idx = depth_parent_idx;
         }
+
+        offset
     }
 
 
     /// Set the parent for the given Widget Id.
     /// This method clears all other incoming edges and ensures that the widget only has a single
     /// parent (incoming edge). This means we can be sure of retaining a tree structure.
-    fn set_parent_for_widget<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
+    fn set_depth_parent<I, P>(&mut self, idx: I, maybe_parent_idx: Option<P>) where
         I: GraphIndex,
         P: GraphIndex,
     {
@@ -381,16 +475,17 @@ impl Graph {
     }
 
 
-    /// Set's an `Edge::Position` from a to b. This edge represents the fact that b is
-    /// positioned relatively to a's position.
-    fn set_position_edge<A, B>(&mut self, a: A, b: B) where
-        A: GraphIndex,
-        B: GraphIndex,
+    /// Set's an edge from *a* to *b*.
+    ///
+    /// **Panics** if either of the given `GraphIndex` types don't yet have an associated
+    /// `NodeIndex` within the **Graph**.
+    fn set_edge<A, B>(&mut self, a: A, b: B, edge: Edge)
+        where A: GraphIndex,
+              B: GraphIndex,
     {
         let a_idx = a.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
         let b_idx = b.to_node_index(&self.index_map).expect(NO_MATCHING_NODE_INDEX);
-
-        set_edge(&mut self.dag, a_idx, b_idx, Edge::Position);
+        set_edge(&mut self.dag, a_idx, b_idx, edge);
     }
 
 
@@ -419,13 +514,13 @@ impl Graph {
     pub fn add_widget<I: GraphIndex>(&mut self,
                                      container: Container,
                                      maybe_widget_id: Option<widget::Id>,
-                                     maybe_parent_idx: Option<I>) -> NodeIndex
+                                     maybe_depth_parent_idx: Option<I>) -> NodeIndex
     {
         let node_idx = self.dag.add_node(Node::Widget(container));
         if let Some(id) = maybe_widget_id {
             self.index_map.insert(id, node_idx);
         }
-        self.set_parent_for_widget(node_idx, maybe_parent_idx);
+        self.set_depth_parent(node_idx, maybe_depth_parent_idx);
         node_idx
     }
 
@@ -441,7 +536,7 @@ impl Graph {
     pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
-            drag_state, maybe_floating, maybe_scrolling, picking_passthrough,
+            drag_state, maybe_floating, maybe_scrolling, picking_passthrough, maybe_graphics_for,
         } = widget;
 
         // Construct a new `Container` to place in the `Graph`.
@@ -465,7 +560,7 @@ impl Graph {
         if let Some(node_idx) = idx.to_node_index(&self.index_map) {
 
             // Ensure that we have an `Edge::Depth` in the graph representing the parent.
-            self.set_parent_for_widget(idx, maybe_parent_idx);
+            self.set_depth_parent(idx, maybe_parent_idx);
 
             match &mut self.dag[node_idx] {
 
@@ -513,12 +608,19 @@ impl Graph {
         // Now that we've updated the widget's cached data, we need to check if we should add an
         // `Edge::Position`.
         if let Some(relative_idx) = maybe_positioned_relatively_idx {
-            self.set_position_edge(relative_idx, idx);
-
+            self.set_edge(relative_idx, idx, Edge::Position);
         // Otherwise if the widget is not positioned relatively to any other widget, we should
         // ensure that there are no incoming `Position` edges.
         } else {
-            self.remove_parent_position_edge(idx);
+            self.remove_parent_edge(idx, Edge::Position);
+        }
+
+        // Check whether or not the widget is a graphics element for some other widget.
+        if let Some(graphic_parent_idx) = maybe_graphics_for {
+            self.set_edge(graphic_parent_idx, idx, Edge::Graphic);
+        // If not, ensure that there is no parent **Graphic** edge from the widget.
+        } else {
+            self.remove_parent_edge(idx, Edge::Graphic);
         }
 
     }
@@ -536,7 +638,7 @@ impl Graph {
 
         // We know that their must be a NodeIndex for this idx, as `Graph::pre_update_cache` will
         // always be called prior to this method being called.
-        if let Some(ref mut container) = self.get_widget_mut(idx) {
+        if let Some(ref mut container) = self.widget_mut(idx) {
 
             // If we've been given some new `Element`
             if maybe_element.is_some() {
@@ -555,14 +657,38 @@ impl Graph {
     }
 
 
-    /// Remove the parent position edge from the widget at the given index.
-    fn remove_parent_position_edge<I: GraphIndex>(&mut self, idx: I) {
+    /// Remove the parent edge of the given kind for the given index if there is one.
+    ///
+    /// Returns `true` if an edge was removed.
+    ///
+    /// Returns `false` if no edges were removed.
+    fn remove_parent_edge<I: GraphIndex>(&mut self, idx: I, edge: Edge) -> bool {
         let Graph { ref mut dag, ref index_map, .. } = *self;
         let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
-        if let Some((edge_idx, _)) = maybe_parent_position_edge(dag, node_idx) {
+        if let Some((edge_idx, _)) = dag.parents(node_idx).find(dag, |g, e, _| g[e] == edge) {
             dag.remove_edge(edge_idx);
+            return true;
         }
+        false
     }
+
+    // /// Remove the parent position edge from the widget at the given index.
+    // fn remove_parent_position_edge<I: GraphIndex>(&mut self, idx: I) {
+    //     let Graph { ref mut dag, ref index_map, .. } = *self;
+    //     let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
+    //     if let Some((edge_idx, _)) = maybe_parent_position_edge(dag, node_idx) {
+    //         dag.remove_edge(edge_idx);
+    //     }
+    // }
+
+    // /// Remove the parent position edge from the widget at the given index.
+    // fn remove_parent_position_edge<I: GraphIndex>(&mut self, idx: I) {
+    //     let Graph { ref mut dag, ref index_map, .. } = *self;
+    //     let node_idx = idx.to_node_index(index_map).expect(NO_MATCHING_NODE_INDEX);
+    //     if let Some((edge_idx, _)) = maybe_parent_position_edge(dag, node_idx) {
+    //         dag.remove_edge(edge_idx);
+    //     }
+    // }
 
 
     /// Return an `elmesque::Element` containing all widgets within the entire Graph.
@@ -721,17 +847,6 @@ impl Graph {
 }
 
 
-/// A predicate to pass to the `Walker::filter` method.
-fn is_position_edge(dag: &Dag, e: EdgeIndex, _: NodeIndex) -> bool {
-    dag[e] == Edge::Position
-}
-
-/// A predicate to pass to the `Walker::filter` method.
-fn is_depth_edge(dag: &Dag, e: EdgeIndex, _: NodeIndex) -> bool {
-    dag[e] == Edge::Depth
-}
-
-
 /// The box that bounds the widget with the given ID as well as all its widget kids.
 ///
 /// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
@@ -751,9 +866,8 @@ fn bounding_box(graph: &Graph,
                 idx: NodeIndex,
                 maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
 {
-    let dag = &graph.dag;
-
-    if let &Node::Widget(ref container) = &dag[idx] {
+    graph.widget(idx).and_then(|container| {
+        let dag = &graph.dag;
 
         // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
         // the regular dim and xy.
@@ -787,7 +901,15 @@ fn bounding_box(graph: &Graph,
 
         // An iterator yielding the bounding_box returned by each of our children.
         let mut kids_bounds = dag.children(idx)
-            .filter(|g, e, _| g[e] == Edge::Depth)
+            .filter(|g, e, n| {
+                let is_depth_edge = g[e] == Edge::Depth;
+                let is_pickable = match g[n] {
+                    Node::Widget(ref container) => !container.picking_passthrough,
+                    _ => false,
+                };
+                let is_graphic = maybe_parent_graphic_edge(dag, n).is_some();
+                is_depth_edge && is_pickable && !is_graphic
+            })
             .iter(dag).nodes()
             .filter_map(|n| {
                 bounding_box(graph, true, Some(target_xy), false, n, deepest_parent_idx)
@@ -804,10 +926,8 @@ fn bounding_box(graph: &Graph,
         };
 
         // Fold the Rect for each kid into the total encompassing bounds.
-        return Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)));
-    }
-
-    None
+        Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)))
+    })
 }
 
 
@@ -820,42 +940,32 @@ fn visible_area_within_depth(graph: &Graph,
                              idx: NodeIndex,
                              maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
 {
-    let mut current = idx;
-    let mut overlapping_rect = graph[current].rect;
-    loop {
-        match maybe_parent_depth_edge(&graph.dag, current) {
-            // If we have a parent, keep traversing to check for cropped scroll areas.
-            Some((_, parent)) => {
+    graph.widget(idx).and_then(|widget| {
+        let mut overlapping_rect = widget.rect;
 
-                // If the parent's index matches that of the deepest, we're done.
-                if Some(parent) == maybe_deepest_parent_idx {
-                    return Some(overlapping_rect);
+        let mut depth_parents = parent_depth_recursion(&graph.dag, idx);
+        while let Some(depth_parent) = depth_parents.next_node(&graph.dag) {
+
+            // If the parent's index matches that of the deepest, we're done.
+            if Some(depth_parent) == maybe_deepest_parent_idx {
+                break;
+            }
+
+            // Otherwise, if our parent is scrollable, check for overlap.
+            if let Some(depth_parent_widget) = graph.widget(depth_parent) {
+                if depth_parent_widget.maybe_scrolling.is_some() {
+
+                    // We only need to update the overlap if the parent is scrollable.
+                    match overlapping_rect.overlap(depth_parent_widget.kid_area.rect) {
+                        Some(overlap) => overlapping_rect = overlap,
+                        None => return None,
+                    }
                 }
-
-                // Otherwise, continue traversal.
-                match graph.get_widget(parent) {
-                    Some(parent_widget) => match parent_widget.maybe_scrolling {
-
-                        // We only need to update the overlap if the parent is scrollable.
-                        Some(_) => match overlapping_rect.overlap(parent_widget.kid_area.rect) {
-                            Some(overlap) => {
-                                overlapping_rect = overlap;
-                                current = parent;
-                            },
-                            None => return None,
-                        },
-
-                        // Otherwise, just continue traversing.
-                        None => current = parent,
-                    },
-                    None => current = parent,
-                }
-            },
-
-            // If there are no more parents, we are done.
-            None => return Some(overlapping_rect),
+            }
         }
-    }
+
+        Some(overlapping_rect)
+    })
 }
 
 
@@ -896,22 +1006,77 @@ fn set_edge(dag: &mut Dag, a: NodeIndex, b: NodeIndex, edge: Edge) {
 }
 
 
-/// Return the incoming relative position edge (and the attached Node) if one exists.
-/// We know that there may be at most one incoming relative position edge, as the only
-/// publicly exposed way to add an edge to the graph is via the `set_edge` method.
-fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex)
-    -> Option<(EdgeIndex, NodeIndex)>
-{
-    dag.parents(idx).find(dag, is_position_edge)
+/// Return the parent edge of the given kind (and the attached parent Node) if one exists.
+///
+/// We know that there may be at most one parent graphic edge, as the only publicly exposed way to
+/// add an edge to the graph is via the `set_edge` method.
+fn maybe_parent_edge(dag: &Dag, idx: NodeIndex, edge: Edge) -> Option<IndexPair> {
+    dag.parents(idx).find(dag, |g, e, _| g[e] == edge)
 }
 
-/// Return the incoming child edge (and the attached parent Node) if one exists.
-/// We know that there may be at most one incoming child edge, as the only publicly
+/// Return the parent **Depth** edge (and the attached parent Node) if one exists.
+///
+/// We know that there may be at most one parent depth edge, as the only publicly exposed way to
+/// add an edge to the graph is via the `set_edge` method.
+fn maybe_parent_depth_edge(dag: &Dag, idx: NodeIndex) -> Option<IndexPair> {
+    maybe_parent_edge(dag, idx, Edge::Depth)
+}
+
+/// Return the parent relative **Position** edge (and the attached Node) if one exists.
+///
+/// We know that there may be at most one parent relative position edge, as the only publicly
 /// exposed way to add an edge to the graph is via the `set_edge` method.
-fn maybe_parent_depth_edge(dag: &Dag, idx: NodeIndex)
-    -> Option<(EdgeIndex, NodeIndex)>
+fn maybe_parent_position_edge(dag: &Dag, idx: NodeIndex) -> Option<IndexPair> {
+    maybe_parent_edge(dag, idx, Edge::Position)
+}
+
+/// Return the parent **Graphic** edge (and the attached parent Node) if one exists.
+///
+/// We know that there may be at most one parent graphic edge, as the only publicly exposed way to
+/// add an edge to the graph is via the `set_edge` method.
+fn maybe_parent_graphic_edge(dag: &Dag, idx: NodeIndex) -> Option<IndexPair> {
+    maybe_parent_edge(dag, idx, Edge::Graphic)
+}
+
+
+/// Recursively walk through all parent **Depth** **Edge**s starting from the given index.
+fn parent_depth_recursion(dag: &Dag, idx: NodeIndex)
+    -> RecursiveWalk<fn(&Dag, NodeIndex) -> Option<IndexPair>>
 {
-    dag.parents(idx).find(dag, is_depth_edge)
+    dag.recursive_walk(idx, maybe_parent_depth_edge)
+}
+
+/// Recursively walk through all parent **Position** **Edge**s starting from the given index.
+fn parent_position_recursion(dag: &Dag, idx: NodeIndex)
+    -> RecursiveWalk<fn(&Dag, NodeIndex) -> Option<IndexPair>>
+{
+    dag.recursive_walk(idx, maybe_parent_position_edge)
+}
+
+/// Recursively walk through all parent **Graphic** **Edge**s starting from the given index.
+fn parent_graphic_recursion(dag: &Dag, idx: NodeIndex)
+    -> RecursiveWalk<fn(&Dag, NodeIndex) -> Option<IndexPair>>
+{
+    dag.recursive_walk(idx, maybe_parent_graphic_edge)
+}
+
+
+/// Whether or not the given `possible_parent` is a **Depth** parent of the widget at the given
+/// `idx`.
+fn is_depth_parent_of(idx: NodeIndex, dag: &Dag, possible_parent: NodeIndex) -> bool {
+    parent_depth_recursion(dag, idx).any(dag, |_, _, n| n == possible_parent)
+}
+
+/// Whether or not the given `possible_parent` is a **Position** parent of the widget at the given
+/// `idx`.
+fn is_position_parent_of(idx: NodeIndex, dag: &Dag, possible_parent: NodeIndex) -> bool {
+    parent_position_recursion(dag, idx).any(dag, |_, _, n| n == possible_parent)
+}
+
+/// Whether or not the given `possible_parent` is a **Graphic** parent of the widget at the given
+/// `idx`.
+fn is_graphic_parent_of(idx: NodeIndex, dag: &Dag, possible_parent: NodeIndex) -> bool {
+    parent_graphic_recursion(dag, idx).any(dag, |_, _, n| n == possible_parent)
 }
 
 
@@ -1038,13 +1203,13 @@ fn visit_by_depth(idx: NodeIndex,
 impl<I: GraphIndex> ::std::ops::Index<I> for Graph {
     type Output = Container;
     fn index<'a>(&'a self, idx: I) -> &'a Container {
-        self.get_widget(idx).expect("No Widget matching the given ID")
+        self.widget(idx).expect("No Widget matching the given ID")
     }
 }
 
 impl<I: GraphIndex> ::std::ops::IndexMut<I> for Graph {
     fn index_mut<'a>(&'a mut self, idx: I) -> &'a mut Container {
-        self.get_widget_mut(idx).expect("No Widget matching the given ID")
+        self.widget_mut(idx).expect("No Widget matching the given ID")
     }
 }
 

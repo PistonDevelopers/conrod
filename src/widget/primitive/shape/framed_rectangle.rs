@@ -38,6 +38,12 @@ impl FramedRectangle {
         }.dim(dim)
     }
 
+    /// Build the **FramedRectangle** with the given styling.
+    pub fn with_style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+
 }
 
 

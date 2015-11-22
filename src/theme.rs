@@ -92,7 +92,7 @@ pub struct WidgetDefault {
     /// The unique style of a widget.
     pub style: Box<Any>,
     /// The attributes commonly shared between widgets.
-    pub common: widget::CommonBuilder,
+    pub common: widget::CommonStyle,
 }
 
 /// A **WidgetDefault** downcast to a **Widget**'s unique **Style** type.
@@ -100,8 +100,8 @@ pub struct WidgetDefault {
 pub struct UniqueDefault<'a, T: 'a> {
     /// The unique style for the widget.
     pub style: &'a T,
-    /// Attributes that are common to between all widgets.
-    pub common: &'a widget::CommonBuilder,
+    /// Attributes that are common to all widgets.
+    pub common: &'a widget::CommonStyle,
 }
 
 impl WidgetDefault {
@@ -109,7 +109,7 @@ impl WidgetDefault {
     pub fn new(style: Box<Any>) -> WidgetDefault {
         WidgetDefault {
             style: style,
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonStyle::new(),
         }
     }
 }

@@ -7,13 +7,13 @@ use ::{
     Color,
     Colorable,
     Dimension,
-    Element,
     FontSize,
     Frameable,
     Labelable,
     NodeIndex,
     Positionable,
     Rect,
+    Rectangle,
     Scalar,
     Sizeable,
     Theme,
@@ -161,11 +161,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
     }
 
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(32.0))
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(32.0))
     }
 
     /// Update the state of the DropDownList.
@@ -257,10 +257,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let canvas_shift_y = ::position::align_top_of(dim[1], canvas_dim[1]);
                 let canvas_xy = [xy[0], xy[1] + canvas_shift_y];
                 let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
-                Canvas::new()
+                Rectangle::fill([dim[0], max_visible_height])
+                    .graphics_for(idx)
+                    //.frame_color(::color::black().alpha(0.0))
+                    //.dim([dim[0], max_visible_height])
                     .color(::color::black().alpha(0.0))
-                    .frame_color(::color::black().alpha(0.0))
-                    .dim([dim[0], max_visible_height])
                     .point(canvas_xy)
                     .parent(Some(idx))
                     .floating(true)
@@ -325,12 +326,6 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
             });
         }
-    }
-
-    /// Construct an Element from the given DropDownList State.
-    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> Element {
-        // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
-        ::elmesque::element::empty()
     }
 
 }

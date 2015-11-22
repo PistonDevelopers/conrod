@@ -350,11 +350,11 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     }
 
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(192.0))
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(192.0))
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
     }
 
     /// Update the state of the TextBox.

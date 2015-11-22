@@ -123,7 +123,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     }
 
     fn unique_kind(&self) -> widget::Kind {
-        "Button"
+        KIND
     }
 
     fn init_state(&self) -> State {
@@ -139,11 +139,11 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     }
 
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
     /// Update the state of the Button.
@@ -184,7 +184,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
             .middle_of(idx)
-            .picking_passthrough(true)
+            .graphics_for(idx)
             .color(color)
             .frame(frame)
             .frame_color(frame_color)
@@ -198,7 +198,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
             let font_size = style.label_font_size(ui.theme());
             Label::new(label)
                 .middle_of(rectangle_idx)
-                .picking_passthrough(true)
+                .graphics_for(idx)
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);

@@ -183,11 +183,26 @@ impl<'a> Split<'a> {
         // Offset xy so that it is in the center of the given margin.
         let xy = vec2_add(xy, mgn_offset);
 
+        // Instantiate the Canvas widget for this split.
+        {
+            let mut canvas = canvas::Canvas::new();
+            canvas.style = style.clone();
+            match maybe_parent {
+                Some(parent_id) => canvas.parent(Some(parent_id)),
+                None            => canvas.parent(None::<widget::Id>),
+            }.point(xy)
+                .dim(dim)
+                .vertical_scrolling(is_v_scrollable)
+                .horizontal_scrolling(is_h_scrollable)
+                .set(id, ui);
+        }
+
+        // Offset xy so that it is in the center of the padded area.
+        let xy = vec2_add(xy, pad_offset);
+
         if let Some((direction, splits)) = *maybe_splits {
             use Direction::{Up, Down, Left, Right};
 
-            // Offset xy so that it is in the center of the padded area.
-            let xy = vec2_add(xy, pad_offset);
             let (stuck_length, num_not_stuck) =
                 splits.iter().fold((0.0, splits.len()), |(total, remaining), split| {
                     match split.maybe_length {
@@ -264,16 +279,6 @@ impl<'a> Split<'a> {
             }
         }
 
-        let mut canvas = canvas::Canvas::new();
-        canvas.style = style.clone();
-        match maybe_parent {
-            Some(parent_id) => canvas.parent(Some(parent_id)),
-            None            => canvas.parent(None::<widget::Id>),
-        }.point(xy)
-            .dim(dim)
-            .vertical_scrolling(is_v_scrollable)
-            .horizontal_scrolling(is_h_scrollable)
-            .set(id, ui);
     }
 
 }
@@ -281,18 +286,18 @@ impl<'a> Split<'a> {
 
 impl<'a> ::color::Colorable for Split<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.framed_rectangle.maybe_color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Split<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.framed_rectangle.maybe_frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.framed_rectangle.maybe_frame_color = Some(color);
         self
     }
 }

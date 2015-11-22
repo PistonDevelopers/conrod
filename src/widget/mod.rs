@@ -7,7 +7,7 @@ use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Re
 use rustc_serialize::{Decodable, Encodable};
 use std::any::Any;
 use std::fmt::Debug;
-use theme::Theme;
+use theme::{self, Theme};
 use ui::{self, GlyphCache, Ui, UserInput};
 
 pub use self::id::Id;
@@ -32,6 +32,7 @@ pub mod slider;
 pub mod split;
 pub mod tabs;
 pub mod text_box;
+pub mod title_bar;
 pub mod toggle;
 pub mod xy_pad;
 
@@ -162,9 +163,55 @@ pub struct Floating {
 }
 
 /// A struct containing builder data common to all **Widget** types.
-/// This type allows us to do a blanket impl of **Positionable** and **Sizeable** for `T: Widget`.
+///
+/// This type also allows us to do a blanket impl of **Positionable** and **Sizeable** for `T: Widget`.
+///
+/// When Rust gets some sort of field inheritance feature, this will most likely be refactored to
+/// take advantage of that.
 #[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct CommonBuilder {
+    /// Styling and positioning data that is common between all widget types.
+    pub style: CommonStyle,
+    /// The parent widget of the Widget.
+    pub maybe_parent_idx: MaybeParent,
+    /// Whether or not the Widget is a "floating" Widget.
+    pub is_floating: bool,
+    /// Builder data for scrollable widgets.
+    pub scrolling: scroll::Scrolling,
+    /// Whether or not the widget should be considered when picking the topmost widget at a
+    /// position.
+    ///
+    /// This also stops the widget from being included within bounding box calculations.
+    ///
+    /// This is useful to indicate whether or not the widget should block the mouse from
+    /// interacting with widgets underneath it.
+    pub picking_passthrough: bool,
+    /// Whether or not the **Widget** should be placed on the kid_area.
+    ///
+    /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
+    /// **Widget** is given a **Place** variant for its **Position**.
+    ///
+    /// If `false`, the **Widget** will be placed on the parent **Widget**'s *total* area.
+    pub place_on_kid_area: bool,
+    /// Describes whether or not the **Widget** is instantiated as a graphical element for some
+    /// other **Widget**.
+    ///
+    /// When adding an edge *a -> b* where *b* is considered to be a graphical element of *a*,
+    /// several things are implied about *b*:
+    ///
+    /// - If *b* is picked within either **Graph::pick_widget** or
+    /// **Graph::pick_top_scrollable_widget**, it will instead return the index for *a*.
+    /// - When determining the **Graph::scroll_offset** for *b*, *a*'s scrolling (if it is
+    /// scrollable, that is) will be skipped.
+    /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
+    /// default.
+    /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
+    pub maybe_graphics_for: Option<Index>,
+}
+
+/// Styling and positioning data that is common between all widget types.
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+pub struct CommonStyle {
     /// The width of a Widget.
     pub maybe_x_dimension: Option<Dimension>,
     /// The height of a Widget.
@@ -177,18 +224,6 @@ pub struct CommonBuilder {
     pub maybe_v_align: Option<VerticalAlign>,
     /// The rendering Depth of the Widget.
     pub maybe_depth: Option<Depth>,
-    /// The parent widget of the Widget.
-    pub maybe_parent_idx: MaybeParent,
-    /// Whether or not the Widget is a "floating" Widget.
-    pub is_floating: bool,
-    /// Builder data for scrollable widgets.
-    pub scrolling: scroll::Scrolling,
-    /// Whether or not the widget should be considered when picking the topmost widget at a
-    /// position.
-    ///
-    /// This is useful to indicate whether or not the widget should block the mouse from
-    /// interacting with widgets underneath it.
-    pub picking_passthrough: bool,
 }
 
 /// A wrapper around a **Widget**'s unique **Widget::State**.
@@ -277,7 +312,12 @@ pub struct PreUpdateCache {
     /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
     /// Indicates whether the widget blocks the mouse from interacting with widgets underneath it.
+    ///
+    /// This also stops the widget from being included within bounding box calculations.
     pub picking_passthrough: bool,
+    /// Whether or not the **Widget** has been instantiated as a graphical element for some other
+    /// widget.
+    pub maybe_graphics_for: Option<Index>,
 }
 
 /// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
@@ -319,10 +359,10 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 
 
 /// The necessary bounds for a **Widget**'s associated **Style** type.
-pub trait Style: Any + Decodable + Debug + Encodable + PartialEq + Sized {}
+pub trait Style: Any + Debug + PartialEq + Sized {}
 
 /// Auto-implement the **Style** trait for all applicable types.
-impl<T> Style for T where T: Any + Debug + Decodable + Encodable + PartialEq + Sized {}
+impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
 
 
 /// Determines the default **Dimension** for a **Widget**.
@@ -332,25 +372,59 @@ impl<T> Style for T where T: Any + Debug + Decodable + Encodable + PartialEq + S
 /// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
 ///
-/// This is called by the default implementations of **Widget::default_x_dimension** and
-/// **Widget::default_y_dimension**.
-///
-/// If you wish to override either **Widget::default_x_dimension** and/or
-/// **Widget::default_y_dimension**, feel free to call this function internally if you partly
-/// require the bahaviour of the default implementations.
-///
 /// Returns **None** if no default can be found.
-pub fn default_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
     where W: Widget,
           C: CharacterCache,
+          F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
 {
     ui.theme.widget_style::<W::Style>(widget.unique_kind())
-        .and_then(|default| default.common.maybe_x_dimension)
+        .and_then(f)
         .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx)))
         .or_else(|| {
             let pos = widget.get_position(&ui.theme);
             widget.common().maybe_parent_idx.get(ui, pos).map(|idx| Dimension::Of(idx))
         })
+}
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// This is called by the default implementations of **Widget::default_x_dimension**.
+///
+/// If you wish to override **Widget::default_x_dimension**, feel free to call this function
+/// internally if you partly require the bahaviour of the default implementations.
+///
+/// Returns **None** if no default can be found.
+pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+{
+    default_dimension(widget, ui, |default| default.common.maybe_x_dimension)
+}
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// This is called by the default implementations of **Widget::default_y_dimension**.
+///
+/// If you wish to override **Widget::default_y_dimension**, feel free to call this function
+/// internally if you partly require the bahaviour of the default implementations.
+///
+/// Returns **None** if no default can be found.
+pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+{
+    default_dimension(widget, ui, |default| default.common.maybe_y_dimension)
 }
 
 
@@ -489,7 +563,7 @@ pub trait Widget: Sized {
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        default_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
+        default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// The default height of the widget.
@@ -497,7 +571,7 @@ pub trait Widget: Sized {
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        default_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
+        default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
@@ -518,7 +592,6 @@ pub trait Widget: Sized {
         }
     }
 
-
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
     // Most of them would benefit by some sort of field inheritance as they are mainly just used to
@@ -538,10 +611,47 @@ pub trait Widget: Sized {
     /// Whether or not the widget should be considered when picking the topmost widget at a
     /// position.
     ///
+    /// This also stops the widget from being included within bounding box calculations.
+    ///
     /// This is useful to indicate whether or not the widget should block the mouse from
     /// interacting with widgets underneath it.
     fn picking_passthrough(mut self, passthrough: bool) -> Self {
         self.common_mut().picking_passthrough = passthrough;
+        self
+    }
+
+    /// Set whether or not the **Widget** should be placed on the kid_area.
+    ///
+    /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
+    /// **Widget** is given a **Place** variant for its **Position**.
+    ///
+    /// If `false`, the **Widget** will be placed on the parent **Widget**'s *total* area.
+    ///
+    /// By default, conrod will automatically determine this for you by checking whether or not the
+    /// **Widget** that our **Widget** is being placed upon returns `Some` from its
+    /// **Widget::kid_area** method.
+    fn place_on_kid_area(mut self, b: bool) -> Self {
+        self.common_mut().place_on_kid_area = b;
+        self
+    }
+
+    /// Indicates that the **Widget** is used as a non-interactive graphical element for some other
+    /// widget.
+    ///
+    /// This is useful for **Widget**s that are used to compose some other **Widget**.
+    ///
+    /// When adding an edge *a -> b* where *b* is considered to be a graphical element of *a*,
+    /// several things are implied about *b*:
+    ///
+    /// - If *b* is picked within either **Graph::pick_widget** or
+    /// **Graph::pick_top_scrollable_widget**, it will instead return the index for *a*.
+    /// - When determining the **Graph::scroll_offset** for *b*, *a*'s scrolling (if it is
+    /// scrollable, that is) will be skipped.
+    /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
+    /// default.
+    /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
+    fn graphics_for<I: Into<Index>>(mut self, idx: I) -> Self {
+        self.common_mut().maybe_graphics_for = Some(idx.into());
         self
     }
 
@@ -637,7 +747,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             }
         };
 
-        ui::widget_graph_mut(ui).get_widget_mut(idx).and_then(check_container_kind)
+        ui::widget_graph_mut(ui).widget_mut(idx).and_then(check_container_kind)
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
@@ -676,12 +786,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let depth = widget.get_depth();
     let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
     let pos = widget.get_position(&ui.theme);
+    let place_on_kid_area = widget.common().place_on_kid_area;
 
     let (xy, drag_state) = {
         // A function for generating the xy coords from the given alignment and Position.
         let gen_xy = || {
             let (h_align, v_align) = widget.get_alignment(&ui.theme);
-            let new_xy = ui.calc_xy(Some(idx), pos, dim, h_align, v_align);
+            let new_xy = ui.calc_xy(Some(idx), pos, dim, h_align, v_align, place_on_kid_area);
             new_xy
         };
 
@@ -835,6 +946,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_new_scrolling,
             picking_passthrough: widget.common().picking_passthrough,
+            maybe_graphics_for: widget.common().maybe_graphics_for,
         });
     }
 
@@ -999,6 +1111,12 @@ impl<'a, C> UiCell<'a, C> {
 
 }
 
+impl<'a, C> AsRef<Ui<C>> for UiCell<'a, C> {
+    fn as_ref(&self) -> &Ui<C> {
+        &self.ui
+    }
+}
+
 
 impl<'a, T> State<'a, T> {
 
@@ -1026,16 +1144,27 @@ impl CommonBuilder {
     /// Construct an empty, initialised CommonBuilder.
     pub fn new() -> CommonBuilder {
         CommonBuilder {
+            style: CommonStyle::new(),
+            maybe_parent_idx: MaybeParent::Unspecified,
+            picking_passthrough: false,
+            place_on_kid_area: true,
+            maybe_graphics_for: None,
+            is_floating: false,
+            scrolling: scroll::Scrolling::new(),
+        }
+    }
+}
+
+impl CommonStyle {
+    /// A new default CommonStyle.
+    pub fn new() -> Self {
+        CommonStyle {
             maybe_x_dimension: None,
             maybe_y_dimension: None,
             maybe_position: None,
             maybe_h_align: None,
             maybe_v_align: None,
             maybe_depth: None,
-            maybe_parent_idx: MaybeParent::Unspecified,
-            picking_passthrough: false,
-            is_floating: false,
-            scrolling: scroll::Scrolling::new(),
         }
     }
 }
@@ -1044,52 +1173,52 @@ impl CommonBuilder {
 impl<W> Positionable for W where W: Widget {
     #[inline]
     fn position(mut self, pos: Position) -> Self {
-        self.common_mut().maybe_position = Some(pos);
+        self.common_mut().style.maybe_position = Some(pos);
         self
     }
     #[inline]
     fn get_position(&self, theme: &Theme) -> Position {
-        self.common().maybe_position.unwrap_or(self.default_position(theme))
+        self.common().style.maybe_position.unwrap_or(self.default_position(theme))
     }
     #[inline]
     fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
-        self.common_mut().maybe_h_align = Some(h_align);
+        self.common_mut().style.maybe_h_align = Some(h_align);
         self
     }
     #[inline]
     fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
-        self.common_mut().maybe_v_align = Some(v_align);
+        self.common_mut().style.maybe_v_align = Some(v_align);
         self
     }
     #[inline]
     fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.common().maybe_h_align.unwrap_or(self.default_h_align(theme))
+        self.common().style.maybe_h_align.unwrap_or(self.default_h_align(theme))
     }
     #[inline]
     fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.common().maybe_v_align.unwrap_or(self.default_v_align(theme))
+        self.common().style.maybe_v_align.unwrap_or(self.default_v_align(theme))
     }
     #[inline]
     fn depth(mut self, depth: Depth) -> Self {
-        self.common_mut().maybe_depth = Some(depth);
+        self.common_mut().style.maybe_depth = Some(depth);
         self
     }
     #[inline]
     fn get_depth(&self) -> Depth {
         const DEFAULT_DEPTH: Depth = 0.0;
-        self.common().maybe_depth.unwrap_or(DEFAULT_DEPTH)
+        self.common().style.maybe_depth.unwrap_or(DEFAULT_DEPTH)
     }
 }
 
 impl<W> Sizeable for W where W: Widget {
     #[inline]
     fn x_dimension(mut self, w: Dimension) -> Self {
-        self.common_mut().maybe_x_dimension = Some(w);
+        self.common_mut().style.maybe_x_dimension = Some(w);
         self
     }
     #[inline]
     fn y_dimension(mut self, h: Dimension) -> Self {
-        self.common_mut().maybe_y_dimension = Some(h);
+        self.common_mut().style.maybe_y_dimension = Some(h);
         self
     }
     #[inline]
@@ -1097,14 +1226,14 @@ impl<W> Sizeable for W where W: Widget {
     /// - Check for specified value at `maybe_x_dimension`
     /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
     fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        self.common().maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
+        self.common().style.maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
     #[inline]
     /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_y_dimension`
     /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
     fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        self.common().maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
+        self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }
 

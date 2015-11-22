@@ -21,13 +21,16 @@ pub struct Label<'a> {
 
 /// The styling for a Label's renderable Element.
 #[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// The font size for the label.
     pub maybe_font_size: Option<FontSize>,
     /// The color of the label.
     pub maybe_color: Option<Color>,
 }
+
+/// The unique kind for the widget.
+pub const KIND: widget::Kind = "Label";
 
 /// The state to be stored between updates for the Label.
 #[derive(Clone, Debug, PartialEq)]
@@ -38,8 +41,8 @@ pub struct State {
 
 impl<'a> Label<'a> {
 
-    /// Construct a new Label widget.
-    pub fn new(text: &'a str) -> Label<'a> {
+    /// Build a new **Label** widget.
+    pub fn new(text: &'a str) -> Self {
         Label {
             common: widget::CommonBuilder::new(),
             text: text,
@@ -47,10 +50,16 @@ impl<'a> Label<'a> {
         }
     }
 
-    /// Set the font size for the label.
+    /// Build the **Label** with the given font size.
     #[inline]
-    pub fn font_size(mut self, size: FontSize) -> Label<'a> {
+    pub fn font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_font_size = Some(size);
+        self
+    }
+
+    /// Build the **Label** with the given **Style**.
+    pub fn with_style(mut self, style: Style) -> Self {
+        self.style = style;
         self
     }
 
@@ -70,7 +79,7 @@ impl<'a> Widget for Label<'a> {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "Label"
+        KIND
     }
 
     fn init_state(&self) -> State {
@@ -112,7 +121,7 @@ impl<'a> Widget for Label<'a> {
                             .height(size as f64)).shift(x.floor(), y.floor());
         collage(w as i32, h as i32, vec![form])
     }
-    
+
 }
 
 

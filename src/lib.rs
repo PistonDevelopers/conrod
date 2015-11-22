@@ -40,6 +40,7 @@ pub use widget::slider::Slider;
 pub use widget::split::Split;
 pub use widget::tabs::Tabs;
 pub use widget::text_box::TextBox;
+pub use widget::title_bar::TitleBar;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
 
@@ -58,6 +59,7 @@ pub use widget::number_dialer::Style as NumberDialerStyle;
 pub use widget::slider::Style as SliderStyle;
 pub use widget::tabs::Style as TabsStyle;
 pub use widget::text_box::Style as TextBoxStyle;
+pub use widget::title_bar::Style as TitleBarStyle;
 pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
@@ -83,10 +85,10 @@ pub use position::{Corner, Depth, Direction, Dimension, Dimensions, Horizontal, 
 pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};
-pub use widget::default_dimension;
+pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, DrawArgs, Floating, MaybeParent, UiCell, UpdateArgs,
-                 Widget};
+pub use widget::{CommonBuilder, CommonState, CommonStyle, DrawArgs, Floating, MaybeParent, UiCell,
+                 UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;

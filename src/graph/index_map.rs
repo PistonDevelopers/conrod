@@ -124,7 +124,7 @@ impl GraphIndex for widget::Index {
     /// If not WidgetId is found, then tries to find a matching NodeIndex.
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
         other.to_widget_id(map).map(|id| widget::Index::Public(id))
-            .or(other.to_node_index(map).map(|idx| widget::Index::Internal(idx)))
+            .or_else(|| other.to_node_index(map).map(|idx| widget::Index::Internal(idx)))
     }
 
 }
