@@ -383,7 +383,11 @@ impl<C> Ui<C> {
         self.maybe_top_scrollable_widget_under_mouse =
             self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
 
+        // Call the given user function for instantiating Widgets.
         f(self);
+
+        // Reset all widgets that were not updated during the given user function `f`.
+        self.widget_graph.reset_non_updated_widgets();
 
         // Clear text and key buffers.
         self.keys_just_pressed.clear();
@@ -828,5 +832,4 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-
 

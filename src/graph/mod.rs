@@ -57,6 +57,7 @@ pub struct Container {
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
+    ///
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
     /// Scroll related state (is only `Some` if the widget is scrollable)..
@@ -67,9 +68,11 @@ pub struct Container {
     /// The latest `Element` that has been used for drawing the `Widget`.
     pub maybe_element: Option<Element>,
     /// Whether or not the `Widget`'s cache has been updated since the last update cycle.
+    ///
     /// We need to keep track of this as we only want to draw the widget if it has been set.
     pub is_updated: bool,
     /// Whether or not the `Widget`'s cache has was updated during the last update cycle.
+    ///
     /// We need to know this so we can check whether or not a widget has been removed.
     pub was_previously_updated: bool,
     /// Whether or not the widget is included when picking widgets by position.
@@ -657,6 +660,29 @@ impl Graph {
     }
 
 
+    /// Resets all **Node::Widget**s whose **Container**'s `is_updated` field is set to `false`.
+    ///
+    /// We do this under the assumption that the widget might reappear during some future call to
+    /// **Ui::set_widgets**.
+    ///
+    /// When reset, **Node::Widget**s will become **Node::Placeholder**s. We do this in order to:
+    ///
+    /// - Preserve ordering (and in turn the validity) of existing **NodeIndex**s.
+    /// - Re-use the **Node** with the same index in the case that it reappears.
+    pub fn reset_non_updated_widgets(&mut self) {
+        for i in 0..self.dag.raw_nodes().len() {
+            let idx = NodeIndex::new(i);
+            let should_remove = match self.dag.node_weight_mut(idx) {
+                Some(&mut Node::Widget(ref mut container)) => !container.is_updated,
+                _ => false,
+            };
+            if should_remove {
+                self.dag[idx] = Node::Placeholder;
+            }
+        }
+    }
+
+
     /// Remove the parent edge of the given kind for the given index if there is one.
     ///
     /// Returns `true` if an edge was removed.
@@ -729,39 +755,36 @@ impl Graph {
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut dag[idx] {
                         container.was_previously_updated = container.is_updated;
-                        if container.is_updated {
 
-                            // Push back our `Element` to one of the stacks (if we have one).
-                            if let Some(ref element) = container.maybe_element {
+                        // Push back our `Element` to one of the stacks (if we have one).
+                        if let Some(ref element) = container.maybe_element {
 
-                                // If there is some current scroll group, we'll push to that.
-                                if let Some(scroll_group) = scroll_stack.last_mut() {
-                                    scroll_group.push(element.clone());
+                            // If there is some current scroll group, we'll push to that.
+                            if let Some(scroll_group) = scroll_stack.last_mut() {
+                                scroll_group.push(element.clone());
 
-                                // Otherwise, we'll push straight to our main elements Vec.
-                                } else {
-                                    elements.push(element.clone());
-                                }
+                            // Otherwise, we'll push straight to our main elements Vec.
+                            } else {
+                                elements.push(element.clone());
                             }
-
-                            // Reset the flags for checking whether or not our `Element` has changed or
-                            // if the `Widget` has been `set` between calls to `draw`.
-                            container.element_has_changed = false;
-                            container.is_updated = false;
-
-                            // If the current widget is some scrollable widget, we need to add a
-                            // new group to the top of our scroll stack.
-                            if container.maybe_scrolling.is_some() {
-                                scroll_stack.push(Vec::new());
-                            }
-
                         }
+
+                        // Reset the flags for checking whether or not our `Element` has changed or
+                        // if the `Widget` has been `set` between calls to `draw`.
+                        container.element_has_changed = false;
+                        container.is_updated = false;
+
+                        // If the current widget is some scrollable widget, we need to add a
+                        // new group to the top of our scroll stack.
+                        if container.maybe_scrolling.is_some() {
+                            scroll_stack.push(Vec::new());
+                        }
+
                     }
                 },
 
                 Visitable::Scrollbar(idx) => {
                     if let &Node::Widget(ref container) = &dag[idx] {
-
                         if let Some(scrolling) = container.maybe_scrolling {
 
                             // Now that we've come across a scrollbar, we should pop the group of
