@@ -2,7 +2,6 @@
 use ::{
     Button,
     ButtonStyle,
-    Canvas,
     CharacterCache,
     Color,
     Colorable,
