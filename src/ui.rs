@@ -2,7 +2,7 @@
 use {CharacterCache, FontSize, Scalar};
 use color::Color;
 use elmesque::Element;
-use graph::Graph;
+use graph::{self, Graph};
 use graphics::{Context, Graphics};
 use mouse::{self, Mouse};
 use input;
@@ -79,6 +79,9 @@ pub struct Ui<C> {
     maybe_background_color: Option<Color>,
     /// The latest element returned/drawn that represents the entire widget graph.
     maybe_element: Option<Element>,
+
+    /// The order in which widgets from the `widget_graph` are drawn.
+    depth_order: graph::DepthOrder,
 }
 
 /// A wrapper over the current user input state.
@@ -155,6 +158,7 @@ impl<C> Ui<C> {
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
             maybe_element: None,
+            depth_order: graph::DepthOrder::new(),
         }
     }
 
@@ -197,6 +201,11 @@ impl<C> Ui<C> {
     /// An index to the previously updated widget if there is one.
     pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
         self.maybe_prev_widget_idx
+    }
+
+    /// Borrow the **Ui**'s `widget_graph`.
+    pub fn widget_graph(&self) -> &Graph {
+        &self.widget_graph
     }
 
     /// Handle game events and update the state.
@@ -285,7 +294,9 @@ impl<C> Ui<C> {
 
             Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
                 None => [x, y],
-                Some(idx) => vec2_add(self.widget_graph[idx].rect.xy(), [x, y]),
+                Some(idx) => self.widget_graph.widget(idx)
+                    .map(|w| vec2_add(w.rect.xy(), [x, y]))
+                    .unwrap_or([x, y]),
             },
 
             Position::Direction(direction, px, maybe_idx) => {
@@ -293,10 +304,9 @@ impl<C> Ui<C> {
                     None => [0.0, 0.0],
                     Some(rel_idx) => {
                         use position::Direction;
-                        let (rel_xy, rel_w, rel_h) = {
-                            let widget = &self.widget_graph[rel_idx];
-                            (widget.rect.xy(), widget.rect.w(), widget.rect.h())
-                        };
+                        let (rel_x, rel_y, rel_w, rel_h) = self.widget_graph.widget(rel_idx)
+                            .map(|widget| widget.rect.x_y_w_h())
+                            .unwrap_or_else(|| (0.0, 0.0, 0.0, 0.0));
 
                         match direction {
 
@@ -304,16 +314,15 @@ impl<C> Ui<C> {
                             Direction::Up | Direction::Down => {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_x, other_w) = match h_align.1 {
-                                    Some(other_idx) => {
-                                        let widget = &self.widget_graph[other_idx];
-                                        (widget.rect.x(), widget.rect.w())
-                                    },
-                                    None => (rel_xy[0], rel_w),
+                                    Some(other_idx) => self.widget_graph.widget(other_idx)
+                                        .map(|widget| (widget.rect.x(), widget.rect.w()))
+                                        .unwrap_or_else(|| (rel_x, rel_w)),
+                                    None => (rel_x, rel_w),
                                 };
                                 let x = other_x + h_align.0.to(other_w, dim[0]);
                                 let y = match direction {
-                                    Direction::Up   => rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px,
-                                    Direction::Down => rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px,
+                                    Direction::Up   => rel_y + rel_h / 2.0 + dim[1] / 2.0 + px,
+                                    Direction::Down => rel_y - rel_h / 2.0 - dim[1] / 2.0 - px,
                                     _ => unreachable!(),
                                 };
                                 [x, y]
@@ -323,16 +332,15 @@ impl<C> Ui<C> {
                             Direction::Left | Direction::Right => {
                                 // Check whether or not we are aligning to a specific `Ui` element.
                                 let (other_y, other_h) = match h_align.1 {
-                                    Some(other_idx) => {
-                                        let widget = &self.widget_graph[other_idx];
-                                        (widget.rect.y(), widget.rect.h())
-                                    },
-                                    None => (rel_xy[1], rel_h),
+                                    Some(other_idx) => self.widget_graph.widget(other_idx)
+                                        .map(|widget| (widget.rect.y(), widget.rect.h()))
+                                        .unwrap_or_else(|| (rel_y, rel_h)),
+                                    None => (rel_y, rel_h),
                                 };
                                 let y = other_y + v_align.0.to(other_h, dim[1]);
                                 let x = match direction {
-                                    Direction::Left  => rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px,
-                                    Direction::Right => rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px,
+                                    Direction::Left  => rel_x - rel_w / 2.0 - dim[0] / 2.0 - px,
+                                    Direction::Right => rel_x + rel_w / 2.0 + dim[0] / 2.0 + px,
                                     _ => unreachable!(),
                                 };
                                 [x, y]
@@ -368,7 +376,7 @@ impl<C> Ui<C> {
 
         // Add the widget's parents' total combined scroll offset to the given xy.
         maybe_idx
-            .map(|idx| vec2_add(xy, self.widget_graph.scroll_offset(idx)))
+            .map(|idx| vec2_add(xy, graph::algo::scroll_offset(&self.widget_graph, idx)))
             .unwrap_or(xy)
     }
 
@@ -378,16 +386,31 @@ impl<C> Ui<C> {
     pub fn set_widgets<F>(&mut self, f: F)
         where F: FnOnce(&mut Self),
     {
-
-        self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
+        self.maybe_widget_under_mouse =
+            graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
         self.maybe_top_scrollable_widget_under_mouse =
-            self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
+            graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
 
         // Call the given user function for instantiating Widgets.
         f(self);
 
         // Reset all widgets that were not updated during the given user function `f`.
         self.widget_graph.reset_non_updated_widgets();
+
+        // Update the graph's internal depth_order while considering the captured input.
+        let maybe_captured_mouse = match self.maybe_captured_mouse {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+        let maybe_captured_keyboard = match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+
+        {
+            let Ui { ref widget_graph, ref mut depth_order, .. } = *self;
+            depth_order.update(widget_graph, maybe_captured_mouse, maybe_captured_keyboard);
+        }
 
         // Clear text and key buffers.
         self.keys_just_pressed.clear();
@@ -430,21 +453,6 @@ impl<C> Ui<C> {
     }
 
 
-    /// Helper method for logic shared between draw() and element().
-    /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
-    fn captures_for_draw(&self) -> (Option<widget::Index>, Option<widget::Index>) {
-        let maybe_captured_mouse = match self.maybe_captured_mouse {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-        let maybe_captured_keyboard = match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-        (maybe_captured_mouse, maybe_captured_keyboard)
-    }
-
-
     /// Compiles the `Ui`'s entire widget `Graph` in its current state into a single
     /// `elmesque::Element` and returns a reference to it.
     ///
@@ -455,13 +463,11 @@ impl<C> Ui<C> {
     /// Producing an `Element` also allows for simpler interoperation with `elmesque` (a purely
     /// functional graphics layout crate which conrod uses internally).
     pub fn element(&mut self) -> &Element {
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
         let Ui {
             ref mut widget_graph,
             ref mut maybe_background_color,
             ref mut maybe_element,
+            ref depth_order,
             ..
         } = *self;
 
@@ -476,7 +482,7 @@ impl<C> Ui<C> {
         };
 
         // Check to see whether or not there is a new element to be stored.
-        match widget_graph.element_if_changed(maybe_captured_mouse, maybe_captured_keyboard) {
+        match widget_graph.element_if_changed(&depth_order.indices) {
 
             // If there's been some change in element, we'll store the new one and return a
             // reference to it.
@@ -496,8 +502,7 @@ impl<C> Ui<C> {
                 // request a new `Element` from our widget graph.
                 maybe_element @ &mut None => {
 
-                    let element = widget_graph
-                        .element(maybe_captured_mouse, maybe_captured_keyboard);
+                    let element = widget_graph.element(&depth_order.indices);
 
                     // Store the new `Element` (along with it's background color).
                     *maybe_element = Some(with_background_color(element));
@@ -513,19 +518,17 @@ impl<C> Ui<C> {
     /// Same as `Ui::element`, but only returns an `&Element` if the stored `&Element` has changed
     /// since the last time `Ui::element` or `Ui::element_if_changed` was called.
     pub fn element_if_changed(&mut self) -> Option<&Element> {
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
         let Ui {
             ref mut widget_graph,
             ref mut maybe_background_color,
             ref mut maybe_element,
+            ref depth_order,
             ..
         } = *self;
 
         // Request a new `Element` from the graph if there has been some change.
         widget_graph
-            .element_if_changed(maybe_captured_mouse, maybe_captured_keyboard)
+            .element_if_changed(&depth_order.indices)
             .map(move |element| {
                 let element = match maybe_background_color.take() {
                     // If we've been given a background color for the gui, construct a Cleared Element.
@@ -611,7 +614,7 @@ impl<C> Ui<C> {
     /// The **Rect** that bounds the kids of the widget with the given index.
     pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.kids_bounding_box(idx)
+        graph::algo::bounding_box(&self.widget_graph, false, None, true, idx, None)
     }
 
 
@@ -621,7 +624,7 @@ impl<C> Ui<C> {
     /// Otherwise, return None if the widget is not visible.
     pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.visible_area(idx)
+        graph::algo::visible_area_of_widget(&self.widget_graph, idx)
     }
 
 }
@@ -637,16 +640,16 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
     match position {
         Position::Relative(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.depth_parent_of(idx),
+            Some(idx) => ui.widget_graph.depth_parent(idx),
             None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.depth_parent_of(idx),
+                Some(idx) => ui.widget_graph.depth_parent(idx),
                 None     => ui.maybe_current_parent_idx,
             },
         },
         Position::Direction(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.depth_parent_of(idx),
+            Some(idx) => ui.widget_graph.depth_parent(idx),
             None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.depth_parent_of(idx),
+                Some(idx) => ui.widget_graph.depth_parent(idx),
                 None     => ui.maybe_current_parent_idx,
             },
         },
