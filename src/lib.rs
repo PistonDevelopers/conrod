@@ -102,7 +102,7 @@ pub use json_io::Error as JsonIoError;
 
 mod background;
 mod frame;
-mod graph;
+pub mod graph;
 mod label;
 mod mouse;
 mod position;
