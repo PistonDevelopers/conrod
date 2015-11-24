@@ -4,7 +4,7 @@ use elmesque::Element;
 use graph::NodeIndex;
 use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
                HorizontalAlign, VerticalAlign};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::Encodable;
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
