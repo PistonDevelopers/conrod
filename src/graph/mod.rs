@@ -302,6 +302,10 @@ impl Graph {
     ///
     /// The added edge will be in the direction `a` -> `b`
     ///
+    /// There may only ever be one **Edge** of the given variant between `a` -> `b`. In turn, the
+    /// **Graph** could be described as "three rose trees super imposed on top of one another,
+    /// where there is one tree for each edge variant".
+    ///
     /// Checks if the edge would create a cycle in the **Graph**.
     ///
     /// If adding the edge **would not** cause the graph to cycle, the edge will be added and its
