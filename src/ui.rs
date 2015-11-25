@@ -2,7 +2,7 @@
 use {CharacterCache, FontSize, Scalar};
 use color::Color;
 use elmesque::Element;
-use graph::{self, Graph};
+use graph::{self, Graph, NodeIndex};
 use graphics::{Context, Graphics};
 use mouse::{self, Mouse};
 use input;
@@ -45,7 +45,7 @@ pub struct Ui<C> {
     /// Cache for character textures, used for label width calculation and glyph rendering.
     pub glyph_cache: GlyphCache<C>,
     /// An index into the root widget of the graph, representing the entire window.
-    pub window: graph::NodeIndex,
+    pub window: NodeIndex,
     /// Window width.
     pub win_w: f64,
     /// Window height.

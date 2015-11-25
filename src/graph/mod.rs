@@ -9,7 +9,6 @@ use elmesque::element::layers;
 use position::{Depth, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
-use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 use widget::{self, Widget};
@@ -106,9 +105,10 @@ pub enum Node {
     /// A widget constructed by a user.
     Widget(Container),
     /// A placeholder node - used when reserving a place for a **Widget** within the **Graph**.
+    ///
+    /// It may also be used to represent a node that was once pre-occuppied by a widget who was not
+    /// `set` during the last `set_widgets` stage.
     Placeholder,
-    /// A node that was once pre-occuppied by a widget, but is now available for re-use.
-    Empty,
 }
 
 /// An edge between nodes within the UI Graph.
@@ -135,6 +135,9 @@ pub enum Edge {
     Graphic,
 }
 
+/// The number of different variants within the **Edge** enum.
+pub const NUM_EDGE_VARIANTS: usize = 3;
+
 /// An alias for the petgraph::Graph used within our Ui Graph.
 type Dag = daggy::Dag<Node, Edge>;
 
@@ -144,8 +147,6 @@ pub struct Graph {
     /// Cached widget state in a directed acyclic graph whose edges describe the rendering tree and
     /// positioning.
     dag: Dag,
-    /// Nodes that are available for re-use.
-    empty_nodes: VecDeque<NodeIndex>,
     /// A map of the UiId to the graph's indices.
     index_map: IndexMap,
 }
@@ -214,7 +215,6 @@ impl Graph {
     pub fn new() -> Self {
         Graph {
             dag: Dag::new(),
-            empty_nodes: VecDeque::new(),
             index_map: IndexMap::new(),
         }
     }
@@ -225,10 +225,9 @@ impl Graph {
     /// maximum of one Depth, Position and Graphic parent each. Thus, we can assume an edge
     /// capacity of exactly three times the given node capacity.
     pub fn with_node_capacity(n_nodes: usize) -> Self {
-        let n_edges = n_nodes * 3;
+        let n_edges = n_nodes * NUM_EDGE_VARIANTS;
         Graph {
             dag: Dag::with_capacity(n_nodes, n_edges),
-            empty_nodes: VecDeque::with_capacity(n_nodes),
             index_map: IndexMap::with_capacity(n_nodes),
         }
     }
@@ -720,8 +719,6 @@ impl Graph {
                     container.is_updated = true;
                 },
 
-                // The node that we're updating should only be either a `Placeholder` or a `Widget`.
-                _ => unreachable!(),
             }
 
         // Otherwise if there is no Widget for the given index we need to add one.
@@ -801,13 +798,22 @@ impl Graph {
     pub fn reset_non_updated_widgets(&mut self) {
         for i in 0..self.dag.raw_nodes().len() {
             let idx = NodeIndex::new(i);
-            let should_remove = match self.dag.node_weight_mut(idx) {
+            let should_reset = match self.dag.node_weight_mut(idx) {
                 Some(&mut Node::Widget(ref mut container)) => !container.is_updated,
                 _ => false,
             };
-            if should_remove {
-                self.dag[idx] = Node::Placeholder;
-                // TODO: should remove all **Depth** children here also.
+            if should_reset {
+                fn reset_node(graph: &mut Graph, idx: NodeIndex) {
+                    let mut parents = graph.parents(idx);
+                    while let Some(parent_edge) = parents.next_edge(graph) {
+                        graph.dag.remove_edge(parent_edge);
+                    }
+                    graph.dag[idx] = Node::Placeholder;
+                    graph.index_map.remove(idx);
+                };
+
+                reset_node(self, idx);
+                // TODO: should remove all **Depth** children here also (need a **Depth** toposort).
             }
         }
     }

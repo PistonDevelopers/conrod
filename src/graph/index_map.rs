@@ -32,6 +32,17 @@ impl IndexMap {
         }
     }
 
+    /// Remove any mapping associated with the NodeIndex.
+    ///
+    /// Returns `true` if a mapping was removed, returns `false` if not.
+    pub fn remove(&mut self, node_idx: NodeIndex) -> bool {
+        match self.get_widget_id(node_idx) {
+            Some(widget_id) => self.nodes.remove(&widget_id).is_some()
+                && self.widgets.remove(&node_idx).is_some(),
+            None => false,
+        }
+    }
+
     /// Add a WidgetId NodeIndex pair.
     pub fn insert(&mut self, widget_id: WidgetId, node_idx: NodeIndex) {
         self.nodes.insert(widget_id, node_idx);
