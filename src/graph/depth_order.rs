@@ -42,9 +42,32 @@ impl DepthOrder {
         }
     }
 
+    /// Construct a new empty **DepthOrder**.
+    ///
+    /// There can be at most two indices per widget (the widget and the widget's scrollbar). Thus
+    /// we'll reserve double the number of nodes given.
+    pub fn with_node_capacity(n_nodes: usize) -> DepthOrder {
+        let n_indices = n_nodes * 2;
+        DepthOrder {
+            indices: Vec::with_capacity(n_indices),
+            floating: Vec::with_capacity(n_nodes),
+        }
+    }
+
     /// Update the **DepthOrder** (starting with the deepest) for all nodes in the given **Graph**.
+    ///
+    /// FIXME:
+    /// This likely needs to be re-written, and will probably fail for graphs with many floating
+    /// widgets instantiated upon other floating widgets.
+    ///
+    /// The proper algorithm should be a full toposort where the neighbours of each node are
+    /// visited in the order specified within `visit_by_depth`.
+    ///
+    /// The `visit_by_depth` algorithm should not be recursive and instead use either looping,
+    /// walking or iteration.
     pub fn update<M, K>(&mut self,
                         graph: &Graph,
+                        root: NodeIndex,
                         maybe_captured_mouse: Option<M>,
                         maybe_captured_keyboard: Option<K>)
         where M: GraphIndex,
@@ -64,7 +87,7 @@ impl DepthOrder {
 
         // Visit each node in order of depth and add their indices to depth_order.
         // If the widget is floating, then store it in the floating deque instead.
-        visit_by_depth(graph.root(),
+        visit_by_depth(root,
                        maybe_captured_mouse,
                        maybe_captured_keyboard,
                        graph,
@@ -105,11 +128,9 @@ fn visit_by_depth(idx: NodeIndex,
                   floating_deque: &mut Vec<NodeIndex>)
 {
     // First, store the index of the current node.
-    match &graph[idx] {
-        &Node::Widget(ref container) if container.is_updated =>
-            depth_order.push(Visitable::Widget(idx)),
-        &Node::Root => (),
-        // If the node is neither an updated widget or the Root, we are done with this branch.
+    match graph.widget(idx) {
+        Some(ref container) if container.is_updated => depth_order.push(Visitable::Widget(idx)),
+        // If the current node is not an updated widget, we're done with this branch.
         _ => return,
     }
 

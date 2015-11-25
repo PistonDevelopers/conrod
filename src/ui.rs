@@ -44,6 +44,8 @@ pub struct Ui<C> {
     pub theme: Theme,
     /// Cache for character textures, used for label width calculation and glyph rendering.
     pub glyph_cache: GlyphCache<C>,
+    /// An index into the root widget of the graph, representing the entire window.
+    pub window: graph::NodeIndex,
     /// Window width.
     pub win_w: f64,
     /// Window height.
@@ -135,12 +137,31 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 impl<C> Ui<C> {
 
 
-    /// Constructor for a UiContext.
-    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
-        const GRAPH_CAPACITY: usize = 512;
+    /// A new, empty **Ui**.
+    pub fn new(character_cache: C, theme: Theme) -> Self {
+        let widget_graph = Graph::new();
+        let depth_order = graph::DepthOrder::new();
+        Self::new_internal(character_cache, theme, widget_graph, depth_order)
+    }
+
+    /// A new **Ui** with the capacity given as a number of widgets.
+    pub fn with_capacity(character_cache: C, theme: Theme, n_widgets: usize) -> Self {
+        let widget_graph = Graph::with_node_capacity(n_widgets);
+        let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
+        Self::new_internal(character_cache, theme, widget_graph, depth_order)
+    }
+
+    /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
+    fn new_internal(character_cache: C,
+                    theme: Theme,
+                    mut widget_graph: Graph,
+                    depth_order: graph::DepthOrder) -> Self
+    {
+        let window = widget_graph.add_placeholder();
         Ui {
-            widget_graph: Graph::with_capacity(GRAPH_CAPACITY),
+            widget_graph: widget_graph,
             theme: theme,
+            window: window,
             mouse: Mouse::new(),
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
@@ -158,7 +179,7 @@ impl<C> Ui<C> {
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
             maybe_element: None,
-            depth_order: graph::DepthOrder::new(),
+            depth_order: depth_order,
         }
     }
 
@@ -383,16 +404,35 @@ impl<C> Ui<C> {
 
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
-    pub fn set_widgets<F>(&mut self, f: F)
-        where F: FnOnce(&mut Self),
+    pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
+        where C: CharacterCache,
+              F: FnOnce(&mut Self),
     {
         self.maybe_widget_under_mouse =
             graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
         self.maybe_top_scrollable_widget_under_mouse =
             graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
 
+        // Instantiate the `Window` `Widget`.
+        //
+        // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
+        // upon which all other widgets are placed.
+        {
+            use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
+            type Window = FramedRectangle;
+            Window::new([self.win_w, self.win_h])
+                .parent(None::<widget::Index>)
+                .xy(0.0, 0.0)
+                .frame(0.0)
+                .frame_color(color::black().alpha(0.0))
+                .color(self.maybe_background_color.unwrap_or(color::black().alpha(0.0)))
+                .set(self.window, self);
+        }
+
+        self.maybe_current_parent_idx = Some(self.window.into());
+
         // Call the given user function for instantiating Widgets.
-        f(self);
+        user_widgets_fn(self);
 
         // Reset all widgets that were not updated during the given user function `f`.
         self.widget_graph.reset_non_updated_widgets();
@@ -408,8 +448,8 @@ impl<C> Ui<C> {
         };
 
         {
-            let Ui { ref widget_graph, ref mut depth_order, .. } = *self;
-            depth_order.update(widget_graph, maybe_captured_mouse, maybe_captured_keyboard);
+            let Ui { ref widget_graph, ref mut depth_order, window, .. } = *self;
+            depth_order.update(widget_graph, window, maybe_captured_mouse, maybe_captured_keyboard);
         }
 
         // Clear text and key buffers.
@@ -813,7 +853,7 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
-    ui.widget_graph.pre_update_cache(widget);
+    ui.widget_graph.pre_update_cache(ui.window, widget);
 }
 
 /// Cache some `PostUpdateCache` widget data into the widget graph.

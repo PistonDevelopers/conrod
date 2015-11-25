@@ -16,8 +16,16 @@ pub struct IndexMap {
 
 impl IndexMap {
 
-    /// Construct an IndexMap with the given capacity.
-    pub fn with_capacity(capacity: usize) -> IndexMap {
+    /// Construct an empty **IndexMap**.
+    pub fn new() -> Self {
+        IndexMap {
+            nodes: HashMap::new(),
+            widgets: HashMap::new(),
+        }
+    }
+
+    /// Construct an **IndexMap** with the given capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
         IndexMap {
             nodes: HashMap::with_capacity(capacity),
             widgets: HashMap::with_capacity(capacity),

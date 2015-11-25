@@ -23,7 +23,7 @@ use widget;
 ///
 /// Otherwise, return None if the widget is hidden.
 pub fn visible_area_of_widget<I: GraphIndex>(graph: &Graph, idx: I) -> Option<Rect> {
-    visible_area_of_widget_within_depth(graph, idx, graph.root)
+    visible_area_of_widget_maybe_within_depth(graph, idx, None)
 }
 
 
@@ -38,6 +38,17 @@ pub fn visible_area_of_widget_within_depth<I>(graph: &Graph,
                                               deepest_parent_idx: NodeIndex) -> Option<Rect>
     where I: GraphIndex,
 {
+    visible_area_of_widget_maybe_within_depth(graph, idx, Some(deepest_parent_idx))
+}
+
+
+/// Logic shared between the `visible_area_of_widget` and `visible_area_of_widget_within_depth`
+/// functions.
+fn visible_area_of_widget_maybe_within_depth<I>(graph: &Graph,
+                                                idx: I,
+                                                deepest_idx: Option<NodeIndex>) -> Option<Rect>
+    where I: GraphIndex,
+{
     graph.node_index(idx).and_then(|mut idx| {
         graph.widget(idx).and_then(|widget| {
             let mut overlapping_rect = widget.rect;
@@ -45,7 +56,7 @@ pub fn visible_area_of_widget_within_depth<I>(graph: &Graph,
             while let Some(depth_parent) = depth_parents.next_node(graph) {
 
                 // If the parent's index matches that of the deepest, we're done.
-                if depth_parent == deepest_parent_idx {
+                if Some(depth_parent) == deepest_idx {
                     break;
                 }
 

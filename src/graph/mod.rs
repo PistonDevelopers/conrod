@@ -100,11 +100,9 @@ pub struct Container {
     pub picking_passthrough: bool,
 }
 
-/// A node within the UI Graph.
+/// A node for use within the **Graph**.
 #[derive(Debug)]
 pub enum Node {
-    /// The root node and starting point for rendering.
-    Root,
     /// A widget constructed by a user.
     Widget(Container),
     /// A placeholder node - used when reserving a place for a **Widget** within the **Graph**.
@@ -150,8 +148,6 @@ pub struct Graph {
     empty_nodes: VecDeque<NodeIndex>,
     /// A map of the UiId to the graph's indices.
     index_map: IndexMap,
-    /// The NodeIndex of the root Node.
-    root: NodeIndex,
 }
 
 
@@ -214,21 +210,27 @@ impl Node {
 
 impl Graph {
 
-    /// Construct a new Graph with the given capacity.
-    pub fn with_capacity(capacity: usize) -> Graph {
-        let mut dag = Dag::with_capacity(capacity, capacity);
-        let root = dag.add_node(Node::Root);
+    /// A new empty **Graph**.
+    pub fn new() -> Self {
         Graph {
-            dag: dag,
+            dag: Dag::new(),
             empty_nodes: VecDeque::new(),
-            index_map: IndexMap::with_capacity(capacity),
-            root: root,
+            index_map: IndexMap::new(),
         }
     }
 
-    /// Returns the index of the `Root` node.
-    pub fn root(&self) -> NodeIndex {
-        self.root
+    /// A new **Graph** with the given node capacity.
+    ///
+    /// We know that there can be no more than three parents per node as the public API enforces a
+    /// maximum of one Depth, Position and Graphic parent each. Thus, we can assume an edge
+    /// capacity of exactly three times the given node capacity.
+    pub fn with_node_capacity(n_nodes: usize) -> Self {
+        let n_edges = n_nodes * 3;
+        Graph {
+            dag: Dag::with_capacity(n_nodes, n_edges),
+            empty_nodes: VecDeque::with_capacity(n_nodes),
+            index_map: IndexMap::with_capacity(n_nodes),
+        }
     }
 
     /// Removes all **Node**s and **Edge**s from the **Graph**.
@@ -251,6 +253,11 @@ impl Graph {
     /// The total number of **Edge**s in the **Graph**.
     pub fn edge_count(&self) -> usize {
         self.dag.edge_count()
+    }
+
+    /// The current capacity for the **Graph**'s internal node `Vec`.
+    pub fn node_capacity(&self) -> usize {
+        unimplemented!();
     }
 
     /// Converts the given **GraphIndex** into an index of type **J**.
@@ -621,7 +628,7 @@ impl Graph {
     /// This is done so that if this Widget were to internally `set` some other `Widget`s within
     /// its own `update` method, this `Widget`s positioning and dimension data already exists
     /// within the `Graph` for reference.
-    pub fn pre_update_cache(&mut self, widget: widget::PreUpdateCache) {
+    pub fn pre_update_cache(&mut self, root: NodeIndex, widget: widget::PreUpdateCache) {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
             drag_state, maybe_floating, maybe_scrolling, picking_passthrough, maybe_graphics_for,
@@ -652,9 +659,9 @@ impl Graph {
         // it is updated later in the cycle.
         //
         // If no parent index is given, the **Graph**'s `root` index will be used as the parent.
-        let parent_idx = |graph: &mut Self| match maybe_parent_idx {
+        let maybe_parent_idx = |graph: &mut Self| match maybe_parent_idx {
             Some(parent_idx) => match graph.node_index(parent_idx) {
-                Some(idx) => idx,
+                Some(idx) => Some(idx),
                 None => {
                     // Add a temporary node to the graph at the given parent index so that we can
                     // add the edge even in the parent widget's absense. The temporary node should
@@ -664,18 +671,21 @@ impl Graph {
                     if let widget::Index::Public(parent_widget_id) = parent_idx {
                         graph.index_map.insert(parent_widget_id, parent_node_idx);
                     }
-                    parent_node_idx
+                    Some(parent_node_idx)
                 },
             },
-            None => graph.root,
+            // Check that this node is not the root node before using the root node as the parent.
+            None => graph.node_index(idx)
+                .and_then(|idx| if idx == root { None } else { Some(root) }),
         };
 
         // If we already have a `Node` in the graph for the given `idx`, we need to update it.
         if let Some(node_idx) = self.node_index(idx) {
 
             // Ensure that we have an `Edge::Depth` in the graph representing the parent.
-            let parent_idx = parent_idx(self);
-            self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
+            if let Some(parent_idx) = maybe_parent_idx(self) {
+                self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
+            }
 
             match &mut self.dag[node_idx] {
 
@@ -718,8 +728,9 @@ impl Graph {
         } else if let Some(widget_id) = self.widget_id(idx) {
             let node_idx = self.add_node(Node::Widget(new_container()));
             self.index_map.insert(widget_id, node_idx);
-            let parent_idx = parent_idx(self);
-            self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
+            if let Some(parent_idx) = maybe_parent_idx(self) {
+                self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
+            }
         }
 
         // Now that we've updated the widget's cached data, we need to check if we should add an
