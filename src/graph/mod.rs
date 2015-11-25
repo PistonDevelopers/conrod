@@ -3,7 +3,7 @@
 //!
 //! The primary type of interest in this module is the [**Graph**](./struct.Graph) type.
 
-use daggy::{self, Walker};
+use daggy;
 use elmesque::Element;
 use elmesque::element::layers;
 use position::{Depth, Rect};
@@ -13,6 +13,7 @@ use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 use widget::{self, Widget};
 
+pub use daggy::Walker;
 pub use self::depth_order::{DepthOrder, Visitable};
 pub use self::index_map::GraphIndex;
 
@@ -87,14 +88,6 @@ pub struct Container {
     pub element_has_changed: bool,
     /// The latest `Element` that has been used for drawing the `Widget`.
     pub maybe_element: Option<Element>,
-    /// Whether or not the `Widget`'s cache has been updated since the last update cycle.
-    ///
-    /// We need to keep track of this as we only want to draw the widget if it has been set.
-    pub is_updated: bool,
-    /// Whether or not the `Widget`'s cache has was updated during the last update cycle.
-    ///
-    /// We need to know this so we can check whether or not a widget has been removed.
-    pub was_previously_updated: bool,
     /// Whether or not the widget is included when picking widgets by position.
     pub picking_passthrough: bool,
 }
@@ -370,6 +363,16 @@ impl Graph {
             }
             false
         }).unwrap_or(false)
+    }
+
+    /// Resets the node at the given index to an edge-less **Node::Placeholder**.
+    pub fn reset_node(&mut self, idx: NodeIndex) -> bool {
+        let mut parents = self.parents(idx);
+        while let Some(parent_edge) = parents.next_edge(self) {
+            self.remove_edge(parent_edge);
+        }
+        self[idx] = Node::Placeholder;
+        self.index_map.remove(idx)
     }
 
     /// Add a new placeholder node and return it's `NodeIndex` into the `Graph`.
@@ -650,8 +653,6 @@ impl Graph {
             picking_passthrough: picking_passthrough,
             maybe_element: None,
             element_has_changed: false,
-            is_updated: true,
-            was_previously_updated: false,
         };
 
         // Retrieves the widget's parent index.
@@ -716,7 +717,6 @@ impl Graph {
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
                     container.maybe_scrolling = maybe_scrolling;
-                    container.is_updated = true;
                 },
 
             }
@@ -786,39 +786,6 @@ impl Graph {
     }
 
 
-    /// Resets all **Node::Widget**s whose **Container**'s `is_updated` field is set to `false`.
-    ///
-    /// We do this under the assumption that the widget might reappear during some future call to
-    /// **Ui::set_widgets**.
-    ///
-    /// When reset, **Node::Widget**s will become **Node::Placeholder**s. We do this in order to:
-    ///
-    /// - Preserve ordering (and in turn the validity) of existing **NodeIndex**s.
-    /// - Re-use the **Node** with the same index in the case that it reappears.
-    pub fn reset_non_updated_widgets(&mut self) {
-        for i in 0..self.dag.raw_nodes().len() {
-            let idx = NodeIndex::new(i);
-            let should_reset = match self.dag.node_weight_mut(idx) {
-                Some(&mut Node::Widget(ref mut container)) => !container.is_updated,
-                _ => false,
-            };
-            if should_reset {
-                fn reset_node(graph: &mut Graph, idx: NodeIndex) {
-                    let mut parents = graph.parents(idx);
-                    while let Some(parent_edge) = parents.next_edge(graph) {
-                        graph.dag.remove_edge(parent_edge);
-                    }
-                    graph.dag[idx] = Node::Placeholder;
-                    graph.index_map.remove(idx);
-                };
-
-                reset_node(self, idx);
-                // TODO: should remove all **Depth** children here also (need a **Depth** toposort).
-            }
-        }
-    }
-
-
     /// Return an `elmesque::Element` containing all widgets within the entire Graph.
     ///
     /// The order in which we will draw all widgets will be a akin to a depth-first search, where
@@ -844,7 +811,6 @@ impl Graph {
 
                 Visitable::Widget(idx) => {
                     if let &mut Node::Widget(ref mut container) = &mut dag[idx] {
-                        container.was_previously_updated = container.is_updated;
 
                         // Push back our `Element` to one of the stacks (if we have one).
                         if let Some(ref element) = container.maybe_element {
@@ -862,7 +828,6 @@ impl Graph {
                         // Reset the flags for checking whether or not our `Element` has changed or
                         // if the `Widget` has been `set` between calls to `draw`.
                         container.element_has_changed = false;
-                        container.is_updated = false;
 
                         // If the current widget is some scrollable widget, we need to add a
                         // new group to the top of our scroll stack.
@@ -909,15 +874,9 @@ impl Graph {
     /// Whether or not any of the Widget `Element`s have changed since the previous call to
     /// `Graph::element`.
     pub fn have_any_elements_changed(&self) -> bool {
-        for node in self.dag.raw_nodes().iter() {
-            if let Node::Widget(ref container) = node.weight {
-                if container.element_has_changed
-                || (!container.is_updated && container.was_previously_updated) {
-                    return true;
-                }
-            }
-        }
-        false
+        (0..self.node_count())
+            .filter_map(|i| self.widget(NodeIndex::new(i)))
+            .any(|container| container.element_has_changed)
     }
 
 

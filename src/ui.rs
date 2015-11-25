@@ -2,7 +2,7 @@
 use {CharacterCache, FontSize, Scalar};
 use color::Color;
 use elmesque::Element;
-use graph::{self, Graph, NodeIndex};
+use graph::{self, Graph, NodeIndex, Walker};
 use graphics::{Context, Graphics};
 use mouse::{self, Mouse};
 use input;
@@ -17,6 +17,7 @@ use input::{
 };
 use position::{Dimensions, HorizontalAlign, Padding, Point, Position, Rect, VerticalAlign};
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
@@ -84,6 +85,9 @@ pub struct Ui<C> {
 
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
+    /// The set of widgets that have been updated since the beginning of the last `set_widgets`
+    /// stage.
+    updated_widgets: HashSet<NodeIndex>,
 }
 
 /// A wrapper over the current user input state.
@@ -141,21 +145,24 @@ impl<C> Ui<C> {
     pub fn new(character_cache: C, theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
-        Self::new_internal(character_cache, theme, widget_graph, depth_order)
+        let updated_widgets = HashSet::new();
+        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
     pub fn with_capacity(character_cache: C, theme: Theme, n_widgets: usize) -> Self {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
-        Self::new_internal(character_cache, theme, widget_graph, depth_order)
+        let updated_widgets = HashSet::with_capacity(n_widgets);
+        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
     fn new_internal(character_cache: C,
                     theme: Theme,
                     mut widget_graph: Graph,
-                    depth_order: graph::DepthOrder) -> Self
+                    depth_order: graph::DepthOrder,
+                    updated_widgets: HashSet<NodeIndex>) -> Self
     {
         let window = widget_graph.add_placeholder();
         Ui {
@@ -180,6 +187,7 @@ impl<C> Ui<C> {
             maybe_background_color: None,
             maybe_element: None,
             depth_order: depth_order,
+            updated_widgets: updated_widgets,
         }
     }
 
@@ -408,12 +416,25 @@ impl<C> Ui<C> {
         where C: CharacterCache,
               F: FnOnce(&mut Self),
     {
+        self.maybe_prev_widget_idx = None;
+        self.maybe_current_parent_idx = None;
+
+        // If the mouse / keyboard capturing was just released by a widget, reset to None ready
+        // for capturing once again.
+        if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
+            self.maybe_captured_mouse = None;
+        }
+        if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
+            self.maybe_captured_keyboard = None;
+        }
+
         self.maybe_widget_under_mouse =
             graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
         self.maybe_top_scrollable_widget_under_mouse =
             graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+        self.updated_widgets.clear();
 
-        // Instantiate the `Window` `Widget`.
+        // Instantiate the root `Window` `Widget`.
         //
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
@@ -434,8 +455,26 @@ impl<C> Ui<C> {
         // Call the given user function for instantiating Widgets.
         user_widgets_fn(self);
 
-        // Reset all widgets that were not updated during the given user function `f`.
-        self.widget_graph.reset_non_updated_widgets();
+        // Reset all widgets that were not updated during the given `user_widget_fn`.
+        fn reset_non_updated_widgets(graph: &mut Graph, updated: &HashSet<NodeIndex>) -> bool {
+            (0..graph.node_count())
+                .map(|i| NodeIndex::new(i))
+                .filter(|idx| !updated.contains(idx))
+                // TODO: should also remove all **Depth** children here (need a **Depth** toposort).
+                .map(|idx| graph.reset_node(idx))
+                .count() > 0
+        }
+
+        // Reset all non-updated widgets.
+        let one_or_more_widgets_were_reset = {
+            let Ui { ref mut widget_graph, ref updated_widgets, .. } = *self;
+            reset_non_updated_widgets(widget_graph, updated_widgets)
+        };
+
+        // If one or more widgets were reset, we need to re-draw our GUI.
+        if one_or_more_widgets_were_reset {
+            self.needs_redraw();
+        }
 
         // Update the graph's internal depth_order while considering the captured input.
         let maybe_captured_mouse = match self.maybe_captured_mouse {
@@ -447,6 +486,7 @@ impl<C> Ui<C> {
             _                             => None,
         };
 
+        // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
         {
             let Ui { ref widget_graph, ref mut depth_order, window, .. } = *self;
             depth_order.update(widget_graph, window, maybe_captured_mouse, maybe_captured_keyboard);
@@ -463,18 +503,6 @@ impl<C> Ui<C> {
         self.mouse.middle.reset_pressed_and_released();
         self.mouse.right.reset_pressed_and_released();
         self.mouse.unknown.reset_pressed_and_released();
-
-        self.maybe_prev_widget_idx = None;
-        self.maybe_current_parent_idx = None;
-
-        // If the mouse / keyboard capturing was just released by a widget, reset to None ready
-        // for capturing once again.
-        if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
-            self.maybe_captured_mouse = None;
-        }
-        if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
-            self.maybe_captured_keyboard = None;
-        }
     }
 
 
@@ -867,7 +895,12 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    let widget_idx = widget.idx;
     ui.widget_graph.post_update_cache(widget);
+
+    // Add the widget's `NodeIndex` to the set of updated widgets.
+    let node_idx = ui.widget_graph.node_index(widget_idx).expect("No NodeIndex");
+    ui.updated_widgets.insert(node_idx);
 }
 
 

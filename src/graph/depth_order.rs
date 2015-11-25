@@ -127,11 +127,11 @@ fn visit_by_depth(idx: NodeIndex,
                   depth_order: &mut Vec<Visitable>,
                   floating_deque: &mut Vec<NodeIndex>)
 {
-    // First, store the index of the current node.
-    match graph.widget(idx) {
-        Some(ref container) if container.is_updated => depth_order.push(Visitable::Widget(idx)),
+    // First, if the current node is a widget, store its index.
+    match graph.widget(idx).is_some() {
+        true => depth_order.push(Visitable::Widget(idx)),
         // If the current node is not an updated widget, we're done with this branch.
-        _ => return,
+        false => return,
     }
 
     // Sort the children of the current node by their `.depth` members.
