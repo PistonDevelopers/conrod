@@ -33,7 +33,7 @@ pub struct State {
     /// Whether the rectangle is drawn as an outline or a filled color.
     kind: Kind,
     /// An owned version of the points yielded by the **Polygon**'s `points` iterator.
-    points: Vec<Point>,
+    pub points: Vec<Point>,
 }
 
 /// Whether the rectangle is drawn as an outline or a filled color.
@@ -44,6 +44,9 @@ pub enum Kind {
     /// The rectangle area is filled with some color.
     Fill,
 }
+
+/// Unique Kind for the Widget.
+pub const KIND: widget::Kind = "Polygon";
 
 
 impl<I> Polygon<I> {

@@ -32,6 +32,9 @@ pub enum Kind {
     Fill,
 }
 
+/// Unique Kind for the Widget.
+pub const KIND: widget::Kind = "Oval";
+
 
 impl Oval {
 
@@ -79,7 +82,7 @@ impl Widget for Oval {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "Oval"
+        KIND
     }
 
     fn init_state(&self) -> State {

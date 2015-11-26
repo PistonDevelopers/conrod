@@ -27,6 +27,8 @@ pub struct Style {
     pub maybe_frame_color: Option<Color>,
 }
 
+/// Unique kind for the Widget.
+pub const KIND: widget::Kind = "FramedRectangle";
 
 impl FramedRectangle {
 
@@ -60,7 +62,7 @@ impl Widget for FramedRectangle {
     }
 
     fn unique_kind(&self) -> &'static str {
-        "FramedRectangle"
+        KIND
     }
 
     fn init_state(&self) -> () {

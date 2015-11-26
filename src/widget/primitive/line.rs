@@ -28,9 +28,9 @@ pub struct Line {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct State {
     /// The start of the line.
-    start: Point,
+    pub start: Point,
     /// The end of the line.
-    end: Point,
+    pub end: Point,
 }
 
 /// Unique styling for a Line widget.
@@ -42,6 +42,8 @@ pub struct Style {
     pub maybe_color: Option<Color>,
     /// The thickness of the line.
     pub maybe_thickness: Option<Scalar>,
+    /// The style with which the ends of the line are drawn.
+    pub maybe_cap: Option<Cap>,
 }
 
 /// Unique kind for the widget.
@@ -53,6 +55,13 @@ pub enum Pattern {
     Solid,
     Dashed,
     Dotted,
+}
+
+/// Whether the end of the **Line** should be flat or rounded.
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Cap {
+    Flat,
+    Round,
 }
 
 
@@ -148,6 +157,7 @@ impl Style {
             maybe_pattern: None,
             maybe_color: None,
             maybe_thickness: None,
+            maybe_cap: None,
         }
     }
 
@@ -184,6 +194,12 @@ impl Style {
         self
     }
 
+    /// The style for the ends of the Line.
+    pub fn cap(mut self, cap: Cap) -> Self {
+        self.set_cap(cap);
+        self
+    }
+
     /// Set the pattern for the line.
     pub fn set_pattern(&mut self, pattern: Pattern) {
         self.maybe_pattern = Some(pattern);
@@ -197,6 +213,11 @@ impl Style {
     /// Set the thickness for the line.
     pub fn set_thickness(&mut self, thickness: Scalar) {
         self.maybe_thickness = Some(thickness);
+    }
+
+    /// Set the **Cap** for the line.
+    pub fn set_cap(&mut self, cap: Cap) {
+        self.maybe_cap = Some(cap);
     }
 
     /// The Pattern for the Line.
@@ -220,6 +241,14 @@ impl Style {
         self.maybe_thickness.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
             default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
         })).unwrap_or(DEFAULT_THICKNESS)
+    }
+
+    /// The styling for the ends of the Line.
+    pub fn get_cap(&self, theme: &Theme) -> Cap {
+        const DEFAULT_CAP: Cap = Cap::Flat;
+        self.maybe_cap.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+            default.style.maybe_cap.unwrap_or(DEFAULT_CAP)
+        })).unwrap_or(DEFAULT_CAP)
     }
 
 }

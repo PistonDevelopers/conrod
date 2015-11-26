@@ -24,7 +24,7 @@ pub struct PointPath<I> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// An owned version of the list of points.
-    points: Vec<Point>,
+    pub points: Vec<Point>,
 }
 
 /// Styling that is unique to the PointPath.
