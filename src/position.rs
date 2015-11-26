@@ -2,11 +2,19 @@
 use {CharacterCache, Theme, Ui};
 use widget;
 
-pub use graphics::math::Scalar;
 pub use self::matrix::Matrix;
 
-/// The depth at which the widget will be rendered. This determines the order of rendering where
-/// widgets with a greater depth will be rendered first. 0.0 is the default depth.
+/// An alias over the Scalar type used throughout Conrod.
+///
+/// This type is primarily used for spatial dimensions and positioning.
+pub type Scalar = f64;
+
+/// The depth at which the widget will be rendered.
+///
+/// This determines the order of rendering where widgets with a greater depth will be rendered
+/// first.
+///
+/// 0.0 is the default depth.
 pub type Depth = f32;
 
 /// General use 2D spatial dimensions.

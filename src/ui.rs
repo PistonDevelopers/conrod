@@ -1,9 +1,9 @@
 
 use {CharacterCache, FontSize, Scalar};
+use backend::graphics::{Context, Graphics};
 use color::Color;
 use elmesque::Element;
 use graph::{self, Graph, NodeIndex, Walker};
-use graphics::{Context, Graphics};
 use mouse::{self, Mouse};
 use input;
 use input::{
@@ -610,58 +610,15 @@ impl<C> Ui<C> {
     }
 
 
-    // /// Draw the `Ui` in it's current state.
-    // /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
-    // /// `Ui::draw_if_changed` method instead.
-    // /// See the `Graph::draw` method for more details on how Widgets are drawn.
-    // /// See the `graph::update_visit_order` function for details on how the render order is
-    // /// determined.
-    // pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-    //     where
-    //         C: CharacterCache,
-    //         G: Graphics<Texture = C::Texture>,
-    // {
-    //     use elmesque::Renderer;
-    //     use std::ops::DerefMut;
-
-    //     // Ensure that `maybe_element` is `Some(element)` with the latest `Element`.
-    //     self.element();
-
-    //     let Ui {
-    //         ref mut glyph_cache,
-    //         ref mut redraw_count,
-    //         ref maybe_element,
-    //         ..
-    //     } = *self;
-
-    //     // We know that `maybe_element` is `Some` due to calling `self.element` above, thus we can
-    //     // safely unwrap our reference to it to use for drawing.
-    //     let element = maybe_element.as_ref().unwrap();
-
-    //     // Construct the elmesque Renderer for rendering the Elements.
-    //     let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
-    //     let character_cache = ref_mut_character_cache.deref_mut();
-    //     let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
-
-    //     // Renderer the `Element` to the screen.
-    //     element.draw(&mut renderer);
-
-    //     // Because we're about to draw everything, take one from the redraw count.
-    //     if *redraw_count > 0 {
-    //         *redraw_count = *redraw_count - 1;
-    //     }
-    // }
-
-
     /// Draw the `Ui` in it's current state.
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where C: CharacterCache,
-              G: Graphics<Texture = C::Texture>,
+        where G: Graphics,
+              C: CharacterCache<Texture=G::Texture>,
     {
-        use graphics::Transformed;
+        use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::DerefMut;
 
         let Ui {
@@ -684,7 +641,7 @@ impl<C> Ui<C> {
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        ::backend::draw_from_graph(character_cache, context, graphics, widget_graph, indices, theme);
+        draw_from_graph(context, graphics, character_cache, widget_graph, indices, theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -706,9 +663,8 @@ impl<C> Ui<C> {
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
     pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where
-            C: CharacterCache,
-            G: Graphics<Texture = C::Texture>,
+        where G: Graphics,
+              C: CharacterCache<Texture=G::Texture>,
     {
         self.draw(context, graphics);
         // if self.widget_graph.have_any_elements_changed() {

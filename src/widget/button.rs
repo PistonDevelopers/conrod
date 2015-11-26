@@ -1,8 +1,7 @@
 
-use {Label, NodeIndex, FramedRectangle, Ui};
+use {CharacterCache, Label, NodeIndex, FramedRectangle, Ui};
 use color::{Color, Colorable};
 use frame::Frameable;
-use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use position::{Dimension, Positionable};

@@ -1,24 +1,41 @@
+//! Conrod's generic graphics backend.
+//!
+//! **Note:** Conrod currently uses Piston's generic [graphics
+//! crate](https://github.com/PistonDevelopers/graphics) (and specifically the
+//! [**Graphics**](http://docs.piston.rs/graphics/graphics/trait.Graphics.html)) and
+//! [**CharacterCache**](http://docs.piston.rs/graphics/graphics/character/trait.CharacterCache.html)
+//! traits to enable genericity over custom user backends. This dependency may change in the near
+//! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 
-use ::{CharacterCache, Point, Rect, Scalar};
+
+use ::{Point, Rect, Scalar};
 use graph::{Container, Graph, Visitable};
-use graphics::{self, Context, Graphics};
+use graphics;
 use std::iter::once;
 use theme::Theme;
 use widget::primitive;
 
+#[doc(inline)]
+pub use graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
+#[doc(inline)]
+pub use graphics::character::CharacterCache;
 
-/// Draw the given graph using the given graphics backend.
-pub fn draw_from_graph<C, G>(character_cache: &mut C,
-                             context: Context,
+
+/// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
+pub fn draw_from_graph<G, C>(context: Context,
                              graphics: &mut G,
+                             character_cache: &mut C,
                              graph: &Graph,
                              depth_order: &[Visitable],
                              theme: &Theme)
-    where C: CharacterCache,
-          G: Graphics<Texture=C::Texture>,
+    where G: Graphics,
+          C: CharacterCache<Texture=G::Texture>,
 {
 
     // A stack of contexts, one for each scroll group.
+    //
+    // FIXME: This allocation every time draw is called is unnecessary. We should re-use a buffer
+    // (perhaps owned by the Ui) for this.
     let mut scroll_stack: Vec<Context> = Vec::new();
 
     // The depth order describes the order in which widgets should be drawn.
@@ -32,7 +49,7 @@ pub fn draw_from_graph<C, G>(character_cache: &mut C,
                     let context = *scroll_stack.last().unwrap_or(&context);
 
                     // Draw the widget from its container.
-                    draw_from_container(character_cache, &context, graphics, container, theme);
+                    draw_from_container(&context, graphics, character_cache, container, theme);
 
                     // If the current widget is some scrollable widget, we need to add a context
                     // for it to the top of the stack.
@@ -137,14 +154,14 @@ fn crop_context(context: Context, rect: Rect) -> Context {
 
 
 
-/// Use the given graphics backend to draw the given widget.
-pub fn draw_from_container<C, G>(character_cache: &mut C,
-                                 context: &Context,
+/// Use the given **CharacterCache** and **Graphics** backends to draw the given widget.
+pub fn draw_from_container<G, C>(context: &Context,
                                  graphics: &mut G,
+                                 character_cache: &mut C,
                                  container: &Container,
                                  theme: &Theme)
-    where C: CharacterCache,
-          G: Graphics<Texture=C::Texture>,
+    where G: Graphics,
+          C: CharacterCache<Texture=G::Texture>,
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
@@ -272,7 +289,7 @@ pub fn draw_from_container<C, G>(character_cache: &mut C,
 }
 
 
-/// Draw a series of lines between the given points using the given style.
+/// Draw a series of lines between the given **Point**s using the given style.
 pub fn draw_lines<G, I>(context: &Context,
                         graphics: &mut G,
                         theme: &Theme,

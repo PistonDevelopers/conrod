@@ -1,10 +1,8 @@
 
-use {Dimension, Ui};
+use {CharacterCache, Dimension, Scalar, Ui};
 use color::{Color, Colorable};
 use elmesque::Element;
 use frame::Frameable;
-use graphics::math::Scalar;
-use graphics::character::CharacterCache;
 use label::{FontSize, Labelable};
 use mouse::Mouse;
 use num::Float;

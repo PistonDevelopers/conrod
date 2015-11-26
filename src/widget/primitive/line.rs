@@ -1,8 +1,7 @@
 
-use Scalar;
+use {CharacterCache, Scalar};
 use color::{Color, Colorable};
 use elmesque::Element;
-use graphics::character::CharacterCache;
 use position::{Point, Positionable, Rect, Sizeable};
 use theme::Theme;
 use vecmath::{vec2_add, vec2_sub};

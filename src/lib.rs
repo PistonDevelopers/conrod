@@ -64,13 +64,12 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
+pub use backend::{CharacterCache, Graphics};
 pub use background::Background;
 pub use elmesque::{color, Element};
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
 pub use graph::NodeIndex;
-pub use graphics::character::CharacterCache;
-pub use graphics::math::Scalar;
 pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
@@ -80,8 +79,8 @@ pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of}
 pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
                    mid_top_of, mid_bottom_of, mid_left_of, mid_right_of};
 pub use position::{Corner, Depth, Direction, Dimension, Dimensions, Horizontal, HorizontalAlign,
-                   Margin, Padding, Place, Point, Position, Positionable, Range, Rect, Sizeable,
-                   Vertical, VerticalAlign};
+                   Margin, Padding, Place, Point, Position, Positionable, Range, Rect, Scalar,
+                   Sizeable, Vertical, VerticalAlign};
 pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
 pub use ui::{GlyphCache, Ui, UserInput};

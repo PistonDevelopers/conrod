@@ -1,7 +1,6 @@
 
-use Scalar;
+use {CharacterCache, Scalar};
 use color::Color;
-use graphics::character::CharacterCache;
 use position::{Dimensions, Direction, Point, Positionable, Sizeable};
 use super::canvas;
 use widget::{self, Widget};

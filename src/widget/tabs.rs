@@ -1,8 +1,7 @@
 
-use ::{GlyphCache, Scalar};
+use {CharacterCache, GlyphCache, Scalar};
 use color::Color;
 use elmesque::Element;
-use graphics::character::CharacterCache;
 use label::FontSize;
 use position::{Dimensions, Point};
 use super::canvas::{self, Canvas};

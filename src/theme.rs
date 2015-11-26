@@ -4,14 +4,11 @@
 
 use Scalar;
 use color::{Color, black, white};
-//use json_io;
 use position::{Margin, Padding, Position, Horizontal, HorizontalAlign, Vertical, VerticalAlign};
 use rustc_serialize::Encodable;
 use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
-// use std::fmt::Debug;
-// use std::path::Path;
 use widget;
 
 
