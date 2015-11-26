@@ -54,12 +54,14 @@ pub type WouldCycle = daggy::WouldCycle<Edge>;
 
 /// The state type that we'll dynamically cast to and from `Any` for storage within the cache.
 #[derive(Debug)]
-struct UniqueWidgetState<State, Style> where
+pub struct UniqueWidgetState<State, Style> where
     State: Any + Debug,
     Style: Any + Debug,
 {
-    state: State,
-    style: Style,
+    /// A **Widget**'s unique "State".
+    pub state: State,
+    /// A **Widget**'s unique "Style".
+    pub style: Style,
 }
 
 /// A container for caching a Widget's state inside a Graph Node.
@@ -81,7 +83,7 @@ pub struct Container {
     ///
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
-    /// Scroll related state (is only `Some` if the widget is scrollable)..
+    /// Scroll related state (is only `Some` if the widget is scrollable).
     pub maybe_scrolling: Option<widget::scroll::State>,
     /// Whether or not the `Element` for the widget has changed since the last time an `Element`
     /// was requested from the graph.
@@ -151,12 +153,30 @@ const NO_MATCHING_NODE_INDEX: &'static str = "No matching NodeIndex";
 
 impl Container {
 
+    /// Borrow the **Container**'s unique widget State and Style if there is any.
+    pub fn state_and_style<State, Style>(&self) -> Option<&UniqueWidgetState<State, Style>>
+        where State: Any + Debug + 'static,
+              Style: Any + Debug + 'static,
+    {
+        self.maybe_state.as_ref().and_then(|boxed_state| boxed_state.downcast_ref())
+    }
+
+    /// Same as [**Container::state_and_style**](./struct.Container#method.state_and_style) but
+    /// accessed using a **Widget** type parameter instead of the unique State and Style types.
+    pub fn unique_widget_state<W>(&self) -> Option<&UniqueWidgetState<W::State, W::Style>>
+        where W: Widget,
+              W::State: Any + 'static,
+              W::Style: Any + 'static,
+    {
+        self.state_and_style::<W::State, W::Style>()
+    }
+
     /// A method for taking only the unique state from the container.
-    fn take_unique_widget_state<W>(&mut self)
-        -> Option<Box<UniqueWidgetState<W::State, W::Style>>> where
-        W: Widget,
-        W::State: Any + 'static,
-        W::Style: Any + 'static,
+    pub fn take_unique_widget_state<W>(&mut self)
+        -> Option<Box<UniqueWidgetState<W::State, W::Style>>>
+        where W: Widget,
+              W::State: Any + 'static,
+              W::Style: Any + 'static,
     {
         self.maybe_state.take().map(|any_state| {
             any_state.downcast().ok()
@@ -165,10 +185,10 @@ impl Container {
     }
 
     /// Take the widget state from the container and cast it to type W.
-    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>> where
-        W: Widget,
-        W::State: Any + 'static,
-        W::Style: Any + 'static,
+    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>>
+        where W: Widget,
+              W::State: Any + 'static,
+              W::Style: Any + 'static,
     {
         if self.maybe_state.is_some() {
             let boxed_unique_state = self.take_unique_widget_state::<W>().unwrap();
