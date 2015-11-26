@@ -610,43 +610,83 @@ impl<C> Ui<C> {
     }
 
 
+    // /// Draw the `Ui` in it's current state.
+    // /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
+    // /// `Ui::draw_if_changed` method instead.
+    // /// See the `Graph::draw` method for more details on how Widgets are drawn.
+    // /// See the `graph::update_visit_order` function for details on how the render order is
+    // /// determined.
+    // pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
+    //     where
+    //         C: CharacterCache,
+    //         G: Graphics<Texture = C::Texture>,
+    // {
+    //     use elmesque::Renderer;
+    //     use std::ops::DerefMut;
+
+    //     // Ensure that `maybe_element` is `Some(element)` with the latest `Element`.
+    //     self.element();
+
+    //     let Ui {
+    //         ref mut glyph_cache,
+    //         ref mut redraw_count,
+    //         ref maybe_element,
+    //         ..
+    //     } = *self;
+
+    //     // We know that `maybe_element` is `Some` due to calling `self.element` above, thus we can
+    //     // safely unwrap our reference to it to use for drawing.
+    //     let element = maybe_element.as_ref().unwrap();
+
+    //     // Construct the elmesque Renderer for rendering the Elements.
+    //     let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
+    //     let character_cache = ref_mut_character_cache.deref_mut();
+    //     let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
+
+    //     // Renderer the `Element` to the screen.
+    //     element.draw(&mut renderer);
+
+    //     // Because we're about to draw everything, take one from the redraw count.
+    //     if *redraw_count > 0 {
+    //         *redraw_count = *redraw_count - 1;
+    //     }
+    // }
+
+
     /// Draw the `Ui` in it's current state.
+    ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    /// See the `Graph::draw` method for more details on how Widgets are drawn.
-    /// See the `graph::update_visit_order` function for details on how the render order is
-    /// determined.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where
-            C: CharacterCache,
-            G: Graphics<Texture = C::Texture>,
+        where C: CharacterCache,
+              G: Graphics<Texture = C::Texture>,
     {
-        use elmesque::Renderer;
+        use graphics::Transformed;
         use std::ops::DerefMut;
-
-        // Ensure that `maybe_element` is `Some(element)` with the latest `Element`.
-        self.element();
 
         let Ui {
             ref mut glyph_cache,
             ref mut redraw_count,
-            ref maybe_element,
+            ref widget_graph,
+            ref depth_order,
+            ref theme,
             ..
         } = *self;
 
-        // We know that `maybe_element` is `Some` due to calling `self.element` above, thus we can
-        // safely unwrap our reference to it to use for drawing.
-        let element = maybe_element.as_ref().unwrap();
+        let view_size = context.get_view_size();
+        let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
-        // Construct the elmesque Renderer for rendering the Elements.
+        // Retrieve the `CharacterCache` from the `Ui`'s `GlyphCache`.
         let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
         let character_cache = ref_mut_character_cache.deref_mut();
-        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
 
-        // Renderer the `Element` to the screen.
-        element.draw(&mut renderer);
+        // Use the depth_order indices as the order for drawing.
+        let indices = &depth_order.indices;
 
-        // Because we're about to draw everything, take one from the redraw count.
+        // Draw the `Ui` from the `widget_graph`.
+        ::backend::draw_from_graph(character_cache, context, graphics, widget_graph, indices, theme);
+
+        // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
             *redraw_count = *redraw_count - 1;
         }
@@ -670,12 +710,13 @@ impl<C> Ui<C> {
             C: CharacterCache,
             G: Graphics<Texture = C::Texture>,
     {
-        if self.widget_graph.have_any_elements_changed() {
-            self.redraw_count = self.num_redraw_frames;
-        }
-        if self.redraw_count > 0 {
-            self.draw(context, graphics);
-        }
+        self.draw(context, graphics);
+        // if self.widget_graph.have_any_elements_changed() {
+        //     self.redraw_count = self.num_redraw_frames;
+        // }
+        // if self.redraw_count > 0 {
+        //     self.draw(context, graphics);
+        // }
     }
 
 
