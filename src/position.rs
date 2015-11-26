@@ -980,6 +980,23 @@ impl Rect {
         self.x.undirected().end
     }
 
+    /// The edges of the **Rect** in a tuple (top, bottom, left, right).
+    pub fn l_r_b_t(&self) -> (Scalar, Scalar, Scalar, Scalar) {
+        (self.left(), self.right(), self.bottom(), self.top())
+    }
+
+    /// The left and top edges of the **Rect** along with the width and height.
+    pub fn l_t_w_h(&self) -> (Scalar, Scalar, Scalar, Scalar) {
+        let (w, h) = self.w_h();
+        (self.left(), self.top(), w, h)
+    }
+
+    /// The left and bottom edges of the **Rect** along with the width and height.
+    pub fn l_b_w_h(&self) -> (Scalar, Scalar, Scalar, Scalar) {
+        let (w, h) = self.w_h();
+        (self.left(), self.bottom(), w, h)
+    }
+
     /// Shift the Rect along the x axis.
     pub fn shift_x(self, x: Scalar) -> Rect {
         Rect { x: self.x.shift(x), ..self }
