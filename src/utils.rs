@@ -43,8 +43,10 @@ pub fn value_from_perc<T: Float + NumCast + ToPrimitive>(perc: f32, min: T, max:
 }
 
 /// Map a value from a given range to a new given range.
-pub fn map_range<X: Float + NumCast, Y: Float + NumCast>
-(val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y {
+pub fn map_range<X, Y>(val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> Y
+    where X: NumCast,
+          Y: NumCast,
+{
     let val_f: f64 = NumCast::from(val).unwrap();
     let in_min_f: f64 = NumCast::from(in_min).unwrap();
     let in_max_f: f64 = NumCast::from(in_max).unwrap();
