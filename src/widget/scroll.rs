@@ -135,7 +135,7 @@ impl Style {
 
 impl Interaction {
     /// The stateful version of the given color.
-    fn color(&self, color: Color) -> Color {
+    pub fn color(&self, color: Color) -> Color {
         match *self {
             Interaction::Normal => color,
             Interaction::Highlighted(_) => color.highlighted(),
@@ -276,6 +276,7 @@ impl State {
             (None, Some(bar)) => horizontal(bar),
             (None, None) => empty(),
         }
+
     }
 
 }
@@ -445,7 +446,7 @@ impl Bar {
 
 
 /// The area for a vertical scrollbar track as its dimensions and position.
-fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
+pub fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
     let w = thickness;
     let x = container.x() + container.w() / 2.0 - w / 2.0;
     Rect {
@@ -455,7 +456,7 @@ fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
 }
 
 /// The area for a vertical scrollbar handle as its dimensions and position.
-fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+pub fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
     let offset = partial_max(bar.start_overlap - bar.offset, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_h = track.h();
@@ -468,7 +469,7 @@ fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
 }
 
 /// The area for a horizontal scrollbar track as its dimensions and position.
-fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
+pub fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
     let h = thickness;
     let y = container.y() - container.h() / 2.0 + h / 2.0;
     Rect {
@@ -478,7 +479,7 @@ fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
 }
 
 /// The area for a horizontal scrollbar handle as its dimensions and position.
-fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+pub fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
     let offset = partial_max(bar.offset - bar.start_overlap, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_w = track.w();

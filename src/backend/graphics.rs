@@ -8,12 +8,12 @@
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 
 
-use ::{Point, Rect, Scalar};
+use ::{Color, Point, Rect, Scalar};
 use graph::{Container, Graph, Visitable};
 use graphics;
 use std::iter::once;
 use theme::Theme;
-use widget::primitive;
+use widget::{self, primitive};
 
 #[doc(inline)]
 pub use graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
@@ -65,9 +65,10 @@ pub fn draw_from_graph<G, C>(context: Context,
 
                     // Now that we've come across a scrollbar, we'll pop its Context from the
                     // scroll_stack and draw it if necessary.
-                    scroll_stack.pop();
+                    let context = scroll_stack.pop().unwrap_or(context);
 
-                    // TODO: Draw the scrollbar!
+                    // Draw the scrollbar(s)!
+                    draw_scrolling(&context, graphics, scrolling);
                 }
             }
 
@@ -171,11 +172,12 @@ pub fn draw_from_container<G, C>(context: &Context,
             if let Some(rectangle) = container.unique_widget_state::<::Rectangle>() {
                 match rectangle.style {
                     ShapeStyle::Fill(_) => {
-                        let color = rectangle.style.get_color(theme).to_fsa();
-                        let (l, b, w, h) = container.rect.l_b_w_h();
-                        let lbwh = [l, b, w, h];
-                        let rectangle = graphics::Rectangle::new(color);
-                        rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+                        let color = rectangle.style.get_color(theme);
+                        draw_rectangle(context, graphics, container.rect, color);
+                        // let (l, b, w, h) = container.rect.l_b_w_h();
+                        // let lbwh = [l, b, w, h];
+                        // let rectangle = graphics::Rectangle::new(color);
+                        // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
                         let (l, r, b, t) = container.rect.l_r_b_t();
@@ -191,17 +193,19 @@ pub fn draw_from_container<G, C>(context: &Context,
             if let Some(framed_rectangle) = container.unique_widget_state::<::FramedRectangle>() {
                 let frame = framed_rectangle.style.get_frame(theme);
                 if frame > 0.0 {
-                    let frame_color = framed_rectangle.style.get_frame_color(theme).to_fsa();
-                    let (l, b, w, h) = container.rect.l_b_w_h();
-                    let lbwh = [l, b, w, h];
-                    let rectangle = graphics::Rectangle::new(frame_color);
-                    rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+                    let frame_color = framed_rectangle.style.get_frame_color(theme);
+                    draw_rectangle(context, graphics, container.rect, frame_color);
+                    // let (l, b, w, h) = container.rect.l_b_w_h();
+                    // let lbwh = [l, b, w, h];
+                    // let rectangle = graphics::Rectangle::new(frame_color);
+                    // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
                 }
-                let color = framed_rectangle.style.get_color(theme).to_fsa();
-                let (l, b, w, h) = container.rect.l_b_w_h();
-                let lbwh = [l, b, w, h];
-                let rectangle = graphics::Rectangle::new(color);
-                rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+                let color = framed_rectangle.style.get_color(theme);
+                draw_rectangle(context, graphics, container.rect.pad(-frame), color);
+                // let (l, b, w, h) = container.rect.l_b_w_h();
+                // let lbwh = [l, b, w, h];
+                // let rectangle = graphics::Rectangle::new(color);
+                // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
             }
         },
 
@@ -289,6 +293,20 @@ pub fn draw_from_container<G, C>(context: &Context,
 }
 
 
+/// Draw a rectangle at the given Rect.
+pub fn draw_rectangle<G>(context: &Context,
+                         graphics: &mut G,
+                         rect: Rect,
+                         color: Color)
+    where G: Graphics,
+{
+    let (l, b, w, h) = rect.l_b_w_h();
+    let lbwh = [l, b, w, h];
+    let rectangle = graphics::Rectangle::new(color.to_fsa());
+    rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+}
+
+
 /// Draw a series of lines between the given **Point**s using the given style.
 pub fn draw_lines<G, I>(context: &Context,
                         graphics: &mut G,
@@ -324,3 +342,52 @@ pub fn draw_lines<G, I>(context: &Context,
     }
 }
 
+
+/// Draw the scroll bars (if necessary) for the given widget's scroll state.
+pub fn draw_scrolling<G>(context: &Context,
+                         graphics: &mut G,
+                         scroll_state: &widget::scroll::State)
+    where G: Graphics,
+{
+    use widget::scroll;
+
+    let color = scroll_state.color;
+    let track_color = color.alpha(0.2);
+    let thickness = scroll_state.thickness;
+    let visible = scroll_state.visible;
+
+    let draw_bar = |g: &mut G, bar: scroll::Bar, track: Rect, handle: Rect| {
+        // We only want to see the scrollbar if it's highlighted or clicked.
+        if let scroll::Interaction::Normal = bar.interaction {
+            return;
+        }
+        let color = bar.interaction.color(color);
+        draw_rectangle(context, g, track, track_color);
+        draw_rectangle(context, g, handle, color);
+    };
+
+    // The element for a vertical scroll Bar.
+    let vertical = |g: &mut G, bar: scroll::Bar| {
+        let track = scroll::vertical_track(visible, thickness);
+        let handle = scroll::vertical_handle(&bar, track, scroll_state.total_dim[1]);
+        draw_bar(g, bar, track, handle);
+    };
+
+    // An element for a horizontal scroll Bar.
+    let horizontal = |g: &mut G, bar: scroll::Bar| {
+        let track = scroll::horizontal_track(visible, thickness);
+        let handle = scroll::horizontal_handle(&bar, track, scroll_state.total_dim[0]);
+        draw_bar(g, bar, track, handle);
+    };
+
+    // Whether we draw horizontal or vertical or both depends on our state.
+    match (scroll_state.maybe_vertical, scroll_state.maybe_horizontal) {
+        (Some(v_bar), Some(h_bar)) => {
+            horizontal(graphics, h_bar);
+            vertical(graphics, v_bar);
+        },
+        (Some(bar), None) => vertical(graphics, bar),
+        (None, Some(bar)) => horizontal(graphics, bar),
+        (None, None) => (),
+    }
+}
