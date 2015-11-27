@@ -1,5 +1,5 @@
 
-use {CharacterCache, Color, Colorable, Dimension, Scalar, Ui};
+use {CharacterCache, Color, Colorable, Dimension, GlyphCache, Scalar, Ui};
 use elmesque::Element;
 use frame::Frameable;
 use label::FontSize;
@@ -8,7 +8,6 @@ use num::Float;
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use position::{self, Dimensions, Point};
 use theme::Theme;
-use ui::GlyphCache;
 use vecmath::vec2_sub;
 use widget::{self, Widget};
 

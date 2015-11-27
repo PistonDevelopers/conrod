@@ -27,6 +27,7 @@ pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
 pub use widget::primitive::shape::polygon::Polygon;
 pub use widget::primitive::shape::oval::Oval;
 pub use widget::primitive::shape::rectangle::Rectangle;
+pub use widget::primitive::text::Text;
 
 pub use widget::button::Button;
 pub use widget::canvas::Canvas;
@@ -49,6 +50,7 @@ pub use widget::primitive::line::Style as LineStyle;
 pub use widget::primitive::point_path::Style as PointPathStyle;
 pub use widget::primitive::shape::Style as ShapeStyle;
 pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
+pub use widget::primitive::text::Style as TextStyle;
 
 pub use widget::button::Style as ButtonStyle;
 pub use widget::canvas::Style as CanvasStyle;
@@ -68,6 +70,7 @@ pub use background::Background;
 pub use elmesque::{color, Element};
 pub use elmesque::color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
+pub use glyph_cache::GlyphCache;
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
@@ -82,7 +85,7 @@ pub use position::{Corner, Depth, Direction, Dimension, Dimensions, Horizontal, 
                    Sizeable, Vertical, VerticalAlign};
 pub use position::Matrix as PositionMatrix;
 pub use theme::{Align, Theme};
-pub use ui::{GlyphCache, Ui, UserInput};
+pub use ui::{Ui, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
 pub use widget::{CommonBuilder, CommonState, CommonStyle, DrawArgs, Floating, MaybeParent, UiCell,
@@ -101,6 +104,7 @@ pub use json_io::Error as JsonIoError;
 pub mod backend;
 mod background;
 mod frame;
+pub mod glyph_cache;
 pub mod graph;
 mod label;
 mod mouse;

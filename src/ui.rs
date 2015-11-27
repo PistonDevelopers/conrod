@@ -1,8 +1,9 @@
 
-use {CharacterCache, FontSize, Scalar};
+use {CharacterCache, Scalar};
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use elmesque::Element;
+use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex, Walker};
 use mouse::{self, Mouse};
 use input;
@@ -16,7 +17,6 @@ use input::{
     TextEvent,
 };
 use position::{Dimensions, HorizontalAlign, Padding, Point, Position, Rect, VerticalAlign};
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
@@ -107,30 +107,6 @@ pub struct UserInput<'a> {
     pub window_dim: Dimensions,
 }
 
-/// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
-pub struct GlyphCache<C>(RefCell<C>);
-
-
-impl<C> GlyphCache<C> where C: CharacterCache {
-    /// Return the width of a character.
-    pub fn char_width(&self, font_size: FontSize, ch: char) -> f64 {
-        self.0.borrow_mut().character(font_size, ch).width()
-    }
-    /// Return the width of the given text.
-    pub fn width(&self, font_size: FontSize, text: &str) -> f64 {
-        self.0.borrow_mut().width(font_size, text)
-    }
-}
-
-impl<C> ::std::ops::Deref for GlyphCache<C> {
-    type Target = RefCell<C>;
-    fn deref<'a>(&'a self) -> &'a RefCell<C> { &self.0 }
-}
-
-impl<C> ::std::ops::DerefMut for GlyphCache<C> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut RefCell<C> { &mut self.0 }
-}
-
 
 /// Each time conrod is required to redraw the GUI, it must draw for at least the next three frames
 /// to ensure that, in the case that graphics buffers are being swapped, we have filled each
@@ -173,7 +149,7 @@ impl<C> Ui<C> {
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
-            glyph_cache: GlyphCache(RefCell::new(character_cache)),
+            glyph_cache: GlyphCache::new(character_cache),
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_widget_idx: None,
@@ -619,7 +595,7 @@ impl<C> Ui<C> {
               C: CharacterCache<Texture=G::Texture>,
     {
         use backend::graphics::{draw_from_graph, Transformed};
-        use std::ops::DerefMut;
+        use std::ops::{Deref, DerefMut};
 
         let Ui {
             ref mut glyph_cache,
@@ -634,7 +610,7 @@ impl<C> Ui<C> {
         let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
         // Retrieve the `CharacterCache` from the `Ui`'s `GlyphCache`.
-        let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
+        let mut ref_mut_character_cache = glyph_cache.deref().borrow_mut();
         let character_cache = ref_mut_character_cache.deref_mut();
 
         // Use the depth_order indices as the order for drawing.

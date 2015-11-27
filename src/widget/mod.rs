@@ -1,5 +1,4 @@
-use {CharacterCache, Scalar};
-use time::precise_time_ns;
+use {CharacterCache, Dimension, GlyphCache};
 use elmesque::Element;
 use graph::NodeIndex;
 use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
@@ -8,7 +7,8 @@ use rustc_serialize::Encodable;
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
-use ui::{self, GlyphCache, Ui, UserInput};
+use time::precise_time_ns;
+use ui::{self, Ui, UserInput};
 
 pub use self::id::Id;
 pub use self::index::Index;
