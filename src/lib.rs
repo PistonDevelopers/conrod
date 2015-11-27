@@ -7,7 +7,6 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
-#[macro_use] extern crate bitflags;
 extern crate time;
 extern crate daggy;
 extern crate elmesque;

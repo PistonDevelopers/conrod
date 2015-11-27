@@ -22,7 +22,6 @@ path = "./src/lib.rs"
 
 
 [dependencies]
-bitflags = "0.3.2"
 time = "0.1.34"
 elmesque = "0.11.0"
 json_io = "0.1.2"
