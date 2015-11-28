@@ -848,6 +848,42 @@ impl Range {
         }
     }
 
+    /// Align the `start` of `self` to the `start` of the `other` **Range**.
+    ///
+    /// If the direction of `other` is different to `self`, `self`'s `end` will be aligned to the
+    /// `start` of `other` instead.
+    pub fn align_start_of(self, other: Range) -> Self {
+        let self_direction = self.start <= self.end;
+        let other_direction = other.start <= other.end;
+        let diff = if self_direction == other_direction {
+            other.start - self.start
+        } else {
+            other.start - self.end
+        };
+        self.shift(diff)
+    }
+
+    /// Align the `end` of `self` to the `end` of the `other` **Range**.
+    ///
+    /// If the direction of `other` is different to `self`, `self`'s `start` will be aligned to the
+    /// `end` of `other` instead.
+    pub fn align_end_of(self, other: Range) -> Self {
+        let self_direction = self.start <= self.end;
+        let other_direction = other.start <= other.end;
+        let diff = if self_direction == other_direction {
+            other.end - self.end
+        } else {
+            other.end - self.start
+        };
+        self.shift(diff)
+    }
+
+    /// Align the middle of `self` to the middle of the `other` **Range**.
+    pub fn align_middle_of(self, other: Range) -> Self {
+        let diff = (self.middle() + other.middle()) / 2.0;
+        self.shift(diff)
+    }
+
 }
 
 impl ::std::ops::Add<Range> for Range {
@@ -882,7 +918,7 @@ pub struct Rect {
 impl Rect {
 
     /// Construct a Rect from a given `Point` and `Dimensions`.
-    pub fn from_xy_dim(xy: Point, dim: Dimensions) -> Rect {
+    pub fn from_xy_dim(xy: Point, dim: Dimensions) -> Self {
         Rect {
             x: Range::from_pos_and_len(xy[0], dim[0]),
             y: Range::from_pos_and_len(xy[1], dim[1]),
@@ -890,7 +926,7 @@ impl Rect {
     }
 
     /// Construct a Rect from the coordinates of two points.
-    pub fn from_corners(a: Point, b: Point) -> Rect {
+    pub fn from_corners(a: Point, b: Point) -> Self {
         let (left, right) = if a[0] < b[0] { (a[0], b[0]) } else { (b[0], a[0]) };
         let (bottom, top) = if a[1] < b[1] { (a[1], b[1]) } else { (b[1], a[1]) };
         Rect {
@@ -900,12 +936,12 @@ impl Rect {
     }
 
     /// The Rect representing the area in which two Rects overlap.
-    pub fn overlap(self, other: Rect) -> Option<Rect> {
+    pub fn overlap(self, other: Self) -> Option<Self> {
         self.x.overlap(other.x).and_then(|x| self.y.overlap(other.y).map(|y| Rect { x: x, y: y }))
     }
 
     /// The Rect that encompass the two given sets of Rect.
-    pub fn max(self, other: Rect) -> Rect {
+    pub fn max(self, other: Self) -> Self {
         Rect {
             x: self.x.max(other.x),
             y: self.y.max(other.y),
@@ -1006,17 +1042,17 @@ impl Rect {
     }
 
     /// Shift the Rect along the x axis.
-    pub fn shift_x(self, x: Scalar) -> Rect {
+    pub fn shift_x(self, x: Scalar) -> Self {
         Rect { x: self.x.shift(x), ..self }
     }
 
     /// Shift the Rect along the y axis.
-    pub fn shift_y(self, y: Scalar) -> Rect {
+    pub fn shift_y(self, y: Scalar) -> Self {
         Rect { y: self.y.shift(y), ..self }
     }
 
     /// Shift the Rect by the given Point.
-    pub fn shift(self, xy: Point) -> Rect {
+    pub fn shift(self, xy: Point) -> Self {
         self.shift_x(xy[0]).shift_y(xy[1])
     }
 
@@ -1026,7 +1062,7 @@ impl Rect {
     }
 
     /// Shorten the x and y lengths by the given Scalar amount.
-    pub fn sub_frame(self, frame: Scalar) -> Rect {
+    pub fn sub_frame(self, frame: Scalar) -> Self {
         Rect {
             x: self.x.sub_frame(frame),
             y: self.y.sub_frame(frame),
@@ -1034,7 +1070,7 @@ impl Rect {
     }
 
     /// Lengthen the x and y lengths by the given Scalar amount.
-    pub fn add_frame(self, frame: Scalar) -> Rect {
+    pub fn add_frame(self, frame: Scalar) -> Self {
         Rect {
             x: self.x.add_frame(frame),
             y: self.y.add_frame(frame),
@@ -1042,33 +1078,33 @@ impl Rect {
     }
 
     /// The Rect with some padding applied to the left edge.
-    pub fn pad_left(self, pad: Scalar) -> Rect {
+    pub fn pad_left(self, pad: Scalar) -> Self {
         Rect { x: self.x.pad_start(pad), ..self }
     }
 
     /// The Rect with some padding applied to the right edge.
-    pub fn pad_right(self, pad: Scalar) -> Rect {
+    pub fn pad_right(self, pad: Scalar) -> Self {
         Rect { x: self.x.pad_end(pad), ..self }
     }
 
     /// The rect with some padding applied to the bottom edge.
-    pub fn pad_bottom(self, pad: Scalar) -> Rect {
+    pub fn pad_bottom(self, pad: Scalar) -> Self {
         Rect { y: self.y.pad_start(pad), ..self }
     }
 
     /// The Rect with some padding applied to the top edge.
-    pub fn pad_top(self, pad: Scalar) -> Rect {
+    pub fn pad_top(self, pad: Scalar) -> Self {
         Rect { y: self.y.pad_end(pad), ..self }
     }
 
     /// The Rect with some padding amount applied to each edge.
-    pub fn pad(self, pad: Scalar) -> Rect {
+    pub fn pad(self, pad: Scalar) -> Self {
         let Rect { x, y } = self;
         Rect { x: x.pad(pad), y: y.pad(pad) }
     }
 
     /// The Rect with some padding applied.
-    pub fn padding(self, padding: Padding) -> Rect {
+    pub fn padding(self, padding: Padding) -> Self {
         Rect {
             x: self.x.padding(padding.left, padding.right),
             y: self.y.padding(padding.bottom, padding.top),
@@ -1076,12 +1112,105 @@ impl Rect {
     }
 
     /// Stretches the closest edge(s) to the given point if the point lies outside of the Rect area.
-    pub fn stretch_to_point(self, point: Point) -> Rect {
+    pub fn stretch_to_point(self, point: Point) -> Self {
         let Rect { x, y } = self;
         Rect {
             x: x.stretch_to_value(point[0]),
             y: y.stretch_to_value(point[1]),
         }
+    }
+
+    /// Align `self`'s left edge with the left edge of the `other` **Rect**.
+    pub fn align_left_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x.align_start_of(other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align the middle of `self` with the middle of the `other` **Rect** along the *x* axis.
+    pub fn align_middle_x_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x.align_middle_of(other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self`'s right edge with the right edge of the `other` **Rect**.
+    pub fn align_right_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x.align_end_of(other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self`'s bottom edge with the bottom edge of the `other` **Rect**.
+    pub fn align_bottom_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_start_of(other.y),
+        }
+    }
+
+    /// Align the middle of `self` with the middle of the `other` **Rect** along the *y* axis.
+    pub fn align_middle_y_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_middle_of(other.y),
+        }
+    }
+
+    /// Align `self`'s top edge with the top edge of the `other` **Rect**.
+    pub fn align_top_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_end_of(other.y),
+        }
+    }
+
+    /// Place `self` along the top left edges of the `other` **Rect**.
+    pub fn top_left_of(self, other: Self) -> Self {
+        self.align_left_of(other).align_top_of(other)
+    }
+
+    /// Place `self` along the top right edges of the `other` **Rect**.
+    pub fn top_right_of(self, other: Self) -> Self {
+        self.align_right_of(other).align_top_of(other)
+    }
+
+    /// Place `self` along the bottom left edges of the `other` **Rect**.
+    pub fn bottom_left_of(self, other: Self) -> Self {
+        self.align_left_of(other).align_bottom_of(other)
+    }
+
+    /// Place `self` along the bottom right edges of the `other` **Rect**.
+    pub fn bottom_right_of(self, other: Self) -> Self {
+        self.align_right_of(other).align_bottom_of(other)
+    }
+
+    /// Place `self` in the middle of the top edge of the `other` **Rect**.
+    pub fn mid_top_of(self, other: Self) -> Self {
+        self.align_middle_x_of(other).align_top_of(other)
+    }
+
+    /// Place `self` in the middle of the bottom edge of the `other` **Rect**.
+    pub fn mid_bottom_of(self, other: Self) -> Self {
+        self.align_middle_x_of(other).align_bottom_of(other)
+    }
+
+    /// Place `self` in the middle of the left edge of the `other` **Rect**.
+    pub fn mid_left_of(self, other: Self) -> Self {
+        self.align_left_of(other).align_middle_y_of(other)
+    }
+
+    /// Place `self` in the middle of the right edge of the `other` **Rect**.
+    pub fn mid_right_of(self, other: Self) -> Self {
+        self.align_right_of(other).align_middle_y_of(other)
+    }
+
+    /// Place `self` directly in the middle of the `other` **Rect**.
+    pub fn middle_of(self, other: Self) -> Self {
+        self.align_middle_x_of(other).align_middle_y_of(other)
     }
 
 }
