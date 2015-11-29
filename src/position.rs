@@ -743,7 +743,7 @@ impl Range {
 
     /// The Range that encompasses both self and the given Range.
     /// The returned Range's `start` will always be <= its `end`.
-    pub fn max(self, other: Range) -> Range {
+    pub fn max(self, other: Self) -> Range {
         let start = self.start.min(self.end).min(other.start).min(other.end);
         let end = self.start.max(self.end).max(other.start).max(other.end);
         Range::new(start..end)
@@ -751,7 +751,7 @@ impl Range {
 
     /// The Range that represents the range of the overlap between two Ranges if there is some.
     /// The returned Range's `start` will always be <= its `end`.
-    pub fn overlap(mut self, mut other: Range) -> Option<Range> {
+    pub fn overlap(mut self, mut other: Self) -> Option<Range> {
         self = self.undirected();
         other = other.undirected();
         let start = ::utils::partial_max(self.start, other.start);
@@ -766,7 +766,7 @@ impl Range {
 
     /// The Range that encompasses both self and the given Range.
     /// The returned Range will retain `self`'s original direction.
-    pub fn max_directed(self, other: Range) -> Range {
+    pub fn max_directed(self, other: Self) -> Range {
         if self.start <= self.end { self.max(other) }
         else                      { self.max(other).invert() }
     }
@@ -848,14 +848,19 @@ impl Range {
         }
     }
 
+    /// Does `self` have the same direction as `other`.
+    pub fn has_same_direction(self, other: Self) -> bool {
+        let self_direction = self.start <= self.end;
+        let other_direction = other.start <= other.end;
+        self_direction == other_direction
+    }
+
     /// Align the `start` of `self` to the `start` of the `other` **Range**.
     ///
     /// If the direction of `other` is different to `self`, `self`'s `end` will be aligned to the
     /// `start` of `other` instead.
-    pub fn align_start_of(self, other: Range) -> Self {
-        let self_direction = self.start <= self.end;
-        let other_direction = other.start <= other.end;
-        let diff = if self_direction == other_direction {
+    pub fn align_start_of(self, other: Self) -> Self {
+        let diff = if self.has_same_direction(other) {
             other.start - self.start
         } else {
             other.start - self.end
@@ -867,10 +872,8 @@ impl Range {
     ///
     /// If the direction of `other` is different to `self`, `self`'s `start` will be aligned to the
     /// `end` of `other` instead.
-    pub fn align_end_of(self, other: Range) -> Self {
-        let self_direction = self.start <= self.end;
-        let other_direction = other.start <= other.end;
-        let diff = if self_direction == other_direction {
+    pub fn align_end_of(self, other: Self) -> Self {
+        let diff = if self.has_same_direction(other) {
             other.end - self.end
         } else {
             other.end - self.start
@@ -879,8 +882,32 @@ impl Range {
     }
 
     /// Align the middle of `self` to the middle of the `other` **Range**.
-    pub fn align_middle_of(self, other: Range) -> Self {
+    pub fn align_middle_of(self, other: Self) -> Self {
         let diff = (self.middle() + other.middle()) / 2.0;
+        self.shift(diff)
+    }
+
+    /// Aligns the `start` of `self` with the `end` of `other`.
+    ///
+    /// If the directions are opposite, aligns the `end` of self with the `end` of `other`.
+    pub fn align_after(self, other: Self) -> Self {
+        let diff = if self.has_same_direction(other) {
+            other.end - self.start
+        } else {
+            other.end - self.end
+        };
+        self.shift(diff)
+    }
+
+    /// Aligns the `end` of `self` with the `start` of `other`.
+    ///
+    /// If the directions are opposite, aligns the `start` of self with the `start` of `other`.
+    pub fn align_before(self, other: Self) -> Self {
+        let diff = if self.has_same_direction(other) {
+            other.start - self.end
+        } else {
+            other.start - self.start
+        };
         self.shift(diff)
     }
 
@@ -1117,6 +1144,38 @@ impl Rect {
         Rect {
             x: x.stretch_to_value(point[0]),
             y: y.stretch_to_value(point[1]),
+        }
+    }
+
+    /// Align `self`'s right edge with the left edge of the `other` **Rect**.
+    pub fn left_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x.align_before(other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self`'s left edge with the right dge of the `other` **Rect**.
+    pub fn right_of(self, other: Self) -> Self {
+        Rect {
+            x: self.x.align_after(other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self`'s top edge with the bottom edge of the `other` **Rect**.
+    pub fn below(self, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_before(other.x),
+        }
+    }
+
+    /// Align `self`'s bottom edge with the top edge of the `other` **Rect**.
+    pub fn above(self, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_after(other.x),
         }
     }
 
