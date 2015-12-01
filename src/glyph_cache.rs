@@ -80,7 +80,6 @@ pub type LineBreaksByWhitespace<'a, C> = LineBreaksBy<'a, C, NextLineBreakFn<C>>
 pub struct Lines<'a, I> {
     text: &'a str,
     line_breaks: I,
-    start: usize,
 }
 
 /// An iterator yielding lines for text wrapped with the given function.
@@ -323,7 +322,6 @@ impl<'a, I> Iterator for Lines<'a, I>
         let Lines {
             ref text,
             ref mut line_breaks,
-            ref mut start,
         } = *self;
         line_breaks.next().map(|(start, maybe_line_break)| match maybe_line_break {
             Some(line_break) => &text[start..line_break.index()],
@@ -428,7 +426,6 @@ impl<'a, I> Lines<'a, I> {
         Lines {
             text: text,
             line_breaks: line_breaks,
-            start: 0,
         }
     }
 }
