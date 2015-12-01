@@ -174,6 +174,23 @@ pub fn write_if_different<T, I>(elems: &[T], new_elems: I) -> Cow<[T]>
     }
 }
 
+/// Compares two iterators to see if they yield the same thing.
+pub fn iter_eq<A, B>(mut a: A, mut b: B) -> bool
+    where A: Iterator,
+          B: Iterator<Item=A::Item>,
+          A::Item: PartialEq,
+{
+    loop {
+        match (a.next(), b.next()) {
+            (None, None) => return true,
+            (maybe_a, maybe_b) => if maybe_a != maybe_b {
+                return false
+            },
+        }
+    }
+}
+
+
 
 #[test]
 fn test_map_range() {
