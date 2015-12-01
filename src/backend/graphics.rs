@@ -292,7 +292,6 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let ::graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
-                let maybe_wrap = style.wrap(theme);
                 let line_spacing = style.line_spacing(theme);
                 let color = style.color(theme).to_fsa();
                 //let h_align = style.h_align(theme);
