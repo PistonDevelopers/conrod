@@ -298,7 +298,7 @@ pub fn draw_from_container<G, C>(context: &Context,
 
                 let mut line_rects = state.line_rects(rect, text_align, font_size, line_spacing);
                 while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
-                    let offset = [line_rect.left(), line_rect.top()];
+                    let offset = [line_rect.left().round(), line_rect.bottom().round()];
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
