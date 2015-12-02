@@ -44,6 +44,8 @@ pub struct Style {
     pub maybe_wrap: Option<Option<Wrap>>,
     /// The spacing between consecutive lines.
     pub maybe_line_spacing: Option<Scalar>,
+    /// Alignment of the text along the *x* axis.
+    pub maybe_text_align: Option<Horizontal>,
     // /// The typeface with which the Text is rendered.
     // pub maybe_typeface: Option<Path>,
     // /// The line styling for the text.
@@ -123,6 +125,24 @@ impl<'a> Text<'a> {
         self
     }
 
+    /// Align the text to the left of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_left(mut self) -> Self {
+        self.style.maybe_text_align = Some(Horizontal::Left);
+        self
+    }
+
+    /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_middle(mut self) -> Self {
+        self.style.maybe_text_align = Some(Horizontal::Middle);
+        self
+    }
+
+    /// Align the text to the right of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_right(mut self) -> Self {
+        self.style.maybe_text_align = Some(Horizontal::Right);
+        self
+    }
+
 }
 
 impl Style {
@@ -134,6 +154,7 @@ impl Style {
             maybe_font_size: None,
             maybe_wrap: None,
             maybe_line_spacing: None,
+            maybe_text_align: None,
         }
     }
 
@@ -150,7 +171,7 @@ impl Style {
     /// Get whether or not the text should wrap around if the length exceeds the width.
     pub fn wrap(&self, theme: &Theme) -> Option<Wrap> {
         const DEFAULT_WRAP: Option<Wrap> = Some(Wrap::Whitespace);
-        self.maybe_wrap.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_wrap.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_wrap.unwrap_or(DEFAULT_WRAP)
         })).unwrap_or(DEFAULT_WRAP)
     }
@@ -158,9 +179,17 @@ impl Style {
     /// Get the length of the separating space between consecutive lines of text.
     pub fn line_spacing(&self, theme: &Theme) -> Scalar {
         const DEFAULT_LINE_SPACING: Scalar = 1.0;
-        self.maybe_line_spacing.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_line_spacing.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_line_spacing.unwrap_or(DEFAULT_LINE_SPACING)
         })).unwrap_or(DEFAULT_LINE_SPACING)
+    }
+
+    /// Get the text alignment along the **Text**'s bounding **Rect**'s *x* axis.
+    pub fn text_align(&self, theme: &Theme) -> Horizontal {
+        const DEFAULT_TEXT_ALIGN: Horizontal = Horizontal::Left;
+        self.maybe_text_align.or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+            default.style.maybe_text_align
+        })).unwrap_or(DEFAULT_TEXT_ALIGN)
     }
 
 }

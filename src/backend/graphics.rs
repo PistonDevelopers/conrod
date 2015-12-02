@@ -288,21 +288,16 @@ pub fn draw_from_container<G, C>(context: &Context,
 
         primitive::text::KIND => {
             if let Some(text) = container.unique_widget_state::<::Text>() {
-                //let context = context.scale(1.0, -1.0);
                 let ::graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
                 let line_spacing = style.line_spacing(theme);
                 let color = style.color(theme).to_fsa();
-                //let h_align = style.h_align(theme);
-                let h_align = ::position::Horizontal::Middle;
+                let text_align = style.text_align(theme);
                 let rect = container.rect;
-                let mut line_rects = state.line_rects(rect, h_align, font_size, line_spacing);
 
-                println!("rect: xy: {:?}, dim: {:?}", rect.xy(), rect.dim());
+                let mut line_rects = state.line_rects(rect, text_align, font_size, line_spacing);
                 while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
-                    println!("\tline_rect: xy: {:?}, dim: {:?}", line_rect.xy(), line_rect.dim());
-                    //let offset = [rect.left(), line_rect.top()];
                     let offset = [line_rect.left(), line_rect.top()];
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
