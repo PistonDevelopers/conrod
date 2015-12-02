@@ -302,7 +302,8 @@ pub fn draw_from_container<G, C>(context: &Context,
                 println!("rect: xy: {:?}, dim: {:?}", rect.xy(), rect.dim());
                 while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
                     println!("\tline_rect: xy: {:?}, dim: {:?}", line_rect.xy(), line_rect.dim());
-                    let offset = [rect.left(), line_rect.bottom()];
+                    //let offset = [rect.left(), line_rect.top()];
+                    let offset = [line_rect.left(), line_rect.top()];
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;

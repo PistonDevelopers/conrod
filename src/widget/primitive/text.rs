@@ -417,7 +417,10 @@ impl<'a, I> LineRects<'a, I> {
                 Horizontal::Right => w_range.align_end_of(container_x),
             }.middle();
             *y += y_step;
-            (Rect::from_xy_dim([x, *y], [w, h]), line)
+            let xy = [x, *y];
+            let wh = [w, h];
+            let rect = Rect::from_xy_dim(xy, wh);
+            (rect, line)
         })
     }
 
