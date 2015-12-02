@@ -67,6 +67,8 @@ pub enum Dimension {
     Absolute(Scalar),
     /// The dimension should match that of the widget at the given index.
     Of(widget::Index),
+    /// The dimension should match that of the `kid_area` of the widget at the given index.
+    KidAreaOf(widget::Index),
 }
 
 
@@ -427,18 +429,6 @@ pub trait Sizeable: Sized {
         self.y_dimension(Dimension::Absolute(h))
     }
 
-    /// Set the width as the width of the widget at the given index.
-    #[inline]
-    fn width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.x_dimension(Dimension::Of(idx.into()))
-    }
-
-    /// Set the height as the height of the widget at the given index.
-    #[inline]
-    fn height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.y_dimension(Dimension::Of(idx.into()))
-    }
-
     /// Set the dimensions for the widget.
     #[inline]
     fn dim(self, dim: Dimensions) -> Self {
@@ -451,16 +441,40 @@ pub trait Sizeable: Sized {
         self.dim([width, height])
     }
 
+    /// Set the width as the width of the widget at the given index.
+    #[inline]
+    fn width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.x_dimension(Dimension::Of(idx.into()))
+    }
+
+    /// Set the height as the height of the widget at the given index.
+    #[inline]
+    fn height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.y_dimension(Dimension::Of(idx.into()))
+    }
+
     /// Set the dimensions as the dimensions of the widget at the given index.
     #[inline]
     fn dim_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
         self.width_of(idx).height_of(idx)
     }
 
-    /// Set the dimensions as the dimensions of the widget at the given index.
+    /// Set the width as the width of the padded area of the widget at the given index.
     #[inline]
-    fn dimension_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
-        self.dim_of(idx)
+    fn kid_area_width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.x_dimension(Dimension::KidAreaOf(idx.into()))
+    }
+
+    /// Set the height as the height of the padded area of the widget at the given index.
+    #[inline]
+    fn kid_area_height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.y_dimension(Dimension::KidAreaOf(idx.into()))
+    }
+
+    /// Set the dimensions as the dimensions of the padded area of the widget at the given index.
+    #[inline]
+    fn kid_area_dim_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
+        self.kid_area_width_of(idx).kid_area_height_of(idx)
     }
 
     /// Get the absolute width of the widget as a Scalar value.
@@ -469,6 +483,7 @@ pub trait Sizeable: Sized {
         match self.get_x_dimension(ui) {
             Dimension::Absolute(width) => Some(width),
             Dimension::Of(idx) => ui.width_of(idx),
+            Dimension::KidAreaOf(idx) => ui.kid_area_of(idx).map(|r| r.w()),
         }
     }
 
@@ -478,6 +493,7 @@ pub trait Sizeable: Sized {
         match self.get_y_dimension(ui) {
             Dimension::Absolute(height) => Some(height),
             Dimension::Of(idx) => ui.height_of(idx),
+            Dimension::KidAreaOf(idx) => ui.kid_area_of(idx).map(|r| r.h()),
         }
     }
 
