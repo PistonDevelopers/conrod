@@ -53,9 +53,9 @@ fn set_ui(ui: &mut Ui) {
 
     // Our `Canvas` tree, upon which we will place our text widgets.
     Split::new(MASTER).flow_right(&[
-        Split::new(LEFT_COL).pad(10.0).color(color::dark_charcoal()),
-        Split::new(MIDDLE_COL).pad(10.0).color(color::charcoal()),
-        Split::new(RIGHT_COL).pad(10.0).color(color::light_charcoal()),
+        Split::new(LEFT_COL).pad(20.0).color(color::black()),
+        Split::new(MIDDLE_COL).pad(20.0).color(color::dark_charcoal()),
+        Split::new(RIGHT_COL).pad(20.0).color(color::charcoal()),
     ]).set(ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -67,24 +67,26 @@ fn set_ui(ui: &mut Ui) {
         magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
 
     Text::new(DEMO_TEXT)
-        .color(color::red())
-        .dim_of(LEFT_COL)
-        .middle_of(LEFT_COL)
+        .color(color::light_red())
+        .kid_area_width_of(LEFT_COL)
+        .mid_top_of(LEFT_COL)
         .align_text_left()
+        .line_spacing(10.0)
         .set(LEFT_TEXT, ui);
 
     Text::new(DEMO_TEXT)
-        .color(color::green())
-        .dim_of(MIDDLE_COL)
+        .color(color::light_green())
+        .kid_area_width_of(MIDDLE_COL)
         .middle_of(MIDDLE_COL)
         .align_text_middle()
         .set(MIDDLE_TEXT, ui);
 
     Text::new(DEMO_TEXT)
-        .color(color::blue())
-        .dim_of(RIGHT_COL)
-        .middle_of(RIGHT_COL)
+        .color(color::light_blue())
+        .kid_area_width_of(RIGHT_COL)
+        .mid_bottom_of(RIGHT_COL)
         .align_text_right()
+        .line_spacing(5.0)
         .set(RIGHT_TEXT, ui);
 }
 
