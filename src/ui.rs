@@ -203,6 +203,14 @@ impl<C> Ui<C> {
         self.rect_of(idx).map(|rect| rect.xy())
     }
 
+    /// The `kid_area` of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn kid_area_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.widget(idx).map(|widget| widget.kid_area.rect)
+    }
+
     /// An index to the previously updated widget if there is one.
     pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
         self.maybe_prev_widget_idx
