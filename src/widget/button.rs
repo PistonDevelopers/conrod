@@ -1,12 +1,22 @@
 
-use {CharacterCache, Label, NodeIndex, FramedRectangle, Ui};
-use color::{Color, Colorable};
-use frame::Frameable;
-use label::{FontSize, Labelable};
-use mouse::Mouse;
-use position::{Dimension, Positionable};
-use theme::Theme;
-use widget::{self, Widget};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    FontSize,
+    Frameable,
+    FramedRectangle,
+    Labelable,
+    Mouse,
+    NodeIndex,
+    Positionable,
+    Text,
+    Theme,
+    Ui,
+    Widget,
+};
+use widget;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -20,8 +30,7 @@ pub struct Button<'a, F> {
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
-#[allow(missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
     /// Color of the Button's pressable area.
     pub maybe_color: Option<Color>,
@@ -195,7 +204,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
                 .unwrap_or_else(|| ui.new_unique_node_index());
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
-            Label::new(label)
+            Text::new(label)
                 .middle_of(rectangle_idx)
                 .graphics_for(idx)
                 .color(color)
