@@ -1,11 +1,16 @@
 
-use {CharacterCache, Dimension, Scalar};
-use color::{Color, Colorable};
-use elmesque::Element;
-use label::FontSize;
-use theme::Theme;
-use ui::Ui;
-use widget::{self, Widget};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    FontSize,
+    Scalar,
+    Theme,
+    Ui,
+    Widget,
+};
+use widget;
 
 
 /// Displays some given text centred within a rectangle.
@@ -105,20 +110,6 @@ impl<'a> Widget for Label<'a> {
         if &state.view().string[..] != self.text {
             state.update(|state| state.string = self.text.to_owned());
         }
-    }
-
-    /// Construct an Element for the Label.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{text, collage};
-        use elmesque::text::Text;
-        let widget::DrawArgs { rect, state: &State { ref string }, style, theme, .. } = args;
-        let size = style.font_size(theme);
-        let color = style.color(theme);
-        let (x, y, w, h) = rect.x_y_w_h();
-        let form = text(Text::from_string(string.clone())
-                            .color(color)
-                            .height(size as f64)).shift(x.floor(), y.floor());
-        collage(w as i32, h as i32, vec![form])
     }
 
 }
