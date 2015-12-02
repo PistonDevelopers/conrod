@@ -585,3 +585,18 @@ impl Range {
 
 }
 
+
+impl ::std::ops::Add<Range> for Range {
+    type Output = Range;
+    fn add(self, rhs: Range) -> Range {
+        Range::new(self.start + rhs.start, self.end + rhs.end)
+    }
+}
+
+impl ::std::ops::Sub<Range> for Range {
+    type Output = Range;
+    fn sub(self, rhs: Range) -> Range {
+        Range::new(self.start - rhs.start, self.end - rhs.end)
+    }
+}
+
