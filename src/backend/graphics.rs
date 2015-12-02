@@ -288,7 +288,7 @@ pub fn draw_from_container<G, C>(context: &Context,
 
         primitive::text::KIND => {
             if let Some(text) = container.unique_widget_state::<::Text>() {
-                let context = context.scale(1.0, -1.0);
+                //let context = context.scale(1.0, -1.0);
                 let ::graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
@@ -299,47 +299,17 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let rect = container.rect;
                 let mut line_rects = state.line_rects(rect, h_align, font_size, line_spacing);
 
+                println!("rect: xy: {:?}, dim: {:?}", rect.xy(), rect.dim());
                 while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
-                    let draw_state = &context.draw_state;
-                    let offset = ::vecmath::vec2_sub(line_rect.xy(), rect.xy());
-                    let context = context.trans(offset[0], offset[1]);
+                    println!("\tline_rect: xy: {:?}, dim: {:?}", line_rect.xy(), line_rect.dim());
+                    let offset = [rect.left(), line_rect.bottom()];
+                    let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
+                    let draw_state = &context.draw_state;
                     graphics::text::Text::new_color(color, font_size)
                         .round()
                         .draw(line, character_cache, draw_state, transform, graphics);
                 }
-
-                // let context = context.scale(1.0, -1.0);
-                // if let Some(ref mut character_cache) = *maybe_character_cache {
-                //     use text::Style as TextStyle;
-                //     use text::Position as TextPosition;
-                //     use text::TextUnit;
-                //     let (total_width, max_height) = text.sequence.iter().fold((0.0, 0.0), |(w, h), unit| {
-                //         let TextUnit { ref string, ref style } = *unit;
-                //         let TextStyle { ref typeface, height, color, bold, italic, line, monospace } = *style;
-                //         let height = height.unwrap_or(16.0);
-                //         let new_total_width = w + character_cache.width(height as u32, &string);
-                //         let new_max_height = if height > h { height } else { h };
-                //         (new_total_width, new_max_height)
-                //     });
-                //     let x_offset = match text.position {
-                //             TextPosition::Center  => -(total_width / 2.0).floor(),
-                //             TextPosition::ToLeft  => -total_width.floor(),
-                //             TextPosition::ToRight => 0.0
-                //         };
-                //     let y_offset = (max_height / 3.0).floor(); // TODO: FIX THIS (3.0)
-                //     let context = context.trans(x_offset, y_offset);
-                //     for unit in text.sequence.iter() {
-                //         let TextUnit { ref string, ref style } = *unit;
-                //         let TextStyle { ref typeface, height, color, bold, italic, line, monospace } = *style;
-                //         let height = height.unwrap_or(16.0).floor();
-                //         let color = convert_color(color, alpha);
-                //         graphics::text::Text::new_color(color, height as u32)
-                //             .round()
-                //             .draw(&string[..], *character_cache, &context.draw_state, context.transform, backend);
-                //     }
-                // }
-
             }
         },
 

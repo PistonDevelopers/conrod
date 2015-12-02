@@ -36,7 +36,6 @@ fn main() {
 }
 
 
-// Draw the Ui.
 fn set_ui(ui: &mut Ui) {
     use conrod::{Circle, Line, Oval, PointPath, Polygon, Positionable, Rectangle, Split};
     use std::iter::once;

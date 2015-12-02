@@ -298,15 +298,34 @@ impl<'a, C, F> Iterator for LineBreaksBy<'a, C, F>
 
         match line_break_fn(cache, font_size, &text[*start..], max_width) {
             Some(next) => {
+                let next = match next {
+                    LineBreak::Newline(idx, w) => LineBreak::Newline(*start + idx, w),
+                    LineBreak::Wrap(idx) => LineBreak::Wrap(*start + idx),
+                };
                 let range = (*start, Some(next));
                 *start = match next {
                     LineBreak::Newline(idx, width) => idx + width,
-                    LineBreak::Wrap(idx) => idx,
+                    LineBreak::Wrap(idx) => {
+                        // let wrap_elem = &text[*start..*start + 1];
+                        // if wrap_elem == " " {
+                        //     idx + 1
+                        // } else {
+                        //     idx
+                        // }
+                        let maybe_first_char = text[*start..].chars().next();
+                        if let Some(true) = maybe_first_char.map(|ch| ch.is_whitespace()) {
+                            idx + 1
+                        } else {
+                            idx
+                        }
+                    },
                 };
                 Some(range)
             },
             None => if *start < text.len() {
-                Some((*start, None))
+                let last = Some((*start, None));
+                *start = text.len();
+                last
             } else {
                 None
             },
