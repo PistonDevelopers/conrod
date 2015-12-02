@@ -685,9 +685,12 @@ pub struct Range {
 
 impl Range {
 
-    /// Construct a new `Range` from a given range, i.e. `Range::new(start..end)`.
-    pub fn new(range: ::std::ops::Range<Scalar>) -> Range {
-        Range { start: range.start, end: range.end }
+    /// Construct a new `Range` from a given range, i.e. `Range::new(start, end)`.
+    pub fn new(start: Scalar, end: Scalar) -> Range {
+        Range {
+            start: start,
+            end: end,
+        }
     }
 
     /// Construct a new `Range` from a given length and its centered position.
@@ -695,7 +698,7 @@ impl Range {
         let half_len = len / 2.0;
         let start = pos - half_len;
         let end = pos + half_len;
-        Range::new(start..end)
+        Range::new(start, end)
     }
 
     /// The `start` value subtracted from the `end` value.
@@ -746,7 +749,7 @@ impl Range {
     pub fn max(self, other: Self) -> Range {
         let start = self.start.min(self.end).min(other.start).min(other.end);
         let end = self.start.max(self.end).max(other.start).max(other.end);
-        Range::new(start..end)
+        Range::new(start, end)
     }
 
     /// The Range that represents the range of the overlap between two Ranges if there is some.
@@ -758,7 +761,7 @@ impl Range {
         let end = ::utils::partial_min(self.end, other.end);
         let magnitude = end - start;
         if magnitude > 0.0 {
-            Some(Range::new(start..end))
+            Some(Range::new(start, end))
         } else {
             None
         }
@@ -779,12 +782,12 @@ impl Range {
 
     /// Round the values at both ends of the Range and return the result.
     pub fn round(self) -> Range {
-        Range::new(self.start.round()..self.end.round())
+        Range::new(self.start.round(), self.end.round())
     }
 
     /// Floor the values at both ends of the Range and return the result.
     pub fn floor(self) -> Range {
-        Range::new(self.start.floor()..self.end.floor())
+        Range::new(self.start.floor(), self.end.floor())
     }
 
     /// Shorten the Range from both ends by the given Scalar amount.
@@ -916,14 +919,14 @@ impl Range {
 impl ::std::ops::Add<Range> for Range {
     type Output = Range;
     fn add(self, rhs: Range) -> Range {
-        Range::new(self.start + rhs.start .. self.end + rhs.end)
+        Range::new(self.start + rhs.start, self.end + rhs.end)
     }
 }
 
 impl ::std::ops::Sub<Range> for Range {
     type Output = Range;
     fn sub(self, rhs: Range) -> Range {
-        Range::new(self.start - rhs.start .. self.end - rhs.end)
+        Range::new(self.start - rhs.start, self.end - rhs.end)
     }
 }
 

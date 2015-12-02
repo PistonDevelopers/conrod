@@ -379,7 +379,7 @@ impl<'a, I> LineRects<'a, I> {
             y_step: -(line_spacing + height),
             h_align: h_align,
             container_x: container.x,
-            y: Range::new(0.0..height).align_end_of(container.y).middle(),
+            y: Range::new(0.0, height).align_end_of(container.y).middle(),
             strs: ::std::marker::PhantomData,
         }
     }
@@ -410,7 +410,7 @@ impl<'a, I> LineRects<'a, I> {
         lines.next().map(|line| {
             let w = cache.width(font_size, line);
             let h = font_size as Scalar;
-            let w_range = Range::new(0.0..w);
+            let w_range = Range::new(0.0, w);
             let x = match h_align {
                 Horizontal::Left => w_range.align_start_of(container_x),
                 Horizontal::Middle => w_range.align_middle_of(container_x),

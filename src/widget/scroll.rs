@@ -302,7 +302,7 @@ impl Bar {
         let total = visible.max_directed(kids_at_origin);
 
         // The range that describes the area upon which the start of the visible range can scroll.
-        let scrollable = Range::new(total.start .. total.end - visible.magnitude());
+        let scrollable = Range::new(total.start, total.end - visible.magnitude());
 
         // We only need to calculate offsets if we actually have some scrollable area.
         if scrollable.magnitude().is_normal() && scrollable.direction() == kids.direction() {
@@ -581,8 +581,8 @@ pub fn uncapture_mouse(prev: &State, new: &State) -> bool {
 #[test]
 fn test_bar_new_no_scroll() {
     // Create a `Bar` that shouldn't scroll.
-    let visible = Range::new(-5.0..5.0);
-    let kids = Range::new(-3.0..3.0);
+    let visible = Range::new(-5.0, 5.0);
+    let kids = Range::new(-3.0, 3.0);
     let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
     assert_eq!(maybe_bar, None);
 }
@@ -590,8 +590,8 @@ fn test_bar_new_no_scroll() {
 #[test]
 fn test_bar_new_no_scroll_rev_range() {
     // Now with a reversed range.
-    let visible = Range::new(5.0..-5.0);
-    let kids = Range::new(3.0..-3.0);
+    let visible = Range::new(5.0, -5.0);
+    let kids = Range::new(3.0, -3.0);
     let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
     assert_eq!(maybe_bar, None);
 }
