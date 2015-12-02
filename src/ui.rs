@@ -208,7 +208,9 @@ impl<C> Ui<C> {
     /// Returns `None` if there is no widget for the given index.
     pub fn kid_area_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.widget(idx).map(|widget| widget.kid_area.rect)
+        self.widget_graph.widget(idx).map(|widget| {
+            widget.kid_area.rect.padding(widget.kid_area.pad)
+        })
     }
 
     /// An index to the previously updated widget if there is one.
