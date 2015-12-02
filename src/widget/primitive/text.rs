@@ -143,6 +143,12 @@ impl<'a> Text<'a> {
         self
     }
 
+    /// The height of the space used between consecutive lines.
+    pub fn line_spacing(mut self, height: Scalar) -> Self {
+        self.style.maybe_line_spacing = Some(height);
+        self
+    }
+
 }
 
 impl Style {
@@ -445,10 +451,10 @@ impl<'a, I> LineRects<'a, I> {
                 Horizontal::Middle => w_range.align_middle_of(container_x),
                 Horizontal::Right => w_range.align_end_of(container_x),
             }.middle();
-            *y += y_step;
             let xy = [x, *y];
             let wh = [w, h];
             let rect = Rect::from_xy_dim(xy, wh);
+            *y += y_step;
             (rect, line)
         })
     }
