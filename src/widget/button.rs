@@ -118,7 +118,9 @@ impl<'a, F> Button<'a, F> {
 }
 
 
-impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
+impl<'a, F> Widget for Button<'a, F>
+    where F: FnOnce(),
+{
     type State = State;
     type Style = Style;
 
@@ -157,7 +159,7 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
     /// Update the state of the Button.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
-        let Button { enabled, maybe_label, mut maybe_react, .. } = self;
+        let Button { enabled, maybe_label, maybe_react, .. } = self;
         let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
@@ -180,7 +182,9 @@ impl<'a, F> Widget for Button<'a, F> where F: FnMut() {
         // If the mouse was released over button, react.
         if let (Interaction::Clicked, Interaction::Highlighted) =
             (state.view().interaction, new_interaction) {
-            if let Some(ref mut react) = maybe_react { react() }
+            if let Some(react) = maybe_react {
+                react()
+            }
         }
 
         // FramedRectangle widget.
