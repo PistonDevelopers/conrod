@@ -1,6 +1,6 @@
 
 use ::{CharacterCache, Scalar};
-use clock_ticks::precise_time_ns;
+use time::precise_time_ns;
 use elmesque::Element;
 use graph::NodeIndex;
 use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,

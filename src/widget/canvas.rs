@@ -1,6 +1,6 @@
 
 use Scalar;
-use clock_ticks::precise_time_ns;
+use time::precise_time_ns;
 use color::Color;
 use elmesque::element::Element;
 use graphics::character::CharacterCache;
