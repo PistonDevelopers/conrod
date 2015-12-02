@@ -8,7 +8,6 @@
 #![warn(missing_docs)]
 
 #[macro_use] extern crate bitflags;
-extern crate clock_ticks;
 extern crate daggy;
 extern crate elmesque;
 extern crate graphics;
@@ -17,6 +16,7 @@ extern crate num;
 extern crate input;
 extern crate rand;
 extern crate rustc_serialize;
+extern crate time;
 extern crate vecmath;
 
 
