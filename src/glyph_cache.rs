@@ -48,8 +48,12 @@ pub struct Widths<'a, C: 'a, I> {
 /// The two types of **LineBreak** indices returned by the **WrapIndicesBy** iterators.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LineBreak {
-    /// An index at which the string should wrap due to exceeding a maximum width.
-    Wrap(usize),
+    /// The first `usize` is an index at which the string should wrap due to exceeding a maximum
+    /// width.
+    ///
+    /// The second `usize` is the byte length which should be skipped in order to reach the first
+    /// non-whitespace character to use as the beginning of the next line.
+    Wrap(usize, usize),
     /// An index at which the string breaks due to a newline character, along with the width of the
     /// "newline" token in bytes.
     Newline(usize, usize),
@@ -299,26 +303,13 @@ impl<'a, C, F> Iterator for LineBreaksBy<'a, C, F>
         match line_break_fn(cache, font_size, &text[*start..], max_width) {
             Some(next) => {
                 let next = match next {
-                    LineBreak::Newline(idx, w) => LineBreak::Newline(*start + idx, w),
-                    LineBreak::Wrap(idx) => LineBreak::Wrap(*start + idx),
+                    LineBreak::Newline(idx, width) => LineBreak::Newline(*start + idx, width),
+                    LineBreak::Wrap(idx, width) => LineBreak::Wrap(*start + idx, width),
                 };
                 let range = (*start, Some(next));
                 *start = match next {
                     LineBreak::Newline(idx, width) => idx + width,
-                    LineBreak::Wrap(idx) => {
-                        // let wrap_elem = &text[*start..*start + 1];
-                        // if wrap_elem == " " {
-                        //     idx + 1
-                        // } else {
-                        //     idx
-                        // }
-                        let maybe_first_char = text[*start..].chars().next();
-                        if let Some(true) = maybe_first_char.map(|ch| ch.is_whitespace()) {
-                            idx + 1
-                        } else {
-                            idx
-                        }
-                    },
+                    LineBreak::Wrap(idx, width) => idx + width,
                 };
                 Some(range)
             },
@@ -356,7 +347,7 @@ impl LineBreak {
     /// last byte of the line).
     pub fn index(self) -> usize {
         match self {
-            LineBreak::Wrap(idx) | LineBreak::Newline(idx, _) => idx,
+            LineBreak::Wrap(idx, _) | LineBreak::Newline(idx, _) => idx,
         }
     }
 
@@ -387,7 +378,7 @@ impl LineBreak {
 
             // Check for a line wrap.
             if width > max_width {
-                return Some(LineBreak::Wrap(i));
+                return Some(LineBreak::Wrap(i, 0));
             }
         }
         None
@@ -427,7 +418,7 @@ impl LineBreak {
 
             // Check for a line wrap.
             if width > max_width {
-                return Some(LineBreak::Wrap(last_whitespace_start));
+                return Some(LineBreak::Wrap(last_whitespace_start, 1));
             }
         }
         None
