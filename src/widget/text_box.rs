@@ -220,8 +220,39 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
     (text.chars().count(), text_start_x + text_w)
 }
 
+
+fn get_interaction<C: CharacterCache, F: FnMut(&mut String)>(text_box: &TextBox<F>, update_args: &mut widget::UpdateArgs<TextBox<F>, C>) -> Interaction {
+    if !text_box.enabled {
+        Interaction::Uncaptured(Uncaptured::Normal)
+    } else if update_args.ui.ui.is_focus_changing_to(update_args.ui.idx) {
+        println!("Capturing by: {:?}", update_args.ui.idx);
+        Interaction::Captured(View{
+            cursor: Cursor::from_range(0, text_box.text.len()),
+            offset: 0.0
+        })
+    } else {
+        // let widget::UpdateArgs { state, rect, style, mut ui, .. } = *update_args;
+        let (xy, dim) = update_args.rect.xy_dim();
+        update_args.ui.input().maybe_mouse.map(|mouse| {
+            let frame = update_args.style.frame(update_args.ui.theme());
+            let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
+            let font_size = update_args.style.font_size(update_args.ui.theme());
+            let text_w = update_args.ui.glyph_cache().width(font_size, &text_box.text);
+            let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
+            let text_start_x = text_x - text_w / 2.0;
+            let over_elem: Elem = over_elem(update_args.ui.glyph_cache(),
+            mouse.relative_to(xy).xy,
+            dim, pad_dim, text_start_x,
+            text_w, font_size, text_box.text);
+
+            get_mouse_interaction(over_elem, update_args.state.state.interaction, mouse)
+        })
+        .unwrap_or(Interaction::Uncaptured(Uncaptured::Normal))
+    }
+}
+
 /// Check and return the current state of the TextBox.
-fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
+fn get_mouse_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Captured, Uncaptured};
     use self::Uncaptured::{Normal, Highlighted};
@@ -261,8 +292,8 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
                 Elem::Rect => match prev {
                     Normal => prev_interaction,
                     Highlighted => Captured(View {
-                         cursor: Cursor::from_index(0),
-                         offset: 0.0,
+                        cursor: Cursor::from_index(0),
+                        offset: 0.0,
                     })
                 },
                 Elem::Char(idx) =>  match prev {
@@ -280,7 +311,7 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
                     Highlighted => prev_interaction,
                 },
             },
-        },
+        }
     }
 }
 
@@ -316,7 +347,10 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
+
 }
+
+
 
 impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
@@ -349,10 +383,17 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+        let mut a = args;
 
-        let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let mut new_interaction = {
+            get_interaction(&self, &mut a)
+        };
+        let state = a.state;
+        let rect = a.rect;
+        let style = a.style;
+        let mut ui = a.ui;
+
+        let dim = rect.xy_dim().1;
         let frame = style.frame(ui.theme());
         let font_size = style.font_size(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
@@ -360,14 +401,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_control_pressed = state.view().control_pressed;
-        let mut new_interaction = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
-            (true, Some(mouse)) => {
-                let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
-                                          text_w, font_size, &self.text);
-                get_new_interaction(over_elem, state.view().interaction, mouse)
-            },
-        };
 
         // Check cursor validity (and update new_interaction if necessary).
         if let Interaction::Captured(view) = new_interaction {
@@ -646,4 +679,3 @@ impl<'a, F> Frameable for TextBox<'a, F> {
         self
     }
 }
-
