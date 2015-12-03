@@ -1,9 +1,15 @@
-use {CharacterCache, Scalar, Theme};
-use color::{Color, Colorable};
-use elmesque::Element;
-use frame::Frameable;
-use position::{Dimensions, Sizeable};
-use widget::{self, Widget};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimensions,
+    Frameable,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+};
+use widget;
 
 
 /// A filled rectangle widget that may or may not have some frame.
