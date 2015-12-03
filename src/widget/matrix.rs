@@ -185,12 +185,6 @@ impl<'a, F, W> Widget for Matrix<F> where
         }
     }
 
-    /// Construct an Element from the given DropDownList State.
-    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> ::Element {
-        // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
-        ::elmesque::element::empty()
-    }
-
 }
 
 
