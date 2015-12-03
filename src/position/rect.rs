@@ -330,27 +330,6 @@ impl Rect {
 
 }
 
-impl ::std::ops::Add<Rect> for Rect {
-    type Output = Rect;
-    fn add(self, rhs: Rect) -> Rect {
-        Rect {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl ::std::ops::Sub<Rect> for Rect {
-    type Output = Rect;
-    fn sub(self, rhs: Rect) -> Rect {
-        Rect {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
-
-
 /// A function to simplify determining whether or not a point `xy` is over a rectangle.
 /// `rect_xy` is the centered coordinatees of the rectangle.
 pub fn is_over(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
