@@ -13,6 +13,19 @@ pub struct Rect {
     pub y: Range,
 }
 
+/// Either of the four corners of a **Rect**.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Corner {
+    /// The top left corner of a **Rect**.
+    TopLeft,
+    /// The top right corner of a **Rect**.
+    TopRight,
+    /// The bottom left corner of a **Rect**.
+    BottomLeft,
+    /// The bottom right corner of a **Rect**.
+    BottomRight,
+}
+
 
 impl Rect {
 
@@ -121,6 +134,26 @@ impl Rect {
     /// The Rect's highest x value.
     pub fn right(&self) -> Scalar {
         self.x.undirected().end
+    }
+
+    /// The top left corner **Point**.
+    pub fn top_left(&self) -> Point {
+        [self.left(), self.top()]
+    }
+
+    /// The bottom left corner **Point**.
+    pub fn bottom_left(&self) -> Point {
+        [self.left(), self.bottom()]
+    }
+
+    /// The top right corner **Point**.
+    pub fn top_right(&self) -> Point {
+        [self.right(), self.top()]
+    }
+
+    /// The bottom right corner **Point**.
+    pub fn bottom_right(&self) -> Point {
+        [self.right(), self.bottom()]
     }
 
     /// The edges of the **Rect** in a tuple (top, bottom, left, right).
@@ -326,6 +359,19 @@ impl Rect {
     /// Place `self` directly in the middle of the `other` **Rect**.
     pub fn middle_of(self, other: Self) -> Self {
         self.align_middle_x_of(other).align_middle_y_of(other)
+    }
+
+    /// Return the **Corner** of `self` that is closest to the given **Point**.
+    pub fn closest_corner(&self, xy: Point) -> Corner {
+        use super::Edge;
+        let x_edge = self.x.closest_edge(xy[0]);
+        let y_edge = self.y.closest_edge(xy[1]);
+        match (x_edge, y_edge) {
+            (Edge::Start, Edge::Start) => Corner::BottomLeft,
+            (Edge::Start, Edge::End) => Corner::TopLeft,
+            (Edge::End, Edge::Start) => Corner::BottomRight,
+            (Edge::End, Edge::End) => Corner::TopRight,
+        }
     }
 
 }

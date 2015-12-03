@@ -2,8 +2,8 @@
 use {CharacterCache, Theme, Ui};
 use widget;
 
-pub use self::range::Range;
-pub use self::rect::Rect;
+pub use self::range::{Edge, Range};
+pub use self::rect::{Corner, Rect};
 pub use self::rect::is_over as is_over_rect;
 pub use self::matrix::Matrix;
 
@@ -505,28 +505,9 @@ pub trait Sizeable: Sized {
 
 }
 
-/// A corner of a rectangle.
-#[derive(Copy, Clone)]
-pub enum Corner {
-    /// The top left quarter of a rectangle's area.
-    TopLeft,
-    /// The top right quarter of a rectangle's area.
-    TopRight,
-    /// The bottom left quarter of a rectangle's area.
-    BottomLeft,
-    /// The bottom right quarter of a rectangle's area.
-    BottomRight,
-}
-
 /// Return which corner of the rectangle the given Point is within.
 pub fn corner(xy: Point, dim: Dimensions) -> Corner {
-    use utils::map_range;
-    let x_perc = map_range(xy[0], -dim[0] / 2.0, dim[0] / 2.0, -1.0, 1.0);
-    let y_perc = map_range(xy[1], -dim[1] / 2.0, dim[1] / 2.0, -1.0, 1.0);
-    if      x_perc <= 0.0 && y_perc <= 0.0 { Corner::BottomLeft }
-    else if x_perc >  0.0 && y_perc <= 0.0 { Corner::BottomRight }
-    else if x_perc <= 0.0 && y_perc >  0.0 { Corner::TopLeft }
-    else                                   { Corner::TopRight }
+    Rect::from_xy_dim([0.0, 0.0], dim).closest_corner(xy)
 }
 
 

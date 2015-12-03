@@ -16,6 +16,15 @@ pub struct Range {
     pub end: Scalar,
 }
 
+/// Represents either the **Start** or **End** **Edge** of a **Range**.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Edge {
+    /// The beginning of a **Range**.
+    Start,
+    /// The end of a **Range**.
+    End,
+}
+
 
 impl Range {
 
@@ -583,5 +592,26 @@ impl Range {
         self.shift(diff)
     }
 
+    /// The closest **Edge** of `self` to the given `scalar`.
+    ///
+    /// Returns **Start** if the distance between both **Edge**s is equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use conrod::{Edge, Range};
+    ///
+    /// assert_eq!(Range::new(0.0, 10.0).closest_edge(4.0), Edge::Start);
+    /// assert_eq!(Range::new(0.0, 10.0).closest_edge(7.0), Edge::End);
+    /// assert_eq!(Range::new(0.0, 10.0).closest_edge(5.0), Edge::Start);
+    /// ```
+    pub fn closest_edge(&self, scalar: Scalar) -> Edge {
+        let Range { start, end } = *self;
+        let start_diff = if scalar < start { start - scalar } else { scalar - start };
+        let end_diff = if scalar < end { end - scalar } else { scalar - end };
+        if start_diff <= end_diff { Edge::Start } else { Edge::End }
+    }
+
 }
+
 
