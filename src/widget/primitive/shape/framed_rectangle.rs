@@ -78,29 +78,6 @@ impl Widget for FramedRectangle {
         // Nothing to update here!
     }
 
-    /// Construct an Element for the Rectangle.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{self, collage};
-        let widget::DrawArgs { rect, style, theme, .. } = args;
-
-        let (x, y, w, h) = rect.x_y_w_h();
-        let frame = style.get_frame(theme);
-
-        let maybe_frame_form = if frame > 0.0 {
-            let frame_color = style.get_frame_color(theme);
-            Some(form::rect(w, h).filled(frame_color).shift(x, y))
-        } else {
-            None
-        };
-
-        let (inner_w, inner_h) = rect.pad(frame).w_h();
-        let color = style.get_color(theme);
-        let inner_form = form::rect(inner_w, inner_h).filled(color).shift(x, y);
-
-        let forms = maybe_frame_form.into_iter().chain(::std::iter::once(inner_form));
-        collage(w as i32, h as i32, forms.collect())
-    }
-
 }
 
 

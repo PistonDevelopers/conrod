@@ -194,18 +194,12 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let frame = framed_rectangle.style.get_frame(theme);
                 if frame > 0.0 {
                     let frame_color = framed_rectangle.style.get_frame_color(theme);
-                    draw_rectangle(context, graphics, container.rect, frame_color);
-                    // let (l, b, w, h) = container.rect.l_b_w_h();
-                    // let lbwh = [l, b, w, h];
-                    // let rectangle = graphics::Rectangle::new(frame_color);
-                    // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+                    let frame_rect = container.rect;
+                    draw_rectangle(context, graphics, frame_rect, frame_color);
                 }
                 let color = framed_rectangle.style.get_color(theme);
-                draw_rectangle(context, graphics, container.rect.pad(-frame), color);
-                // let (l, b, w, h) = container.rect.l_b_w_h();
-                // let lbwh = [l, b, w, h];
-                // let rectangle = graphics::Rectangle::new(color);
-                // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+                let rect = container.rect.pad(frame);
+                draw_rectangle(context, graphics, rect, color);
             }
         },
 
