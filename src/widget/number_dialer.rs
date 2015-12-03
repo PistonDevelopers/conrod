@@ -1,21 +1,37 @@
 
-use {CharacterCache, Color, Colorable, Dimension, Ui};
-use elmesque::Element;
-use frame::Frameable;
-use label::{FontSize, Labelable};
-use mouse::Mouse;
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    Dimensions,
+    FontSize,
+    Frameable,
+    FramedRectangle,
+    Labelable,
+    Mouse,
+    NodeIndex,
+    Point,
+    Positionable,
+    Rectangle,
+    Sizeable,
+    Text,
+    Theme,
+    Ui,
+    Widget,
+};
 use num::{Float, NumCast};
-use position::{Dimensions, Point};
 use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
-use theme::Theme;
 use utils::clamp;
-use widget::{self, Widget};
+use widget;
 
 
-/// A widget for precision control over any digit within a value. The reaction is triggered when
-/// the value is updated or if the mouse button is released while the cursor is above the widget.
+/// A widget for precision control over any digit within a value.
+///
+/// The reaction is triggered when the value is updated or if the mouse button is released while
+/// the cursor is above the widget.
 pub struct NumberDialer<'a, T, F> {
     common: widget::CommonBuilder,
     value: T,
@@ -29,13 +45,17 @@ pub struct NumberDialer<'a, T, F> {
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// Color of the NumberDialer's rectangle.
     pub maybe_color: Option<Color>,
+    /// The frame around the NumberDialer's rectangle.
     pub maybe_frame: Option<f64>,
+    /// The color of the rectangle frame.
     pub maybe_frame_color: Option<Color>,
+    /// The color of the NumberDialer's label.
     pub maybe_label_color: Option<Color>,
+    /// The font size for the NumberDialer's label.
     pub maybe_label_font_size: Option<u32>,
 }
 
@@ -44,7 +64,7 @@ pub const KIND: widget::Kind = "NumberDialer";
 
 /// Represents the specific elements that the NumberDialer is made up of. This is used to specify
 /// which element is Highlighted or Clicked when storing State.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum Elem {
     Rect,
     LabelGlyphs,
@@ -54,7 +74,7 @@ pub enum Elem {
 }
 
 /// The current interaction with the NumberDialer.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Interaction {
     Normal,
     Highlighted(Elem),
@@ -68,13 +88,25 @@ pub struct State<T> {
     min: T,
     max: T,
     precision: u8,
-    maybe_label: Option<String>,
     interaction: Interaction,
+    maybe_rectangle_idx: Option<NodeIndex>,
+    maybe_label_idx: Option<NodeIndex>,
+    glyph_slot_indices: Vec<GlyphSlot>,
+}
+
+/// Each digit in the adjustable value has its own **Rectangle** and **Text** widgets.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct GlyphSlot {
+    /// The highlightable **Rectangle** behind the glyph.
+    rectangle_idx: NodeIndex,
+    /// The **Text** widget for the glyph itself.
+    text_idx: NodeIndex,
 }
 
 
-/// Create the string to be drawn from the given values and precision. Combine this with the label
-/// string if one is given.
+/// Create the string to be drawn from the given values and precision.
+///
+/// Combine this with the label string if one is given.
 fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
     let mut val_string = val.to_string();
     // First check we have the correct number of decimal places.
@@ -124,7 +156,8 @@ fn is_over(mouse_xy: Point,
            label_x: f64,
            label_dim: Dimensions,
            val_string_dim: Point,
-           val_string_len: usize) -> Option<Elem> {
+           val_string_len: usize) -> Option<Elem>
+{
     use position::is_over_rect;
     if is_over_rect([0.0, 0.0], dim, mouse_xy) {
         if is_over_rect([label_x, 0.0], label_dim, mouse_xy) {
@@ -180,7 +213,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mou
 impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
     /// Construct a new NumberDialer widget.
-    pub fn new(value: T, min: T, max: T, precision: u8) -> NumberDialer<'a, T, F> {
+    pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
         NumberDialer {
             common: widget::CommonBuilder::new(),
             value: clamp(value, min, max),
@@ -196,7 +229,7 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
     /// Set the reaction for the NumberDialer. It will be triggered when the value is updated or if
     /// the mouse button is released while the cursor is above the widget.
-    pub fn react(mut self, reaction: F) -> NumberDialer<'a, T, F> {
+    pub fn react(mut self, reaction: F) -> Self {
         self.maybe_react = Some(reaction);
         self
     }
@@ -210,7 +243,7 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 }
 
 impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
-    F: FnMut(T),
+    F: FnOnce(T),
     T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
     type State = State<T>;
@@ -234,8 +267,10 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             min: self.min,
             max: self.max,
             precision: self.precision,
-            maybe_label: None,
             interaction: Interaction::Normal,
+            maybe_rectangle_idx: None,
+            maybe_label_idx: None,
+            glyph_slot_indices: Vec::new(),
         }
     }
 
@@ -252,49 +287,53 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
     }
 
     /// Update the state of the NumberDialer.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        use self::Interaction::{Clicked, Highlighted, Normal};
 
-        let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let NumberDialer {
+            value, min, max, precision, enabled, maybe_label, maybe_react, ..
+        } = self;
+
+        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(rect.xy()));
         let frame = style.frame(ui.theme());
-        let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
+        let inner_rect = rect.pad(frame);
         let font_size = style.label_font_size(ui.theme());
-        let label_string = self.maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
+        let label_string = maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
         let label_dim = [ui.glyph_cache().width(font_size, &label_string), font_size as f64];
-        let val_string_len = self.max.to_string().len() + if self.precision == 0 { 0 }
-                                                          else { 1 + self.precision as usize };
-        let val_string = create_val_string(self.value, val_string_len, self.precision);
+        let precision_len = if precision == 0 { 0 } else { precision as usize + 1 };
+        let val_string_len = max.to_string().len() + precision_len;
+        let val_string = create_val_string(value, val_string_len, precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
-        let label_x = -val_string_dim[0] / 2.0;
-        let new_interaction = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Normal,
+        let label_rel_x = -val_string_dim[0] / 2.0;
+        let interaction = state.view().interaction;
+        let new_interaction = match (enabled, maybe_mouse) {
+            (false, _) | (true, None) => Normal,
             (true, Some(mouse)) => {
-                let is_over_elem = is_over(mouse.xy, dim, pad_dim, label_x, label_dim,
-                                           val_string_dim, val_string_len);
-                get_new_interaction(is_over_elem, state.view().interaction, mouse)
+                let is_over_elem = is_over(mouse.xy, rect.dim(), inner_rect.dim(), label_rel_x,
+                                           label_dim, val_string_dim, val_string_len);
+                get_new_interaction(is_over_elem, interaction, mouse)
             },
         };
 
         // Capture the mouse if clicked, uncapture if released.
-        match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted(_), Interaction::Clicked(_)) => { ui.capture_mouse(); },
-            (Interaction::Clicked(_), Interaction::Highlighted(_)) |
-            (Interaction::Clicked(_), Interaction::Normal)         => { ui.uncapture_mouse(); },
+        match (interaction, new_interaction) {
+            (Highlighted(_), Clicked(_)) => { ui.capture_mouse(); },
+            (Clicked(_), Highlighted(_)) |
+            (Clicked(_), Normal)         => { ui.uncapture_mouse(); },
             _ => (),
         }
 
         // Determine new value from the initial state and the new state.
-        let mut new_val = self.value;
-        if let (Interaction::Clicked(elem), Interaction::Clicked(new_elem)) =
-            (state.view().interaction, new_interaction) {
+        let mut new_val = value;
+        if let (Clicked(elem), Clicked(new_elem)) = (interaction, new_interaction) {
             if let (Elem::ValueGlyph(idx, y), Elem::ValueGlyph(_, new_y)) = (elem, new_elem) {
                 let ord = new_y.partial_cmp(&y).unwrap_or(Ordering::Equal);
                 if ord != Ordering::Equal {
                     let decimal_pos = val_string.chars().position(|ch| ch == '.');
-                    let val_f: f64 = NumCast::from(self.value).unwrap();
-                    let min_f: f64 = NumCast::from(self.min).unwrap();
-                    let max_f: f64 = NumCast::from(self.max).unwrap();
+                    let val_f: f64 = NumCast::from(value).unwrap();
+                    let min_f: f64 = NumCast::from(min).unwrap();
+                    let max_f: f64 = NumCast::from(max).unwrap();
                     let new_val_f = match decimal_pos {
                         None => {
                             let power = val_string.len() - idx - 1;
@@ -327,14 +366,17 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             }
         };
 
-        // Call the `react` with the new value if the mouse is pressed/released on the widget
-        // or if the value has changed.
-        if self.value != new_val || match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted(_), Interaction::Clicked(_)) |
-            (Interaction::Clicked(_), Interaction::Highlighted(_)) => true,
-            _ => false,
-        } {
-            if let Some(ref mut react) = self.maybe_react { react(new_val) }
+        // Call the `react` with the new value if the mouse is pressed/released on the widget or if
+        // the value has changed.
+        if let Some(react) = maybe_react {
+            let should_react = value != new_val
+                || match (interaction, new_interaction) {
+                    (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
+                    _ => false,
+                };
+            if should_react {
+                react(new_val);
+            }
         }
 
         if state.view().interaction != new_interaction {
@@ -345,106 +387,117 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             state.update(|state| state.value = new_val);
         }
 
-        if state.view().min != self.min {
-            state.update(|state| state.min = self.min);
+        if state.view().min != min {
+            state.update(|state| state.min = min);
         }
 
-        if state.view().max != self.max {
-            state.update(|state| state.max = self.max);
+        if state.view().max != max {
+            state.update(|state| state.max = max);
         }
 
-        if state.view().precision != self.precision {
-            state.update(|state| state.precision = self.precision);
+        if state.view().precision != precision {
+            state.update(|state| state.precision = precision);
         }
 
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+        // The **Rectangle** backdrop widget.
+        let color = style.color(ui.theme());
+        let frame = style.frame(ui.theme());
+        let frame_color = style.frame_color(ui.theme());
+        let rectangle_idx = state.view().maybe_rectangle_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
+        FramedRectangle::new(rect.dim())
+            .middle_of(idx)
+            .graphics_for(idx)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
+            .set(rectangle_idx, &mut ui);
+
+        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
+            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx))
+        }
+
+        // The **Text** for the **NumberDialer**'s label.
+        let label_color = style.label_color(ui.theme());
+        let font_size = style.label_font_size(ui.theme());
+        let maybe_label_idx = maybe_label.map(|_| {
+            let label_idx = state.view().maybe_label_idx
+                .unwrap_or_else(|| ui.new_unique_node_index());
+            Text::new(&label_string)
+                .relative_to(idx, [label_rel_x, 0.0])
+                .graphics_for(idx)
+                .color(label_color)
+                .font_size(font_size)
+                .parent(Some(idx))
+                .set(label_idx, &mut ui);
+            label_idx
+        });
+
+        if state.view().maybe_label_idx.is_none() && maybe_label_idx.is_some() {
+            state.update(|state| state.maybe_label_idx = maybe_label_idx);
+        }
+
+        // Ensure we have at least as many glyph_slot_indices as there are chars in our val_string.
+        if state.view().glyph_slot_indices.len() < val_string.chars().count() {
             state.update(|state| {
-                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-            });
-        }
-    }
-
-    /// Construct an Element from the given NumberDialer State.
-    fn draw<C>(args: widget::DrawArgs<Self, C>) -> Element
-        where C: CharacterCache,
-    {
-        use elmesque::form::{self, collage, text};
-        use elmesque::text::Text;
-
-        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
-
-        // Construct the frame and inner rectangle Forms.
-        let (xy, dim) = rect.xy_dim();
-        let frame = style.frame(theme);
-        let pad_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
-        let frame_color = style.frame_color(theme);
-        let color = style.color(theme);
-        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
-        let val_string_len = state.max.to_string().len() + if state.precision == 0 { 0 }
-                                                          else { 1 + state.precision as usize };
-        let label_string = state.maybe_label.as_ref()
-            .map_or_else(|| String::new(), |text| format!("{}: ", text));
-        let font_size = style.label_font_size(theme);
-
-        // If the value has changed, create a new string for val_string.
-        let val_string = create_val_string(state.value, val_string_len, state.precision);
-        let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
-        let label_x = -val_string_dim[0] / 2.0;
-        let label_dim = [glyph_cache.width(font_size, &label_string), font_size as f64];
-
-        // Construct the label form.
-        let val_string_color = style.label_color(theme);
-        let label_form = text(Text::from_string(label_string.clone())
-                                  .color(val_string_color)
-                                  .height(font_size as f64)).shift_x(label_x.floor());
-
-        // Construct the value_string's Form.
-        let val_string_pos = [label_x + label_dim[0] / 2.0, 0.0];
-        let slot_w = value_glyph_slot_width(font_size);
-        let mut x = slot_w / 2.0;
-        let val_string_forms = {
-            val_string.chars().enumerate().flat_map(|(i, ch)| {
-                let maybe_rect_form = match state.interaction {
-                    Interaction::Highlighted(elem) => if let Elem::ValueGlyph(idx, _) = elem {
-                        let rect_color = if idx == i { color.highlighted() }
-                                         else { color };
-                        Some(form::rect(slot_w, pad_dim[1]).filled(rect_color)
-                             .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                             .shift_x(x.floor()))
-                    } else {
-                        None
-                    },
-                    Interaction::Clicked(elem) => if let Elem::ValueGlyph(idx, _) = elem {
-                        let rect_color = if idx == i { color.clicked() }
-                                         else { color };
-                        Some(form::rect(slot_w, pad_dim[1]).filled(rect_color)
-                             .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                             .shift_x(x.floor()))
-                    } else {
-                        None
-                    },
-                    _ => None,
-                };
-                let character_form = text(Text::from_string(ch.to_string())
-                                              .color(val_string_color)
-                                              .height(font_size as f64))
-                                        .shift(val_string_pos[0].floor(), val_string_pos[1].floor())
-                                        .shift_x(x.floor());
-                x += slot_w;
-                maybe_rect_form.into_iter().chain(Some(character_form))
+                let range = state.glyph_slot_indices.len()..val_string.chars().count();
+                let extension = range.map(|_| GlyphSlot {
+                    rectangle_idx: ui.new_unique_node_index(),
+                    text_idx: ui.new_unique_node_index(),
+                });
+                state.glyph_slot_indices.extend(extension);
             })
-        };
+        }
 
-        // Chain the forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form))
-            .chain(Some(label_form))
-            .chain(val_string_forms)
-            .map(|form| form.shift(xy[0].floor(), xy[1].floor()));
+        // Instantiate the widgets necessary for each value glyph.
+        let slot_w = value_glyph_slot_width(font_size);
+        let slot_h = inner_rect.h();
+        let val_string_pos = [label_rel_x + label_dim[0] / 2.0, 0.0];
+        let mut rel_slot_x = slot_w / 2.0 + val_string_pos[0];
+        for (i, _) in val_string.char_indices() {
+            let glyph_string = &val_string[i..i+1];
+            let slot = state.view().glyph_slot_indices[i];
 
-        // Collect the Forms into a renderable Element.
-        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+            // We only want to draw the slot if **Rectangle** if its highlighted or selected.
+            let maybe_slot_color = match new_interaction {
+                Interaction::Highlighted(elem) => match elem {
+                    Elem::ValueGlyph(idx, _) =>
+                        if idx == i { Some(color.highlighted()) }
+                        else { None },
+                        //else { Some(color) },
+                    _ => None
+                },
+                Interaction::Clicked(elem) => match elem {
+                    Elem::ValueGlyph(idx, _) =>
+                        if idx == i { Some(color.clicked()) }
+                        else { None },
+                        //else { Some(color) },
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some(slot_color) = maybe_slot_color {
+                Rectangle::fill([slot_w, slot_h])
+                    .depth(1.0)
+                    .relative_to(idx, [rel_slot_x, 0.0])
+                    .graphics_for(idx)
+                    .color(slot_color)
+                    .parent(Some(rectangle_idx))
+                    .set(slot.rectangle_idx, &mut ui);
+            }
+
+            // Now a **Text** widget for the character itself.
+            Text::new(glyph_string)
+                .relative_to(idx, [rel_slot_x, 0.0])
+                .graphics_for(idx)
+                .color(label_color)
+                .font_size(font_size)
+                .align_text_middle()
+                .parent(Some(idx))
+                .set(slot.text_idx, &mut ui);
+
+            rel_slot_x += slot_w;
+        }
     }
 
 }
