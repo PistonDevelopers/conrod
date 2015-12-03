@@ -43,7 +43,7 @@ fn main() {
 // Draw the Ui.
 fn set_widgets(ui: &mut Ui) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
-    use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, Tabs,
+    use conrod::{Button, Colorable, Labelable, Positionable, Sizeable, Split, Tabs, Text,
                  WidgetMatrix};
 
     // Construct our Canvas tree.
@@ -84,22 +84,22 @@ fn set_widgets(ui: &mut Ui) {
         .middle_of(MIDDLE_COLUMN)
         .set(TABS, ui);
 
-    Label::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
-    Label::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
+    Text::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
+    Text::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
 
-    Label::new("Top Left")
+    Text::new("Top Left")
         .color(light_orange().complement())
         .top_left_of(LEFT_COLUMN)
         .set(TOP_LEFT, ui);
 
-    Label::new("Bottom Right")
+    Text::new("Bottom Right")
         .color(dark_orange().complement())
         .bottom_right_of(RIGHT_COLUMN)
         .set(BOTTOM_RIGHT, ui);
 
-    Label::new("Foo!").color(white()).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
-    Label::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
-    Label::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
+    Text::new("Foo!").color(white()).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
+    Text::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
+    Text::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
     let footer_dim = ui.dim_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
