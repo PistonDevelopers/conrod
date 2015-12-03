@@ -328,9 +328,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         let color = new_interaction.color(style.color(ui.theme()));
         let slider_idx = state.view().maybe_slider_idx
             .unwrap_or_else(|| ui.new_unique_node_index());
+        let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         Rectangle::fill(slider_rect.dim())
-            .point(slider_rect.xy())
+            .relative_to(idx, slider_xy_offset)
             .graphics_for(idx)
+            .parent(Some(idx))
             .color(color)
             .set(slider_idx, &mut ui);
 
