@@ -1,18 +1,30 @@
 
-use {CharacterCache, Color, Colorable, Dimension, Scalar, Ui};
-use elmesque::Element;
-use frame::Frameable;
-use label::{FontSize, Labelable};
-use mouse::Mouse;
-use num::Float;
-use position::{self, Corner};
-use theme::Theme;
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Corner,
+    Dimension,
+    Frameable,
+    FontSize,
+    Labelable,
+    Line,
+    Mouse,
+    Positionable,
+    Scalar,
+    Sizeable,
+    Theme,
+    Ui,
+    Widget,
+};
+use position;
+use widget;
 use utils::{clamp, map_range, val_to_string};
 use vecmath::vec2_sub;
-use widget::{self, Widget};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
+///
 /// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
 pub struct XYPad<'a, X, Y, F> {
@@ -26,16 +38,22 @@ pub struct XYPad<'a, X, Y, F> {
 }
 
 /// Styling for the XYPad, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// The color of the XYPad's rectangle.
     pub maybe_color: Option<Color>,
+    /// The width of the frame surrounding the rectangle.
     pub maybe_frame: Option<Scalar>,
+    /// The color of the surrounding rectangle frame.
     pub maybe_frame_color: Option<Color>,
+    /// The color of the XYPad's label and value label text.
     pub maybe_label_color: Option<Color>,
+    /// The font size for the XYPad's label.
     pub maybe_label_font_size: Option<FontSize>,
+    /// The font size for the XYPad's *value* label.
     pub maybe_value_font_size: Option<FontSize>,
-    pub maybe_line_width: Option<f64>,
+    /// The thickness of the XYPad's crosshair lines.
+    pub maybe_line_thickness: Option<f64>,
 }
 
 /// The state of the XYPad.
@@ -43,8 +61,12 @@ pub struct Style {
 pub struct State<X, Y> {
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
-    maybe_label: Option<String>,
     interaction: Interaction,
+    maybe_frame_idx: Option<NodeIndex>,
+    maybe_label_idx: Option<NodeIndex>,
+    maybe_h_line_idx: Option<NodeIndex>,
+    maybe_v_line_idx: Option<NodeIndex>,
+    maybe_value_label_idx: Option<NodeIndex>,
 }
 
 /// Unique kind for the widget type.
@@ -58,11 +80,10 @@ pub enum Interaction {
     Clicked,
 }
 
-
-impl<X, Y> State<X, Y> {
+impl Interaction {
     /// The color associated with the current state.
     fn color(&self, color: Color) -> Color {
-        match self.interaction {
+        match *self {
             Interaction::Normal => color,
             Interaction::Highlighted => color.highlighted(),
             Interaction::Clicked => color.clicked(),
@@ -89,8 +110,8 @@ fn get_new_interaction(is_over: bool,
 
 impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
 
-    /// Construct a new XYPad widget.
-    pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> XYPad<'a, X, Y, F> {
+    /// Build a new XYPad widget.
+    pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
         XYPad {
             common: widget::CommonBuilder::new(),
             x: x_val, min_x: min_x, max_x: max_x,
@@ -103,21 +124,21 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     }
 
     /// Set the width of the XYPad's crosshair lines.
-    #[inline]
-    pub fn line_width(mut self, width: f64) -> XYPad<'a, X, Y, F> {
-        self.style.maybe_line_width = Some(width);
+    pub fn line_thickness(mut self, width: f64) -> Self {
+        self.style.maybe_line_thickness = Some(width);
         self
     }
 
     /// Set the font size for the displayed crosshair value.
-    #[inline]
-    pub fn value_font_size(mut self, size: FontSize) -> XYPad<'a, X, Y, F> {
+    pub fn value_font_size(mut self, size: FontSize) -> Self {
         self.style.maybe_value_font_size = Some(size);
         self
     }
 
-    /// Set the reaction for the XYPad. It will be triggered when the value is updated or if the
-    /// mouse button is released while the cursor is above the rectangle.
+    /// Set the reaction for the XYPad.
+    ///
+    /// It will be triggered when the value is updated or if the mouse button is released while the
+    /// cursor is above the rectangle.
     pub fn react(mut self, reaction: F) -> Self {
         self.maybe_react = Some(reaction);
         self
@@ -135,7 +156,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     where
         X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
         Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-        F: FnMut(X, Y),
+        F: FnOnce(X, Y),
 {
     type State = State<X, Y>;
     type Style = Style;
@@ -157,7 +178,12 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             interaction: Interaction::Normal,
             x: self.x, min_x: self.min_x, max_x: self.max_x,
             y: self.y, min_y: self.min_y, max_y: self.max_y,
-            maybe_label: None,
+            maybe_frame_idx: None,
+            maybe_rectangle_idx: None,
+            maybe_label_idx: None,
+            maybe_h_line_idx: None,
+            maybe_v_line_idx: None,
+            maybe_value_label_idx: None,
         }
     }
 
@@ -174,63 +200,71 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        use self::Interaction::{Clicked, Highlighted, Normal};
 
-        let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+        let XYPad {
+            enabled,
+            x, min_x, max_x,
+            y, min_y, max_y,
+            maybe_label,
+            maybe_react,
+        } = self;
+
+        let maybe_mouse = ui.input().maybe_mouse;
         let frame = style.frame(ui.theme());
-        let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
+        let inner_rect = rect.pad(frame);
+        let interaction = state.view().interaction;
         let new_interaction = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Normal,
+            (false, _) | (true, None) => Normal,
             (true, Some(mouse)) => {
-                let is_over_pad = position::is_over_rect([0.0, 0.0], pad_dim, mouse.xy);
-                get_new_interaction(is_over_pad, state.view().interaction, mouse)
+                let is_over_inner = inner_rect.is_over(mouse.xy);
+                get_new_interaction(is_over_inner, interaction, mouse)
             },
         };
 
         // Capture the mouse if clicked, uncapture if released.
-        match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
-            (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+        match (interaction, new_interaction) {
+            (Highlighted, Clicked) => { ui.capture_mouse(); },
+            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(); },
             _ => (),
         }
 
         // Determine new values from the mouse position over the pad.
         let (new_x, new_y) = match (maybe_mouse, new_interaction) {
-            (None, _) | (_, Interaction::Normal) | (_, Interaction::Highlighted) => (self.x, self.y),
-            (Some(mouse), Interaction::Clicked) => {
-                let half_pad_w = pad_dim[0] / 2.0;
-                let half_pad_h = pad_dim[1] / 2.0;
-                let temp_x = clamp(mouse.xy[0], -half_pad_w, half_pad_w);
-                let temp_y = clamp(mouse.xy[1], -half_pad_h, half_pad_h);
-                (map_range(temp_x, -half_pad_w, half_pad_w, self.min_x, self.max_x),
-                 map_range(temp_y, -half_pad_h, half_pad_h, self.min_y, self.max_y))
-            }
+            (None, _) | (_, Normal) | (_, Highlighted) => (self.x, self.y),
+            (Some(mouse), Clicked) => {
+                let unclamped_x = mouse.xy[0] - inner_rect.left();
+                let unclamped_y = mouse.xy[1] - inner_rect.bottom();
+                let clamped_x = inner_rect.x.clamp_value(unclamped_x);
+                let clamped_y = inner_rect.y.clamp_value(unclamped_y);
+                let (l, r, b, t) = inner_rect.l_r_b_t();
+                let new_x = map_range(clamped_x, l, r, min_x, max_x);
+                let new_y = map_range(clamped_y, b, t, min_y, max_y);
+                (new_x, new_y)
+            },
         };
 
         // React if value is changed or the pad is clicked/released.
-        if let Some(ref mut react) = self.maybe_react {
-            if self.x != new_x || self.y != new_y { react(new_x, new_y) }
-            else {
-                match (state.view().interaction, new_interaction) {
-                    (Interaction::Highlighted, Interaction::Clicked) |
-                    (Interaction::Clicked, Interaction::Highlighted) => react(new_x, new_y),
-                    _ => (),
-                }
+        if let Some(react) = maybe_react {
+            let should_react = x != new_x || y != new_y
+                || (interaction == Highlighted && new_interaction == Clicked)
+                || (interaction == Clicked && new_interaction == Highlighted);
+            if should_react {
+                react(new_x, new_y);
             }
         }
 
-        if state.view().interaction != new_interaction {
+        if interaction != new_interaction {
             state.update(|state| state.interaction = new_interaction);
         }
 
         let value_or_bounds_have_changed = {
             let v = state.view();
-            v.x != self.x || v.y != self.y
-                || v.min_x != self.min_x || v.max_x != self.max_x
-                || v.min_y != self.min_y || v.max_y != self.max_y
+            v.x != x || v.y != y
+                || v.min_x != min_x || v.max_x != max_x
+                || v.min_y != min_y || v.max_y != max_y
         };
 
         if value_or_bounds_have_changed {
@@ -244,79 +278,143 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             })
         }
 
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-            state.update(|state| {
-                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-            });
-        }
-    }
+        // The backdrop **FramedRectangle** widget.
+        let dim = rect.dim();
+        let color = style.color(ui.theme());
+        let frame = style.frame(ui.theme());
+        let frame_color = style.frame_color(ui.theme());
+        let rectangle_idx = state.view().maybe_rectangle_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
+        FramedRectangle::new(dim)
+            .middle_of(idx)
+            .graphics_for(idx)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
+            .set(rectangle_idx, &mut ui);
 
-    /// Construct an Element from the given XYPad State.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{self, collage, line, solid, text};
-        use elmesque::text::Text;
-
-        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
-        let (xy, dim) = rect.xy_dim();
-        let frame = style.frame(theme);
-        let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
-
-        // Construct the frame and inner rectangle Forms.
-        let color = state.color(style.color(theme));
-        let frame_color = style.frame_color(theme);
-        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-        let pressable_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
-
-        // Construct the label Form.
-        let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
-            let l_color = style.label_color(theme);
-            let l_size = style.label_font_size(theme) as f64;
-            text(Text::from_string(l_text.clone()).color(l_color).height(l_size))
+        // Label **Text** widget.
+        let label_color = style.label_color(ui.theme());
+        let maybe_label_idx = maybe_label.map(|label| {
+            let label_idx = state.view().maybe_label_idx
+                .unwrap_or_else(|| ui.new_unique_node_index());
+            let label_font_size = style.label_font_size(ui.theme());
+            Text::new(label)
+                .middle_of(rectangle_idx)
+                .graphics_for(idx)
+                .color(label_color)
+                .font_size(label_font_size)
+                .set(label_idx, &mut ui);
+            label_idx
         });
 
-        // Construct the crosshair line Forms.
-        let ch_x = map_range(state.x, state.min_x, state.max_x, -half_pad_w, half_pad_w).floor();
-        let ch_y = map_range(state.y, state.min_y, state.max_y, -half_pad_h, half_pad_h).floor();
-        let line_width = style.line_width(theme);
-        let line_style = solid(color.plain_contrast()).width(line_width);
-        let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
-        let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
+        // Crosshair **Line** widgets.
+        let (w, h) = inner_rect.w_h();
+        let half_w = w / 2.0;
+        let half_h = h / 2.0;
+        let v_line_x = map_range(new_x, min_x, max_x, -half_w, half_w);
+        let h_line_y = map_range(new_y, min_y, max_y, -half_h, half_h);
+        let thickness = style.line_thickness(ui.theme());
 
-        // Construct the value string Form.
-        let x_string = val_to_string(state.x, state.max_x, state.max_x - state.min_x, dim[0] as usize);
-        let y_string = val_to_string(state.y, state.max_y, state.max_y - state.min_y, dim[1] as usize);
+        let v_line_start = [0.0, -half_h];
+        let v_line_end = [0.0, half_h];
+        let v_line_idx = state.view().maybe_v_line_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
+        Line::centred(v_line_start, v_line_end)
+            .color(label_color)
+            .relative_to(idx, [v_line_x, 0.0])
+            .graphics_for(idx)
+            .set(v_line_idx, &mut ui);
+
+        let h_line_start = [-half_w, 0.0];
+        let h_line_end = [half_w, 0.0];
+        let h_line_idx = state.view().maybe_h_line_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
+        Line::centred(h_line_start, h_line_end)
+            .color(label_color)
+            .relative_to(idx, [0.0, h_line_y])
+            .graphics_for(idx)
+            .set(h_line_idx, &mut ui);
+
+        // Crosshair value label **Text** widget.
+        let x_string = val_to_string(new_x, max_x, max_x - min_x, rect.w() as usize);
+        let y_string = val_to_string(new_y, max_y, max_y - min_y, rect.h() as usize);
         let value_string = format!("{}, {}", x_string, y_string);
-        let value_text_form = {
-            const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-            let value_font_size = style.value_font_size(theme);
-            let w = glyph_cache.width(value_font_size, &value_string);
-            let h = value_font_size as f64;
-            let x_shift = w / 2.0 + PAD;
-            let y_shift = h / 2.0 + PAD;
-            let (value_text_x, value_text_y) = match position::corner([ch_x, ch_y], pad_dim) {
-                Corner::TopLeft => (x_shift, -y_shift),
-                Corner::TopRight => (-x_shift, -y_shift),
-                Corner::BottomLeft => (x_shift, y_shift),
-                Corner::BottomRight => (-x_shift, y_shift),
-            };
-            text(Text::from_string(value_string).color(color.plain_contrast()).height(h))
-                .shift(ch_x, ch_y)
-                .shift(value_text_x.floor(), value_text_y.floor())
-        };
-
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .chain(maybe_label_form.into_iter())
-            .chain(Some(vert_form).into_iter())
-            .chain(Some(hori_form).into_iter())
-            .chain(Some(value_text_form).into_iter())
-            .map(|form| form.shift(xy[0].round(), xy[1].round()));
-
-        // Turn the form into a renderable Element.
-        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+        let cross_hair_xy = [inner_rect.x() + v_line_x, inner_rect.y() + h_line_y];
+        const VALUE_TEXT_PAD: f64 = 5.0;
+        let mut text = Text::new(&value_string);
+        // text = match inner_rect.closest_corner(cross_hair_xy) {
+        //     Corner::TopLeft => text.,
+        //     Corner::TopRight => [-VALUE_TEXT_PAD, -VALUE_TEXT_PAD],
+        //     Corner::BottomLeft => [VALUE_TEXT_PAD, VALUE_TEXT_PAD],
     }
+
+    // /// Construct an Element from the given XYPad State.
+    // fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
+    //     use elmesque::form::{self, collage, line, solid, text};
+    //     use elmesque::text::Text;
+
+    //     let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
+    //     let (xy, dim) = rect.xy_dim();
+    //     let frame = style.frame(theme);
+    //     let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
+    //     let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
+
+    //     // Construct the frame and inner rectangle Forms.
+    //     let color = state.color(style.color(theme));
+    //     let frame_color = style.frame_color(theme);
+    //     let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+    //     let pressable_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
+
+    //     // Construct the label Form.
+    //     let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
+    //         let l_color = style.label_color(theme);
+    //         let l_size = style.label_font_size(theme) as f64;
+    //         text(Text::from_string(l_text.clone()).color(l_color).height(l_size))
+    //     });
+
+    //     // Construct the crosshair line Forms.
+    //     let ch_x = map_range(state.x, state.min_x, state.max_x, -half_pad_w, half_pad_w).floor();
+    //     let ch_y = map_range(state.y, state.min_y, state.max_y, -half_pad_h, half_pad_h).floor();
+    //     let line_thickness = style.line_thickness(theme);
+    //     let line_style = solid(color.plain_contrast()).width(line_thickness);
+    //     let vert_form = line(line_style.clone(), 0.0, -half_pad_h, 0.0, half_pad_h).shift_x(ch_x);
+    //     let hori_form = line(line_style, -half_pad_w, 0.0, half_pad_w, 0.0).shift_y(ch_y);
+
+    //     // Construct the value string Form.
+    //     let x_string = val_to_string(state.x, state.max_x, state.max_x - state.min_x, dim[0] as usize);
+    //     let y_string = val_to_string(state.y, state.max_y, state.max_y - state.min_y, dim[1] as usize);
+    //     let value_string = format!("{}, {}", x_string, y_string);
+    //     let value_text_form = {
+    //         const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
+    //         let value_font_size = style.value_font_size(theme);
+    //         let w = glyph_cache.width(value_font_size, &value_string);
+    //         let h = value_font_size as f64;
+    //         let x_shift = w / 2.0 + PAD;
+    //         let y_shift = h / 2.0 + PAD;
+    //         let (value_text_x, value_text_y) = match position::corner([ch_x, ch_y], pad_dim) {
+    //             Corner::TopLeft => (x_shift, -y_shift),
+    //             Corner::TopRight => (-x_shift, -y_shift),
+    //             Corner::BottomLeft => (x_shift, y_shift),
+    //             Corner::BottomRight => (-x_shift, y_shift),
+    //         };
+    //         text(Text::from_string(value_string).color(color.plain_contrast()).height(h))
+    //             .shift(ch_x, ch_y)
+    //             .shift(value_text_x.floor(), value_text_y.floor())
+    //     };
+
+    //     // Chain the Forms and shift them into position.
+    //     let form_chain = Some(frame_form).into_iter()
+    //         .chain(Some(pressable_form).into_iter())
+    //         .chain(maybe_label_form.into_iter())
+    //         .chain(Some(vert_form).into_iter())
+    //         .chain(Some(hori_form).into_iter())
+    //         .chain(Some(value_text_form).into_iter())
+    //         .map(|form| form.shift(xy[0].round(), xy[1].round()));
+
+    //     // Turn the form into a renderable Element.
+    //     collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    // }
 
 }
 
@@ -332,7 +430,7 @@ impl Style {
             maybe_label_color: None,
             maybe_label_font_size: None,
             maybe_value_font_size: None,
-            maybe_line_width: None,
+            maybe_line_thickness: None,
         }
     }
 
@@ -380,11 +478,11 @@ impl Style {
     }
 
     /// Get the point radius size for an Element.
-    pub fn line_width(&self, theme: &Theme) -> f64 {
-        const DEFAULT_LINE_WIDTH: f64 = 2.0;
-        self.maybe_line_width.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_line_width.unwrap_or(DEFAULT_LINE_WIDTH)
-        })).unwrap_or(DEFAULT_LINE_WIDTH)
+    pub fn line_thickness(&self, theme: &Theme) -> f64 {
+        const DEFAULT_LINE_THICKNESS: f64 = 2.0;
+        self.maybe_line_thickness.or(theme.widget_style::<Self>(KIND).map(|default| {
+            default.style.maybe_line_thickness.unwrap_or(DEFAULT_LINE_THICKNESS)
+        })).unwrap_or(DEFAULT_LINE_THICKNESS)
     }
 
 }
