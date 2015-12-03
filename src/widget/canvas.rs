@@ -9,7 +9,7 @@ use {
     FramedRectangle,
     FramedRectangleStyle,
     Labelable,
-    LabelStyle,
+    TextStyle,
     NodeIndex,
     Positionable,
     Scalar,
@@ -69,13 +69,12 @@ pub struct MarginBuilder {
 }
 
 /// Describes the style of a Canvas.
-#[allow(missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct Style {
     /// Styling for the Canvas' rectangle.
     pub framed_rectangle: FramedRectangleStyle,
     /// The label and styling for the Canvas' title bar if it has one.
-    pub label: LabelStyle,
+    pub text: TextStyle,
     /// Padding of the kid area.
     pub padding: PaddingBuilder,
     /// Margin for the kid area.
@@ -174,6 +173,12 @@ impl<'a> Canvas<'a> {
             .pad_right(mgn.bottom)
     }
 
+    /// Build the **Canvas** with the given **Style**.
+    pub fn with_style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+
 }
 
 
@@ -221,7 +226,7 @@ impl<'a> Widget for Canvas<'a> {
     /// Note: the position of the returned **Rect** should be relative to the center of the widget.
     fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<Rect> {
         self.maybe_title_bar_label.map(|_| {
-            let font_size = style.label.font_size(theme);
+            let font_size = style.text.font_size(theme);
             let (h, rel_y) = title_bar_h_rel_y(dim[1], font_size);
             let rel_xy = [0.0, rel_y];
             let dim = [dim[0], h];
@@ -233,7 +238,7 @@ impl<'a> Widget for Canvas<'a> {
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, .. } = args;
         if self.maybe_title_bar_label.is_some() {
-            let font_size = style.label.font_size(theme);
+            let font_size = style.text.font_size(theme);
             let title_bar = title_bar(rect, font_size);
             widget::KidArea {
                 rect: rect.pad_top(title_bar.h()),
@@ -326,7 +331,7 @@ impl Style {
     pub fn new() -> Style {
         Style {
             framed_rectangle: FramedRectangleStyle::new(),
-            label: LabelStyle::new(),
+            text: TextStyle::new(),
             padding: PaddingBuilder {
                 maybe_left: None,
                 maybe_right: None,
@@ -371,9 +376,9 @@ impl Style {
 
     /// Get the font size of the title bar.
     pub fn title_bar_font_size(&self, theme: &Theme) -> FontSize {
-        self.label.maybe_font_size
+        self.text.maybe_font_size
             .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.label.maybe_font_size.unwrap_or(theme.font_size_medium)
+                default.style.text.maybe_font_size.unwrap_or(theme.font_size_medium)
             }))
             .unwrap_or(theme.font_size_medium)
     }
@@ -388,9 +393,9 @@ impl Style {
 
     /// Get the color of the title bar label.
     pub fn title_bar_label_color(&self, theme: &Theme) -> Color {
-        self.label.maybe_color
+        self.text.maybe_color
             .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.label.maybe_color.unwrap_or(theme.label_color)
+                default.style.text.maybe_color.unwrap_or(theme.label_color)
             }))
             .unwrap_or(theme.label_color)
     }
@@ -459,11 +464,11 @@ impl<'a> ::label::Labelable<'a> for Canvas<'a> {
         self.title_bar(text)
     }
     fn label_color(mut self, color: Color) -> Self {
-        self.style.label.maybe_color = Some(color);
+        self.style.text.maybe_color = Some(color);
         self
     }
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label.maybe_font_size = Some(size);
+        self.style.text.maybe_font_size = Some(size);
         self
     }
 }

@@ -7,14 +7,14 @@ use {
     Frameable,
     FramedRectangle,
     FramedRectangleStyle,
-    Label,
     Labelable,
-    LabelStyle,
     Mouse,
     Positionable,
     NodeIndex,
     Scalar,
     Sizeable,
+    Text,
+    TextStyle,
     Ui,
 };
 use widget::{self, Widget};
@@ -46,7 +46,7 @@ pub struct Style {
     /// Shape styling for the rectangle.
     pub framed_rectangle: FramedRectangleStyle,
     /// Styling for the label.
-    pub label: LabelStyle,
+    pub text: TextStyle,
 }
 
 /// Some interaction with the **TitleBar**.
@@ -72,7 +72,7 @@ impl Style {
     pub fn new() -> Self {
         Style {
             framed_rectangle: FramedRectangleStyle::new(),
-            label: LabelStyle::new(),
+            text: TextStyle::new(),
         }
     }
 
@@ -110,8 +110,8 @@ impl<'a, F> TitleBar<'a, F>
     }
 
     /// Pass some styling for the **TitleBar**'s **Label**.
-    pub fn label_style(mut self, style: LabelStyle) -> Self {
-        self.style.label = style;
+    pub fn label_style(mut self, style: TextStyle) -> Self {
+        self.style.text = style;
         self
     }
 
@@ -167,7 +167,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        let font_size = self.style.label.font_size(&ui.theme);
+        let font_size = self.style.text.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
@@ -198,8 +198,8 @@ impl<'a, F> Widget for TitleBar<'a, F>
         // Label widget.
         let label_idx = state.view().maybe_label_idx
             .unwrap_or_else(|| ui.new_unique_node_index());
-        Label::new(label)
-            .with_style(style.label)
+        Text::new(label)
+            .with_style(style.text)
             .middle_of(rectangle_idx)
             .graphics_for(idx)
             .set(label_idx, &mut ui);
@@ -250,12 +250,12 @@ impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.label.maybe_color = Some(color);
+        self.style.text.maybe_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label.maybe_font_size = Some(size);
+        self.style.text.maybe_font_size = Some(size);
         self
     }
 }
