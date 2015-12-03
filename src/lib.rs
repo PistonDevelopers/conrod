@@ -8,7 +8,7 @@
 #![warn(missing_docs)]
 
 #[macro_use] extern crate bitflags;
-extern crate clock_ticks;
+extern crate time;
 extern crate daggy;
 extern crate elmesque;
 extern crate graphics;
