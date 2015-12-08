@@ -1,7 +1,6 @@
-use {CharacterCache, Dimension};
-use super::{Depth, Dimensions, Point, Position, Positionable, Scalar, Sizeable};
-use theme::Theme;
-use ui::{self, Ui};
+use {CharacterCache, Ui};
+use super::{Depth, Dimension, Dimensions, Point, Position, Positionable, Scalar, Sizeable};
+use ui;
 use widget;
 
 pub type WidgetNum = usize;
@@ -55,15 +54,15 @@ impl Matrix {
     {
         use utils::map_range;
 
-        let x_pos = self.get_x_position();
-        let y_pos = self.get_y_position();
+        let x_pos = self.get_x_position(ui);
+        let y_pos = self.get_y_position(ui);
         let dim = self.get_dim(ui).unwrap_or([0.0, 0.0]);
 
         // If we can infer some new current parent from the position, set that as the current
         // parent within the given `Ui`.
-        ui::parent_from_position(ui, x_pos)
-            .or_else(|| ui::parent_from_position(ui, y_pos))
-            .map(|idx| ui::set_current_parent_idx(ui, idx));
+        if let Some(idx) = ui::parent_from_position(ui, x_pos, y_pos) {
+            ui::set_current_parent_idx(ui, idx);
+        }
 
         let xy = ui.calc_xy(None, x_pos, y_pos, dim, true);
         let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
@@ -101,11 +100,11 @@ impl Positionable for Matrix {
     }
     #[inline]
     fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        self.maybe_position.unwrap_or(ui.theme.x_position)
+        self.maybe_x_position.unwrap_or(ui.theme.x_position)
     }
     #[inline]
-    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        self.maybe_position.unwrap_or(ui.theme.x_position)
+    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        self.maybe_y_position.unwrap_or(ui.theme.y_position)
     }
     #[inline]
     fn depth(self, _: Depth) -> Self {

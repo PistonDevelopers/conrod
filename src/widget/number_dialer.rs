@@ -424,7 +424,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             let label_idx = state.view().maybe_label_idx
                 .unwrap_or_else(|| ui.new_unique_node_index());
             Text::new(&label_string)
-                .relative_to(idx, [label_rel_x, 0.0])
+                .x_y_relative_to(idx, label_rel_x, 0.0)
                 .graphics_for(idx)
                 .color(label_color)
                 .font_size(font_size)
@@ -479,7 +479,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             if let Some(slot_color) = maybe_slot_color {
                 Rectangle::fill([slot_w, slot_h])
                     .depth(1.0)
-                    .relative_to(idx, [rel_slot_x, 0.0])
+                    .x_y_relative_to(idx, rel_slot_x, 0.0)
                     .graphics_for(idx)
                     .color(slot_color)
                     .parent(Some(rectangle_idx))
@@ -488,7 +488,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
 
             // Now a **Text** widget for the character itself.
             Text::new(glyph_string)
-                .relative_to(idx, [rel_slot_x, 0.0])
+                .x_y_relative_to(idx, rel_slot_x, 0.0)
                 .graphics_for(idx)
                 .color(label_color)
                 .font_size(font_size)

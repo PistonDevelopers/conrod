@@ -1,5 +1,5 @@
 
-use {CharacterCache, Theme, Ui};
+use {CharacterCache, Ui};
 use widget;
 
 pub use self::range::{Edge, Range};
@@ -151,12 +151,12 @@ pub trait Positionable: Sized {
 
     /// Set the **Position** along the *x* axis **Relative** to the previous widget.
     fn x_relative(self, x: Scalar) -> Self {
-        self.position(Position::Relative(x, None))
+        self.x_position(Position::Relative(x, None))
     }
 
     /// Set the **Position** along the *y* axis **Relative** to the previous widget.
     fn y_relative(self, y: Scalar) -> Self {
-        self.position(Position::Relative(y, None))
+        self.y_position(Position::Relative(y, None))
     }
 
     /// Set the **Position** **Relative** to the previous widget.
@@ -166,7 +166,7 @@ pub trait Positionable: Sized {
 
     /// Set the **Position** **Relative** to the previous widget.
     fn x_y_relative(self, x: Scalar, y: Scalar) -> Self {
-        self.point_relative([x, y])
+        self.xy_relative([x, y])
     }
 
     /// Set the position relative to the widget with the given widget::Index.
@@ -181,11 +181,11 @@ pub trait Positionable: Sized {
 
     /// Set the position relative to the widget with the given widget::Index.
     fn xy_relative_to<I: Into<widget::Index> + Copy>(self, other: I, xy: Point) -> Self {
-        self.x_relative_to(xy[0], other).y_relative_to(xy[1], other)
+        self.x_relative_to(other, xy[0]).y_relative_to(other, xy[1])
     }
 
     /// Set the position relative to the widget with the given widget::Index.
-    fn x_y_relative_to<I: Into<widget::Index>>(self, other: I, x: Scalar, y: Scalar) -> Self {
+    fn x_y_relative_to<I: Into<widget::Index> + Copy>(self, other: I, x: Scalar, y: Scalar) -> Self {
         self.xy_relative_to(other, [x, y])
     }
 
@@ -193,12 +193,12 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from another widget.
     fn x_direction(self, direction: Direction, x: Scalar) -> Self {
-        self.x_position(Position::Direction(direction, x, None))
+        self.x_position(Position::Direction(direction, x, None)).align_top()
     }
 
     /// Build with the **Position** along the *y* axis as some distance from another widget.
     fn y_direction(self, direction: Direction, y: Scalar) -> Self {
-        self.y_position(Position::Direction(direction, y, None))
+        self.y_position(Position::Direction(direction, y, None)).align_left()
     }
 
     /// Build with the **Position** as some distance below another widget.
@@ -223,35 +223,35 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from the given widget.
     fn x_direction_from<I>(self, other: I, direction: Direction, x: Scalar) -> Self
-        where I: Into<widget::Index>,
+        where I: Into<widget::Index> + Copy,
     {
-        self.x_position(Position::Direction(direction, x, Some(other.into())))
+        self.x_position(Position::Direction(direction, x, Some(other.into()))).align_top_of(other)
     }
 
     /// Build with the **Position** along the *y* axis as some distance from the given widget.
     fn y_direction_from<I>(self, other: I, direction: Direction, y: Scalar) -> Self
-        where I: Into<widget::Index>,
+        where I: Into<widget::Index> + Copy,
     {
-        self.y_position(Position::Direction(direction, y, Some(other.into())))
+        self.y_position(Position::Direction(direction, y, Some(other.into()))).align_left_of(other)
     }
 
     /// Build with the **Position** as some distance below the given widget.
-    fn down_from<I: Into<widget::Index>>(self, other: I, y: Scalar) -> Self {
+    fn down_from<I: Into<widget::Index> + Copy>(self, other: I, y: Scalar) -> Self {
         self.y_direction_from(other, Direction::Backwards, y)
     }
 
     /// Build with the **Position** as some distance above the given widget.
-    fn up_from<I: Into<widget::Index>>(self, other: I, y: Scalar) -> Self {
+    fn up_from<I: Into<widget::Index> + Copy>(self, other: I, y: Scalar) -> Self {
         self.y_direction_from(other, Direction::Forwards, y)
     }
 
     /// Build with the **Position** as some distance to the left of the given widget.
-    fn left_from<I: Into<widget::Index>>(self, other: I, x: Scalar) -> Self {
+    fn left_from<I: Into<widget::Index> + Copy>(self, other: I, x: Scalar) -> Self {
         self.x_direction_from(other, Direction::Backwards, x)
     }
 
     /// Build with the **Position** as some distance to the right of the given widget.
-    fn right_from<I: Into<widget::Index>>(self, other: I, x: Scalar) -> Self {
+    fn right_from<I: Into<widget::Index> + Copy>(self, other: I, x: Scalar) -> Self {
         self.x_direction_from(other, Direction::Forwards, x)
     }
 

@@ -330,7 +330,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             .unwrap_or_else(|| ui.new_unique_node_index());
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         Rectangle::fill(slider_rect.dim())
-            .relative_to(idx, slider_xy_offset)
+            .xy_relative_to(idx, slider_xy_offset)
             .graphics_for(idx)
             .parent(Some(idx))
             .color(color)

@@ -172,7 +172,7 @@ impl<'a, F, W> Widget for Matrix<F> where
                         let widget_idx = indices[col][row];
                         each_widget(widget_num, col, row)
                             .dim([w, h])
-                            .relative_to(idx, [rel_x, rel_y])
+                            .x_y_relative_to(idx, rel_x, rel_y)
                             .set(widget_idx, &mut ui);
                         widget_num += 1;
                     }

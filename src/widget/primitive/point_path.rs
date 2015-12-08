@@ -107,7 +107,7 @@ impl<I> PointPath<I> {
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
-        PointPath::styled(points, style).dim(dim).point(xy)
+        PointPath::styled(points, style).dim(dim).xy(xy)
     }
 
     /// Build a new **PointPath** and shift the location of the points so that the centre of their

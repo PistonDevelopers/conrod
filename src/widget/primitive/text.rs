@@ -34,7 +34,7 @@ pub struct Text<'a> {
 
 
 /// The styling for a **Text**'s graphics.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The font size for the **Text**.
     pub maybe_font_size: Option<FontSize>,
@@ -56,7 +56,7 @@ pub struct Style {
 pub const KIND: widget::Kind = "Text";
 
 /// The way in which text should wrap around the width.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Wrap {
     /// Wrap at the first character that exceeds the width.
     Character,

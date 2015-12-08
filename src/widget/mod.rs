@@ -1,7 +1,7 @@
 use {CharacterCache, Dimension, GlyphCache};
 use elmesque::Element;
 use graph::NodeIndex;
-use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable};
+use position::{Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
@@ -130,7 +130,7 @@ pub struct KidArea {
 }
 
 /// The builder argument for the **Widget**'s parent.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MaybeParent {
     /// The user specified the widget should not have any parents, so the Root will be used.
     None,
@@ -154,7 +154,7 @@ impl MaybeParent {
 }
 
 /// State necessary for "floating" (pop-up style) widgets.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floating {
     /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
     pub time_last_clicked: u64,
@@ -378,8 +378,9 @@ fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
         .and_then(f)
         .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx)))
         .or_else(|| {
-            let pos = widget.get_position(&ui.theme);
-            widget.common().maybe_parent_idx.get(ui, pos).map(|idx| Dimension::Of(idx))
+            let x_pos = widget.get_x_position(ui);
+            let y_pos = widget.get_y_position(ui);
+            widget.common().maybe_parent_idx.get(ui, x_pos, y_pos).map(|idx| Dimension::Of(idx))
         })
 }
 
@@ -538,7 +539,7 @@ pub trait Widget: Sized {
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
     fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        ui.theme.widget_style::<Self>(self.unique_kind())
+        ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_x_position)
             .unwrap_or(ui.theme.x_position)
     }
@@ -547,7 +548,7 @@ pub trait Widget: Sized {
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
     fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        ui.theme.widget_style::<Self>(self.unique_kind())
+        ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_y_position)
             .unwrap_or(ui.theme.y_position)
     }
@@ -781,8 +782,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let new_style = widget.style();
     let depth = widget.get_depth();
     let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
-    let x_pos = widget.get_x_position(&ui.theme);
-    let y_pos = widget.get_y_position(&ui.theme);
+    let x_pos = widget.get_x_position(ui);
+    let y_pos = widget.get_y_position(ui);
     let place_on_kid_area = widget.common().place_on_kid_area;
 
     let (xy, drag_state) = {
@@ -924,10 +925,11 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         // FIXME: Here we only store the first relatively positioned widget we come across, whereas
         // we should really be storing and handling both within the graph.
         let maybe_positioned_relatively_idx = match (x_pos, y_pos) {
-            Place(_, maybe_idx)     | Place(_, maybe_idx)     |
-            Relative(_, maybe_idx)  | Relative(_, maybe_idx)  |
-            Direction(_, maybe_idx) | Direction(_, maybe_idx) |
-            Align(_, maybe_idx)     | Align(_, maybe_idx)     => maybe_idx.or(maybe_prev_widget_idx),
+            (Place(_, maybe_idx), _)        | (_, Place(_, maybe_idx))        |
+            (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     |
+            (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
+            (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        =>
+                maybe_idx.or(maybe_prev_widget_idx),
             _ => None,
         };
 

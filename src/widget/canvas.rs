@@ -43,7 +43,7 @@ pub const KIND: widget::Kind = "Canvas";
 
 
 /// A builder for the padding of the area where child widgets will be placed.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PaddingBuilder {
     /// The padding for the left of the area where child widgets will be placed.
     pub maybe_left: Option<Scalar>,
@@ -56,7 +56,7 @@ pub struct PaddingBuilder {
 }
 
 /// A builder for the margin of the area where child widgets will be placed.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MarginBuilder {
     /// The margin for the left of the area where child widgets will be placed.
     pub maybe_left: Option<Scalar>,
@@ -69,7 +69,7 @@ pub struct MarginBuilder {
 }
 
 /// Describes the style of a Canvas.
-#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Styling for the Canvas' rectangle.
     pub framed_rectangle: FramedRectangleStyle,
@@ -209,11 +209,11 @@ impl<'a> Widget for Canvas<'a> {
         self.style.clone()
     }
 
-    fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn default_x_position<C: CharacterCache>(&self, _ui: &Ui<C>) -> Position {
         Position::Place(Place::Middle, None)
     }
 
-    fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn default_y_position<C: CharacterCache>(&self, _ui: &Ui<C>) -> Position {
         Position::Place(Place::Middle, None)
     }
 

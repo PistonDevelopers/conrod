@@ -41,7 +41,7 @@ pub struct State {
 }
 
 /// Unique styling for the **TitleBar** widget.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Shape styling for the rectangle.
     pub framed_rectangle: FramedRectangleStyle,

@@ -222,7 +222,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let mut was_clicked = false;
                 {
                     let mut button = Button::new()
-                        .point(rect.xy())
+                        .xy(rect.xy())
                         .dim(rect.dim())
                         .label(label)
                         .parent(Some(idx))
@@ -261,7 +261,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     //.frame_color(::color::black().alpha(0.0))
                     //.dim([dim[0], max_visible_height])
                     .color(::color::black().alpha(0.0))
-                    .point(canvas_xy)
+                    .xy(canvas_xy)
                     .parent(Some(idx))
                     .floating(true)
                     .vertical_scrolling(true)
@@ -277,7 +277,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                         .dim(dim)
                         .label(label)
                         .parent(Some(canvas_idx))
-                        .point(button_xy)
+                        .xy(button_xy)
                         .react(|| was_clicked = Some(i));
                     button.style = style.button_style(Some(i) == selected);
                     button.set(button_node_idx, &mut ui);

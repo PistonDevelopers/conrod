@@ -94,7 +94,7 @@ impl Line {
     /// The same as [**Line::abs**](./struct.Line#method.abs) but with the given style.
     pub fn abs_styled(start: Point, end: Point, style: Style) -> Self {
         let (xy, dim) = Rect::from_corners(start, end).xy_dim();
-        Line::styled(start, end, style).dim(dim).point(xy)
+        Line::styled(start, end, style).dim(dim).xy(xy)
     }
 
     /// Build a new **Line** and shift the location of the start and end points so that the centre

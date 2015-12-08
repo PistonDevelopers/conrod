@@ -199,7 +199,7 @@ impl<'a> Split<'a> {
             match maybe_parent {
                 Some(parent_id) => canvas.parent(Some(parent_id)),
                 None            => canvas.parent(None::<widget::Id>),
-            }.point(xy)
+            }.xy(xy)
                 .dim(dim)
                 .vertical_scrolling(is_v_scrollable)
                 .horizontal_scrolling(is_h_scrollable)

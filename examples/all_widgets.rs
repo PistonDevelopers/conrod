@@ -20,7 +20,6 @@ use conrod::{
     DropDownList,
     EnvelopeEditor,
     Frameable,
-    Label,
     Labelable,
     NumberDialer,
     Point,
@@ -28,6 +27,7 @@ use conrod::{
     Slider,
     Sizeable,
     Split,
+    Text,
     TextBox,
     Theme,
     Toggle,
@@ -182,9 +182,9 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
     let title_x = app.title_pad - (ui.win_w / 2.0) + 185.0;
     let title_y = (ui.win_h / 2.0) - 50.0;
 
-    // Label example.
-    Label::new("Widget Demonstration")
-        .xy(title_x, title_y)
+    // Text example.
+    Text::new("Widget Demonstration")
+        .x_y(title_x, title_y)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
         .parent(Some(CANVAS))
@@ -195,7 +195,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Button widget example button.
         Button::new()
             .dimensions(200.0, 50.0)
-            .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
+            .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
             .label("PRESS")
@@ -219,7 +219,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .dimensions(200.0, 50.0)
-            .xy(140.0 - (ui.win_w / 2.0), title_y - 70.0)
+            .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
             .label(&label)
@@ -371,13 +371,13 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
                app.circle_pos[1], 95.0, 245.0) // y range.
         .dimensions(150.0, 150.0)
         .right_from(TOGGLE_MATRIX, 30.0)
-        .align_bottom() // Align to the bottom of the last TOGGLE_MATRIX element.
+        .align_bottom_of(TOGGLE_MATRIX) // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
         .frame(app.frame_width)
         .frame_color(white())
         .label("Circle Position")
         .label_color(ddl_color.plain_contrast().alpha(0.5))
-        .line_width(2.0)
+        .line_thickness(2.0)
         .react(|new_x, new_y| {
             app.circle_pos[0] = new_x;
             app.circle_pos[1] = new_y;
@@ -386,7 +386,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // Draw a circle at the app's circle_pos.
     Circle::fill(15.0)
-        .relative_to(CIRCLE_POSITION, app.circle_pos)
+        .xy_relative_to(CIRCLE_POSITION, app.circle_pos)
         .color(app.ddl_color)
         .set(CIRCLE, ui);
 

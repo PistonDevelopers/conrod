@@ -53,7 +53,7 @@ pub const KIND: widget::Kind = "Tabs";
 const TAB_BAR_LABEL_PADDING: f64 = 4.0;
 
 /// The styling for Canvas Tabs.
-#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The direction in which the tabs will be laid out.
     pub maybe_layout: Option<Layout>,
@@ -72,7 +72,7 @@ pub struct Style {
 }
 
 /// The direction in which the tabs will be laid out.
-#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Layout {
     /// Tabs will be laid out horizontally (left to right).
     Horizontal,
@@ -323,7 +323,7 @@ impl<'a> Widget for Tabs<'a> {
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
                 Button::new()
                     .dim(dim)
-                    .relative_to(idx, xy)
+                    .xy_relative_to(idx, xy)
                     .color(color)
                     .frame(frame)
                     .frame_color(frame_color)
