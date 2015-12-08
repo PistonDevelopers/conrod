@@ -311,7 +311,7 @@ impl<C> Ui<C> {
                                       dim: Scalar,
                                       place_on_kid_area: bool,
                                       range_from_rect: R,
-                                      start_and_end_pad: P)
+                                      start_and_end_pad: P) -> Scalar
             where R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> (Scalar, Scalar),
         {
@@ -320,7 +320,7 @@ impl<C> Ui<C> {
                 Position::Absolute(abs) => abs,
 
                 Position::Relative(rel, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window))
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| other_range.middle() + rel)
                         .unwrap_or(rel),
@@ -331,8 +331,8 @@ impl<C> Ui<C> {
                         .map(|other_range| {
                             let range = Range::from_pos_and_len(0.0, dim);
                             match direction {
-                                Direction::Forwards => range.align_after(other_range).middle(),
-                                Direction::Backwards => range.align_before(other_range).middle(),
+                                Direction::Forwards => range.align_after(other_range).middle() + amt,
+                                Direction::Backwards => range.align_before(other_range).middle() - amt,
                             }
                         })
                         .unwrap_or_else(|| match direction {
@@ -341,7 +341,7 @@ impl<C> Ui<C> {
                         }),
 
                 Position::Align(align, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window))
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| {
                             let range = Range::from_pos_and_len(0.0, dim);
@@ -351,38 +351,39 @@ impl<C> Ui<C> {
                                 Align::End => range.align_end_of(other_range).middle(),
                             }
                         })
-                        .expect("Could not calculate absolute position from Position::Align"),
+                        .unwrap_or(0.0),
 
                 Position::Place(place, maybe_idx) => {
                     let parent_idx = maybe_idx
                         .or(ui.maybe_current_parent_idx)
-                        .unwrap_or(ui.window);
+                        .unwrap_or(ui.window.into());
                     let maybe_area = match place_on_kid_area {
-                        true => ui.kid_area_of(parent_idx)
+                        true => ui.widget_graph.widget(parent_idx)
+                            .map(|w| w.kid_area)
                             .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
                         false => ui.rect_of(parent_idx)
                             .map(|rect| (range_from_rect(rect), (0.0, 0.0))),
                     };
                     maybe_area
                         .map(|(parent_range, (pad_start, pad_end))| {
-                            let range = Range::from_pos_and_len(0.0, dim[0]);
+                            let range = Range::from_pos_and_len(0.0, dim);
                             let parent_range = parent_range.pad_start(pad_start).pad_end(pad_end);
                             match place {
                                 Place::Start => range.align_start_of(parent_range).middle(),
-                                Place::Middle => parent_range.x.middle(),
+                                Place::Middle => parent_range.middle(),
                                 Place::End => range.align_end_of(parent_range).middle(),
                             }
                         })
-                        .expect("Could not calculate absolute position from Position::Place")
+                        .unwrap_or(0.0)
                 },
 
             }
         }
 
-        let x_range = |rect| rect.x;
-        let y_range = |rect| rect.y;
-        let x_pad = |pad| (pad.left, pad.right);
-        let y_pad = |pad| (pad.bottom, pad.top);
+        fn x_range(rect: Rect) -> Range { rect.x }
+        fn y_range(rect: Rect) -> Range { rect.y }
+        fn x_pad(pad: Padding) -> (Scalar, Scalar) { (pad.left, pad.right) }
+        fn y_pad(pad: Padding) -> (Scalar, Scalar) { (pad.bottom, pad.top) }
         let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
         let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
         let xy = [x, y];
@@ -427,7 +428,7 @@ impl<C> Ui<C> {
             type Window = FramedRectangle;
             Window::new([self.win_w, self.win_h])
                 .parent(None::<widget::Index>)
-                .xy(0.0, 0.0)
+                .x_y(0.0, 0.0)
                 .frame(0.0)
                 .frame_color(color::black().alpha(0.0))
                 .color(self.maybe_background_color.unwrap_or(color::black().alpha(0.0)))
@@ -693,11 +694,11 @@ pub fn parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
     let maybe_parent = match (x_pos, y_pos) {
         (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
             maybe_parent_idx,
-        (Direction(_, maybe_idx), _) | (_, Direction(_, maybe_idx)) |
-        (Align(_, maybe_idx), _)     | (_, Align(_, maybe_idx))     |
-        (Relative(_, maybe_idx), _)  | (_, Relative(_, maybe_idx))  =>
+        (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
+        (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        |
+        (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     =>
             maybe_idx.or(ui.maybe_prev_widget_idx)
-                .map(|idx| ui.widget_graph.depth_parent(idx)),
+                .and_then(|idx| ui.widget_graph.depth_parent(idx)),
         _ => None,
     };
     maybe_parent.or(ui.maybe_current_parent_idx)
