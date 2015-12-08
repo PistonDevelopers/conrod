@@ -1,15 +1,23 @@
-
-use {CharacterCache, Color, Colorable, Dimension, GlyphCache, Scalar, Ui};
-use elmesque::Element;
-use frame::Frameable;
-use label::FontSize;
-use mouse::Mouse;
-use num::Float;
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    Dimensions,
+    FontSize,
+    Frameable,
+    GlyphCache,
+    Mouse,
+    Point,
+    Scalar,
+    Theme,
+    Widget,
+    Ui,
+};
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
-use position::{self, Dimensions, Point};
-use theme::Theme;
+use position;
 use vecmath::vec2_sub;
-use widget::{self, Widget};
+use widget;
 
 
 pub type Idx = usize;
@@ -516,80 +524,80 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         }
     }
 
-    /// Construct an Element from the given TextBox State.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{self, collage, line, solid, text};
-        use elmesque::text::Text;
+    // /// Construct an Element from the given TextBox State.
+    // fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
+    //     use elmesque::form::{self, collage, line, solid, text};
+    //     use elmesque::text::Text;
 
-        let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
+    //     let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
 
-        // Construct the frame and inner rectangle Forms.
-        let (xy, dim) = rect.xy_dim();
-        let frame = style.frame(theme);
-        let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let color = state.interaction.color(style.color(theme));
-        let frame_color = style.frame_color(theme);
-        let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-        let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
-        let font_size = style.font_size(theme);
-        let text_w = glyph_cache.width(font_size, &state.text[..]);
-        let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
-        let text_start_x = text_x - text_w / 2.0;
+    //     // Construct the frame and inner rectangle Forms.
+    //     let (xy, dim) = rect.xy_dim();
+    //     let frame = style.frame(theme);
+    //     let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
+    //     let color = state.interaction.color(style.color(theme));
+    //     let frame_color = style.frame_color(theme);
+    //     let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
+    //     let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
+    //     let font_size = style.font_size(theme);
+    //     let text_w = glyph_cache.width(font_size, &state.text[..]);
+    //     let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
+    //     let text_start_x = text_x - text_w / 2.0;
 
-        let (maybe_cursor_form, text_form) = if let Interaction::Captured(view) = state.interaction {
-            // Construct the Cursor's Form.
-            let cursor = view.cursor;
+    //     let (maybe_cursor_form, text_form) = if let Interaction::Captured(view) = state.interaction {
+    //         // Construct the Cursor's Form.
+    //         let cursor = view.cursor;
 
-            // This matters if the text is scrolled with the mouse.
-            let cursor_idx = match cursor.anchor {
-                Anchor::End => cursor.start,
-                Anchor::Start | Anchor::None => cursor.end,
-            };
+    //         // This matters if the text is scrolled with the mouse.
+    //         let cursor_idx = match cursor.anchor {
+    //             Anchor::End => cursor.start,
+    //             Anchor::Start | Anchor::None => cursor.end,
+    //         };
 
-            let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &state.text);
+    //         let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &state.text);
 
-            let cursor_form = if cursor.is_cursor() {
-                let half_pad_h = pad_dim[1] / 2.0;
-                line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
-                    .alpha(0.75)
-                    .shift_x(cursor_x)
-            } else {
-                let (block_xy, dim) = {
-                    let (start, end) = (cursor.start, cursor.end);
-                    let cursor_x = cursor_position(glyph_cache, start, text_start_x, font_size, &state.text);
-                    let htext: String = state.text.chars().skip(start).take(end - start).collect();
-                    let htext_w = glyph_cache.width(font_size, &htext);
-                    ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
-                };
-                form::rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
-                    .shift(block_xy[0], block_xy[1])
-            };
+    //         let cursor_form = if cursor.is_cursor() {
+    //             let half_pad_h = pad_dim[1] / 2.0;
+    //             line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
+    //                 .alpha(0.75)
+    //                 .shift_x(cursor_x)
+    //         } else {
+    //             let (block_xy, dim) = {
+    //                 let (start, end) = (cursor.start, cursor.end);
+    //                 let cursor_x = cursor_position(glyph_cache, start, text_start_x, font_size, &state.text);
+    //                 let htext: String = state.text.chars().skip(start).take(end - start).collect();
+    //                 let htext_w = glyph_cache.width(font_size, &htext);
+    //                 ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
+    //             };
+    //             form::rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
+    //                 .shift(block_xy[0], block_xy[1])
+    //         };
 
-            // Construct the text's Form.
-            let text_form = text(Text::from_string(state.text.clone())
-                                     .color(color.plain_contrast())
-                                     .height(font_size as f64)).shift_x(text_x.floor());
+    //         // Construct the text's Form.
+    //         let text_form = text(Text::from_string(state.text.clone())
+    //                                  .color(color.plain_contrast())
+    //                                  .height(font_size as f64)).shift_x(text_x.floor());
 
-            (Some(cursor_form), text_form)
-        } else {
+    //         (Some(cursor_form), text_form)
+    //     } else {
 
-            // Construct the text's Form.
-            let text_form = text(Text::from_string(state.text.clone())
-                                     .color(color.plain_contrast())
-                                     .height(font_size as f64)).shift_x(text_x.floor());
-            (None, text_form)
-        };
+    //         // Construct the text's Form.
+    //         let text_form = text(Text::from_string(state.text.clone())
+    //                                  .color(color.plain_contrast())
+    //                                  .height(font_size as f64)).shift_x(text_x.floor());
+    //         (None, text_form)
+    //     };
 
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(inner_form))
-            .chain(maybe_cursor_form)
-            .chain(Some(text_form))
-            .map(|form| form.shift(xy[0], xy[1]));
+    //     // Chain the Forms and shift them into position.
+    //     let form_chain = Some(frame_form).into_iter()
+    //         .chain(Some(inner_form))
+    //         .chain(maybe_cursor_form)
+    //         .chain(Some(text_form))
+    //         .map(|form| form.shift(xy[0], xy[1]));
 
-        // Collect the Forms into a renderable `Element`.
-        collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    }
+    //     // Collect the Forms into a renderable `Element`.
+    //     collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
+    // }
 
 }
 
