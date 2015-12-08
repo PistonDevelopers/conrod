@@ -3,24 +3,25 @@ use {
     CharacterCache,
     Color,
     Colorable,
-    Corner,
     Dimension,
     Frameable,
+    FramedRectangle,
     FontSize,
     Labelable,
     Line,
     Mouse,
+    NodeIndex,
     Positionable,
     Scalar,
     Sizeable,
+    Text,
     Theme,
     Ui,
     Widget,
 };
-use position;
+use num::Float;
 use widget;
-use utils::{clamp, map_range, val_to_string};
-use vecmath::vec2_sub;
+use utils::{map_range, val_to_string};
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -62,7 +63,7 @@ pub struct State<X, Y> {
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     interaction: Interaction,
-    maybe_frame_idx: Option<NodeIndex>,
+    maybe_rectangle_idx: Option<NodeIndex>,
     maybe_label_idx: Option<NodeIndex>,
     maybe_h_line_idx: Option<NodeIndex>,
     maybe_v_line_idx: Option<NodeIndex>,
@@ -178,7 +179,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             interaction: Interaction::Normal,
             x: self.x, min_x: self.min_x, max_x: self.max_x,
             y: self.y, min_y: self.min_y, max_y: self.max_y,
-            maybe_frame_idx: None,
             maybe_rectangle_idx: None,
             maybe_label_idx: None,
             maybe_h_line_idx: None,
@@ -203,20 +203,21 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
 
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let XYPad {
             enabled,
             x, min_x, max_x,
             y, min_y, max_y,
             maybe_label,
             maybe_react,
+            ..
         } = self;
 
         let maybe_mouse = ui.input().maybe_mouse;
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let interaction = state.view().interaction;
-        let new_interaction = match (self.enabled, maybe_mouse) {
+        let new_interaction = match (enabled, maybe_mouse) {
             (false, _) | (true, None) => Normal,
             (true, Some(mouse)) => {
                 let is_over_inner = inner_rect.is_over(mouse.xy);
@@ -233,7 +234,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         // Determine new values from the mouse position over the pad.
         let (new_x, new_y) = match (maybe_mouse, new_interaction) {
-            (None, _) | (_, Normal) | (_, Highlighted) => (self.x, self.y),
+            (None, _) | (_, Normal) | (_, Highlighted) => (x, y),
             (Some(mouse), Clicked) => {
                 let unclamped_x = mouse.xy[0] - inner_rect.left();
                 let unclamped_y = mouse.xy[1] - inner_rect.bottom();
@@ -269,18 +270,18 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         if value_or_bounds_have_changed {
             state.update(|state| {
-                state.x = self.x;
-                state.y = self.y;
-                state.min_x = self.min_x;
-                state.max_x = self.max_x;
-                state.min_y = self.min_y;
-                state.max_y = self.max_y;
+                state.x = x;
+                state.y = y;
+                state.min_x = min_x;
+                state.max_x = max_x;
+                state.min_y = min_y;
+                state.max_y = max_y;
             })
         }
 
         // The backdrop **FramedRectangle** widget.
         let dim = rect.dim();
-        let color = style.color(ui.theme());
+        let color = new_interaction.color(style.color(ui.theme()));
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
         let rectangle_idx = state.view().maybe_rectangle_idx
@@ -308,6 +309,10 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             label_idx
         });
 
+        if state.view().maybe_label_idx != maybe_label_idx {
+            state.update(|state| state.maybe_label_idx = maybe_label_idx);
+        }
+
         // Crosshair **Line** widgets.
         let (w, h) = inner_rect.w_h();
         let half_w = w / 2.0;
@@ -322,7 +327,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .unwrap_or_else(|| ui.new_unique_node_index());
         Line::centred(v_line_start, v_line_end)
             .color(label_color)
-            .relative_to(idx, [v_line_x, 0.0])
+            .thickness(thickness)
+            .x_y_relative_to(idx, v_line_x, 0.0)
             .graphics_for(idx)
             .set(v_line_idx, &mut ui);
 
@@ -332,7 +338,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .unwrap_or_else(|| ui.new_unique_node_index());
         Line::centred(h_line_start, h_line_end)
             .color(label_color)
-            .relative_to(idx, [0.0, h_line_y])
+            .thickness(thickness)
+            .x_y_relative_to(idx, 0.0, h_line_y)
             .graphics_for(idx)
             .set(h_line_idx, &mut ui);
 
