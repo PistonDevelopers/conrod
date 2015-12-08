@@ -1,11 +1,11 @@
 
 use {
+    Align,
     CharacterCache,
     Color,
     Colorable,
     Dimension,
     FontSize,
-    Horizontal,
     LineBreak,
     Range,
     Rect,
@@ -22,7 +22,7 @@ use widget;
 /// By default, the rectangular dimensions are fit to the area occuppied by the text.
 ///
 /// If some horizontal dimension is given, the text will automatically wrap to the width and align
-/// in accordance with the produced **Horizontal**.
+/// in accordance with the produced **Align**.
 pub struct Text<'a> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
@@ -45,7 +45,7 @@ pub struct Style {
     /// The spacing between consecutive lines.
     pub maybe_line_spacing: Option<Scalar>,
     /// Alignment of the text along the *x* axis.
-    pub maybe_text_align: Option<Horizontal>,
+    pub maybe_text_align: Option<Align>,
     // /// The typeface with which the Text is rendered.
     // pub maybe_typeface: Option<Path>,
     // /// The line styling for the text.
@@ -127,19 +127,19 @@ impl<'a> Text<'a> {
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
     pub fn align_text_left(mut self) -> Self {
-        self.style.maybe_text_align = Some(Horizontal::Left);
+        self.style.maybe_text_align = Some(Align::Start);
         self
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
     pub fn align_text_middle(mut self) -> Self {
-        self.style.maybe_text_align = Some(Horizontal::Middle);
+        self.style.maybe_text_align = Some(Align::Middle);
         self
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
     pub fn align_text_right(mut self) -> Self {
-        self.style.maybe_text_align = Some(Horizontal::Right);
+        self.style.maybe_text_align = Some(Align::End);
         self
     }
 
@@ -191,8 +191,8 @@ impl Style {
     }
 
     /// Get the text alignment along the **Text**'s bounding **Rect**'s *x* axis.
-    pub fn text_align(&self, theme: &Theme) -> Horizontal {
-        const DEFAULT_TEXT_ALIGN: Horizontal = Horizontal::Left;
+    pub fn text_align(&self, theme: &Theme) -> Align {
+        const DEFAULT_TEXT_ALIGN: Align = Align::Start;
         self.maybe_text_align.or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
             default.style.maybe_text_align
         })).unwrap_or(DEFAULT_TEXT_ALIGN)
@@ -335,7 +335,7 @@ impl State {
     /// every **line** in the `string`
     pub fn line_rects<'a>(&'a self,
                           container: Rect,
-                          h_align: Horizontal,
+                          h_align: Align,
                           font_size: FontSize,
                           line_spacing: Scalar) -> LineRects<'a, Lines<'a>>
     {
@@ -348,7 +348,7 @@ impl State {
     // pub fn char_rects<'a, C>(&'a self,
     //                          cache: &'a GlyphCache<C>,
     //                          container: Rect,
-    //                          h_align: Horizontal,
+    //                          h_align: Align,
     //                          font_size: FontSize,
     //                          line_spacing: Scalar) -> CharRects<'a, C>
     //     where C: CharacterCache,
@@ -390,7 +390,7 @@ pub struct LineRects<'a, I: 'a> {
     lines: I,
     font_size: FontSize,
     y_step: Scalar,
-    h_align: Horizontal,
+    h_align: Align,
     container_x: Range,
     y: Scalar,
     strs: ::std::marker::PhantomData<&'a ()>,
@@ -402,7 +402,7 @@ impl<'a, I> LineRects<'a, I> {
     /// Construct a new **LineRects**.
     pub fn new(lines: I,
                container: Rect,
-               h_align: Horizontal,
+               h_align: Align,
                font_size: FontSize,
                line_spacing: Scalar) -> LineRects<'a, I>
         where I: Iterator<Item=&'a str>,
@@ -447,9 +447,9 @@ impl<'a, I> LineRects<'a, I> {
             let h = font_size as Scalar;
             let w_range = Range::new(0.0, w);
             let x = match h_align {
-                Horizontal::Left => w_range.align_start_of(container_x),
-                Horizontal::Middle => w_range.align_middle_of(container_x),
-                Horizontal::Right => w_range.align_end_of(container_x),
+                Align::Start => w_range.align_start_of(container_x),
+                Align::Middle => w_range.align_middle_of(container_x),
+                Align::End => w_range.align_end_of(container_x),
             }.middle();
             let xy = [x, *y];
             let wh = [w, h];

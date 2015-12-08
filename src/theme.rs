@@ -4,7 +4,7 @@
 
 use Scalar;
 use color::{Color, black, white};
-use position::{Margin, Padding, Position, Horizontal, HorizontalAlign, Vertical, VerticalAlign};
+use position::{Align, Direction, Margin, Padding, Position};
 use rustc_serialize::Encodable;
 use std::any::Any;
 use std::collections::HashMap;
@@ -21,10 +21,10 @@ pub struct Theme {
     pub padding: Padding,
     /// Margin for Canvas layout and positioning.
     pub margin: Margin,
-    /// A default widget position.
-    pub position: Position,
-    /// A default alignment for widgets.
-    pub align: Align,
+    /// A default widget position along the *x* axis.
+    pub x_position: Position,
+    /// A default widget position along the *y* axis.
+    pub y_position: Position,
     /// A default background for the theme.
     pub background_color: Color,
     /// A default color for widget shapes.
@@ -75,15 +75,6 @@ pub struct Theme {
     // pub maybe_xy_pad: Option<WidgetDefault<widget::xy_pad::Style>>,
 }
 
-/// The alignment of an element's dimensions with another's.
-#[derive(Copy, Debug, Clone, RustcEncodable, RustcDecodable)]
-pub struct Align {
-    /// Positioning relative to an elements width and position on the x axis.
-    pub horizontal: HorizontalAlign,
-    /// Positioning relative to an elements height and position on the y axis.
-    pub vertical: VerticalAlign,
-}
-
 /// The defaults for a specific widget.
 pub struct WidgetDefault {
     /// The unique style of a widget.
@@ -130,11 +121,8 @@ impl Theme {
                 left: 0.0,
                 right: 0.0,
             },
-            position: Position::default(),
-            align: Align {
-                horizontal: HorizontalAlign(Horizontal::Left, None),
-                vertical: VerticalAlign(Vertical::Top, None),
-            },
+            x_position: Position::Align(Align::Start, None),
+            y_position: Position::Direction(Direction::Backwards, 20.0, None),
             background_color: black(),
             shape_color: white(),
             frame_color: black(),

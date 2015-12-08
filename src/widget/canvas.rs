@@ -209,7 +209,11 @@ impl<'a> Widget for Canvas<'a> {
         self.style.clone()
     }
 
-    fn default_position(&self, _theme: &Theme) -> Position {
+    fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        Position::Place(Place::Middle, None)
+    }
+
+    fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
         Position::Place(Place::Middle, None)
     }
 

@@ -1,7 +1,7 @@
 
 use {CharacterCache, Scalar};
 use color::Color;
-use position::{Dimensions, Direction, Point, Positionable, Sizeable};
+use position::{Dimensions, Point, Positionable, Sizeable};
 use super::canvas;
 use widget::{self, Widget};
 use ui::Ui;
@@ -16,6 +16,16 @@ pub struct Split<'a> {
     // TODO: Maybe use the `CommonBuilder` (to be used for the wrapped `Canvas`) here instead?
     is_h_scrollable: bool,
     is_v_scrollable: bool,
+}
+
+
+/// The direction in which the the **Split** should layout it's child **Split**s.
+#[derive(Copy, Clone, Debug)]
+enum Direction {
+    Left,
+    Right,
+    Down,
+    Up,
 }
 
 
@@ -40,7 +50,7 @@ impl<'a> Split<'a> {
     }
 
     /// Set the child Canvas Splits of the current Canvas flowing in a given direction.
-    pub fn flow(mut self, dir: Direction, splits: &'a [Split<'a>]) -> Split<'a> {
+    fn flow(mut self, dir: Direction, splits: &'a [Split<'a>]) -> Split<'a> {
         self.maybe_splits = Some((dir, splits));
         self
     }
@@ -200,7 +210,7 @@ impl<'a> Split<'a> {
         let xy = vec2_add(xy, pad_offset);
 
         if let Some((direction, splits)) = *maybe_splits {
-            use Direction::{Up, Down, Left, Right};
+            use self::Direction::{Up, Down, Left, Right};
 
             let (stuck_length, num_not_stuck) =
                 splits.iter().fold((0.0, splits.len()), |(total, remaining), split| {

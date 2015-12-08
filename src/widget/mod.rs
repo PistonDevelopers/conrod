@@ -1,9 +1,7 @@
 use {CharacterCache, Dimension, GlyphCache};
 use elmesque::Element;
 use graph::NodeIndex;
-use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
-               HorizontalAlign, VerticalAlign};
-use rustc_serialize::Encodable;
+use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
@@ -146,11 +144,11 @@ impl MaybeParent {
     /// Convert the **MaybeParent** into an **Option<Index>**.
     ///
     /// If not given explicitly, check the positioning to retrieve the **Index** from there.
-    pub fn get<C>(&self, ui: &Ui<C>, pos: Position) -> Option<Index> {
+    pub fn get<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Option<Index> {
         match *self {
             MaybeParent::Some(idx) => Some(idx),
             MaybeParent::None => None,
-            MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
+            MaybeParent::Unspecified => ui::parent_from_position(ui, x_pos, y_pos),
         }
     }
 }
@@ -168,7 +166,7 @@ pub struct Floating {
 ///
 /// When Rust gets some sort of field inheritance feature, this will most likely be refactored to
 /// take advantage of that.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug)]
 pub struct CommonBuilder {
     /// Styling and positioning data that is common between all widget types.
     pub style: CommonStyle,
@@ -210,18 +208,16 @@ pub struct CommonBuilder {
 }
 
 /// Styling and positioning data that is common between all widget types.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug)]
 pub struct CommonStyle {
     /// The width of a Widget.
     pub maybe_x_dimension: Option<Dimension>,
     /// The height of a Widget.
     pub maybe_y_dimension: Option<Dimension>,
-    /// The position of a Widget.
-    pub maybe_position: Option<Position>,
-    /// The horizontal alignment of a Widget.
-    pub maybe_h_align: Option<HorizontalAlign>,
-    /// The vertical alignment of a Widget.
-    pub maybe_v_align: Option<VerticalAlign>,
+    /// The position of a Widget along the *x* axis.
+    pub maybe_x_position: Option<Position>,
+    /// The position of a Widget along the *y* axis.
+    pub maybe_y_position: Option<Position>,
     /// The rendering Depth of the Widget.
     pub maybe_depth: Option<Depth>,
 }
@@ -538,22 +534,22 @@ pub trait Widget: Sized {
         ::elmesque::element::empty()
     }
 
-    /// The default Position for the widget.
-    /// This is used when no Position is explicitly given when instantiating the Widget.
-    fn default_position(&self, _theme: &Theme) -> Position {
-        Position::Direction(Direction::Down, 20.0, None)
+    /// The default **Position** for the widget along the *x* axis.
+    ///
+    /// This is used when no **Position** is explicitly given when instantiating the Widget.
+    fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        ui.theme.widget_style::<Self>(self.unique_kind())
+            .and_then(|style| style.common.maybe_x_position)
+            .unwrap_or(ui.theme.x_position)
     }
 
-    /// The default horizontal alignment for the widget.
-    /// This is used when no HorizontalAlign is explicitly given when instantiating a Widget.
-    fn default_h_align(&self, theme: &Theme) -> HorizontalAlign {
-        theme.align.horizontal
-    }
-
-    /// The default vertical alignment for the widget.
-    /// This is used when no VerticalAlign is explicitly given when instantiating a Widget.
-    fn default_v_align(&self, theme: &Theme) -> VerticalAlign {
-        theme.align.vertical
+    /// The default **Position** for the widget along the *y* axis.
+    ///
+    /// This is used when no **Position** is explicitly given when instantiating the Widget.
+    fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        ui.theme.widget_style::<Self>(self.unique_kind())
+            .and_then(|style| style.common.maybe_y_position)
+            .unwrap_or(ui.theme.y_position)
     }
 
     /// The default width for the **Widget**.
@@ -785,21 +781,18 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let new_style = widget.style();
     let depth = widget.get_depth();
     let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
-    let pos = widget.get_position(&ui.theme);
+    let x_pos = widget.get_x_position(&ui.theme);
+    let y_pos = widget.get_y_position(&ui.theme);
     let place_on_kid_area = widget.common().place_on_kid_area;
 
     let (xy, drag_state) = {
         // A function for generating the xy coords from the given alignment and Position.
-        let gen_xy = || {
-            let (h_align, v_align) = widget.get_alignment(&ui.theme);
-            let new_xy = ui.calc_xy(Some(idx), pos, dim, h_align, v_align, place_on_kid_area);
-            new_xy
-        };
+        let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
 
         // Check to see if the widget is currently being dragged and return the new xy / drag.
         match maybe_prev_common {
             // If there is no previous state to compare for dragging, return an initial state.
-            None => (gen_xy(), drag::State::Normal),
+            None => (calc_xy(), drag::State::Normal),
             Some(ref prev) => {
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
@@ -808,10 +801,10 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                     // FIXME: This may cause issues in the case that a widget's draggable area
                     // is dynamic (i.e. sometimes its Some, other times its None).
                     // Specifically, if a widget is dragged somewhere and then it returns None,
-                    // it will snap back to the position produced by gen_xy. We should keep
+                    // it will snap back to the position produced by calc_xy. We should keep
                     // track of whether or not a widget `has_been_dragged` to see if we should
-                    // leave it at its previous xy or use gen_xy.
-                    None => (gen_xy(), drag::State::Normal),
+                    // leave it at its previous xy or use calc_xy.
+                    None => (calc_xy(), drag::State::Normal),
                     Some(drag_area) => match maybe_mouse {
                         // If there is some draggable area and mouse, drag the xy.
                         Some(mouse) => {
@@ -846,7 +839,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine the id of the canvas that the widget is attached to. If not given explicitly,
     // check the positioning to retrieve the Id from there.
-    let maybe_parent_idx = widget.common().maybe_parent_idx.get(ui, pos);
+    let maybe_parent_idx = widget.common().maybe_parent_idx.get(ui, x_pos, y_pos);
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
@@ -925,11 +918,16 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // We do this so that if this widget were to internally `set` some other `Widget`s, this
     // `Widget`s positioning and dimension data already exists within the `Graph`.
     {
+        use Position::{Place, Relative, Direction, Align};
         // Some widget to which this widget is relatively positioned (if there is one).
-        let maybe_positioned_relatively_idx = match pos {
-            Position::Place(_, maybe_idx)        |
-            Position::Relative(_, _, maybe_idx)  |
-            Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
+        //
+        // FIXME: Here we only store the first relatively positioned widget we come across, whereas
+        // we should really be storing and handling both within the graph.
+        let maybe_positioned_relatively_idx = match (x_pos, y_pos) {
+            Place(_, maybe_idx)     | Place(_, maybe_idx)     |
+            Relative(_, maybe_idx)  | Relative(_, maybe_idx)  |
+            Direction(_, maybe_idx) | Direction(_, maybe_idx) |
+            Align(_, maybe_idx)     | Align(_, maybe_idx)     => maybe_idx.or(maybe_prev_widget_idx),
             _ => None,
         };
 
@@ -1161,9 +1159,8 @@ impl CommonStyle {
         CommonStyle {
             maybe_x_dimension: None,
             maybe_y_dimension: None,
-            maybe_position: None,
-            maybe_h_align: None,
-            maybe_v_align: None,
+            maybe_x_position: None,
+            maybe_y_position: None,
             maybe_depth: None,
         }
     }
@@ -1172,31 +1169,22 @@ impl CommonStyle {
 
 impl<W> Positionable for W where W: Widget {
     #[inline]
-    fn position(mut self, pos: Position) -> Self {
-        self.common_mut().style.maybe_position = Some(pos);
+    fn x_position(mut self, x: Position) -> Self {
+        self.common_mut().style.maybe_x_position = Some(x);
         self
     }
     #[inline]
-    fn get_position(&self, theme: &Theme) -> Position {
-        self.common().style.maybe_position.unwrap_or(self.default_position(theme))
-    }
-    #[inline]
-    fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
-        self.common_mut().style.maybe_h_align = Some(h_align);
+    fn y_position(mut self, y: Position) -> Self {
+        self.common_mut().style.maybe_y_position = Some(y);
         self
     }
     #[inline]
-    fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
-        self.common_mut().style.maybe_v_align = Some(v_align);
-        self
+    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        self.common().style.maybe_x_position.unwrap_or(self.default_x_position(ui))
     }
     #[inline]
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.common().style.maybe_h_align.unwrap_or(self.default_h_align(theme))
-    }
-    #[inline]
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.common().style.maybe_v_align.unwrap_or(self.default_v_align(theme))
+    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        self.common().style.maybe_y_position.unwrap_or(self.default_y_position(ui))
     }
     #[inline]
     fn depth(mut self, depth: Depth) -> Self {

@@ -1,6 +1,5 @@
 use {CharacterCache, Dimension};
-use super::{Depth, Dimensions, HorizontalAlign, VerticalAlign, Point, Position, Positionable,
-            Scalar, Sizeable};
+use super::{Depth, Dimensions, Point, Position, Positionable, Scalar, Sizeable};
 use theme::Theme;
 use ui::{self, Ui};
 use widget;
@@ -18,11 +17,10 @@ pub type PosY = f64;
 pub struct Matrix {
     cols: usize,
     rows: usize,
-    maybe_position: Option<Position>,
+    maybe_x_position: Option<Position>,
+    maybe_y_position: Option<Position>,
     maybe_x_dimension: Option<Dimension>,
     maybe_y_dimension: Option<Dimension>,
-    maybe_h_align: Option<HorizontalAlign>,
-    maybe_v_align: Option<VerticalAlign>,
     cell_pad_w: Scalar,
     cell_pad_h: Scalar,
 }
@@ -34,11 +32,10 @@ impl Matrix {
         Matrix {
             cols: cols,
             rows: rows,
-            maybe_position: None,
+            maybe_x_position: None,
+            maybe_y_position: None,
             maybe_x_dimension: None,
             maybe_y_dimension: None,
-            maybe_h_align: None,
-            maybe_v_align: None,
             cell_pad_w: 0.0,
             cell_pad_h: 0.0,
         }
@@ -58,17 +55,17 @@ impl Matrix {
     {
         use utils::map_range;
 
-        let pos = self.get_position(&ui.theme);
+        let x_pos = self.get_x_position();
+        let y_pos = self.get_y_position();
         let dim = self.get_dim(ui).unwrap_or([0.0, 0.0]);
-        let (h_align, v_align) = self.get_alignment(&ui.theme);
 
         // If we can infer some new current parent from the position, set that as the current
         // parent within the given `Ui`.
-        if let Some(id) = ui::parent_from_position(ui, pos) {
-            ui::set_current_parent_idx(ui, id);
-        }
+        ui::parent_from_position(ui, x_pos)
+            .or_else(|| ui::parent_from_position(ui, y_pos))
+            .map(|idx| ui::set_current_parent_idx(ui, idx));
 
-        let xy = ui.calc_xy(None, pos, dim, h_align, v_align, true);
+        let xy = ui.calc_xy(None, x_pos, y_pos, dim, true);
         let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
         let widget_w = dim[0] / self.cols as f64;
         let widget_h = dim[1] / self.rows as f64;
@@ -93,31 +90,22 @@ impl Matrix {
 
 impl Positionable for Matrix {
     #[inline]
-    fn position(mut self, pos: Position) -> Self {
-        self.maybe_position = Some(pos);
+    fn x_position(mut self, pos: Position) -> Self {
+        self.maybe_x_position = Some(pos);
         self
     }
     #[inline]
-    fn get_position(&self, theme: &Theme) -> Position {
-        self.maybe_position.unwrap_or(theme.position)
-    }
-    #[inline]
-    fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
-        self.maybe_h_align = Some(h_align);
+    fn y_position(mut self, pos: Position) -> Self {
+        self.maybe_y_position = Some(pos);
         self
     }
     #[inline]
-    fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
-        self.maybe_v_align = Some(v_align);
-        self
+    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        self.maybe_position.unwrap_or(ui.theme.x_position)
     }
     #[inline]
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.maybe_h_align.unwrap_or(theme.align.horizontal)
-    }
-    #[inline]
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.maybe_v_align.unwrap_or(theme.align.vertical)
+    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        self.maybe_position.unwrap_or(ui.theme.x_position)
     }
     #[inline]
     fn depth(self, _: Depth) -> Self {

@@ -16,7 +16,7 @@ use input::{
     RenderEvent,
     TextEvent,
 };
-use position::{Dimensions, HorizontalAlign, Padding, Point, Position, Rect, VerticalAlign};
+use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
@@ -295,99 +295,97 @@ impl<C> Ui<C> {
     /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
     pub fn calc_xy(&self,
                    maybe_idx: Option<widget::Index>,
-                   position: Position,
+                   x_position: Position,
+                   y_position: Position,
                    dim: Dimensions,
-                   h_align: HorizontalAlign,
-                   v_align: VerticalAlign,
                    place_on_kid_area: bool) -> Point
     {
         use vecmath::vec2_add;
 
-        let xy = match position {
+        // Retrieves the absolute **Scalar** position from the given position for a single axis.
+        //
+        // The axis used is specified by the given range_from_rect function which, given some
+        // **Rect**, returns the relevant **Range**.
+        fn abs_from_position<C, R, P>(ui: &Ui<C>,
+                                      position: Position,
+                                      dim: Scalar,
+                                      place_on_kid_area: bool,
+                                      range_from_rect: R,
+                                      start_and_end_pad: P)
+            where R: FnOnce(Rect) -> Range,
+                  P: FnOnce(Padding) -> (Scalar, Scalar),
+        {
+            match position {
 
-            Position::Absolute(x, y) => [x, y],
+                Position::Absolute(abs) => abs,
 
-            Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
-                None => [x, y],
-                Some(idx) => self.widget_graph.widget(idx)
-                    .map(|w| vec2_add(w.rect.xy(), [x, y]))
-                    .unwrap_or([x, y]),
-            },
+                Position::Relative(rel, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window))
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| other_range.middle() + rel)
+                        .unwrap_or(rel),
 
-            Position::Direction(direction, px, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget()) {
-                    None => [0.0, 0.0],
-                    Some(rel_idx) => {
-                        use position::Direction;
-                        let (rel_x, rel_y, rel_w, rel_h) = self.widget_graph.widget(rel_idx)
-                            .map(|widget| widget.rect.x_y_w_h())
-                            .unwrap_or_else(|| (0.0, 0.0, 0.0, 0.0));
+                Position::Direction(direction, amt, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx)
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| {
+                            let range = Range::from_pos_and_len(0.0, dim);
+                            match direction {
+                                Direction::Forwards => range.align_after(other_range).middle(),
+                                Direction::Backwards => range.align_before(other_range).middle(),
+                            }
+                        })
+                        .unwrap_or_else(|| match direction {
+                            Direction::Forwards => amt,
+                            Direction::Backwards => -amt,
+                        }),
 
-                        match direction {
+                Position::Align(align, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window))
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| {
+                            let range = Range::from_pos_and_len(0.0, dim);
+                            match align {
+                                Align::Start => range.align_start_of(other_range).middle(),
+                                Align::Middle => other_range.middle(),
+                                Align::End => range.align_end_of(other_range).middle(),
+                            }
+                        })
+                        .expect("Could not calculate absolute position from Position::Align"),
 
-                            // For vertical directions, we must consider horizontal alignment.
-                            Direction::Up | Direction::Down => {
-                                // Check whether or not we are aligning to a specific `Ui` element.
-                                let (other_x, other_w) = match h_align.1 {
-                                    Some(other_idx) => self.widget_graph.widget(other_idx)
-                                        .map(|widget| (widget.rect.x(), widget.rect.w()))
-                                        .unwrap_or_else(|| (rel_x, rel_w)),
-                                    None => (rel_x, rel_w),
-                                };
-                                let x = other_x + h_align.0.to(other_w, dim[0]);
-                                let y = match direction {
-                                    Direction::Up   => rel_y + rel_h / 2.0 + dim[1] / 2.0 + px,
-                                    Direction::Down => rel_y - rel_h / 2.0 - dim[1] / 2.0 - px,
-                                    _ => unreachable!(),
-                                };
-                                [x, y]
-                            },
+                Position::Place(place, maybe_idx) => {
+                    let parent_idx = maybe_idx
+                        .or(ui.maybe_current_parent_idx)
+                        .unwrap_or(ui.window);
+                    let maybe_area = match place_on_kid_area {
+                        true => ui.kid_area_of(parent_idx)
+                            .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
+                        false => ui.rect_of(parent_idx)
+                            .map(|rect| (range_from_rect(rect), (0.0, 0.0))),
+                    };
+                    maybe_area
+                        .map(|(parent_range, (pad_start, pad_end))| {
+                            let range = Range::from_pos_and_len(0.0, dim[0]);
+                            let parent_range = parent_range.pad_start(pad_start).pad_end(pad_end);
+                            match place {
+                                Place::Start => range.align_start_of(parent_range).middle(),
+                                Place::Middle => parent_range.x.middle(),
+                                Place::End => range.align_end_of(parent_range).middle(),
+                            }
+                        })
+                        .expect("Could not calculate absolute position from Position::Place")
+                },
 
-                            // For horizontal directions, we must consider vertical alignment.
-                            Direction::Left | Direction::Right => {
-                                // Check whether or not we are aligning to a specific `Ui` element.
-                                let (other_y, other_h) = match h_align.1 {
-                                    Some(other_idx) => self.widget_graph.widget(other_idx)
-                                        .map(|widget| (widget.rect.y(), widget.rect.h()))
-                                        .unwrap_or_else(|| (rel_y, rel_h)),
-                                    None => (rel_y, rel_h),
-                                };
-                                let y = other_y + v_align.0.to(other_h, dim[1]);
-                                let x = match direction {
-                                    Direction::Left  => rel_x - rel_w / 2.0 - dim[0] / 2.0 - px,
-                                    Direction::Right => rel_x + rel_w / 2.0 + dim[0] / 2.0 + px,
-                                    _ => unreachable!(),
-                                };
-                                [x, y]
-                            },
+            }
+        }
 
-                        }
-                    },
-                }
-            },
-
-            Position::Place(place, maybe_parent_idx) => {
-                let window = || (([0.0, 0.0], [self.win_w, self.win_h]), Padding::none());
-                let maybe_parent = maybe_parent_idx.or(self.maybe_current_parent_idx);
-                let ((target_xy, target_dim), pad) = match maybe_parent {
-                    Some(parent_idx) => match self.widget_graph.widget(parent_idx) {
-                        Some(parent) => match place_on_kid_area {
-                            true => (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
-                            false => (parent.rect.xy_dim(), Padding::none()),
-                        },
-                        // Sometimes the children are placed prior to their parents being set for
-                        // the first time. If this is the case, we'll just place them on the window
-                        // until we have information about the parents on the next update.
-                        None => window(),
-                    },
-                    None => window(),
-                };
-                let place_xy = place.within(target_dim, dim);
-                let relative_xy = vec2_add(place_xy, pad.offset_from(place));
-                vec2_add(target_xy, relative_xy)
-            },
-
-        };
+        let x_range = |rect| rect.x;
+        let y_range = |rect| rect.y;
+        let x_pad = |pad| (pad.left, pad.right);
+        let y_pad = |pad| (pad.bottom, pad.top);
+        let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
+        let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
+        let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
         maybe_idx
@@ -688,25 +686,21 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 
 
 /// Check the given position for an attached parent widget.
-pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
-    match position {
-        Position::Relative(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.depth_parent(idx),
-            None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.depth_parent(idx),
-                None     => ui.maybe_current_parent_idx,
-            },
-        },
-        Position::Direction(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.depth_parent(idx),
-            None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.depth_parent(idx),
-                None     => ui.maybe_current_parent_idx,
-            },
-        },
-        Position::Place(_, maybe_parent_idx) => maybe_parent_idx.or(ui.maybe_current_parent_idx),
-        _ => ui.maybe_current_parent_idx,
-    }
+pub fn parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
+    -> Option<widget::Index>
+{
+    use Position::{Place, Relative, Direction, Align};
+    let maybe_parent = match (x_pos, y_pos) {
+        (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
+            maybe_parent_idx,
+        (Direction(_, maybe_idx), _) | (_, Direction(_, maybe_idx)) |
+        (Align(_, maybe_idx), _)     | (_, Align(_, maybe_idx))     |
+        (Relative(_, maybe_idx), _)  | (_, Relative(_, maybe_idx))  =>
+            maybe_idx.or(ui.maybe_prev_widget_idx)
+                .map(|idx| ui.widget_graph.depth_parent(idx)),
+        _ => None,
+    };
+    maybe_parent.or(ui.maybe_current_parent_idx)
 }
 
 
