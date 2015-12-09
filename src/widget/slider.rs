@@ -199,13 +199,14 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
     }
 
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> KidArea {
+        const LABEL_PADDING: Scalar = 10.0;
         KidArea {
             rect: args.rect,
             pad: Padding {
-                left: 10.0,
-                right: 10.0,
-                bottom: 10.0,
-                top: 10.0,
+                left: LABEL_PADDING,
+                right: LABEL_PADDING,
+                bottom: LABEL_PADDING,
+                top: LABEL_PADDING,
             },
         }
     }
