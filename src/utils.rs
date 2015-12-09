@@ -28,18 +28,26 @@ pub fn clamp<T: PartialOrd>(n: T, start: T, end: T) -> T {
     }
 }
 
-/// Get value percentage between max and min.
-pub fn percentage<T: Float + NumCast>(value: T, min: T, max: T) -> f32 {
-    let v: f32 = NumCast::from(value).unwrap();
-    let mn: f32 = NumCast::from(min).unwrap();
-    let mx: f32 = NumCast::from(max).unwrap();
-    (v - mn) / (mx - mn)
+/// Convert degrees to radians.
+pub fn degrees<F: Float + NumCast>(d: F) -> F {
+    use std::f32::consts::PI;
+    d * NumCast::from(PI / 180.0).unwrap()
 }
 
-/// Adjust the value to the given percentage.
-pub fn value_from_perc<T: Float + NumCast + ToPrimitive>(perc: f32, min: T, max: T) -> T {
-    let f: f32 = (max - min).to_f32().unwrap() * perc;
-    min + NumCast::from(f).unwrap()
+/// Modulo float.
+pub fn fmod(f: f32, n: i32) -> f32 {
+    let i = f.floor() as i32;
+    modulo(i, n) as f32 + f - i as f32
+}
+
+/// The modulo function.
+#[inline]
+pub fn modulo<I: PrimInt>(a: I, b: I) -> I {
+    match a % b {
+        r if (r > I::zero() && b < I::zero())
+          || (r < I::zero() && b > I::zero()) => r + b,
+        r                                     => r,
+    }
 }
 
 /// Map a value from a given range to a new given range.
@@ -55,6 +63,27 @@ pub fn map_range<X, Y>(val: X, in_min: X, in_max: X, out_min: Y, out_max: Y) -> 
     NumCast::from(
         (val_f - in_min_f) / (in_max_f - in_min_f) * (out_max_f - out_min_f) + out_min_f
     ).unwrap()
+}
+
+/// Get value percentage between max and min.
+pub fn percentage<T: Float + NumCast>(value: T, min: T, max: T) -> f32 {
+    let v: f32 = NumCast::from(value).unwrap();
+    let mn: f32 = NumCast::from(min).unwrap();
+    let mx: f32 = NumCast::from(max).unwrap();
+    (v - mn) / (mx - mn)
+}
+
+/// Convert turns to radians.
+pub fn turns<F: Float + NumCast>(t: F) -> F {
+    use std::f32::consts::PI;
+    let f: F = NumCast::from(2.0 * PI).unwrap();
+    f * t
+}
+
+/// Adjust the value to the given percentage.
+pub fn value_from_perc<T: Float + NumCast + ToPrimitive>(perc: f32, min: T, max: T) -> T {
+    let f: f32 = (max - min).to_f32().unwrap() * perc;
+    min + NumCast::from(f).unwrap()
 }
 
 /// Get a suitable string from the value, its max and the pixel range.
