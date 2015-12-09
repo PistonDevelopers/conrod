@@ -201,6 +201,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
     /// Update the XYPad's cached state.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        use position::{Direction, Edge};
         use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -294,6 +295,10 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
 
+        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
+            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
+        }
+
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
         let maybe_label_idx = maybe_label.map(|label| {
@@ -343,17 +348,43 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .graphics_for(idx)
             .set(h_line_idx, &mut ui);
 
+        if state.view().maybe_v_line_idx != Some(v_line_idx) {
+            state.update(|state| state.maybe_v_line_idx = Some(v_line_idx));
+        }
+
+        if state.view().maybe_h_line_idx != Some(h_line_idx) {
+            state.update(|state| state.maybe_h_line_idx = Some(h_line_idx));
+        }
+
         // Crosshair value label **Text** widget.
         let x_string = val_to_string(new_x, max_x, max_x - min_x, rect.w() as usize);
         let y_string = val_to_string(new_y, max_y, max_y - min_y, rect.h() as usize);
         let value_string = format!("{}, {}", x_string, y_string);
         let cross_hair_xy = [inner_rect.x() + v_line_x, inner_rect.y() + h_line_y];
         const VALUE_TEXT_PAD: f64 = 5.0;
-        let mut text = Text::new(&value_string);
-        // text = match inner_rect.closest_corner(cross_hair_xy) {
-        //     Corner::TopLeft => text.,
-        //     Corner::TopRight => [-VALUE_TEXT_PAD, -VALUE_TEXT_PAD],
-        //     Corner::BottomLeft => [VALUE_TEXT_PAD, VALUE_TEXT_PAD],
+        let x_direction = match inner_rect.x.closest_edge(cross_hair_xy[0]) {
+            Edge::End => Direction::Backwards,
+            Edge::Start => Direction::Forwards,
+        };
+        let y_direction = match inner_rect.y.closest_edge(cross_hair_xy[1]) {
+            Edge::End => Direction::Backwards,
+            Edge::Start => Direction::Forwards,
+        };
+        let value_font_size = style.value_font_size(ui.theme());
+        let value_label_idx = state.view().maybe_value_label_idx
+            .unwrap_or_else(|| ui.new_unique_node_index());
+        Text::new(&value_string)
+            .x_direction_from(v_line_idx, x_direction, VALUE_TEXT_PAD)
+            .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)
+            .graphics_for(idx)
+            .parent(Some(idx))
+            .font_size(value_font_size)
+            .set(value_label_idx, &mut ui);
+
+        if state.view().maybe_value_label_idx != Some(value_label_idx) {
+            state.update(|state| state.maybe_value_label_idx = Some(value_label_idx))
+        }
+
     }
 
     // /// Construct an Element from the given XYPad State.
