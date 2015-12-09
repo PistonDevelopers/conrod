@@ -420,7 +420,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             .label(&text)
             .label_color(app.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
-            .line_width(2.0)
+            .line_thickness(2.0)
             .react(|_points: &mut Vec<Point>, _idx: usize|{})
             .set(ENVELOPE_EDITOR + (i * 2) + 1, ui);
 
