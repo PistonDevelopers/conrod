@@ -47,7 +47,6 @@ pub use widget::xy_pad::XYPad;
 
 pub use widget::primitive::label::Style as LabelStyle;
 pub use widget::primitive::line::Style as LineStyle;
-pub use widget::primitive::point_path::Style as PointPathStyle;
 pub use widget::primitive::shape::Style as ShapeStyle;
 pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
 pub use widget::primitive::text::Style as TextStyle;

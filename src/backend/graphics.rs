@@ -263,20 +263,9 @@ pub fn draw_from_container<G, C>(context: &Context,
 
         primitive::point_path::KIND => {
             use widget::primitive::point_path::{State, Style};
-
             if let Some(point_path) = container.state_and_style::<State, Style>() {
-                use widget::primitive::point_path::StyleKind;
-                match point_path.style.get_kind(theme) {
-                    // Draw only the lines of the **PointPath**.
-                    StyleKind::Lines(line_style) => {
-                        let points = point_path.state.points.iter().cloned();
-                        draw_lines(context, graphics, theme, points, line_style);
-                    },
-                    // Draw only the Points of the **PointPath**.
-                    StyleKind::Points => unimplemented!(),
-                    // Draw only the lines of the **PointPath**.
-                    StyleKind::Both(_) => unimplemented!(),
-                }
+                let points = point_path.state.points.iter().cloned();
+                draw_lines(context, graphics, theme, points, point_path.style);
             }
         },
 

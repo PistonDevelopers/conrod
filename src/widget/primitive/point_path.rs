@@ -1,10 +1,20 @@
-use CharacterCache;
-use elmesque::Element;
-use position::{Point, Positionable, Range, Rect, Sizeable};
-use super::line::Style as LineStyle;
-use theme::Theme;
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Range,
+    Rect,
+    Scalar,
+    Sizeable,
+    Widget,
+};
 use vecmath::{vec2_add, vec2_sub};
-use widget::{self, Widget};
+use widget;
+
+pub use super::line::Pattern;
+pub use super::line::Style;
 
 
 /// A simple, non-interactive widget for drawing a series of lines and/or points.
@@ -27,30 +37,8 @@ pub struct State {
     pub points: Vec<Point>,
 }
 
-/// Styling that is unique to the PointPath.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub struct Style {
-    /// Whether or not to draw Lines, Points or Both.
-    pub maybe_kind: Option<StyleKind>,
-}
-
 /// Unique kind for the widget.
 pub const KIND: widget::Kind = "PointPath";
-
-/// Whether or not to draw Lines, Points or Both.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum StyleKind {
-    /// Draw only the lines between the points.
-    Lines(LineStyle),
-    /// Draw only the points.
-    Points,
-    /// Draw both the lines and the points.
-    Both(LineStyle),
-}
-
-// pub struct PointStyle {
-//     shape: 
-// }
 
 
 /// Find the bounding rect for the given series of points.
@@ -136,61 +124,88 @@ impl<I> PointPath<I> {
         point_path
     }
 
-}
-
-
-impl Style {
-
-    /// Constructor for a default **PointPath** Style.
-    pub fn new() -> Self {
-        Style {
-            maybe_kind: None,
-        }
+    /// The thickness or width of the **PointPath**'s lines.
+    ///
+    /// Use this instead of `Positionable::width` for the thickness of the `Line`, as `width` and
+    /// `height` refer to the dimensions of the bounding rectangle.
+    pub fn thickness(mut self, thickness: Scalar) -> Self {
+        self.style.set_thickness(thickness);
+        self
     }
 
-    /// Constructor for a specific kind of **PointPath** Style.
-    pub fn from_kind(kind: StyleKind) -> Self {
-        Style {
-            maybe_kind: Some(kind),
-        }
+    /// Make a Solid line.
+    pub fn solid(mut self) -> Self {
+        self.style.set_pattern(Pattern::Solid);
+        self
     }
 
-    /// Construct a **PointPath** drawn as the lines between the points.
-    pub fn lines() -> Self {
-        Style::lines_styled(LineStyle::new())
+    /// Make a line with a Dashed pattern.
+    pub fn dashed(mut self) -> Self {
+        self.style.set_pattern(Pattern::Dashed);
+        self
     }
 
-    /// Construct a **PointPath** with only the points drawn.
-    pub fn points() -> Self {
-        Style::from_kind(StyleKind::Points)
-    }
-
-    /// Construct a **PointPath** with both lines and points drawn.
-    pub fn lines_and_points() -> Self {
-        Style::from_kind(StyleKind::Both(LineStyle::new()))
-    }
-
-    /// Same as [**Style::lines**](./struct.Style#method.lines) but with the given style.
-    pub fn lines_styled(style: LineStyle) -> Self {
-        Style::from_kind(StyleKind::Lines(style))
-    }
-
-    /// Set the kind of styling for the **PointPath**.
-    pub fn set_kind(&mut self, kind: StyleKind) {
-        self.maybe_kind = Some(kind);
-    }
-
-    /// Get the kind of styling for the **PointPath** Style.
-    pub fn get_kind(&self, theme: &Theme) -> StyleKind {
-        fn default_kind() -> StyleKind {
-            StyleKind::Lines(super::line::Style::new())
-        }
-        self.maybe_kind.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-            default.style.maybe_kind.unwrap_or_else(default_kind)
-        })).unwrap_or_else(default_kind)
+    /// Make a line with a Dotted pattern.
+    pub fn dotted(mut self) -> Self {
+        self.style.set_pattern(Pattern::Dotted);
+        self
     }
 
 }
+
+
+// impl Style {
+// 
+//     /// Constructor for a default **PointPath** Style.
+//     pub fn new() -> Self {
+//         Style {
+//             maybe_kind: None,
+//         }
+//     }
+// 
+//     /// Constructor for a specific kind of **PointPath** Style.
+//     pub fn from_kind(kind: StyleKind) -> Self {
+//         Style {
+//             maybe_kind: Some(kind),
+//         }
+//     }
+// 
+//     /// Construct a **PointPath** drawn as the lines between the points.
+//     pub fn lines() -> Self {
+//         Style::lines_styled(Style::new())
+//     }
+// 
+//     /// Construct a **PointPath** with only the points drawn.
+//     pub fn points() -> Self {
+//         Style::from_kind(StyleKind::Points)
+//     }
+// 
+//     /// Construct a **PointPath** with both lines and points drawn.
+//     pub fn lines_and_points() -> Self {
+//         Style::from_kind(StyleKind::Both(Style::new()))
+//     }
+// 
+//     /// Same as [**Style::lines**](./struct.Style#method.lines) but with the given style.
+//     pub fn lines_styled(style: Style) -> Self {
+//         Style::from_kind(StyleKind::Lines(style))
+//     }
+// 
+//     /// Set the kind of styling for the **PointPath**.
+//     pub fn set_kind(&mut self, kind: StyleKind) {
+//         self.maybe_kind = Some(kind);
+//     }
+// 
+//     /// Get the kind of styling for the **PointPath** Style.
+//     pub fn get_kind(&self, theme: &Theme) -> StyleKind {
+//         fn default_kind() -> StyleKind {
+//             StyleKind::Lines(super::line::Style::new())
+//         }
+//         self.maybe_kind.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+//             default.style.maybe_kind.unwrap_or_else(default_kind)
+//         })).unwrap_or_else(default_kind)
+//     }
+// 
+// }
 
 
 impl<I> Widget for PointPath<I>
@@ -217,7 +232,7 @@ impl<I> Widget for PointPath<I>
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -255,35 +270,12 @@ impl<I> Widget for PointPath<I>
         }
     }
 
-    /// Construct an Element for the Line.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        let widget::DrawArgs { rect, state, style, theme, .. } = args;
-        match style.get_kind(theme) {
-            StyleKind::Lines(line_style) | StyleKind::Both(line_style) => {
-                draw_lines(state.points.iter().cloned(), rect, line_style, theme)
-            },
-            StyleKind::Points => unimplemented!(),
-        }
-    }
 }
 
-
-/// Produce a renderable **Element** for the given point path as a series of lines.
-pub fn draw_lines<I>(points: I, rect: Rect, style: LineStyle, theme: &Theme) -> Element
-    where I: Iterator<Item=Point> + Clone,
-{
-    use elmesque::form::{collage, segment, solid, traced};
-    let mut ends = points.clone();
-    ends.next().map(|_| {
-        let (w, h) = rect.w_h();
-        let color = style.get_color(theme);
-        let thickness = style.get_thickness(theme);
-        let forms = points.zip(ends).map(move |(start, end)| {
-            let a = (start[0], start[1]);
-            let b = (end[0], end[1]);
-            traced(solid(color).width(thickness), segment(a, b))
-        });
-        collage(w as i32, h as i32, forms.collect())
-    }).unwrap_or_else(|| ::elmesque::element::empty())
+impl<I> Colorable for PointPath<I> {
+    fn color(mut self, color: Color) -> Self {
+        self.style.set_color(color);
+        self
+    }
 }
 
