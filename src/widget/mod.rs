@@ -1,5 +1,4 @@
 use {CharacterCache, Dimension, GlyphCache};
-use elmesque::Element;
 use graph::NodeIndex;
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
@@ -51,8 +50,8 @@ pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     /// We wrap mutation in a method so that we can keep track of whether or not the unique state
     /// has been updated.
     ///
-    /// If **State::update** is called, we assume that there has been some mutation and in turn will
-    /// produce a new **Element** for the **Widget**. Thus, it is recommended that you *only* call
+    /// If **State::update** is called, we assume that there has been some mutation and in turn
+    /// will require re-drawing the **Widget**. Thus, it is recommended that you *only* call
     /// **State::update** if you need to update the unique state in some way.
     pub state: &'a mut State<'b, W::State>,
     /// The rectangle describing the **Widget**'s area.
@@ -61,8 +60,8 @@ pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
     ///
-    /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.
-    /// Also allows calling `Widget::set` within the `Widget::update` method.
+    /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.  Also allows
+    /// calling `Widget::set` within the `Widget::update` method.
     pub ui: UiCell<'a, C>,
 }
 
@@ -97,26 +96,6 @@ pub struct UiCell<'a, C: 'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct IndexSlot {
     maybe_idx: ::std::cell::Cell<Option<NodeIndex>>,
-}
-
-/// Arguments for the **Widget::draw** method in a struct to simplify the method signature.
-pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
-    /// The current state of the Widget.
-    pub state: &'a W::State,
-    /// The current style of the Widget.
-    pub style: &'a W::Style,
-    /// The active **Theme** within the **Ui**.
-    pub theme: &'a Theme,
-    /// The **Ui**'s **GlyphCache** (for determining text width).
-    pub glyph_cache: &'a GlyphCache<C>,
-    /// The **Widget**'s z-axis position relative to its sibling widgets.
-    pub depth: Depth,
-    /// The rectangle describing the **Widget**'s area.
-    pub rect: Rect,
-    /// The current state of the dragged **Widget**, if it is draggable.
-    pub drag_state: drag::State,
-    /// Floating state for the widget if it is floating.
-    pub maybe_floating: Option<Floating>,
 }
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
@@ -244,8 +223,7 @@ pub struct CommonStyle {
 ///
 /// We do this so that we can keep track of whether or not the **Widget::State** has been mutated
 /// (using an internal `has_updated` flag). This allows us to know whether or not we need to
-/// produce a new **Element** for the **Widget**, without having to compare the previous and
-/// new **Widget::State**s.
+/// re-draw the **Widget**, without having to compare the previous and new **Widget::State**s.
 #[derive(Debug)]
 pub struct State<'a, T: 'a> {
     state: &'a mut T,
@@ -343,8 +321,6 @@ pub struct PostUpdateCache<W> where W: Widget {
     pub state: W::State,
     /// The newly produced unique **Widget::Style** associated with the **Widget**.
     pub style: W::Style,
-    /// A new **Element** to use for the **Widget** if a new one has been produced.
-    pub maybe_element: Option<Element>,
 }
 
 
@@ -452,7 +428,6 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
 /// - update
 ///
 /// Methods that can be optionally overridden:
-/// - draw
 /// - picking_passthrough
 /// - default_position
 /// - default_width
@@ -464,14 +439,21 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
 /// - parent
 /// - set
 pub trait Widget: Sized {
-    /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
-    /// allocations that you would like to avoid repeating between updates, or any calculations
-    /// that you'd like to avoid repeating between calls to `update` and `draw`. Conrod will never
-    /// clone the state, it will only ever be moved.
+    /// State to be stored within the `Ui`s widget cache.
+    ///
+    /// Take advantage of this type for any large allocations that you would like to avoid
+    /// repeating between updates, or any calculations that you'd like to avoid repeating between
+    /// calls to `update`.
+    ///
+    /// Conrod will never clone the state, it will only ever be moved.
     type State: Any + PartialEq + ::std::fmt::Debug;
-    /// Styling used by the widget to construct an Element. Styling is useful to have in its own
-    /// abstraction in order to making Theme serializing easier. Conrod doesn't yet support
-    /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
+    /// Styling used by the widget to draw its graphics.
+    ///
+    /// Styling is useful to have in its own abstraction in order to make `Theme` defaults
+    /// easier to retrieve.
+    ///
+    /// Conrod doesn't yet support serializing widget styling with the `Theme` type, but we hope to
+    /// soon.
     type Style: Style;
 
     /// Return a reference to a **CommonBuilder** struct owned by the Widget.
@@ -502,9 +484,10 @@ pub trait Widget: Sized {
     /// is first called.
     fn init_state(&self) -> Self::State;
 
-    /// Return the styling of the widget. The `Ui` will call this once prior to each `update`. It
-    /// does this so that it can check for differences in `Style` in case a new `Element` needs to
-    /// be constructed.
+    /// Return the styling of the widget.
+    ///
+    /// The `Ui` will call this once prior to each `update`. It does this so that it can check for
+    /// differences in `Style` in case we need to re-draw the widget.
     fn style(&self) -> Self::Style;
 
     /// Update our **Widget**'s unique **Widget::State** via the **State** wrapper type (the
@@ -512,11 +495,10 @@ pub trait Widget: Sized {
     ///
     /// Whenever [**State::update**](./struct.State.html#method.update) is called, a `has_updated`
     /// flag is set within the **State**, indicating that there has been some change to the unique
-    /// **Widget::State** and that we require re-drawing the **Widget**'s **Element** (i.e. calling
-    /// [**Widget::draw**](./trait.Widget#method.draw). As a result, widget designers should only
-    /// call **State::update** when necessary, checking whether or not the state has changed before
-    /// invoking the the method. See the custom_widget.rs example for a demonstration
-    /// of this.
+    /// **Widget::State** and that we require re-drawing the **Widget**. As a result, widget
+    /// designers should only call **State::update** when necessary, checking whether or not the
+    /// state has changed before invoking the method. See the custom_widget.rs example for a
+    /// demonstration of this.
     ///
     /// # Arguments
     /// * idx - The `Widget`'s unique index (whether `Public` or `Internal`).
@@ -529,23 +511,6 @@ pub trait Widget: Sized {
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
     fn update<C: CharacterCache>(self, args: UpdateArgs<Self, C>);
-
-    /// Construct a renderable Element from the current styling and new state. This will *only* be
-    /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
-    /// when designing your widget's `Style` and `State` types.
-    ///
-    /// Note that many widgets return nothing here, as they may be composed of other widgets that
-    /// take care of producing the renderable **Element**s.
-    ///
-    /// # Arguments
-    /// * state - The current **Widget::State** which should contain all unique state necessary for
-    /// rendering the **Widget**.
-    /// * style - The current **Widget::Style** of the **Widget**.
-    /// * theme - The currently active **Theme** within the `Ui`.
-    /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<C: CharacterCache>(_args: DrawArgs<Self, C>) -> Element {
-        ::elmesque::element::empty()
-    }
 
     /// The default **Position** for the widget along the *x* axis.
     ///
@@ -708,9 +673,9 @@ pub trait Widget: Sized {
     /// - The widget's previous state and style will be retrieved.
     /// - The widget's current `Style` will be retrieved (from the `Widget::style` method).
     /// - The widget's state will be updated (using the `Widget::udpate` method).
-    /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
-    /// new Element for rendering.
-    /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
+    /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
+    /// needs to be re-drawn.
+    /// - The new State and Style will be cached within the `Ui`.
     fn set<I, U>(self, idx: I, ui: &mut U) where
         I: Into<Index>,
         U: UiRefMut,
@@ -924,7 +889,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     }
 
     // Determine whether or not this is the first time set has been called.
-    // We'll use this to determine whether or not we need to call Widget::draw.
+    // We'll use this to determine whether or not we need to draw for the first time.
     let is_first_set = maybe_prev_common.is_none();
 
     // Update all positioning and dimension related data prior to calling `Widget::update`.
@@ -1014,24 +979,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // We need to know if the scroll state has changed to see if we need to redraw.
     let scroll_has_changed = maybe_new_scrolling != maybe_prev_scrolling;
 
-    // We only need to redraw the `Element` if some visible part of our widget has changed.
+    // We only need to redraw if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
 
-    // If we require a redraw, we should draw a new `Element`.
-    let maybe_new_element = if requires_redraw {
-        Some(W::draw(DrawArgs {
-            state: &unique_state,
-            style: &new_style,
-            theme: &ui.theme,
-            glyph_cache: &ui.glyph_cache,
-            rect: rect,
-            depth: depth,
-            drag_state: drag_state,
-            maybe_floating: maybe_floating,
-        }))
-    } else {
-        None
-    };
+    // If we require a redraw, we should notify the `Ui`.
+    if requires_redraw {
+        ui.needs_redraw();
+    }
 
     // Finally, cache the `Widget`'s newly updated `State` and `Style` within the `ui`'s
     // `widget_graph`.
@@ -1040,7 +994,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         maybe_parent_idx: maybe_parent_idx,
         state: unique_state,
         style: new_style,
-        maybe_element: maybe_new_element,
     });
 }
 
@@ -1162,12 +1115,12 @@ impl<'a, T> State<'a, T> {
 
     /// Mutate the internal widget state and set a flag notifying us that there has been a mutation.
     ///
-    /// If this method is *not* called, we assume that there has been no mutation and in turn we
-    /// will re-use the Widget's pre-existing `Element`.
+    /// If this method is *not* called, we assume that there has been no mutation and in turn we do
+    /// not need to re-draw the Widget.
     ///
     /// If this method *is* called, we assume that there has been some mutation and in turn will
-    /// produce a new `Element` for the `Widget`. Thus, it is recommended that you *only* call
-    /// this method if you need to update the unique state in some way.
+    /// need to re-draw the Widget. Thus, it is recommended that you *only* call this method if you
+    /// need to update the unique state in some way.
     pub fn update<F>(&mut self, f: F) where F: FnOnce(&mut T) {
         self.has_updated = true;
         f(self.state);

@@ -2,7 +2,6 @@
 use {CharacterCache, Scalar};
 use backend::graphics::{Context, Graphics};
 use color::Color;
-use elmesque::Element;
 use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex, Walker};
 use mouse::{self, Mouse};
@@ -26,7 +25,7 @@ use widget::{self, Widget};
 /// Indicates whether or not the Mouse has been captured by a widget.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Capturing {
-    /// The Ui is captured by the Ui element with the given widget::Index.
+    /// The Ui is captured by the Widget with the given widget::Index.
     Captured(widget::Index),
     /// The Ui has just been uncaptured.
     JustReleased,
@@ -80,8 +79,6 @@ pub struct Ui<C> {
     redraw_count: u8,
     /// A background color to clear the screen with before drawing if one was given.
     maybe_background_color: Option<Color>,
-    /// The latest element returned/drawn that represents the entire widget graph.
-    maybe_element: Option<Element>,
 
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
@@ -161,7 +158,6 @@ impl<C> Ui<C> {
             num_redraw_frames: SAFE_REDRAW_COUNT,
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
-            maybe_element: None,
             depth_order: depth_order,
             updated_widgets: updated_widgets,
         }
@@ -506,95 +502,6 @@ impl<C> Ui<C> {
     }
 
 
-    /// Compiles the `Ui`'s entire widget `Graph` in its current state into a single
-    /// `elmesque::Element` and returns a reference to it.
-    ///
-    /// This allows a user to take all information necessary for drawing within a single type,
-    /// which can be sent across threads or used to draw later on rather than drawing the whole
-    /// graph immediately (as does the `Ui::draw` method).
-    ///
-    /// Producing an `Element` also allows for simpler interoperation with `elmesque` (a purely
-    /// functional graphics layout crate which conrod uses internally).
-    pub fn element(&mut self) -> &Element {
-        let Ui {
-            ref mut widget_graph,
-            ref mut maybe_background_color,
-            ref mut maybe_element,
-            ref depth_order,
-            ..
-        } = *self;
-
-        let maybe_bg_color = maybe_background_color.take();
-
-        // A function to simplify combining an element with the given background color.
-        let with_background_color = |element: Element| -> Element {
-            match maybe_bg_color {
-                Some(color) => element.clear(color),
-                None => element,
-            }
-        };
-
-        // Check to see whether or not there is a new element to be stored.
-        match widget_graph.element_if_changed(&depth_order.indices) {
-
-            // If there's been some change in element, we'll store the new one and return a
-            // reference to it.
-            Some(new_element) => {
-                *maybe_element = Some(with_background_color(new_element));
-                maybe_element.as_ref().unwrap()
-            },
-
-            // Otherwise, we'll check to see if we have a pre-stored one that we can return a
-            // reference to.
-            None => match maybe_element {
-
-                // If we do have some stored element, we'll clone that.
-                &mut Some(ref element) => element,
-
-                // Otherwise this must be the first time an `element` is requested so we'll
-                // request a new `Element` from our widget graph.
-                maybe_element @ &mut None => {
-
-                    let element = widget_graph.element(&depth_order.indices);
-
-                    // Store the new `Element` (along with it's background color).
-                    *maybe_element = Some(with_background_color(element));
-
-                    // We can unwrap here as we *know* that we have `Some` element.
-                    maybe_element.as_ref().unwrap()
-                },
-            },
-        }
-    }
-
-
-    /// Same as `Ui::element`, but only returns an `&Element` if the stored `&Element` has changed
-    /// since the last time `Ui::element` or `Ui::element_if_changed` was called.
-    pub fn element_if_changed(&mut self) -> Option<&Element> {
-        let Ui {
-            ref mut widget_graph,
-            ref mut maybe_background_color,
-            ref mut maybe_element,
-            ref depth_order,
-            ..
-        } = *self;
-
-        // Request a new `Element` from the graph if there has been some change.
-        widget_graph
-            .element_if_changed(&depth_order.indices)
-            .map(move |element| {
-                let element = match maybe_background_color.take() {
-                    // If we've been given a background color for the gui, construct a Cleared Element.
-                    Some(color) => element.clear(color),
-                    None => element
-                };
-                // If we have a new `Element` we'll update our stored `Element`.
-                *maybe_element = Some(element.clone());
-                maybe_element.as_ref().unwrap()
-            })
-    }
-
-
     /// Draw the `Ui` in it's current state.
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
@@ -636,8 +543,10 @@ impl<C> Ui<C> {
 
 
     /// Same as the `Ui::draw` method, but *only* draws if the `redraw_count` is greater than 0.
-    /// The `redraw_count` is set to `SAFE_REDRAW_COUNT` whenever a `Widget` produces a new
-    /// `Element` because its state has changed.
+    ///
+    /// The `redraw_count` is set to `SAFE_REDRAW_COUNT` whenever a `Widget` indicates that it
+    /// needs to be re-drawn.
+    ///
     /// It can also be triggered manually by the user using the `Ui::needs_redraw` method.
     ///
     /// This method is generally preferred over `Ui::draw` as it requires far less CPU usage, only
@@ -652,9 +561,6 @@ impl<C> Ui<C> {
               C: CharacterCache<Texture=G::Texture>,
     {
         self.draw(context, graphics);
-        // if self.widget_graph.have_any_elements_changed() {
-        //     self.redraw_count = self.num_redraw_frames;
-        // }
         // if self.redraw_count > 0 {
         //     self.draw(context, graphics);
         // }

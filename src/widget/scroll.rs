@@ -2,11 +2,16 @@
 //! Types and functionality related to the scrolling behaviour of widgets.
 //!
 
-use {Element, Scalar};
-use color::Color;
-use mouse::Mouse;
-use position::{Dimensions, Point, Range, Rect};
-use theme::Theme;
+use {
+    Color,
+    Dimensions,
+    Mouse,
+    Point,
+    Range,
+    Rect,
+    Scalar,
+    Theme,
+};
 use utils::{map_range, partial_max};
 
 
@@ -123,7 +128,7 @@ impl Style {
         })).unwrap_or(DEFAULT_THICKNESS)
     }
 
-    /// Get the Color for an Element.
+    /// Get the **Color** for the scrollbar.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_scrollbar.as_ref().map(|style| {
             style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())
@@ -228,55 +233,6 @@ impl State {
         let maybe_x_offset = self.maybe_horizontal.map(|bar| bar.kids_pos_offset());
         let maybe_y_offset = self.maybe_vertical.map(|bar| bar.kids_pos_offset());
         [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
-    }
-
-    /// Produce a graphical element for the current scroll State.
-    pub fn element(&self) -> Element {
-        use elmesque::element::{empty, layers};
-        use elmesque::form::{collage, rect};
-
-        // Get the color via the current interaction.
-        let color = self.color;
-        let track_color = color.alpha(0.2);
-        let thickness = self.thickness;
-        let visible = self.visible;
-
-        // An element for a scroll Bar.
-        let bar_element = |bar: Bar, track: Rect, handle: Rect| -> Element {
-            // We only want to see the scrollbar if it's highlighted or clicked.
-            if let Interaction::Normal = bar.interaction {
-                return empty();
-            }
-            let color = bar.interaction.color(color);
-            let track_form = rect(track.w(), track.h()).filled(track_color)
-                .shift(track.x(), track.y());
-            let handle_form = rect(handle.w(), handle.h()).filled(color)
-                .shift(handle.x(), handle.y());
-            collage(visible.w() as i32, visible.h() as i32, vec![track_form, handle_form])
-        };
-
-        // The element for a vertical scroll Bar.
-        let vertical = |bar: Bar| -> Element {
-            let track = vertical_track(visible, thickness);
-            let handle = vertical_handle(&bar, track, self.total_dim[1]);
-            bar_element(bar, track, handle)
-        };
-
-        // An element for a horizontal scroll Bar.
-        let horizontal = |bar: Bar| -> Element {
-            let track = horizontal_track(visible, thickness);
-            let handle = horizontal_handle(&bar, track, self.total_dim[0]);
-            bar_element(bar, track, handle)
-        };
-
-        // Whether we draw horizontal or vertical or both depends on our state.
-        match (self.maybe_vertical, self.maybe_horizontal) {
-            (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
-            (Some(bar), None) => vertical(bar),
-            (None, Some(bar)) => horizontal(bar),
-            (None, None) => empty(),
-        }
-
     }
 
 }

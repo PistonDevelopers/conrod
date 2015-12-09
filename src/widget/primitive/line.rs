@@ -1,11 +1,18 @@
 
-use {CharacterCache, Scalar};
-use color::{Color, Colorable};
-use elmesque::Element;
-use position::{Point, Positionable, Rect, Sizeable};
-use theme::Theme;
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Rect,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+};
 use vecmath::{vec2_add, vec2_sub};
-use widget::{self, Widget};
+use widget;
 
 
 /// A simple, non-interactive widget for drawing a single straight Line.
@@ -301,19 +308,6 @@ impl Widget for Line {
         if state.view().end != end {
             state.update(|state| state.end = end);
         }
-    }
-
-    /// Construct an Element for the Line.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{collage, segment, solid, traced};
-        let widget::DrawArgs { rect, state, style, theme, .. } = args;
-        let (w, h) = rect.w_h();
-        let color = style.get_color(theme);
-        let thickness = style.get_thickness(theme);
-        let a = (state.start[0], state.start[1]);
-        let b = (state.end[0], state.end[1]);
-        let form = traced(solid(color).width(thickness), segment(a, b));
-        collage(w as i32, h as i32, vec![form])
     }
 
 }

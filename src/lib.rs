@@ -9,7 +9,6 @@
 
 extern crate time;
 extern crate daggy;
-extern crate elmesque;
 extern crate graphics;
 extern crate json_io;
 extern crate num;
@@ -66,8 +65,7 @@ pub use widget::xy_pad::Style as XYPadStyle;
 
 pub use backend::{CharacterCache, Graphics};
 pub use background::Background;
-pub use elmesque::{color, Element};
-pub use elmesque::color::{Color, Colorable};
+pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
 pub use glyph_cache::{GlyphCache, LineBreak};
 pub use graph::NodeIndex;
@@ -86,8 +84,8 @@ pub use theme::Theme;
 pub use ui::{Ui, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, CommonStyle, DrawArgs, Floating, IndexSlot,
-                 MaybeParent, UiCell, UpdateArgs, Widget};
+pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent, UiCell,
+                 UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
@@ -101,6 +99,7 @@ pub use json_io::Error as JsonIoError;
 
 pub mod backend;
 mod background;
+pub mod color;
 mod frame;
 pub mod glyph_cache;
 pub mod graph;

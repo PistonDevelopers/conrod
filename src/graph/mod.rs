@@ -4,8 +4,6 @@
 //! The primary type of interest in this module is the [**Graph**](./struct.Graph) type.
 
 use daggy;
-use elmesque::Element;
-use elmesque::element::layers;
 use position::{Depth, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
@@ -85,11 +83,6 @@ pub struct Container {
     pub maybe_floating: Option<widget::Floating>,
     /// Scroll related state (is only `Some` if the widget is scrollable).
     pub maybe_scrolling: Option<widget::scroll::State>,
-    /// Whether or not the `Element` for the widget has changed since the last time an `Element`
-    /// was requested from the graph.
-    pub element_has_changed: bool,
-    /// The latest `Element` that has been used for drawing the `Widget`.
-    pub maybe_element: Option<Element>,
     /// Whether or not the widget is included when picking widgets by position.
     pub picking_passthrough: bool,
 }
@@ -671,8 +664,6 @@ impl Graph {
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_scrolling,
             picking_passthrough: picking_passthrough,
-            maybe_element: None,
-            element_has_changed: false,
         };
 
         // Retrieves the widget's parent index.
@@ -783,17 +774,11 @@ impl Graph {
         W::State: 'static,
         W::Style: 'static,
     {
-        let widget::PostUpdateCache { idx, state, style, maybe_element, .. } = widget;
+        let widget::PostUpdateCache { idx, state, style, .. } = widget;
 
         // We know that their must be a NodeIndex for this idx, as `Graph::pre_update_cache` will
         // always be called prior to this method being called.
         if let Some(ref mut container) = self.widget_mut(idx) {
-
-            // If we've been given some new `Element`
-            if maybe_element.is_some() {
-                container.maybe_element = maybe_element;
-                container.element_has_changed = true;
-            }
 
             // Construct the `UniqueWidgetState` ready to store as an `Any` within the container.
             let unique_state: UniqueWidgetState<W::State, W::Style> = UniqueWidgetState {
@@ -802,111 +787,6 @@ impl Graph {
             };
 
             container.maybe_state = Some(Box::new(unique_state));
-        }
-    }
-
-
-    /// Return an `elmesque::Element` containing all widgets within the entire Graph.
-    ///
-    /// The order in which we will draw all widgets will be a akin to a depth-first search, where
-    /// the branches with the highest `depth` are drawn first (unless the branch is on a captured
-    /// widget, which will always be drawn last).
-    pub fn element(&mut self, depth_order: &[Visitable]) -> Element {
-        let Graph { ref mut dag, .. } = *self;
-
-        // The main Vec in which we'll collect all `Element`s.
-        let mut elements = Vec::with_capacity(depth_order.len());
-
-        // We'll use our scroll_stack to group children of scrollable widgets so that they may be
-        // cropped to their parent's scrollable area.
-        // - If we come across a scrollable widget, we push a new "scroll group" Vec to our stack.
-        // - If the stack isn't empty we'll push our `Element`s into the topmost (current)
-        // "scroll group".
-        // - If we come across a `Scrollbar`, we'll pop the top "scroll group", combine them and
-        // crop them to the parent's scrollable area before adding them to the main elements Vec.
-        let mut scroll_stack: Vec<Vec<Element>> = Vec::new();
-
-        for &visitable in depth_order.iter() {
-            match visitable {
-
-                Visitable::Widget(idx) => {
-                    if let &mut Node::Widget(ref mut container) = &mut dag[idx] {
-
-                        // Push back our `Element` to one of the stacks (if we have one).
-                        if let Some(ref element) = container.maybe_element {
-
-                            // If there is some current scroll group, we'll push to that.
-                            if let Some(scroll_group) = scroll_stack.last_mut() {
-                                scroll_group.push(element.clone());
-
-                            // Otherwise, we'll push straight to our main elements Vec.
-                            } else {
-                                elements.push(element.clone());
-                            }
-                        }
-
-                        // Reset the flags for checking whether or not our `Element` has changed or
-                        // if the `Widget` has been `set` between calls to `draw`.
-                        container.element_has_changed = false;
-
-                        // If the current widget is some scrollable widget, we need to add a
-                        // new group to the top of our scroll stack.
-                        if container.maybe_scrolling.is_some() {
-                            scroll_stack.push(Vec::new());
-                        }
-                    }
-                },
-
-                Visitable::Scrollbar(idx) => {
-                    if let &Node::Widget(ref container) = &dag[idx] {
-                        if let Some(scrolling) = container.maybe_scrolling {
-
-                            // Now that we've come across a scrollbar, we should pop the group of
-                            // elements from the top of our scrollstack for cropping.
-                            if let Some(scroll_group) = scroll_stack.pop() {
-                                let (x, y, w, h) = scrolling.visible.x_y_w_h();
-                                let element = layers(scroll_group).crop(x, y, w, h);
-                                if let Some(ref mut group) = scroll_stack.last_mut() {
-                                    // If there's still another layer on the scroll stack, add our
-                                    // layers `Element` to the end of it.
-                                    group.push(element);
-                                } else {
-                                    // Otherwise, push them into the elements Vec.
-                                    elements.push(element);
-                                }
-                            }
-
-                            // Construct the element for the scrollbar itself.
-                            let element = scrolling.element();
-                            elements.push(element);
-                        }
-                    }
-                },
-
-            }
-        }
-
-        // Convert the Vec<Element> into a single `Element` and return it.
-        layers(elements)
-    }
-
-
-    /// Whether or not any of the Widget `Element`s have changed since the previous call to
-    /// `Graph::element`.
-    pub fn have_any_elements_changed(&self) -> bool {
-        (0..self.node_count())
-            .filter_map(|i| self.widget(NodeIndex::new(i)))
-            .any(|container| container.element_has_changed)
-    }
-
-
-    /// Same as `Graph::element`, but only returns a new `Element` if any of the widgets'
-    /// `Element`s in the graph have changed.
-    pub fn element_if_changed(&mut self, visitable: &[Visitable]) -> Option<Element> {
-        // Only return a new element if one or more of the `Widget` `Element`s have changed.
-        match self.have_any_elements_changed() {
-            true => Some(self.element(visitable)),
-            false => None,
         }
     }
 

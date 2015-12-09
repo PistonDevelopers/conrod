@@ -23,7 +23,6 @@ path = "./src/lib.rs"
 
 [dependencies]
 time = "0.1.34"
-elmesque = "0.11.0"
 json_io = "0.1.2"
 daggy = "0.3.0"
 pistoncore-input = "0.8.0"
