@@ -202,7 +202,7 @@ impl<'a, F> Widget for Button<'a, F>
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        maybe_label.map(|label| {
+        if let Some(label) = maybe_label {
             let label_idx = state.view().label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
@@ -212,8 +212,7 @@ impl<'a, F> Widget for Button<'a, F>
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
-            label_idx
-        });
+        }
 
         // If there has been a change in interaction, set the new one.
         if state.view().interaction != new_interaction {
