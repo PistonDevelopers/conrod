@@ -8,7 +8,9 @@ use {
     Frameable,
     Labelable,
     IndexSlot,
+    KidArea,
     Mouse,
+    Padding,
     Positionable,
     Range,
     Rect,
@@ -194,6 +196,18 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
         widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
+    }
+
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> KidArea {
+        KidArea {
+            rect: args.rect,
+            pad: Padding {
+                left: 10.0,
+                right: 10.0,
+                bottom: 10.0,
+                top: 10.0,
+            },
+        }
     }
 
     /// Update the state of the Slider.
