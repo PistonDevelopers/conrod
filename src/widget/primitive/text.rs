@@ -325,11 +325,11 @@ impl State {
         ::glyph_cache::Lines::new(&self.string, self.line_breaks.iter().cloned())
     }
 
-    /// The total height from the top of the first line to the bottom of the last line.
-    pub fn total_height(&self, font_size: FontSize, line_spacing: Scalar) -> Scalar {
-        let num_lines = self.lines().count();
-        total_height(num_lines, font_size, line_spacing)
-    }
+    // /// The total height from the top of the first line to the bottom of the last line.
+    // pub fn total_height(&self, font_size: FontSize, line_spacing: Scalar) -> Scalar {
+    //     let num_lines = self.lines().count();
+    //     total_height(num_lines, font_size, line_spacing)
+    // }
 
     /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
     /// every **line** in the `string`
@@ -419,21 +419,21 @@ impl<'a, I> LineRects<'a, I> {
         }
     }
 
-    /// Returns the next line **Rect**.
-    ///
-    /// Returns **None** if there are no more lines in the **Lines** iter.
-    ///
-    /// This can be used similarly to an **Iterator**, i.e:
-    ///
-    /// `while let Some(rect) = line_rects.next() { ... }`
-    ///
-    /// The difference being that this method does not require borrowing the **CharacterCache**.
-    pub fn next<C>(&mut self, cache: &mut C) -> Option<Rect>
-        where I: Iterator<Item=&'a str>,
-              C: CharacterCache,
-    {
-        self.next_with_line(cache).map(|(rect, _)| rect)
-    }
+    // /// Returns the next line **Rect**.
+    // ///
+    // /// Returns **None** if there are no more lines in the **Lines** iter.
+    // ///
+    // /// This can be used similarly to an **Iterator**, i.e:
+    // ///
+    // /// `while let Some(rect) = line_rects.next() { ... }`
+    // ///
+    // /// The difference being that this method does not require borrowing the **CharacterCache**.
+    // pub fn next<C>(&mut self, cache: &mut C) -> Option<Rect>
+    //     where I: Iterator<Item=&'a str>,
+    //           C: CharacterCache,
+    // {
+    //     self.next_with_line(cache).map(|(rect, _)| rect)
+    // }
 
     /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
     /// line's `&'a str` alongside the **Rect**.
