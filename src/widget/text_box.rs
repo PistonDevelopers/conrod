@@ -43,7 +43,7 @@ pub struct TextBox<'a, F> {
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
     /// color with a zeroed alpha.

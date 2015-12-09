@@ -46,7 +46,7 @@ pub struct NumberDialer<'a, T, F> {
 }
 
 /// Styling for the NumberDialer, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Color of the NumberDialer's rectangle.
     pub maybe_color: Option<Color>,
@@ -65,7 +65,7 @@ pub const KIND: widget::Kind = "NumberDialer";
 
 /// Represents the specific elements that the NumberDialer is made up of. This is used to specify
 /// which element is Highlighted or Clicked when storing State.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Elem {
     Rect,
     LabelGlyphs,

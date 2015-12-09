@@ -34,7 +34,7 @@ pub struct State {
 }
 
 /// Unique styling for the `Matrix`.
-#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The width of the padding for each matrix element's "cell".
     maybe_cell_pad_w: Option<Scalar>,

@@ -639,7 +639,7 @@ pub fn mid_right_of(target: Dimensions, dim: Dimensions) -> Point {
 
 
 /// The distance between the inner edge of a frame and the outer edge of the inner content.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Padding {
     /// Padding between the top of a Widget and the top of a parent Widget.
     pub top: f64,
@@ -661,7 +661,7 @@ impl Padding {
 }
 
 /// The distance between the dimension bound and the outer edge of the frame.
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug)]
 pub struct Margin {
     /// Margin between the y max parent Widget and the outer edge of its frame.
     pub top: f64,

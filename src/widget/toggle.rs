@@ -37,7 +37,7 @@ pub struct Toggle<'a, F> {
 }
 
 /// Styling for the Toggle including coloring, framing and labelling.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Color of the Toggle's pressable area.
     pub maybe_color: Option<Color>,

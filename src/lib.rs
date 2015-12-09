@@ -10,11 +10,9 @@
 extern crate time;
 extern crate daggy;
 extern crate graphics;
-extern crate json_io;
 extern crate num;
 extern crate input;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate vecmath;
 
 
@@ -90,9 +88,6 @@ pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
 pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
-
-
-pub use json_io::Error as JsonIoError;
 
 
 pub mod backend;

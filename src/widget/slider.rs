@@ -43,7 +43,7 @@ pub struct Slider<'a, T, F> {
 }
 
 /// Styling for the Slider, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The color of the slidable rectangle.
     pub maybe_color: Option<Color>,

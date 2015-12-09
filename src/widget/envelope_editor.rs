@@ -50,7 +50,7 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
 }
 
 /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Coloring for the EnvelopeEditor's **FramedRectangle**.
     pub maybe_color: Option<Color>,

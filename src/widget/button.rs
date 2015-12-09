@@ -30,7 +30,7 @@ pub struct Button<'a, F> {
 }
 
 /// Styling for the Button, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Color of the Button's pressable area.
     pub maybe_color: Option<Color>,

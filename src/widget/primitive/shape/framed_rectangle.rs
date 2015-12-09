@@ -23,7 +23,7 @@ pub struct FramedRectangle {
 
 
 /// Unique styling for the **FramedRectangle** widget.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// Shape styling for the inner rectangle.
     pub maybe_color: Option<Color>,

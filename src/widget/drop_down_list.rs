@@ -41,7 +41,7 @@ pub struct DropDownList<'a, F> {
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
 #[allow(missing_copy_implementations)]
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Style {
     /// Color of the widget.
     pub maybe_color: Option<Color>,
@@ -70,7 +70,7 @@ pub struct State {
 pub const KIND: widget::Kind = "DropDownList";
 
 /// Representations of the max height of the visible area of the DropDownList.
-#[derive(PartialEq, Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum MaxHeight {
     Items(usize),
     Scalar(f64),

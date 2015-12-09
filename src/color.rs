@@ -11,14 +11,12 @@
 //! and [HSL](http://en.wikipedia.org/wiki/HSL_and_HSV) creation, gradients and built-in names.
 //!
 
-use rustc_serialize::hex::ToHex;
-use std::ascii::AsciiExt;
 use std::f32::consts::PI;
 use utils::{degrees, fmod, turns};
 
 
 /// Color supporting RGB and HSL variants.
-#[derive(PartialEq, Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum Color {
     /// Red, Green, Blue, Alpha - All values' scales represented between 0.0 and 1.0.
     Rgba(f32, f32, f32, f32),
@@ -169,13 +167,13 @@ impl Color {
         [f32_to_byte(r), f32_to_byte(g), f32_to_byte(b), f32_to_byte(a)]
     }
 
-    /// Return the hex representation of this color in the format #RRGGBBAA
-    /// e.g. `Color(1.0, 0.0, 5.0, 1.0) == "#FF0080FF"`
-    pub fn to_hex(self) -> String {
-        let vals = self.to_byte_fsa();
-        let hex = vals.to_hex().to_ascii_uppercase();
-        format!("#{}", &hex)
-    }
+    // /// Return the hex representation of this color in the format #RRGGBBAA
+    // /// e.g. `Color(1.0, 0.0, 5.0, 1.0) == "#FF0080FF"`
+    // pub fn to_hex(self) -> String {
+    //     let vals = self.to_byte_fsa();
+    //     let hex = vals.to_hex().to_ascii_uppercase();
+    //     format!("#{}", &hex)
+    // }
 
     /// Return the same color but with the given luminance.
     pub fn with_luminance(self, l: f32) -> Color {

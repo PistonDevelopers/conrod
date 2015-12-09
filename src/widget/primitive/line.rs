@@ -40,7 +40,7 @@ pub struct State {
 }
 
 /// Unique styling for a Line widget.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The patter for the line.
     pub maybe_pattern: Option<Pattern>,
@@ -56,7 +56,7 @@ pub struct Style {
 pub const KIND: &'static str = "Line";
 
 /// The pattern used to draw the line.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Pattern {
     Solid,
     Dashed,
@@ -64,7 +64,8 @@ pub enum Pattern {
 }
 
 /// Whether the end of the **Line** should be flat or rounded.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Cap {
     Flat,
     Round,

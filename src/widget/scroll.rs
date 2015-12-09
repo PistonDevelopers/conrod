@@ -16,7 +16,7 @@ use utils::{map_range, partial_max};
 
 
 /// A type for building a scrollbar widget.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Scrolling {
     /// Is there horizontal scrolling.
     pub horizontal: bool,
@@ -46,7 +46,7 @@ pub struct State {
 
 
 /// Style for the Scrolling.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
     pub maybe_thickness: Option<Scalar>,

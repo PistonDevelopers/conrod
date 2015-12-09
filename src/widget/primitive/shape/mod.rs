@@ -12,7 +12,7 @@ pub mod framed_rectangle;
 
 
 /// The style for some 2D shape.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Style {
     /// The outline of the shape with this style.
     Outline(LineStyle),
