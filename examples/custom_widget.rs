@@ -18,7 +18,6 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
-extern crate rustc_serialize;
 extern crate vecmath;
 
 
@@ -68,7 +67,7 @@ mod circular_button {
     }
 
     /// Represents the unique styling for our CircularButton widget.
-    #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+    #[derive(Clone, Debug, PartialEq)]
     pub struct Style {
         /// Color of the button.
         pub maybe_color: Option<Color>,
