@@ -566,11 +566,6 @@ pub trait Sizeable: Sized {
 
 }
 
-/// Return which corner of the rectangle the given Point is within.
-pub fn corner(xy: Point, dim: Dimensions) -> Corner {
-    Rect::from_xy_dim([0.0, 0.0], dim).closest_corner(xy)
-}
-
 
 /// The x offset required to align an element with `width` to the left of a target element.
 pub fn align_left_of(target_width: Scalar, width: Scalar) -> Scalar {
