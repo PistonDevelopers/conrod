@@ -7,8 +7,8 @@ use {
     FontSize,
     Frameable,
     Labelable,
+    IndexSlot,
     Mouse,
-    NodeIndex,
     Positionable,
     Range,
     Rect,
@@ -63,9 +63,9 @@ pub struct State<T> {
     max: T,
     skew: f32,
     interaction: Interaction,
-    maybe_frame_idx: Option<NodeIndex>,
-    maybe_slider_idx: Option<NodeIndex>,
-    maybe_label_idx: Option<NodeIndex>,
+    frame_idx: IndexSlot,
+    slider_idx: IndexSlot,
+    label_idx: IndexSlot,
 }
 
 /// Unique kind for the widget type.
@@ -178,9 +178,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             max: self.max,
             skew: self.skew,
             interaction: Interaction::Normal,
-            maybe_frame_idx: None,
-            maybe_slider_idx: None,
-            maybe_label_idx: None,
+            frame_idx: IndexSlot::new(),
+            slider_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
         }
     }
 
@@ -298,18 +298,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         }
 
         // The **Rectangle** for the frame.
-        let frame_idx = state.view().maybe_frame_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let frame_idx = state.view().frame_idx.get(&mut ui);
         let frame_color = new_interaction.color(style.frame_color(ui.theme()));
         Rectangle::fill(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
             .color(frame_color)
             .set(frame_idx, &mut ui);
-
-        if state.view().maybe_frame_idx != Some(frame_idx) {
-            state.update(|state| state.maybe_frame_idx = Some(frame_idx))
-        }
 
         // The **Rectangle** for the adjustable slider.
         let slider_rect = if is_horizontal {
@@ -326,8 +321,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             Rect { x: x, y: y }
         };
         let color = new_interaction.color(style.color(ui.theme()));
-        let slider_idx = state.view().maybe_slider_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let slider_idx = state.view().slider_idx.get(&mut ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         Rectangle::fill(slider_rect.dim())
             .xy_relative_to(idx, slider_xy_offset)
@@ -336,29 +330,18 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             .color(color)
             .set(slider_idx, &mut ui);
 
-        if state.view().maybe_slider_idx != Some(slider_idx) {
-            state.update(|state| state.maybe_slider_idx = Some(slider_idx))
-        }
-
         // The **Text** for the slider's label (if it has one).
-        let maybe_label_idx = maybe_label.map(|label| {
+        if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
-            let label_idx = state.view().maybe_label_idx
-                .unwrap_or_else(|| ui.new_unique_node_index());
+            let label_idx = state.view().label_idx.get(&mut ui);
             if is_horizontal { Text::new(label).mid_left_of(idx) }
             else             { Text::new(label).mid_bottom_of(idx) }
                 .graphics_for(idx)
                 .color(label_color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
-            label_idx
-        });
-
-        // If the label index has changed, update it.
-        if state.view().maybe_label_idx != maybe_label_idx {
-            state.update(|state| state.maybe_label_idx = maybe_label_idx);
         }
     }
 

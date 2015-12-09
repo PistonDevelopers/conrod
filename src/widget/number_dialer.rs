@@ -8,6 +8,7 @@ use {
     FontSize,
     Frameable,
     FramedRectangle,
+    IndexSlot,
     Labelable,
     Mouse,
     NodeIndex,
@@ -89,8 +90,8 @@ pub struct State<T> {
     max: T,
     precision: u8,
     interaction: Interaction,
-    maybe_rectangle_idx: Option<NodeIndex>,
-    maybe_label_idx: Option<NodeIndex>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
     glyph_slot_indices: Vec<GlyphSlot>,
 }
 
@@ -268,8 +269,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             max: self.max,
             precision: self.precision,
             interaction: Interaction::Normal,
-            maybe_rectangle_idx: None,
-            maybe_label_idx: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
             glyph_slot_indices: Vec::new(),
         }
     }
@@ -403,8 +404,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
-        let rectangle_idx = state.view().maybe_rectangle_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         FramedRectangle::new(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
@@ -413,16 +413,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
 
-        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
-            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx))
-        }
-
         // The **Text** for the **NumberDialer**'s label.
         let label_color = style.label_color(ui.theme());
         let font_size = style.label_font_size(ui.theme());
-        let maybe_label_idx = maybe_label.map(|_| {
-            let label_idx = state.view().maybe_label_idx
-                .unwrap_or_else(|| ui.new_unique_node_index());
+        if maybe_label.is_some() {
+            let label_idx = state.view().label_idx.get(&mut ui);
             Text::new(&label_string)
                 .x_y_relative_to(idx, label_rel_x, 0.0)
                 .graphics_for(idx)
@@ -430,11 +425,6 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
                 .font_size(font_size)
                 .parent(Some(idx))
                 .set(label_idx, &mut ui);
-            label_idx
-        });
-
-        if state.view().maybe_label_idx.is_none() && maybe_label_idx.is_some() {
-            state.update(|state| state.maybe_label_idx = maybe_label_idx);
         }
 
         // Ensure we have at least as many glyph_slot_indices as there are chars in our val_string.

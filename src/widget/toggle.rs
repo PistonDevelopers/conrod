@@ -7,9 +7,9 @@ use {
     FontSize,
     Frameable,
     FramedRectangle,
+    IndexSlot,
     Labelable,
     Mouse,
-    NodeIndex,
     Positionable,
     Scalar,
     Text,
@@ -67,8 +67,8 @@ pub enum Interaction {
 pub struct State {
     value: bool,
     interaction: Interaction,
-    maybe_rectangle_idx: Option<NodeIndex>,
-    maybe_label_idx: Option<NodeIndex>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
 }
 
 
@@ -150,8 +150,8 @@ impl<'a, F> Widget for Toggle<'a, F>
         State {
             value: self.value,
             interaction: Interaction::Normal,
-            maybe_rectangle_idx: None,
-            maybe_label_idx: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
         }
     }
 
@@ -203,8 +203,7 @@ impl<'a, F> Widget for Toggle<'a, F>
         };
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().maybe_rectangle_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let color = {
@@ -222,9 +221,8 @@ impl<'a, F> Widget for Toggle<'a, F>
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        let maybe_label_idx = maybe_label.map(|label| {
-            let label_idx = state.view().maybe_label_idx
-                .unwrap_or_else(|| ui.new_unique_node_index());
+        if let Some(label) = maybe_label {
+            let label_idx = state.view().label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             Text::new(label)
@@ -233,8 +231,7 @@ impl<'a, F> Widget for Toggle<'a, F>
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
-            label_idx
-        });
+        }
 
         // If there has been a change in interaction, set the new one.
         if state.view().interaction != new_interaction {
@@ -244,16 +241,6 @@ impl<'a, F> Widget for Toggle<'a, F>
         // If the value has changed, update our state.
         if state.view().value != new_value {
             state.update(|state| state.value = new_value);
-        }
-
-        // If the rectangle index has changed, update it.
-        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
-            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
-        }
-
-        // If the label index has changed, update it.
-        if state.view().maybe_label_idx != maybe_label_idx {
-            state.update(|state| state.maybe_label_idx = maybe_label_idx);
         }
     }
 }

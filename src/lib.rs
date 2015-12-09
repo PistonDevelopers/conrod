@@ -87,8 +87,8 @@ pub use theme::Theme;
 pub use ui::{Ui, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, CommonStyle, DrawArgs, Floating, MaybeParent, UiCell,
-                 UpdateArgs, Widget};
+pub use widget::{CommonBuilder, CommonState, CommonStyle, DrawArgs, Floating, IndexSlot,
+                 MaybeParent, UiCell, UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;

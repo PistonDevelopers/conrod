@@ -8,6 +8,7 @@ use ::{
     Dimension,
     FontSize,
     Frameable,
+    IndexSlot,
     Labelable,
     NodeIndex,
     Positionable,
@@ -60,10 +61,9 @@ pub struct Style {
 #[derive(PartialEq, Clone, Debug)]
 pub struct State {
     menu_state: MenuState,
-    maybe_label: Option<String>,
     buttons: Vec<(NodeIndex, String)>,
     maybe_selected: Option<Idx>,
-    maybe_canvas_idx: Option<NodeIndex>,
+    canvas_idx: IndexSlot,
 }
 
 /// Unique kind for the widget.
@@ -149,9 +149,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
         State {
             menu_state: MenuState::Closed,
             buttons: Vec::new(),
-            maybe_label: None,
             maybe_selected: None,
-            maybe_canvas_idx: None,
+            canvas_idx: IndexSlot::new(),
         }
     }
 
@@ -178,8 +177,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
-        let canvas_idx = state.view().maybe_canvas_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let canvas_idx = state.view().canvas_idx.get(&mut ui);
 
         // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
@@ -316,15 +314,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             state.update(|state| state.maybe_selected = *self.selected);
         }
 
-        if state.view().maybe_canvas_idx != Some(canvas_idx) {
-            state.update(|state| state.maybe_canvas_idx = Some(canvas_idx));
-        }
-
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-            state.update(|state| {
-                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-            });
-        }
+        // if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+        //     state.update(|state| {
+        //         state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+        //     });
+        // }
     }
 
 }

@@ -8,9 +8,9 @@ use {
     Frameable,
     FramedRectangle,
     FramedRectangleStyle,
+    IndexSlot,
     Labelable,
     TextStyle,
-    NodeIndex,
     Positionable,
     Scalar,
     Theme,
@@ -34,8 +34,8 @@ pub struct Canvas<'a> {
 /// **Canvas** state to be cached.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    maybe_rectangle_idx: Option<NodeIndex>,
-    maybe_title_bar_idx: Option<NodeIndex>,
+    rectangle_idx: IndexSlot,
+    title_bar_idx: IndexSlot,
 }
 
 /// Unique kind for the widget type.
@@ -200,8 +200,8 @@ impl<'a> Widget for Canvas<'a> {
 
     fn init_state(&self) -> State {
         State {
-            maybe_rectangle_idx: None,
-            maybe_title_bar_idx: None,
+            rectangle_idx: IndexSlot::new(),
+            title_bar_idx: IndexSlot::new(),
         }
     }
 
@@ -262,8 +262,7 @@ impl<'a> Widget for Canvas<'a> {
         let Canvas { style, maybe_title_bar_label, .. } = self;
 
         // FramedRectangle widget as the rectangle backdrop.
-        let rectangle_idx = state.view().maybe_rectangle_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
@@ -278,9 +277,8 @@ impl<'a> Widget for Canvas<'a> {
             .set(rectangle_idx, &mut ui);
 
         // TitleBar widget if we were given some label.
-        let maybe_title_bar_idx = maybe_title_bar_label.map(|label| {
-            let title_bar_idx = state.view().maybe_title_bar_idx
-                .unwrap_or_else(|| ui.new_unique_node_index());
+        if let Some(label) = maybe_title_bar_label {
+            let title_bar_idx = state.view().title_bar_idx.get(&mut ui);
             let font_size = style.title_bar_font_size(ui.theme());
             let label_color = style.title_bar_label_color(ui.theme());
             TitleBar::new(label, rectangle_idx)
@@ -293,19 +291,7 @@ impl<'a> Widget for Canvas<'a> {
                 .place_on_kid_area(false)
                 .react(|_interaction| ())
                 .set(title_bar_idx, &mut ui);
-            title_bar_idx
-        });
-
-        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
-            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
         }
-
-        if let Some(title_bar_idx) = maybe_title_bar_idx {
-            if state.view().maybe_title_bar_idx != Some(title_bar_idx) {
-                state.update(|state| state.maybe_title_bar_idx = Some(title_bar_idx));
-            }
-        }
-
     }
 
 }

@@ -7,10 +7,10 @@ use {
     Frameable,
     FramedRectangle,
     FramedRectangleStyle,
+    IndexSlot,
     Labelable,
     Mouse,
     Positionable,
-    NodeIndex,
     Scalar,
     Sizeable,
     Text,
@@ -33,11 +33,11 @@ pub struct TitleBar<'a, F> {
 }
 
 /// Unique state for the **TitleBar** widget.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     interaction: Interaction,
-    maybe_rectangle_idx: Option<NodeIndex>,
-    maybe_label_idx: Option<NodeIndex>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
 }
 
 /// Unique styling for the **TitleBar** widget.
@@ -156,8 +156,8 @@ impl<'a, F> Widget for TitleBar<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            maybe_rectangle_idx: None,
-            maybe_label_idx: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
             interaction: Interaction::Normal,
         }
     }
@@ -186,8 +186,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
         };
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().maybe_rectangle_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         FramedRectangle::new(dim)
             .with_style(style.framed_rectangle)
@@ -196,8 +195,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        let label_idx = state.view().maybe_label_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let label_idx = state.view().label_idx.get(&mut ui);
         Text::new(label)
             .with_style(style.text)
             .middle_of(rectangle_idx)
@@ -211,14 +209,6 @@ impl<'a, F> Widget for TitleBar<'a, F>
                 react(new_interaction);
             }
             state.update(|state| state.interaction = new_interaction);
-        }
-
-        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
-            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
-        }
-
-        if state.view().maybe_label_idx != Some(label_idx) {
-            state.update(|state| state.maybe_label_idx = Some(label_idx));
         }
     }
 

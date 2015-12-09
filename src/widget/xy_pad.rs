@@ -7,10 +7,10 @@ use {
     Frameable,
     FramedRectangle,
     FontSize,
+    IndexSlot,
     Labelable,
     Line,
     Mouse,
-    NodeIndex,
     Positionable,
     Scalar,
     Sizeable,
@@ -63,11 +63,11 @@ pub struct State<X, Y> {
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     interaction: Interaction,
-    maybe_rectangle_idx: Option<NodeIndex>,
-    maybe_label_idx: Option<NodeIndex>,
-    maybe_h_line_idx: Option<NodeIndex>,
-    maybe_v_line_idx: Option<NodeIndex>,
-    maybe_value_label_idx: Option<NodeIndex>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
+    h_line_idx: IndexSlot,
+    v_line_idx: IndexSlot,
+    value_label_idx: IndexSlot,
 }
 
 /// Unique kind for the widget type.
@@ -179,11 +179,11 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             interaction: Interaction::Normal,
             x: self.x, min_x: self.min_x, max_x: self.max_x,
             y: self.y, min_y: self.min_y, max_y: self.max_y,
-            maybe_rectangle_idx: None,
-            maybe_label_idx: None,
-            maybe_h_line_idx: None,
-            maybe_v_line_idx: None,
-            maybe_value_label_idx: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
+            h_line_idx: IndexSlot::new(),
+            v_line_idx: IndexSlot::new(),
+            value_label_idx: IndexSlot::new(),
         }
     }
 
@@ -237,10 +237,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let (new_x, new_y) = match (maybe_mouse, new_interaction) {
             (None, _) | (_, Normal) | (_, Highlighted) => (x, y),
             (Some(mouse), Clicked) => {
-                let unclamped_x = mouse.xy[0] - inner_rect.left();
-                let unclamped_y = mouse.xy[1] - inner_rect.bottom();
-                let clamped_x = inner_rect.x.clamp_value(unclamped_x);
-                let clamped_y = inner_rect.y.clamp_value(unclamped_y);
+                let clamped_x = inner_rect.x.clamp_value(mouse.xy[0]);
+                let clamped_y = inner_rect.y.clamp_value(mouse.xy[1]);
                 let (l, r, b, t) = inner_rect.l_r_b_t();
                 let new_x = map_range(clamped_x, l, r, min_x, max_x);
                 let new_y = map_range(clamped_y, b, t, min_y, max_y);
@@ -285,8 +283,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let color = new_interaction.color(style.color(ui.theme()));
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
-        let rectangle_idx = state.view().maybe_rectangle_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         FramedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
@@ -295,15 +292,10 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
 
-        if state.view().maybe_rectangle_idx != Some(rectangle_idx) {
-            state.update(|state| state.maybe_rectangle_idx = Some(rectangle_idx));
-        }
-
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
-        let maybe_label_idx = maybe_label.map(|label| {
-            let label_idx = state.view().maybe_label_idx
-                .unwrap_or_else(|| ui.new_unique_node_index());
+        if let Some(label) = maybe_label {
+            let label_idx = state.view().label_idx.get(&mut ui);
             let label_font_size = style.label_font_size(ui.theme());
             Text::new(label)
                 .middle_of(rectangle_idx)
@@ -311,11 +303,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
                 .color(label_color)
                 .font_size(label_font_size)
                 .set(label_idx, &mut ui);
-            label_idx
-        });
-
-        if state.view().maybe_label_idx != maybe_label_idx {
-            state.update(|state| state.maybe_label_idx = maybe_label_idx);
         }
 
         // Crosshair **Line** widgets.
@@ -325,13 +312,13 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let v_line_x = map_range(new_x, min_x, max_x, -half_w, half_w);
         let h_line_y = map_range(new_y, min_y, max_y, -half_h, half_h);
         let thickness = style.line_thickness(ui.theme());
+        let line_color = label_color.with_alpha(1.0);
 
         let v_line_start = [0.0, -half_h];
         let v_line_end = [0.0, half_h];
-        let v_line_idx = state.view().maybe_v_line_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let v_line_idx = state.view().v_line_idx.get(&mut ui);
         Line::centred(v_line_start, v_line_end)
-            .color(label_color)
+            .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(idx, v_line_x, 0.0)
             .graphics_for(idx)
@@ -339,22 +326,13 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         let h_line_start = [-half_w, 0.0];
         let h_line_end = [half_w, 0.0];
-        let h_line_idx = state.view().maybe_h_line_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let h_line_idx = state.view().h_line_idx.get(&mut ui);
         Line::centred(h_line_start, h_line_end)
-            .color(label_color)
+            .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(idx, 0.0, h_line_y)
             .graphics_for(idx)
             .set(h_line_idx, &mut ui);
-
-        if state.view().maybe_v_line_idx != Some(v_line_idx) {
-            state.update(|state| state.maybe_v_line_idx = Some(v_line_idx));
-        }
-
-        if state.view().maybe_h_line_idx != Some(h_line_idx) {
-            state.update(|state| state.maybe_h_line_idx = Some(h_line_idx));
-        }
 
         // Crosshair value label **Text** widget.
         let x_string = val_to_string(new_x, max_x, max_x - min_x, rect.w() as usize);
@@ -371,20 +349,15 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             Edge::Start => Direction::Forwards,
         };
         let value_font_size = style.value_font_size(ui.theme());
-        let value_label_idx = state.view().maybe_value_label_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let value_label_idx = state.view().value_label_idx.get(&mut ui);
         Text::new(&value_string)
             .x_direction_from(v_line_idx, x_direction, VALUE_TEXT_PAD)
             .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)
+            .color(line_color)
             .graphics_for(idx)
             .parent(Some(idx))
             .font_size(value_font_size)
             .set(value_label_idx, &mut ui);
-
-        if state.view().maybe_value_label_idx != Some(value_label_idx) {
-            state.update(|state| state.maybe_value_label_idx = Some(value_label_idx))
-        }
-
     }
 
     // /// Construct an Element from the given XYPad State.

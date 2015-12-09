@@ -1,7 +1,7 @@
 use {CharacterCache, Dimension, GlyphCache};
 use elmesque::Element;
 use graph::NodeIndex;
-use position::{Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
+use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
@@ -85,6 +85,18 @@ pub struct UiCell<'a, C: 'a> {
     /// The index of the Widget that "owns" the **UiCell**. The index is needed so that we can
     /// correctly retrieve user input information for the specific widget.
     idx: Index,
+}
+
+/// A small cache for a single unique **NodeIndex**.
+///
+/// This should be used by **Widget**s within their unique **State** for instantiating their own
+/// unique widgets.
+///
+/// This should reduce the need for users to directly call `UiCell::new_unique_node_index` and in
+/// turn reduce related mistakes (i.e. accidentally calling it and growing the graph unnecessarily).
+#[derive(Clone, Debug, PartialEq)]
+pub struct IndexSlot {
+    maybe_idx: ::std::cell::Cell<Option<NodeIndex>>,
 }
 
 /// Arguments for the **Widget::draw** method in a struct to simplify the method signature.
@@ -1118,6 +1130,30 @@ impl<'a, C> AsRef<Ui<C>> for UiCell<'a, C> {
 }
 
 
+impl IndexSlot {
+
+    /// Construct a new empty **IndexSlot**.
+    pub fn new() -> Self {
+        IndexSlot {
+            maybe_idx: ::std::cell::Cell::new(None),
+        }
+    }
+
+    /// Returns the **NodeIndex** held by the **IndexSlot**.
+    ///
+    /// If the **IndexSlot** does not yet hold a **NodeIndex**, the **UiCell** will be used to
+    /// produce a `new_unique_node_index`.
+    pub fn get<C>(&self, ui: &mut UiCell<C>) -> NodeIndex {
+        if self.maybe_idx.get().is_none() {
+            let new_idx = ui.new_unique_node_index();
+            self.maybe_idx.set(Some(new_idx));
+        }
+        self.maybe_idx.get().unwrap()
+    }
+
+}
+
+
 impl<'a, T> State<'a, T> {
 
     /// Immutably borrow the internal widget state.
@@ -1182,11 +1218,20 @@ impl<W> Positionable for W where W: Widget {
     }
     #[inline]
     fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        self.common().style.maybe_x_position.unwrap_or(self.default_x_position(ui))
+
+        let from_y_position = || self.common().style.maybe_y_position
+            .and_then(|y_pos| infer_position_from_other_position(y_pos, Align::Start));
+        self.common().style.maybe_x_position
+            .or_else(from_y_position)
+            .unwrap_or(self.default_x_position(ui))
     }
     #[inline]
     fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-        self.common().style.maybe_y_position.unwrap_or(self.default_y_position(ui))
+        let from_x_position = || self.common().style.maybe_x_position
+            .and_then(|x_pos| infer_position_from_other_position(x_pos, Align::End));
+        self.common().style.maybe_y_position
+            .or_else(from_x_position)
+            .unwrap_or(self.default_y_position(ui))
     }
     #[inline]
     fn depth(mut self, depth: Depth) -> Self {
@@ -1199,6 +1244,21 @@ impl<W> Positionable for W where W: Widget {
         self.common().style.maybe_depth.unwrap_or(DEFAULT_DEPTH)
     }
 }
+
+
+/// In the case that a position hasn't been given for one of the axes, we must first check to see
+/// if we can infer the missing axis position from the other axis.
+///
+/// This is used within the impl of **Positionable** for **Widget**.
+fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> Option<Position> {
+    match other_pos {
+        Position::Direction(_, _, maybe_idx) => Some(Position::Align(dir_align, maybe_idx)),
+        Position::Place(_, maybe_idx) => Some(Position::Align(Align::Middle, maybe_idx)),
+        Position::Relative(_, maybe_idx) => Some(Position::Relative(0.0, maybe_idx)),
+        Position::Align(_, _) | Position::Absolute(_) => None,
+    }
+}
+
 
 impl<W> Sizeable for W where W: Widget {
     #[inline]
@@ -1226,7 +1286,6 @@ impl<W> Sizeable for W where W: Widget {
         self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }
-
 
 
 // /// A macro to simplify implementation of style retrieval functions.

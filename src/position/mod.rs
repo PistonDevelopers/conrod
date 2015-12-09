@@ -193,12 +193,12 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from another widget.
     fn x_direction(self, direction: Direction, x: Scalar) -> Self {
-        self.x_position(Position::Direction(direction, x, None)).align_top()
+        self.x_position(Position::Direction(direction, x, None))
     }
 
     /// Build with the **Position** along the *y* axis as some distance from another widget.
     fn y_direction(self, direction: Direction, y: Scalar) -> Self {
-        self.y_position(Position::Direction(direction, y, None)).align_left()
+        self.y_position(Position::Direction(direction, y, None))
     }
 
     /// Build with the **Position** as some distance below another widget.
@@ -225,14 +225,14 @@ pub trait Positionable: Sized {
     fn x_direction_from<I>(self, other: I, direction: Direction, x: Scalar) -> Self
         where I: Into<widget::Index> + Copy,
     {
-        self.x_position(Position::Direction(direction, x, Some(other.into()))).align_top_of(other)
+        self.x_position(Position::Direction(direction, x, Some(other.into())))
     }
 
     /// Build with the **Position** along the *y* axis as some distance from the given widget.
     fn y_direction_from<I>(self, other: I, direction: Direction, y: Scalar) -> Self
         where I: Into<widget::Index> + Copy,
     {
-        self.y_position(Position::Direction(direction, y, Some(other.into()))).align_left_of(other)
+        self.y_position(Position::Direction(direction, y, Some(other.into())))
     }
 
     /// Build with the **Position** as some distance below the given widget.
