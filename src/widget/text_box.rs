@@ -6,10 +6,17 @@ use {
     Dimensions,
     FontSize,
     Frameable,
+    FramedRectangle,
     GlyphCache,
+    IndexSlot,
+    Line,
     Mouse,
+    Padding,
     Point,
+    Positionable,
+    Rectangle,
     Scalar,
+    Text,
     Theme,
     Widget,
     Ui,
@@ -17,7 +24,7 @@ use {
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use position;
 use vecmath::vec2_sub;
-use widget;
+use widget::{self, KidArea};
 
 
 pub type Idx = usize;
@@ -36,20 +43,29 @@ pub struct TextBox<'a, F> {
 }
 
 /// Styling for the TextBox, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
+    /// color with a zeroed alpha.
     pub maybe_color: Option<Color>,
+    /// The frame around the rectangle behind the text.
     pub maybe_frame: Option<Scalar>,
+    /// The color of the frame.
     pub maybe_frame_color: Option<Color>,
+    /// The font size for the text.
     pub maybe_font_size: Option<u32>,
+    /// The color of the text.
+    pub maybe_text_color: Option<Color>,
 }
 
 /// The State of the TextBox widget that will be cached within the Ui.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     interaction: Interaction,
-    text: String,
+    rectangle_idx: IndexSlot,
+    text_idx: IndexSlot,
+    cursor_idx: IndexSlot,
+    highlight_idx: IndexSlot,
     control_pressed: bool
 }
 
@@ -345,7 +361,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     fn init_state(&self) -> State {
         State {
             interaction: Interaction::Uncaptured(Uncaptured::Normal),
-            text: String::new(),
+            rectangle_idx: IndexSlot::new(),
+            text_idx: IndexSlot::new(),
+            cursor_idx: IndexSlot::new(),
+            highlight_idx: IndexSlot::new(),
             control_pressed: false,
         }
     }
@@ -362,13 +381,26 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
     }
 
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+        KidArea {
+            rect: args.rect,
+            pad: Padding {
+                left: TEXT_PADDING,
+                right: TEXT_PADDING,
+                bottom: TEXT_PADDING,
+                top: TEXT_PADDING,
+            },
+        }
+    }
+
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
         let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
+        let inner_rect = rect.pad(frame);
         let font_size = style.font_size(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let text_w = ui.glyph_cache().width(font_size, &self.text);
@@ -515,89 +547,74 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             state.update(|state| state.interaction = new_interaction);
         }
 
-        if &state.view().text[..] != &self.text[..] {
-            state.update(|state| state.text = self.text.clone());
-        }
-
         if state.view().control_pressed != new_control_pressed {
             state.update(|state| state.control_pressed = new_control_pressed);
         }
+
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let frame = style.frame(ui.theme());
+        let color = new_interaction.color(style.color(ui.theme()));
+        let frame_color = style.frame_color(ui.theme());
+        FramedRectangle::new(rect.dim())
+            .middle_of(idx)
+            .graphics_for(idx)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
+            .set(rectangle_idx, &mut ui);
+
+        let text_color = style.text_color(ui.theme());
+        let font_size = style.font_size(ui.theme());
+        let text_idx = state.view().text_idx.get(&mut ui);
+        Text::new(&self.text)
+            .mid_left_of(idx)
+            .graphics_for(idx)
+            .color(text_color)
+            .font_size(font_size)
+            .no_line_wrap()
+            .set(text_idx, &mut ui);
+
+
+        if let Interaction::Captured(view) = new_interaction {
+            let cursor = view.cursor;
+            // This matters if the text is scrolled with the mouse.
+            let cursor_idx = match cursor.anchor {
+                Anchor::End => cursor.start,
+                Anchor::Start | Anchor::None => cursor.end,
+            };
+            let cursor_x = cursor_position(ui.glyph_cache(), cursor_idx, text_start_x, font_size,
+                                           &self.text);
+
+            if cursor.is_cursor() {
+                let cursor_idx = state.view().cursor_idx.get(&mut ui);
+                let start = [0.0, 0.0];
+                let end = [0.0, inner_rect.h()];
+                Line::centred(start, end)
+                    .x_relative_to(idx, cursor_x)
+                    .graphics_for(idx)
+                    .parent(Some(idx))
+                    .color(text_color)
+                    .set(cursor_idx, &mut ui);
+            } else {
+                let (rel_x, w) = {
+                    let (start, end) = (cursor.start, cursor.end);
+                    let cursor_x = cursor_position(ui.glyph_cache(), start, text_start_x, font_size,
+                                                   &self.text);
+                    let highlighted_text = &self.text[start..end];
+                    let w = ui.glyph_cache().width(font_size, &highlighted_text);
+                    (cursor_x + w / 2.0, w)
+                };
+                let dim = [w, inner_rect.h()];
+                let highlight_idx = state.view().highlight_idx.get(&mut ui);
+                Rectangle::fill(dim)
+                    .x_relative_to(idx, rel_x)
+                    .color(text_color.highlighted().alpha(0.25))
+                    .graphics_for(idx)
+                    .parent(Some(idx))
+                    .set(highlight_idx, &mut ui);
+            }
+        }
     }
-
-    // /// Construct an Element from the given TextBox State.
-    // fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-    //     use elmesque::form::{self, collage, line, solid, text};
-    //     use elmesque::text::Text;
-
-    //     let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
-
-    //     // Construct the frame and inner rectangle Forms.
-    //     let (xy, dim) = rect.xy_dim();
-    //     let frame = style.frame(theme);
-    //     let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-    //     let color = state.interaction.color(style.color(theme));
-    //     let frame_color = style.frame_color(theme);
-    //     let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-    //     let inner_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
-    //     let font_size = style.font_size(theme);
-    //     let text_w = glyph_cache.width(font_size, &state.text[..]);
-    //     let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
-    //     let text_start_x = text_x - text_w / 2.0;
-
-    //     let (maybe_cursor_form, text_form) = if let Interaction::Captured(view) = state.interaction {
-    //         // Construct the Cursor's Form.
-    //         let cursor = view.cursor;
-
-    //         // This matters if the text is scrolled with the mouse.
-    //         let cursor_idx = match cursor.anchor {
-    //             Anchor::End => cursor.start,
-    //             Anchor::Start | Anchor::None => cursor.end,
-    //         };
-
-    //         let cursor_x = cursor_position(glyph_cache, cursor_idx, text_start_x, font_size, &state.text);
-
-    //         let cursor_form = if cursor.is_cursor() {
-    //             let half_pad_h = pad_dim[1] / 2.0;
-    //             line(solid(color.plain_contrast()), 0.0, half_pad_h, 0.0, -half_pad_h)
-    //                 .alpha(0.75)
-    //                 .shift_x(cursor_x)
-    //         } else {
-    //             let (block_xy, dim) = {
-    //                 let (start, end) = (cursor.start, cursor.end);
-    //                 let cursor_x = cursor_position(glyph_cache, start, text_start_x, font_size, &state.text);
-    //                 let htext: String = state.text.chars().skip(start).take(end - start).collect();
-    //                 let htext_w = glyph_cache.width(font_size, &htext);
-    //                 ([cursor_x + htext_w / 2.0, 0.0], [htext_w, dim[1]])
-    //             };
-    //             form::rect(dim[0], dim[1] - frame * 2.0).filled(color.highlighted())
-    //                 .shift(block_xy[0], block_xy[1])
-    //         };
-
-    //         // Construct the text's Form.
-    //         let text_form = text(Text::from_string(state.text.clone())
-    //                                  .color(color.plain_contrast())
-    //                                  .height(font_size as f64)).shift_x(text_x.floor());
-
-    //         (Some(cursor_form), text_form)
-    //     } else {
-
-    //         // Construct the text's Form.
-    //         let text_form = text(Text::from_string(state.text.clone())
-    //                                  .color(color.plain_contrast())
-    //                                  .height(font_size as f64)).shift_x(text_x.floor());
-    //         (None, text_form)
-    //     };
-
-    //     // Chain the Forms and shift them into position.
-    //     let form_chain = Some(frame_form).into_iter()
-    //         .chain(Some(inner_form))
-    //         .chain(maybe_cursor_form)
-    //         .chain(Some(text_form))
-    //         .map(|form| form.shift(xy[0], xy[1]));
-
-    //     // Collect the Forms into a renderable `Element`.
-    //     collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    // }
 
 }
 
@@ -610,26 +627,27 @@ impl Style {
             maybe_frame: None,
             maybe_frame_color: None,
             maybe_font_size: None,
+            maybe_text_color: None,
         }
     }
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_frame.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_frame_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
@@ -637,9 +655,16 @@ impl Style {
     /// Get the label font size for an Element.
     pub fn font_size(&self, theme: &Theme) -> FontSize {
         const DEFAULT_FONT_SIZE: u32 = 24;
-        self.maybe_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
+        self.maybe_font_size.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
         })).unwrap_or(DEFAULT_FONT_SIZE)
+    }
+
+    /// Get the Color for of the Text.
+    pub fn text_color(&self, theme: &Theme) -> Color {
+        self.maybe_text_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
+            default.style.maybe_text_color.unwrap_or(theme.label_color)
+        })).unwrap_or(theme.label_color)
     }
 
 }
