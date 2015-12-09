@@ -1,17 +1,25 @@
 
 use {
     CharacterCache,
+    Circle,
     Color,
     Colorable,
-    Corner,
     Dimension,
-    Dimensions,
+    Direction,
+    Edge,
     Frameable,
+    FramedRectangle,
     FontSize,
+    IndexSlot,
     Labelable,
     Mouse,
+    NodeIndex,
     Point,
+    PointPath,
+    Positionable,
     Scalar,
+    Sizeable,
+    Text,
     Theme,
     Ui,
     Widget,
@@ -22,11 +30,11 @@ use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt::Debug;
 use utils::{clamp, map_range, percentage, val_to_string};
-use vecmath::vec2_sub;
 use widget;
 
 
 /// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
+///
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
@@ -42,17 +50,24 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
 }
 
 /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Style {
+    /// Coloring for the EnvelopeEditor's **FramedRectangle**.
     pub maybe_color: Option<Color>,
+    /// Thickness of the **FramedRectangle**'s frame.
     pub maybe_frame: Option<f64>,
+    /// Color of the frame.
     pub maybe_frame_color: Option<Color>,
+    /// Color of the label.
     pub maybe_label_color: Option<Color>,
+    /// The font size of the **EnvelopeEditor**'s label if one was given.
     pub maybe_label_font_size: Option<FontSize>,
+    /// The font size of the value label.
     pub maybe_value_font_size: Option<FontSize>,
+    /// The radius of the envelope points.
     pub maybe_point_radius: Option<f64>,
-    pub maybe_line_width: Option<f64>,
+    /// The thickness of the envelope lines.
+    pub maybe_line_thickness: Option<f64>,
 }
 
 /// Represents the state of the EnvelopeEditor widget.
@@ -65,8 +80,11 @@ pub struct State<E> where E: EnvelopePoint {
     min_y: E::Y,
     max_y: E::Y,
     skew_y_range: f32,
-    maybe_label: Option<String>,
-    maybe_closest_point: Option<(usize, (f64, f64))>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
+    value_label_idx: IndexSlot,
+    point_path_idx: IndexSlot,
+    point_indices: Vec<NodeIndex>,
 }
 
 /// Unique kind for the widget.
@@ -206,8 +224,8 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 
     /// Set the width of the envelope lines.
     #[inline]
-    pub fn line_width(mut self, width: f64) -> EnvelopeEditor<'a, E, F> {
-        self.style.maybe_line_width = Some(width);
+    pub fn line_thickness(mut self, width: f64) -> EnvelopeEditor<'a, E, F> {
+        self.style.maybe_line_thickness = Some(width);
         self
     }
 
@@ -287,8 +305,11 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             min_y: self.min_y,
             max_y: self.max_y,
             skew_y_range: self.skew_y_range,
-            maybe_label: None,
-            maybe_closest_point: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
+            value_label_idx: IndexSlot::new(),
+            point_path_idx: IndexSlot::new(),
+            point_indices: Vec::new(),
         }
     }
 
@@ -306,18 +327,18 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
     /// Update the state of the EnvelopeEditor's cached state.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        use self::Interaction::{Clicked, Highlighted, Normal};
 
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let EnvelopeEditor {
-            common,
             env,
             skew_y_range,
             min_x, max_x,
             min_y, max_y,
             mut maybe_react,
             maybe_label,
-            style,
             enabled,
+            ..
         } = self;
 
 
@@ -361,7 +382,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         // The reason we create the new interaction as mutable is because we may need to shift back
         // an index in the event that a point is removed.
         let mut new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Normal,
+            (false, _) | (true, None) => Normal,
             (true, Some(mouse)) => {
 
                 // Determine whether or not the cursor is over the EnvelopeEditor. If it is, return
@@ -393,15 +414,15 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Capture the mouse if clicked or uncapture the mouse if released.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted(_), Interaction::Clicked(_, _)) => { ui.capture_mouse(); },
-            (Interaction::Clicked(_, _), Interaction::Highlighted(_)) |
-            (Interaction::Clicked(_, _), Interaction::Normal)         => { ui.uncapture_mouse(); },
+            (Highlighted(_), Clicked(_, _)) => { ui.capture_mouse(); },
+            (Clicked(_, _), Highlighted(_)) |
+            (Clicked(_, _), Normal)         => { ui.uncapture_mouse(); },
             _ => (),
         }
 
         // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
         let is_clicked_env_point = match new_interaction {
-            Interaction::Clicked(elem, _) | Interaction::Highlighted(elem) => {
+            Clicked(elem, _) | Highlighted(elem) => {
                 if let Elem::EnvPoint(idx, _) = elem { Some(idx) } else { None }
             },
             _ => None,
@@ -424,11 +445,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             // If a point is currently clicked, check for react and value setting conditions.
             if let Some(idx) = is_clicked_env_point {
 
-                // Call the `react` closure if mouse was released
-                // on one of the DropDownMenu items.
+                // Call the `react` closure if mouse was released on one of the DropDownMenu items.
                 match (state.view().interaction, new_interaction) {
-                    (Interaction::Clicked(_, m_button), Interaction::Highlighted(_)) |
-                    (Interaction::Clicked(_, m_button), Interaction::Normal) => {
+                    (Clicked(_, m_button), Highlighted(_)) |
+                    (Clicked(_, m_button), Normal) => {
                         match m_button {
                             MouseButton::Left => {
                                 // Adjust the point and trigger the reaction.
@@ -444,7 +464,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                                 env.remove(idx);
                                 // Check for whether or not the highlighted index is out of range
                                 // now that a point has been removed from the envelope.
-                                if let Interaction::Highlighted(ref mut elem) = new_interaction {
+                                if let Highlighted(ref mut elem) = new_interaction {
                                     if env.is_empty() {
                                         *elem = Elem::Pad;
                                     } else if let Elem::EnvPoint(p_idx, p) = *elem {
@@ -459,7 +479,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                             },
                         }
                     },
-                    (Interaction::Clicked(_, prev_m_button), Interaction::Clicked(_, m_button)) => {
+                    (Clicked(_, prev_m_button), Clicked(_, m_button)) => {
                         if let (MouseButton::Left, MouseButton::Left) = (prev_m_button, m_button) {
                             let (new_x, new_y) = get_new_value(&env, idx);
                             let current_x = env[idx].get_x();
@@ -482,7 +502,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
                 // Check if a there are no points. If so and the mouse was clicked, add a point.
                 if env.len() == 0 {
-                    if let (Interaction::Clicked(elem, m_button), Interaction::Highlighted(_)) =
+                    if let (Clicked(elem, m_button), Highlighted(_)) =
                         (state.view().interaction, new_interaction) {
                         if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
                             let (new_x, new_y) = get_new_value(&env, 0);
@@ -497,7 +517,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
                 else {
                     // Check if a new point should be created.
-                    if let (Interaction::Clicked(elem, m_button), Interaction::Highlighted(_)) =
+                    if let (Clicked(elem, m_button), Highlighted(_)) =
                         (state.view().interaction, new_interaction) {
                         if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
                             let clamped_mouse_x = inner_rect.x.clamp_value(mouse.xy[0]);
@@ -533,7 +553,6 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 let py = p.get_y();
                 let x = map_x_to(px, inner_rect.left(), inner_rect.right());
                 let y = map_y_to(py, inner_rect.bottom(), inner_rect.top());
-                let xy = [x, y];
                 let distance = (target[0] - x).powf(2.0)
                              + (target[1] - y).powf(2.0);
                 if distance < closest_distance {
@@ -546,9 +565,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         // Determine the closest point to the cursor.
         let maybe_closest_point = match new_interaction {
-            Interaction::Clicked(Elem::EnvPoint(idx, p), _)  |
-            Interaction::Highlighted(Elem::EnvPoint(idx, p)) => Some((idx, p)),
-            Interaction::Clicked(_, _) | Interaction::Highlighted(_) =>
+            Clicked(Elem::EnvPoint(idx, p), _)  |
+            Highlighted(Elem::EnvPoint(idx, p)) => Some((idx, p)),
+            Clicked(_, _) | Highlighted(_) =>
                 maybe_mouse.and_then(|mouse| match closest_elem(&env, mouse.xy) {
                     Elem::EnvPoint(idx, p) => Some((idx, p)),
                     _ => None,
@@ -558,10 +577,6 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         if state.view().interaction != new_interaction {
             state.update(|state| state.interaction = new_interaction);
-        }
-
-        if state.view().maybe_closest_point != maybe_closest_point {
-            state.update(|state| state.maybe_closest_point = maybe_closest_point);
         }
 
         if &state.view().env[..] != &env[..] {
@@ -586,144 +601,107 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             state.update(|state| state.skew_y_range = skew);
         }
 
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != maybe_label {
-            state.update(|state| {
-                state.maybe_label = maybe_label.as_ref().map(|label| label.to_string());
-            })
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let dim = rect.dim();
+        let frame = style.frame(ui.theme());
+        let color = new_interaction.color(style.color(ui.theme()));
+        let frame_color = style.frame_color(ui.theme());
+        FramedRectangle::new(dim)
+            .middle_of(idx)
+            .graphics_for(idx)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
+            .set(rectangle_idx, &mut ui);
+
+        let label_color = style.label_color(ui.theme());
+        if let Some(label) = maybe_label {
+            let label_idx = state.view().label_idx.get(&mut ui);
+            let font_size = style.label_font_size(ui.theme());
+            Text::new(label)
+                .middle_of(rectangle_idx)
+                .graphics_for(idx)
+                .color(label_color)
+                .font_size(font_size)
+                .set(label_idx, &mut ui);
         }
+
+        let line_color = label_color.with_alpha(1.0);
+        {
+            let point_path_idx = state.view().point_path_idx.get(&mut ui);
+            let thickness = style.line_thickness(ui.theme());
+            let points = env.iter().map(|point| {
+                let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
+                let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
+                [x, y]
+            });
+            PointPath::new(points)
+                .dim(inner_rect.dim())
+                .xy(inner_rect.xy())
+                .graphics_for(idx)
+                .parent(Some(idx))
+                .color(line_color)
+                .thickness(thickness)
+                .set(point_path_idx, &mut ui);
+        }
+
+        let num_point_indices = state.view().point_indices.len();
+        let len = env.len();
+        if num_point_indices < len {
+            let new_indices = (num_point_indices..len).map(|_| ui.new_unique_node_index());
+            state.update(|state| state.point_indices.extend(new_indices));
+        }
+
+        let iter = state.view().point_indices.iter().zip(env.iter()).enumerate();
+        for (i, (&point_idx, point)) in iter {
+            let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
+            let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
+            let point_color = match new_interaction {
+                Clicked(Elem::EnvPoint(idx, _), MouseButton::Left) if idx == i =>
+                    line_color.clicked(),
+                Highlighted(Elem::EnvPoint(idx, _)) if idx == i =>
+                    line_color.highlighted(),
+                _ => line_color,
+            };
+            Circle::fill(point_radius)
+                .color(point_color)
+                .x_y(x, y)
+                .graphics_for(idx)
+                .parent(Some(idx))
+                .set(point_idx, &mut ui);
+        }
+
+        if let Some((closest_idx, (x, y))) = maybe_closest_point {
+            let x_range = max_x - min_x;
+            let y_range = max_y - min_y;
+            let x_px_range = inner_rect.w() as usize;
+            let y_px_range = inner_rect.h() as usize;
+            let x_string = val_to_string(env[closest_idx].get_x(), max_x, x_range, x_px_range);
+            let y_string = val_to_string(env[closest_idx].get_y(), max_y, y_range, y_px_range);
+            let xy_string = format!("{}, {}", x_string, y_string);
+            let x_direction = match inner_rect.x.closest_edge(x) {
+                Edge::End => Direction::Backwards,
+                Edge::Start => Direction::Forwards,
+            };
+            let y_direction = match inner_rect.y.closest_edge(y) {
+                Edge::End => Direction::Backwards,
+                Edge::Start => Direction::Forwards,
+            };
+            let value_font_size = style.value_font_size(ui.theme());
+            let value_label_idx = state.view().value_label_idx.get(&mut ui);
+            let closest_point_idx = state.view().point_indices[closest_idx];
+            const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
+            Text::new(&xy_string)
+                .x_direction_from(closest_point_idx, x_direction, VALUE_TEXT_PAD)
+                .y_direction_from(closest_point_idx, y_direction, VALUE_TEXT_PAD)
+                .color(line_color)
+                .graphics_for(idx)
+                .parent(Some(idx))
+                .font_size(value_font_size)
+                .set(value_label_idx, &mut ui);
+        }
+
     }
-
-    // /// Construct an Element from the given EnvelopeEditor State.
-    // fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-    //     use elmesque::form::{self, circle, collage, Form, line, solid, text};
-    //     use elmesque::text::Text;
-
-    //     let widget::DrawArgs { rect, state, style, theme, glyph_cache, .. } = args;
-    //     let (xy, dim) = rect.xy_dim();
-    //     let frame = style.frame(theme);
-    //     let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
-    //     let (half_pad_w, half_pad_h) = (pad_dim[0] / 2.0, pad_dim[1] / 2.0);
-    //     let skew = state.skew_y_range;
-    //     let (min_x, max_x, min_y, max_y) = (state.min_x, state.max_x, state.min_y, state.max_y);
-
-    //     // Construct the frame and inner rectangle Forms.
-    //     let value_font_size = style.value_font_size(theme);
-    //     let frame_color = style.frame_color(theme);
-    //     let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-    //     let color = state.interaction.color(style.color(theme));
-    //     let pressable_form = form::rect(pad_dim[0], pad_dim[1]).filled(color);
-
-    //     // Construct the label Form.
-    //     let maybe_label_form = state.maybe_label.as_ref().map(|l_text| {
-    //         let l_color = style.label_color(theme);
-    //         let l_size = style.label_font_size(theme);
-    //         text(Text::from_string(l_text.clone()).color(l_color).height(l_size as f64))
-    //     });
-
-    //     // Create a vector with each EnvelopePoint value represented as a skewed weight
-    //     // between 0.0 and 1.0.
-    //     let perc_env: Vec<(f32, f32, f32)> = state.env.iter().map(|pt| {
-    //         (percentage(pt.get_x(), min_x, max_x),
-    //          percentage(pt.get_y(), min_y, max_y).powf(1.0 / skew),
-    //          pt.get_curve())
-    //     }).collect();
-
-    //     // Draw the envelope lines.
-    //     let line_color = color.plain_contrast();
-    //     let line_width = style.line_width(theme);
-    //     let envelope_line_forms = perc_env.windows(2).map(|window| {
-    //         let ((x_a, y_a, _), (x_b, y_b, _)) = (window[0], window[1]);
-    //         let p_a = [map_range(x_a, 0.0, 1.0, -half_pad_w, half_pad_w),
-    //                    map_range(y_a, 0.0, 1.0, -half_pad_h, half_pad_h)];
-    //         let p_b = [map_range(x_b, 0.0, 1.0, -half_pad_w, half_pad_w),
-    //                    map_range(y_b, 0.0, 1.0, -half_pad_h, half_pad_h)];
-    //         let style = solid(line_color).width(line_width);
-    //         line(style, p_a[0], p_a[1], p_b[0], p_b[1])
-    //     });
-
-    //     // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
-    //     let maybe_closest_point_form = match state.interaction {
-
-    //         Interaction::Clicked(elem, _) | Interaction::Highlighted(elem) => {
-    //             use std::iter::Chain;
-    //             use std::option::IntoIter;
-
-    //             // Construct a Form for an envelope point and it's value in text form.
-    //             let env_pt_form = |env: &[E], idx: usize, p_pos: Point|
-    //                                             -> Chain<IntoIter<Form>, IntoIter<Form>> {
-    //                 let x_range = max_x - min_x;
-    //                 let y_range = max_y - min_y;
-    //                 let x_px_range = pad_dim[0] as usize;
-    //                 let y_px_range = pad_dim[1] as usize;
-    //                 let x_string = val_to_string(env[idx].get_x(), max_x, x_range, x_px_range);
-    //                 let y_string = val_to_string(env[idx].get_y(), max_y, y_range, y_px_range);
-    //                 let xy_string = format!("{}, {}", x_string, y_string);
-    //                 const PAD: f64 = 5.0; // Slight padding between the crosshair and the text.
-    //                 let w = glyph_cache.width(value_font_size, &xy_string);
-    //                 let h = value_font_size as f64;
-    //                 let x_shift = w / 2.0 + PAD;
-    //                 let y_shift = h / 2.0 + PAD;
-    //                 let (text_x, text_y) = match position::corner(p_pos, pad_dim) {
-    //                     Corner::TopLeft => (x_shift, -y_shift),
-    //                     Corner::TopRight => (-x_shift, -y_shift),
-    //                     Corner::BottomLeft => (x_shift, y_shift),
-    //                     Corner::BottomRight => (-x_shift, y_shift),
-    //                 };
-    //                 let color = color.plain_contrast();
-    //                 let point_radius = style.point_radius(theme);
-    //                 let circle_form = circle(point_radius).filled(color)
-    //                     .shift(p_pos[0].floor(), p_pos[1].floor());
-    //                 let text_form = text(Text::from_string(xy_string).color(color).height(h))
-    //                     .shift(p_pos[0], p_pos[1])
-    //                     .shift(text_x.floor(), text_y.floor());
-    //                 Some(circle_form).into_iter().chain(Some(text_form))
-    //             };
-
-    //             match elem {
-    //                 // If a point is clicked, draw that point.
-    //                 Elem::EnvPoint(idx, (x, y)) => {
-    //                     let (left_x_bound, right_x_bound) = get_x_bounds(&env, idx);
-    //                     let left_pixel_bound = map_range(left_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
-    //                     let right_pixel_bound = map_range(right_x_bound, 0.0, 1.0, -half_pad_w, half_pad_w);
-    //                     let p_pos_x_clamped = clamp(x, left_pixel_bound, right_pixel_bound);
-    //                     let p_pos_y_clamped = clamp(y, -half_pad_h, half_pad_h);
-    //                     let p_pos_clamped = [p_pos_x_clamped, p_pos_y_clamped];
-    //                     let point_form = env_pt_form(&state.env[..], idx, p_pos_clamped);
-    //                     Some(point_form)
-    //                 },
-    //                 // Otherwise, draw the closest point if there is one.
-    //                 Elem::Pad => if let Some((closest_idx, (x, y))) = state.maybe_closest_point {
-    //                     Some(env_pt_form(&state.env[..], closest_idx, [x, y]))
-    //                 } else {
-    //                     None
-    //                 },
-    //                 _ => None,
-    //             }
-
-    //         },
-    //         _ => None,
-
-    //     };
-
-    //     // Group the different Forms into a single form.
-    //     let form_chain = Some(frame_form).into_iter()
-    //         .chain(Some(pressable_form))
-    //         .chain(maybe_label_form)
-    //         .chain(envelope_line_forms);
-    //     let forms = match maybe_closest_point_form {
-    //         Some(closest_point_form) => form_chain
-    //             .chain(closest_point_form)
-    //             .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
-    //             .collect(),
-    //         None => form_chain
-    //             .map(|form| form.shift(xy[0].floor(), xy[1].floor()))
-    //             .collect(),
-    //     };
-
-    //     // Turn the form into a renderable element.
-    //     collage(dim[0] as i32, dim[1] as i32, forms)
-
-    // }
 
 }
 
@@ -740,7 +718,7 @@ impl Style {
             maybe_label_font_size: None,
             maybe_value_font_size: None,
             maybe_point_radius: None,
-            maybe_line_width: None,
+            maybe_line_thickness: None,
         }
     }
 
@@ -796,11 +774,11 @@ impl Style {
     }
 
     /// Get the point radius size for an Element.
-    pub fn line_width(&self, theme: &Theme) -> f64 {
-        const DEFAULT_LINE_WIDTH: f64 = 2.0;
-        self.maybe_line_width.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_line_width.unwrap_or(DEFAULT_LINE_WIDTH)
-        })).unwrap_or(DEFAULT_LINE_WIDTH)
+    pub fn line_thickness(&self, theme: &Theme) -> f64 {
+        const DEFAULT_LINE_THICKNESS: f64 = 2.0;
+        self.maybe_line_thickness.or(theme.widget_style::<Self>(KIND).map(|default| {
+            default.style.maybe_line_thickness.unwrap_or(DEFAULT_LINE_THICKNESS)
+        })).unwrap_or(DEFAULT_LINE_THICKNESS)
     }
 
 }
