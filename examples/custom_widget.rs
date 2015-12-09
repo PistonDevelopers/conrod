@@ -16,7 +16,6 @@
 
 
 #[macro_use] extern crate conrod;
-extern crate elmesque;
 extern crate find_folder;
 extern crate piston_window;
 extern crate rustc_serialize;
@@ -29,18 +28,20 @@ mod circular_button {
         default_x_dimension,
         default_y_dimension,
         CharacterCache,
+        Circle,
         Color,
         Colorable,
         CommonBuilder,
         Dimension,
-        DrawArgs,
-        Element,
-        FontSize,
-        Labelable,
         Dimensions,
+        FontSize,
+        IndexSlot,
+        Labelable,
         Mouse,
         Point,
+        Positionable,
         Scalar,
+        Text,
         Theme,
         UpdateArgs,
         Widget,
@@ -82,20 +83,31 @@ mod circular_button {
     /// Represents the unique, cached state for our CircularButton widget.
     #[derive(Clone, Debug, PartialEq)]
     pub struct State {
-        maybe_label: Option<String>,
         /// The current interaction state. See the Interaction enum below. See also
-        /// get_new_interaction below, where we define all the logic for transitioning
-        /// between interaction states.
+        /// get_new_interaction below, where we define all the logic for transitioning between
+        /// interaction states.
         interaction: Interaction,
+        /// An index to use for our **Circle** primitive graphics widget.
+        circle_idx: IndexSlot,
+        /// An index to use for our **Text** primitive graphics widget (for the label).
+        text_idx: IndexSlot,
     }
 
     /// A `&'static str` that can be used to uniquely identify our widget type.
     pub const KIND: WidgetKind = "CircularButton";
 
-    impl State {
-        /// Alter the widget color depending on the state.
+    /// A type to keep track of interaction between updates.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub enum Interaction {
+        Normal,
+        Highlighted,
+        Clicked,
+    }
+
+    impl Interaction {
+        /// Alter the widget color depending on the current interaction.
         fn color(&self, color: Color) -> Color {
-            match self.interaction {
+            match *self {
                 /// The base color as defined in the Style struct, or a default provided
                 /// by the current Theme if the Style has no color.
                 Interaction::Normal => color,
@@ -107,14 +119,6 @@ mod circular_button {
                 Interaction::Clicked => color.clicked(),
             }
         }
-    }
-
-    /// A type to keep track of interaction between updates.
-    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-    pub enum Interaction {
-        Normal,
-        Highlighted,
-        Clicked,
     }
 
     /// Check the current interaction with the button. Takes into account whether the mouse is
@@ -216,8 +220,9 @@ mod circular_button {
 
         fn init_state(&self) -> State {
             State {
-                maybe_label: None,
                 interaction: Interaction::Normal,
+                circle_idx: IndexSlot::new(),
+                text_idx: IndexSlot::new(),
             }
         }
 
@@ -257,7 +262,7 @@ mod circular_button {
         /// the last update. (E.g. it may have changed because the user moused over the
         /// button.) If the state has changed, return the new state. Else, return None.
         fn update<C: CharacterCache>(mut self, args: UpdateArgs<Self, C>) {
-            let UpdateArgs { state, rect, mut ui, .. } = args;
+            let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
             let (xy, dim) = rect.xy_dim();
             let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
@@ -288,7 +293,9 @@ mod circular_button {
                 // Recall that our CircularButton struct includes maybe_react, which
                 // stores either a reaction function or None. If maybe_react is Some, call
                 // the function.
-                if let Some(ref mut react) = self.maybe_react { react() }
+                if let Some(ref mut react) = self.maybe_react {
+                    react();
+                }
             }
 
             // Here we check to see whether or not our button should capture the mouse.
@@ -311,9 +318,8 @@ mod circular_button {
 
             // Whenever we call `state.update` (as below), a flag is set within our `State`
             // indicating that there has been some mutation and that our widget requires a
-            // new `Element` (meaning that `Widget::draw` will be called again). Thus, we only want
-            // to call `state.update` if there has been some change in order to only redraw our
-            // `Element` when absolutely required.
+            // re-draw. Thus, we only want to call `state.update` if there has been some change in
+            // order to only re-draw when absolutely required.
             //
             // You can see how we do this below - we check if the state has changed before calling
             // `state.update`.
@@ -323,72 +329,42 @@ mod circular_button {
                 state.update(|state| state.interaction = new_interaction);
             }
 
-            // If the label has changed, set the new label.
-            if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-                state.update(|state| {
-                    state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-                })
+            // Finally, we'll describe how we want our widget drawn by simply instantiating the
+            // necessary primitive graphics widgets.
+            //
+            // Conrod will automatically determine whether or not any changes have occurred and
+            // whether or not any widgets need to be re-drawn.
+            //
+            // The primitive graphics widgets are special in that their unique state is used within
+            // conrod's backend to do the actual drawing. This allows us to build up more complex
+            // widgets by using these simple primitives with our familiar layout, coloring, etc
+            // methods.
+            //
+            // If you notice that conrod is missing some sort of primitive graphics that you
+            // require, please file an issue or open a PR so we can add it! :)
+
+            // First, we'll draw the **Circle** with a radius that is half our given width.
+            let radius = rect.w() / 2.0;
+            let color = new_interaction.color(style.color(ui.theme()));
+            let circle_idx = state.view().circle_idx.get(&mut ui);
+            Circle::fill(radius)
+                .middle_of(idx)
+                .graphics_for(idx)
+                .color(color)
+                .set(circle_idx, &mut ui);
+
+            // Now we'll instantiate our label using the **Text** widget.
+            let label_color = style.label_color(ui.theme());
+            let font_size = style.label_font_size(ui.theme());
+            let text_idx = state.view().text_idx.get(&mut ui);
+            if let Some(ref label) = self.maybe_label {
+                Text::new(label)
+                    .middle_of(idx)
+                    .font_size(font_size)
+                    .graphics_for(idx)
+                    .color(label_color)
+                    .set(text_idx, &mut ui);
             }
-        }
-
-        /// Construct and return a renderable `Element` for the given button state.
-        fn draw<C: CharacterCache>(args: DrawArgs<Self, C>) -> Element {
-            use elmesque;
-            use elmesque::form::{collage, circle, text};
-
-            // Unwrap the args and state structs into individual variables.
-            let DrawArgs { rect, state, style, theme, .. } = args;
-            let (xy, dim) = rect.xy_dim();
-
-            // Retrieve the styling for the Element.
-            let color = state.color(style.color(theme));
-
-            // Construct the frame and inner rectangle forms. We assume that dim is a
-            // square bounding box, thus 2 * radius == dim[0] == dim[1].
-            let radius = dim[0] / 2.0;
-            let pressable_form: elmesque::Form = circle(radius).filled(color);
-
-            // If we have a label, construct its Form. Recall that State has maybe_label,
-            // which may or may not store a String for some label.
-            let maybe_label_form: Option<elmesque::Form> =
-                // Convert the Option<&str> to an Option<elmesque::Form>.
-                state.maybe_label.as_ref().map(|label_text| {
-                    use elmesque::text::Text;
-                    let label_color = style.label_color(theme);
-                    let size = style.label_font_size(theme);
-                    text(Text::from_string(label_text.to_string())
-                        .color(label_color).height(size as f64))
-                        .shift(xy[0].floor(), xy[1].floor())
-                });
-
-            // Construct the button's Form.
-            let form_chain =
-                // An Option can be converted into an Iterator. We do this because we want
-                // to combine multiple Option<elmesque::Form>s into a single Iterator via
-                // Iterator::chain.
-                Some(pressable_form).into_iter()
-                // Recall that we unwrapped xy from the State object above. We map over
-                // the Option, shifting the inner value (if it exists) by the given xy
-                // coordinates.
-                .map(|form| form.shift(xy[0], xy[1]))
-                // Iterator::chain accepts anything that implement IntoIterator.
-                // maybe_label_form is an Option, which implements IntoIterator. So
-                // we can pass maybe_label_form to chain, and we'll get an Iterator with
-                // maybe_label_form as the last element. If our widget had more forms,
-                // we could add them with additional calls to chain.
-                .chain(maybe_label_form);
-
-            // We now have an Iterator containing all our Option<elmesque::Form>s. Turn
-            // the forms into a renderable elmesque::Element.
-            collage(
-                // Width of the Element.
-                dim[0] as i32,
-                // Height of the Element.
-                dim[1] as i32,
-                // Convert the Iterator to a Vec<elmesque::Form>. Each None will be
-                // dropped. Each Some will be unwrapped into an elmesque::Form.
-                form_chain.collect()
-            )
         }
 
     }
@@ -454,7 +430,7 @@ mod circular_button {
 
 fn main() {
     use piston_window::{Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
-    use conrod::{Colorable, Labelable, Sizeable, Widget};
+    use conrod::{Colorable, Labelable, Positionable, Sizeable, Widget};
     use circular_button::CircularButton;
 
     // PistonWindow has two type parameters, but the default type is
@@ -484,11 +460,12 @@ fn main() {
         e.update(|_| ui.set_widgets(|ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            conrod::Background::new().color(conrod::color::rgb(0.2, 0.1, 0.1)).set(ui);
+            conrod::Split::new(BACKGROUND).color(conrod::color::dark_red()).set(ui);
 
             // Create an instance of our custom widget.
             CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
+                .middle_of(BACKGROUND)
                 .dimensions(256.0, 256.0)
                 .label_color(conrod::color::white())
                 .label("Circular Button")
@@ -507,6 +484,8 @@ fn main() {
 
 // The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
 widget_ids! {
+    // An ID for the background widget, upon which we'll place our custom button.
+    BACKGROUND,
     // The WidgetId we'll use to plug our widget into the `Ui`.
     CIRCLE_BUTTON,
 }
