@@ -1,10 +1,14 @@
-use {CharacterCache, LineStyle};
-use color::{Color, Colorable};
-use elmesque::Element;
-use position::{Dimensions, Sizeable};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimensions,
+    LineStyle,
+    Sizeable,
+    Widget,
+};
 use super::Style as Style;
-use widget::{self, Widget};
-use widget::primitive::point_path;
+use widget;
 
 
 /// A basic, non-interactive rectangle shape widget.
@@ -105,35 +109,6 @@ impl Widget for Rectangle {
 
         if state.view().kind != kind {
             state.update(|state| state.kind = kind);
-        }
-    }
-
-    /// Construct an Element for the Rectangle.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{self, collage};
-        let widget::DrawArgs { rect, style, theme, .. } = args;
-        match *style {
-
-            // Draw a filled rectangle.
-            Style::Fill(_) => {
-                let (x, y, w, h) = rect.x_y_w_h();
-                let color = style.get_color(theme);
-                let form = form::rect(w, h).filled(color).shift(x, y);
-                collage(w as i32, h as i32, vec![form])
-            },
-
-            // Draw only the outline of the rectangle.
-            Style::Outline(line_style) => {
-                let points = {
-                    use std::iter::once;
-                    let tl = [rect.x.start, rect.y.end];
-                    let tr = [rect.x.end, rect.y.end];
-                    let br = [rect.x.end, rect.y.start];
-                    let bl = [rect.x.start, rect.y.start];
-                    once(tl).chain(once(tr)).chain(once(br)).chain(once(bl)).chain(once(tl))
-                };
-                point_path::draw_lines(points, rect, line_style, theme)
-            },
         }
     }
 

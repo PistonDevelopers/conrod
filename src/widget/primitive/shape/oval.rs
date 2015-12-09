@@ -1,10 +1,14 @@
-use {CharacterCache, LineStyle, Scalar};
-use color::{Color, Colorable};
-use elmesque::Element;
-use position::{Dimensions, Sizeable};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimensions,
+    LineStyle,
+    Sizeable,
+    Widget,
+};
 use super::Style as Style;
-use widget::{self, Widget};
-use widget::primitive::point_path;
+use widget;
 
 
 
@@ -106,40 +110,6 @@ impl Widget for Oval {
 
         if state.view().kind != kind {
             state.update(|state| state.kind = kind);
-        }
-    }
-
-    /// Construct an Element for the Oval.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{collage, polygon};
-        use std::f64::consts::PI;
-
-        let widget::DrawArgs { rect, style, theme, .. } = args;
-        let (x, y, w, h) = rect.x_y_w_h();
-        const CIRCLE_RESOLUTION: usize = 50;
-        let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
-        let hw = w / 2.0;
-        let hh = h / 2.0;
-        let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
-        let points = (0..CIRCLE_RESOLUTION+1).map(|i| f(i as f64));
-
-        match *style {
-
-            // Draw a filled oval.
-            Style::Fill(_) => {
-                let color = style.get_color(theme);
-                // FIXME: This allocation is unnecessary and could be replaced with an iterator.
-                let points = points.map(|p| (p[0], p[1])).collect();
-                let form = polygon(points).filled(color);
-                collage(w as i32, h as i32, vec![form])
-            },
-
-            // Draw only the outline of the oval.
-            Style::Outline(line_style) => {
-                // FIXME: This allocation is unnecessary and could be replaced with an iterator.
-                let points: Vec<_> = points.collect();
-                point_path::draw_lines(points.iter().cloned(), rect, line_style, theme)
-            },
         }
     }
 

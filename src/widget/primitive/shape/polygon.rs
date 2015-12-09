@@ -1,10 +1,16 @@
 
-use {CharacterCache, Element, LineStyle};
-use color::{Color, Colorable};
-use position::{Point, Positionable, Sizeable};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    LineStyle,
+    Point,
+    Positionable,
+    Sizeable,
+    Widget,
+};
 use super::Style;
-use widget::{self, Widget};
-use widget::primitive::point_path;
+use widget;
 use utils::bounding_box_for_points;
 use vecmath::{vec2_add, vec2_sub};
 
@@ -252,36 +258,6 @@ impl<I> Widget for Polygon<I>
 
         if state.view().kind != kind {
             state.update(|state| state.kind = kind);
-        }
-    }
-
-    /// Construct an Element for the Polygon.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        let widget::DrawArgs { rect, state, style, theme, .. } = args;
-        match *style {
-
-            // Draw a filled polygon.
-            Style::Fill(_) => {
-                use elmesque::form::{collage, polygon};
-                let (w, h) = rect.w_h();
-                let color = style.get_color(theme);
-                let mut points = state.points.iter().cloned();
-                let first = points.next();
-                let points = first.into_iter().chain(points).chain(first)
-                    .map(|p| (p[0], p[1]))
-                    .collect(); // FIXME: Unnecessary and could be replaced with an iterator.
-                let form = polygon(points).filled(color);
-                collage(w as i32, h as i32, vec![form])
-            },
-
-            // The outline variant is drawn by an internal widget, so no need to draw it.
-            Style::Outline(line_style) => {
-                let mut points = state.points.iter().cloned();
-                let first = points.next();
-                let points = first.into_iter().chain(points).chain(first);
-                point_path::draw_lines(points, rect, line_style, theme)
-            },
-
         }
     }
 
