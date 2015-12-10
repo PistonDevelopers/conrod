@@ -1,6 +1,7 @@
 //! Types and functionality related to the calculation of a **Graph**'s rendering depth order.
 
 use daggy::Walker;
+use std::collections::HashSet;
 use super::{
     Graph,
     GraphIndex,
@@ -68,6 +69,7 @@ impl DepthOrder {
     pub fn update<M, K>(&mut self,
                         graph: &Graph,
                         root: NodeIndex,
+                        updated_widgets: &HashSet<NodeIndex>,
                         maybe_captured_mouse: Option<M>,
                         maybe_captured_keyboard: Option<K>)
         where M: GraphIndex,
@@ -87,10 +89,11 @@ impl DepthOrder {
 
         // Visit each node in order of depth and add their indices to depth_order.
         // If the widget is floating, then store it in the floating deque instead.
-        visit_by_depth(root,
+        visit_by_depth(graph,
+                       root,
+                       updated_widgets,
                        maybe_captured_mouse,
                        maybe_captured_keyboard,
-                       graph,
                        indices,
                        floating);
 
@@ -107,10 +110,11 @@ impl DepthOrder {
         // Visit all of the floating widgets last.
         while !floating.is_empty() {
             let idx = floating.remove(0);
-            visit_by_depth(idx,
+            visit_by_depth(graph,
+                           idx,
+                           updated_widgets,
                            maybe_captured_mouse,
                            maybe_captured_keyboard,
-                           graph,
                            indices,
                            floating);
         }
@@ -120,15 +124,17 @@ impl DepthOrder {
 
 
 /// Recursive function for visiting all nodes within the dag.
-fn visit_by_depth(idx: NodeIndex,
+fn visit_by_depth(graph: &Graph,
+                  idx: NodeIndex,
+                  updated_widgets: &HashSet<NodeIndex>,
                   maybe_captured_mouse: Option<NodeIndex>,
                   maybe_captured_keyboard: Option<NodeIndex>,
-                  graph: &Graph,
                   depth_order: &mut Vec<Visitable>,
                   floating_deque: &mut Vec<NodeIndex>)
 {
-    // First, if the current node is a widget, store its index.
-    match graph.widget(idx).is_some() {
+    // First, if the current node is a widget and it was set in the current `set_widgets` stage,
+    // store its index.
+    match graph.widget(idx).is_some() && updated_widgets.contains(&idx) {
         true => depth_order.push(Visitable::Widget(idx)),
         // If the current node is not an updated widget, we're done with this branch.
         false => return,
@@ -164,10 +170,11 @@ fn visit_by_depth(idx: NodeIndex,
         // Store floating widgets int he floating_deque for visiting after the current tree.
         match maybe_is_floating {
             Some(true) => floating_deque.push(child_idx),
-            _          => visit_by_depth(child_idx,
+            _          => visit_by_depth(graph,
+                                         child_idx,
+                                         updated_widgets,
                                          maybe_captured_mouse,
                                          maybe_captured_keyboard,
-                                         graph,
                                          depth_order,
                                          floating_deque),
         }

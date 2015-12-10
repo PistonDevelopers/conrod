@@ -378,16 +378,6 @@ impl Graph {
         }).unwrap_or(false)
     }
 
-    /// Resets the node at the given index to an edge-less **Node::Placeholder**.
-    pub fn reset_node(&mut self, idx: NodeIndex) -> bool {
-        let mut parents = self.parents(idx);
-        while let Some(parent_edge) = parents.next_edge(self) {
-            self.remove_edge(parent_edge);
-        }
-        self[idx] = Node::Placeholder;
-        self.index_map.remove(idx)
-    }
-
     /// Add a new placeholder node and return it's `NodeIndex` into the `Graph`.
     ///
     /// This method is used by the `widget::set_widget` function when some internal widget does not
@@ -738,6 +728,7 @@ impl Graph {
         // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
         // Graph.
         } else if let Some(widget_id) = self.widget_id(idx) {
+            println!("Adding node for {:?}", widget_id);
             let node_idx = self.add_node(Node::Widget(new_container()));
             self.index_map.insert(widget_id, node_idx);
             if let Some(parent_idx) = maybe_parent_idx(self) {

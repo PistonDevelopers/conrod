@@ -3,7 +3,7 @@ use {CharacterCache, Scalar};
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
-use graph::{self, Graph, NodeIndex, Walker};
+use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use input;
 use input::{
@@ -82,9 +82,13 @@ pub struct Ui<C> {
 
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
-    /// The set of widgets that have been updated since the beginning of the last `set_widgets`
-    /// stage.
+    /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
     updated_widgets: HashSet<NodeIndex>,
+    /// The `updated_widgets` for the previous `set_widgets` stage.
+    ///
+    /// We use this to compare against the newly generated `updated_widgets` to see whether or not
+    /// we require re-drawing.
+    prev_updated_widgets: HashSet<NodeIndex>,
 }
 
 /// A wrapper over the current user input state.
@@ -138,6 +142,7 @@ impl<C> Ui<C> {
                     updated_widgets: HashSet<NodeIndex>) -> Self
     {
         let window = widget_graph.add_placeholder();
+        let prev_updated_widgets = updated_widgets.clone();
         Ui {
             widget_graph: widget_graph,
             theme: theme,
@@ -160,6 +165,7 @@ impl<C> Ui<C> {
             maybe_background_color: None,
             depth_order: depth_order,
             updated_widgets: updated_widgets,
+            prev_updated_widgets: prev_updated_widgets,
         }
     }
 
@@ -413,7 +419,15 @@ impl<C> Ui<C> {
             graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
         self.maybe_top_scrollable_widget_under_mouse =
             graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
-        self.updated_widgets.clear();
+
+
+        // Move the previous `updated_widgets` to `prev_updated_widgets` and clear
+        // `updated_widgets` so that we're ready to store the newly updated widgets.
+        {
+            let Ui { ref mut updated_widgets, ref mut prev_updated_widgets, .. } = *self;
+            ::std::mem::swap(updated_widgets, prev_updated_widgets);
+            updated_widgets.clear();
+        }
 
         // Instantiate the root `Window` `Widget`.
         //
@@ -436,24 +450,8 @@ impl<C> Ui<C> {
         // Call the given user function for instantiating Widgets.
         user_widgets_fn(self);
 
-        // Reset all widgets that were not updated during the given `user_widget_fn`.
-        fn reset_non_updated_widgets(graph: &mut Graph, updated: &HashSet<NodeIndex>) -> bool {
-            (0..graph.node_count())
-                .map(|i| NodeIndex::new(i))
-                .filter(|idx| !updated.contains(idx))
-                // TODO: should also remove all **Depth** children here (need a **Depth** toposort).
-                .map(|idx| graph.reset_node(idx))
-                .count() > 0
-        }
-
-        // Reset all non-updated widgets.
-        let one_or_more_widgets_were_reset = {
-            let Ui { ref mut widget_graph, ref updated_widgets, .. } = *self;
-            reset_non_updated_widgets(widget_graph, updated_widgets)
-        };
-
-        // If one or more widgets were reset, we need to re-draw our GUI.
-        if one_or_more_widgets_were_reset {
+        // We'll need to re-draw if we have gained or lost widgets.
+        if self.updated_widgets != self.prev_updated_widgets {
             self.needs_redraw();
         }
 
@@ -469,8 +467,18 @@ impl<C> Ui<C> {
 
         // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
         {
-            let Ui { ref widget_graph, ref mut depth_order, window, .. } = *self;
-            depth_order.update(widget_graph, window, maybe_captured_mouse, maybe_captured_keyboard);
+            let Ui {
+                ref widget_graph,
+                ref mut depth_order,
+                window,
+                ref updated_widgets,
+                ..
+            } = *self;
+            depth_order.update(widget_graph,
+                               window,
+                               updated_widgets,
+                               maybe_captured_mouse,
+                               maybe_captured_keyboard);
         }
 
         // Clear text and key buffers.
@@ -537,7 +545,7 @@ impl<C> Ui<C> {
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
-            *redraw_count = *redraw_count - 1;
+            *redraw_count -= 1;
         }
     }
 
@@ -560,10 +568,9 @@ impl<C> Ui<C> {
         where G: Graphics,
               C: CharacterCache<Texture=G::Texture>,
     {
-        self.draw(context, graphics);
-        // if self.redraw_count > 0 {
-        //     self.draw(context, graphics);
-        // }
+        if self.redraw_count > 0 {
+            self.draw(context, graphics);
+        }
     }
 
 
