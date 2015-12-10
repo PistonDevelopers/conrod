@@ -350,112 +350,12 @@ impl<'a> Widget for Tabs<'a> {
             Canvas::new()
                 .with_style(style.canvas)
                 .kid_area_dim_of(idx)
-                .floating(false)
                 .middle_of(idx)
                 .parent(Some(idx))
                 .set(child_id, &mut ui);
         }
 
     }
-
-    // /// Construct an Element from the given Button State.
-    // fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-    //     use elmesque::form::{self, collage, text};
-    //     use elmesque::text::Text;
-
-    //     let widget::DrawArgs { rect, state, style, theme, .. } = args;
-    //     let State {
-    //         ref tabs,
-    //         ref interaction,
-    //         maybe_selected_tab_idx,
-    //         tab_bar_dim,
-    //         tab_bar_rel_xy,
-    //         ..
-    //     } = *state;
-
-    //     let (xy, dim) = rect.xy_dim();
-    //     let frame = style.canvas.frame(theme);
-    //     let inner_dim = ::vecmath::vec2_sub(dim, [frame * 2.0; 2]);
-    //     let color = style.canvas.color(theme);
-    //     let frame_color = style.canvas.frame_color(theme);
-    //     let frame_form = form::rect(dim[0], dim[1]).filled(frame_color);
-    //     let rect_form = form::rect(inner_dim[0], inner_dim[1]).filled(color);
-    //     let font_size = style.font_size(theme);
-    //     let label_color = style.label_color(theme);
-    //     let layout = style.layout(theme);
-    //     let maybe_highlighted_idx = match *interaction {
-    //         Interaction::Highlighted(Elem::Tab(idx)) => Some(idx),
-    //         _                                        => None,
-    //     };
-    //     let maybe_clicked_idx = match *interaction {
-    //         Interaction::Clicked(Elem::Tab(idx)) => Some(idx),
-    //         _                                    => None,
-    //     };
-
-    //     let base_forms = Some(frame_form).into_iter().chain(Some(rect_form));
-
-    //     // Only draw the tab bar if we actually have some tabs.
-    //     if !tabs.is_empty() {
-    //         let num_tabs = tabs.len();
-    //         let width_multi = 1.0 / num_tabs as f64;
-
-    //         // Function for producing the rectangular tab forms.
-    //         let rect_form = |dim: Dimensions, color: Color| form::rect(dim[0], dim[1]).filled(color);
-
-    //         // Produces the label form for a tab.
-    //         let label_form = |label: &str| text(Text::from_string(label.to_owned())
-    //                                             .color(label_color)
-    //                                             .height(font_size as f64));
-
-    //         // Produces the correct color for the tab at the given `i`.
-    //         let color = |i: usize|
-    //             if      Some(i) == maybe_selected_tab_idx { color.clicked() }
-    //             else if Some(i) == maybe_clicked_idx { color.clicked() }
-    //             else if Some(i) == maybe_highlighted_idx { color.highlighted() }
-    //             else { color };
-
-    //         match layout {
-    //             Layout::Horizontal => {
-    //                 let tab_dim = [width_multi * tab_bar_dim[0], tab_bar_dim[1]];
-    //                 let inner_tab_dim = ::vecmath::vec2_sub(tab_dim, [frame * 2.0; 2]);
-    //                 let start_tab_x = -dim[0] / 2.0 + tab_dim[0] / 2.0;
-    //                 let tab_bar_forms = tabs.iter().enumerate().flat_map(|(i, &(_, ref label))| {
-    //                     let tab_x = start_tab_x + i as f64 * tab_dim[0];
-    //                     let tab_xy = [tab_x, tab_bar_rel_xy[1]];
-    //                     Some(rect_form(tab_dim, frame_color)).into_iter()
-    //                         .chain(Some(rect_form(inner_tab_dim, color(i))))
-    //                         .chain(Some(label_form(label)))
-    //                         .map(move |form| form.shift(tab_xy[0], tab_xy[1]))
-    //                 });
-    //                 let form_chain = base_forms.chain(tab_bar_forms)
-    //                     .map(move |form| form.shift(xy[0], xy[1]));
-    //                 collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    //             },
-
-    //             Layout::Vertical => {
-    //                 let tab_dim = [tab_bar_dim[0], width_multi * tab_bar_dim[1]];
-    //                 let inner_tab_dim = ::vecmath::vec2_sub(tab_dim, [frame * 2.0; 2]);
-    //                 let start_tab_y = dim[1] / 2.0 - tab_dim[1] / 2.0;
-    //                 let tab_bar_forms = tabs.iter().enumerate().flat_map(|(i, &(_, ref label))| {
-    //                     let tab_y = start_tab_y - i as f64 * tab_dim[1];
-    //                     let tab_xy = [tab_bar_rel_xy[0], tab_y];
-    //                     Some(rect_form(tab_dim, frame_color)).into_iter()
-    //                         .chain(Some(rect_form(inner_tab_dim, color(i))))
-    //                         .chain(Some(label_form(label)))
-    //                         .map(move |form| form.shift(tab_xy[0], tab_xy[1]))
-    //                 });
-    //                 let form_chain = base_forms.chain(tab_bar_forms)
-    //                     .map(move |form| form.shift(xy[0], xy[1]));
-    //                 collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    //             },
-    //         }
-    //     }
-    //     // Otherwise, just draw the base forms.
-    //     else {
-    //         let form_chain = base_forms.map(|form| form.shift(xy[0], xy[1]));
-    //         collage(dim[0] as i32, dim[1] as i32, form_chain.collect())
-    //     }
-    // }
 
 }
 
