@@ -154,60 +154,6 @@ impl<I> PointPath<I> {
 }
 
 
-// impl Style {
-// 
-//     /// Constructor for a default **PointPath** Style.
-//     pub fn new() -> Self {
-//         Style {
-//             maybe_kind: None,
-//         }
-//     }
-// 
-//     /// Constructor for a specific kind of **PointPath** Style.
-//     pub fn from_kind(kind: StyleKind) -> Self {
-//         Style {
-//             maybe_kind: Some(kind),
-//         }
-//     }
-// 
-//     /// Construct a **PointPath** drawn as the lines between the points.
-//     pub fn lines() -> Self {
-//         Style::lines_styled(Style::new())
-//     }
-// 
-//     /// Construct a **PointPath** with only the points drawn.
-//     pub fn points() -> Self {
-//         Style::from_kind(StyleKind::Points)
-//     }
-// 
-//     /// Construct a **PointPath** with both lines and points drawn.
-//     pub fn lines_and_points() -> Self {
-//         Style::from_kind(StyleKind::Both(Style::new()))
-//     }
-// 
-//     /// Same as [**Style::lines**](./struct.Style#method.lines) but with the given style.
-//     pub fn lines_styled(style: Style) -> Self {
-//         Style::from_kind(StyleKind::Lines(style))
-//     }
-// 
-//     /// Set the kind of styling for the **PointPath**.
-//     pub fn set_kind(&mut self, kind: StyleKind) {
-//         self.maybe_kind = Some(kind);
-//     }
-// 
-//     /// Get the kind of styling for the **PointPath** Style.
-//     pub fn get_kind(&self, theme: &Theme) -> StyleKind {
-//         fn default_kind() -> StyleKind {
-//             StyleKind::Lines(super::line::Style::new())
-//         }
-//         self.maybe_kind.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-//             default.style.maybe_kind.unwrap_or_else(default_kind)
-//         })).unwrap_or_else(default_kind)
-//     }
-// 
-// }
-
-
 impl<I> Widget for PointPath<I>
     where I: IntoIterator<Item=Point>,
 {
