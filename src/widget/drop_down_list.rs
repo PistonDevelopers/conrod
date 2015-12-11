@@ -251,13 +251,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     }).unwrap_or(max)
                 };
                 let canvas_dim = [dim[0], max_visible_height];
-                let canvas_shift_y = ::position::align_top_of(dim[1], canvas_dim[1]);
+                let canvas_shift_y = dim[1] / 2.0 - canvas_dim[1] / 2.0;
                 let canvas_xy = [xy[0], xy[1] + canvas_shift_y];
                 let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
                 Rectangle::fill([dim[0], max_visible_height])
                     .graphics_for(idx)
-                    //.frame_color(::color::black().alpha(0.0))
-                    //.dim([dim[0], max_visible_height])
                     .color(::color::black().alpha(0.0))
                     .xy(canvas_xy)
                     .parent(Some(idx))

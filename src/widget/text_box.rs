@@ -22,7 +22,6 @@ use {
     Ui,
 };
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
-use position;
 use vecmath::vec2_sub;
 use widget::{self, KidArea};
 
@@ -404,7 +403,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let font_size = style.font_size(ui.theme());
         let pad_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let text_w = ui.glyph_cache().width(font_size, &self.text);
-        let text_x = position::align_left_of(pad_dim[0], text_w) + TEXT_PADDING;
+        let text_x = text_w / 2.0 - pad_dim[0] / 2.0 + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_control_pressed = state.view().control_pressed;
         let mut new_interaction = match (self.enabled, maybe_mouse) {

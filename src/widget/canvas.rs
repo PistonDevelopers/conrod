@@ -301,7 +301,7 @@ impl<'a> Widget for Canvas<'a> {
 /// size for the title bar.
 fn title_bar_h_rel_y(canvas_h: Scalar, font_size: FontSize) -> (Scalar, Scalar) {
     let h = title_bar::calc_height(font_size);
-    let rel_y = position::align_top_of(canvas_h, h);
+    let rel_y = canvas_h / 2.0 - h / 2.0;
     (h, rel_y)
 }
 

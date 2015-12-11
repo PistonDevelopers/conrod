@@ -70,9 +70,6 @@ pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
-pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
-pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
-                   mid_top_of, mid_bottom_of, mid_left_of, mid_right_of};
 pub use position::{Align, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin, Padding,
                    Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use position::Matrix as PositionMatrix;
