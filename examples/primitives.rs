@@ -27,7 +27,7 @@ fn main() {
     };
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(set_ui));
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));

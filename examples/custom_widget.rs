@@ -428,7 +428,7 @@ mod circular_button {
 }
 
 fn main() {
-    use piston_window::{Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
+    use piston_window::{EventLoop, Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use conrod::{Colorable, Labelable, Positionable, Sizeable, Widget};
     use circular_button::CircularButton;
 
@@ -452,7 +452,7 @@ fn main() {
         conrod::Ui::new(glyph_cache, conrod::Theme::default())
     };
 
-    for e in window {
+    for e in window.ups(60) {
         // Pass each `Event` to the `Ui`.
         ui.handle_event(e.event.as_ref().unwrap());
 

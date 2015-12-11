@@ -5,7 +5,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Theme, Widget};
-use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 type Ui = conrod::Ui<Glyphs>;
 
@@ -28,7 +28,7 @@ fn main() {
     };
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(set_ui));
         event.draw_2d(|c, g| ui.draw(c, g));

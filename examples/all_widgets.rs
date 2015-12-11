@@ -36,7 +36,7 @@ use conrod::{
     XYPad,
 };
 use conrod::color::{self, rgb, white, black, red, green, blue, purple};
-use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 
 type Ui = conrod::Ui<Glyphs>;
@@ -141,7 +141,7 @@ fn main() {
     let mut app = DemoApp::new();
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
 
         // We'll set all our widgets in a single function called `set_widgets`.

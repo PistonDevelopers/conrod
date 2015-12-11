@@ -3,7 +3,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Labelable, Positionable, Sizeable, Theme, Ui, Widget};
-use piston_window::{Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 fn main() {
 
@@ -24,7 +24,7 @@ fn main() {
     let mut count = 0;
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(|ui| {
 
