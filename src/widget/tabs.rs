@@ -282,11 +282,6 @@ impl<'a> Widget for Tabs<'a> {
                 let num_tabs = state.tabs.len();
                 let num_new_tabs = tabs.len();
 
-                // Ensure our stored `tabs` Vec is no longer than the number of tabs given.
-                if num_tabs < num_new_tabs {
-                    state.tabs.truncate(num_new_tabs);
-                }
-
                 // Ensure the `widget::Id`s are in the same order as the given tabs slice.
                 for (tab, &(id, _)) in state.tabs.iter_mut().zip(tabs.iter()) {
                     tab.id = id;
