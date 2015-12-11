@@ -79,7 +79,6 @@ pub struct Ui<C> {
     redraw_count: u8,
     /// A background color to clear the screen with before drawing if one was given.
     maybe_background_color: Option<Color>,
-
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
     /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
@@ -474,6 +473,7 @@ impl<C> Ui<C> {
                 ref updated_widgets,
                 ..
             } = *self;
+
             depth_order.update(widget_graph,
                                window,
                                updated_widgets,
@@ -772,7 +772,12 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
-    ui.widget_graph.pre_update_cache(ui.window, widget);
+    let widget_idx = widget.idx;
+    ui.widget_graph.pre_update_cache(ui.window, widget, ui.updated_widgets.len());
+
+    // Add the widget's `NodeIndex` to the set of updated widgets.
+    let node_idx = ui.widget_graph.node_index(widget_idx).expect("No NodeIndex");
+    ui.updated_widgets.insert(node_idx);
 }
 
 /// Cache some `PostUpdateCache` widget data into the widget graph.
@@ -786,12 +791,7 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
-    let widget_idx = widget.idx;
     ui.widget_graph.post_update_cache(widget);
-
-    // Add the widget's `NodeIndex` to the set of updated widgets.
-    let node_idx = ui.widget_graph.node_index(widget_idx).expect("No NodeIndex");
-    ui.updated_widgets.insert(node_idx);
 }
 
 

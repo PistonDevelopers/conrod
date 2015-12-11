@@ -85,6 +85,11 @@ pub struct Container {
     pub maybe_scrolling: Option<widget::scroll::State>,
     /// Whether or not the widget is included when picking widgets by position.
     pub picking_passthrough: bool,
+    /// Represents the Widget's position within the overall instantiation ordering of the widgets.
+    ///
+    /// i.e. if foo's `instantiation_order_idx` is lower than bar's, it means that foo was
+    /// instantiated before bar.
+    pub instantiation_order_idx: usize,
 }
 
 /// A node for use within the **Graph**.
@@ -637,7 +642,11 @@ impl Graph {
     /// This is done so that if this Widget were to internally `set` some other `Widget`s within
     /// its own `update` method, this `Widget`s positioning and dimension data already exists
     /// within the `Graph` for reference.
-    pub fn pre_update_cache(&mut self, root: NodeIndex, widget: widget::PreUpdateCache) {
+    pub fn pre_update_cache(&mut self,
+                            root: NodeIndex,
+                            widget: widget::PreUpdateCache,
+                            instantiation_order_idx: usize)
+    {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
             drag_state, maybe_floating, maybe_scrolling, picking_passthrough, maybe_graphics_for,
@@ -654,6 +663,7 @@ impl Graph {
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_scrolling,
             picking_passthrough: picking_passthrough,
+            instantiation_order_idx: instantiation_order_idx,
         };
 
         // Retrieves the widget's parent index.
@@ -718,6 +728,7 @@ impl Graph {
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
                     container.maybe_scrolling = maybe_scrolling;
+                    container.instantiation_order_idx = instantiation_order_idx;
                 },
 
             }
@@ -728,7 +739,6 @@ impl Graph {
         // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
         // Graph.
         } else if let Some(widget_id) = self.widget_id(idx) {
-            println!("Adding node for {:?}", widget_id);
             let node_idx = self.add_node(Node::Widget(new_container()));
             self.index_map.insert(widget_id, node_idx);
             if let Some(parent_idx) = maybe_parent_idx(self) {

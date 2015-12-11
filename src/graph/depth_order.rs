@@ -151,10 +151,14 @@ fn visit_by_depth(graph: &Graph,
     child_sorter.reverse();
     child_sorter.sort_by(|&a, &b| {
         use std::cmp::Ordering;
+
         if Some(a) == maybe_captured_mouse || Some(a) == maybe_captured_keyboard {
             Ordering::Greater
         } else if let (&Node::Widget(ref a), &Node::Widget(ref b)) = (&graph[a], &graph[b]) {
-            b.depth.partial_cmp(&a.depth).expect("Depth was NaN!")
+            match b.depth.partial_cmp(&a.depth).expect("Depth was NaN!") {
+                Ordering::Equal => a.instantiation_order_idx.cmp(&b.instantiation_order_idx),
+                ordering => ordering,
+            }
         } else {
             Ordering::Equal
         }
