@@ -341,7 +341,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         Rectangle::fill(slider_rect.dim())
             .xy_relative_to(idx, slider_xy_offset)
             .graphics_for(idx)
-            .parent(Some(idx))
+            .parent(idx)
             .color(color)
             .set(slider_idx, &mut ui);
 

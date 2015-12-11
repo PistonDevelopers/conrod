@@ -423,7 +423,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
                 .graphics_for(idx)
                 .color(label_color)
                 .font_size(font_size)
-                .parent(Some(idx))
+                .parent(idx)
                 .set(label_idx, &mut ui);
         }
 
@@ -472,7 +472,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
                     .x_y_relative_to(idx, rel_slot_x, 0.0)
                     .graphics_for(idx)
                     .color(slot_color)
-                    .parent(Some(rectangle_idx))
+                    .parent(rectangle_idx)
                     .set(slot.rectangle_idx, &mut ui);
             }
 
@@ -483,7 +483,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
                 .color(label_color)
                 .font_size(font_size)
                 .align_text_middle()
-                .parent(Some(idx))
+                .parent(idx)
                 .set(slot.text_idx, &mut ui);
 
             rel_slot_x += slot_w;

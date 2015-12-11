@@ -355,7 +355,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)
             .color(line_color)
             .graphics_for(idx)
-            .parent(Some(idx))
+            .parent(idx)
             .font_size(value_font_size)
             .set(value_label_idx, &mut ui);
     }

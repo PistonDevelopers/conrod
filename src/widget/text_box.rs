@@ -591,7 +591,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
                 Line::centred(start, end)
                     .x_relative_to(idx, cursor_x)
                     .graphics_for(idx)
-                    .parent(Some(idx))
+                    .parent(idx)
                     .color(text_color)
                     .set(cursor_idx, &mut ui);
             } else {
@@ -609,7 +609,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
                     .x_relative_to(idx, rel_x)
                     .color(text_color.highlighted().alpha(0.25))
                     .graphics_for(idx)
-                    .parent(Some(idx))
+                    .parent(idx)
                     .set(highlight_idx, &mut ui);
             }
         }

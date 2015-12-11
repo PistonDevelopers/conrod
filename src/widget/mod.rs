@@ -429,14 +429,14 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
 ///
 /// Methods that can be optionally overridden:
 /// - picking_passthrough
-/// - default_position
+/// - default_x_position
+/// - default_y_position
 /// - default_width
 /// - default_height
-/// - default_h_align
-/// - default_v_align
 ///
 /// Methods that should not be overridden:
 /// - parent
+/// - no_parent
 /// - set
 pub trait Widget: Sized {
     /// State to be stored within the `Ui`s widget cache.
@@ -573,12 +573,16 @@ pub trait Widget: Sized {
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
+    ///
     /// This will attach this Widget to the parent widget.
-    fn parent<I: Into<Index>>(mut self, maybe_parent_idx: Option<I>) -> Self {
-        self.common_mut().maybe_parent_idx = match maybe_parent_idx {
-            None => MaybeParent::None,
-            Some(idx) => MaybeParent::Some(idx.into()),
-        };
+    fn parent<I: Into<Index>>(mut self, parent_idx: I) -> Self {
+        self.common_mut().maybe_parent_idx = MaybeParent::Some(parent_idx.into());
+        self
+    }
+
+    /// Specify that this widget has no parent widgets.
+    fn no_parent(mut self) -> Self {
+        self.common_mut().maybe_parent_idx = MaybeParent::None;
         self
     }
 

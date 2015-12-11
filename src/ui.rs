@@ -436,7 +436,7 @@ impl<C> Ui<C> {
             use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
             type Window = FramedRectangle;
             Window::new([self.win_w, self.win_h])
-                .parent(None::<widget::Index>)
+                .no_parent()
                 .x_y(0.0, 0.0)
                 .frame(0.0)
                 .frame_color(color::black().alpha(0.0))

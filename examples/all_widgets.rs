@@ -187,7 +187,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         .x_y(title_x, title_y)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
-        .parent(Some(CANVAS))
+        .parent(CANVAS)
         .set(TITLE, ui);
 
     if app.show_button {

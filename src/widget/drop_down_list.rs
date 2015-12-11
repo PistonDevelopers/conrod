@@ -223,7 +223,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                         .xy(rect.xy())
                         .dim(rect.dim())
                         .label(label)
-                        .parent(Some(idx))
+                        .parent(idx)
                         .react(|| was_clicked = true);
                     let is_selected = false;
                     button.style = style.button_style(is_selected);
@@ -258,7 +258,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     .graphics_for(idx)
                     .color(::color::black().alpha(0.0))
                     .xy(canvas_xy)
-                    .parent(Some(idx))
+                    .parent(idx)
                     .floating(true)
                     .vertical_scrolling(true)
                     .set(canvas_idx, &mut ui);
@@ -272,7 +272,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     let mut button = Button::new()
                         .dim(dim)
                         .label(label)
-                        .parent(Some(canvas_idx))
+                        .parent(canvas_idx)
                         .xy(button_xy)
                         .react(|| was_clicked = Some(i));
                     button.style = style.button_style(Some(i) == selected);

@@ -197,8 +197,8 @@ impl<'a> Split<'a> {
             let mut canvas = canvas::Canvas::new();
             canvas.style = style.clone();
             match maybe_parent {
-                Some(parent_id) => canvas.parent(Some(parent_id)),
-                None            => canvas.parent(None::<widget::Id>),
+                Some(parent_id) => canvas.parent(parent_id),
+                None            => canvas.no_parent(),
             }.xy(xy)
                 .dim(dim)
                 .vertical_scrolling(is_v_scrollable)

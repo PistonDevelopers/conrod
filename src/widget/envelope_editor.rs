@@ -639,7 +639,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .dim(inner_rect.dim())
                 .xy(inner_rect.xy())
                 .graphics_for(idx)
-                .parent(Some(idx))
+                .parent(idx)
                 .color(line_color)
                 .thickness(thickness)
                 .set(point_path_idx, &mut ui);
@@ -667,7 +667,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .color(point_color)
                 .x_y(x, y)
                 .graphics_for(idx)
-                .parent(Some(idx))
+                .parent(idx)
                 .set(point_idx, &mut ui);
         }
 
@@ -696,7 +696,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .y_direction_from(closest_point_idx, y_direction, VALUE_TEXT_PAD)
                 .color(line_color)
                 .graphics_for(idx)
-                .parent(Some(idx))
+                .parent(idx)
                 .font_size(value_font_size)
                 .set(value_label_idx, &mut ui);
         }

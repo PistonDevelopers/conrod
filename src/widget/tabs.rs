@@ -324,7 +324,7 @@ impl<'a> Widget for Tabs<'a> {
                     .frame_color(frame_color)
                     .label(label)
                     .label_color(label_color)
-                    .parent(Some(idx))
+                    .parent(idx)
                     .react(|| maybe_selected_tab_idx = Some(i))
                     .set(tab.button_idx, &mut ui);
 
@@ -346,7 +346,7 @@ impl<'a> Widget for Tabs<'a> {
                 .with_style(style.canvas)
                 .kid_area_dim_of(idx)
                 .middle_of(idx)
-                .parent(Some(idx))
+                .parent(idx)
                 .set(child_id, &mut ui);
         }
 
