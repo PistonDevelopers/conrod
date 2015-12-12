@@ -145,10 +145,6 @@ fn visit_by_depth(graph: &Graph,
     // node (perhaps in the `Container`).
     let mut child_sorter: Vec<NodeIndex> = graph.depth_children(idx).iter(&graph).nodes().collect();
 
-    // Walking neighbors of a node in our graph returns then in the reverse order in which they
-    // were added. Reversing here will give more predictable render order behaviour i.e. widgets
-    // instantiated after other widgets will also be rendered after them by default.
-    child_sorter.reverse();
     child_sorter.sort_by(|&a, &b| {
         use std::cmp::Ordering;
 
