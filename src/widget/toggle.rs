@@ -1,19 +1,32 @@
 
-use color::{Color, Colorable};
-use elmesque::Element;
-use frame::Frameable;
-use graphics::character::CharacterCache;
-use graphics::math::Scalar;
-use label::{FontSize, Labelable};
-use mouse::Mouse;
-use theme::Theme;
-use ui::GlyphCache;
-use widget::{self, Widget};
+use {
+    CharacterCache,
+    Color,
+    Colorable,
+    Dimension,
+    FontSize,
+    Frameable,
+    FramedRectangle,
+    IndexSlot,
+    Labelable,
+    Mouse,
+    Positionable,
+    Scalar,
+    Text,
+    Theme,
+    Ui,
+    Widget,
+};
+use widget;
 
 
-/// A pressable widget for toggling the state of a bool. Like the button widget, it's reaction is
-/// triggered upon release and will return the new bool state. Note that the toggle will not
-/// mutate the bool for you, you should do this yourself within the react closure.
+/// A pressable widget for toggling the state of a bool.
+///
+/// Like the Button widget, it's reaction is triggered upon release and will return the new bool
+/// state.
+///
+/// Note that the Toggle will not mutate the bool for you, you should do this yourself within the
+/// react function.
 pub struct Toggle<'a, F> {
     common: widget::CommonBuilder,
     value: bool,
@@ -23,16 +36,23 @@ pub struct Toggle<'a, F> {
     enabled: bool,
 }
 
-/// Styling for the Toggle, necessary for constructing its renderable Element.
-#[allow(missing_docs, missing_copy_implementations)]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+/// Styling for the Toggle including coloring, framing and labelling.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
+    /// Color of the Toggle's pressable area.
     pub maybe_color: Option<Color>,
+    /// The width of the rectangular frame surrounding the Toggle.
     pub maybe_frame: Option<Scalar>,
+    /// The color of the Toggle's frame.
     pub maybe_frame_color: Option<Color>,
+    /// The color of the Toggle's Text label.
     pub maybe_label_color: Option<Color>,
+    /// The font size for the Toggle's Text label.
     pub maybe_label_font_size: Option<u32>,
 }
+
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "Toggle";
 
 /// The way in which the Toggle is being interacted with.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,14 +67,15 @@ pub enum Interaction {
 pub struct State {
     value: bool,
     interaction: Interaction,
-    maybe_label: Option<String>,
+    rectangle_idx: IndexSlot,
+    label_idx: IndexSlot,
 }
 
 
-impl State {
+impl Interaction {
     /// Alter the widget color depending on the state.
     fn color(&self, color: Color) -> Color {
-        match self.interaction {
+        match *self {
             Interaction::Normal => color,
             Interaction::Highlighted => color.highlighted(),
             Interaction::Clicked => color.clicked(),
@@ -107,43 +128,53 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
-impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
+impl<'a, F> Widget for Toggle<'a, F>
+    where F: FnOnce(bool),
+{
     type State = State;
     type Style = Style;
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "Toggle" }
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State {
             value: self.value,
             interaction: Interaction::Normal,
-            maybe_label: None,
+            rectangle_idx: IndexSlot::new(),
+            label_idx: IndexSlot::new(),
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 64.0;
-        theme.maybe_toggle.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 64.0;
-        theme.maybe_toggle.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
     /// Update the state of the Toggle.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
-        let widget::UpdateArgs { state, rect, mut ui, .. } = args;
-
+    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let Toggle { value, enabled, maybe_label, maybe_react, .. } = self;
         let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
-        let new_interaction = match (self.enabled, maybe_mouse) {
+        let new_interaction = match (enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Normal,
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
@@ -162,64 +193,56 @@ impl<'a, F> Widget for Toggle<'a, F> where F: FnMut(bool), {
         // React and determine the new value.
         let new_value = match (state.view().interaction, new_interaction) {
             (Interaction::Clicked, Interaction::Highlighted) => {
-                let new_value = !self.value;
-                if let Some(ref mut react) = self.maybe_react { react(!self.value) }
+                let new_value = !value;
+                if let Some(react) = maybe_react {
+                    react(new_value)
+                }
                 new_value
             },
-            _ => self.value,
+            _ => value,
         };
 
+        // FramedRectangle widget.
+        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let dim = rect.dim();
+        let frame = style.frame(ui.theme());
+        let color = {
+            let color = style.color(ui.theme());
+            let color = if new_value { color } else { color.with_luminance(0.1) };
+            new_interaction.color(color)
+        };
+        let frame_color = style.frame_color(ui.theme());
+        FramedRectangle::new(dim)
+            .middle_of(idx)
+            .graphics_for(idx)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
+            .set(rectangle_idx, &mut ui);
+
+        // Label widget.
+        if let Some(label) = maybe_label {
+            let label_idx = state.view().label_idx.get(&mut ui);
+            let color = style.label_color(ui.theme());
+            let font_size = style.label_font_size(ui.theme());
+            Text::new(label)
+                .middle_of(rectangle_idx)
+                .graphics_for(idx)
+                .color(color)
+                .font_size(font_size)
+                .set(label_idx, &mut ui);
+        }
+
+        // If there has been a change in interaction, set the new one.
         if state.view().interaction != new_interaction {
             state.update(|state| state.interaction = new_interaction);
         }
 
+        // If the value has changed, update our state.
         if state.view().value != new_value {
             state.update(|state| state.value = new_value);
         }
-
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-            state.update(|state| {
-                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-            })
-        }
     }
-
-    /// Construct an Element from the given Toggle State.
-    fn draw<C: CharacterCache>(args: widget::DrawArgs<Self, C>) -> Element {
-        use elmesque::form::{self, collage, text};
-
-        let widget::DrawArgs { rect, state, style, theme, .. } = args;
-
-        // Construct the frame and pressable forms.
-        let (x, y, w, h) = rect.x_y_w_h();
-        let frame = style.frame(theme);
-        let frame_color = style.frame_color(theme);
-        let (inner_w, inner_h) = (w - frame * 2.0, h - frame * 2.0);
-        let frame_form = form::rect(w, h).filled(frame_color);
-        let color = style.color(theme);
-        let color = state.color(if state.value { color }
-                                    else { color.with_luminance(0.1) });
-        let pressable_form = form::rect(inner_w, inner_h).filled(color);
-
-        // Construct the label's Form.
-        let maybe_label_form = state.maybe_label.as_ref().map(|label_text| {
-            use elmesque::text::Text;
-            let label_color = style.label_color(theme);
-            let font_size = style.label_font_size(theme) as f64;
-            text(Text::from_string(label_text.clone()).color(label_color).height(font_size))
-                .shift(x.floor(), y.floor())
-        });
-
-        // Chain the Forms and shift them into position.
-        let form_chain = Some(frame_form).into_iter()
-            .chain(Some(pressable_form).into_iter())
-            .map(|form| form.shift(x, y))
-            .chain(maybe_label_form.into_iter());
-
-        // Collect the Forms into a renderable Element.
-        collage(w as i32, h as i32, form_chain.collect())
-    }
-
 }
 
 
@@ -238,35 +261,35 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_toggle.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }

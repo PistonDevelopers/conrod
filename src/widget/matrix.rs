@@ -1,5 +1,5 @@
 
-use ::{CharacterCache, GlyphCache, NodeIndex, Scalar, Theme};
+use ::{CharacterCache, Dimension, NodeIndex, Scalar, Theme, Ui};
 use widget::{self, Widget};
 
 
@@ -34,7 +34,7 @@ pub struct State {
 }
 
 /// Unique styling for the `Matrix`.
-#[derive(Copy, Clone, Debug, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The width of the padding for each matrix element's "cell".
     maybe_cell_pad_w: Option<Scalar>,
@@ -42,6 +42,8 @@ pub struct Style {
     maybe_cell_pad_h: Option<Scalar>,
 }
 
+/// Unique kind for the widget.
+pub const KIND: &'static str = "WidgetMatrix";
 
 impl<F> Matrix<F> {
 
@@ -83,26 +85,32 @@ impl<'a, F, W> Widget for Matrix<F> where
     type State = State;
     type Style = Style;
 
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "Matrix" }
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State { indices: Vec::new() }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        theme.maybe_matrix.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 64.0;
-        theme.maybe_matrix.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
     }
 
     /// Update the state of the Matrix.
@@ -164,7 +172,7 @@ impl<'a, F, W> Widget for Matrix<F> where
                         let widget_idx = indices[col][row];
                         each_widget(widget_num, col, row)
                             .dim([w, h])
-                            .relative_to(idx, [rel_x, rel_y])
+                            .x_y_relative_to(idx, rel_x, rel_y)
                             .set(widget_idx, &mut ui);
                         widget_num += 1;
                     }
@@ -175,12 +183,6 @@ impl<'a, F, W> Widget for Matrix<F> where
         if let Some(new_indices) = maybe_new_indices {
             state.update(|state| state.indices = new_indices);
         }
-    }
-
-    /// Construct an Element from the given DropDownList State.
-    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> ::Element {
-        // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
-        ::elmesque::element::empty()
     }
 
 }
@@ -199,7 +201,7 @@ impl Style {
     /// Get the width of the padding for each matrix element's cell.
     pub fn cell_pad_w(&self, theme: &Theme) -> Scalar {
         const DEFAULT_CELL_PAD_W: Scalar = 0.0;
-        self.maybe_cell_pad_w.or(theme.maybe_matrix.as_ref().map(|default| {
+        self.maybe_cell_pad_w.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_cell_pad_w.unwrap_or(DEFAULT_CELL_PAD_W)
         })).unwrap_or(DEFAULT_CELL_PAD_W)
     }
@@ -207,7 +209,7 @@ impl Style {
     /// Get the height of the padding for each matrix element's cell.
     pub fn cell_pad_h(&self, theme: &Theme) -> Scalar {
         const DEFAULT_CELL_PAD_H: Scalar = 0.0;
-        self.maybe_cell_pad_h.or(theme.maybe_matrix.as_ref().map(|default| {
+        self.maybe_cell_pad_h.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_cell_pad_h.unwrap_or(DEFAULT_CELL_PAD_H)
         })).unwrap_or(DEFAULT_CELL_PAD_H)
     }

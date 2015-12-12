@@ -1,10 +1,9 @@
 
+use {CharacterCache, Scalar};
+use backend::graphics::{Context, Graphics};
 use color::Color;
-use elmesque::Element;
-use graph::Graph;
-use graphics::{Context, Graphics};
-use graphics::character::CharacterCache;
-use label::FontSize;
+use glyph_cache::GlyphCache;
+use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use input;
 use input::{
@@ -16,8 +15,8 @@ use input::{
     RenderEvent,
     TextEvent,
 };
-use position::{Dimensions, HorizontalAlign, Padding, Point, Position, Rect, VerticalAlign};
-use std::cell::RefCell;
+use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
+use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
@@ -26,7 +25,7 @@ use widget::{self, Widget};
 /// Indicates whether or not the Mouse has been captured by a widget.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Capturing {
-    /// The Ui is captured by the Ui element with the given widget::Index.
+    /// The Ui is captured by the Widget with the given widget::Index.
     Captured(widget::Index),
     /// The Ui has just been uncaptured.
     JustReleased,
@@ -45,6 +44,8 @@ pub struct Ui<C> {
     pub theme: Theme,
     /// Cache for character textures, used for label width calculation and glyph rendering.
     pub glyph_cache: GlyphCache<C>,
+    /// An index into the root widget of the graph, representing the entire window.
+    pub window: NodeIndex,
     /// Window width.
     pub win_w: f64,
     /// Window height.
@@ -59,8 +60,6 @@ pub struct Ui<C> {
     keys_just_released: Vec<input::keyboard::Key>,
     /// Text that has been entered since the end of the last render cycle.
     text_just_entered: Vec<String>,
-    /// Tracks whether or not the previous event was a Render event.
-    prev_event_was_render: bool,
     /// The widget::Index of the widget that was last updated/set.
     maybe_prev_widget_idx: Option<widget::Index>,
     /// The widget::Index of the last widget used as a parent for another widget.
@@ -80,8 +79,15 @@ pub struct Ui<C> {
     redraw_count: u8,
     /// A background color to clear the screen with before drawing if one was given.
     maybe_background_color: Option<Color>,
-    /// The latest element returned/drawn that represents the entire widget graph.
-    maybe_element: Option<Element>,
+    /// The order in which widgets from the `widget_graph` are drawn.
+    depth_order: graph::DepthOrder,
+    /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
+    updated_widgets: HashSet<NodeIndex>,
+    /// The `updated_widgets` for the previous `set_widgets` stage.
+    ///
+    /// We use this to compare against the newly generated `updated_widgets` to see whether or not
+    /// we require re-drawing.
+    prev_updated_widgets: HashSet<NodeIndex>,
 }
 
 /// A wrapper over the current user input state.
@@ -101,30 +107,6 @@ pub struct UserInput<'a> {
     pub window_dim: Dimensions,
 }
 
-/// A wrapper over some CharacterCache, exposing it's functionality via a RefCell.
-pub struct GlyphCache<C>(RefCell<C>);
-
-
-impl<C> GlyphCache<C> where C: CharacterCache {
-    /// Return the width of a character.
-    pub fn char_width(&self, font_size: FontSize, ch: char) -> f64 {
-        self.0.borrow_mut().character(font_size, ch).width()
-    }
-    /// Return the width of the given text.
-    pub fn width(&self, font_size: FontSize, text: &str) -> f64 {
-        self.0.borrow_mut().width(font_size, text)
-    }
-}
-
-impl<C> ::std::ops::Deref for GlyphCache<C> {
-    type Target = RefCell<C>;
-    fn deref<'a>(&'a self) -> &'a RefCell<C> { &self.0 }
-}
-
-impl<C> ::std::ops::DerefMut for GlyphCache<C> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut RefCell<C> { &mut self.0 }
-}
-
 
 /// Each time conrod is required to redraw the GUI, it must draw for at least the next three frames
 /// to ensure that, in the case that graphics buffers are being swapped, we have filled each
@@ -135,18 +117,40 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 impl<C> Ui<C> {
 
 
-    /// Constructor for a UiContext.
-    pub fn new(character_cache: C, theme: Theme) -> Ui<C> {
-        const GRAPH_CAPACITY: usize = 512;
+    /// A new, empty **Ui**.
+    pub fn new(character_cache: C, theme: Theme) -> Self {
+        let widget_graph = Graph::new();
+        let depth_order = graph::DepthOrder::new();
+        let updated_widgets = HashSet::new();
+        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+    }
+
+    /// A new **Ui** with the capacity given as a number of widgets.
+    pub fn with_capacity(character_cache: C, theme: Theme, n_widgets: usize) -> Self {
+        let widget_graph = Graph::with_node_capacity(n_widgets);
+        let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
+        let updated_widgets = HashSet::with_capacity(n_widgets);
+        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+    }
+
+    /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
+    fn new_internal(character_cache: C,
+                    theme: Theme,
+                    mut widget_graph: Graph,
+                    depth_order: graph::DepthOrder,
+                    updated_widgets: HashSet<NodeIndex>) -> Self
+    {
+        let window = widget_graph.add_placeholder();
+        let prev_updated_widgets = updated_widgets.clone();
         Ui {
-            widget_graph: Graph::with_capacity(GRAPH_CAPACITY),
+            widget_graph: widget_graph,
             theme: theme,
+            window: window,
             mouse: Mouse::new(),
             keys_just_pressed: Vec::with_capacity(10),
             keys_just_released: Vec::with_capacity(10),
             text_just_entered: Vec::with_capacity(10),
-            glyph_cache: GlyphCache(RefCell::new(character_cache)),
-            prev_event_was_render: false,
+            glyph_cache: GlyphCache::new(character_cache),
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_widget_idx: None,
@@ -158,62 +162,74 @@ impl<C> Ui<C> {
             num_redraw_frames: SAFE_REDRAW_COUNT,
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
-            maybe_element: None,
+            depth_order: depth_order,
+            updated_widgets: updated_widgets,
+            prev_updated_widgets: prev_updated_widgets,
         }
     }
 
-
-    /// Return the dimensions of a widget.
-    pub fn widget_size(&self, id: widget::Id) -> Dimensions {
-        self.widget_graph[id].rect.dim()
+    /// The **Rect** for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn rect_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.widget(idx).map(|widget| widget.rect)
     }
 
+    /// The absolute width of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn width_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+        self.rect_of(idx).map(|rect| rect.w())
+    }
+
+    /// The absolute height of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn height_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+        self.rect_of(idx).map(|rect| rect.h())
+    }
+
+    /// The absolute dimensions for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn dim_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
+        self.rect_of(idx).map(|rect| rect.dim())
+    }
+
+    /// The coordinates for the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn xy_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Point> {
+        self.rect_of(idx).map(|rect| rect.xy())
+    }
+
+    /// The `kid_area` of the widget at the given index.
+    ///
+    /// Returns `None` if there is no widget for the given index.
+    pub fn kid_area_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        let idx: widget::Index = idx.into();
+        self.widget_graph.widget(idx).map(|widget| {
+            widget.kid_area.rect.padding(widget.kid_area.pad)
+        })
+    }
 
     /// An index to the previously updated widget if there is one.
     pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
         self.maybe_prev_widget_idx
     }
 
+    /// Borrow the **Ui**'s `widget_graph`.
+    pub fn widget_graph(&self) -> &Graph {
+        &self.widget_graph
+    }
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
 
-        // The `Ui` tracks various things during a frame - we'll reset those things here.
-        if self.prev_event_was_render {
-            self.prev_event_was_render = false;
-
-            // Clear text and key buffers.
-            self.keys_just_pressed.clear();
-            self.keys_just_released.clear();
-            self.text_just_entered.clear();
-
-            // Reset the mouse state.
-            self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
-            self.mouse.left.reset_pressed_and_released();
-            self.mouse.middle.reset_pressed_and_released();
-            self.mouse.right.reset_pressed_and_released();
-            self.mouse.unknown.reset_pressed_and_released();
-
-            self.maybe_prev_widget_idx = None;
-            self.maybe_current_parent_idx = None;
-
-            // If the mouse / keyboard capturing was just released by a widget, reset to None ready
-            // for capturing once again.
-            if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
-                self.maybe_captured_mouse = None;
-            }
-            if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
-                self.maybe_captured_keyboard = None;
-            }
-        }
-
         event.render(|args| {
             self.win_w = args.width as f64;
             self.win_h = args.height as f64;
-            self.prev_event_was_render = true;
-            self.maybe_widget_under_mouse = self.widget_graph.pick_widget(self.mouse.xy);
-            self.maybe_top_scrollable_widget_under_mouse =
-                self.widget_graph.pick_top_scrollable_widget(self.mouse.xy);
         });
 
         event.mouse_cursor(|x, y| {
@@ -272,106 +288,210 @@ impl<C> Ui<C> {
 
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
-    /// If getting the xy for a widget, its ID should be specified so that we can also consider the
-    /// scroll offset of the scrollable parent widgets.
-    pub fn get_xy(&self,
-                  maybe_idx: Option<widget::Index>,
-                  position: Position,
-                  dim: Dimensions,
-                  h_align: HorizontalAlign,
-                  v_align: VerticalAlign) -> Point
+    ///
+    /// If getting the xy for a specific widget, its `widget::Index` should be specified so that we
+    /// can also consider the scroll offset of the scrollable parent widgets.
+    ///
+    /// The `place_on_kid_area` argument specifies whether or not **Place** **Position** variants
+    /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
+    pub fn calc_xy(&self,
+                   maybe_idx: Option<widget::Index>,
+                   x_position: Position,
+                   y_position: Position,
+                   dim: Dimensions,
+                   place_on_kid_area: bool) -> Point
     {
         use vecmath::vec2_add;
 
-        let xy = match position {
+        // Retrieves the absolute **Scalar** position from the given position for a single axis.
+        //
+        // The axis used is specified by the given range_from_rect function which, given some
+        // **Rect**, returns the relevant **Range**.
+        fn abs_from_position<C, R, P>(ui: &Ui<C>,
+                                      position: Position,
+                                      dim: Scalar,
+                                      place_on_kid_area: bool,
+                                      range_from_rect: R,
+                                      start_and_end_pad: P) -> Scalar
+            where R: FnOnce(Rect) -> Range,
+                  P: FnOnce(Padding) -> (Scalar, Scalar),
+        {
+            match position {
 
-            Position::Absolute(x, y) => [x, y],
+                Position::Absolute(abs) => abs,
 
-            Position::Relative(x, y, maybe_idx) => match maybe_idx.or(self.maybe_prev_widget()) {
-                None => [x, y],
-                Some(idx) => vec2_add(self.widget_graph[idx].rect.xy(), [x, y]),
-            },
+                Position::Relative(rel, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| other_range.middle() + rel)
+                        .unwrap_or(rel),
 
-            Position::Direction(direction, px, maybe_idx) => {
-                match maybe_idx.or(self.maybe_prev_widget()) {
-                    None => [0.0, 0.0],
-                    Some(rel_idx) => {
-                        use position::Direction;
-                        let (rel_xy, rel_w, rel_h) = {
-                            let widget = &self.widget_graph[rel_idx];
-                            (widget.rect.xy(), widget.rect.w(), widget.rect.h())
-                        };
+                Position::Direction(direction, amt, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx)
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| {
+                            let range = Range::from_pos_and_len(0.0, dim);
+                            match direction {
+                                Direction::Forwards => range.align_after(other_range).middle() + amt,
+                                Direction::Backwards => range.align_before(other_range).middle() - amt,
+                            }
+                        })
+                        .unwrap_or_else(|| match direction {
+                            Direction::Forwards => amt,
+                            Direction::Backwards => -amt,
+                        }),
 
-                        match direction {
+                Position::Align(align, maybe_idx) =>
+                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
+                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                        .map(|other_range| {
+                            let range = Range::from_pos_and_len(0.0, dim);
+                            match align {
+                                Align::Start => range.align_start_of(other_range).middle(),
+                                Align::Middle => other_range.middle(),
+                                Align::End => range.align_end_of(other_range).middle(),
+                            }
+                        })
+                        .unwrap_or(0.0),
 
-                            // For vertical directions, we must consider horizontal alignment.
-                            Direction::Up | Direction::Down => {
-                                // Check whether or not we are aligning to a specific `Ui` element.
-                                let (other_x, other_w) = match h_align.1 {
-                                    Some(other_idx) => {
-                                        let widget = &self.widget_graph[other_idx];
-                                        (widget.rect.x(), widget.rect.w())
-                                    },
-                                    None => (rel_xy[0], rel_w),
-                                };
-                                let x = other_x + h_align.0.to(other_w, dim[0]);
-                                let y = match direction {
-                                    Direction::Up   => rel_xy[1] + rel_h / 2.0 + dim[1] / 2.0 + px,
-                                    Direction::Down => rel_xy[1] - rel_h / 2.0 - dim[1] / 2.0 - px,
-                                    _ => unreachable!(),
-                                };
-                                [x, y]
-                            },
+                Position::Place(place, maybe_idx) => {
+                    let parent_idx = maybe_idx
+                        .or(ui.maybe_current_parent_idx)
+                        .unwrap_or(ui.window.into());
+                    let maybe_area = match place_on_kid_area {
+                        true => ui.widget_graph.widget(parent_idx)
+                            .map(|w| w.kid_area)
+                            .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
+                        false => ui.rect_of(parent_idx)
+                            .map(|rect| (range_from_rect(rect), (0.0, 0.0))),
+                    };
+                    maybe_area
+                        .map(|(parent_range, (pad_start, pad_end))| {
+                            let range = Range::from_pos_and_len(0.0, dim);
+                            let parent_range = parent_range.pad_start(pad_start).pad_end(pad_end);
+                            match place {
+                                Place::Start => range.align_start_of(parent_range).middle(),
+                                Place::Middle => parent_range.middle(),
+                                Place::End => range.align_end_of(parent_range).middle(),
+                            }
+                        })
+                        .unwrap_or(0.0)
+                },
 
-                            // For horizontal directions, we must consider vertical alignment.
-                            Direction::Left | Direction::Right => {
-                                // Check whether or not we are aligning to a specific `Ui` element.
-                                let (other_y, other_h) = match h_align.1 {
-                                    Some(other_idx) => {
-                                        let widget = &self.widget_graph[other_idx];
-                                        (widget.rect.y(), widget.rect.h())
-                                    },
-                                    None => (rel_xy[1], rel_h),
-                                };
-                                let y = other_y + v_align.0.to(other_h, dim[1]);
-                                let x = match direction {
-                                    Direction::Left  => rel_xy[0] - rel_w / 2.0 - dim[0] / 2.0 - px,
-                                    Direction::Right => rel_xy[0] + rel_w / 2.0 + dim[0] / 2.0 + px,
-                                    _ => unreachable!(),
-                                };
-                                [x, y]
-                            },
+            }
+        }
 
-                        }
-                    },
-                }
-            },
-
-            Position::Place(place, maybe_parent_idx) => {
-                let window = || (([0.0, 0.0], [self.win_w, self.win_h]), Padding::none());
-                let maybe_parent = maybe_parent_idx.or(self.maybe_current_parent_idx);
-                let ((target_xy, target_dim), pad) = match maybe_parent {
-                    Some(parent_idx) => match self.widget_graph.get_widget(parent_idx) {
-                        Some(parent) =>
-                            (parent.kid_area.rect.xy_dim(), parent.kid_area.pad),
-                        // Sometimes the children are placed prior to their parents being set for
-                        // the first time. If this is the case, we'll just place them on the window
-                        // until we have information about the parents on the next update.
-                        None => window(),
-                    },
-                    None => window(),
-                };
-                let place_xy = place.within(target_dim, dim);
-                let relative_xy = vec2_add(place_xy, pad.offset_from(place));
-                vec2_add(target_xy, relative_xy)
-            },
-
-        };
+        fn x_range(rect: Rect) -> Range { rect.x }
+        fn y_range(rect: Rect) -> Range { rect.y }
+        fn x_pad(pad: Padding) -> (Scalar, Scalar) { (pad.left, pad.right) }
+        fn y_pad(pad: Padding) -> (Scalar, Scalar) { (pad.bottom, pad.top) }
+        let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
+        let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
+        let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
         maybe_idx
-            .map(|idx| vec2_add(xy, self.widget_graph.scroll_offset(idx)))
+            .map(|idx| vec2_add(xy, graph::algo::scroll_offset(&self.widget_graph, idx)))
             .unwrap_or(xy)
+    }
+
+
+    /// A function within which all widgets are instantiated by the user, normally situated within
+    /// the "update" stage of an event loop.
+    pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
+        where C: CharacterCache,
+              F: FnOnce(&mut Self),
+    {
+        self.maybe_prev_widget_idx = None;
+        self.maybe_current_parent_idx = None;
+
+        // If the mouse / keyboard capturing was just released by a widget, reset to None ready
+        // for capturing once again.
+        if let Some(Capturing::JustReleased) = self.maybe_captured_mouse {
+            self.maybe_captured_mouse = None;
+        }
+        if let Some(Capturing::JustReleased) = self.maybe_captured_keyboard {
+            self.maybe_captured_keyboard = None;
+        }
+
+        self.maybe_widget_under_mouse =
+            graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+        self.maybe_top_scrollable_widget_under_mouse =
+            graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+
+
+        // Move the previous `updated_widgets` to `prev_updated_widgets` and clear
+        // `updated_widgets` so that we're ready to store the newly updated widgets.
+        {
+            let Ui { ref mut updated_widgets, ref mut prev_updated_widgets, .. } = *self;
+            ::std::mem::swap(updated_widgets, prev_updated_widgets);
+            updated_widgets.clear();
+        }
+
+        // Instantiate the root `Window` `Widget`.
+        //
+        // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
+        // upon which all other widgets are placed.
+        {
+            use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
+            type Window = FramedRectangle;
+            Window::new([self.win_w, self.win_h])
+                .no_parent()
+                .x_y(0.0, 0.0)
+                .frame(0.0)
+                .frame_color(color::black().alpha(0.0))
+                .color(self.maybe_background_color.unwrap_or(color::black().alpha(0.0)))
+                .set(self.window, self);
+        }
+
+        self.maybe_current_parent_idx = Some(self.window.into());
+
+        // Call the given user function for instantiating Widgets.
+        user_widgets_fn(self);
+
+        // We'll need to re-draw if we have gained or lost widgets.
+        if self.updated_widgets != self.prev_updated_widgets {
+            self.needs_redraw();
+        }
+
+        // Update the graph's internal depth_order while considering the captured input.
+        let maybe_captured_mouse = match self.maybe_captured_mouse {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+        let maybe_captured_keyboard = match self.maybe_captured_keyboard {
+            Some(Capturing::Captured(id)) => Some(id),
+            _                             => None,
+        };
+
+        // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
+        {
+            let Ui {
+                ref widget_graph,
+                ref mut depth_order,
+                window,
+                ref updated_widgets,
+                ..
+            } = *self;
+
+            depth_order.update(widget_graph,
+                               window,
+                               updated_widgets,
+                               maybe_captured_mouse,
+                               maybe_captured_keyboard);
+        }
+
+        // Clear text and key buffers.
+        self.keys_just_pressed.clear();
+        self.keys_just_released.clear();
+        self.text_just_entered.clear();
+
+        // Reset the mouse state.
+        self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
+        self.mouse.left.reset_pressed_and_released();
+        self.mouse.middle.reset_pressed_and_released();
+        self.mouse.right.reset_pressed_and_released();
+        self.mouse.unknown.reset_pressed_and_released();
     }
 
 
@@ -390,161 +510,51 @@ impl<C> Ui<C> {
     }
 
 
-    /// Helper method for logic shared between draw() and element().
-    /// Returns (maybe_captured_mouse, maybe_captured_keyboard).
-    fn captures_for_draw(&self) -> (Option<widget::Index>, Option<widget::Index>) {
-        let maybe_captured_mouse = match self.maybe_captured_mouse {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-        let maybe_captured_keyboard = match self.maybe_captured_keyboard {
-            Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
-        };
-        (maybe_captured_mouse, maybe_captured_keyboard)
-    }
-
-
-    /// Compiles the `Ui`'s entire widget `Graph` in its current state into a single
-    /// `elmesque::Element` and returns a reference to it.
-    ///
-    /// This allows a user to take all information necessary for drawing within a single type,
-    /// which can be sent across threads or used to draw later on rather than drawing the whole
-    /// graph immediately (as does the `Ui::draw` method).
-    ///
-    /// Producing an `Element` also allows for simpler interoperation with `elmesque` (a purely
-    /// functional graphics layout crate which conrod uses internally).
-    pub fn element(&mut self) -> &Element {
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
-        let Ui {
-            ref mut widget_graph,
-            ref mut maybe_background_color,
-            ref mut maybe_element,
-            ..
-        } = *self;
-
-        let maybe_bg_color = maybe_background_color.take();
-
-        // A function to simplify combining an element with the given background color.
-        let with_background_color = |element: Element| -> Element {
-            match maybe_bg_color {
-                Some(color) => element.clear(color),
-                None => element,
-            }
-        };
-
-        // Check to see whether or not there is a new element to be stored.
-        match widget_graph.element_if_changed(maybe_captured_mouse, maybe_captured_keyboard) {
-
-            // If there's been some change in element, we'll store the new one and return a
-            // reference to it.
-            Some(new_element) => {
-                *maybe_element = Some(with_background_color(new_element));
-                maybe_element.as_ref().unwrap()
-            },
-
-            // Otherwise, we'll check to see if we have a pre-stored one that we can return a
-            // reference to.
-            None => match maybe_element {
-
-                // If we do have some stored element, we'll clone that.
-                &mut Some(ref element) => element,
-
-                // Otherwise this must be the first time an `element` is requested so we'll
-                // request a new `Element` from our widget graph.
-                maybe_element @ &mut None => {
-
-                    let element = widget_graph
-                        .element(maybe_captured_mouse, maybe_captured_keyboard);
-
-                    // Store the new `Element` (along with it's background color).
-                    *maybe_element = Some(with_background_color(element));
-
-                    // We can unwrap here as we *know* that we have `Some` element.
-                    maybe_element.as_ref().unwrap()
-                },
-            },
-        }
-    }
-
-
-    /// Same as `Ui::element`, but only returns an `&Element` if the stored `&Element` has changed
-    /// since the last time `Ui::element` or `Ui::element_if_changed` was called.
-    pub fn element_if_changed(&mut self) -> Option<&Element> {
-        // The graph needs to consider captured widgets when calculating the render depth order.
-        let (maybe_captured_mouse, maybe_captured_keyboard) = self.captures_for_draw();
-
-        let Ui {
-            ref mut widget_graph,
-            ref mut maybe_background_color,
-            ref mut maybe_element,
-            ..
-        } = *self;
-
-        // Request a new `Element` from the graph if there has been some change.
-        widget_graph
-            .element_if_changed(maybe_captured_mouse, maybe_captured_keyboard)
-            .map(move |element| {
-                let element = match maybe_background_color.take() {
-                    // If we've been given a background color for the gui, construct a Cleared Element.
-                    Some(color) => element.clear(color),
-                    None => element
-                };
-                // If we have a new `Element` we'll update our stored `Element`.
-                *maybe_element = Some(element.clone());
-                maybe_element.as_ref().unwrap()
-            })
-    }
-
-
     /// Draw the `Ui` in it's current state.
+    ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    /// See the `Graph::draw` method for more details on how Widgets are drawn.
-    /// See the `graph::update_visit_order` function for details on how the render order is
-    /// determined.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where
-            C: CharacterCache,
-            G: Graphics<Texture = C::Texture>,
+        where G: Graphics,
+              C: CharacterCache<Texture=G::Texture>,
     {
-        use elmesque::Renderer;
-        use std::ops::DerefMut;
-
-        // Ensure that `maybe_element` is `Some(element)` with the latest `Element`.
-        self.element();
+        use backend::graphics::{draw_from_graph, Transformed};
+        use std::ops::{Deref, DerefMut};
 
         let Ui {
             ref mut glyph_cache,
             ref mut redraw_count,
-            ref maybe_element,
+            ref widget_graph,
+            ref depth_order,
+            ref theme,
             ..
         } = *self;
 
-        // We know that `maybe_element` is `Some` due to calling `self.element` above, thus we can
-        // safely unwrap our reference to it to use for drawing.
-        let element = maybe_element.as_ref().unwrap();
+        let view_size = context.get_view_size();
+        let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
-        // Construct the elmesque Renderer for rendering the Elements.
-        let mut ref_mut_character_cache = glyph_cache.0.borrow_mut();
+        // Retrieve the `CharacterCache` from the `Ui`'s `GlyphCache`.
+        let mut ref_mut_character_cache = glyph_cache.deref().borrow_mut();
         let character_cache = ref_mut_character_cache.deref_mut();
-        let mut renderer = Renderer::new(context, graphics).character_cache(character_cache);
 
-        // Renderer the `Element` to the screen.
-        element.draw(&mut renderer);
+        // Use the depth_order indices as the order for drawing.
+        let indices = &depth_order.indices;
 
-        // Because we're about to draw everything, take one from the redraw count.
+        // Draw the `Ui` from the `widget_graph`.
+        draw_from_graph(context, graphics, character_cache, widget_graph, indices, theme);
+
+        // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
-            *redraw_count = *redraw_count - 1;
+            *redraw_count -= 1;
         }
     }
 
 
     /// Same as the `Ui::draw` method, but *only* draws if the `redraw_count` is greater than 0.
-    /// The `redraw_count` is set to `SAFE_REDRAW_COUNT` whenever a `Widget` produces a new
-    /// `Element` because its state has changed.
+    ///
+    /// The `redraw_count` is set to `SAFE_REDRAW_COUNT` whenever a `Widget` indicates that it
+    /// needs to be re-drawn.
+    ///
     /// It can also be triggered manually by the user using the `Ui::needs_redraw` method.
     ///
     /// This method is generally preferred over `Ui::draw` as it requires far less CPU usage, only
@@ -555,13 +565,9 @@ impl<C> Ui<C> {
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
     pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where
-            C: CharacterCache,
-            G: Graphics<Texture = C::Texture>,
+        where G: Graphics,
+              C: CharacterCache<Texture=G::Texture>,
     {
-        if self.widget_graph.have_any_elements_changed() {
-            self.redraw_count = self.num_redraw_frames;
-        }
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
@@ -571,7 +577,7 @@ impl<C> Ui<C> {
     /// The **Rect** that bounds the kids of the widget with the given index.
     pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.kids_bounding_box(idx)
+        graph::algo::bounding_box(&self.widget_graph, false, None, true, idx, None)
     }
 
 
@@ -581,7 +587,7 @@ impl<C> Ui<C> {
     /// Otherwise, return None if the widget is not visible.
     pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.visible_area(idx)
+        graph::algo::visible_area_of_widget(&self.widget_graph, idx)
     }
 
 }
@@ -594,25 +600,21 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 
 
 /// Check the given position for an attached parent widget.
-pub fn parent_from_position<C>(ui: &Ui<C>, position: Position) -> Option<widget::Index> {
-    match position {
-        Position::Relative(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.parent_of(idx),
-            None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.parent_of(idx),
-                None     => ui.maybe_current_parent_idx,
-            },
-        },
-        Position::Direction(_, _, maybe_idx) => match maybe_idx {
-            Some(idx) => ui.widget_graph.parent_of(idx),
-            None     => match ui.maybe_prev_widget_idx {
-                Some(idx) => ui.widget_graph.parent_of(idx),
-                None     => ui.maybe_current_parent_idx,
-            },
-        },
-        Position::Place(_, maybe_parent_idx) => maybe_parent_idx.or(ui.maybe_current_parent_idx),
-        _ => ui.maybe_current_parent_idx,
-    }
+pub fn parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
+    -> Option<widget::Index>
+{
+    use Position::{Place, Relative, Direction, Align};
+    let maybe_parent = match (x_pos, y_pos) {
+        (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
+            maybe_parent_idx,
+        (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
+        (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        |
+        (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     =>
+            maybe_idx.or(ui.maybe_prev_widget_idx)
+                .and_then(|idx| ui.widget_graph.depth_parent(idx)),
+        _ => None,
+    };
+    maybe_parent.or(ui.maybe_current_parent_idx)
 }
 
 
@@ -770,7 +772,12 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
-    ui.widget_graph.pre_update_cache(widget);
+    let widget_idx = widget.idx;
+    ui.widget_graph.pre_update_cache(ui.window, widget, ui.updated_widgets.len());
+
+    // Add the widget's `NodeIndex` to the set of updated widgets.
+    let node_idx = ui.widget_graph.node_index(widget_idx).expect("No NodeIndex");
+    ui.updated_widgets.insert(node_idx);
 }
 
 /// Cache some `PostUpdateCache` widget data into the widget graph.
@@ -792,5 +799,4 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-
 

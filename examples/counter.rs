@@ -2,18 +2,18 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Colorable, Labelable, Sizeable, Theme, Ui, Widget};
-use piston_window::*;
+use conrod::{Labelable, Positionable, Sizeable, Theme, Ui, Widget};
+use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 fn main() {
 
     // Construct the window.
-    let window: PistonWindow = WindowSettings::new("Click me!", [200, 100])
+    let window: PistonWindow = WindowSettings::new("Click me!", [200, 200])
         .exit_on_esc(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
+        let assets = find_folder::Search::KidsThenParents(3, 5)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
@@ -24,27 +24,25 @@ fn main() {
     let mut count = 0;
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| {
-
-            // Set the background color to use for clearing the screen.
-            conrod::Background::new().rgb(0.2, 0.25, 0.4).set(&mut ui);
+        event.update(|_| ui.set_widgets(|ui| {
 
             // Generate the ID for the Button COUNTER.
-            widget_ids!(COUNTER);
+            widget_ids!(CANVAS, COUNTER);
+
+            // Create a background canvas upon which we'll place the button.
+            conrod::Split::new(CANVAS).pad(40.0).set(ui);
 
             // Draw the button and increment `count` if pressed.
             conrod::Button::new()
-                .color(conrod::color::red())
+                .middle_of(CANVAS)
                 .dimensions(80.0, 80.0)
                 .label(&count.to_string())
                 .react(|| count += 1)
-                .set(COUNTER, &mut ui);
-
-            // Draw our Ui!
-            ui.draw_if_changed(c, g);
-        });
+                .set(COUNTER, ui);
+        }));
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
 }

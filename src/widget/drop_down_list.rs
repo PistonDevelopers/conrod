@@ -2,21 +2,22 @@
 use ::{
     Button,
     ButtonStyle,
-    Canvas,
     CharacterCache,
     Color,
     Colorable,
-    Element,
+    Dimension,
     FontSize,
     Frameable,
-    GlyphCache,
+    IndexSlot,
     Labelable,
     NodeIndex,
     Positionable,
     Rect,
+    Rectangle,
     Scalar,
     Sizeable,
     Theme,
+    Ui,
 };
 use widget::{self, Widget};
 
@@ -40,7 +41,7 @@ pub struct DropDownList<'a, F> {
 
 /// Styling for the DropDownList, necessary for constructing its renderable Element.
 #[allow(missing_copy_implementations)]
-#[derive(PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Style {
     /// Color of the widget.
     pub maybe_color: Option<Color>,
@@ -60,14 +61,16 @@ pub struct Style {
 #[derive(PartialEq, Clone, Debug)]
 pub struct State {
     menu_state: MenuState,
-    maybe_label: Option<String>,
     buttons: Vec<(NodeIndex, String)>,
     maybe_selected: Option<Idx>,
-    maybe_canvas_idx: Option<NodeIndex>,
+    canvas_idx: IndexSlot,
 }
 
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "DropDownList";
+
 /// Representations of the max height of the visible area of the DropDownList.
-#[derive(PartialEq, Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum MaxHeight {
     Items(usize),
     Scalar(f64),
@@ -129,32 +132,38 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 {
     type State = State;
     type Style = Style;
-    fn common(&self) -> &widget::CommonBuilder { &self.common }
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder { &mut self.common }
-    fn unique_kind(&self) -> &'static str { "DropDownList" }
+
+    fn common(&self) -> &widget::CommonBuilder {
+        &self.common
+    }
+
+    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
+        &mut self.common
+    }
+
+    fn unique_kind(&self) -> &'static str {
+        KIND
+    }
+
     fn init_state(&self) -> State {
         State {
             menu_state: MenuState::Closed,
             buttons: Vec::new(),
-            maybe_label: None,
             maybe_selected: None,
-            maybe_canvas_idx: None,
+            canvas_idx: IndexSlot::new(),
         }
     }
-    fn style(&self) -> Style { self.style.clone() }
 
-    fn default_width<C: CharacterCache>(&self, theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        const DEFAULT_WIDTH: Scalar = 128.0;
-        theme.maybe_drop_down_list.as_ref().map(|default| {
-            default.common.maybe_width.unwrap_or(DEFAULT_WIDTH)
-        }).unwrap_or(DEFAULT_WIDTH)
+    fn style(&self) -> Style {
+        self.style.clone()
     }
 
-    fn default_height(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_HEIGHT: Scalar = 32.0;
-        theme.maybe_drop_down_list.as_ref().map(|default| {
-            default.common.maybe_height.unwrap_or(DEFAULT_HEIGHT)
-        }).unwrap_or(DEFAULT_HEIGHT)
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
+    }
+
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(32.0))
     }
 
     /// Update the state of the DropDownList.
@@ -168,8 +177,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
-        let canvas_idx = state.view().maybe_canvas_idx
-            .unwrap_or_else(|| ui.new_unique_node_index());
+        let canvas_idx = state.view().canvas_idx.get(&mut ui);
 
         // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
@@ -212,10 +220,10 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let mut was_clicked = false;
                 {
                     let mut button = Button::new()
-                        .point(rect.xy())
+                        .xy(rect.xy())
                         .dim(rect.dim())
                         .label(label)
-                        .parent(Some(idx))
+                        .parent(idx)
                         .react(|| was_clicked = true);
                     let is_selected = false;
                     button.style = style.button_style(is_selected);
@@ -243,15 +251,14 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     }).unwrap_or(max)
                 };
                 let canvas_dim = [dim[0], max_visible_height];
-                let canvas_shift_y = ::position::align_top_of(dim[1], canvas_dim[1]);
+                let canvas_shift_y = dim[1] / 2.0 - canvas_dim[1] / 2.0;
                 let canvas_xy = [xy[0], xy[1] + canvas_shift_y];
                 let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
-                Canvas::new()
+                Rectangle::fill([dim[0], max_visible_height])
+                    .graphics_for(idx)
                     .color(::color::black().alpha(0.0))
-                    .frame_color(::color::black().alpha(0.0))
-                    .dim([dim[0], max_visible_height])
-                    .point(canvas_xy)
-                    .parent(Some(idx))
+                    .xy(canvas_xy)
+                    .parent(idx)
                     .floating(true)
                     .vertical_scrolling(true)
                     .set(canvas_idx, &mut ui);
@@ -265,8 +272,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     let mut button = Button::new()
                         .dim(dim)
                         .label(label)
-                        .parent(Some(canvas_idx))
-                        .point(button_xy)
+                        .parent(canvas_idx)
+                        .xy(button_xy)
                         .react(|| was_clicked = Some(i));
                     button.style = style.button_style(Some(i) == selected);
                     button.set(button_node_idx, &mut ui);
@@ -305,21 +312,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             state.update(|state| state.maybe_selected = *self.selected);
         }
 
-        if state.view().maybe_canvas_idx != Some(canvas_idx) {
-            state.update(|state| state.maybe_canvas_idx = Some(canvas_idx));
-        }
-
-        if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-            state.update(|state| {
-                state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-            });
-        }
-    }
-
-    /// Construct an Element from the given DropDownList State.
-    fn draw<C: CharacterCache>(_args: widget::DrawArgs<Self, C>) -> Element {
-        // We don't need to draw anything, as DropDownList is entirely composed of other widgets.
-        ::elmesque::element::empty()
+        // if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
+        //     state.update(|state| {
+        //         state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
+        //     });
+        // }
     }
 
 }
@@ -341,45 +338,44 @@ impl Style {
 
     /// Get the Color for an Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame.unwrap_or(theme.frame_width)
         })).unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_frame_color.unwrap_or(theme.frame_color)
         })).unwrap_or(theme.frame_color)
     }
 
     /// Get the label Color for an Element.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_color.unwrap_or(theme.label_color)
         })).unwrap_or(theme.label_color)
     }
 
     /// Get the label font size for an Element.
     pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.maybe_drop_down_list.as_ref().map(|default| {
+        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
             default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
         })).unwrap_or(theme.font_size_medium)
     }
 
     /// Get the maximum visible height of the DropDownList.
     pub fn max_visible_height(&self, theme: &Theme) -> Option<MaxHeight> {
-        if let Some(height) = self.maybe_max_visible_height { Some(height) }
-        else if let Some(Some(height)) = theme.maybe_drop_down_list.as_ref()
-            .map(|default| default.style.maybe_max_visible_height) { Some(height) }
-        else { None }
+        self.maybe_max_visible_height.map(|h| Some(h)).or_else(|| {
+            theme.widget_style::<Self>(KIND).map(|default| default.style.maybe_max_visible_height)
+        }).unwrap_or(None)
     }
 
     /// Style for a `Button` given this `Style`'s current state.

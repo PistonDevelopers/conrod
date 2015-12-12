@@ -2,16 +2,21 @@
 //! Types and functionality related to the scrolling behaviour of widgets.
 //!
 
-use {Element, Scalar};
-use color::Color;
-use mouse::Mouse;
-use position::{Dimensions, Point, Range, Rect};
-use theme::Theme;
+use {
+    Color,
+    Dimensions,
+    Mouse,
+    Point,
+    Range,
+    Rect,
+    Scalar,
+    Theme,
+};
 use utils::{map_range, partial_max};
 
 
 /// A type for building a scrollbar widget.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Scrolling {
     /// Is there horizontal scrolling.
     pub horizontal: bool,
@@ -41,7 +46,7 @@ pub struct State {
 
 
 /// Style for the Scrolling.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
     pub maybe_thickness: Option<Scalar>,
@@ -123,7 +128,7 @@ impl Style {
         })).unwrap_or(DEFAULT_THICKNESS)
     }
 
-    /// Get the Color for an Element.
+    /// Get the **Color** for the scrollbar.
     pub fn color(&self, theme: &Theme) -> Color {
         self.maybe_color.or(theme.maybe_scrollbar.as_ref().map(|style| {
             style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())
@@ -135,7 +140,7 @@ impl Style {
 
 impl Interaction {
     /// The stateful version of the given color.
-    fn color(&self, color: Color) -> Color {
+    pub fn color(&self, color: Color) -> Color {
         match *self {
             Interaction::Normal => color,
             Interaction::Highlighted(_) => color.highlighted(),
@@ -230,54 +235,6 @@ impl State {
         [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
     }
 
-    /// Produce a graphical element for the current scroll State.
-    pub fn element(&self) -> Element {
-        use elmesque::element::{empty, layers};
-        use elmesque::form::{collage, rect};
-
-        // Get the color via the current interaction.
-        let color = self.color;
-        let track_color = color.alpha(0.2);
-        let thickness = self.thickness;
-        let visible = self.visible;
-
-        // An element for a scroll Bar.
-        let bar_element = |bar: Bar, track: Rect, handle: Rect| -> Element {
-            // We only want to see the scrollbar if it's highlighted or clicked.
-            if let Interaction::Normal = bar.interaction {
-                return empty();
-            }
-            let color = bar.interaction.color(color);
-            let track_form = rect(track.w(), track.h()).filled(track_color)
-                .shift(track.x(), track.y());
-            let handle_form = rect(handle.w(), handle.h()).filled(color)
-                .shift(handle.x(), handle.y());
-            collage(visible.w() as i32, visible.h() as i32, vec![track_form, handle_form])
-        };
-
-        // The element for a vertical scroll Bar.
-        let vertical = |bar: Bar| -> Element {
-            let track = vertical_track(visible, thickness);
-            let handle = vertical_handle(&bar, track, self.total_dim[1]);
-            bar_element(bar, track, handle)
-        };
-
-        // An element for a horizontal scroll Bar.
-        let horizontal = |bar: Bar| -> Element {
-            let track = horizontal_track(visible, thickness);
-            let handle = horizontal_handle(&bar, track, self.total_dim[0]);
-            bar_element(bar, track, handle)
-        };
-
-        // Whether we draw horizontal or vertical or both depends on our state.
-        match (self.maybe_vertical, self.maybe_horizontal) {
-            (Some(v_bar), Some(h_bar)) => layers(vec![horizontal(h_bar), vertical(v_bar)]),
-            (Some(bar), None) => vertical(bar),
-            (None, Some(bar)) => horizontal(bar),
-            (None, None) => empty(),
-        }
-    }
-
 }
 
 
@@ -301,7 +258,7 @@ impl Bar {
         let total = visible.max_directed(kids_at_origin);
 
         // The range that describes the area upon which the start of the visible range can scroll.
-        let scrollable = Range::new(total.start .. total.end - visible.magnitude());
+        let scrollable = Range::new(total.start, total.end - visible.magnitude());
 
         // We only need to calculate offsets if we actually have some scrollable area.
         if scrollable.magnitude().is_normal() && scrollable.direction() == kids.direction() {
@@ -445,7 +402,7 @@ impl Bar {
 
 
 /// The area for a vertical scrollbar track as its dimensions and position.
-fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
+pub fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
     let w = thickness;
     let x = container.x() + container.w() / 2.0 - w / 2.0;
     Rect {
@@ -455,7 +412,7 @@ fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
 }
 
 /// The area for a vertical scrollbar handle as its dimensions and position.
-fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+pub fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
     let offset = partial_max(bar.start_overlap - bar.offset, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_h = track.h();
@@ -468,7 +425,7 @@ fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
 }
 
 /// The area for a horizontal scrollbar track as its dimensions and position.
-fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
+pub fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
     let h = thickness;
     let y = container.y() - container.h() / 2.0 + h / 2.0;
     Rect {
@@ -478,7 +435,7 @@ fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
 }
 
 /// The area for a horizontal scrollbar handle as its dimensions and position.
-fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
+pub fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
     let offset = partial_max(bar.offset - bar.start_overlap, 0.0);
     let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
     let track_w = track.w();
@@ -580,8 +537,8 @@ pub fn uncapture_mouse(prev: &State, new: &State) -> bool {
 #[test]
 fn test_bar_new_no_scroll() {
     // Create a `Bar` that shouldn't scroll.
-    let visible = Range::new(-5.0..5.0);
-    let kids = Range::new(-3.0..3.0);
+    let visible = Range::new(-5.0, 5.0);
+    let kids = Range::new(-3.0, 3.0);
     let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
     assert_eq!(maybe_bar, None);
 }
@@ -589,8 +546,8 @@ fn test_bar_new_no_scroll() {
 #[test]
 fn test_bar_new_no_scroll_rev_range() {
     // Now with a reversed range.
-    let visible = Range::new(5.0..-5.0);
-    let kids = Range::new(3.0..-3.0);
+    let visible = Range::new(5.0, -5.0);
+    let kids = Range::new(3.0, -3.0);
     let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
     assert_eq!(maybe_bar, None);
 }

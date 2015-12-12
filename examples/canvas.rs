@@ -8,16 +8,17 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Canvas, Theme, Widget};
-use piston_window::*;
+use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 type Ui = conrod::Ui<Glyphs>;
+
 
 fn main() {
 
     // Construct the window.
     let window: PistonWindow =
         WindowSettings::new("Canvas Demo", [800, 600])
-            .exit_on_esc(true).build().unwrap();
+            .exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
@@ -30,18 +31,19 @@ fn main() {
     };
 
     // Poll events from the window.
-    for event in window {
+    for event in window.ups(60) {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| draw_ui(&mut ui, c, g));
+        event.update(|_| ui.set_widgets(set_widgets));
+        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
 }
 
 
 // Draw the Ui.
-fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
+fn set_widgets(ui: &mut Ui) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
-    use conrod::{Button, Colorable, Label, Labelable, Positionable, Sizeable, Split, Tabs,
+    use conrod::{Button, Colorable, Labelable, Positionable, Sizeable, Split, Tabs, Text,
                  WidgetMatrix};
 
     // Construct our Canvas tree.
@@ -56,18 +58,18 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     ]).set(ui);
 
     Canvas::new()
-        .show_title_bar(true)
+        .title_bar("Blue")
         .floating(true)
-        .label("Blue")
+        .dimensions(110.0, 150.0)
         .middle_of(LEFT_COLUMN)
         .color(blue())
         .label_color(white())
         .set(FLOATING_A, ui);
 
     Canvas::new()
-        .show_title_bar(true)
+        .title_bar("Orange")
         .floating(true)
-        .label("Orange")
+        .dimensions(110.0, 150.0)
         .middle_of(RIGHT_COLUMN)
         .color(light_orange())
         .label_color(white())
@@ -76,30 +78,30 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Tabs::new(&[(TAB_FOO, "FOO"),
                 (TAB_BAR, "BAR"),
                 (TAB_BAZ, "BAZ")])
-        .dim(ui.widget_size(MIDDLE_COLUMN))
+        .dim_of(MIDDLE_COLUMN)
         .color(blue())
         .label_color(white())
         .middle_of(MIDDLE_COLUMN)
         .set(TABS, ui);
 
-    Label::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
-    Label::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
+    Text::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
+    Text::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
 
-    Label::new("Top Left")
+    Text::new("Top Left")
         .color(light_orange().complement())
         .top_left_of(LEFT_COLUMN)
         .set(TOP_LEFT, ui);
 
-    Label::new("Bottom Right")
+    Text::new("Bottom Right")
         .color(dark_orange().complement())
         .bottom_right_of(RIGHT_COLUMN)
         .set(BOTTOM_RIGHT, ui);
 
-    Label::new("Foo!").color(white()).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
-    Label::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
-    Label::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
+    Text::new("Foo!").color(white()).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
+    Text::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
+    Text::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
-    let footer_dim = ui.widget_size(FOOTER);
+    let footer_dim = ui.dim_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
         .dimensions(footer_dim[0], footer_dim[1] * 2.0)
         .mid_top_of(FOOTER)
@@ -116,8 +118,6 @@ fn draw_ui(ui: &mut Ui, c: Context, g: &mut G2d) {
     Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_B)
         .react(|| println!("Bong!"))
         .set(BONG, ui);
-
-    ui.draw_if_changed(c, g);
 }
 
 

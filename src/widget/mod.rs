@@ -1,13 +1,11 @@
-
-use ::{CharacterCache, Scalar};
-use time::precise_time_ns;
-use elmesque::Element;
+use {CharacterCache, Dimension, GlyphCache};
 use graph::NodeIndex;
-use position::{Depth, Dimensions, Direction, Padding, Position, Positionable, Rect, Sizeable,
-               HorizontalAlign, VerticalAlign};
+use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
-use theme::Theme;
-use ui::{self, GlyphCache, Ui, UserInput};
+use std::fmt::Debug;
+use theme::{self, Theme};
+use time::precise_time_ns;
+use ui::{self, Ui, UserInput};
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -17,18 +15,21 @@ mod id;
 mod index;
 pub mod scroll;
 
-// Widget Modules.
+// Primitive widget modules.
+pub mod primitive;
+
+// Widget modules.
 pub mod button;
 pub mod canvas;
 pub mod drop_down_list;
 pub mod envelope_editor;
-pub mod label;
 pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
 pub mod split;
 pub mod tabs;
 pub mod text_box;
+pub mod title_bar;
 pub mod toggle;
 pub mod xy_pad;
 
@@ -49,8 +50,8 @@ pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     /// We wrap mutation in a method so that we can keep track of whether or not the unique state
     /// has been updated.
     ///
-    /// If **State::update** is called, we assume that there has been some mutation and in turn will
-    /// produce a new **Element** for the **Widget**. Thus, it is recommended that you *only* call
+    /// If **State::update** is called, we assume that there has been some mutation and in turn
+    /// will require re-drawing the **Widget**. Thus, it is recommended that you *only* call
     /// **State::update** if you need to update the unique state in some way.
     pub state: &'a mut State<'b, W::State>,
     /// The rectangle describing the **Widget**'s area.
@@ -59,8 +60,8 @@ pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     pub style: &'a W::Style,
     /// Restricted access to the `Ui`.
     ///
-    /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.
-    /// Also allows calling `Widget::set` within the `Widget::update` method.
+    /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.  Also allows
+    /// calling `Widget::set` within the `Widget::update` method.
     pub ui: UiCell<'a, C>,
 }
 
@@ -85,24 +86,16 @@ pub struct UiCell<'a, C: 'a> {
     idx: Index,
 }
 
-/// Arguments for the **Widget::draw** method in a struct to simplify the method signature.
-pub struct DrawArgs<'a, W, C: 'a> where W: Widget {
-    /// The current state of the Widget.
-    pub state: &'a W::State,
-    /// The current style of the Widget.
-    pub style: &'a W::Style,
-    /// The active **Theme** within the **Ui**.
-    pub theme: &'a Theme,
-    /// The **Ui**'s **GlyphCache** (for determining text width).
-    pub glyph_cache: &'a GlyphCache<C>,
-    /// The **Widget**'s z-axis position relative to its sibling widgets.
-    pub depth: Depth,
-    /// The rectangle describing the **Widget**'s area.
-    pub rect: Rect,
-    /// The current state of the dragged **Widget**, if it is draggable.
-    pub drag_state: drag::State,
-    /// Floating state for the widget if it is floating.
-    pub maybe_floating: Option<Floating>,
+/// A small cache for a single unique **NodeIndex**.
+///
+/// This should be used by **Widget**s within their unique **State** for instantiating their own
+/// unique widgets.
+///
+/// This should reduce the need for users to directly call `UiCell::new_unique_node_index` and in
+/// turn reduce related mistakes (i.e. accidentally calling it and growing the graph unnecessarily).
+#[derive(Clone, Debug, PartialEq)]
+pub struct IndexSlot {
+    maybe_idx: ::std::cell::Cell<Option<NodeIndex>>,
 }
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
@@ -128,7 +121,7 @@ pub struct KidArea {
 }
 
 /// The builder argument for the **Widget**'s parent.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MaybeParent {
     /// The user specified the widget should not have any parents, so the Root will be used.
     None,
@@ -138,35 +131,86 @@ pub enum MaybeParent {
     Unspecified,
 }
 
+impl MaybeParent {
+    /// Convert the **MaybeParent** into an **Option<Index>**.
+    ///
+    /// If not given explicitly, check the positioning to retrieve the **Index** from there.
+    pub fn get<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Option<Index> {
+        match *self {
+            MaybeParent::Some(idx) => Some(idx),
+            MaybeParent::None => None,
+            MaybeParent::Unspecified => ui::parent_from_position(ui, x_pos, y_pos),
+        }
+    }
+}
+
 /// State necessary for "floating" (pop-up style) widgets.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floating {
     /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
     pub time_last_clicked: u64,
 }
 
 /// A struct containing builder data common to all **Widget** types.
-/// This type allows us to do a blanket impl of **Positionable** and **Sizeable** for `T: Widget`.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+///
+/// This type also allows us to do a blanket impl of **Positionable** and **Sizeable** for `T: Widget`.
+///
+/// When Rust gets some sort of field inheritance feature, this will most likely be refactored to
+/// take advantage of that.
+#[derive(Clone, Copy, Debug)]
 pub struct CommonBuilder {
-    /// The width of a Widget.
-    pub maybe_width: Option<Scalar>,
-    /// The height of a Widget.
-    pub maybe_height: Option<Scalar>,
-    /// The position of a Widget.
-    pub maybe_position: Option<Position>,
-    /// The horizontal alignment of a Widget.
-    pub maybe_h_align: Option<HorizontalAlign>,
-    /// The vertical alignment of a Widget.
-    pub maybe_v_align: Option<VerticalAlign>,
-    /// The rendering Depth of the Widget.
-    pub maybe_depth: Option<Depth>,
+    /// Styling and positioning data that is common between all widget types.
+    pub style: CommonStyle,
     /// The parent widget of the Widget.
     pub maybe_parent_idx: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
     /// Builder data for scrollable widgets.
     pub scrolling: scroll::Scrolling,
+    /// Whether or not the widget should be considered when picking the topmost widget at a
+    /// position.
+    ///
+    /// This also stops the widget from being included within bounding box calculations.
+    ///
+    /// This is useful to indicate whether or not the widget should block the mouse from
+    /// interacting with widgets underneath it.
+    pub picking_passthrough: bool,
+    /// Whether or not the **Widget** should be placed on the kid_area.
+    ///
+    /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
+    /// **Widget** is given a **Place** variant for its **Position**.
+    ///
+    /// If `false`, the **Widget** will be placed on the parent **Widget**'s *total* area.
+    pub place_on_kid_area: bool,
+    /// Describes whether or not the **Widget** is instantiated as a graphical element for some
+    /// other **Widget**.
+    ///
+    /// When adding an edge *a -> b* where *b* is considered to be a graphical element of *a*,
+    /// several things are implied about *b*:
+    ///
+    /// - If *b* is picked within either **Graph::pick_widget** or
+    /// **Graph::pick_top_scrollable_widget**, it will instead return the index for *a*.
+    /// - When determining the **Graph::scroll_offset** for *b*, *a*'s scrolling (if it is
+    /// scrollable, that is) will be skipped.
+    /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
+    /// default.
+    /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
+    pub maybe_graphics_for: Option<Index>,
+}
+
+/// Styling and positioning data that is common between all widget types.
+#[derive(Clone, Copy, Debug)]
+pub struct CommonStyle {
+    /// The width of a Widget.
+    pub maybe_x_dimension: Option<Dimension>,
+    /// The height of a Widget.
+    pub maybe_y_dimension: Option<Dimension>,
+    /// The position of a Widget along the *x* axis.
+    pub maybe_x_position: Option<Position>,
+    /// The position of a Widget along the *y* axis.
+    pub maybe_y_position: Option<Position>,
+    /// The rendering Depth of the Widget.
+    pub maybe_depth: Option<Depth>,
 }
 
 /// A wrapper around a **Widget**'s unique **Widget::State**.
@@ -179,8 +223,7 @@ pub struct CommonBuilder {
 ///
 /// We do this so that we can keep track of whether or not the **Widget::State** has been mutated
 /// (using an internal `has_updated` flag). This allows us to know whether or not we need to
-/// produce a new **Element** for the **Widget**, without having to compare the previous and
-/// new **Widget::State**s.
+/// re-draw the **Widget**, without having to compare the previous and new **Widget::State**s.
 #[derive(Debug)]
 pub struct State<'a, T: 'a> {
     state: &'a mut T,
@@ -221,6 +264,11 @@ pub struct Cached<W> where W: Widget {
     pub maybe_scrolling: Option<scroll::State>,
 }
 
+/// A unique identifier for a **Widget** type.
+///
+/// Note: This might be replaced with **Any::get_type_id** when it stabilises.
+pub type Kind = &'static str;
+
 /// **Widget** data to be cached prior to the **Widget::update** call in the **set_widget**
 /// function.
 ///
@@ -229,7 +277,7 @@ pub struct Cached<W> where W: Widget {
 /// reference.
 pub struct PreUpdateCache {
     /// The **Widget**'s unique kind.
-    pub kind: &'static str,
+    pub kind: Kind,
     /// The **Widget**'s unique Index.
     pub idx: Index,
     /// The **Widget**'s parent's unique index (if it has a parent).
@@ -249,6 +297,13 @@ pub struct PreUpdateCache {
     pub maybe_floating: Option<Floating>,
     /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
+    /// Indicates whether the widget blocks the mouse from interacting with widgets underneath it.
+    ///
+    /// This also stops the widget from being included within bounding box calculations.
+    pub picking_passthrough: bool,
+    /// Whether or not the **Widget** has been instantiated as a graphical element for some other
+    /// widget.
+    pub maybe_graphics_for: Option<Index>,
 }
 
 /// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
@@ -266,8 +321,6 @@ pub struct PostUpdateCache<W> where W: Widget {
     pub state: W::State,
     /// The newly produced unique **Widget::Style** associated with the **Widget**.
     pub style: W::Style,
-    /// A new **Element** to use for the **Widget** if a new one has been produced.
-    pub maybe_element: Option<Element>,
 }
 
 
@@ -289,6 +342,77 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 }
 
 
+/// The necessary bounds for a **Widget**'s associated **Style** type.
+pub trait Style: Any + Debug + PartialEq + Sized {}
+
+/// Auto-implement the **Style** trait for all applicable types.
+impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
+
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// Returns **None** if no default can be found.
+fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+          F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
+{
+    ui.theme.widget_style::<W::Style>(widget.unique_kind())
+        .and_then(f)
+        .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx)))
+        .or_else(|| {
+            let x_pos = widget.get_x_position(ui);
+            let y_pos = widget.get_y_position(ui);
+            widget.common().maybe_parent_idx.get(ui, x_pos, y_pos).map(|idx| Dimension::Of(idx))
+        })
+}
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// This is called by the default implementations of **Widget::default_x_dimension**.
+///
+/// If you wish to override **Widget::default_x_dimension**, feel free to call this function
+/// internally if you partly require the bahaviour of the default implementations.
+///
+/// Returns **None** if no default can be found.
+pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+{
+    default_dimension(widget, ui, |default| default.common.maybe_x_dimension)
+}
+
+/// Determines the default **Dimension** for a **Widget**.
+///
+/// This function checks for a default dimension in the following order.
+/// 1. Check for a default value within the **Ui**'s **Theme**.
+/// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
+/// 3. Otherwise attempts to copy the dimension of our parent widget.
+///
+/// This is called by the default implementations of **Widget::default_y_dimension**.
+///
+/// If you wish to override **Widget::default_y_dimension**, feel free to call this function
+/// internally if you partly require the bahaviour of the default implementations.
+///
+/// Returns **None** if no default can be found.
+pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+    where W: Widget,
+          C: CharacterCache,
+{
+    default_dimension(widget, ui, |default| default.common.maybe_y_dimension)
+}
+
+
 /// A trait to be implemented by all **Widget** types.
 ///
 /// A type that implements **Widget** can be thought of as a collection of arguments to the
@@ -302,28 +426,35 @@ impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
 /// - init_state
 /// - style
 /// - update
-/// - draw
 ///
 /// Methods that can be optionally overridden:
-/// - default_position
+/// - picking_passthrough
+/// - default_x_position
+/// - default_y_position
 /// - default_width
 /// - default_height
-/// - default_h_align
-/// - default_v_align
 ///
 /// Methods that should not be overridden:
 /// - parent
+/// - no_parent
 /// - set
 pub trait Widget: Sized {
-    /// State to be stored within the `Ui`s widget cache. Take advantage of this type for any large
-    /// allocations that you would like to avoid repeating between updates, or any calculations
-    /// that you'd like to avoid repeating between calls to `update` and `draw`. Conrod will never
-    /// clone the state, it will only ever be moved.
+    /// State to be stored within the `Ui`s widget cache.
+    ///
+    /// Take advantage of this type for any large allocations that you would like to avoid
+    /// repeating between updates, or any calculations that you'd like to avoid repeating between
+    /// calls to `update`.
+    ///
+    /// Conrod will never clone the state, it will only ever be moved.
     type State: Any + PartialEq + ::std::fmt::Debug;
-    /// Styling used by the widget to construct an Element. Styling is useful to have in its own
-    /// abstraction in order to making Theme serializing easier. Conrod doesn't yet support
-    /// serializing non-internal widget styling with the `Theme` type, but we hope to soon.
-    type Style: Any + PartialEq + ::std::fmt::Debug;
+    /// Styling used by the widget to draw its graphics.
+    ///
+    /// Styling is useful to have in its own abstraction in order to make `Theme` defaults
+    /// easier to retrieve.
+    ///
+    /// Conrod doesn't yet support serializing widget styling with the `Theme` type, but we hope to
+    /// soon.
+    type Style: Style;
 
     /// Return a reference to a **CommonBuilder** struct owned by the Widget.
     /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
@@ -345,7 +476,7 @@ pub trait Widget: Sized {
     ///
     /// This is used by conrod to help avoid WidgetId errors and to provide better messages for
     /// those that do occur.
-    fn unique_kind(&self) -> &'static str;
+    fn unique_kind(&self) -> Kind;
 
     /// Return the initial **State** of the Widget.
     ///
@@ -353,9 +484,10 @@ pub trait Widget: Sized {
     /// is first called.
     fn init_state(&self) -> Self::State;
 
-    /// Return the styling of the widget. The `Ui` will call this once prior to each `update`. It
-    /// does this so that it can check for differences in `Style` in case a new `Element` needs to
-    /// be constructed.
+    /// Return the styling of the widget.
+    ///
+    /// The `Ui` will call this once prior to each `update`. It does this so that it can check for
+    /// differences in `Style` in case we need to re-draw the widget.
     fn style(&self) -> Self::Style;
 
     /// Update our **Widget**'s unique **Widget::State** via the **State** wrapper type (the
@@ -363,11 +495,10 @@ pub trait Widget: Sized {
     ///
     /// Whenever [**State::update**](./struct.State.html#method.update) is called, a `has_updated`
     /// flag is set within the **State**, indicating that there has been some change to the unique
-    /// **Widget::State** and that we require re-drawing the **Widget**'s **Element** (i.e. calling
-    /// [**Widget::draw**](./trait.Widget#method.draw). As a result, widget designers should only
-    /// call **State::update** when necessary, checking whether or not the state has changed before
-    /// invoking the the method. See the custom_widget.rs example for a demonstration
-    /// of this.
+    /// **Widget::State** and that we require re-drawing the **Widget**. As a result, widget
+    /// designers should only call **State::update** when necessary, checking whether or not the
+    /// state has changed before invoking the method. See the custom_widget.rs example for a
+    /// demonstration of this.
     ///
     /// # Arguments
     /// * idx - The `Widget`'s unique index (whether `Public` or `Internal`).
@@ -381,47 +512,40 @@ pub trait Widget: Sized {
     /// docs for `UiCell` for more details.
     fn update<C: CharacterCache>(self, args: UpdateArgs<Self, C>);
 
-    /// Construct a renderable Element from the current styling and new state. This will *only* be
-    /// called on the occasion that the widget's `Style` or `State` has changed. Keep this in mind
-    /// when designing your widget's `Style` and `State` types.
+    /// The default **Position** for the widget along the *x* axis.
     ///
-    /// # Arguments
-    /// * state - The current **Widget::State** which should contain all unique state necessary for
-    /// rendering the **Widget**.
-    /// * style - The current **Widget::Style** of the **Widget**.
-    /// * theme - The currently active **Theme** within the `Ui`.
-    /// * glyph_cache - Used for determining the size of rendered text if necessary.
-    fn draw<C: CharacterCache>(args: DrawArgs<Self, C>) -> Element;
-
-    /// The default Position for the widget.
-    /// This is used when no Position is explicitly given when instantiating the Widget.
-    fn default_position(&self, _theme: &Theme) -> Position {
-        Position::Direction(Direction::Down, 20.0, None)
+    /// This is used when no **Position** is explicitly given when instantiating the Widget.
+    fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        ui.theme.widget_style::<Self::Style>(self.unique_kind())
+            .and_then(|style| style.common.maybe_x_position)
+            .unwrap_or(ui.theme.x_position)
     }
 
-    /// The default horizontal alignment for the widget.
-    /// This is used when no HorizontalAlign is explicitly given when instantiating a Widget.
-    fn default_h_align(&self, theme: &Theme) -> HorizontalAlign {
-        theme.align.horizontal
+    /// The default **Position** for the widget along the *y* axis.
+    ///
+    /// This is used when no **Position** is explicitly given when instantiating the Widget.
+    fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        ui.theme.widget_style::<Self::Style>(self.unique_kind())
+            .and_then(|style| style.common.maybe_y_position)
+            .unwrap_or(ui.theme.y_position)
     }
 
-    /// The default vertical alignment for the widget.
-    /// This is used when no VerticalAlign is explicitly given when instantiating a Widget.
-    fn default_v_align(&self, theme: &Theme) -> VerticalAlign {
-        theme.align.vertical
-    }
-
-    /// The default width of the widget.
-    /// A reference to the GlyphCache is provided in case the width should adjust to some text len.
-    /// This method is only used if no width or dimensions are given.
-    fn default_width<C: CharacterCache>(&self, _theme: &Theme, _: &GlyphCache<C>) -> Scalar {
-        0.0
+    /// The default width for the **Widget**.
+    ///
+    /// This method is only used if no height is explicitly given.
+    ///
+    /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
+    /// fallback absolute dimension of 0.0.
+    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// The default height of the widget.
-    /// This method is only used if no height or dimensions are given.
-    fn default_height(&self, _theme: &Theme) -> Scalar {
-        0.0
+    ///
+    /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
+    /// fallback absolute dimension of 0.0.
+    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
     }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
@@ -442,18 +566,70 @@ pub trait Widget: Sized {
         }
     }
 
-
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
+    // Most of them would benefit by some sort of field inheritance as they are mainly just used to
+    // set sommon data.
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
+    ///
     /// This will attach this Widget to the parent widget.
-    fn parent<I: Into<Index>>(mut self, maybe_parent_idx: Option<I>) -> Self {
-        self.common_mut().maybe_parent_idx = match maybe_parent_idx {
-            None => MaybeParent::None,
-            Some(idx) => MaybeParent::Some(idx.into()),
-        };
+    fn parent<I: Into<Index>>(mut self, parent_idx: I) -> Self {
+        self.common_mut().maybe_parent_idx = MaybeParent::Some(parent_idx.into());
+        self
+    }
+
+    /// Specify that this widget has no parent widgets.
+    fn no_parent(mut self) -> Self {
+        self.common_mut().maybe_parent_idx = MaybeParent::None;
+        self
+    }
+
+    /// Whether or not the widget should be considered when picking the topmost widget at a
+    /// position.
+    ///
+    /// This also stops the widget from being included within bounding box calculations.
+    ///
+    /// This is useful to indicate whether or not the widget should block the mouse from
+    /// interacting with widgets underneath it.
+    fn picking_passthrough(mut self, passthrough: bool) -> Self {
+        self.common_mut().picking_passthrough = passthrough;
+        self
+    }
+
+    /// Set whether or not the **Widget** should be placed on the kid_area.
+    ///
+    /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
+    /// **Widget** is given a **Place** variant for its **Position**.
+    ///
+    /// If `false`, the **Widget** will be placed on the parent **Widget**'s *total* area.
+    ///
+    /// By default, conrod will automatically determine this for you by checking whether or not the
+    /// **Widget** that our **Widget** is being placed upon returns `Some` from its
+    /// **Widget::kid_area** method.
+    fn place_on_kid_area(mut self, b: bool) -> Self {
+        self.common_mut().place_on_kid_area = b;
+        self
+    }
+
+    /// Indicates that the **Widget** is used as a non-interactive graphical element for some other
+    /// widget.
+    ///
+    /// This is useful for **Widget**s that are used to compose some other **Widget**.
+    ///
+    /// When adding an edge *a -> b* where *b* is considered to be a graphical element of *a*,
+    /// several things are implied about *b*:
+    ///
+    /// - If *b* is picked within either **Graph::pick_widget** or
+    /// **Graph::pick_top_scrollable_widget**, it will instead return the index for *a*.
+    /// - When determining the **Graph::scroll_offset** for *b*, *a*'s scrolling (if it is
+    /// scrollable, that is) will be skipped.
+    /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
+    /// default.
+    /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
+    fn graphics_for<I: Into<Index>>(mut self, idx: I) -> Self {
+        self.common_mut().maybe_graphics_for = Some(idx.into());
         self
     }
 
@@ -501,9 +677,9 @@ pub trait Widget: Sized {
     /// - The widget's previous state and style will be retrieved.
     /// - The widget's current `Style` will be retrieved (from the `Widget::style` method).
     /// - The widget's state will be updated (using the `Widget::udpate` method).
-    /// - If the widget's state or style has changed, `Widget::draw` will be called to create the
-    /// new Element for rendering.
-    /// - The new State, Style and Element (if there is one) will be cached within the `Ui`.
+    /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
+    /// needs to be re-drawn.
+    /// - The new State and Style will be cached within the `Ui`.
     fn set<I, U>(self, idx: I, ui: &mut U) where
         I: Into<Index>,
         U: UiRefMut,
@@ -549,7 +725,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             }
         };
 
-        ui::widget_graph_mut(ui).get_widget_mut(idx).and_then(check_container_kind)
+        ui::widget_graph_mut(ui).widget_mut(idx).and_then(check_container_kind)
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
@@ -586,21 +762,19 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     let new_style = widget.style();
     let depth = widget.get_depth();
-    let dim = widget.get_dimensions(&ui.theme, &ui.glyph_cache);
-    let pos = widget.get_position(&ui.theme);
+    let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
+    let x_pos = widget.get_x_position(ui);
+    let y_pos = widget.get_y_position(ui);
+    let place_on_kid_area = widget.common().place_on_kid_area;
 
     let (xy, drag_state) = {
         // A function for generating the xy coords from the given alignment and Position.
-        let gen_xy = || {
-            let (h_align, v_align) = widget.get_alignment(&ui.theme);
-            let new_xy = ui.get_xy(Some(idx), pos, dim, h_align, v_align);
-            new_xy
-        };
+        let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
 
         // Check to see if the widget is currently being dragged and return the new xy / drag.
         match maybe_prev_common {
             // If there is no previous state to compare for dragging, return an initial state.
-            None => (gen_xy(), drag::State::Normal),
+            None => (calc_xy(), drag::State::Normal),
             Some(ref prev) => {
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
@@ -609,10 +783,10 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                     // FIXME: This may cause issues in the case that a widget's draggable area
                     // is dynamic (i.e. sometimes its Some, other times its None).
                     // Specifically, if a widget is dragged somewhere and then it returns None,
-                    // it will snap back to the position produced by gen_xy. We should keep
+                    // it will snap back to the position produced by calc_xy. We should keep
                     // track of whether or not a widget `has_been_dragged` to see if we should
-                    // leave it at its previous xy or use gen_xy.
-                    None => (gen_xy(), drag::State::Normal),
+                    // leave it at its previous xy or use calc_xy.
+                    None => (calc_xy(), drag::State::Normal),
                     Some(drag_area) => match maybe_mouse {
                         // If there is some draggable area and mouse, drag the xy.
                         Some(mouse) => {
@@ -647,11 +821,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Determine the id of the canvas that the widget is attached to. If not given explicitly,
     // check the positioning to retrieve the Id from there.
-    let maybe_parent_idx = match widget.common().maybe_parent_idx {
-        MaybeParent::Some(idx) => Some(idx),
-        MaybeParent::None => None,
-        MaybeParent::Unspecified => ui::parent_from_position(ui, pos),
-    };
+    let maybe_parent_idx = widget.common().maybe_parent_idx.get(ui, x_pos, y_pos);
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
@@ -723,17 +893,24 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     }
 
     // Determine whether or not this is the first time set has been called.
-    // We'll use this to determine whether or not we need to call Widget::draw.
+    // We'll use this to determine whether or not we need to draw for the first time.
     let is_first_set = maybe_prev_common.is_none();
 
     // Update all positioning and dimension related data prior to calling `Widget::update`.
     // We do this so that if this widget were to internally `set` some other `Widget`s, this
     // `Widget`s positioning and dimension data already exists within the `Graph`.
     {
+        use Position::{Place, Relative, Direction, Align};
         // Some widget to which this widget is relatively positioned (if there is one).
-        let maybe_positioned_relatively_idx = match pos {
-            Position::Relative(_, _, maybe_idx)  |
-            Position::Direction(_, _, maybe_idx) => maybe_idx.or(maybe_prev_widget_idx),
+        //
+        // FIXME: Here we only store the first relatively positioned widget we come across, whereas
+        // we should really be storing and handling both within the graph.
+        let maybe_positioned_relatively_idx = match (x_pos, y_pos) {
+            (Place(_, maybe_idx), _)        | (_, Place(_, maybe_idx))        |
+            (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     |
+            (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
+            (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        =>
+                maybe_idx.or(maybe_prev_widget_idx),
             _ => None,
         };
 
@@ -749,6 +926,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_new_scrolling,
+            picking_passthrough: widget.common().picking_passthrough,
+            maybe_graphics_for: widget.common().maybe_graphics_for,
         });
     }
 
@@ -804,24 +983,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // We need to know if the scroll state has changed to see if we need to redraw.
     let scroll_has_changed = maybe_new_scrolling != maybe_prev_scrolling;
 
-    // We only need to redraw the `Element` if some visible part of our widget has changed.
+    // We only need to redraw if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
 
-    // If we require a redraw, we should draw a new `Element`.
-    let maybe_new_element = if requires_redraw {
-        Some(W::draw(DrawArgs {
-            state: &unique_state,
-            style: &new_style,
-            theme: &ui.theme,
-            glyph_cache: &ui.glyph_cache,
-            rect: rect,
-            depth: depth,
-            drag_state: drag_state,
-            maybe_floating: maybe_floating,
-        }))
-    } else {
-        None
-    };
+    // If we require a redraw, we should notify the `Ui`.
+    if requires_redraw {
+        ui.needs_redraw();
+    }
 
     // Finally, cache the `Widget`'s newly updated `State` and `Style` within the `ui`'s
     // `widget_graph`.
@@ -830,7 +998,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         maybe_parent_idx: maybe_parent_idx,
         state: unique_state,
         style: new_style,
-        maybe_element: maybe_new_element,
     });
 }
 
@@ -913,6 +1080,36 @@ impl<'a, C> UiCell<'a, C> {
 
 }
 
+impl<'a, C> AsRef<Ui<C>> for UiCell<'a, C> {
+    fn as_ref(&self) -> &Ui<C> {
+        &self.ui
+    }
+}
+
+
+impl IndexSlot {
+
+    /// Construct a new empty **IndexSlot**.
+    pub fn new() -> Self {
+        IndexSlot {
+            maybe_idx: ::std::cell::Cell::new(None),
+        }
+    }
+
+    /// Returns the **NodeIndex** held by the **IndexSlot**.
+    ///
+    /// If the **IndexSlot** does not yet hold a **NodeIndex**, the **UiCell** will be used to
+    /// produce a `new_unique_node_index`.
+    pub fn get<C>(&self, ui: &mut UiCell<C>) -> NodeIndex {
+        if self.maybe_idx.get().is_none() {
+            let new_idx = ui.new_unique_node_index();
+            self.maybe_idx.set(Some(new_idx));
+        }
+        self.maybe_idx.get().unwrap()
+    }
+
+}
+
 
 impl<'a, T> State<'a, T> {
 
@@ -922,12 +1119,12 @@ impl<'a, T> State<'a, T> {
 
     /// Mutate the internal widget state and set a flag notifying us that there has been a mutation.
     ///
-    /// If this method is *not* called, we assume that there has been no mutation and in turn we
-    /// will re-use the Widget's pre-existing `Element`.
+    /// If this method is *not* called, we assume that there has been no mutation and in turn we do
+    /// not need to re-draw the Widget.
     ///
     /// If this method *is* called, we assume that there has been some mutation and in turn will
-    /// produce a new `Element` for the `Widget`. Thus, it is recommended that you *only* call
-    /// this method if you need to update the unique state in some way.
+    /// need to re-draw the Widget. Thus, it is recommended that you *only* call this method if you
+    /// need to update the unique state in some way.
     pub fn update<F>(&mut self, f: F) where F: FnOnce(&mut T) {
         self.has_updated = true;
         f(self.state);
@@ -940,15 +1137,26 @@ impl CommonBuilder {
     /// Construct an empty, initialised CommonBuilder.
     pub fn new() -> CommonBuilder {
         CommonBuilder {
-            maybe_width: None,
-            maybe_height: None,
-            maybe_position: None,
-            maybe_h_align: None,
-            maybe_v_align: None,
-            maybe_depth: None,
+            style: CommonStyle::new(),
             maybe_parent_idx: MaybeParent::Unspecified,
+            picking_passthrough: false,
+            place_on_kid_area: true,
+            maybe_graphics_for: None,
             is_floating: false,
             scrolling: scroll::Scrolling::new(),
+        }
+    }
+}
+
+impl CommonStyle {
+    /// A new default CommonStyle.
+    pub fn new() -> Self {
+        CommonStyle {
+            maybe_x_dimension: None,
+            maybe_y_dimension: None,
+            maybe_x_position: None,
+            maybe_y_position: None,
+            maybe_depth: None,
         }
     }
 }
@@ -956,62 +1164,101 @@ impl CommonBuilder {
 
 impl<W> Positionable for W where W: Widget {
     #[inline]
-    fn position(mut self, pos: Position) -> Self {
-        self.common_mut().maybe_position = Some(pos);
+    fn x_position(mut self, x: Position) -> Self {
+        self.common_mut().style.maybe_x_position = Some(x);
         self
     }
     #[inline]
-    fn get_position(&self, theme: &Theme) -> Position {
-        self.common().maybe_position.unwrap_or(self.default_position(theme))
-    }
-    #[inline]
-    fn horizontal_align(mut self, h_align: HorizontalAlign) -> Self {
-        self.common_mut().maybe_h_align = Some(h_align);
+    fn y_position(mut self, y: Position) -> Self {
+        self.common_mut().style.maybe_y_position = Some(y);
         self
     }
     #[inline]
-    fn vertical_align(mut self, v_align: VerticalAlign) -> Self {
-        self.common_mut().maybe_v_align = Some(v_align);
-        self
+    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+
+        let from_y_position = || self.common().style.maybe_y_position
+            .and_then(|y_pos| infer_position_from_other_position(y_pos, Align::Start));
+        self.common().style.maybe_x_position
+            .or_else(from_y_position)
+            .unwrap_or(self.default_x_position(ui))
     }
     #[inline]
-    fn get_horizontal_align(&self, theme: &Theme) -> HorizontalAlign {
-        self.common().maybe_h_align.unwrap_or(self.default_h_align(theme))
-    }
-    #[inline]
-    fn get_vertical_align(&self, theme: &Theme) -> VerticalAlign {
-        self.common().maybe_v_align.unwrap_or(self.default_v_align(theme))
+    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+        let from_x_position = || self.common().style.maybe_x_position
+            .and_then(|x_pos| infer_position_from_other_position(x_pos, Align::End));
+        self.common().style.maybe_y_position
+            .or_else(from_x_position)
+            .unwrap_or(self.default_y_position(ui))
     }
     #[inline]
     fn depth(mut self, depth: Depth) -> Self {
-        self.common_mut().maybe_depth = Some(depth);
+        self.common_mut().style.maybe_depth = Some(depth);
         self
     }
     #[inline]
     fn get_depth(&self) -> Depth {
         const DEFAULT_DEPTH: Depth = 0.0;
-        self.common().maybe_depth.unwrap_or(DEFAULT_DEPTH)
+        self.common().style.maybe_depth.unwrap_or(DEFAULT_DEPTH)
     }
 }
+
+
+/// In the case that a position hasn't been given for one of the axes, we must first check to see
+/// if we can infer the missing axis position from the other axis.
+///
+/// This is used within the impl of **Positionable** for **Widget**.
+fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> Option<Position> {
+    match other_pos {
+        Position::Direction(_, _, maybe_idx) => Some(Position::Align(dir_align, maybe_idx)),
+        Position::Place(_, maybe_idx) => Some(Position::Align(Align::Middle, maybe_idx)),
+        Position::Relative(_, maybe_idx) => Some(Position::Relative(0.0, maybe_idx)),
+        Position::Align(_, _) | Position::Absolute(_) => None,
+    }
+}
+
 
 impl<W> Sizeable for W where W: Widget {
     #[inline]
-    fn width(mut self, w: f64) -> Self {
-        self.common_mut().maybe_width = Some(w);
+    fn x_dimension(mut self, w: Dimension) -> Self {
+        self.common_mut().style.maybe_x_dimension = Some(w);
         self
     }
     #[inline]
-    fn height(mut self, h: f64) -> Self {
-        self.common_mut().maybe_height = Some(h);
+    fn y_dimension(mut self, h: Dimension) -> Self {
+        self.common_mut().style.maybe_y_dimension = Some(h);
         self
     }
     #[inline]
-    fn get_width<C: CharacterCache>(&self, theme: &Theme, glyph_cache: &GlyphCache<C>) -> f64 {
-        self.common().maybe_width.unwrap_or(self.default_width(theme, glyph_cache))
+    /// We attempt to retrieve the `x` **Dimension** for the widget via the following:
+    /// - Check for specified value at `maybe_x_dimension`
+    /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
+    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        self.common().style.maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
     #[inline]
-    fn get_height(&self, theme: &Theme) -> f64 {
-        self.common().maybe_height.unwrap_or(self.default_height(theme))
+    /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
+    /// - Check for specified value at `maybe_y_dimension`
+    /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
+    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+        self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }
 
+
+// /// A macro to simplify implementation of style retrieval functions.
+// macro_rules! style_retrieval {
+//     ($fn_name:ident, $maybe:ident, $return_type:ty, $default:expr) => {
+//         pub fn $fn_name(&self, theme: &Theme) -> $return_type {
+//             self.$maybe.or_else(|| theme.widget_styling::<Self>(KIND).map(|default| {
+//                 default.style.$maybe.unwrap_or($default)
+//             })).unwrap_or($default)
+//         }
+//     };
+// }
+// 
+// style_retrieval! {
+//     fn_name: color,
+//     member: maybe_color,
+//     type: Color,
+//     default: theme.shape_color
+// };

@@ -7,84 +7,92 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
-#[macro_use] extern crate bitflags;
 extern crate time;
 extern crate daggy;
-extern crate elmesque;
 extern crate graphics;
-extern crate json_io;
 extern crate num;
 extern crate input;
 extern crate rand;
-extern crate rustc_serialize;
 extern crate vecmath;
 
+
+pub use widget::primitive::line::Line;
+pub use widget::primitive::point_path::PointPath;
+pub use widget::primitive::shape::circle::Circle;
+pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
+pub use widget::primitive::shape::polygon::Polygon;
+pub use widget::primitive::shape::oval::Oval;
+pub use widget::primitive::shape::rectangle::Rectangle;
+pub use widget::primitive::text::Text;
 
 pub use widget::button::Button;
 pub use widget::canvas::Canvas;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
-pub use widget::label::Label;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::slider::Slider;
 pub use widget::split::Split;
 pub use widget::tabs::Tabs;
 pub use widget::text_box::TextBox;
+pub use widget::title_bar::TitleBar;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
+
+
+pub use widget::primitive::line::Style as LineStyle;
+pub use widget::primitive::shape::Style as ShapeStyle;
+pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
+pub use widget::primitive::text::Style as TextStyle;
 
 pub use widget::button::Style as ButtonStyle;
 pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
-pub use widget::label::Style as LabelStyle;
 pub use widget::number_dialer::Style as NumberDialerStyle;
 pub use widget::slider::Style as SliderStyle;
 pub use widget::tabs::Style as TabsStyle;
 pub use widget::text_box::Style as TextBoxStyle;
+pub use widget::title_bar::Style as TitleBarStyle;
 pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
+pub use backend::{CharacterCache, Graphics};
 pub use background::Background;
-pub use elmesque::{color, Element};
-pub use elmesque::color::{Color, Colorable};
+pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
+pub use glyph_cache::{GlyphCache, LineBreak};
 pub use graph::NodeIndex;
-pub use graphics::character::CharacterCache;
-pub use graphics::math::Scalar;
 pub use label::{FontSize, Labelable};
 pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
-pub use position::{align_left_of, align_right_of, align_bottom_of, align_top_of};
-pub use position::{middle_of, top_left_of, top_right_of, bottom_left_of, bottom_right_of,
-                   mid_top_of, mid_bottom_of, mid_left_of, mid_right_of};
-pub use position::{Corner, Depth, Direction, Dimensions, Horizontal, HorizontalAlign, Margin,
-                   Padding, Place, Point, Position, Positionable, Range, Rect, Sizeable,
-                   Vertical, VerticalAlign};
+pub use position::{Align, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin, Padding,
+                   Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use position::Matrix as PositionMatrix;
-pub use theme::{Align, Theme};
-pub use ui::{GlyphCache, Ui, UserInput};
+pub use theme::Theme;
+pub use ui::{Ui, UserInput};
+pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, DrawArgs, Floating, MaybeParent, UiCell, UpdateArgs,
-                 Widget};
+pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent, UiCell,
+                 UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
+pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
 
-pub use json_io::Error as JsonIoError;
-
-
+pub mod backend;
 mod background;
+pub mod color;
 mod frame;
-mod graph;
+pub mod glyph_cache;
+pub mod graph;
 mod label;
 mod mouse;
 mod position;

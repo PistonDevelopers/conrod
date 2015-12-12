@@ -1,6 +1,6 @@
 
+use CharacterCache;
 use color::{Color, Colorable};
-use graphics::character::CharacterCache;
 use ui::{self, Ui};
 
 /// A type for drawing a colored window background.
