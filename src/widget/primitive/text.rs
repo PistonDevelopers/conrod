@@ -1,4 +1,4 @@
-
+use std::cmp;
 use {
     Align,
     CharacterCache,
@@ -257,7 +257,7 @@ impl<'a> Widget for Text<'a> {
             },
         };
         let line_spacing = self.style.line_spacing(&ui.theme);
-        let height = total_height(num_lines, font_size, line_spacing);
+        let height = total_height(cmp::max(num_lines, 1), font_size, line_spacing);
         Dimension::Absolute(height)
     }
 
