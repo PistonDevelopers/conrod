@@ -95,7 +95,7 @@ impl<I> PointPath<I> {
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
-        PointPath::styled(points, style).dim(dim).xy(xy)
+        PointPath::styled(points, style).wh(dim).xy(xy)
     }
 
     /// Build a new **PointPath** and shift the location of the points so that the centre of their
@@ -119,7 +119,7 @@ impl<I> PointPath<I> {
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
-        let mut point_path = PointPath::styled(points, style).dim(dim);
+        let mut point_path = PointPath::styled(points, style).wh(dim);
         point_path.maybe_shift_to_centre_from = Some(xy);
         point_path
     }
@@ -224,4 +224,3 @@ impl<I> Colorable for PointPath<I> {
         self
     }
 }
-

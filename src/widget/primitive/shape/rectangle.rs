@@ -46,7 +46,7 @@ impl Rectangle {
         Rectangle {
             common: widget::CommonBuilder::new(),
             style: style,
-        }.dim(dim)
+        }.wh(dim)
     }
 
     /// Build a new filled rectangle.
@@ -121,4 +121,3 @@ impl Colorable for Rectangle {
         self
     }
 }
-

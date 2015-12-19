@@ -221,7 +221,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 {
                     let mut button = Button::new()
                         .xy(rect.xy())
-                        .dim(rect.dim())
+                        .wh(rect.dim())
                         .label(label)
                         .parent(idx)
                         .react(|| was_clicked = true);
@@ -270,7 +270,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let mut was_clicked = None;
                 for (i, ((label, button_node_idx), button_xy)) in iter {
                     let mut button = Button::new()
-                        .dim(dim)
+                        .wh(dim)
                         .label(label)
                         .parent(canvas_idx)
                         .xy(button_xy)
@@ -426,4 +426,3 @@ impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
         self
     }
 }
-

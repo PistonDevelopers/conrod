@@ -16,7 +16,6 @@ use {
     Rect,
     Rectangle,
     Scalar,
-    Sizeable,
     Text,
     Theme,
     Ui,
@@ -448,4 +447,3 @@ impl<'a, T, F> Labelable<'a> for Slider<'a, T, F> {
         self
     }
 }
-

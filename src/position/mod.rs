@@ -492,14 +492,14 @@ pub trait Sizeable: Sized {
 
     /// Set the dimensions for the widget.
     #[inline]
-    fn dim(self, dim: Dimensions) -> Self {
+    fn wh(self, dim: Dimensions) -> Self {
         self.width(dim[0]).height(dim[1])
     }
 
     /// Set the width and height for the widget.
     #[inline]
-    fn dimensions(self, width: Scalar, height: Scalar) -> Self {
-        self.dim([width, height])
+    fn w_h(self, width: Scalar, height: Scalar) -> Self {
+        self.wh([width, height])
     }
 
     /// Set the width as the width of the widget at the given index.
@@ -609,4 +609,3 @@ impl Margin {
         Margin { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
     }
 }
-

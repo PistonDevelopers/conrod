@@ -43,7 +43,7 @@ impl FramedRectangle {
         FramedRectangle {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
-        }.dim(dim)
+        }.wh(dim)
     }
 
     /// Build the **FramedRectangle** with the given styling.
@@ -136,4 +136,3 @@ impl Frameable for FramedRectangle {
         self
     }
 }
-

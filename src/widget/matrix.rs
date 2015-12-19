@@ -171,7 +171,7 @@ impl<'a, F, W> Widget for Matrix<F> where
                         let h = widget_h - cell_pad_h * 2.0;
                         let widget_idx = indices[col][row];
                         each_widget(widget_num, col, row)
-                            .dim([w, h])
+                            .wh([w, h])
                             .x_y_relative_to(idx, rel_x, rel_y)
                             .set(widget_idx, &mut ui);
                         widget_num += 1;
@@ -215,4 +215,3 @@ impl Style {
     }
 
 }
-

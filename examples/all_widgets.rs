@@ -194,7 +194,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
         // Button widget example button.
         Button::new()
-            .dimensions(200.0, 50.0)
+            .w_h(200.0, 50.0)
             .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
@@ -218,7 +218,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
         // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
-            .dimensions(200.0, 50.0)
+            .w_h(200.0, 50.0)
             .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
@@ -237,7 +237,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // Toggle widget example toggle(value).
     Toggle::new(app.show_button)
-        .dimensions(75.0, 75.0)
+        .w_h(75.0, 75.0)
         .down(20.0)
         .rgb(0.6, 0.25, 0.75)
         .frame(app.frame_width)
@@ -276,7 +276,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Slider widget examples. slider(value, min, max)
         if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
         else      { Slider::new(value, 0.0, 1.0).right(20.0) }
-            .dimensions(40.0, app.v_slider_height)
+            .w_h(40.0, app.v_slider_height)
             .color(color)
             .frame(app.frame_width)
             .label(&label)
@@ -292,7 +292,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // Number Dialer widget example. (value, min, max, precision)
     NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
-        .dimensions(260.0, 60.0)
+        .w_h(260.0, 60.0)
         .right_from(shown_widget, 30.0)
         .color(app.bg_color.invert())
         .frame(app.frame_width)
@@ -303,7 +303,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // Number Dialer widget example. (value, min, max, precision)
     NumberDialer::new(app.frame_width, 0.0, 15.0, 2)
-        .dimensions(260.0, 60.0)
+        .w_h(260.0, 60.0)
         .down(20.0)
         .color(app.bg_color.invert().plain_contrast())
         .frame(app.frame_width)
@@ -318,7 +318,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
     let (cols, rows) = (8, 8);
     WidgetMatrix::new(cols, rows)
         .down(20.0)
-        .dimensions(260.0, 260.0) // matrix width and height.
+        .w_h(260.0, 260.0) // matrix width and height.
         .each_widget(|_n, col: usize, row: usize| { // called for every matrix elem.
 
             // Color effect for fun.
@@ -344,7 +344,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
     // A demonstration using a DropDownList to select its own color.
     let mut ddl_color = app.ddl_color;
     DropDownList::new(&mut app.ddl_colors, &mut app.selected_idx)
-        .dimensions(150.0, 40.0)
+        .w_h(150.0, 40.0)
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
         .color(ddl_color)
@@ -369,7 +369,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
     // Draw an xy_pad.
     XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
                app.circle_pos[1], 95.0, 245.0) // y range.
-        .dimensions(150.0, 150.0)
+        .w_h(150.0, 150.0)
         .right_from(TOGGLE_MATRIX, 30.0)
         .align_bottom_of(TOGGLE_MATRIX) // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
@@ -399,7 +399,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         if i == 0 { TextBox::new(text).right_from(COLOR_SELECT, 30.0) }
         else      { TextBox::new(text) }
             .font_size(20)
-            .dimensions(320.0, 40.0)
+            .w_h(320.0, 40.0)
             .frame(app.frame_width)
             .frame_color(app.bg_color.invert().plain_contrast())
             .color(app.bg_color.invert())
@@ -412,7 +412,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Draw an EnvelopeEditor. (Vec<Point>, x_min, x_max, y_min, y_max).
         EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
             .down(10.0)
-            .dimensions(320.0, 150.0)
+            .w_h(320.0, 150.0)
             .skew_y(env_skew_y)
             .color(app.bg_color.invert())
             .frame(app.frame_width)

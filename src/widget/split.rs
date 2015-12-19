@@ -200,7 +200,7 @@ impl<'a> Split<'a> {
                 Some(parent_id) => canvas.parent(parent_id),
                 None            => canvas.no_parent(),
             }.xy(xy)
-                .dim(dim)
+                .wh(dim)
                 .vertical_scrolling(is_v_scrollable)
                 .horizontal_scrolling(is_h_scrollable)
                 .set(id, ui);
@@ -310,5 +310,3 @@ impl<'a> ::frame::Frameable for Split<'a> {
         self
     }
 }
-
-
