@@ -1,5 +1,5 @@
 //!
-//! 
+//!
 //! A demonstration of designing a custom, third-party widget.
 //!
 //! In this case, we'll design a simple circular button.
@@ -465,7 +465,7 @@ fn main() {
             CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
                 .middle_of(BACKGROUND)
-                .dimensions(256.0, 256.0)
+                .w_h(256.0, 256.0)
                 .label_color(conrod::color::white())
                 .label("Circular Button")
                 // This is called when the user clicks the button.

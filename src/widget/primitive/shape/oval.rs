@@ -47,7 +47,7 @@ impl Oval {
         Oval {
             common: widget::CommonBuilder::new(),
             style: style,
-        }.dim(dim)
+        }.wh(dim)
     }
 
     /// Build a new **Fill**ed **Oval**.
@@ -122,4 +122,3 @@ impl Colorable for Oval {
         self
     }
 }
-

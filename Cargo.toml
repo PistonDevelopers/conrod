@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.24.1"
+version = "0.25.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -39,4 +39,3 @@ piston2d-gfx_graphics = "0.16.0"
 piston2d-opengl_graphics = "0.21.0"
 pistoncore-glutin_window = "0.20.0"
 piston = "0.16.0"
-

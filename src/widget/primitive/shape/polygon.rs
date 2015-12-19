@@ -100,7 +100,7 @@ impl<I> Polygon<I> {
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
-        Polygon::styled(points, style).dim(dim).xy(xy)
+        Polygon::styled(points, style).wh(dim).xy(xy)
     }
 
     /// The same as [**Polygon::abs_styled**](./struct.Polygon#method.abs_styled) but builds the
@@ -148,7 +148,7 @@ impl<I> Polygon<I> {
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
-        let mut polygon = Polygon::styled(points, style).dim(dim);
+        let mut polygon = Polygon::styled(points, style).wh(dim);
         polygon.maybe_shift_to_centre_from = Some(xy);
         polygon
     }
@@ -270,4 +270,3 @@ impl<I> Colorable for Polygon<I> {
         self
     }
 }
-

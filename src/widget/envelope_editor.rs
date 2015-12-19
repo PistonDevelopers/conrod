@@ -259,7 +259,7 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         }
     }
 
-    /// Set the reaction for the EnvelopeEditor. 
+    /// Set the reaction for the EnvelopeEditor.
     pub fn react(mut self, reaction: F) -> EnvelopeEditor<'a, E, F> {
         self.maybe_react = Some(reaction);
         self
@@ -636,7 +636,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 [x, y]
             });
             PointPath::new(points)
-                .dim(inner_rect.dim())
+                .wh(inner_rect.dim())
                 .xy(inner_rect.xy())
                 .graphics_for(idx)
                 .parent(idx)
@@ -827,4 +827,3 @@ impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
         self
     }
 }
-

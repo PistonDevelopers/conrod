@@ -317,7 +317,7 @@ impl<'a> Widget for Tabs<'a> {
 
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
                 Button::new()
-                    .dim(dim)
+                    .wh(dim)
                     .xy_relative_to(idx, xy)
                     .color(color)
                     .frame(frame)

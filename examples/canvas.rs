@@ -1,4 +1,4 @@
-//! 
+//!
 //! A simple demonstration of how to construct and use Canvasses by splitting up the window.
 //!
 
@@ -60,7 +60,7 @@ fn set_widgets(ui: &mut Ui) {
     Canvas::new()
         .title_bar("Blue")
         .floating(true)
-        .dimensions(110.0, 150.0)
+        .w_h(110.0, 150.0)
         .middle_of(LEFT_COLUMN)
         .color(blue())
         .label_color(white())
@@ -69,7 +69,7 @@ fn set_widgets(ui: &mut Ui) {
     Canvas::new()
         .title_bar("Orange")
         .floating(true)
-        .dimensions(110.0, 150.0)
+        .w_h(110.0, 150.0)
         .middle_of(RIGHT_COLUMN)
         .color(light_orange())
         .label_color(white())
@@ -103,7 +103,7 @@ fn set_widgets(ui: &mut Ui) {
 
     let footer_dim = ui.dim_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
-        .dimensions(footer_dim[0], footer_dim[1] * 2.0)
+        .w_h(footer_dim[0], footer_dim[1] * 2.0)
         .mid_top_of(FOOTER)
         .each_widget(|n, _col, _row| {
             Button::new()
@@ -112,10 +112,10 @@ fn set_widgets(ui: &mut Ui) {
         })
         .set(BUTTON_MATRIX, ui);
 
-    Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_A)
+    Button::new().color(red()).w_h(30.0, 30.0).middle_of(FLOATING_A)
         .react(|| println!("Bing!"))
         .set(BING, ui);
-    Button::new().color(red()).dimensions(30.0, 30.0).middle_of(FLOATING_B)
+    Button::new().color(red()).w_h(30.0, 30.0).middle_of(FLOATING_B)
         .react(|| println!("Bong!"))
         .set(BONG, ui);
 }
@@ -157,4 +157,3 @@ widget_ids! {
     BONG,
 
 }
-

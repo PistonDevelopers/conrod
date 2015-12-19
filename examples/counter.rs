@@ -37,7 +37,7 @@ fn main() {
             // Draw the button and increment `count` if pressed.
             conrod::Button::new()
                 .middle_of(CANVAS)
-                .dimensions(80.0, 80.0)
+                .w_h(80.0, 80.0)
                 .label(&count.to_string())
                 .react(|| count += 1)
                 .set(COUNTER, ui);
