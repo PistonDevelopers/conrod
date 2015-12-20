@@ -370,9 +370,12 @@ impl<C> Ui<C> {
                             let range = Range::from_pos_and_len(0.0, dim);
                             let parent_range = parent_range.pad_start(pad_start).pad_end(pad_end);
                             match place {
-                                Place::Start => range.align_start_of(parent_range).middle(),
-                                Place::Middle => parent_range.middle(),
-                                Place::End => range.align_end_of(parent_range).middle(),
+                                Place::Start(maybe_mgn) =>
+                                    range.align_start_of(parent_range).middle() + maybe_mgn.unwrap_or(0.0),
+                                Place::Middle =>
+                                    parent_range.middle(),
+                                Place::End(maybe_mgn) =>
+                                    range.align_end_of(parent_range).middle() - maybe_mgn.unwrap_or(0.0),
                             }
                         })
                         .unwrap_or(0.0)

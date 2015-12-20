@@ -174,36 +174,6 @@ impl<'a> Tabs<'a> {
     pub fn pad(self, pad: Scalar) -> Tabs<'a> {
         self.pad_left(pad).pad_right(pad).pad_top(pad).pad_bottom(pad)
     }
-
-    /// Set the margin from the left edge.
-    pub fn margin_left(mut self, mgn: Scalar) -> Tabs<'a> {
-        self.style.canvas.margin.maybe_left = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the right edge.
-    pub fn margin_right(mut self, mgn: Scalar) -> Tabs<'a> {
-        self.style.canvas.margin.maybe_right = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the top edge.
-    pub fn margin_top(mut self, mgn: Scalar) -> Tabs<'a> {
-        self.style.canvas.margin.maybe_top = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the bottom edge.
-    pub fn margin_bottom(mut self, mgn: Scalar) -> Tabs<'a> {
-        self.style.canvas.margin.maybe_bottom = Some(mgn);
-        self
-    }
-
-    /// Set the margin for all edges.
-    pub fn margin(self, mgn: Scalar) -> Tabs<'a> {
-        self.margin_left(mgn).margin_right(mgn).margin_top(mgn).margin_bottom(mgn)
-    }
-
 }
 
 

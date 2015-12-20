@@ -130,35 +130,6 @@ impl<'a> Split<'a> {
         self.pad_left(pad).pad_right(pad).pad_top(pad).pad_bottom(pad)
     }
 
-    /// Set the margin from the left edge.
-    pub fn margin_left(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_left = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the right edge.
-    pub fn margin_right(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_right = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the top edge.
-    pub fn margin_top(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_top = Some(mgn);
-        self
-    }
-
-    /// Set the margin from the bottom edge.
-    pub fn margin_bottom(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_bottom = Some(mgn);
-        self
-    }
-
-    /// Set the margin for all edges.
-    pub fn margin(self, mgn: Scalar) -> Self {
-        self.margin_left(mgn).margin_right(mgn).margin_top(mgn).margin_bottom(mgn)
-    }
-
     /// Set whether or not the Canvas' `KidArea` is scrollable (the default is false).
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
@@ -207,7 +178,6 @@ impl<'a> Split<'a> {
         } = *self;
         let (xy, dim) = rect.xy_dim();
 
-        let mgn = style.margin(&ui.theme);
         let frame = style.frame(&ui.theme);
         let pad = style.padding(&ui.theme);
 
@@ -215,14 +185,9 @@ impl<'a> Split<'a> {
         // let framed_rect = margined_rect.pad(frame);
         // let padded_rect = framed_rect.padding(pad);
 
-        let mgn_offset = [(mgn.left - mgn.right), (mgn.bottom - mgn.top)];
-        let dim = vec2_sub(dim, [mgn.left + mgn.right, mgn.top + mgn.bottom]);
         let frame_dim = vec2_sub(dim, [frame * 2.0; 2]);
         let pad_offset = [(pad.bottom - pad.top), (pad.left - pad.right)];
         let pad_dim = vec2_sub(frame_dim, [pad.left + pad.right, pad.top + pad.bottom]);
-
-        // Offset xy so that it is in the center of the given margin.
-        let xy = vec2_add(xy, mgn_offset);
 
         // Instantiate the Canvas widget for this split.
         {

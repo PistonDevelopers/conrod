@@ -17,7 +17,7 @@ use {
     TitleBar,
     Ui,
 };
-use position::{self, Margin, Padding, Place, Position, Rect};
+use position::{self, Padding, Place, Position, Rect};
 use widget::{self, title_bar, Widget};
 
 
@@ -55,19 +55,6 @@ pub struct PaddingBuilder {
     pub maybe_bottom: Option<Scalar>,
 }
 
-/// A builder for the margin of the area where child widgets will be placed.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct MarginBuilder {
-    /// The margin for the left of the area where child widgets will be placed.
-    pub maybe_left: Option<Scalar>,
-    /// The margin for the right of the area where child widgets will be placed.
-    pub maybe_right: Option<Scalar>,
-    /// The margin for the top of the area where child widgets will be placed.
-    pub maybe_top: Option<Scalar>,
-    /// The margin for the bottom of the area where child widgets will be placed.
-    pub maybe_bottom: Option<Scalar>,
-}
-
 /// Describes the style of a Canvas.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Style {
@@ -77,8 +64,6 @@ pub struct Style {
     pub text: TextStyle,
     /// Padding of the kid area.
     pub padding: PaddingBuilder,
-    /// Margin for the kid area.
-    pub margin: MarginBuilder,
 }
 
 
@@ -134,43 +119,6 @@ impl<'a> Canvas<'a> {
             .pad_right(pad.right)
             .pad_right(pad.top)
             .pad_right(pad.bottom)
-    }
-
-    /// Set the margin of the left of the area where child widgets will be placed.
-    #[inline]
-    pub fn margin_left(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_left = Some(mgn);
-        self
-    }
-
-    /// Set the margin of the right of the area where child widgets will be placed.
-    #[inline]
-    pub fn margin_right(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_right = Some(mgn);
-        self
-    }
-
-    /// Set the margin of the top of the area where child widgets will be placed.
-    #[inline]
-    pub fn margin_top(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_top = Some(mgn);
-        self
-    }
-
-    /// Set the margin of the bottom of the area where child widgets will be placed.
-    #[inline]
-    pub fn margin_bottom(mut self, mgn: Scalar) -> Self {
-        self.style.margin.maybe_bottom = Some(mgn);
-        self
-    }
-
-    /// Set the padding of the area where child widgets will be placed.
-    #[inline]
-    pub fn margin(self, mgn: Margin) -> Self {
-        self.pad_left(mgn.left)
-            .pad_right(mgn.right)
-            .pad_right(mgn.top)
-            .pad_right(mgn.bottom)
     }
 
     /// Build the **Canvas** with the given **Style**.
@@ -328,12 +276,6 @@ impl Style {
                 maybe_top: None,
                 maybe_bottom: None,
             },
-            margin: MarginBuilder {
-                maybe_left: None,
-                maybe_right: None,
-                maybe_top: None,
-                maybe_bottom: None,
-            },
         }
     }
 
@@ -406,25 +348,6 @@ impl Style {
             right: self.padding.maybe_right.or_else(|| default_style.as_ref().map(|default| {
                 default.style.padding.maybe_right.unwrap_or(theme.padding.right)
             })).unwrap_or(theme.padding.right),
-        }
-    }
-
-    /// Get the Margin for the Canvas' kid area.
-    pub fn margin(&self, theme: &Theme) -> position::Margin {
-        let default_style = theme.widget_style::<Style>(KIND);
-        position::Margin {
-            top: self.margin.maybe_top.or_else(|| default_style.as_ref().map(|default| {
-                default.style.margin.maybe_top.unwrap_or(theme.margin.top)
-            })).unwrap_or(theme.margin.top),
-            bottom: self.margin.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
-                default.style.margin.maybe_bottom.unwrap_or(theme.margin.bottom)
-            })).unwrap_or(theme.margin.bottom),
-            left: self.margin.maybe_left.or_else(|| default_style.as_ref().map(|default| {
-                default.style.margin.maybe_left.unwrap_or(theme.margin.left)
-            })).unwrap_or(theme.margin.left),
-            right: self.margin.maybe_right.or_else(|| default_style.as_ref().map(|default| {
-                default.style.margin.maybe_right.unwrap_or(theme.margin.right)
-            })).unwrap_or(theme.margin.right),
         }
     }
 
