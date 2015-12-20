@@ -1,7 +1,12 @@
 
-use {CharacterCache, Scalar};
-use color::Color;
-use position::{Dimensions, Point, Positionable, Sizeable};
+use {
+    CharacterCache,
+    Color,
+    Positionable,
+    Rect,
+    Scalar,
+    Sizeable,
+};
 use super::canvas;
 use widget::{self, Widget};
 use ui::Ui;
@@ -12,15 +17,28 @@ pub struct Split<'a> {
     id: widget::Id,
     style: canvas::Style,
     maybe_splits: Option<(Direction, &'a [Split<'a>])>,
-    maybe_length: Option<Scalar>,
+    maybe_length: Option<Length>,
     // TODO: Maybe use the `CommonBuilder` (to be used for the wrapped `Canvas`) here instead?
     is_h_scrollable: bool,
     is_v_scrollable: bool,
 }
 
 
+/// The length of a `Split` given as a weight.
+///
+/// The length is determined by determining what percentage each `Split`'s weight contributes to
+/// the total weight of all `Split`s in a flow list.
+pub type Weight = Scalar;
+
+/// Used to describe the desired length for a `Split`.
+#[derive(Copy, Clone)]
+enum Length {
+    Absolute(Scalar),
+    Weight(Weight),
+}
+
 /// The direction in which the the **Split** should layout it's child **Split**s.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 enum Direction {
     Left,
     Right,
@@ -32,7 +50,7 @@ enum Direction {
 impl<'a> Split<'a> {
 
     /// Construct a default Canvas Split.
-    pub fn new(id: widget::Id) -> Split<'a> {
+    pub fn new(id: widget::Id) -> Self {
         Split {
             id: id,
             style: canvas::Style::new(),
@@ -43,93 +61,101 @@ impl<'a> Split<'a> {
         }
     }
 
-    /// Set the dimension of the Split.
-    pub fn length(mut self, length: Scalar) -> Split<'a> {
-        self.maybe_length = Some(length);
+    /// Set the length of the Split as an absolute scalar.
+    pub fn length(mut self, length: Scalar) -> Self {
+        self.maybe_length = Some(Length::Absolute(length));
+        self
+    }
+
+    /// Set the length of the Split as a weight.
+    ///
+    /// The default length weight for each widget is `1.0`.
+    pub fn length_weight(mut self, weight: Weight) -> Self {
+        self.maybe_length = Some(Length::Weight(weight));
         self
     }
 
     /// Set the child Canvas Splits of the current Canvas flowing in a given direction.
-    fn flow(mut self, dir: Direction, splits: &'a [Split<'a>]) -> Split<'a> {
+    fn flow(mut self, dir: Direction, splits: &'a [Self]) -> Self {
         self.maybe_splits = Some((dir, splits));
         self
     }
 
     /// Set the child Canvasses flowing downwards.
-    pub fn flow_down(self, splits: &'a [Split<'a>]) -> Split<'a> {
+    pub fn flow_down(self, splits: &'a [Self]) -> Self {
         self.flow(Direction::Down, splits)
     }
 
     /// Set the child Canvasses flowing upwards.
-    pub fn flow_up(self, splits: &'a [Split<'a>]) -> Split<'a> {
+    pub fn flow_up(self, splits: &'a [Self]) -> Self {
         self.flow(Direction::Up, splits)
     }
 
     /// Set the child Canvasses flowing to the right.
-    pub fn flow_right(self, splits: &'a [Split<'a>]) -> Split<'a> {
+    pub fn flow_right(self, splits: &'a [Self]) -> Self {
         self.flow(Direction::Right, splits)
     }
 
     /// Set the child Canvasses flowing to the left.
-    pub fn flow_left(self, splits: &'a [Split<'a>]) -> Split<'a> {
+    pub fn flow_left(self, splits: &'a [Self]) -> Self {
         self.flow(Direction::Left, splits)
     }
 
     /// Set the padding from the left edge.
-    pub fn pad_left(mut self, pad: Scalar) -> Split<'a> {
+    pub fn pad_left(mut self, pad: Scalar) -> Self {
         self.style.padding.maybe_left = Some(pad);
         self
     }
 
     /// Set the padding from the right edge.
-    pub fn pad_right(mut self, pad: Scalar) -> Split<'a> {
+    pub fn pad_right(mut self, pad: Scalar) -> Self {
         self.style.padding.maybe_right = Some(pad);
         self
     }
 
     /// Set the padding from the top edge.
-    pub fn pad_top(mut self, pad: Scalar) -> Split<'a> {
+    pub fn pad_top(mut self, pad: Scalar) -> Self {
         self.style.padding.maybe_top = Some(pad);
         self
     }
 
     /// Set the padding from the bottom edge.
-    pub fn pad_bottom(mut self, pad: Scalar) -> Split<'a> {
+    pub fn pad_bottom(mut self, pad: Scalar) -> Self {
         self.style.padding.maybe_bottom = Some(pad);
         self
     }
 
     /// Set the padding for all edges.
-    pub fn pad(self, pad: Scalar) -> Split<'a> {
+    pub fn pad(self, pad: Scalar) -> Self {
         self.pad_left(pad).pad_right(pad).pad_top(pad).pad_bottom(pad)
     }
 
     /// Set the margin from the left edge.
-    pub fn margin_left(mut self, mgn: Scalar) -> Split<'a> {
+    pub fn margin_left(mut self, mgn: Scalar) -> Self {
         self.style.margin.maybe_left = Some(mgn);
         self
     }
 
     /// Set the margin from the right edge.
-    pub fn margin_right(mut self, mgn: Scalar) -> Split<'a> {
+    pub fn margin_right(mut self, mgn: Scalar) -> Self {
         self.style.margin.maybe_right = Some(mgn);
         self
     }
 
     /// Set the margin from the top edge.
-    pub fn margin_top(mut self, mgn: Scalar) -> Split<'a> {
+    pub fn margin_top(mut self, mgn: Scalar) -> Self {
         self.style.margin.maybe_top = Some(mgn);
         self
     }
 
     /// Set the margin from the bottom edge.
-    pub fn margin_bottom(mut self, mgn: Scalar) -> Split<'a> {
+    pub fn margin_bottom(mut self, mgn: Scalar) -> Self {
         self.style.margin.maybe_bottom = Some(mgn);
         self
     }
 
     /// Set the margin for all edges.
-    pub fn margin(self, mgn: Scalar) -> Split<'a> {
+    pub fn margin(self, mgn: Scalar) -> Self {
         self.margin_left(mgn).margin_right(mgn).margin_top(mgn).margin_bottom(mgn)
     }
 
@@ -157,13 +183,14 @@ impl<'a> Split<'a> {
     /// Store the Canvas and its children within the `Ui`.
     pub fn set<C>(self, ui: &mut Ui<C>) where C: CharacterCache {
         let dim = [ui.win_w as f64, ui.win_h as f64];
-        self.into_ui(dim, [0.0, 0.0], None, ui);
+        let xy = [0.0, 0.0];
+        let rect = Rect::from_xy_dim(xy, dim);
+        self.into_ui(rect, None, ui);
     }
 
     /// Construct a Canvas from a Split.
     fn into_ui<C>(&self,
-                  dim: Dimensions,
-                  xy: Point,
+                  rect: Rect,
                   maybe_parent: Option<widget::Id>,
                   ui: &mut Ui<C>)
         where C: CharacterCache
@@ -178,10 +205,15 @@ impl<'a> Split<'a> {
             is_h_scrollable,
             ..
         } = *self;
+        let (xy, dim) = rect.xy_dim();
 
+        let mgn = style.margin(&ui.theme);
         let frame = style.frame(&ui.theme);
         let pad = style.padding(&ui.theme);
-        let mgn = style.margin(&ui.theme);
+
+        // let margined_rect = rect.padding(mgn);
+        // let framed_rect = margined_rect.pad(frame);
+        // let padded_rect = framed_rect.padding(pad);
 
         let mgn_offset = [(mgn.left - mgn.right), (mgn.bottom - mgn.top)];
         let dim = vec2_sub(dim, [mgn.left + mgn.right, mgn.top + mgn.bottom]);
@@ -215,8 +247,8 @@ impl<'a> Split<'a> {
             let (stuck_length, num_not_stuck) =
                 splits.iter().fold((0.0, splits.len()), |(total, remaining), split| {
                     match split.maybe_length {
-                        Some(length) => (total + length, remaining - 1),
-                        None => (total, remaining),
+                        Some(Length::Absolute(length)) => (total + length, remaining - 1),
+                        _ => (total, remaining),
                     }
                 });
 
@@ -257,11 +289,11 @@ impl<'a> Split<'a> {
             // Update every split within the Ui.
             for split in splits.iter() {
                 let split_dim = match split.maybe_length {
-                    Some(len) => match direction {
+                    Some(Length::Absolute(len)) => match direction {
                         Up   | Down  => [split_dim[0], len],
                         Left | Right => [len, split_dim[1]],
                     },
-                    None => split_dim,
+                    _ => split_dim,
                 };
 
                 // Shift xy into position for the current split.
@@ -284,7 +316,8 @@ impl<'a> Split<'a> {
                     },
                 }
 
-                split.into_ui(split_dim, current_xy, Some(id), ui);
+                let split_rect = Rect::from_xy_dim(current_xy, split_dim);
+                split.into_ui(split_rect, Some(id), ui);
             }
         }
 
