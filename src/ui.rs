@@ -179,21 +179,21 @@ impl<C> Ui<C> {
     /// The absolute width of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn width_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+    pub fn w_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
         self.rect_of(idx).map(|rect| rect.w())
     }
 
     /// The absolute height of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn height_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
+    pub fn h_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
         self.rect_of(idx).map(|rect| rect.h())
     }
 
     /// The absolute dimensions for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn dim_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
+    pub fn wh_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
         self.rect_of(idx).map(|rect| rect.dim())
     }
 
