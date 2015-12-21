@@ -103,9 +103,15 @@ pub enum Dimension {
     /// Some specific length has been given.
     Absolute(Scalar),
     /// The dimension should match that of the widget at the given index.
-    Of(widget::Index),
+    ///
+    /// The `Option<Scalar>` is an optional padding argument which when `Some`, will subtract the
+    /// scalar from both ends of the other widget's dimension.
+    Of(widget::Index, Option<Scalar>),
     /// The dimension should match that of the `kid_area` of the widget at the given index.
-    KidAreaOf(widget::Index),
+    ///
+    /// The `Option<Scalar>` is an optional padding argument which when `Some`, will subtract the
+    /// scalar from both ends of the other widget's dimension.
+    KidAreaOf(widget::Index, Option<Scalar>),
 }
 
 /// Widgets that are positionable.
@@ -651,20 +657,20 @@ pub trait Sizeable: Sized {
 
     /// Set the absolute width for the widget.
     #[inline]
-    fn width(self, w: Scalar) -> Self {
+    fn w(self, w: Scalar) -> Self {
         self.x_dimension(Dimension::Absolute(w))
     }
 
     /// Set the absolute height for the widget.
     #[inline]
-    fn height(self, h: Scalar) -> Self {
+    fn h(self, h: Scalar) -> Self {
         self.y_dimension(Dimension::Absolute(h))
     }
 
     /// Set the dimensions for the widget.
     #[inline]
-    fn wh(self, dim: Dimensions) -> Self {
-        self.width(dim[0]).height(dim[1])
+    fn wh(self, wh: Dimensions) -> Self {
+        self.w(wh[0]).h(wh[1])
     }
 
     /// Set the width and height for the widget.
@@ -675,64 +681,110 @@ pub trait Sizeable: Sized {
 
     /// Set the width as the width of the widget at the given index.
     #[inline]
-    fn width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.x_dimension(Dimension::Of(idx.into()))
+    fn w_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.x_dimension(Dimension::Of(idx.into(), None))
+    }
+
+    /// Set the width as the width of the widget at the given index padded at both ends by the
+    /// given Scalar.
+    #[inline]
+    fn padded_w_of<I: Into<widget::Index>>(self, idx: I, pad: Scalar) -> Self {
+        self.x_dimension(Dimension::Of(idx.into(), Some(pad)))
     }
 
     /// Set the height as the height of the widget at the given index.
     #[inline]
-    fn height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.y_dimension(Dimension::Of(idx.into()))
+    fn h_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.y_dimension(Dimension::Of(idx.into(), None))
+    }
+
+    /// Set the height as the height of the widget at the given index padded at both ends by the
+    /// given Scalar.
+    #[inline]
+    fn padded_h_of<I: Into<widget::Index>>(self, idx: I, pad: Scalar) -> Self {
+        self.y_dimension(Dimension::Of(idx.into(), Some(pad)))
     }
 
     /// Set the dimensions as the dimensions of the widget at the given index.
     #[inline]
-    fn dim_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
-        self.width_of(idx).height_of(idx)
+    fn wh_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
+        self.w_of(idx).h_of(idx)
+    }
+
+    /// Set the dimensions as the dimensions of the widget at the given index with all four edges
+    /// padded by the given scalar.
+    #[inline]
+    fn padded_wh_of<I: Into<widget::Index> + Copy>(self, idx: I, pad: Scalar) -> Self {
+        self.padded_w_of(idx, pad).padded_h_of(idx, pad)
     }
 
     /// Set the width as the width of the padded area of the widget at the given index.
     #[inline]
-    fn kid_area_width_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.x_dimension(Dimension::KidAreaOf(idx.into()))
+    fn kid_area_w_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.x_dimension(Dimension::KidAreaOf(idx.into(), None))
     }
 
-    /// Set the height as the height of the padded area of the widget at the given index.
+    /// Set the width as the `KidArea` width for the widget at the given index, padded at both ends
+    /// by the given scalar.
     #[inline]
-    fn kid_area_height_of<I: Into<widget::Index>>(self, idx: I) -> Self {
-        self.y_dimension(Dimension::KidAreaOf(idx.into()))
+    fn padded_kid_area_w_of<I: Into<widget::Index>>(self, idx: I, pad: Scalar) -> Self {
+        self.x_dimension(Dimension::KidAreaOf(idx.into(), Some(pad)))
     }
 
-    /// Set the dimensions as the dimensions of the padded area of the widget at the given index.
+    /// Set the height as the `KidArea` height of the widget at the given index.
     #[inline]
-    fn kid_area_dim_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
-        self.kid_area_width_of(idx).kid_area_height_of(idx)
+    fn kid_area_h_of<I: Into<widget::Index>>(self, idx: I) -> Self {
+        self.y_dimension(Dimension::KidAreaOf(idx.into(), None))
+    }
+
+    /// Set the height as the `KidArea` height of the widget at the given index, padded at both
+    /// ends by the given scalar.
+    #[inline]
+    fn padded_kid_area_h_of<I: Into<widget::Index>>(self, idx: I, pad: Scalar) -> Self {
+        self.y_dimension(Dimension::KidAreaOf(idx.into(), Some(pad)))
+    }
+
+    /// Set the dimensions as the `KidArea` dimensions of the widget at the given index.
+    #[inline]
+    fn kid_area_wh_of<I: Into<widget::Index> + Copy>(self, idx: I) -> Self {
+        self.kid_area_w_of(idx).kid_area_h_of(idx)
+    }
+
+    /// Set the dimensions as the `KidArea` dimensions of the widget at the given index, padded at
+    /// all four edges by the given scalar.
+    #[inline]
+    fn padded_kid_area_wh_of<I: Into<widget::Index> + Copy>(self, idx: I, pad: Scalar) -> Self {
+        self.padded_kid_area_w_of(idx, pad).padded_kid_area_h_of(idx, pad)
     }
 
     /// Get the absolute width of the widget as a Scalar value.
     #[inline]
-    fn get_width<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+    fn get_w<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
         match self.get_x_dimension(ui) {
             Dimension::Absolute(width) => Some(width),
-            Dimension::Of(idx) => ui.width_of(idx),
-            Dimension::KidAreaOf(idx) => ui.kid_area_of(idx).map(|r| r.w()),
+            Dimension::Of(idx, None) => ui.w_of(idx),
+            Dimension::Of(idx, Some(pad)) => ui.w_of(idx).map(|w| w - pad * 2.0),
+            Dimension::KidAreaOf(idx, None) => ui.kid_area_of(idx).map(|r| r.w()),
+            Dimension::KidAreaOf(idx, Some(pad)) => ui.kid_area_of(idx).map(|r| r.w() - pad * 2.0),
         }
     }
 
     /// Get the height of the widget.
     #[inline]
-    fn get_height<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+    fn get_h<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
         match self.get_y_dimension(ui) {
             Dimension::Absolute(height) => Some(height),
-            Dimension::Of(idx) => ui.height_of(idx),
-            Dimension::KidAreaOf(idx) => ui.kid_area_of(idx).map(|r| r.h()),
+            Dimension::Of(idx, None) => ui.h_of(idx),
+            Dimension::Of(idx, Some(pad)) => ui.h_of(idx).map(|w| w - pad * 2.0),
+            Dimension::KidAreaOf(idx, None) => ui.kid_area_of(idx).map(|r| r.h()),
+            Dimension::KidAreaOf(idx, Some(pad)) => ui.kid_area_of(idx).map(|r| r.h() - pad * 2.0),
         }
     }
 
     /// The dimensions for the widget.
     #[inline]
-    fn get_dim<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Dimensions> {
-        self.get_width(ui).and_then(|w| self.get_height(ui).map(|h| [w, h]))
+    fn get_wh<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Dimensions> {
+        self.get_w(ui).and_then(|w| self.get_h(ui).map(|h| [w, h]))
     }
 
 }
