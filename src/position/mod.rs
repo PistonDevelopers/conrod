@@ -789,23 +789,21 @@ pub trait Sizeable: Sized {
 
 }
 
-
 /// The distance between the inner edge of a frame and the outer edge of the inner content.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Padding {
-    /// Padding between the top of a Widget and the top of a parent Widget.
-    pub top: f64,
-    /// Padding between the bottom of a Widget and the bottom of a parent Widget.
-    pub bottom: f64,
-    /// Padding between the left of a Widget and the left of a parent Widget.
-    pub left: f64,
-    /// Padding between the right of a Widget and the right of a parent Widget.
-    pub right: f64,
+    /// Padding on the start and end of the *x* axis.
+    pub x: Range,
+    /// Padding on the start and end of the *y* axis.
+    pub y: Range,
 }
 
 impl Padding {
     /// No padding.
     pub fn none() -> Padding {
-        Padding { top: 0.0, bottom: 0.0, left: 0.0, right: 0.0 }
+        Padding {
+            x: Range::new(0.0, 0.0),
+            y: Range::new(0.0, 0.0),
+        }
     }
 }

@@ -222,8 +222,8 @@ impl Rect {
     /// The Rect with some padding applied.
     pub fn padding(self, padding: Padding) -> Self {
         Rect {
-            x: self.x.pad_ends(padding.left, padding.right),
-            y: self.y.pad_ends(padding.bottom, padding.top),
+            x: self.x.pad_ends(padding.x.start, padding.x.end),
+            y: self.y.pad_ends(padding.y.start, padding.y.end),
         }
     }
 

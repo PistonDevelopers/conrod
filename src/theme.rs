@@ -76,12 +76,7 @@ impl Theme {
     pub fn default() -> Theme {
         Theme {
             name: "Demo Theme".to_string(),
-            padding: Padding {
-                top: 0.0,
-                bottom: 0.0,
-                left: 0.0,
-                right: 0.0,
-            },
+            padding: Padding::none(),
             x_position: Position::Align(Align::Start, None),
             y_position: Position::Direction(Direction::Backwards, 20.0, None),
             background_color: black(),

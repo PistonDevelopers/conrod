@@ -14,6 +14,7 @@ use {
     Padding,
     Point,
     Positionable,
+    Range,
     Rectangle,
     Scalar,
     Text,
@@ -384,10 +385,8 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         KidArea {
             rect: args.rect,
             pad: Padding {
-                left: TEXT_PADDING,
-                right: TEXT_PADDING,
-                bottom: TEXT_PADDING,
-                top: TEXT_PADDING,
+                x: Range::new(TEXT_PADDING, TEXT_PADDING),
+                y: Range::new(TEXT_PADDING, TEXT_PADDING),
             },
         }
     }

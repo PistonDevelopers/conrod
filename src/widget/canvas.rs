@@ -10,15 +10,21 @@ use {
     FramedRectangleStyle,
     IndexSlot,
     Labelable,
-    TextStyle,
+    Padding,
+    Place,
+    Position,
     Positionable,
+    Range,
+    Rect,
     Scalar,
+    TextStyle,
     Theme,
     TitleBar,
     Ui,
+    Widget,
 };
-use position::{self, Padding, Place, Position, Rect};
-use widget::{self, title_bar, Widget};
+use position;
+use widget::{self, title_bar};
 
 
 /// A widget designed to be a parent for other widgets.
@@ -98,13 +104,6 @@ impl<'a> Canvas<'a> {
         self
     }
 
-    /// Set the padding of the top of the area where child widgets will be placed.
-    #[inline]
-    pub fn pad_top(mut self, pad: Scalar) -> Self {
-        self.style.padding.maybe_top = Some(pad);
-        self
-    }
-
     /// Set the padding of the bottom of the area where child widgets will be placed.
     #[inline]
     pub fn pad_bottom(mut self, pad: Scalar) -> Self {
@@ -112,13 +111,20 @@ impl<'a> Canvas<'a> {
         self
     }
 
+    /// Set the padding of the top of the area where child widgets will be placed.
+    #[inline]
+    pub fn pad_top(mut self, pad: Scalar) -> Self {
+        self.style.padding.maybe_top = Some(pad);
+        self
+    }
+
     /// Set the padding of the area where child widgets will be placed.
     #[inline]
     pub fn padding(self, pad: Padding) -> Self {
-        self.pad_left(pad.left)
-            .pad_right(pad.right)
-            .pad_right(pad.top)
-            .pad_right(pad.bottom)
+        self.pad_left(pad.x.start)
+            .pad_right(pad.x.end)
+            .pad_bottom(pad.y.start)
+            .pad_top(pad.y.end)
     }
 
     /// Build the **Canvas** with the given **Style**.
@@ -336,18 +342,22 @@ impl Style {
     pub fn padding(&self, theme: &Theme) -> position::Padding {
         let default_style = theme.widget_style::<Style>(KIND);
         position::Padding {
-            top: self.padding.maybe_top.or_else(|| default_style.as_ref().map(|default| {
-                default.style.padding.maybe_top.unwrap_or(theme.padding.top)
-            })).unwrap_or(theme.padding.top),
-            bottom: self.padding.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
-                default.style.padding.maybe_bottom.unwrap_or(theme.padding.bottom)
-            })).unwrap_or(theme.padding.bottom),
-            left: self.padding.maybe_left.or_else(|| default_style.as_ref().map(|default| {
-                default.style.padding.maybe_left.unwrap_or(theme.padding.left)
-            })).unwrap_or(theme.padding.left),
-            right: self.padding.maybe_right.or_else(|| default_style.as_ref().map(|default| {
-                default.style.padding.maybe_right.unwrap_or(theme.padding.right)
-            })).unwrap_or(theme.padding.right),
+            x: Range {
+                start: self.padding.maybe_left.or_else(|| default_style.as_ref().map(|default| {
+                    default.style.padding.maybe_left.unwrap_or(theme.padding.x.start)
+                })).unwrap_or(theme.padding.x.start),
+                end: self.padding.maybe_right.or_else(|| default_style.as_ref().map(|default| {
+                    default.style.padding.maybe_right.unwrap_or(theme.padding.x.end)
+                })).unwrap_or(theme.padding.x.end),
+            },
+            y: Range {
+                start: self.padding.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
+                    default.style.padding.maybe_bottom.unwrap_or(theme.padding.y.start)
+                })).unwrap_or(theme.padding.y.start),
+                end: self.padding.maybe_top.or_else(|| default_style.as_ref().map(|default| {
+                    default.style.padding.maybe_top.unwrap_or(theme.padding.y.end)
+                })).unwrap_or(theme.padding.y.end),
+            },
         }
     }
 

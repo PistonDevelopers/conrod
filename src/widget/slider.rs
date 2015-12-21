@@ -202,10 +202,8 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         KidArea {
             rect: args.rect,
             pad: Padding {
-                left: LABEL_PADDING,
-                right: LABEL_PADDING,
-                bottom: LABEL_PADDING,
-                top: LABEL_PADDING,
+                x: Range::new(LABEL_PADDING, LABEL_PADDING),
+                y: Range::new(LABEL_PADDING, LABEL_PADDING),
             },
         }
     }

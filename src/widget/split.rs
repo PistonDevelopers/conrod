@@ -186,8 +186,8 @@ impl<'a> Split<'a> {
         // let padded_rect = framed_rect.padding(pad);
 
         let frame_dim = vec2_sub(dim, [frame * 2.0; 2]);
-        let pad_offset = [(pad.bottom - pad.top), (pad.left - pad.right)];
-        let pad_dim = vec2_sub(frame_dim, [pad.left + pad.right, pad.top + pad.bottom]);
+        let pad_offset = [pad.x.start - pad.x.end, pad.y.start - pad.y.end];
+        let pad_dim = vec2_sub(frame_dim, [pad.x.start + pad.x.end, pad.y.start + pad.y.end]);
 
         // Instantiate the Canvas widget for this split.
         {

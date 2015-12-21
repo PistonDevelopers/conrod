@@ -314,7 +314,7 @@ impl<C> Ui<C> {
                                       range_from_rect: R,
                                       start_and_end_pad: P) -> Scalar
             where R: FnOnce(Rect) -> Range,
-                  P: FnOnce(Padding) -> (Scalar, Scalar),
+                  P: FnOnce(Padding) -> Range,
         {
             match position {
 
@@ -363,12 +363,12 @@ impl<C> Ui<C> {
                             .map(|w| w.kid_area)
                             .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
                         false => ui.rect_of(parent_idx)
-                            .map(|rect| (range_from_rect(rect), (0.0, 0.0))),
+                            .map(|rect| (range_from_rect(rect), Range::new(0.0, 0.0))),
                     };
                     maybe_area
-                        .map(|(parent_range, (pad_start, pad_end))| {
+                        .map(|(parent_range, pad)| {
                             let range = Range::from_pos_and_len(0.0, dim);
-                            let parent_range = parent_range.pad_start(pad_start).pad_end(pad_end);
+                            let parent_range = parent_range.pad_start(pad.start).pad_end(pad.end);
                             match place {
                                 Place::Start(maybe_mgn) =>
                                     range.align_start_of(parent_range).middle() + maybe_mgn.unwrap_or(0.0),
@@ -386,8 +386,8 @@ impl<C> Ui<C> {
 
         fn x_range(rect: Rect) -> Range { rect.x }
         fn y_range(rect: Rect) -> Range { rect.y }
-        fn x_pad(pad: Padding) -> (Scalar, Scalar) { (pad.left, pad.right) }
-        fn y_pad(pad: Padding) -> (Scalar, Scalar) { (pad.bottom, pad.top) }
+        fn x_pad(pad: Padding) -> Range { pad.x }
+        fn y_pad(pad: Padding) -> Range { pad.y }
         let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
         let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
         let xy = [x, y];
