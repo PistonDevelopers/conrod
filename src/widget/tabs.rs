@@ -314,7 +314,7 @@ impl<'a> Widget for Tabs<'a> {
             let &(child_id, _) = &tabs[selected_idx];
             Canvas::new()
                 .with_style(style.canvas)
-                .kid_area_dim_of(idx)
+                .kid_area_wh_of(idx)
                 .middle_of(idx)
                 .parent(idx)
                 .set(child_id, &mut ui);

@@ -322,6 +322,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .thickness(thickness)
             .x_y_relative_to(idx, v_line_x, 0.0)
             .graphics_for(idx)
+            .parent(idx)
             .set(v_line_idx, &mut ui);
 
         let h_line_start = [-half_w, 0.0];
@@ -332,6 +333,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .thickness(thickness)
             .x_y_relative_to(idx, 0.0, h_line_y)
             .graphics_for(idx)
+            .parent(idx)
             .set(h_line_idx, &mut ui);
 
         // Crosshair value label **Text** widget.

@@ -364,11 +364,12 @@ fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
 {
     ui.theme.widget_style::<W::Style>(widget.unique_kind())
         .and_then(f)
-        .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx)))
+        .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx, None)))
         .or_else(|| {
             let x_pos = widget.get_x_position(ui);
             let y_pos = widget.get_y_position(ui);
-            widget.common().maybe_parent_idx.get(ui, x_pos, y_pos).map(|idx| Dimension::Of(idx))
+            widget.common().maybe_parent_idx.get(ui, x_pos, y_pos)
+                .map(|idx| Dimension::Of(idx, None))
         })
 }
 
@@ -762,7 +763,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     let new_style = widget.style();
     let depth = widget.get_depth();
-    let dim = widget.get_dim(&ui).unwrap_or([0.0, 0.0]);
+    let dim = widget.get_wh(&ui).unwrap_or([0.0, 0.0]);
     let x_pos = widget.get_x_position(ui);
     let y_pos = widget.get_y_position(ui);
     let place_on_kid_area = widget.common().place_on_kid_area;
