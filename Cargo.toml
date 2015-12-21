@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.25.0"
+version = "0.26.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -24,7 +24,7 @@ path = "./src/lib.rs"
 [dependencies]
 daggy = "0.3.0"
 pistoncore-input = "0.8.0"
-piston2d-graphics = "0.12.0"
+piston2d-graphics = "0.13.0"
 num = "0.1.27"
 rand = "0.3.12"
 time = "0.1.34"
@@ -34,8 +34,8 @@ vecmath = "0.2.0"
 find_folder = "0.3.0"
 gfx = "0.8.1"
 piston-viewport = "0.2.0"
-piston_window = "0.32.0"
-piston2d-gfx_graphics = "0.16.0"
-piston2d-opengl_graphics = "0.21.0"
+piston_window = "0.33.0"
+piston2d-gfx_graphics = "0.17.0"
+piston2d-opengl_graphics = "0.22.0"
 pistoncore-glutin_window = "0.20.0"
 piston = "0.16.0"
