@@ -167,14 +167,6 @@ pub struct CommonBuilder {
     pub is_floating: bool,
     /// Builder data for scrollable widgets.
     pub scrolling: scroll::Scrolling,
-    /// Whether or not the widget should be considered when picking the topmost widget at a
-    /// position.
-    ///
-    /// This also stops the widget from being included within bounding box calculations.
-    ///
-    /// This is useful to indicate whether or not the widget should block the mouse from
-    /// interacting with widgets underneath it.
-    pub picking_passthrough: bool,
     /// Whether or not the **Widget** should be placed on the kid_area.
     ///
     /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
@@ -297,10 +289,6 @@ pub struct PreUpdateCache {
     pub maybe_floating: Option<Floating>,
     /// Scrolling data for the **Widget** if there is some.
     pub maybe_scrolling: Option<scroll::State>,
-    /// Indicates whether the widget blocks the mouse from interacting with widgets underneath it.
-    ///
-    /// This also stops the widget from being included within bounding box calculations.
-    pub picking_passthrough: bool,
     /// Whether or not the **Widget** has been instantiated as a graphical element for some other
     /// widget.
     pub maybe_graphics_for: Option<Index>,
@@ -429,13 +417,19 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
 /// - update
 ///
 /// Methods that can be optionally overridden:
-/// - picking_passthrough
 /// - default_x_position
 /// - default_y_position
 /// - default_width
 /// - default_height
+/// - drag_area
+/// - kid_area
 ///
 /// Methods that should not be overridden:
+/// - floating
+/// - scrolling
+/// - vertical_scrolling
+/// - horizontal_scrolling
+/// - place_widget_on_kid_area
 /// - parent
 /// - no_parent
 /// - set
@@ -567,6 +561,7 @@ pub trait Widget: Sized {
         }
     }
 
+
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
     // Most of them would benefit by some sort of field inheritance as they are mainly just used to
@@ -584,18 +579,6 @@ pub trait Widget: Sized {
     /// Specify that this widget has no parent widgets.
     fn no_parent(mut self) -> Self {
         self.common_mut().maybe_parent_idx = MaybeParent::None;
-        self
-    }
-
-    /// Whether or not the widget should be considered when picking the topmost widget at a
-    /// position.
-    ///
-    /// This also stops the widget from being included within bounding box calculations.
-    ///
-    /// This is useful to indicate whether or not the widget should block the mouse from
-    /// interacting with widgets underneath it.
-    fn picking_passthrough(mut self, passthrough: bool) -> Self {
-        self.common_mut().picking_passthrough = passthrough;
         self
     }
 
@@ -927,7 +910,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_new_scrolling,
-            picking_passthrough: widget.common().picking_passthrough,
             maybe_graphics_for: widget.common().maybe_graphics_for,
         });
     }
@@ -1140,7 +1122,6 @@ impl CommonBuilder {
         CommonBuilder {
             style: CommonStyle::new(),
             maybe_parent_idx: MaybeParent::Unspecified,
-            picking_passthrough: false,
             place_on_kid_area: true,
             maybe_graphics_for: None,
             is_floating: false,

@@ -83,8 +83,6 @@ pub struct Container {
     pub maybe_floating: Option<widget::Floating>,
     /// Scroll related state (is only `Some` if the widget is scrollable).
     pub maybe_scrolling: Option<widget::scroll::State>,
-    /// Whether or not the widget is included when picking widgets by position.
-    pub picking_passthrough: bool,
     /// Represents the Widget's position within the overall instantiation ordering of the widgets.
     ///
     /// i.e. if foo's `instantiation_order_idx` is lower than bar's, it means that foo was
@@ -649,7 +647,7 @@ impl Graph {
     {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_positioned_relatively_idx, rect, depth, kid_area,
-            drag_state, maybe_floating, maybe_scrolling, picking_passthrough, maybe_graphics_for,
+            drag_state, maybe_floating, maybe_scrolling, maybe_graphics_for,
         } = widget;
 
         // Construct a new `Container` to place in the `Graph`.
@@ -662,7 +660,6 @@ impl Graph {
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_scrolling: maybe_scrolling,
-            picking_passthrough: picking_passthrough,
             instantiation_order_idx: instantiation_order_idx,
         };
 
