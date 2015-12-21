@@ -178,16 +178,11 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
     Split::new(CANVAS).frame(app.frame_width).color(app.bg_color).scrolling(true).set(ui);
 
-    // Calculate x and y coords for title (temporary until `Canvas`es are implemented, see #380).
-    let title_x = app.title_pad - (ui.win_w / 2.0) + 185.0;
-    let title_y = (ui.win_h / 2.0) - 50.0;
-
     // Text example.
     Text::new("Widget Demonstration")
-        .x_y(title_x, title_y)
+        .top_left_with_margins_on(CANVAS, 25.0, app.title_pad)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
-        .parent(CANVAS)
         .set(TITLE, ui);
 
     if app.show_button {
@@ -195,7 +190,8 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Button widget example button.
         Button::new()
             .w_h(200.0, 50.0)
-            .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
+            .mid_left_with_margin_on(CANVAS, 30.0)
+            .down_from(TITLE, 45.0)
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
             .label("PRESS")
@@ -219,7 +215,8 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .w_h(200.0, 50.0)
-            .x_y(140.0 - (ui.win_w / 2.0), title_y - 70.0)
+            .mid_left_with_margin_on(CANVAS, 30.0)
+            .down_from(TITLE, 45.0)
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
             .label(&label)

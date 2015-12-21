@@ -78,7 +78,7 @@ fn set_widgets(ui: &mut Ui) {
     Tabs::new(&[(TAB_FOO, "FOO"),
                 (TAB_BAR, "BAR"),
                 (TAB_BAZ, "BAZ")])
-        .dim_of(MIDDLE_COLUMN)
+        .wh_of(MIDDLE_COLUMN)
         .color(blue())
         .label_color(white())
         .middle_of(MIDDLE_COLUMN)
@@ -101,9 +101,9 @@ fn set_widgets(ui: &mut Ui) {
     Text::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
     Text::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
-    let footer_dim = ui.dim_of(FOOTER).unwrap();
+    let footer_wh = ui.wh_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
-        .w_h(footer_dim[0], footer_dim[1] * 2.0)
+        .w_h(footer_wh[0], footer_wh[1] * 2.0)
         .mid_top_of(FOOTER)
         .each_widget(|n, _col, _row| {
             Button::new()

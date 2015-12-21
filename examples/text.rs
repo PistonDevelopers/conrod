@@ -38,7 +38,7 @@ fn main() {
 
 
 fn set_ui(ui: &mut Ui) {
-    use conrod::{color, Colorable, Positionable, Sizeable, Split, Text};
+    use conrod::{color, Colorable, Positionable, Scalar, Sizeable, Split, Text};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{
@@ -53,9 +53,9 @@ fn set_ui(ui: &mut Ui) {
 
     // Our `Canvas` tree, upon which we will place our text widgets.
     Split::new(MASTER).flow_right(&[
-        Split::new(LEFT_COL).pad(20.0).color(color::black()),
-        Split::new(MIDDLE_COL).pad(20.0).color(color::dark_charcoal()),
-        Split::new(RIGHT_COL).pad(20.0).color(color::charcoal()),
+        Split::new(LEFT_COL).color(color::black()),
+        Split::new(MIDDLE_COL).color(color::dark_charcoal()),
+        Split::new(RIGHT_COL).color(color::charcoal()),
     ]).set(ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -66,25 +66,28 @@ fn set_ui(ui: &mut Ui) {
         Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
         magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
 
+    const PAD: Scalar = 20.0;
+
     Text::new(DEMO_TEXT)
         .color(color::light_red())
-        .kid_area_width_of(LEFT_COL)
-        .mid_top_of(LEFT_COL)
+        .padded_w_of(LEFT_COL, PAD)
+        .mid_top_with_margin_on(LEFT_COL, PAD)
         .align_text_left()
         .line_spacing(10.0)
         .set(LEFT_TEXT, ui);
 
     Text::new(DEMO_TEXT)
         .color(color::light_green())
-        .kid_area_width_of(MIDDLE_COL)
+        .padded_w_of(MIDDLE_COL, PAD)
         .middle_of(MIDDLE_COL)
         .align_text_middle()
+        .line_spacing(2.5)
         .set(MIDDLE_TEXT, ui);
 
     Text::new(DEMO_TEXT)
         .color(color::light_blue())
-        .kid_area_width_of(RIGHT_COL)
-        .mid_bottom_of(RIGHT_COL)
+        .padded_w_of(RIGHT_COL, PAD)
+        .mid_bottom_with_margin_on(RIGHT_COL, PAD)
         .align_text_right()
         .line_spacing(5.0)
         .set(RIGHT_TEXT, ui);
