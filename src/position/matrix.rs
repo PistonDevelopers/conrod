@@ -56,7 +56,7 @@ impl Matrix {
 
         let x_pos = self.get_x_position(ui);
         let y_pos = self.get_y_position(ui);
-        let dim = self.get_dim(ui).unwrap_or([0.0, 0.0]);
+        let dim = self.get_wh(ui).unwrap_or([0.0, 0.0]);
 
         // If we can infer some new current parent from the position, set that as the current
         // parent within the given `Ui`.

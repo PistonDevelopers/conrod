@@ -11,7 +11,6 @@ use super::depth_order::Visitable;
 use super::{
     Graph,
     GraphIndex,
-    Node,
     NodeIndex,
 };
 use widget;
@@ -206,14 +205,7 @@ pub fn bounding_box<I: GraphIndex>(graph: &Graph,
 
             // An iterator yielding the bounding_box returned by each of our children.
             let mut kids_bounds = graph.depth_children(idx)
-                .filter(|g, _, n| {
-                    let is_pickable = match g[n] {
-                        Node::Widget(ref container) => !container.picking_passthrough,
-                        _ => false,
-                    };
-                    let is_graphic = graph.graphic_parent::<_, NodeIndex>(n).is_some();
-                    is_pickable && !is_graphic
-                })
+                .filter(|g, _, n| !g.graphic_parent::<_, NodeIndex>(n).is_some())
                 .iter(graph).nodes()
                 .filter_map(|n| {
                     bounding_box(graph, true, Some(target_xy), false, n, deepest_parent_idx)

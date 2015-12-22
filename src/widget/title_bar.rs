@@ -106,7 +106,7 @@ impl<'a, F> TitleBar<'a, F>
             style: Style::new(),
             label: label,
             maybe_react: None,
-        }.width_of(idx).mid_top_of(idx)
+        }.w_of(idx).mid_top_of(idx)
     }
 
     /// Pass some styling for the **TitleBar**'s **Label**.

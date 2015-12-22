@@ -459,7 +459,7 @@ fn main() {
         e.update(|_| ui.set_widgets(|ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            conrod::Split::new(BACKGROUND).color(conrod::color::dark_red()).set(ui);
+            conrod::Canvas::new().color(conrod::color::dark_red()).set(BACKGROUND, ui);
 
             // Create an instance of our custom widget.
             CircularButton::new()

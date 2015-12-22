@@ -246,7 +246,7 @@ impl<'a> Widget for Text<'a> {
         let font_size = self.style.font_size(&ui.theme);
         let num_lines = match self.style.wrap(&ui.theme) {
             None => text.lines().count(),
-            Some(wrap) => match self.get_width(ui) {
+            Some(wrap) => match self.get_w(ui) {
                 None => text.lines().count(),
                 Some(max_w) => match wrap {
                     Wrap::Character =>

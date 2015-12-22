@@ -308,4 +308,3 @@ impl<'a, F> Labelable<'a> for Button<'a, F> {
         self
     }
 }
-

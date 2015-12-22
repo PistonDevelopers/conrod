@@ -4,7 +4,7 @@
 
 use Scalar;
 use color::{Color, black, white};
-use position::{Align, Direction, Margin, Padding, Position};
+use position::{Align, Direction, Padding, Position};
 use std::any::Any;
 use std::collections::HashMap;
 use widget;
@@ -16,8 +16,6 @@ pub struct Theme {
     pub name: String,
     /// Padding for Canvas layout and positioning.
     pub padding: Padding,
-    /// Margin for Canvas layout and positioning.
-    pub margin: Margin,
     /// A default widget position along the *x* axis.
     pub x_position: Position,
     /// A default widget position along the *y* axis.
@@ -78,18 +76,7 @@ impl Theme {
     pub fn default() -> Theme {
         Theme {
             name: "Demo Theme".to_string(),
-            padding: Padding {
-                top: 0.0,
-                bottom: 0.0,
-                left: 0.0,
-                right: 0.0,
-            },
-            margin: Margin {
-                top: 0.0,
-                bottom: 0.0,
-                left: 0.0,
-                right: 0.0,
-            },
+            padding: Padding::none(),
             x_position: Position::Align(Align::Start, None),
             y_position: Position::Direction(Direction::Backwards, 20.0, None),
             background_color: black(),

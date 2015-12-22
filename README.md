@@ -38,15 +38,17 @@ Features
 - A simple [`Widget` trait](http://docs.piston.rs/conrod/conrod/trait.Widget.html) to allow for custom, third-party widgets.
 - Opt-in, generalised, easy-to-use scrolling! I.e. simply call `.vertical_scrolling(true)` on a widget and it will become a scrollable container for its children.
 - Powerful [layout and positioning](http://docs.piston.rs/conrod/conrod/trait.Positionable.html):
-    - Placement - `.middle()`, `.top_left_of(CANVAS)`, etc.
+    - Placement - `.middle()`, `.top_left_of(CANVAS)`, `.mid_right_with_margin(20.0)`, etc.
     - Alignment - `.align_left()`, `.align_top_of(LABEL)`, etc.
-    - Relative - `.down(20.0)`, `.right_from(BUTTON, 40.0)`, `.xy_relative(20.0, 42.0)`, etc.
+    - Relative - `.down(20.0)`, `.right_from(BUTTON, 40.0)`, `.x_y_relative(20.0, 42.0)`, etc.
     - Absolute - `.x_y(6.0, 7.0)`
     - Draggable pop-up / floating canvasses - `.floating(true)`.
     - [WidgetMatrix](http://docs.piston.rs/conrod/conrod/struct.WidgetMatrix.html) and [PositionMatrix](http://docs.piston.rs/conrod/conrod/struct.PositionMatrix.html) for instantiating a grid of widgets. 
-- Serializable [`Theme`](http://docs.piston.rs/conrod/conrod/theme/struct.Theme.html)s for unique style and layout defaults.
+- [`Theme`](http://docs.piston.rs/conrod/conrod/theme/struct.Theme.html)s for unique style and layout defaults.
 - [`widget_ids!` macro](http://docs.piston.rs/conrod/conrod/macro.widget_ids!.html) for easily and safely generating unique widget identifiers.
-- Generic over events and graphics backends - compatible with glutin, sdl2, glium, gfx, opengl.
+- Generic over events and graphics backends - compatible with:
+    - [glutin](https://github.com/PistonDevelopers/glutin_window), [sdl2](https://github.com/PistonDevelopers/sdl2_window) and [glfw](https://github.com/PistonDevelopers/glfw_window) [`Window`](http://docs.piston.rs/piston/piston/window/trait.Window.html) backends.
+    - [gfx](https://github.com/PistonDevelopers/gfx_graphics), [glium](https://github.com/PistonDevelopers/glium_graphics) and raw [opengl](https://github.com/PistonDevelopers/opengl_graphics) [`Graphics`](http://docs.piston.rs/graphics/graphics/trait.Graphics.html) backends.
 - Comes with a collection of pre-made widgets.
 
 
@@ -68,19 +70,21 @@ Available Widgets
 ### Interactive
 
 - [Button](http://docs.piston.rs/conrod/conrod/struct.Button.html)
-- [Canvas](http://docs.piston.rs/conrod/conrod/struct.Canvas.html) (Can be positioned manually or by using the [Split](http://docs.piston.rs/conrod/conrod/struct.Split.html) or [Tabs](http://docs.piston.rs/conrod/conrod/struct.Tabs.html) wrappers for auto-layout)
+- [Canvas](http://docs.piston.rs/conrod/conrod/struct.Canvas.html) (a container-like widget)
 - [DropDownList](http://docs.piston.rs/conrod/conrod/struct.DropDownList.html)
 - [EnvelopeEditor](http://docs.piston.rs/conrod/conrod/struct.EnvelopeEditor.html)
 - WidgetMatrix
 - [NumberDialer](http://docs.piston.rs/conrod/conrod/struct.NumberDialer.html)
 - [Slider](http://docs.piston.rs/conrod/conrod/struct.Slider.html)
+- [Tabs](http://docs.piston.rs/conrod/conrod/struct.Tabs.html) (for easily switching between multiple `Canvas`ses with ease)
 - [TextBox](http://docs.piston.rs/conrod/conrod/struct.TextBox.html)
-- TitleBar
+- [TitleBar](http://docs.piston.rs/conrod/conrod/struct.TitleBar.html)
 - [Toggle](http://docs.piston.rs/conrod/conrod/struct.Toggle.html)
 - [XYPad](http://docs.piston.rs/conrod/conrod/struct.XYPad.html)
-- Custom: Conrod also provides a [Widget trait](http://docs.piston.rs/conrod/conrod/trait.Widget.html) for designing and implementing custom widgets. You can find an annotated demonstration of designing a custom widget implementation [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/custom_widget.rs). All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free to add them in a pull request :)
+- Custom: Conrod also provides a [Widget trait](http://docs.piston.rs/conrod/conrod/trait.Widget.html) for designing and implementing custom widgets. You can find an annotated demonstration of designing a custom widget implementation [here](https://github.com/PistonDevelopers/conrod/blob/master/examples/custom_widget.rs). All [internal widgets](https://github.com/PistonDevelopers/conrod/blob/master/src/widget) also use this same trait so they should make for decent examples. If you feel like your widget is useful enough to be included within the internal widget library, feel free to submit them in a pull request :)
 
 **To-do:**
+- [Image (primitive widget)](https://github.com/PistonDevelopers/conrod/issues/647)
 - [Menu Bar / Tool Bar](https://github.com/PistonDevelopers/conrod/issues/417)
 - [Right-click Context Menu](https://github.com/PistonDevelopers/conrod/issues/394)
 - [Multi-line Text Editor](https://github.com/PistonDevelopers/conrod/issues/62)
