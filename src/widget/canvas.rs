@@ -30,7 +30,20 @@ use position::Direction::{Forwards, Backwards};
 use widget::{self, title_bar};
 
 
-/// A widget designed to be a parent for other widgets.
+/// **Canvas** is designed to be a "container"-like "parent" widget that simplifies placement of
+/// "children" widgets.
+///
+/// Widgets can be placed on a **Canvas** in a variety of ways using methods from the
+/// [**Positionable**](../position/trait.Positionable) trait.
+///
+/// **Canvas** provides methods for padding the kid widget area which can make using the
+/// **Place**-related **Positionable** methods a little easier.
+///
+/// A **Canvas** can also be divided into a sequence of smaller **Canvas**ses using the `.flow_*`
+/// methods. This creates a kind of **Canvas** tree, where each "split" can be sized using the
+/// `.length` or `.length_weight` methods.
+///
+/// See the `canvas.rs` example for a demonstration of the **Canvas** type.
 #[derive(Copy, Clone, Debug)]
 pub struct Canvas<'a> {
     /// Data necessary and common for all widget builder types.
