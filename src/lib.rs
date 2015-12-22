@@ -33,7 +33,6 @@ pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::slider::Slider;
-pub use widget::split::Split;
 pub use widget::tabs::Tabs;
 pub use widget::text_box::TextBox;
 pub use widget::title_bar::TitleBar;

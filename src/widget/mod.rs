@@ -26,7 +26,6 @@ pub mod envelope_editor;
 pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
-pub mod split;
 pub mod tabs;
 pub mod text_box;
 pub mod title_bar;
@@ -1061,6 +1060,13 @@ impl<'a, C> UiCell<'a, C> {
         self.ui.kids_bounding_box(idx)
     }
 
+}
+
+impl<'a, C> ::std::ops::Deref for UiCell<'a, C> {
+    type Target = Ui<C>;
+    fn deref(&self) -> &Ui<C> {
+        self.ui
+    }
 }
 
 impl<'a, C> AsRef<Ui<C>> for UiCell<'a, C> {

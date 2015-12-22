@@ -17,17 +17,21 @@ use {
     Range,
     Rect,
     Scalar,
+    Sizeable,
     TextStyle,
     Theme,
     TitleBar,
     Ui,
+    UiCell,
     Widget,
 };
 use position;
+use position::Direction::{Forwards, Backwards};
 use widget::{self, title_bar};
 
 
 /// A widget designed to be a parent for other widgets.
+#[derive(Copy, Clone, Debug)]
 pub struct Canvas<'a> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
@@ -35,6 +39,8 @@ pub struct Canvas<'a> {
     pub style: Style,
     /// The label for the **Canvas**' **TitleBar** if there is one.
     pub maybe_title_bar_label: Option<&'a str>, 
+    /// A list of child **Canvas**ses as splits of this **Canvas** flowing in the given direction.
+    pub maybe_splits: Option<FlowOfSplits<'a>>,
 }
 
 /// **Canvas** state to be cached.
@@ -44,9 +50,27 @@ pub struct State {
     title_bar_idx: IndexSlot,
 }
 
+/// Describes the style of a Canvas.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Style {
+    /// Styling for the Canvas' rectangle.
+    pub framed_rectangle: FramedRectangleStyle,
+    /// The label and styling for the Canvas' title bar if it has one.
+    pub text: TextStyle,
+    /// Padding of the kid area.
+    pub padding: PaddingBuilder,
+    /// If this **Canvas** is a split of some parent **Canvas**, this is the length of the split.
+    pub maybe_length: Option<Length>,
+}
+
 /// Unique kind for the widget type.
 pub const KIND: widget::Kind = "Canvas";
 
+/// A series of **Canvas** splits along with their unique identifiers.
+pub type ListOfSplits<'a> = &'a [(widget::Id, Canvas<'a>)];
+
+/// A series of **Canvas** splits flowing in the specified direction.
+pub type FlowOfSplits<'a> = (Direction, ListOfSplits<'a>);
 
 /// A builder for the padding of the area where child widgets will be placed.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -61,15 +85,26 @@ pub struct PaddingBuilder {
     pub maybe_bottom: Option<Scalar>,
 }
 
-/// Describes the style of a Canvas.
+/// The length of a `Split` given as a weight.
+///
+/// The length is determined by determining what percentage each `Split`'s weight contributes to
+/// the total weight of all `Split`s in a flow list.
+pub type Weight = Scalar;
+
+/// Used to describe the desired length for a `Split`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Styling for the Canvas' rectangle.
-    pub framed_rectangle: FramedRectangleStyle,
-    /// The label and styling for the Canvas' title bar if it has one.
-    pub text: TextStyle,
-    /// Padding of the kid area.
-    pub padding: PaddingBuilder,
+pub enum Length {
+    /// The length as an absolute scalar.
+    Absolute(Scalar),
+    /// The length as a weight of the non-absolute length of the parent **Canvas**.
+    Weight(Weight),
+}
+
+/// The direction in which a sequence of canvas splits will be laid out.
+#[derive(Copy, Clone, Debug)]
+enum Direction {
+    X(position::Direction),
+    Y(position::Direction),
 }
 
 
@@ -81,6 +116,7 @@ impl<'a> Canvas<'a> {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             maybe_title_bar_label: None,
+            maybe_splits: None,
         }
     }
 
@@ -88,6 +124,46 @@ impl<'a> Canvas<'a> {
     pub fn title_bar(mut self, label: &'a str) -> Self {
         self.maybe_title_bar_label = Some(label);
         self
+    }
+
+    /// Set the length of the Split as an absolute scalar.
+    pub fn length(mut self, length: Scalar) -> Self {
+        self.style.maybe_length = Some(Length::Absolute(length));
+        self
+    }
+
+    /// Set the length of the Split as a weight.
+    ///
+    /// The default length weight for each widget is `1.0`.
+    pub fn length_weight(mut self, weight: Weight) -> Self {
+        self.style.maybe_length = Some(Length::Weight(weight));
+        self
+    }
+
+    /// Set the child Canvas Splits of the current Canvas flowing in a given direction.
+    fn flow(mut self, direction: Direction, splits: ListOfSplits<'a>) -> Self {
+        self.maybe_splits = Some((direction, splits));
+        self
+    }
+
+    /// Set the child Canvasses flowing to the right.
+    pub fn flow_right(self, splits: ListOfSplits<'a>) -> Self {
+        self.flow(Direction::X(Forwards), splits)
+    }
+
+    /// Set the child Canvasses flowing to the left.
+    pub fn flow_left(self, splits: ListOfSplits<'a>) -> Self {
+        self.flow(Direction::Y(Backwards), splits)
+    }
+
+    /// Set the child Canvasses flowing upwards.
+    pub fn flow_up(self, splits: ListOfSplits<'a>) -> Self {
+        self.flow(Direction::Y(Forwards), splits)
+    }
+
+    /// Set the child Canvasses flowing downwards.
+    pub fn flow_down(self, splits: ListOfSplits<'a>) -> Self {
+        self.flow(Direction::Y(Backwards), splits)
     }
 
     /// Set the padding of the left of the area where child widgets will be placed.
@@ -116,6 +192,12 @@ impl<'a> Canvas<'a> {
     pub fn pad_top(mut self, pad: Scalar) -> Self {
         self.style.padding.maybe_top = Some(pad);
         self
+    }
+
+    /// Set the padding for all edges of the area where child widgets will be placed.
+    #[inline]
+    pub fn pad(self, pad: Scalar) -> Self {
+        self.pad_left(pad).pad_right(pad).pad_bottom(pad).pad_top(pad)
     }
 
     /// Set the padding of the area where child widgets will be placed.
@@ -172,11 +254,15 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(64.0))
+        widget::default_x_dimension(self, ui)
+            .or_else(|| ui.w_of(ui.window).map(|w| Dimension::Absolute(w)))
+            .expect("`Ui.window` should always have some width")
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(80.0))
+        widget::default_y_dimension(self, ui)
+            .or_else(|| ui.h_of(ui.window).map(|h| Dimension::Absolute(h)))
+            .expect("`Ui.window` should always have some height")
     }
 
     /// The title bar area at which the Canvas can be clicked and dragged.
@@ -213,7 +299,7 @@ impl<'a> Widget for Canvas<'a> {
     /// Update the state of the Canvas.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
         let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
-        let Canvas { style, maybe_title_bar_label, .. } = self;
+        let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
         // FramedRectangle widget as the rectangle backdrop.
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
@@ -245,6 +331,83 @@ impl<'a> Widget for Canvas<'a> {
                 .place_on_kid_area(false)
                 .react(|_interaction| ())
                 .set(title_bar_idx, &mut ui);
+        }
+
+        // If we were given some child canvas splits, we should instantiate them.
+        if let Some((direction, splits)) = maybe_splits {
+
+            let (total_abs, total_weight) =
+                splits.iter().fold((0.0, 0.0), |(abs, weight), &(_, split)| {
+                    match split.style.length(ui.theme()) {
+                        Length::Absolute(a) => (abs + a, weight),
+                        Length::Weight(w) => (abs, weight + w),
+                    }
+                });
+
+            // No need to calculate kid_area again, we'll just get it from the graph.
+            let kid_area = ui.kid_area_of(idx).expect("No KidArea found");
+            let kid_area_range = match direction {
+                Direction::X(_) => kid_area.x,
+                Direction::Y(_) => kid_area.y,
+            };
+
+            let total_length = kid_area_range.len();
+            let non_abs_length = (total_length - total_abs).max(0.0);
+            let weight_normaliser = 1.0 / total_weight;
+
+            let length = |split: &Self, ui: &UiCell<C>| -> Scalar {
+                match split.style.length(ui.theme()) {
+                    Length::Absolute(length) => length,
+                    Length::Weight(weight) => weight * weight_normaliser * non_abs_length,
+                }
+            };
+
+            let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell<C>| {
+                split.parent(idx).set(split_id, ui);
+            };
+
+            // Instantiate each of the splits, matching on the direction first for efficiency.
+            match direction {
+
+                Direction::X(direction) => match direction {
+                    Forwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
+                        let w = length(&split, &ui);
+                        let split = match i {
+                            0 => split.h(kid_area.h()).mid_left_of(idx),
+                            _ => split.right(0.0),
+                        }.w(w);
+                        set_split(split_id, split, &mut ui);
+                    },
+                    Backwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
+                        let w = length(&split, &ui);
+                        let split = match i {
+                            0 => split.h(kid_area.h()).mid_right_of(idx),
+                            _ => split.left(0.0),
+                        }.w(w);
+                        set_split(split_id, split, &mut ui);
+                    },
+                },
+
+                Direction::Y(direction) => match direction {
+                    Forwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
+                        let h = length(&split, &ui);
+                        let split = match i {
+                            0 => split.w(kid_area.w()).mid_bottom_of(idx),
+                            _ => split.up(0.0),
+                        }.h(h);
+                        set_split(split_id, split, &mut ui);
+                    },
+                    Backwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
+                        let h = length(&split, &ui);
+                        let split = match i {
+                            0 => split.w(kid_area.w()).mid_top_of(idx),
+                            _ => split.down(0.0),
+                        }.h(h);
+                        set_split(split_id, split, &mut ui);
+                    },
+                },
+            }
+
         }
     }
 
@@ -282,6 +445,7 @@ impl Style {
                 maybe_top: None,
                 maybe_bottom: None,
             },
+            maybe_length: None,
         }
     }
 
@@ -328,6 +492,14 @@ impl Style {
     //         default.style.maybe_title_bar_label_align.unwrap_or(DEFAULT_ALIGN)
     //     })).unwrap_or(DEFAULT_ALIGN)
     // }
+
+    /// The length of the Canvas when instantiated as a split of some parent canvas.
+    pub fn length(&self, theme: &Theme) -> Length {
+        const DEFAULT_LENGTH: Length = Length::Weight(1.0);
+        self.maybe_length.or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+            default.style.maybe_length
+        })).unwrap_or(DEFAULT_LENGTH)
+    }
 
     /// Get the color of the title bar label.
     pub fn title_bar_label_color(&self, theme: &Theme) -> Color {
