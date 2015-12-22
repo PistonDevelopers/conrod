@@ -43,41 +43,26 @@ fn main() {
 // Draw the Ui.
 fn set_widgets(ui: &mut Ui) {
     use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
-    use conrod::{Button, Colorable, Labelable, Positionable, Sizeable, Split, Tabs, Text,
-                 WidgetMatrix};
+    use conrod::{Button, Colorable, Labelable, Positionable, Sizeable, Tabs, Text, WidgetMatrix};
 
-    // Construct our Canvas tree.
-    Split::new(MASTER).flow_down(&[
-        Split::new(HEADER).color(blue()).pad_bottom(20.0),
-        Split::new(BODY).length(300.0).flow_right(&[
-            Split::new(LEFT_COLUMN).color(light_orange()).pad(20.0),
-            Split::new(MIDDLE_COLUMN).color(orange()),
-            Split::new(RIGHT_COLUMN).color(dark_orange()).pad(20.0),
-        ]),
-        Split::new(FOOTER).color(blue()).vertical_scrolling(true)
-    ]).set(ui);
+    // Construct our main `Canvas` tree.
+    Canvas::new().flow_down(&[
+        (HEADER, Canvas::new().color(blue()).pad_bottom(20.0)),
+        (BODY, Canvas::new().length(300.0).flow_right(&[
+            (LEFT_COLUMN, Canvas::new().color(light_orange()).pad(20.0)),
+            (MIDDLE_COLUMN, Canvas::new().color(orange())),
+            (RIGHT_COLUMN, Canvas::new().color(dark_orange()).pad(20.0)),
+        ])),
+        (FOOTER, Canvas::new().color(blue()).vertical_scrolling(true)),
+    ]).set(MASTER, ui);
 
-    Canvas::new()
-        .title_bar("Blue")
-        .floating(true)
-        .w_h(110.0, 150.0)
-        .middle_of(LEFT_COLUMN)
-        .color(blue())
-        .label_color(white())
-        .set(FLOATING_A, ui);
+    // Now we'll make a couple floating `Canvas`ses.
+    let floating = Canvas::new().floating(true).w_h(110.0, 150.0).label_color(white());
+    floating.middle_of(LEFT_COLUMN).title_bar("Blue").color(blue()).set(FLOATING_A, ui);
+    floating.middle_of(RIGHT_COLUMN).title_bar("Orange").color(light_orange()).set(FLOATING_B, ui);
 
-    Canvas::new()
-        .title_bar("Orange")
-        .floating(true)
-        .w_h(110.0, 150.0)
-        .middle_of(RIGHT_COLUMN)
-        .color(light_orange())
-        .label_color(white())
-        .set(FLOATING_B, ui);
-
-    Tabs::new(&[(TAB_FOO, "FOO"),
-                (TAB_BAR, "BAR"),
-                (TAB_BAZ, "BAZ")])
+    // Here we make some canvas `Tabs` in the middle column.
+    Tabs::new(&[(TAB_FOO, "FOO"), (TAB_BAR, "BAR"), (TAB_BAZ, "BAZ")])
         .wh_of(MIDDLE_COLUMN)
         .color(blue())
         .label_color(white())

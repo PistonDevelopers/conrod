@@ -32,7 +32,7 @@ fn main() {
             widget_ids!(CANVAS, COUNTER);
 
             // Create a background canvas upon which we'll place the button.
-            conrod::Split::new(CANVAS).pad(40.0).set(ui);
+            conrod::Canvas::new().pad(40.0).set(CANVAS, ui);
 
             // Draw the button and increment `count` if pressed.
             conrod::Button::new()

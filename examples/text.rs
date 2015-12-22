@@ -38,7 +38,7 @@ fn main() {
 
 
 fn set_ui(ui: &mut Ui) {
-    use conrod::{color, Colorable, Positionable, Scalar, Sizeable, Split, Text};
+    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{
@@ -52,11 +52,11 @@ fn set_ui(ui: &mut Ui) {
     }
 
     // Our `Canvas` tree, upon which we will place our text widgets.
-    Split::new(MASTER).flow_right(&[
-        Split::new(LEFT_COL).color(color::black()),
-        Split::new(MIDDLE_COL).color(color::dark_charcoal()),
-        Split::new(RIGHT_COL).color(color::charcoal()),
-    ]).set(ui);
+    Canvas::new().flow_right(&[
+        (LEFT_COL, Canvas::new().color(color::black())),
+        (MIDDLE_COL, Canvas::new().color(color::dark_charcoal())),
+        (RIGHT_COL, Canvas::new().color(color::charcoal())),
+    ]).set(MASTER, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \

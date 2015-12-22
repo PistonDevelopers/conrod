@@ -14,6 +14,7 @@ extern crate piston_window;
 
 use conrod::{
     Button,
+    Canvas,
     Circle,
     Color,
     Colorable,
@@ -26,7 +27,6 @@ use conrod::{
     Positionable,
     Slider,
     Sizeable,
-    Split,
     Text,
     TextBox,
     Theme,
@@ -172,11 +172,8 @@ fn main() {
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
 fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
-    // Normally, `Split`s can be used to describe the layout of `Canvas`ses within a window (see
-    // the canvas.rs example for a demonstration of this). However, when only one `Split` is used
-    // (as in this case) a single `Canvas` will simply fill the screen.
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Split::new(CANVAS).frame(app.frame_width).color(app.bg_color).scrolling(true).set(ui);
+    Canvas::new().frame(app.frame_width).color(app.bg_color).scrolling(true).set(CANVAS, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
@@ -420,7 +417,6 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             .line_thickness(2.0)
             .react(|_points: &mut Vec<Point>, _idx: usize|{})
             .set(ENVELOPE_EDITOR + (i * 2) + 1, ui);
-
     }
 
 }

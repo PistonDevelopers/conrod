@@ -37,7 +37,7 @@ fn main() {
 
 
 fn set_ui(ui: &mut Ui) {
-    use conrod::{Circle, Line, Oval, PointPath, Polygon, Positionable, Rectangle, Split};
+    use conrod::{Canvas, Circle, Line, Oval, PointPath, Polygon, Positionable, Rectangle};
     use std::iter::once;
 
     // Generate a unique const `WidgetId` for each widget.
@@ -54,7 +54,7 @@ fn set_ui(ui: &mut Ui) {
     };
 
     // The background canvas upon which we'll place our widgets.
-    Split::new(CANVAS).pad(80.0).set(ui);
+    Canvas::new().pad(80.0).set(CANVAS, ui);
 
     Line::centred([-40.0, -40.0], [40.0, 40.0]).top_left_of(CANVAS).set(LINE, ui);
 
