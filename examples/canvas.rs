@@ -7,8 +7,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Theme, Widget};
-use conrod::color;
+use conrod::{Canvas, Theme, Widget, color};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 type Ui = conrod::Ui<Glyphs>;
