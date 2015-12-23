@@ -2,7 +2,6 @@ use {
     CharacterCache,
     Color,
     Colorable,
-    Dimension,
     Dimensions,
     FontSize,
     Frameable,
@@ -264,18 +263,6 @@ impl<'a> Widget for Canvas<'a> {
 
     fn default_y_position<C: CharacterCache>(&self, _ui: &Ui<C>) -> Position {
         Position::Place(Place::Middle, None)
-    }
-
-    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_x_dimension(self, ui)
-            .or_else(|| ui.w_of(ui.window).map(|w| Dimension::Absolute(w)))
-            .expect("`Ui.window` should always have some width")
-    }
-
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_y_dimension(self, ui)
-            .or_else(|| ui.h_of(ui.window).map(|h| Dimension::Absolute(h)))
-            .expect("`Ui.window` should always have some height")
     }
 
     /// The title bar area at which the Canvas can be clicked and dragged.

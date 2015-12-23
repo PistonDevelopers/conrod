@@ -60,9 +60,8 @@ impl Matrix {
 
         // If we can infer some new current parent from the position, set that as the current
         // parent within the given `Ui`.
-        if let Some(idx) = ui::parent_from_position(ui, x_pos, y_pos) {
-            ui::set_current_parent_idx(ui, idx);
-        }
+        let parent_idx = ui::infer_parent_unchecked(ui, x_pos, y_pos);
+        ui::set_current_parent_idx(ui, parent_idx);
 
         let xy = ui.calc_xy(None, x_pos, y_pos, dim, true);
         let (half_w, half_h) = (dim[0] / 2.0, dim[1] / 2.0);
