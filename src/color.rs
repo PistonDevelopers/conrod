@@ -14,6 +14,9 @@
 use std::f32::consts::PI;
 use utils::{degrees, fmod, turns};
 
+macro_rules! byte_to_f32 {
+	($x:expr) => ( $x as f32 / 255.0 )
+}
 
 /// Color supporting RGB and HSL variants.
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -130,7 +133,7 @@ impl Color {
     /// Return either black or white, depending which contrasts the Color the most. This will be
     /// useful for determining a readable color for text on any given background Color.
     pub fn plain_contrast(self) -> Color {
-        if self.luminance() > 0.5 { black() } else { white() }
+        if self.luminance() > 0.5 { BLACK } else { WHITE }
     }
 
     /// Extract the components of a color in the HSL format.
@@ -367,82 +370,83 @@ pub fn radial(start: (f64, f64), start_r: f64,
 /// aesthetically reasonable defaults for colors. Each color also comes with a light and dark
 /// version.
 
-/// Scarlet Red - Light - #EF2929
-pub fn light_red()      -> Color { rgb_bytes(239 , 41  , 41 ) }
-/// Scarlet Red - Regular - #CC0000
-pub fn red()            -> Color { rgb_bytes(204 , 0   , 0  ) }
-/// Scarlet Red - Dark - #A30000
-pub fn dark_red()       -> Color { rgb_bytes(164 , 0   , 0  ) }
+/// Scarlet Red - Light - #EF2929                         
+pub const LIGHT_RED      :  Color = Color::Rgba(byte_to_f32!(239), byte_to_f32!(41), byte_to_f32!(41), 1.0);
+/// Scarlet Red - Regular - #CC0000                       
+pub const RED            :  Color = Color::Rgba(byte_to_f32!(204), byte_to_f32!(0), byte_to_f32!(0), 1.0);
+/// Scarlet Red - Dark - #A30000                          
+pub const DARK_RED       :  Color = Color::Rgba(byte_to_f32!(164), byte_to_f32!(0), 0.0, 1.0);
 
-/// Orange - Light - #FCAF3E
-pub fn light_orange()   -> Color { rgb_bytes(252 , 175 , 62 ) }
-/// Orange - Regular - #F57900
-pub fn orange()         -> Color { rgb_bytes(245 , 121 , 0  ) }
-/// Orange - Dark - #CE5C00
-pub fn dark_orange()    -> Color { rgb_bytes(206 , 92  , 0  ) }
+/// Orange - Light - #FCAF3E                              
+pub const LIGHT_ORANGE   :  Color = Color::Rgba(byte_to_f32!(252), byte_to_f32!(175), byte_to_f32!(62), 1.0);
+/// Orange - Regular - #F57900                            
+pub const ORANGE         :  Color = Color::Rgba(byte_to_f32!(245), byte_to_f32!(121), byte_to_f32!(0), 1.0);
+/// Orange - Dark - #CE5C00                               
+pub const DARK_ORANGE    :  Color = Color::Rgba(byte_to_f32!(206), byte_to_f32!(92), byte_to_f32!(0), 1.0);
 
-/// Butter - Light - #FCE94F
-pub fn light_yellow()   -> Color { rgb_bytes(255 , 233 , 79 ) }
-/// Butter - Regular - #EDD400
-pub fn yellow()         -> Color { rgb_bytes(237 , 212 , 0  ) }
-/// Butter - Dark - #C4A000
-pub fn dark_yellow()    -> Color { rgb_bytes(196 , 160 , 0  ) }
+/// Butter - Light - #FCE94F                              
+pub const LIGHT_YELLOW   :  Color = Color::Rgba(1.0, byte_to_f32!(233), byte_to_f32!(79), 1.0);
+/// Butter - Regular - #EDD400                            
+pub const YELLOW         :  Color = Color::Rgba(byte_to_f32!(237), byte_to_f32!(212), byte_to_f32!(0), 1.0);
+/// Butter - Dark - #C4A000                               
+pub const DARK_YELLOW    :  Color = Color::Rgba(byte_to_f32!(196), byte_to_f32!(160), byte_to_f32!(0), 1.0);
 
-/// Chameleon - Light - #8AE234
-pub fn light_green()    -> Color { rgb_bytes(138 , 226 , 52 ) }
-/// Chameleon - Regular - #73D216
-pub fn green()          -> Color { rgb_bytes(115 , 210 , 22 ) }
-/// Chameleon - Dark - #4E9A06
-pub fn dark_green()     -> Color { rgb_bytes(78  , 154 , 6  ) }
+/// Chameleon - Light - #8AE234                           
+pub const LIGHT_GREEN     :  Color = Color::Rgba(byte_to_f32!(138), byte_to_f32!(226), byte_to_f32!(52), 1.0);
+/// Chameleon - Regular - #73D216                         
+pub const GREEN          :  Color = Color::Rgba(byte_to_f32!(115), byte_to_f32!(210), byte_to_f32!(22), 1.0);
+/// Chameleon - Dark - #4E9A06                            
+pub const DARK_GREEN     :  Color = Color::Rgba(byte_to_f32!(78), byte_to_f32!(154), byte_to_f32!(6), 1.0);
 
-/// Sky Blue - Light - #729FCF
-pub fn light_blue()     -> Color { rgb_bytes(114 , 159 , 207) }
-/// Sky Blue - Regular - #3465A4
-pub fn blue()           -> Color { rgb_bytes(52  , 101 , 164) }
-/// Sky Blue - Dark - #204A87
-pub fn dark_blue()      -> Color { rgb_bytes(32  , 74  , 135) }
+/// Sky Blue - Light - #729FCF                            
+pub const LIGHT_BLUE     :  Color = Color::Rgba(byte_to_f32!(114), byte_to_f32!(159), byte_to_f32!(207), 1.0);
+/// Sky Blue - Regular - #3465A4                          
+pub const BLUE           :  Color = Color::Rgba(byte_to_f32!(52), byte_to_f32!(101), byte_to_f32!(164), 1.0);
+/// Sky Blue - Dark - #204A87                             
+pub const DARK_BLUE      :  Color = Color::Rgba(byte_to_f32!(32), byte_to_f32!(74), byte_to_f32!(135), 1.0);
 
-/// Plum - Light - #AD7FA8
-pub fn light_purple()   -> Color { rgb_bytes(173 , 127 , 168) }
-/// Plum - Regular - #75507B
-pub fn purple()         -> Color { rgb_bytes(117 , 80  , 123) }
-/// Plum - Dark - #5C3566
-pub fn dark_purple()    -> Color { rgb_bytes(92  , 53  , 102) }
+/// Plum - Light - #AD7FA8                                
+pub const LIGHT_PURPLE   :  Color = Color::Rgba(byte_to_f32!(173), byte_to_f32!(127), byte_to_f32!(168), 1.0);
+/// Plum - Regular - #75507B                              
+pub const PURPLE         :  Color = Color::Rgba(byte_to_f32!(117), byte_to_f32!(80), byte_to_f32!(123), 1.0);
+/// Plum - Dark - #5C3566                                 
+pub const DARK_PURPLE    :  Color = Color::Rgba(byte_to_f32!(92), byte_to_f32!(53), byte_to_f32!(102), 1.0);
 
-/// Chocolate - Light - #E9B96E
-pub fn light_brown()    -> Color { rgb_bytes(233 , 185 , 110) }
-/// Chocolate - Regular - #C17D11
-pub fn brown()          -> Color { rgb_bytes(193 , 125 , 17 ) }
-/// Chocolate - Dark - #8F5902
-pub fn dark_brown()     -> Color { rgb_bytes(143 , 89  , 2  ) }
+/// Chocolate - Light - #E9B96E                           
+pub const LIGHT_BROWN    :  Color = Color::Rgba(byte_to_f32!(233), byte_to_f32!(185), byte_to_f32!(110), 1.0);
+/// Chocolate - Regular - #C17D11                         
+pub const BROWN          :  Color = Color::Rgba(byte_to_f32!(193), byte_to_f32!(125), byte_to_f32!(17), 1.0);
+/// Chocolate - Dark - #8F5902                            
+pub const DARK_BROWN     :  Color = Color::Rgba(byte_to_f32!(143), byte_to_f32!(89), byte_to_f32!(2), 1.0);
 
-/// Straight Black.
-pub fn black()          -> Color { rgb_bytes(0   , 0   , 0  ) }
-/// Straight White.
-pub fn white()          -> Color { rgb_bytes(255 , 255 , 255) }
+/// Straight Black.                                       
+pub const BLACK          :  Color = Color::Rgba(byte_to_f32!(0), byte_to_f32!(0), byte_to_f32!(0), 1.0);
+/// Straight White.                                       
+pub const WHITE          :  Color = Color::Rgba(1.0, 1.0, 1.0, 1.0);
 
-/// Alluminium - Light
-pub fn light_gray()     -> Color { rgb_bytes(238 , 238 , 236) }
-/// Alluminium - Regular
-pub fn gray()           -> Color { rgb_bytes(211 , 215 , 207) }
-/// Alluminium - Dark
-pub fn dark_gray()      -> Color { rgb_bytes(186 , 189 , 182) }
+/// Alluminium - Light                                    
+pub const LIGHT_GRAY     :  Color = Color::Rgba(byte_to_f32!(238), byte_to_f32!(238), byte_to_f32!(236), 1.0);
+/// Alluminium - Regular                                  
+pub const GRAY           :  Color = Color::Rgba(byte_to_f32!(211), byte_to_f32!(215), byte_to_f32!(207), 1.0);
+/// Alluminium - Dark                                     
+pub const DARK_GRAY      :  Color = Color::Rgba(byte_to_f32!(186), byte_to_f32!(189), byte_to_f32!(182), 1.0);
 
-/// Aluminium - Light - #EEEEEC
-pub fn light_grey()     -> Color { rgb_bytes(238 , 238 , 236) }
-/// Aluminium - Regular - #D3D7CF
-pub fn grey()           -> Color { rgb_bytes(211 , 215 , 207) }
-/// Aluminium - Dark - #BABDB6
-pub fn dark_grey()      -> Color { rgb_bytes(186 , 189 , 182) }
+/// Aluminium - Light - #EEEEEC                           
+pub const LIGHT_GREY     :  Color = Color::Rgba(byte_to_f32!(238), byte_to_f32!(238), byte_to_f32!(236), 1.0);
+/// Aluminium - Regular - #D3D7CF                         
+pub const GREY           :  Color = Color::Rgba(byte_to_f32!(211), byte_to_f32!(215), byte_to_f32!(207), 1.0);
+/// Aluminium - Dark - #BABDB6                            
+pub const DARK_GREY      :  Color = Color::Rgba(byte_to_f32!(186), byte_to_f32!(189), byte_to_f32!(182), 1.0);
 
-/// Charcoal - Light - #888A85
-pub fn light_charcoal() -> Color { rgb_bytes(136 , 138 , 133) }
-/// Charcoal - Regular - #555753
-pub fn charcoal()       -> Color { rgb_bytes(85  , 87  , 83 ) }
-/// Charcoal - Dark - #2E3436
-pub fn dark_charcoal()  -> Color { rgb_bytes(46  , 52  , 54 ) }
+/// Charcoal - Light - #888A85                            
+pub const LIGHT_CHARCOAL :  Color = Color::Rgba(byte_to_f32!(136), byte_to_f32!(138), byte_to_f32!(133), 1.0);
+/// Charcoal - Regular - #555753                          
+pub const CHARCOAL       :  Color = Color::Rgba(byte_to_f32!(85), byte_to_f32!(87), byte_to_f32!(83), 1.0);
+/// Charcoal - Dark - #2E3436                             
+pub const DARK_CHARCOAL  :  Color = Color::Rgba(byte_to_f32!(46), byte_to_f32!(52), byte_to_f32!(54), 1.0);
 
-
+/// Transparent
+pub const TRANSPARENT    :  Color = Color::Rgba(0.0, 0.0, 0.0, 0.0);
 
 /// Types that can be colored.
 pub trait Colorable: Sized {

@@ -442,8 +442,8 @@ impl<C> Ui<C> {
                 .no_parent()
                 .x_y(0.0, 0.0)
                 .frame(0.0)
-                .frame_color(color::black().alpha(0.0))
-                .color(self.maybe_background_color.unwrap_or(color::black().alpha(0.0)))
+                .frame_color(color::BLACK.alpha(0.0))
+                .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
                 .set(self.window, self);
         }
 

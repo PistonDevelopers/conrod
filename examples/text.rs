@@ -53,9 +53,9 @@ fn set_ui(ui: &mut Ui) {
 
     // Our `Canvas` tree, upon which we will place our text widgets.
     Canvas::new().flow_right(&[
-        (LEFT_COL, Canvas::new().color(color::black())),
-        (MIDDLE_COL, Canvas::new().color(color::dark_charcoal())),
-        (RIGHT_COL, Canvas::new().color(color::charcoal())),
+        (LEFT_COL, Canvas::new().color(color::BLACK)),
+        (MIDDLE_COL, Canvas::new().color(color::DARK_CHARCOAL)),
+        (RIGHT_COL, Canvas::new().color(color::CHARCOAL)),
     ]).set(MASTER, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -69,7 +69,7 @@ fn set_ui(ui: &mut Ui) {
     const PAD: Scalar = 20.0;
 
     Text::new(DEMO_TEXT)
-        .color(color::light_red())
+        .color(color::LIGHT_RED)
         .padded_w_of(LEFT_COL, PAD)
         .mid_top_with_margin_on(LEFT_COL, PAD)
         .align_text_left()
@@ -77,7 +77,7 @@ fn set_ui(ui: &mut Ui) {
         .set(LEFT_TEXT, ui);
 
     Text::new(DEMO_TEXT)
-        .color(color::light_green())
+        .color(color::LIGHT_GREEN)
         .padded_w_of(MIDDLE_COL, PAD)
         .middle_of(MIDDLE_COL)
         .align_text_middle()
@@ -85,7 +85,7 @@ fn set_ui(ui: &mut Ui) {
         .set(MIDDLE_TEXT, ui);
 
     Text::new(DEMO_TEXT)
-        .color(color::light_blue())
+        .color(color::LIGHT_BLUE)
         .padded_w_of(RIGHT_COL, PAD)
         .mid_bottom_with_margin_on(RIGHT_COL, PAD)
         .align_text_right()

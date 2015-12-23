@@ -246,7 +246,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
                 Rectangle::fill([dim[0], max_visible_height])
                     .graphics_for(idx)
-                    .color(::color::black().alpha(0.0))
+                    .color(::color::BLACK.alpha(0.0))
                     .xy(canvas_xy)
                     .parent(idx)
                     .floating(true)

@@ -35,7 +35,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::color::{self, rgb, white, black, red, green, blue, purple};
+use conrod::color::{self, rgb};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 
@@ -102,7 +102,7 @@ impl DemoApp {
                               "Red".to_string(),
                               "Green".to_string(),
                               "Blue".to_string()],
-            ddl_color: purple(),
+            ddl_color: color::PURPLE,
             selected_idx: None,
             circle_pos: [-50.0, 110.0],
             envelopes: vec![(vec![ [0.0, 0.0],
@@ -217,7 +217,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
             .label(&label)
-            .label_color(white())
+            .label_color(color::WHITE)
             .react(|new_pad: f32| app.title_pad = new_pad as f64)
             .set(TITLE_PAD_SLIDER, ui);
 
@@ -236,7 +236,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         .rgb(0.6, 0.25, 0.75)
         .frame(app.frame_width)
         .label(&label)
-        .label_color(white())
+        .label_color(color::WHITE)
         .react(|value| {
             app.show_button = value;
             app.toggle_label = match value {
@@ -274,7 +274,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             .color(color)
             .frame(app.frame_width)
             .label(&label)
-            .label_color(white())
+            .label_color(color::WHITE)
             .react(|color| match i {
                 0 => app.bg_color.set_red(color),
                 1 => app.bg_color.set_green(color),
@@ -349,12 +349,12 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         .react(|selected_idx: &mut Option<usize>, new_idx, string: &str| {
             *selected_idx = Some(new_idx);
             ddl_color = match string {
-                "Black" => black(),
-                "White" => white(),
-                "Red"   => red(),
-                "Green" => green(),
-                "Blue"  => blue(),
-                _       => purple(),
+                "Black" => color::BLACK,
+                "White" => color::WHITE,
+                "Red"   => color::RED,
+                "Green" => color::GREEN,
+                "Blue"  => color::BLUE,
+                _       => color::PURPLE,
             };
         })
         .set(COLOR_SELECT, ui);
@@ -368,7 +368,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         .align_bottom_of(TOGGLE_MATRIX) // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
         .frame(app.frame_width)
-        .frame_color(white())
+        .frame_color(color::WHITE)
         .label("Circle Position")
         .label_color(ddl_color.plain_contrast().alpha(0.5))
         .line_thickness(2.0)
