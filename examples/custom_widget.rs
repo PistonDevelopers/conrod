@@ -427,14 +427,14 @@ fn main() {
         e.update(|_| ui.set_widgets(|ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            conrod::Canvas::new().color(conrod::color::dark_red()).set(BACKGROUND, ui);
+            conrod::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
 
             // Create an instance of our custom widget.
             CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
                 .middle_of(BACKGROUND)
                 .w_h(256.0, 256.0)
-                .label_color(conrod::color::white())
+                .label_color(conrod::color::WHITE)
                 .label("Circular Button")
                 // This is called when the user clicks the button.
                 .react(|| println!("Click"))

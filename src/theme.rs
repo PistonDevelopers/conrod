@@ -3,7 +3,7 @@
 //!
 
 use Scalar;
-use color::{Color, black, white};
+use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position};
 use std::any::Any;
 use std::collections::HashMap;
@@ -79,11 +79,11 @@ impl Theme {
             padding: Padding::none(),
             x_position: Position::Align(Align::Start, None),
             y_position: Position::Direction(Direction::Backwards, 20.0, None),
-            background_color: black(),
-            shape_color: white(),
-            frame_color: black(),
+            background_color: BLACK,
+            shape_color: WHITE,
+            frame_color: BLACK,
             frame_width: 1.0,
-            label_color: black(),
+            label_color: BLACK,
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,

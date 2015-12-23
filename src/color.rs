@@ -14,6 +14,10 @@
 use std::f32::consts::PI;
 use utils::{degrees, fmod, turns};
 
+macro_rules! make_color {
+	($r:expr, $g:expr, $b:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, 1.0));
+	($r:expr, $g:expr, $b:expr, $a:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, $a as f32 / 255.0));
+}
 
 /// Color supporting RGB and HSL variants.
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -130,7 +134,7 @@ impl Color {
     /// Return either black or white, depending which contrasts the Color the most. This will be
     /// useful for determining a readable color for text on any given background Color.
     pub fn plain_contrast(self) -> Color {
-        if self.luminance() > 0.5 { black() } else { white() }
+        if self.luminance() > 0.5 { BLACK } else { WHITE }
     }
 
     /// Extract the components of a color in the HSL format.
@@ -367,82 +371,83 @@ pub fn radial(start: (f64, f64), start_r: f64,
 /// aesthetically reasonable defaults for colors. Each color also comes with a light and dark
 /// version.
 
-/// Scarlet Red - Light - #EF2929
-pub fn light_red()      -> Color { rgb_bytes(239 , 41  , 41 ) }
-/// Scarlet Red - Regular - #CC0000
-pub fn red()            -> Color { rgb_bytes(204 , 0   , 0  ) }
-/// Scarlet Red - Dark - #A30000
-pub fn dark_red()       -> Color { rgb_bytes(164 , 0   , 0  ) }
+/// Scarlet Red - Light - #EF2929                         
+pub const LIGHT_RED      :  Color = make_color!(239, 41, 41);
+/// Scarlet Red - Regular - #CC0000                       
+pub const RED            :  Color = make_color!(204, 0, 0);
+/// Scarlet Red - Dark - #A30000                          
+pub const DARK_RED       :  Color = make_color!(164, 0, 0);
 
-/// Orange - Light - #FCAF3E
-pub fn light_orange()   -> Color { rgb_bytes(252 , 175 , 62 ) }
-/// Orange - Regular - #F57900
-pub fn orange()         -> Color { rgb_bytes(245 , 121 , 0  ) }
-/// Orange - Dark - #CE5C00
-pub fn dark_orange()    -> Color { rgb_bytes(206 , 92  , 0  ) }
+/// Orange - Light - #FCAF3E                              
+pub const LIGHT_ORANGE   :  Color = make_color!(252, 175, 62);
+/// Orange - Regular - #F57900                            
+pub const ORANGE         :  Color = make_color!(245, 121, 0);
+/// Orange - Dark - #CE5C00                               
+pub const DARK_ORANGE    :  Color = make_color!(206, 92, 0);
 
-/// Butter - Light - #FCE94F
-pub fn light_yellow()   -> Color { rgb_bytes(255 , 233 , 79 ) }
-/// Butter - Regular - #EDD400
-pub fn yellow()         -> Color { rgb_bytes(237 , 212 , 0  ) }
-/// Butter - Dark - #C4A000
-pub fn dark_yellow()    -> Color { rgb_bytes(196 , 160 , 0  ) }
+/// Butter - Light - #FCE94F                              
+pub const LIGHT_YELLOW   :  Color = make_color!(1, 233, 79);
+/// Butter - Regular - #EDD400                            
+pub const YELLOW         :  Color = make_color!(237, 212, 0);
+/// Butter - Dark - #C4A000                               
+pub const DARK_YELLOW    :  Color = make_color!(196, 160, 0);
 
-/// Chameleon - Light - #8AE234
-pub fn light_green()    -> Color { rgb_bytes(138 , 226 , 52 ) }
-/// Chameleon - Regular - #73D216
-pub fn green()          -> Color { rgb_bytes(115 , 210 , 22 ) }
-/// Chameleon - Dark - #4E9A06
-pub fn dark_green()     -> Color { rgb_bytes(78  , 154 , 6  ) }
+/// Chameleon - Light - #8AE234                           
+pub const LIGHT_GREEN     :  Color = make_color!(138, 226, 52);
+/// Chameleon - Regular - #73D216                         
+pub const GREEN          :  Color = make_color!(115, 210, 22);
+/// Chameleon - Dark - #4E9A06                            
+pub const DARK_GREEN     :  Color = make_color!(78, 154, 6);
 
-/// Sky Blue - Light - #729FCF
-pub fn light_blue()     -> Color { rgb_bytes(114 , 159 , 207) }
-/// Sky Blue - Regular - #3465A4
-pub fn blue()           -> Color { rgb_bytes(52  , 101 , 164) }
-/// Sky Blue - Dark - #204A87
-pub fn dark_blue()      -> Color { rgb_bytes(32  , 74  , 135) }
+/// Sky Blue - Light - #729FCF                            
+pub const LIGHT_BLUE     :  Color = make_color!(114, 159, 207);
+/// Sky Blue - Regular - #3465A4                          
+pub const BLUE           :  Color = make_color!(52, 101, 164);
+/// Sky Blue - Dark - #204A87                             
+pub const DARK_BLUE      :  Color = make_color!(32, 74, 135);
 
-/// Plum - Light - #AD7FA8
-pub fn light_purple()   -> Color { rgb_bytes(173 , 127 , 168) }
-/// Plum - Regular - #75507B
-pub fn purple()         -> Color { rgb_bytes(117 , 80  , 123) }
-/// Plum - Dark - #5C3566
-pub fn dark_purple()    -> Color { rgb_bytes(92  , 53  , 102) }
+/// Plum - Light - #AD7FA8                                
+pub const LIGHT_PURPLE   :  Color = make_color!(173, 127, 168);
+/// Plum - Regular - #75507B                              
+pub const PURPLE         :  Color = make_color!(117, 80, 123);
+/// Plum - Dark - #5C3566                                 
+pub const DARK_PURPLE    :  Color = make_color!(92, 53, 102);
 
-/// Chocolate - Light - #E9B96E
-pub fn light_brown()    -> Color { rgb_bytes(233 , 185 , 110) }
-/// Chocolate - Regular - #C17D11
-pub fn brown()          -> Color { rgb_bytes(193 , 125 , 17 ) }
-/// Chocolate - Dark - #8F5902
-pub fn dark_brown()     -> Color { rgb_bytes(143 , 89  , 2  ) }
+/// Chocolate - Light - #E9B96E                           
+pub const LIGHT_BROWN    :  Color = make_color!(233, 185, 110);
+/// Chocolate - Regular - #C17D11                         
+pub const BROWN          :  Color = make_color!(193, 125, 17);
+/// Chocolate - Dark - #8F5902                            
+pub const DARK_BROWN     :  Color = make_color!(143, 89, 2);
 
-/// Straight Black.
-pub fn black()          -> Color { rgb_bytes(0   , 0   , 0  ) }
-/// Straight White.
-pub fn white()          -> Color { rgb_bytes(255 , 255 , 255) }
+/// Straight Black.                                       
+pub const BLACK          :  Color = make_color!(0, 0, 0);
+/// Straight White.                                       
+pub const WHITE          :  Color = make_color!(255, 255, 255);
 
-/// Alluminium - Light
-pub fn light_gray()     -> Color { rgb_bytes(238 , 238 , 236) }
-/// Alluminium - Regular
-pub fn gray()           -> Color { rgb_bytes(211 , 215 , 207) }
-/// Alluminium - Dark
-pub fn dark_gray()      -> Color { rgb_bytes(186 , 189 , 182) }
+/// Alluminium - Light                                    
+pub const LIGHT_GRAY     :  Color = make_color!(238, 238, 236);
+/// Alluminium - Regular                                  
+pub const GRAY           :  Color = make_color!(211, 215, 207);
+/// Alluminium - Dark                                     
+pub const DARK_GRAY      :  Color = make_color!(186, 189, 182);
 
-/// Aluminium - Light - #EEEEEC
-pub fn light_grey()     -> Color { rgb_bytes(238 , 238 , 236) }
-/// Aluminium - Regular - #D3D7CF
-pub fn grey()           -> Color { rgb_bytes(211 , 215 , 207) }
-/// Aluminium - Dark - #BABDB6
-pub fn dark_grey()      -> Color { rgb_bytes(186 , 189 , 182) }
+/// Aluminium - Light - #EEEEEC                           
+pub const LIGHT_GREY     :  Color = make_color!(238, 238, 236);
+/// Aluminium - Regular - #D3D7CF                         
+pub const GREY           :  Color = make_color!(211, 215, 207);
+/// Aluminium - Dark - #BABDB6                            
+pub const DARK_GREY      :  Color = make_color!(186, 189, 182);
 
-/// Charcoal - Light - #888A85
-pub fn light_charcoal() -> Color { rgb_bytes(136 , 138 , 133) }
-/// Charcoal - Regular - #555753
-pub fn charcoal()       -> Color { rgb_bytes(85  , 87  , 83 ) }
-/// Charcoal - Dark - #2E3436
-pub fn dark_charcoal()  -> Color { rgb_bytes(46  , 52  , 54 ) }
+/// Charcoal - Light - #888A85                            
+pub const LIGHT_CHARCOAL :  Color = make_color!(136, 138, 133);
+/// Charcoal - Regular - #555753                          
+pub const CHARCOAL       :  Color = make_color!(85, 87, 83);
+/// Charcoal - Dark - #2E3436                             
+pub const DARK_CHARCOAL  :  Color = make_color!(46, 52, 54);
 
-
+/// Transparent
+pub const TRANSPARENT    :  Color = Color::Rgba(0.0, 0.0, 0.0, 0.0);
 
 /// Types that can be colored.
 pub trait Colorable: Sized {

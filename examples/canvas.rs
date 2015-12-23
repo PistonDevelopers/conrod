@@ -7,7 +7,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Theme, Widget};
+use conrod::{Canvas, Theme, Widget, color};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 type Ui = conrod::Ui<Glyphs>;
@@ -42,49 +42,48 @@ fn main() {
 
 // Draw the Ui.
 fn set_widgets(ui: &mut Ui) {
-    use conrod::color::{blue, light_orange, orange, dark_orange, red, white};
     use conrod::{Button, Colorable, Labelable, Positionable, Sizeable, Tabs, Text, WidgetMatrix};
 
     // Construct our main `Canvas` tree.
     Canvas::new().flow_down(&[
-        (HEADER, Canvas::new().color(blue()).pad_bottom(20.0)),
+        (HEADER, Canvas::new().color(color::BLUE).pad_bottom(20.0)),
         (BODY, Canvas::new().length(300.0).flow_right(&[
-            (LEFT_COLUMN, Canvas::new().color(light_orange()).pad(20.0)),
-            (MIDDLE_COLUMN, Canvas::new().color(orange())),
-            (RIGHT_COLUMN, Canvas::new().color(dark_orange()).pad(20.0)),
+            (LEFT_COLUMN, Canvas::new().color(color::LIGHT_ORANGE).pad(20.0)),
+            (MIDDLE_COLUMN, Canvas::new().color(color::ORANGE)),
+            (RIGHT_COLUMN, Canvas::new().color(color::DARK_ORANGE).pad(20.0)),
         ])),
-        (FOOTER, Canvas::new().color(blue()).vertical_scrolling(true)),
+        (FOOTER, Canvas::new().color(color::BLUE).vertical_scrolling(true)),
     ]).set(MASTER, ui);
 
     // Now we'll make a couple floating `Canvas`ses.
-    let floating = Canvas::new().floating(true).w_h(110.0, 150.0).label_color(white());
-    floating.middle_of(LEFT_COLUMN).title_bar("Blue").color(blue()).set(FLOATING_A, ui);
-    floating.middle_of(RIGHT_COLUMN).title_bar("Orange").color(light_orange()).set(FLOATING_B, ui);
+    let floating = Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
+    floating.middle_of(LEFT_COLUMN).title_bar("Blue").color(color::BLUE).set(FLOATING_A, ui);
+    floating.middle_of(RIGHT_COLUMN).title_bar("Orange").color(color::LIGHT_ORANGE).set(FLOATING_B, ui);
 
     // Here we make some canvas `Tabs` in the middle column.
     Tabs::new(&[(TAB_FOO, "FOO"), (TAB_BAR, "BAR"), (TAB_BAZ, "BAZ")])
         .wh_of(MIDDLE_COLUMN)
-        .color(blue())
-        .label_color(white())
+        .color(color::BLUE)
+        .label_color(color::WHITE)
         .middle_of(MIDDLE_COLUMN)
         .set(TABS, ui);
 
-    Text::new("Fancy Title").color(light_orange()).font_size(48).middle_of(HEADER).set(TITLE, ui);
-    Text::new("Subtitle").color(blue().complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
+    Text::new("Fancy Title").color(color::LIGHT_ORANGE).font_size(48).middle_of(HEADER).set(TITLE, ui);
+    Text::new("Subtitle").color(color::BLUE.complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
 
     Text::new("Top Left")
-        .color(light_orange().complement())
+        .color(color::LIGHT_ORANGE.complement())
         .top_left_of(LEFT_COLUMN)
         .set(TOP_LEFT, ui);
 
     Text::new("Bottom Right")
-        .color(dark_orange().complement())
+        .color(color::DARK_ORANGE.complement())
         .bottom_right_of(RIGHT_COLUMN)
         .set(BOTTOM_RIGHT, ui);
 
-    Text::new("Foo!").color(white()).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
-    Text::new("Bar!").color(white()).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
-    Text::new("BAZ!").color(white()).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
+    Text::new("Foo!").color(color::WHITE).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
+    Text::new("Bar!").color(color::WHITE).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
+    Text::new("BAZ!").color(color::WHITE).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
     let footer_wh = ui.wh_of(FOOTER).unwrap();
     WidgetMatrix::new(COLS, ROWS)
@@ -92,15 +91,15 @@ fn set_widgets(ui: &mut Ui) {
         .mid_top_of(FOOTER)
         .each_widget(|n, _col, _row| {
             Button::new()
-                .color(blue().with_luminance(n as f32 / (COLS * ROWS) as f32))
+                .color(color::BLUE.with_luminance(n as f32 / (COLS * ROWS) as f32))
                 .react(move || println!("Hey! {:?}", n))
         })
         .set(BUTTON_MATRIX, ui);
 
-    Button::new().color(red()).w_h(30.0, 30.0).middle_of(FLOATING_A)
+    Button::new().color(color::RED).w_h(30.0, 30.0).middle_of(FLOATING_A)
         .react(|| println!("Bing!"))
         .set(BING, ui);
-    Button::new().color(red()).w_h(30.0, 30.0).middle_of(FLOATING_B)
+    Button::new().color(color::RED).w_h(30.0, 30.0).middle_of(FLOATING_B)
         .react(|| println!("Bong!"))
         .set(BONG, ui);
 }
