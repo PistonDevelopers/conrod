@@ -3,7 +3,6 @@ use {
     CharacterCache,
     Color,
     Colorable,
-    Dimension,
     Frameable,
     FramedRectangle,
     FontSize,
@@ -16,7 +15,6 @@ use {
     Sizeable,
     Text,
     Theme,
-    Ui,
     Widget,
 };
 use num::Float;
@@ -189,14 +187,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
     fn style(&self) -> Style {
         self.style.clone()
-    }
-
-    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
-    }
-
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(128.0))
     }
 
     /// Update the XYPad's cached state.

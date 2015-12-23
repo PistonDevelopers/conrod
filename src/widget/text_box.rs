@@ -2,7 +2,6 @@ use {
     CharacterCache,
     Color,
     Colorable,
-    Dimension,
     Dimensions,
     FontSize,
     Frameable,
@@ -20,7 +19,6 @@ use {
     Text,
     Theme,
     Widget,
-    Ui,
 };
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
@@ -371,14 +369,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
     fn style(&self) -> Style {
         self.style.clone()
-    }
-
-    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(192.0))
-    }
-
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        widget::default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(48.0))
     }
 
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
