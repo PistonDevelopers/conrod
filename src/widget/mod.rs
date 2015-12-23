@@ -133,12 +133,30 @@ pub enum MaybeParent {
 impl MaybeParent {
     /// Convert the **MaybeParent** into an **Option<Index>**.
     ///
-    /// If not given explicitly, check the positioning to retrieve the **Index** from there.
-    pub fn get<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Option<Index> {
+    /// If `Unspecified`, check the positioning to retrieve the **Index** from there.
+    ///
+    /// If `None`, the `Ui`'s `window` widget will be used.
+    ///
+    /// **Note:** This method does not check whether or not using the `window` widget as the parent
+    /// would cause a cycle. If it is important that the inferred parent should not cause a cycle,
+    /// use `get` instead.
+    pub fn get_unchecked<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Index {
         match *self {
-            MaybeParent::Some(idx) => Some(idx),
-            MaybeParent::None => None,
-            MaybeParent::Unspecified => ui::parent_from_position(ui, x_pos, y_pos),
+            MaybeParent::Some(idx) => idx,
+            MaybeParent::None => ui.window.into(),
+            MaybeParent::Unspecified => ui::infer_parent_unchecked(ui, x_pos, y_pos),
+        }
+    }
+
+    /// The same as `get_unchecked`, but checks whether or not the widget that we're inferring the
+    /// parent for is the `Ui`'s window (which cannot have a parent, without creating a cycle).
+    pub fn get<C>(&self, idx: Index, ui: &Ui<C>, x_pos: Position, y_pos: Position)
+        -> Option<Index>
+    {
+        if idx == ui.window.into() {
+            None
+        } else {
+            Some(self.get_unchecked(ui, x_pos, y_pos))
         }
     }
 }
@@ -342,9 +360,8 @@ impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
 /// 1. Check for a default value within the **Ui**'s **Theme**.
 /// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
-///
-/// Returns **None** if no default can be found.
-fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
+/// 4. If no parent widget can be inferred, the window dimensions are used.
+fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Dimension
     where W: Widget,
           C: CharacterCache,
           F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
@@ -352,11 +369,11 @@ fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
     ui.theme.widget_style::<W::Style>(widget.unique_kind())
         .and_then(f)
         .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx, None)))
-        .or_else(|| {
+        .unwrap_or_else(|| {
             let x_pos = widget.get_x_position(ui);
             let y_pos = widget.get_y_position(ui);
-            widget.common().maybe_parent_idx.get(ui, x_pos, y_pos)
-                .map(|idx| Dimension::Of(idx, None))
+            let parent_idx = widget.common().maybe_parent_idx.get_unchecked(ui, x_pos, y_pos);
+            Dimension::Of(parent_idx, None)
         })
 }
 
@@ -366,14 +383,13 @@ fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Option<Dimension>
 /// 1. Check for a default value within the **Ui**'s **Theme**.
 /// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
+/// 4. If no parent widget can be inferred, the window dimensions are used.
 ///
 /// This is called by the default implementations of **Widget::default_x_dimension**.
 ///
 /// If you wish to override **Widget::default_x_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
-///
-/// Returns **None** if no default can be found.
-pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
     where W: Widget,
           C: CharacterCache,
 {
@@ -386,14 +402,13 @@ pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
 /// 1. Check for a default value within the **Ui**'s **Theme**.
 /// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
+/// 4. If no parent widget can be inferred, the window dimensions are used.
 ///
 /// This is called by the default implementations of **Widget::default_y_dimension**.
 ///
 /// If you wish to override **Widget::default_y_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
-///
-/// Returns **None** if no default can be found.
-pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Option<Dimension>
+pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
     where W: Widget,
           C: CharacterCache,
 {
@@ -531,7 +546,7 @@ pub trait Widget: Sized {
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
     fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        default_x_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
+        default_x_dimension(self, ui)
     }
 
     /// The default height of the widget.
@@ -539,7 +554,7 @@ pub trait Widget: Sized {
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        default_y_dimension(self, ui).unwrap_or(Dimension::Absolute(0.0))
+        default_y_dimension(self, ui)
     }
 
     /// If the widget is draggable, implement this method and return the position an dimensions
@@ -750,6 +765,10 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let y_pos = widget.get_y_position(ui);
     let place_on_kid_area = widget.common().place_on_kid_area;
 
+    // Determine the id of the canvas that the widget is attached to. If not given explicitly,
+    // check the positioning to retrieve the Id from there.
+    let maybe_parent_idx = widget.common().maybe_parent_idx.get(idx, ui, x_pos, y_pos);
+
     let (xy, drag_state) = {
         // A function for generating the xy coords from the given alignment and Position.
         let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
@@ -801,10 +820,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         },
         _ => (),
     }
-
-    // Determine the id of the canvas that the widget is attached to. If not given explicitly,
-    // check the positioning to retrieve the Id from there.
-    let maybe_parent_idx = widget.common().maybe_parent_idx.get(ui, x_pos, y_pos);
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {

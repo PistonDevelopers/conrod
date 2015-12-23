@@ -602,12 +602,14 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 }
 
 
-/// Check the given position for an attached parent widget.
-pub fn parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
+/// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
+///
+/// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
+pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
     -> Option<widget::Index>
 {
     use Position::{Place, Relative, Direction, Align};
-    let maybe_parent = match (x_pos, y_pos) {
+    match (x_pos, y_pos) {
         (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
             maybe_parent_idx,
         (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
@@ -616,8 +618,23 @@ pub fn parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
             maybe_idx.or(ui.maybe_prev_widget_idx)
                 .and_then(|idx| ui.widget_graph.depth_parent(idx)),
         _ => None,
-    };
-    maybe_parent.or(ui.maybe_current_parent_idx)
+    }
+}
+
+
+/// Attempts to infer the parent of a widget from its *x*/*y* `Position`s and the current state of
+/// the `Ui`.
+/// 
+/// If no parent can be inferred via the `Position`s, the `maybe_current_parent_idx` will be used.
+///
+/// If `maybe_current_parent_idx` is `None`, the `Ui`'s `window` widget will be used.
+///
+/// **Note:** This function does not check whether or not using the `window` widget would cause a
+/// cycle.
+pub fn infer_parent_unchecked<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position) -> widget::Index {
+    infer_parent_from_position(ui, x_pos, y_pos)
+        .or(ui.maybe_prev_widget_idx)
+        .unwrap_or(ui.window.into())
 }
 
 
