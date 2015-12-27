@@ -22,7 +22,7 @@ use {
 };
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
-use widget::{self, KidArea};
+use widget::{self, Widget, KidArea, UpdateArgs, UiCell};
 
 
 pub type Idx = usize;
@@ -338,6 +338,27 @@ impl<'a, F> TextBox<'a, F> {
         self
     }
 
+
+}
+
+fn get_new_interaction_2<C, F>(args: &UpdateArgs<TextBox<F>, C>) -> Interaction
+                            where C: CharacterCache,
+                            F: FnMut(&mut String) {
+    let capturing = args.ui.is_capturing_mouse() || args.ui.is_capturing_keyboard();
+    if capturing {
+        let state: &widget::State<State> = args.state;
+        let v: &State = state.view();
+        let prev_interaction: Interaction = v.interaction;
+        let new_view = match prev_interaction {
+            Interaction::Captured(view) => view,
+            _ => View{ cursor: Cursor::from_range(0, 999), offset: 0f64 }
+        };
+        Interaction::Captured(new_view)
+    } else {
+        args.ui.input().maybe_mouse.map(|mouse| {
+            Interaction::Uncaptured(Uncaptured::Highlighted)
+        }).unwrap_or(Interaction::Uncaptured(Uncaptured::Normal))
+    }
 }
 
 impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
@@ -381,8 +402,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         }
     }
 
+
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let mut new_interaction = get_new_interaction_2(&args);
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
@@ -395,14 +418,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let text_x = text_w / 2.0 - pad_dim[0] / 2.0 + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_control_pressed = state.view().control_pressed;
-        let mut new_interaction = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
-            (true, Some(mouse)) => {
-                let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
-                                          text_w, font_size, &self.text);
-                get_new_interaction(over_elem, state.view().interaction, mouse)
-            },
-        };
 
         // Check cursor validity (and update new_interaction if necessary).
         if let Interaction::Captured(view) = new_interaction {
@@ -674,4 +689,3 @@ impl<'a, F> Frameable for TextBox<'a, F> {
         self
     }
 }
-

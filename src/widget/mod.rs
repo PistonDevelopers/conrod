@@ -1056,6 +1056,14 @@ impl<'a, C> UiCell<'a, C> {
         ui::keyboard_uncaptured_by(self.ui, self.idx)
     }
 
+    pub fn is_capturing_keyboard(&self) -> bool {
+        self.ui.is_capturing_keyboard(self.idx)
+    }
+
+    pub fn is_capturing_mouse(&self) -> bool {
+        self.ui.is_capturing_mouse(self.idx)
+    }
+
     /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
     /// This should only be called once for each unique widget needed to avoid unnecessary bloat
     /// within the `Ui`'s widget graph.
