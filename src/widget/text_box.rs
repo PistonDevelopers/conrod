@@ -23,6 +23,7 @@ use {
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
 use widget::{self, Widget, KidArea, UpdateArgs, UiCell};
+use widget::{self, Widget, UpdateArgs};
 
 
 pub type Idx = usize;
@@ -339,8 +340,55 @@ impl<'a, F> TextBox<'a, F> {
     }
 
 
+
 }
 
+fn get_clicked_elem<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Elem
+                                                                        where C: CharacterCache,
+                                                                        F: FnMut(&mut String) {
+    let maybe_elem_under_mouse: Option<Elem> = args.ui.input().maybe_mouse.iter()
+        .filter(|mouse| mouse.left.was_just_pressed)
+        .map(|mouse| {
+            let style = args.style;
+            let theme = args.ui.theme();
+            let font_size = style.font_size(theme);
+            let (xy, widget_dimension) = args.rect.xy_dim();
+            let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
+            let relative_mouse = mouse.relative_to(xy);
+            let glyph_cache = args.ui.glyph_cache();
+            let text_w = glyph_cache.width(font_size, text);
+            let text_x = position::align_left_of(inner_dimension[0], text_w) + TEXT_PADDING;
+            let text_start_x = text_x - text_w / 2.0;
+            over_elem(args.ui.glyph_cache(),
+                relative_mouse.xy,
+                widget_dimension,
+                inner_dimension,
+                text_start_x,
+                text_w,
+                font_size,
+                text)
+        }).next();
+        maybe_elem_under_mouse.unwrap_or(Elem::Nill)
+}
+
+fn get_new_interaction_2<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Interaction
+                                                            where C: CharacterCache,
+                                                            F: FnMut(&mut String) {
+    let prev_state: &State = args.state.view();
+    let clicked_elem = get_clicked_elem(text, args);
+    match clicked_elem {
+        Elem::Char(char_index) =>
+            Interaction::Captured(View{cursor: Cursor::from_index(char_index), offset: 0f64 }),
+        Elem::Rect =>
+            Interaction::Captured(View{cursor: Cursor::from_range(0, text.chars().count()), offset: 0f64}),
+        Elem::Nill if args.ui.is_capturing_keyboard() => {
+            if let Interaction::Captured(view) = prev_state.interaction {
+                Interaction::Captured(view)
+            } else {
+                Interaction::Captured(View{cursor: Cursor::from_range(0, text.chars().count()), offset: 0f64})
+            }
+        },
+        _ => args.ui.input().maybe_mouse.map(|_mouse| {
 fn get_new_interaction_2<C, F>(args: &UpdateArgs<TextBox<F>, C>) -> Interaction
                             where C: CharacterCache,
                             F: FnMut(&mut String) {
@@ -360,6 +408,12 @@ fn get_new_interaction_2<C, F>(args: &UpdateArgs<TextBox<F>, C>) -> Interaction
         }).unwrap_or(Interaction::Uncaptured(Uncaptured::Normal))
     }
 }
+
+fn get_inner_dimensions(outer_rect: Dimensions, style: &Style, theme: &Theme) -> Dimensions {
+    let frame_width = style.frame(theme);
+    vec2_sub(outer_rect, [frame_width * 2.0; 2])
+}
+
 
 impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
@@ -405,11 +459,13 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let mut new_interaction = get_new_interaction_2(&self.text, &args);
+        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
         let mut new_interaction = get_new_interaction_2(&args);
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        // let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let font_size = style.font_size(ui.theme());

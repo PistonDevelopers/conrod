@@ -257,7 +257,7 @@ impl<C> Ui<C> {
 
             match button_type {
                 Button::Mouse(button) => {
-                    self.focus_widget_under_mouse();
+                    self.widget_under_mouse_captures_keyboard();
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -277,7 +277,7 @@ impl<C> Ui<C> {
             use input::MouseButton::{Left, Middle, Right};
             match button_type {
                 Button::Mouse(button) => {
-                    self.focus_widget_under_mouse();
+                    self.widget_under_mouse_captures_keyboard();
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -297,18 +297,11 @@ impl<C> Ui<C> {
         });
     }
 
-    fn focus_widget_under_mouse(&mut self) {
-        if let Some(widget_index) = self.maybe_widget_under_mouse {
-            self.change_focus_to(widget_index);
-        }
+    fn widget_under_mouse_captures_keyboard(&mut self) {
+        self.maybe_widget_under_mouse.map(|widget_index| {
+            self.maybe_captured_keyboard = Some(Capturing::Captured(widget_index));
+        });
     }
-
-    pub fn change_focus_to(&mut self, widget_index: widget::Index) {
-        self.maybe_captured_mouse = Some(Capturing::Captured(widget_index));
-        self.maybe_captured_keyboard = Some(Capturing::Captured(widget_index));
-    }
-
-
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///
@@ -703,21 +696,12 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
 pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_idx)) =>
-            if idx == captured_idx { Some(ui.mouse) } else { None },
-        Some(Capturing::JustReleased) =>
-            None,
-        None => match ui.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_idx)) =>
-                if idx == captured_idx { Some(ui.mouse) } else { None },
-            _ =>
-                if Some(idx) == ui.maybe_widget_under_mouse
-                || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
-                    Some(ui.mouse)
-                } else {
-                    None
-                },
-        },
+        Some(Capturing::Captured(captured_idx)) if idx == captured_idx =>
+            Some(ui.mouse),
+        None if ui.maybe_widget_under_mouse == Some(idx) =>
+            Some(ui.mouse),
+        _ =>
+            None
     }
 }
 
