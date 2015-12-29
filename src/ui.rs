@@ -168,7 +168,6 @@ impl<C> Ui<C> {
         }
     }
 
-<<<<<<< 935ee46b45fd33a68ae43cb87b1b83da7e6e51e4
     /// The **Rect** for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.

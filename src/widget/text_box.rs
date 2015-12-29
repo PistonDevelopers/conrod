@@ -18,12 +18,11 @@ use {
     Scalar,
     Text,
     Theme,
-    Widget,
 };
+
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
-use widget::{self, Widget, KidArea, UpdateArgs, UiCell};
-use widget::{self, Widget, UpdateArgs};
+use widget::{self, Widget, KidArea, UpdateArgs};
 
 
 pub type Idx = usize;
@@ -357,7 +356,7 @@ fn get_clicked_elem<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Elem
             let relative_mouse = mouse.relative_to(xy);
             let glyph_cache = args.ui.glyph_cache();
             let text_w = glyph_cache.width(font_size, text);
-            let text_x = position::align_left_of(inner_dimension[0], text_w) + TEXT_PADDING;
+            let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
             let text_start_x = text_x - text_w / 2.0;
             over_elem(args.ui.glyph_cache(),
                 relative_mouse.xy,
@@ -389,21 +388,6 @@ fn get_new_interaction_2<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> 
             }
         },
         _ => args.ui.input().maybe_mouse.map(|_mouse| {
-fn get_new_interaction_2<C, F>(args: &UpdateArgs<TextBox<F>, C>) -> Interaction
-                            where C: CharacterCache,
-                            F: FnMut(&mut String) {
-    let capturing = args.ui.is_capturing_mouse() || args.ui.is_capturing_keyboard();
-    if capturing {
-        let state: &widget::State<State> = args.state;
-        let v: &State = state.view();
-        let prev_interaction: Interaction = v.interaction;
-        let new_view = match prev_interaction {
-            Interaction::Captured(view) => view,
-            _ => View{ cursor: Cursor::from_range(0, 999), offset: 0f64 }
-        };
-        Interaction::Captured(new_view)
-    } else {
-        args.ui.input().maybe_mouse.map(|mouse| {
             Interaction::Uncaptured(Uncaptured::Highlighted)
         }).unwrap_or(Interaction::Uncaptured(Uncaptured::Normal))
     }
@@ -460,12 +444,9 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
         let mut new_interaction = get_new_interaction_2(&self.text, &args);
-        let widget::UpdateArgs { state, rect, style, mut ui, .. } = args;
-        let mut new_interaction = get_new_interaction_2(&args);
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
-        // let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let font_size = style.font_size(ui.theme());
