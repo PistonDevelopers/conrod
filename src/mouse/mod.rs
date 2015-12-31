@@ -3,9 +3,11 @@
 //!
 //! The `Ui` will continuously maintain the latest Mouse state, necessary for widget logic.
 //!
+pub mod simple_events;
 
-pub use input::MouseButton;
 pub use graphics::math::Scalar;
+
+use self::simple_events::*;
 use position::Point;
 use time::{SteadyTime};
 
@@ -50,81 +52,6 @@ pub struct Mouse {
     pub simple_event: Option<SimpleMouseEvent>,
 }
 
-
-/// Used for simplified mouse event handling. Most widgets can probably
-/// just use these events
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SimpleMouseEvent {
-    Click(MouseClick),
-    Drag(MouseDragEvent),
-}
-
-impl SimpleMouseEvent {
-
-    pub fn relative_to(&self, xy: Point) -> Self {
-        use self::SimpleMouseEvent::*;
-
-        match self {
-            &Click(mouse_click) => Click(mouse_click.relative_to(xy)),
-            &Drag(mouse_drag) => Drag(mouse_drag.relative_to(xy))
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct MouseClick {
-    mouse_button: MouseButton,
-    position: Point
-}
-
-impl MouseClick {
-
-    pub fn relative_to(&self, xy: Point) -> MouseClick {
-        use ::vecmath::vec2_sub;
-
-        MouseClick{
-            position: vec2_sub(self.position, xy),
-            ..*self
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct MouseDragEvent {
-    mouse_button: MouseButton,
-    start: MouseButtonDown,
-    current: MouseButtonDown,
-    button_released: bool
-}
-
-impl MouseDragEvent {
-
-    pub fn relative_to(&self, xy: Point) -> MouseDragEvent {
-        MouseDragEvent{
-            start: self.start.relative_to(xy),
-            current: self.current.relative_to(xy),
-            ..*self
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct MouseButtonDown {
-    pub time: SteadyTime,
-    pub position: Point
-}
-
-impl MouseButtonDown {
-
-    pub fn relative_to(&self, xy: Point) -> MouseButtonDown {
-        use ::vecmath::vec2_sub;
-
-        MouseButtonDown{
-            position: vec2_sub(self.position, xy),
-            ..*self
-        }
-    }
-}
 
 /// The amount of scrolling that has occurred since the last render event.
 #[derive(Copy, Clone, Debug)]
@@ -200,7 +127,7 @@ impl Mouse {
     pub fn move_to(&mut self, xy: Point) {
         use input::MouseButton::{Left, Middle, Right};
         use self::ButtonPosition::Down;
-        use self::SimpleMouseEvent::Drag;
+        use self::simple_events::SimpleMouseEvent::Drag;
 
         let buttons: Vec<(&ButtonState, MouseButton)> = vec![
             (&self.left, Left),

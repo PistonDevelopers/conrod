@@ -265,7 +265,7 @@ impl<C> Ui<C> {
                         Middle => &mut self.mouse.middle,
                         _ => &mut self.mouse.unknown,
                     };
-                    mouse_button.position = mouse::ButtonPosition::Down(mouse::MouseButtonDown{
+                    mouse_button.position = mouse::ButtonPosition::Down(mouse::simple_events::MouseButtonDown{
                         time: SteadyTime::now(),
                         position: mouse_position
                     });
