@@ -476,11 +476,11 @@ fn new_interaction(bar: &Bar,
         use self::Elem::Handle;
         use mouse::ButtonPosition::{Down, Up};
         match (is_over_elem, bar.interaction, mouse.left.position) {
-            (Some(_),    Normal,             Down(_, _)) => Normal,
+            (Some(_),    Normal,             Down(_)) => Normal,
             (Some(elem), _,                  Up)   => Highlighted(elem),
-            (Some(_),    Highlighted(_),     Down(_, _)) |
-            (_,          Clicked(Handle(_)), Down(_, _)) => Clicked(Handle(mouse_scalar)),
-            (_,          Clicked(elem),      Down(_, _)) => Clicked(elem),
+            (Some(_),    Highlighted(_),     Down(_)) |
+            (_,          Clicked(Handle(_)), Down(_)) => Clicked(Handle(mouse_scalar)),
+            (_,          Clicked(elem),      Down(_)) => Clicked(elem),
             _                                      => Normal,
         }
     }

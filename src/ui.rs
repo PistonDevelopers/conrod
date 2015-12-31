@@ -265,7 +265,10 @@ impl<C> Ui<C> {
                         Middle => &mut self.mouse.middle,
                         _ => &mut self.mouse.unknown,
                     };
-                    mouse_button.position = mouse::ButtonPosition::Down(SteadyTime::now(), mouse_position);
+                    mouse_button.position = mouse::ButtonPosition::Down(mouse::MouseButtonDown{
+                        time: SteadyTime::now(),
+                        position: mouse_position
+                    });
                     mouse_button.was_just_pressed = true;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),

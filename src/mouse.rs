@@ -26,7 +26,7 @@ pub enum ButtonPosition {
     /// The mouse button is currently up.
     Up,
     /// The mouse button is currently down (pressed).
-    Down(SteadyTime, Point),
+    Down(MouseButtonDown),
 }
 
 /// Represents the current state of the Mouse.
@@ -108,9 +108,9 @@ impl MouseDragEvent {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct MouseButtonDown {
-    time: SteadyTime,
-    position: Point
+pub struct MouseButtonDown {
+    pub time: SteadyTime,
+    pub position: Point
 }
 
 impl MouseButtonDown {
@@ -155,7 +155,7 @@ impl ButtonState {
     /// returns true if the mouse button is currently Down, otherwise false
     pub fn is_down(&self) -> bool {
         match self.position {
-            ButtonPosition::Down(_, _) => true,
+            ButtonPosition::Down(_) => true,
             _ => false
         }
     }
@@ -214,7 +214,10 @@ impl Mouse {
             Middle => &mut self.middle,
             _ => &mut self.unknown
         };
-        button_state.position = ButtonPosition::Down(SteadyTime::now(), mouse_position);
+        button_state.position = ButtonPosition::Down(MouseButtonDown{
+            time: SteadyTime::now(),
+            position: mouse_position
+        });
         button_state.was_just_pressed = true;
     }
 
@@ -233,12 +236,12 @@ impl Mouse {
                 _ => &mut self.unknown
             };
 
-            if let ButtonPosition::Down(time, start_position) = button_state.position {
-                let drag_distance = distance_between(start_position, current_mouse_position);
+            if let ButtonPosition::Down(mouse_down_info) = button_state.position {
+                let drag_distance = distance_between(mouse_down_info.position, current_mouse_position);
                 if drag_distance > drag_distance_threshold {
                     new_simple_event = Some(SimpleMouseEvent::Drag(MouseDragEvent{
                         mouse_button: button,
-                        start: MouseButtonDown{ time: time, position: start_position },
+                        start: MouseButtonDown{ time: mouse_down_info.time, position: mouse_down_info.position },
                         current: MouseButtonDown{ time: SteadyTime::now(), position: current_mouse_position }
                     }));
                 } else {
@@ -254,18 +257,6 @@ impl Mouse {
         }
 
         self.simple_event = new_simple_event;
-    }
-
-    /// indicates whether or not the mouse was clicked
-    pub fn was_clicked(&self, button: MouseButton) -> bool {
-        use input::MouseButton::*;
-        let button_state = match button {
-            Left => self.left,
-            Right => self.right,
-            Middle => self.middle,
-            _ => self.unknown
-        };
-        button_state.was_just_released
     }
 
     /// Returns the current `SimpleMouseEvent` if there is one
@@ -317,7 +308,7 @@ fn button_down_sets_button_state_to_down() {
     mouse.button_down(MouseButton::Left);
 
     let is_down = match mouse.left.position {
-        ButtonPosition::Down(_, _) => true,
+        ButtonPosition::Down(_) => true,
         _ => false
     };
     assert!(is_down);
@@ -326,7 +317,10 @@ fn button_down_sets_button_state_to_down() {
 #[test]
 fn button_up_sets_button_state_to_up() {
     let mut mouse = Mouse::new();
-    mouse.left.position = ButtonPosition::Down(SteadyTime::now(), [0.0, 0.0]);
+    mouse.left.position = ButtonPosition::Down(MouseButtonDown{
+        time: SteadyTime::now(),
+        position: [0.0, 0.0]
+    });
 
     mouse.button_up(MouseButton::Left);
     assert_eq!(ButtonPosition::Up, mouse.left.position);

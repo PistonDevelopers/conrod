@@ -250,7 +250,7 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
 
     match prev_interaction {
         Interaction::Captured(mut prev) => match mouse.left.position {
-            Down(_, _) => match over_elem {
+            Down(_) => match over_elem {
                 Elem::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
                 } else {
@@ -278,7 +278,7 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
         },
 
         Interaction::Uncaptured(prev) => match mouse.left.position {
-            Down(_, _) => match over_elem {
+            Down(_) => match over_elem {
                 Elem::Nill => Uncaptured(Normal),
                 Elem::Rect => match prev {
                     Normal => prev_interaction,

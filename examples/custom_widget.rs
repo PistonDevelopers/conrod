@@ -125,14 +125,14 @@ mod circular_button {
             // LMB is down over the button. But the button wasn't Highlighted last
             // update. This means the user clicked somewhere outside the button and
             // moved over the button holding LMB down. We do nothing in this case.
-            (true,  Normal,  Down(_, _)) => Normal,
+            (true,  Normal,  Down(_)) => Normal,
 
             // LMB is down over the button. The button was either Highlighted or Clicked
             // last update. If it was highlighted before, that means the user clicked
             // just now, and we transition to the Clicked state. If it was clicked
             // before, that means the user is still holding LMB down from a previous
             // click, in which case the state remains Clicked.
-            (true,  _,       Down(_, _)) => Clicked,
+            (true,  _,       Down(_)) => Clicked,
 
             // LMB is up. The mouse is hovering over the button. Regardless of what the
             // state was last update, the state should definitely be Highlighted now.
@@ -141,7 +141,7 @@ mod circular_button {
             // LMB is down, the mouse is not over the button, but the previous state was
             // Clicked. That means the user clicked the button and then moved the mouse
             // outside the button while holding LMB down. The button stays Clicked.
-            (false, Clicked, Down(_, _)) => Clicked,
+            (false, Clicked, Down(_)) => Clicked,
 
             // If none of the above applies, then nothing interesting is happening with
             // this button.
