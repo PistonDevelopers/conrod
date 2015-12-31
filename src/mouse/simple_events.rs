@@ -12,6 +12,8 @@ pub enum SimpleMouseEvent {
     Click(MouseClick),
     /// Drag event is created when the mouse was moved over a certain threshold while a button was depressed
     Drag(MouseDragEvent),
+    /// Scroll event is created when whenever the scroll wheel is moved
+    Scroll(Scroll),
 }
 
 
@@ -42,6 +44,16 @@ pub struct MouseButtonDown {
     /// The location of the mouse when the button was pressed
     pub position: Point
 }
+
+/// The amount of scrolling that has occurred since the last render event.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Scroll {
+    /// Scrolling across the x axis.
+    pub x: f64,
+    /// Scrolling across the y axis.
+    pub y: f64,
+}
+
 
 impl MouseClick {
 
@@ -76,7 +88,8 @@ impl SimpleMouseEvent {
 
         match self {
             &Click(mouse_click) => Click(mouse_click.relative_to(xy)),
-            &Drag(mouse_drag) => Drag(mouse_drag.relative_to(xy))
+            &Drag(mouse_drag) => Drag(mouse_drag.relative_to(xy)),
+            &Scroll(scroll_info) => Scroll(scroll_info)
         }
     }
 }

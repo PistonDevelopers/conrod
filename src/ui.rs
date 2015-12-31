@@ -510,7 +510,7 @@ impl<C> Ui<C> {
         self.text_just_entered.clear();
 
         // Reset the mouse state.
-        self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
+        self.mouse.scroll = mouse::simple_events::Scroll { x: 0.0, y: 0.0 };
         self.mouse.left.reset_pressed_and_released();
         self.mouse.middle.reset_pressed_and_released();
         self.mouse.right.reset_pressed_and_released();
