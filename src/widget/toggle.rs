@@ -89,10 +89,10 @@ fn get_new_interaction(is_over: bool,
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
+        (true,  Normal,  Down(_, _)) => Normal,
+        (true,  _,       Down(_, _)) => Clicked,
         (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
+        (false, Clicked, Down(_, _)) => Clicked,
         _                      => Normal,
     }
 }
@@ -321,4 +321,3 @@ impl<'a, F> Labelable<'a> for Toggle<'a, F> {
         self
     }
 }
-

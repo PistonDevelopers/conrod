@@ -695,7 +695,7 @@ pub trait Widget: Sized {
 /// For all following occasions, the pre-existing cached state will be compared and updated.
 ///
 /// Note that this is a very imperative, mutation oriented segment of code. We try to move as much
-/// imperativeness and mutation out of the users hands and into this function as possible, so that 
+/// imperativeness and mutation out of the users hands and into this function as possible, so that
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
@@ -834,7 +834,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
-                        if mouse.left.position == ::mouse::ButtonPosition::Down {
+                        if mouse.left.is_down() {
                             Some(new_floating())
                         } else {
                             Some(prev_floating)
@@ -1266,7 +1266,7 @@ impl<W> Sizeable for W where W: Widget {
 //         }
 //     };
 // }
-// 
+//
 // style_retrieval! {
 //     fn_name: color,
 //     member: maybe_color,

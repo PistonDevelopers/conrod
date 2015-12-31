@@ -22,12 +22,12 @@ pub struct ButtonState {
 }
 
 /// Represents the current state of a mouse button.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ButtonPosition {
     /// The mouse button is currently up.
     Up,
     /// The mouse button is currently down (pressed).
-    Down,
+    Down(SteadyTime, Point),
 }
 
 /// Represents the current state of the Mouse.
@@ -105,6 +105,19 @@ impl ButtonState {
         self.was_just_pressed = false;
     }
 
+    pub fn is_down(&self) -> bool {
+        match self.position {
+            ButtonPosition::Up => false,
+            ButtonPosition::Down(_, _) => true
+        }
+    }
+
+    pub fn is_up(&self) -> bool {
+        match self.position {
+            ButtonPosition::Up => true,
+            ButtonPosition::Down(_, _) => false
+        }
+    }
 }
 
 
@@ -143,6 +156,7 @@ impl Mouse {
             position: self.xy.clone()
         };
         self.set_last_button_down_time(button, Some(button_down));
+        let mouse_position = self.xy.clone();
 
         let button_state = match button {
             Left => &mut self.left,
@@ -150,7 +164,7 @@ impl Mouse {
             Middle => &mut self.middle,
             _ => &mut self.unknown
         };
-        button_state.position = ButtonPosition::Down;
+        button_state.position = ButtonPosition::Down(SteadyTime::now(), mouse_position);
         button_state.was_just_pressed = true;
     }
 
@@ -226,13 +240,17 @@ fn button_down_sets_button_state_to_down() {
 
     mouse.button_down(MouseButton::Left);
 
-    assert_eq!(ButtonPosition::Down, mouse.left.position);
+    let is_down = match mouse.left.position {
+        ButtonPosition::Down(_, _) => true,
+        _ => false
+    };
+    assert!(is_down);
 }
 
 #[test]
 fn button_up_sets_button_state_to_up() {
     let mut mouse = Mouse::new();
-    mouse.left.position = ButtonPosition::Down;
+    mouse.left.position = ButtonPosition::Down(SteadyTime::now(), [0.0, 0.0]);
 
     mouse.button_up(MouseButton::Left);
     assert_eq!(ButtonPosition::Up, mouse.left.position);

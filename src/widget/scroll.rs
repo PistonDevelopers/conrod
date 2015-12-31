@@ -1,4 +1,4 @@
-//! 
+//!
 //! Types and functionality related to the scrolling behaviour of widgets.
 //!
 
@@ -76,7 +76,7 @@ pub struct Bar {
 }
 
 
-/// The current interaction with the 
+/// The current interaction with the
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Interaction {
     /// No interaction with the Scrollbar.
@@ -155,7 +155,7 @@ impl State {
     /// Construct a new State.
     /// The `visible` rect corresponds to a Widget's `kid_area` aka the viewable container.
     /// The `kids` rect is the area *actually occupied* by the children widgets.
-    pub fn new(scrolling: Scrolling, 
+    pub fn new(scrolling: Scrolling,
                visible: Rect,
                kids: Rect,
                theme: &Theme,
@@ -476,11 +476,11 @@ fn new_interaction(bar: &Bar,
         use self::Elem::Handle;
         use mouse::ButtonPosition::{Down, Up};
         match (is_over_elem, bar.interaction, mouse.left.position) {
-            (Some(_),    Normal,             Down) => Normal,
+            (Some(_),    Normal,             Down(_, _)) => Normal,
             (Some(elem), _,                  Up)   => Highlighted(elem),
-            (Some(_),    Highlighted(_),     Down) |
-            (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
-            (_,          Clicked(elem),      Down) => Clicked(elem),
+            (Some(_),    Highlighted(_),     Down(_, _)) |
+            (_,          Clicked(Handle(_)), Down(_, _)) => Clicked(Handle(mouse_scalar)),
+            (_,          Clicked(elem),      Down(_, _)) => Clicked(elem),
             _                                      => Normal,
         }
     }
@@ -551,4 +551,3 @@ fn test_bar_new_no_scroll_rev_range() {
     let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
     assert_eq!(maybe_bar, None);
 }
-

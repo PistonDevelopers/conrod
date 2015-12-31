@@ -189,16 +189,16 @@ fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mou
     use self::Elem::ValueGlyph;
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left.position) {
-        (Some(_),    Normal,          Down) => Normal,
+        (Some(_),    Normal,          Down(_, _)) => Normal,
         (Some(elem), _,               Up)   => Highlighted(elem),
-        (Some(elem), Highlighted(_),  Down) => Clicked(elem),
-        (Some(_),    Clicked(p_elem), Down) => {
+        (Some(elem), Highlighted(_),  Down(_, _)) => Clicked(elem),
+        (Some(_),    Clicked(p_elem), Down(_, _)) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
                 _                  => Clicked(p_elem),
             }
         },
-        (None,       Clicked(p_elem), Down) => {
+        (None,       Clicked(p_elem), Down(_, _)) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
                 _                  => Clicked(p_elem),
@@ -569,4 +569,3 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
         self
     }
 }
-

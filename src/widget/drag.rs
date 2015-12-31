@@ -1,4 +1,4 @@
-//! 
+//!
 //! Types and functionality related to the dragging behaviour of Widgets.
 //!
 
@@ -32,10 +32,10 @@ pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Po
 
     // Determine the new drag state.
     let new_state = match (is_over, state, mouse.left.position) {
-        (true,  Normal,     Down) => Normal,
+        (true,  Normal,     Down(_, _)) => Normal,
         (true,  _,          Up)   => Highlighted,
-        (true,  _,          Down) |
-        (false, Clicked(_), Down) => Clicked(mouse.xy),
+        (true,  _,          Down(_, _)) |
+        (false, Clicked(_), Down(_, _)) => Clicked(mouse.xy),
         _                         => Normal,
     };
 
@@ -48,6 +48,3 @@ pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Po
 
     (new_xy, new_state)
 }
-
-
-

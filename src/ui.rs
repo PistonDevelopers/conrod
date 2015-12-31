@@ -20,6 +20,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
+use time::SteadyTime;
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -254,6 +255,7 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
+            let mouse_position = self.mouse.xy.clone();
             match button_type {
                 Button::Mouse(button) => {
                     self.widget_under_mouse_captures_keyboard();
@@ -263,7 +265,7 @@ impl<C> Ui<C> {
                         Middle => &mut self.mouse.middle,
                         _ => &mut self.mouse.unknown,
                     };
-                    mouse_button.position = mouse::ButtonPosition::Down;
+                    mouse_button.position = mouse::ButtonPosition::Down(SteadyTime::now(), mouse_position);
                     mouse_button.was_just_pressed = true;
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),

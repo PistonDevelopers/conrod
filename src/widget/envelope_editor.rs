@@ -178,11 +178,11 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
     use self::MouseButton::{Left, Right};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left.position, mouse.right.position) {
-        (Some(_), Normal, Down, Up) => Normal,
+        (Some(_), Normal, Down(_, _), Up) => Normal,
         (Some(elem), _, Up, Up) => Highlighted(elem),
-        (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),
-        (Some(_), Clicked(p_elem, m_button), Down, Up) |
-        (Some(_), Clicked(p_elem, m_button), Up, Down) => {
+        (Some(elem), Highlighted(_), Down(_, _), Up) => Clicked(elem, Left),
+        (Some(_), Clicked(p_elem, m_button), Down(_, _), Up) |
+        (Some(_), Clicked(p_elem, m_button), Up, Down(_, _)) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
                 // CurvePoint(idx, _) =>
@@ -190,7 +190,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                 _ => Clicked(p_elem, m_button),
             }
         },
-        (None, Clicked(p_elem, m_button), Down, Up) => {
+        (None, Clicked(p_elem, m_button), Down(_, _), Up) => {
             match (p_elem, m_button) {
                 (EnvPoint(idx, _), Left) =>
                     Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
@@ -199,7 +199,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                 _ => Clicked(p_elem, Left),
             }
         },
-        (Some(_), Highlighted(p_elem), Up, Down) => {
+        (Some(_), Highlighted(p_elem), Up, Down(_, _)) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
                 // CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
