@@ -243,33 +243,20 @@ impl<C> Ui<C> {
 
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
-            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.mouse.move_to([x - self.win_w / 2.0, -(y - self.win_h / 2.0)])
         });
 
         event.mouse_scroll(|x, y| {
-            self.mouse.scroll.x += x;
-            self.mouse.scroll.y += y;
+            self.mouse.scroll(x, y);
         });
 
         event.press(|button_type| {
             use input::Button;
-            use input::MouseButton::{Left, Middle, Right};
 
-            let mouse_position = self.mouse.xy.clone();
             match button_type {
                 Button::Mouse(button) => {
                     self.widget_under_mouse_captures_keyboard();
-                    let mouse_button = match button {
-                        Left => &mut self.mouse.left,
-                        Right => &mut self.mouse.right,
-                        Middle => &mut self.mouse.middle,
-                        _ => &mut self.mouse.unknown,
-                    };
-                    mouse_button.position = mouse::ButtonPosition::Down(mouse::simple_events::MouseButtonDown{
-                        time: SteadyTime::now(),
-                        position: mouse_position
-                    });
-                    mouse_button.was_just_pressed = true;
+                    self.mouse.button_down(button);
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
                 _ => {}
@@ -278,18 +265,11 @@ impl<C> Ui<C> {
 
         event.release(|button_type| {
             use input::Button;
-            use input::MouseButton::{Left, Middle, Right};
+
             match button_type {
                 Button::Mouse(button) => {
                     self.widget_under_mouse_captures_keyboard();
-                    let mouse_button = match button {
-                        Left => &mut self.mouse.left,
-                        Right => &mut self.mouse.right,
-                        Middle => &mut self.mouse.middle,
-                        _ => &mut self.mouse.unknown,
-                    };
-                    mouse_button.position = mouse::ButtonPosition::Up;
-                    mouse_button.was_just_released = true;
+                    self.mouse.button_up(button);
                 },
                 Button::Keyboard(key) => self.keys_just_released.push(key),
                 _ => {}
@@ -510,11 +490,7 @@ impl<C> Ui<C> {
         self.text_just_entered.clear();
 
         // Reset the mouse state.
-        self.mouse.scroll = mouse::simple_events::Scroll { x: 0.0, y: 0.0 };
-        self.mouse.left.reset_pressed_and_released();
-        self.mouse.middle.reset_pressed_and_released();
-        self.mouse.right.reset_pressed_and_released();
-        self.mouse.unknown.reset_pressed_and_released();
+        self.mouse.reset();
     }
 
 

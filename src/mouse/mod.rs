@@ -221,16 +221,23 @@ impl Mouse {
         })));
     }
 
+    /// resets the state of the mouse
+    pub fn reset(&mut self) {
+        self.left.reset_pressed_and_released();
+        self.right.reset_pressed_and_released();
+        self.middle.reset_pressed_and_released();
+        self.unknown.reset_pressed_and_released();
+        self.simple_event = None;
+        self.scroll.x = 0.0;
+        self.scroll.y = 0.0;
+    }
+
     /// Returns the current `SimpleMouseEvent` if there is one
     pub fn get_simple_event(&self) -> Option<SimpleMouseEvent> {
         self.simple_event
     }
 
     fn set_simple_event(&mut self, event: Option<SimpleMouseEvent>) {
-        if self.simple_event.is_some() {
-            let old_event = self.simple_event.take();
-            println!("Discarding old MouseEvent: {:?} in favor of {:?}", old_event, event);
-        }
         if event.is_some() {
             self.simple_event = event;
         }
@@ -242,6 +249,36 @@ fn distance_between(a: Point, b: Point) -> Scalar {
     let dx_2 = (a[0] - b[0]).powi(2);
     let dy_2 = (a[1] - b[1]).powi(2);
     (dx_2 + dy_2).abs().sqrt()
+}
+
+#[test]
+fn reset_should_reset_all_button_states_and_scroll_state() {
+    let mut mouse = Mouse::new();
+    mouse.left.was_just_pressed = true;
+    mouse.left.was_just_released = true;
+    mouse.right.was_just_pressed = true;
+    mouse.right.was_just_released = true;
+    mouse.middle.was_just_pressed = true;
+    mouse.middle.was_just_released = true;
+    mouse.unknown.was_just_pressed = true;
+    mouse.unknown.was_just_released = true;
+    mouse.scroll.x = 10.0;
+    mouse.scroll.y = 20.0;
+    mouse.simple_event = Some(SimpleMouseEvent::Scroll(Scroll{x: 2.0, y: 33.3}));
+
+    mouse.reset();
+
+    assert!(!mouse.left.was_just_pressed);
+    assert!(!mouse.left.was_just_released);
+    assert!(!mouse.right.was_just_pressed);
+    assert!(!mouse.right.was_just_released);
+    assert!(!mouse.middle.was_just_pressed);
+    assert!(!mouse.middle.was_just_released);
+    assert!(!mouse.unknown.was_just_pressed);
+    assert!(!mouse.unknown.was_just_released);
+    assert_eq!(0.0, mouse.scroll.x);
+    assert_eq!(0.0, mouse.scroll.y);
+    assert!(mouse.simple_event.is_none());
 }
 
 #[test]
