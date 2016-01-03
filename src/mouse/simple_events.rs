@@ -4,6 +4,9 @@ pub use input::MouseButton;
 use position::Point;
 use time::SteadyTime;
 
+#[cfg(test)]
+use position::Scalar;
+
 /// Used for simplified mouse event handling. Most widgets can probably
 /// just use these events
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -105,4 +108,45 @@ impl MouseButtonDown {
             ..*self
         }
     }
+}
+
+#[test]
+fn click_event_should_be_made_relative_to_a_point() {
+    let click = MouseClick{
+        mouse_button: MouseButton::Left,
+        position: [10.0, 20.0]
+    };
+
+    let relative_click = click.relative_to([5.0, 10.0]);
+
+    assert_float_eq(5.0, relative_click .position[0]);
+    assert_float_eq(10.0, relative_click .position[1]);
+}
+
+#[test]
+fn drag_event_should_be_made_relative_to_a_point() {
+    let drag = MouseDragEvent{
+        mouse_button: MouseButton::Left,
+        start: MouseButtonDown{
+            time: SteadyTime::now(),
+            position: [4.0, -5.0]
+        },
+        current: MouseButtonDown{
+            time: SteadyTime::now(),
+            position: [24.0, -10.0]
+        },
+        button_released: false
+    };
+
+    let relative_drag = drag.relative_to([20.0, -5.0]);
+    assert_float_eq(-16.0, relative_drag.start.position[0]);
+    assert_float_eq(0.0, relative_drag.start.position[1]);
+    assert_float_eq(4.0, relative_drag.current.position[0]);
+    assert_float_eq(-5.0, relative_drag.current.position[1]);
+}
+
+#[cfg(test)]
+pub fn assert_float_eq(a: Scalar, b: Scalar) {
+    let epsilon = 0.0001;
+    assert!((a - epsilon) <= b && (a + epsilon) >= b, format!("{} != {}", a, b));
 }

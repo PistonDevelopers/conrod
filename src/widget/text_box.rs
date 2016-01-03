@@ -342,55 +342,116 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-fn get_clicked_elem<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Elem
+fn get_clicked_elem<C, F>(text: &str, point: Point, args: &UpdateArgs<TextBox<F>, C>) -> Elem
                                                                         where C: CharacterCache,
                                                                         F: FnMut(&mut String) {
-    let maybe_elem_under_mouse: Option<Elem> = args.ui.input().maybe_mouse.iter()
-        .filter(|mouse| mouse.left.was_just_pressed)
-        .map(|mouse| {
-            let style = args.style;
-            let theme = args.ui.theme();
-            let font_size = style.font_size(theme);
-            let (xy, widget_dimension) = args.rect.xy_dim();
-            let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
-            let relative_mouse = mouse.relative_to(xy);
-            let glyph_cache = args.ui.glyph_cache();
-            let text_w = glyph_cache.width(font_size, text);
-            let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
-            let text_start_x = text_x - text_w / 2.0;
-            over_elem(args.ui.glyph_cache(),
-                relative_mouse.xy,
-                widget_dimension,
-                inner_dimension,
-                text_start_x,
-                text_w,
-                font_size,
-                text)
-        }).next();
-        maybe_elem_under_mouse.unwrap_or(Elem::Nill)
+    let style = args.style;
+    let theme = args.ui.theme();
+    let font_size = style.font_size(theme);
+    let (xy, widget_dimension) = args.rect.xy_dim();
+    let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
+    let glyph_cache = args.ui.glyph_cache();
+    let text_w = glyph_cache.width(font_size, text);
+    let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
+    let text_start_x = text_x - text_w / 2.0;
+    over_elem(args.ui.glyph_cache(),
+        point,
+        widget_dimension,
+        inner_dimension,
+        text_start_x,
+        text_w,
+        font_size,
+        text)
+}
+
+fn get_elem_for_drag<C, F>(text: &str, point: Point, args: &UpdateArgs<TextBox<F>, C>) -> Elem
+                                                                        where C: CharacterCache,
+                                                                        F: FnMut(&mut String) {
+    let style = args.style;
+    let theme = args.ui.theme();
+    let font_size = style.font_size(theme);
+    let (_xy, widget_dimension) = args.rect.xy_dim();
+    let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
+    let glyph_cache = args.ui.glyph_cache();
+    let text_w = glyph_cache.width(font_size, text);
+    let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
+    let text_start_x = text_x - text_w / 2.0;
+    let (cursor_index, _) = closest_idx(args.ui.glyph_cache(),
+                                        point,
+                                        text_start_x,
+                                        text_w,
+                                        font_size,
+                                        text);
+    Elem::Char(cursor_index)
+}
+
+fn get_interaction_for_click(text: &str, clicked_elem: Elem) -> Interaction {
+    match clicked_elem {
+        Elem::Char(idx) => Interaction::Captured(View{
+            cursor: Cursor::from_index(idx),
+            offset: 0f64
+        }),
+        Elem::Rect => Interaction::Captured(View{
+            cursor: Cursor::from_range(0, text.chars().count()),
+            offset: 0f64
+        }),
+        Elem::Nill => Interaction::Uncaptured(Uncaptured::Normal)
+    }
+}
+
+fn get_interaction_for_drag(start_elem: Elem, end_elem: Elem) -> Interaction {
+    if let (Elem::Char(start_idx), Elem::Char(end_idx)) = (start_elem, end_elem) {
+        Interaction::Captured(View{
+            cursor: Cursor::from_range(start_idx, end_idx),
+            offset: 0f64
+        })
+    } else {
+        Interaction::Captured(View{
+            cursor: Cursor::from_index(0),
+            offset: 0f64
+        })
+    }
+}
+
+fn get_highlight_all_interaction(text: &str) -> Interaction {
+    Interaction::Captured(View{
+        cursor: Cursor::from_range(0, text.chars().count()),
+        offset: 0.0
+    })
 }
 
 fn get_new_interaction_2<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Interaction
                                                             where C: CharacterCache,
                                                             F: FnMut(&mut String) {
-    let prev_state: &State = args.state.view();
-    let clicked_elem = get_clicked_elem(text, args);
-    match clicked_elem {
-        Elem::Char(char_index) =>
-            Interaction::Captured(View{cursor: Cursor::from_index(char_index), offset: 0f64 }),
-        Elem::Rect =>
-            Interaction::Captured(View{cursor: Cursor::from_range(0, text.chars().count()), offset: 0f64}),
-        Elem::Nill if args.ui.is_capturing_keyboard() => {
-            if let Interaction::Captured(view) = prev_state.interaction {
-                Interaction::Captured(view)
-            } else {
-                Interaction::Captured(View{cursor: Cursor::from_range(0, text.chars().count()), offset: 0f64})
-            }
-        },
-        _ => args.ui.input().maybe_mouse.map(|_mouse| {
-            Interaction::Uncaptured(Uncaptured::Highlighted)
-        }).unwrap_or(Interaction::Uncaptured(Uncaptured::Normal))
-    }
+    let maybe_mouse = args.ui.input().maybe_mouse;
+    let maybe_mouse_event = maybe_mouse.and_then(|mouse| mouse.get_simple_event());
+
+    maybe_mouse_event.and_then(|event| {
+        use ::mouse::simple_events::SimpleMouseEvent::{Click, Drag};
+        use ::mouse::simple_events::MouseButton;
+        match event {
+            Click(click_info) if click_info.mouse_button == MouseButton::Left => {
+                let clicked_elem = get_clicked_elem(text, click_info.position, args);
+                Some(get_interaction_for_click(text, clicked_elem))
+            },
+            Drag(drag_info) => {
+                let drag_start = get_elem_for_drag(text, drag_info.start.position, args);
+                let drag_end = get_elem_for_drag(text, drag_info.current.position, args);
+                Some(get_interaction_for_drag(drag_start, drag_end))
+            },
+            _ => None
+        }
+    }).unwrap_or_else(|| {
+        let prev_interaction = args.state.view().interaction;
+        let is_capturing_keyboard = args.ui.is_capturing_keyboard();
+        match prev_interaction {
+            Interaction::Captured(_) if is_capturing_keyboard =>
+                prev_interaction,
+            _ if is_capturing_keyboard => get_highlight_all_interaction(text),
+            _ if maybe_mouse.is_some() => Interaction::Uncaptured(Uncaptured::Highlighted),
+            _ => Interaction::Uncaptured(Uncaptured::Normal)
+        }
+    })
 }
 
 fn get_inner_dimensions(outer_rect: Dimensions, style: &Style, theme: &Theme) -> Dimensions {
