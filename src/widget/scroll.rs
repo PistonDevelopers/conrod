@@ -468,6 +468,7 @@ fn new_interaction(bar: &Bar,
                    mouse_scalar: Scalar) -> Interaction
 {
     use self::Interaction::{Normal, Highlighted, Clicked};
+    use mouse::MouseButton::Left as LeftButton;
 
     // If there's no need for a scroll bar, leave the interaction as `Normal`.
     if bar.scrollable.len() == 0.0 {
@@ -475,7 +476,9 @@ fn new_interaction(bar: &Bar,
     } else {
         use self::Elem::Handle;
         use mouse::ButtonPosition::{Down, Up};
-        match (is_over_elem, bar.interaction, mouse.left.position) {
+
+        let left_button_position = mouse.buttons.get(LeftButton).position;
+        match (is_over_elem, bar.interaction, left_button_position) {
             (Some(_),    Normal,             Down(_)) => Normal,
             (Some(elem), _,                  Up)   => Highlighted(elem),
             (Some(_),    Highlighted(_),     Down(_)) |

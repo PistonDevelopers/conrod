@@ -23,6 +23,7 @@ pub enum State {
 pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Point, State) {
     use self::State::{Normal, Highlighted, Clicked};
     use mouse::ButtonPosition::{Up, Down};
+    use mouse::MouseButton::Left as LeftButton;
 
     // Find the absolute position of the draggable area.
     let abs_rect = rel_rect.shift(xy);
@@ -31,7 +32,8 @@ pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Po
     let is_over = abs_rect.is_over(mouse.xy);
 
     // Determine the new drag state.
-    let new_state = match (is_over, state, mouse.left.position) {
+    let left_button_position = mouse.buttons.get(LeftButton).position;
+    let new_state = match (is_over, state, left_button_position) {
         (true,  Normal,     Down(_)) => Normal,
         (true,  _,          Up)   => Highlighted,
         (true,  _,          Down(_)) |

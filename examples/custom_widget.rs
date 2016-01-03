@@ -120,8 +120,11 @@ mod circular_button {
     /// over the button and the previous interaction state.
     fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
         use conrod::MouseButtonPosition::{Down, Up};
+        use conrod::MouseButton;
         use self::Interaction::{Normal, Highlighted, Clicked};
-        match (is_over, prev, mouse.left.position) {
+
+        let lmb_position = mouse.buttons.get(MouseButton::Left).position;
+        match (is_over, prev, lmb_position) {
             // LMB is down over the button. But the button wasn't Highlighted last
             // update. This means the user clicked somewhere outside the button and
             // moved over the button holding LMB down. We do nothing in this case.

@@ -20,6 +20,7 @@ use {
     Theme,
 };
 
+use mouse::MouseButton;
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
 use widget::{self, Widget, KidArea, UpdateArgs};
@@ -248,8 +249,9 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
     use self::Interaction::{Captured, Uncaptured};
     use self::Uncaptured::{Normal, Highlighted};
 
+    let left_button_state = mouse.buttons.get(MouseButton::Left);
     match prev_interaction {
-        Interaction::Captured(mut prev) => match mouse.left.position {
+        Interaction::Captured(mut prev) => match left_button_state.position {
             Down(_) => match over_elem {
                 Elem::Nill => if prev.cursor.anchor == Anchor::None {
                     Uncaptured(Normal)
@@ -277,7 +279,7 @@ fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mo
             },
         },
 
-        Interaction::Uncaptured(prev) => match mouse.left.position {
+        Interaction::Uncaptured(prev) => match left_button_state.position {
             Down(_) => match over_elem {
                 Elem::Nill => Uncaptured(Normal),
                 Elem::Rect => match prev {

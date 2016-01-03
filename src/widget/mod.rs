@@ -703,6 +703,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     C: CharacterCache,
     W: Widget,
 {
+    use mouse::MouseButton;
+
     let kind = widget.unique_kind();
 
     // Take the previous state of the widget from the cache if there is some to collect.
@@ -834,7 +836,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
-                        if mouse.left.is_down() {
+                        if mouse.buttons.get(MouseButton::Left).is_down() {
                             Some(new_floating())
                         } else {
                             Some(prev_floating)
