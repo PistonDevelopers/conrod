@@ -1,6 +1,8 @@
+//! module for abstracting over most mouse events.
+//! Handles most common mouse events so that widgets don't have to
+//! store any mouse state.
 
-pub use input::MouseButton;
-
+use input::MouseButton;
 use position::Point;
 use time::SteadyTime;
 
@@ -20,6 +22,9 @@ pub enum SimpleMouseEvent {
 }
 
 
+/// Info on a simple mouse click event. This event gets dispatched when a
+/// mouse button goes down then up without moving more than the drag threshold
+/// while the button is depressed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MouseClick {
     /// Indicates Which button was clicked
@@ -28,6 +33,10 @@ pub struct MouseClick {
     pub position: Point
 }
 
+/// Info on a simple mouse drag event. This event gets dispached when a mouse
+/// button is depressed and the mouse is moved a distance greater than the
+/// drag threshold. Holds the start and end positions of the drag, as well as
+/// whether the mouse button is still being depressed.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MouseDragEvent {
     /// Which mouse button is being held during the drag
@@ -40,6 +49,7 @@ pub struct MouseDragEvent {
     pub button_released: bool
 }
 
+/// Holds info on when a mouse button was depressed or released.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MouseButtonDown {
     /// The time that the mouse button was pressed.

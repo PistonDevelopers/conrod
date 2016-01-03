@@ -65,7 +65,9 @@ pub use frame::{Framing, Frameable};
 pub use glyph_cache::{GlyphCache, LineBreak};
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
-pub use mouse::Mouse;
+
+pub use mouse::{Mouse, MouseButton, NUM_MOUSE_BUTTONS};
+pub use mouse::ButtonMap as MouseButtonMap;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::simple_events::Scroll as MouseScroll;

@@ -3,10 +3,14 @@
 //!
 //! The `Ui` will continuously maintain the latest Mouse state, necessary for widget logic.
 //!
+
 pub mod simple_events;
+mod button_map;
 
-pub use graphics::math::Scalar;
+pub use self::button_map::{ButtonMap, NUM_MOUSE_BUTTONS};
+pub use input::MouseButton;
 
+use graphics::math::Scalar;
 use self::simple_events::*;
 use position::Point;
 use time::{SteadyTime};
@@ -20,6 +24,8 @@ pub struct ButtonState {
     pub was_just_released: bool,
     /// The current position of the button.
     pub position: ButtonPosition,
+    /// SimpleMouseEvent for events corresponding to this button.
+    pub event: Option<SimpleMouseEvent>,
 }
 
 /// Represents the current state of a mouse button.
@@ -50,6 +56,8 @@ pub struct Mouse {
     pub drag_distance_threshold: Scalar,
     /// Simple mouse event that is waiting to be consumed
     pub simple_event: Option<SimpleMouseEvent>,
+    /// Map of MouseButton to ButtonState
+    pub button_map: ButtonMap,
 }
 
 
@@ -61,6 +69,7 @@ impl ButtonState {
             was_just_released: false,
             was_just_pressed: false,
             position: ButtonPosition::Up,
+            event: None
         }
     }
 
@@ -100,7 +109,8 @@ impl Mouse {
             unknown: ButtonState::new(),
             scroll: Scroll { x: 0.0, y: 0.0 },
             drag_distance_threshold: 2.0,
-            simple_event: None
+            simple_event: None,
+            button_map: ButtonMap::new(),
         }
     }
 
