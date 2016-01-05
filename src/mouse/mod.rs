@@ -46,12 +46,17 @@ pub struct Mouse {
     pub scroll: Scroll,
     /// Movements less than this threshold will not be considered drags
     pub drag_distance_threshold: Scalar,
-    /// Simple mouse event that is waiting to be consumed
-    pub simple_event: Option<SimpleMouseEvent>,
     /// Map of MouseButton to ButtonState
     pub buttons: ButtonMap,
+    /// Holds a scroll event if there is one
+    pub maybe_scroll_event: Option<SimpleMouseEvent>,
 }
 
+/// Iterator over mouse events.
+pub struct MouseEventIterator<'a>{
+    mouse: &'a Mouse,
+    idx: u32,
+}
 
 impl ButtonState {
 
@@ -88,7 +93,6 @@ impl ButtonState {
     }
 }
 
-
 impl Mouse {
 
     /// Constructor for a default Mouse struct.
@@ -97,51 +101,38 @@ impl Mouse {
             xy: [0.0, 0.0],
             scroll: Scroll { x: 0.0, y: 0.0 },
             drag_distance_threshold: 2.0,
-            simple_event: None,
+            maybe_scroll_event: None,
             buttons: ButtonMap::new(),
         }
     }
 
-    /// Return the mouse state with its position relative to the given position.
+    /// Return the mouse state with all `position::Point`s relative to the given point.
     pub fn relative_to(self, xy: Point) -> Mouse {
         use ::vecmath::vec2_sub;
 
-        let relative_simple_event  = self.simple_event.map(|mouse_event| mouse_event.relative_to(xy));
+        let relative_button_map = self.buttons.relative_to(xy);
         Mouse { xy: vec2_sub(self.xy, xy),
-            simple_event: relative_simple_event, ..self }
+            buttons: relative_button_map, ..self }
     }
 
-    /// Call whenever the mouse moves, sets the new position of the mouse
+    /// Call whenever the mouse moves, sets the new position of the mouse and
+    /// creates a Drag event if a button is being held down.
     pub fn move_to(&mut self, xy: Point) {
-        use self::ButtonPosition::Down;
-        use self::simple_events::SimpleMouseEvent::Drag;
+        // Check to see if moving the mouse will create a Drag event.
+        // Update any events if it does.
+        let buttons_and_events = self.buttons.all_buttons().iter()
+            // Find the first button that is current in the Down position
+            .filter(|button_and_state| button_and_state.1.is_down())
+            .map(|button_and_state| {
+                // Once we have the button down info, map that to a MouseDragEvent
+                let maybe_event = self.get_drag_event_for_move(button_and_state.0, button_and_state.1, xy);
+                (button_and_state.0, maybe_event)
+            }).filter(|button_and_event| button_and_event.1.is_some())
+            .collect::<Vec<(MouseButton, Option<SimpleMouseEvent>)>>();
 
-        let new_event: Option<SimpleMouseEvent> = {
-
-            self.buttons.all_buttons().iter()
-                // Find the first button that is current in the Down position
-                .filter(|button_and_state| button_and_state.1.is_down())
-                .next().and_then(|button_and_state| {
-                    // Once we have the button down info, map that to a MouseDragEvent
-                    let button_position = button_and_state.1.position;
-                    match button_position {
-                        Down(info) if self.is_drag(info.position, xy) => {
-                            Some(Drag(MouseDragEvent{
-                                start: info,
-                                current: MouseButtonDown{
-                                    time: SteadyTime::now(),
-                                    position: xy
-                                },
-                                mouse_button: button_and_state.0,
-                                button_released: false
-                            }))
-                        },
-                        _ => None
-                    }
-                })
-        };
-
-        self.set_simple_event(new_event);
+        for button_and_event in buttons_and_events {
+            self.buttons.get_mut(button_and_event.0).event = button_and_event.1;
+        }
 
         // update the current position of the mouse
         self.xy = xy;
@@ -162,42 +153,39 @@ impl Mouse {
 
     /// called when a mouse button is released
     pub fn button_up(&mut self, button: MouseButton) {
-        let current_mouse_position = self.xy.clone();
-        let drag_distance_threshold = self.drag_distance_threshold;
-        let mut new_simple_event: Option<SimpleMouseEvent> = None;
-        {
-            let button_state = self.buttons.get_mut(button);
+        use self::ButtonPosition::Down;
 
-            if let ButtonPosition::Down(mouse_down_info) = button_state.position {
-                let drag_distance = distance_between(mouse_down_info.position, current_mouse_position);
-                if drag_distance > drag_distance_threshold {
-                    new_simple_event = Some(SimpleMouseEvent::Drag(MouseDragEvent{
-                        mouse_button: button,
-                        start: MouseButtonDown{ time: mouse_down_info.time, position: mouse_down_info.position },
-                        current: MouseButtonDown{ time: SteadyTime::now(), position: current_mouse_position },
-                        button_released: true
-                    }));
-                } else {
-                    new_simple_event = Some(SimpleMouseEvent::Click(MouseClick{
-                        mouse_button: button,
-                        position: current_mouse_position
-                    }));
-                }
-            }
+        let new_simple_event = match self.buttons.get(button).position {
+            ButtonPosition::Down(mouse_down_info) if self.is_drag(mouse_down_info.position, self.xy) => {
+                Some(SimpleMouseEvent::Drag(MouseDragEvent{
+                    mouse_button: button,
+                    start: MouseButtonDown{ time: mouse_down_info.time, position: mouse_down_info.position },
+                    current: MouseButtonDown{ time: SteadyTime::now(), position: self.xy },
+                    button_released: true
+                }))
+            },
+            ButtonPosition::Down(_) => {
+                Some(SimpleMouseEvent::Click(MouseClick{
+                    mouse_button: button,
+                    position: self.xy
+                }))
+            },
+            _ => None
+        };
 
-            button_state.position = ButtonPosition::Up;
-            button_state.was_just_released = true;
-        }
-
-        self.set_simple_event(new_simple_event);
+        self.buttons.update(button, |state| {
+            state.position = ButtonPosition::Up;
+            state.was_just_released = true;
+            state.event = new_simple_event;
+        });
     }
 
     /// called when the mouse wheel is scrolled
     pub fn scroll(&mut self, x: f64, y: f64) {
-        self.set_simple_event(Some(SimpleMouseEvent::Scroll(Scroll{
+        self.maybe_scroll_event = Some(SimpleMouseEvent::Scroll(Scroll{
             x: x,
             y: y
-        })));
+        }));
     }
 
     /// resets the state of the mouse
@@ -206,23 +194,39 @@ impl Mouse {
             button_state.reset_pressed_and_released();
             button_state.event = None;
         }
-        self.simple_event = None;
+        self.maybe_scroll_event = None;
         self.scroll.x = 0.0;
         self.scroll.y = 0.0;
     }
 
-    /// Returns the current `SimpleMouseEvent` if there is one
-    pub fn get_simple_event(&self) -> Option<SimpleMouseEvent> {
-        self.simple_event
+    /// Returns any mouse events since the last update.
+    pub fn events(&self) -> MouseEventIterator {
+        MouseEventIterator::new(self)
     }
 
     fn is_drag(&self, start_position: Point, end_position: Point) -> bool {
         distance_between(start_position, end_position) >= self.drag_distance_threshold
     }
 
-    fn set_simple_event(&mut self, event: Option<SimpleMouseEvent>) {
-        if event.is_some() {
-            self.simple_event = event;
+    fn get_drag_event_for_move(&self, button: MouseButton,
+                                current_button_state: &ButtonState,
+                                current_xy: Point) -> Option<SimpleMouseEvent> {
+        use self::ButtonPosition::Down;
+        use self::simple_events::SimpleMouseEvent::Drag;
+
+        match current_button_state.position {
+            Down(info) if self.is_drag(info.position, current_xy) => {
+                Some(Drag(MouseDragEvent{
+                    start: info,
+                    current: MouseButtonDown{
+                        time: SteadyTime::now(),
+                        position: current_xy
+                    },
+                    mouse_button: button,
+                    button_released: false
+                }))
+            },
+            _ => None
         }
     }
 
@@ -234,6 +238,32 @@ fn distance_between(a: Point, b: Point) -> Scalar {
     (dx_2 + dy_2).abs().sqrt()
 }
 
+impl<'a> ::std::iter::Iterator for MouseEventIterator<'a> {
+    type Item = SimpleMouseEvent;
+
+    fn next(&mut self) -> Option<SimpleMouseEvent> {
+        let mut evt: Option<SimpleMouseEvent> = None;
+        while (self.idx as usize) < NUM_MOUSE_BUTTONS && evt.is_none() {
+            let button_state = self.mouse.buttons.get(MouseButton::from(self.idx));
+            evt = button_state.event;
+            self.idx += 1;
+        }
+        if (self.idx as usize) == NUM_MOUSE_BUTTONS && evt.is_none() {
+            evt = self.mouse.maybe_scroll_event;
+        }
+        evt
+    }
+}
+
+impl<'a> MouseEventIterator<'a> {
+    fn new(mouse: &Mouse) -> MouseEventIterator {
+        MouseEventIterator{
+            mouse: mouse,
+            idx: 0
+        }
+    }
+}
+
 #[test]
 fn reset_should_reset_all_button_states_and_scroll_state() {
     let mut mouse = Mouse::new();
@@ -243,7 +273,7 @@ fn reset_should_reset_all_button_states_and_scroll_state() {
     }
     mouse.scroll.x = 10.0;
     mouse.scroll.y = 20.0;
-    mouse.simple_event = Some(SimpleMouseEvent::Scroll(Scroll{x: 2.0, y: 33.3}));
+    mouse.maybe_scroll_event = Some(SimpleMouseEvent::Scroll(Scroll{x: 2.0, y: 33.3}));
 
     mouse.reset();
 
@@ -253,15 +283,16 @@ fn reset_should_reset_all_button_states_and_scroll_state() {
     }
     assert_eq!(0.0, mouse.scroll.x);
     assert_eq!(0.0, mouse.scroll.y);
-    assert!(mouse.simple_event.is_none());
+    assert!(mouse.maybe_scroll_event.is_none());
+    assert_eq!(0, mouse.events().count());
 }
 
 #[test]
-fn scroll_should_create_a_simple_mouse_event_of_scroll() {
+fn scroll_should_create_a_new_scroll_event() {
     let mut mouse = Mouse::new();
     mouse.scroll(2.0, 3.0);
 
-    match mouse.get_simple_event() {
+    match mouse.maybe_scroll_event {
         Some(SimpleMouseEvent::Scroll(scroll_info)) => {
             assert_eq!(2.0, scroll_info.x);
             assert_eq!(3.0, scroll_info.y);
@@ -328,7 +359,7 @@ fn button_up_sets_button_state_to_up() {
 }
 
 #[test]
-fn get_simple_event_returns_click_if_button_goes_down_then_up_in_same_position() {
+fn events_returns_click_if_button_goes_down_then_up_in_same_position() {
     use input::MouseButton::Right;
     let mut mouse = Mouse::new();
     mouse.button_down(Right);
@@ -338,13 +369,13 @@ fn get_simple_event_returns_click_if_button_goes_down_then_up_in_same_position()
         position: mouse.xy.clone()
     });
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_some());
     assert_eq!(expected_event, actual_event.unwrap());
 }
 
 #[test]
-fn get_simple_event_returns_drag_event_if_mouse_was_dragged_without_releasing_button() {
+fn events_returns_drag_event_if_mouse_was_dragged_without_releasing_button() {
     use input::MouseButton::Left;
     let mut mouse = Mouse::new();
     let start_position = mouse.xy;
@@ -352,7 +383,7 @@ fn get_simple_event_returns_drag_event_if_mouse_was_dragged_without_releasing_bu
     mouse.button_down(Left);
     mouse.move_to(new_position);
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
@@ -376,12 +407,12 @@ fn drag_event_is_not_created_when_mouse_is_dragged_less_than_threshold() {
     mouse.move_to(new_position);
     // mouse button stays down
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_none());
 }
 
 #[test]
-fn get_simple_event_returns_drag_event_if_mouse_was_dragged_then_button_released() {
+fn events_returns_drag_event_if_mouse_was_dragged_then_button_released() {
     use input::MouseButton::Left;
     let mut mouse = Mouse::new();
     let start_position = mouse.xy;
@@ -390,7 +421,7 @@ fn get_simple_event_returns_drag_event_if_mouse_was_dragged_then_button_released
     mouse.move_to(new_position);
     mouse.button_up(Left);
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
@@ -415,7 +446,7 @@ fn drag_event_has_original_start_position_after_multiple_mouse_move_events() {
     mouse.move_to([-5.0, 10.0]);
     mouse.move_to(final_position);
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
@@ -438,7 +469,7 @@ fn get_simple_event_returns_click_event_if_mouse_was_dragged_less_than_drag_thre
     mouse.move_to(new_position);
     mouse.button_up(Left);
 
-    let actual_event = mouse.get_simple_event();
+    let actual_event = mouse.events().next();
     assert!(actual_event.is_some());
 
     let maybe_click_event: Option<MouseClick> = match actual_event {

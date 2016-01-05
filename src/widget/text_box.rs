@@ -425,12 +425,13 @@ fn get_highlight_all_interaction(text: &str) -> Interaction {
 fn get_new_interaction_2<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Interaction
                                                             where C: CharacterCache,
                                                             F: FnMut(&mut String) {
+    use ::mouse::MouseButton;
+
     let maybe_mouse = args.ui.input().maybe_mouse;
-    let maybe_mouse_event = maybe_mouse.and_then(|mouse| mouse.get_simple_event());
+    let maybe_mouse_event = maybe_mouse.and_then(|mouse| mouse.buttons.get(MouseButton::Left).event);
 
     maybe_mouse_event.and_then(|event| {
         use ::mouse::simple_events::SimpleMouseEvent::{Click, Drag};
-        use ::mouse::MouseButton;
         match event {
             Click(click_info) if click_info.mouse_button == MouseButton::Left => {
                 let clicked_elem = get_clicked_elem(text, click_info.position, args);

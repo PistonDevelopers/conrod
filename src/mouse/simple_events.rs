@@ -9,6 +9,8 @@ use time::SteadyTime;
 #[cfg(test)]
 use position::Scalar;
 
+// pub type MouseEventIterator = ();
+
 /// Used for simplified mouse event handling. Most widgets can probably
 /// just use these events
 #[derive(Copy, Clone, Debug, PartialEq)]
