@@ -15,6 +15,9 @@ use position::Scalar;
 /// just use these events
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MouseEvent {
+    /// When the mouse button has been pressed but not yet released or dragged.
+    /// This event is created as soon as the button is pressed.
+    Down(MouseButtonDown),
     /// Indicates that the mouse was clicked. A Click event is created when the mouse button is released, not depressed
     Click(MouseClick),
     /// Drag event is created when the mouse was moved over a certain threshold while a button was depressed
@@ -102,6 +105,7 @@ impl MouseEvent {
         use self::MouseEvent::*;
 
         match self {
+            &Down(button_down) => Down(button_down.relative_to(xy)),
             &Click(mouse_click) => Click(mouse_click.relative_to(xy)),
             &Drag(mouse_drag) => Drag(mouse_drag.relative_to(xy)),
             &Scroll(scroll_info) => Scroll(scroll_info)

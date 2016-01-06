@@ -1058,10 +1058,12 @@ impl<'a, C> UiCell<'a, C> {
         ui::keyboard_uncaptured_by(self.ui, self.idx)
     }
 
+    /// Returns true if the widget is currently capturing the keyboard
     pub fn is_capturing_keyboard(&self) -> bool {
         self.ui.is_capturing_keyboard(self.idx)
     }
 
+    /// Returns true if the widget is currently capturing the mouse
     pub fn is_capturing_mouse(&self) -> bool {
         self.ui.is_capturing_mouse(self.idx)
     }

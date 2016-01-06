@@ -143,11 +143,13 @@ impl Mouse {
         let mouse_position = self.xy.clone();
 
         self.buttons.update(button, |state| {
-            state.position = ButtonPosition::Down(MouseButtonDown{
+            let button_down = MouseButtonDown{
                 time: SteadyTime::now(),
                 position: mouse_position
-            });
+            };
+            state.position = ButtonPosition::Down(button_down);
             state.was_just_pressed = true;
+            state.event = Some(MouseEvent::Down(button_down))
         });
     }
 
@@ -342,6 +344,20 @@ fn button_down_sets_button_state_to_down() {
 }
 
 #[test]
+fn button_down_creates_a_button_down_event() {
+    let mut mouse = Mouse::new();
+    mouse.buttons.get_mut(MouseButton::Left).position = ButtonPosition::Up;
+
+    mouse.button_down(MouseButton::Left);
+    let button_state = mouse.buttons.get(MouseButton::Left);
+
+    match button_state.event {
+        Some(MouseEvent::Down(_)) => {},
+        _ => panic!("Expected a button down event")
+    }
+}
+
+#[test]
 fn button_up_sets_button_state_to_up() {
     let mut mouse = Mouse::new();
     mouse.buttons.update(MouseButton::Left, |state| {
@@ -408,7 +424,9 @@ fn drag_event_is_not_created_when_mouse_is_dragged_less_than_threshold() {
     // mouse button stays down
 
     let actual_event = mouse.events().next();
-    assert!(actual_event.is_none());
+    if let Some(MouseEvent::Drag(_)) = actual_event {
+        panic!("Should not have gotten a drag event");
+    }
 }
 
 #[test]
@@ -461,7 +479,7 @@ fn drag_event_has_original_start_position_after_multiple_mouse_move_events() {
 }
 
 #[test]
-fn get_simple_event_returns_click_event_if_mouse_was_dragged_less_than_drag_threshold() {
+fn events_returns_click_event_if_mouse_was_dragged_less_than_drag_threshold() {
     use input::MouseButton::Left;
     let mut mouse = Mouse::new();
     let new_position = [0.0, mouse.drag_distance_threshold - 1.0];

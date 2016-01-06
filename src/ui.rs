@@ -4,7 +4,7 @@ use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
-use mouse::{self, Mouse};
+use mouse::Mouse;
 use input;
 use input::{
     GenericEvent,
@@ -20,7 +20,6 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
-use time::SteadyTime;
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -184,10 +183,12 @@ impl<C> Ui<C> {
         self.rect_of(idx).map(|rect| rect.w())
     }
 
+    /// Returns true if the given widget is currently capturing the keyboard
     pub fn is_capturing_keyboard(&self, id: widget::Index) -> bool {
         self.maybe_captured_keyboard == Some(Capturing::Captured(id))
     }
 
+    /// Returns true if the given widget is currently capturing the mouse
     pub fn is_capturing_mouse(&self, id: widget::Index) -> bool {
         self.maybe_captured_mouse == Some(Capturing::Captured(id))
     }
