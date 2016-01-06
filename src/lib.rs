@@ -70,8 +70,8 @@ pub use mouse::{Mouse, MouseButton, NUM_MOUSE_BUTTONS};
 pub use mouse::ButtonMap as MouseButtonMap;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
-pub use mouse::simple_events::Scroll as MouseScroll;
-pub use mouse::simple_events as simple_mouse_events;
+pub use mouse::events::Scroll as MouseScroll;
+pub use mouse::events as simple_mouse_events;
 pub use position::{Align, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin, Padding,
                    Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use position::Matrix as PositionMatrix;

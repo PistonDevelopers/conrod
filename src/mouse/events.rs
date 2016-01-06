@@ -14,7 +14,7 @@ use position::Scalar;
 /// Used for simplified mouse event handling. Most widgets can probably
 /// just use these events
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SimpleMouseEvent {
+pub enum MouseEvent {
     /// Indicates that the mouse was clicked. A Click event is created when the mouse button is released, not depressed
     Click(MouseClick),
     /// Drag event is created when the mouse was moved over a certain threshold while a button was depressed
@@ -95,11 +95,11 @@ impl MouseDragEvent {
     }
 }
 
-impl SimpleMouseEvent {
+impl MouseEvent {
 
     /// Returns a new copy of the event data relative to the given point
     pub fn relative_to(&self, xy: Point) -> Self {
-        use self::SimpleMouseEvent::*;
+        use self::MouseEvent::*;
 
         match self {
             &Click(mouse_click) => Click(mouse_click.relative_to(xy)),

@@ -4,14 +4,14 @@
 //! The `Ui` will continuously maintain the latest Mouse state, necessary for widget logic.
 //!
 
-pub mod simple_events;
+pub mod events;
 mod button_map;
 
 pub use self::button_map::{ButtonMap, NUM_MOUSE_BUTTONS};
 pub use input::MouseButton;
 
 use graphics::math::Scalar;
-use self::simple_events::*;
+use self::events::*;
 use position::Point;
 use time::{SteadyTime};
 
@@ -24,8 +24,8 @@ pub struct ButtonState {
     pub was_just_released: bool,
     /// The current position of the button.
     pub position: ButtonPosition,
-    /// SimpleMouseEvent for events corresponding to this button.
-    pub event: Option<SimpleMouseEvent>,
+    /// MouseEvent for events corresponding to this button.
+    pub event: Option<MouseEvent>,
 }
 
 /// Represents the current state of a mouse button.
@@ -49,7 +49,7 @@ pub struct Mouse {
     /// Map of MouseButton to ButtonState
     pub buttons: ButtonMap,
     /// Holds a scroll event if there is one
-    pub maybe_scroll_event: Option<SimpleMouseEvent>,
+    pub maybe_scroll_event: Option<MouseEvent>,
 }
 
 /// Iterator over mouse events.
@@ -128,7 +128,7 @@ impl Mouse {
                 let maybe_event = self.get_drag_event_for_move(button_and_state.0, button_and_state.1, xy);
                 (button_and_state.0, maybe_event)
             }).filter(|button_and_event| button_and_event.1.is_some())
-            .collect::<Vec<(MouseButton, Option<SimpleMouseEvent>)>>();
+            .collect::<Vec<(MouseButton, Option<MouseEvent>)>>();
 
         for button_and_event in buttons_and_events {
             self.buttons.get_mut(button_and_event.0).event = button_and_event.1;
@@ -157,7 +157,7 @@ impl Mouse {
 
         let new_simple_event = match self.buttons.get(button).position {
             ButtonPosition::Down(mouse_down_info) if self.is_drag(mouse_down_info.position, self.xy) => {
-                Some(SimpleMouseEvent::Drag(MouseDragEvent{
+                Some(MouseEvent::Drag(MouseDragEvent{
                     mouse_button: button,
                     start: MouseButtonDown{ time: mouse_down_info.time, position: mouse_down_info.position },
                     current: MouseButtonDown{ time: SteadyTime::now(), position: self.xy },
@@ -165,7 +165,7 @@ impl Mouse {
                 }))
             },
             ButtonPosition::Down(_) => {
-                Some(SimpleMouseEvent::Click(MouseClick{
+                Some(MouseEvent::Click(MouseClick{
                     mouse_button: button,
                     position: self.xy
                 }))
@@ -182,7 +182,7 @@ impl Mouse {
 
     /// called when the mouse wheel is scrolled
     pub fn scroll(&mut self, x: f64, y: f64) {
-        self.maybe_scroll_event = Some(SimpleMouseEvent::Scroll(Scroll{
+        self.maybe_scroll_event = Some(MouseEvent::Scroll(Scroll{
             x: x,
             y: y
         }));
@@ -210,9 +210,9 @@ impl Mouse {
 
     fn get_drag_event_for_move(&self, button: MouseButton,
                                 current_button_state: &ButtonState,
-                                current_xy: Point) -> Option<SimpleMouseEvent> {
+                                current_xy: Point) -> Option<MouseEvent> {
         use self::ButtonPosition::Down;
-        use self::simple_events::SimpleMouseEvent::Drag;
+        use self::events::MouseEvent::Drag;
 
         match current_button_state.position {
             Down(info) if self.is_drag(info.position, current_xy) => {
@@ -239,10 +239,10 @@ fn distance_between(a: Point, b: Point) -> Scalar {
 }
 
 impl<'a> ::std::iter::Iterator for MouseEventIterator<'a> {
-    type Item = SimpleMouseEvent;
+    type Item = MouseEvent;
 
-    fn next(&mut self) -> Option<SimpleMouseEvent> {
-        let mut evt: Option<SimpleMouseEvent> = None;
+    fn next(&mut self) -> Option<MouseEvent> {
+        let mut evt: Option<MouseEvent> = None;
         while (self.idx as usize) < NUM_MOUSE_BUTTONS && evt.is_none() {
             let button_state = self.mouse.buttons.get(MouseButton::from(self.idx));
             evt = button_state.event;
@@ -273,7 +273,7 @@ fn reset_should_reset_all_button_states_and_scroll_state() {
     }
     mouse.scroll.x = 10.0;
     mouse.scroll.y = 20.0;
-    mouse.maybe_scroll_event = Some(SimpleMouseEvent::Scroll(Scroll{x: 2.0, y: 33.3}));
+    mouse.maybe_scroll_event = Some(MouseEvent::Scroll(Scroll{x: 2.0, y: 33.3}));
 
     mouse.reset();
 
@@ -293,12 +293,12 @@ fn scroll_should_create_a_new_scroll_event() {
     mouse.scroll(2.0, 3.0);
 
     match mouse.maybe_scroll_event {
-        Some(SimpleMouseEvent::Scroll(scroll_info)) => {
+        Some(MouseEvent::Scroll(scroll_info)) => {
             assert_eq!(2.0, scroll_info.x);
             assert_eq!(3.0, scroll_info.y);
         },
-        Some(thing) => panic!("Expected a SimpleMouseEvent::Scroll, instead got: {:?}", thing),
-        _ => panic!("expected a SimpleMouseEvent::Scroll, instead got None")
+        Some(thing) => panic!("Expected a MouseEvent::Scroll, instead got: {:?}", thing),
+        _ => panic!("expected a MouseEvent::Scroll, instead got None")
     }
 }
 
@@ -364,7 +364,7 @@ fn events_returns_click_if_button_goes_down_then_up_in_same_position() {
     let mut mouse = Mouse::new();
     mouse.button_down(Right);
     mouse.button_up(Right);
-    let expected_event = SimpleMouseEvent::Click(MouseClick{
+    let expected_event = MouseEvent::Click(MouseClick{
         mouse_button: Right,
         position: mouse.xy.clone()
     });
@@ -387,7 +387,7 @@ fn events_returns_drag_event_if_mouse_was_dragged_without_releasing_button() {
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
-        Some(SimpleMouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
+        Some(MouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
         _ => None
     };
     assert!(maybe_drag_event.is_some());
@@ -425,7 +425,7 @@ fn events_returns_drag_event_if_mouse_was_dragged_then_button_released() {
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
-        Some(SimpleMouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
+        Some(MouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
         _ => None
     };
     assert!(maybe_drag_event.is_some());
@@ -450,7 +450,7 @@ fn drag_event_has_original_start_position_after_multiple_mouse_move_events() {
     assert!(actual_event.is_some());
 
     let maybe_drag_event: Option<MouseDragEvent> = match actual_event {
-        Some(SimpleMouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
+        Some(MouseEvent::Drag(mouse_drag_info)) => Some(mouse_drag_info),
         _ => None
     };
     assert!(maybe_drag_event.is_some());
@@ -473,7 +473,7 @@ fn get_simple_event_returns_click_event_if_mouse_was_dragged_less_than_drag_thre
     assert!(actual_event.is_some());
 
     let maybe_click_event: Option<MouseClick> = match actual_event {
-        Some(SimpleMouseEvent::Click(mouse_click)) => Some(mouse_click),
+        Some(MouseEvent::Click(mouse_click)) => Some(mouse_click),
         _ => None
     };
     assert!(maybe_click_event.is_some());

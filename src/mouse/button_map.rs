@@ -114,8 +114,8 @@ impl ButtonMap {
 #[test]
 fn relative_to_changes_all_mouse_events_to_relative_positions() {
     use input::MouseButton::*;
-    use super::simple_events::*;
-    use super::simple_events::SimpleMouseEvent::{Click, Drag};
+    use super::events::*;
+    use super::events::MouseEvent::{Click, Drag};
     use time::SteadyTime;
 
     let mut map_a = ButtonMap::new();

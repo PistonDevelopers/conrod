@@ -431,7 +431,7 @@ fn get_new_interaction_2<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> 
     let maybe_mouse_event = maybe_mouse.and_then(|mouse| mouse.buttons.get(MouseButton::Left).event);
 
     maybe_mouse_event.and_then(|event| {
-        use ::mouse::simple_events::SimpleMouseEvent::{Click, Drag};
+        use ::mouse::events::MouseEvent::{Click, Drag};
         match event {
             Click(click_info) if click_info.mouse_button == MouseButton::Left => {
                 let clicked_elem = get_clicked_elem(text, click_info.position, args);
