@@ -182,8 +182,10 @@ pub struct CommonBuilder {
     pub maybe_parent_idx: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
-    /// Builder data for scrollable widgets.
-    pub scrolling: scroll::Scrolling,
+    /// Arguments to the scrolling of the widget's *x* axis.
+    pub maybe_x_scroll: Option<scroll::Scroll>,
+    /// Arguments to the scrolling of the widget's *y* axis.
+    pub maybe_y_scroll: Option<scroll::Scroll>,
     /// Whether or not the **Widget** should be placed on the kid_area.
     ///
     /// If `true`, the **Widget** will be placed on the `kid_area` of the parent **Widget** if the
@@ -269,8 +271,10 @@ pub struct Cached<W> where W: Widget {
     pub kid_area: KidArea,
     /// Whether or not the Widget is a "floating" Widget.
     pub maybe_floating: Option<Floating>,
-    /// The state for scrollable widgets.
-    pub maybe_scrolling: Option<scroll::State>,
+    /// The state for a widget's scrollable *x* axis.
+    pub maybe_x_scroll_state: Option<scroll::State>,
+    /// The state for a widget's scrollable *y* axis.
+    pub maybe_y_scroll_state: Option<scroll::State>,
 }
 
 /// A unique identifier for a **Widget** type.
@@ -292,8 +296,11 @@ pub struct PreUpdateCache {
     /// The **Widget**'s parent's unique index (if it has a parent).
     pub maybe_parent_idx: Option<Index>,
     /// If this **Widget** is relatively positioned to another **Widget**, this will be the index
-    /// of the **Widget** to which this **Widget** is relatively positioned
-    pub maybe_positioned_relatively_idx: Option<Index>,
+    /// of the **Widget** to which this **Widget** is relatively positioned along the *x* axis.
+    pub maybe_x_positioned_relatively_idx: Option<Index>,
+    /// If this **Widget** is relatively positioned to another **Widget**, this will be the index
+    /// of the **Widget** to which this **Widget** is relatively positioned along the *y* axis.
+    pub maybe_y_positioned_relatively_idx: Option<Index>,
     /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
     /// The z-axis depth - affects the render order of sibling widgets.
@@ -304,8 +311,10 @@ pub struct PreUpdateCache {
     pub drag_state: drag::State,
     /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
-    /// Scrolling data for the **Widget** if there is some.
-    pub maybe_scrolling: Option<scroll::State>,
+    /// Scrolling data for the **Widget**'s *x* axis if there is some.
+    pub maybe_x_scroll_state: Option<scroll::State>,
+    /// Scrolling data for the **Widget**'s *y* axis if there is some.
+    pub maybe_y_scroll_state: Option<scroll::State>,
     /// Whether or not the **Widget** has been instantiated as a graphical element for some other
     /// widget.
     pub maybe_graphics_for: Option<Index>,
@@ -440,9 +449,9 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
 ///
 /// Methods that should not be overridden:
 /// - floating
-/// - scrolling
-/// - vertical_scrolling
-/// - horizontal_scrolling
+/// - scroll_kids
+/// - scroll_kids_vertically
+/// - scroll_kids_horizontally
 /// - place_widget_on_kid_area
 /// - parent
 /// - no_parent
@@ -644,27 +653,28 @@ pub trait Widget: Sized {
     }
 
     /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
-    fn scrolling(mut self, scrollable: bool) -> Self {
-        self.common_mut().scrolling.vertical = scrollable;
-        self.common_mut().scrolling.horizontal = scrollable;
+    fn scroll_kids(self) -> Self {
+        self.scroll_kids_vertically().scroll_kids_horizontally()
+    }
+
+    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    ///
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    fn scroll_kids_vertically(mut self) -> Self {
+        self.common_mut().maybe_y_scroll = Some(scroll::Scroll::new());
         self
     }
 
     /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
-    fn vertical_scrolling(mut self, scrollable: bool) -> Self {
-        self.common_mut().scrolling.vertical = scrollable;
-        self
-    }
-
-    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
-    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
-    /// the `KidArea` will become scrollable.
-    fn horizontal_scrolling(mut self, scrollable: bool) -> Self {
-        self.common_mut().scrolling.horizontal = scrollable;
+    fn scroll_kids_horizontally(mut self) -> Self {
+        self.common_mut().maybe_x_scroll = Some(scroll::Scroll::new());
         self
     }
 
@@ -727,7 +737,11 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
-    let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style, maybe_prev_scrolling) =
+    let (maybe_prev_unique_state,
+         maybe_prev_common,
+         maybe_prev_style,
+         maybe_prev_x_scroll_state,
+         maybe_prev_y_scroll_state) =
         maybe_widget_state.map(|prev| {
 
             // Destructure the cached state.
@@ -738,7 +752,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 depth,
                 drag_state,
                 maybe_floating,
-                maybe_scrolling,
+                maybe_x_scroll_state,
+                maybe_y_scroll_state,
                 ..
             } = prev;
 
@@ -750,8 +765,12 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 maybe_floating: maybe_floating,
             };
 
-            (Some(state), Some(prev_common), Some(style), maybe_scrolling)
-        }).unwrap_or_else(|| (None, None, None, None));
+            (Some(state),
+             Some(prev_common),
+             Some(style),
+             maybe_x_scroll_state,
+             maybe_y_scroll_state)
+        }).unwrap_or_else(|| (None, None, None, None, None));
 
     // We need to hold onto the current "previously set widget", as this may change during our
     // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last
@@ -861,34 +880,24 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         widget.kid_area(args)
     };
 
-    // Determine whether or not we have some state for scrolling.
-    let maybe_new_scrolling = {
-        let scrolling = widget.common().scrolling;
-        if !scrolling.horizontal && !scrolling.vertical {
-            None
-        // Otherwise, construct our new Scroll state!
-        } else {
-            let maybe_mouse = ui::get_mouse_state(ui, idx);
-            let visible = kid_area.rect;
-            let kids = ui.kids_bounding_box(idx)
-                .map(|kids| kids.shift(visible.xy()))
-                .unwrap_or_else(|| kid_area.rect);
-            let maybe_prev = maybe_prev_scrolling.as_ref();
-            let scroll_state = scroll::State::new(scrolling, visible, kids, &ui.theme, maybe_prev);
-            Some(maybe_mouse.map(|mouse| scroll_state.handle_input(mouse))
-                .unwrap_or_else(|| scroll_state))
-        }
-    };
+    // If the `y` range is scrollable, retrieve the up-to-date scroll_offset.
+    let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
+        let kid_area_range = kid_area.rect.y;
+        scroll::State::update(ui, idx, scroll_args, kid_area_range, maybe_prev_y_scroll_state)
+    });
 
-    // Check whether or not our new scrolling state should capture or uncapture the mouse.
-    if let (Some(ref prev), Some(ref new)) = (maybe_prev_scrolling, maybe_new_scrolling) {
-        if scroll::capture_mouse(prev, new) {
-            ui::mouse_captured_by(ui, idx);
-        }
-        if scroll::uncapture_mouse(prev, new) {
-            ui::mouse_uncaptured_by(ui, idx);
-        }
-    }
+    let maybe_x_scroll_state = None;
+
+    // TODO
+    // // Check whether or not our new scrolling state should capture or uncapture the mouse.
+    // if let (Some(ref prev), Some(ref new)) = (maybe_prev_scrolling, maybe_new_scrolling) {
+    //     if scroll::capture_mouse(prev, new) {
+    //         ui::mouse_captured_by(ui, idx);
+    //     }
+    //     if scroll::uncapture_mouse(prev, new) {
+    //         ui::mouse_uncaptured_by(ui, idx);
+    //     }
+    // }
 
     // Determine whether or not this is the first time set has been called.
     // We'll use this to determine whether or not we need to draw for the first time.
@@ -898,32 +907,33 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     // We do this so that if this widget were to internally `set` some other `Widget`s, this
     // `Widget`s positioning and dimension data already exists within the `Graph`.
     {
-        use Position::{Place, Relative, Direction, Align};
+        use Position::{Place, Relative, Direction, Align, Absolute};
+
         // Some widget to which this widget is relatively positioned (if there is one).
-        //
-        // FIXME: Here we only store the first relatively positioned widget we come across, whereas
-        // we should really be storing and handling both within the graph.
-        let maybe_positioned_relatively_idx = match (x_pos, y_pos) {
-            (Place(_, maybe_idx), _)        | (_, Place(_, maybe_idx))        |
-            (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     |
-            (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
-            (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        =>
+        let maybe_positioned_relatively_idx = |pos: Position| match pos {
+            Place(_, maybe_idx) | Relative(_, maybe_idx) |
+            Direction(_, _, maybe_idx) | Align(_, maybe_idx) =>
                 maybe_idx.or(maybe_prev_widget_idx),
-            _ => None,
+            Absolute(_) => None,
         };
+
+        let maybe_x_positioned_relatively_idx = maybe_positioned_relatively_idx(x_pos);
+        let maybe_y_positioned_relatively_idx = maybe_positioned_relatively_idx(y_pos);
 
         // This will cache the given data into the `ui`'s `widget_graph`.
         ui::pre_update_cache(ui, PreUpdateCache {
             kind: kind,
             idx: idx,
             maybe_parent_idx: maybe_parent_idx,
-            maybe_positioned_relatively_idx: maybe_positioned_relatively_idx,
+            maybe_x_positioned_relatively_idx: maybe_x_positioned_relatively_idx,
+            maybe_y_positioned_relatively_idx: maybe_y_positioned_relatively_idx,
             rect: rect,
             depth: depth,
             drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
-            maybe_scrolling: maybe_new_scrolling,
+            maybe_y_scroll_state: maybe_y_scroll_state,
+            maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_graphics_for: widget.common().maybe_graphics_for,
         });
     }
@@ -978,7 +988,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     let style_has_changed = maybe_prev_style.map(|style| style != new_style).unwrap_or(false);
 
     // We need to know if the scroll state has changed to see if we need to redraw.
-    let scroll_has_changed = maybe_new_scrolling != maybe_prev_scrolling;
+    let scroll_has_changed = maybe_x_scroll_state != maybe_prev_x_scroll_state
+        || maybe_y_scroll_state != maybe_prev_y_scroll_state;
 
     // We only need to redraw if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
@@ -1146,7 +1157,8 @@ impl CommonBuilder {
             place_on_kid_area: true,
             maybe_graphics_for: None,
             is_floating: false,
-            scrolling: scroll::Scrolling::new(),
+            maybe_x_scroll: None,
+            maybe_y_scroll: None,
         }
     }
 }

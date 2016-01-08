@@ -250,7 +250,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     .xy(canvas_xy)
                     .parent(idx)
                     .floating(true)
-                    .vertical_scrolling(true)
+                    .scroll_kids_vertically()
                     .set(canvas_idx, &mut ui);
 
                 let labels = self.strings.iter();
