@@ -52,7 +52,7 @@ fn set_widgets(ui: &mut Ui) {
             (MIDDLE_COLUMN, Canvas::new().color(color::ORANGE)),
             (RIGHT_COLUMN, Canvas::new().color(color::DARK_ORANGE).pad(20.0)),
         ])),
-        (FOOTER, Canvas::new().color(color::BLUE).vertical_scrolling(true)),
+        (FOOTER, Canvas::new().color(color::BLUE).scroll_kids_vertically()),
     ]).set(MASTER, ui);
 
     // Now we'll make a couple floating `Canvas`ses.

@@ -173,7 +173,7 @@ fn main() {
 fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Canvas::new().frame(app.frame_width).color(app.bg_color).scrolling(true).set(CANVAS, ui);
+    Canvas::new().frame(app.frame_width).color(app.bg_color).scroll_kids().set(CANVAS, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
