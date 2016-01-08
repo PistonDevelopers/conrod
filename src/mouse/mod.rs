@@ -143,13 +143,15 @@ impl Mouse {
         let mouse_position = self.xy.clone();
 
         self.buttons.update(button, |state| {
-            let button_down = MouseButtonDown{
+            state.position = ButtonPosition::Down(MouseButtonDown{
                 time: SteadyTime::now(),
                 position: mouse_position
-            };
-            state.position = ButtonPosition::Down(button_down);
+            });
             state.was_just_pressed = true;
-            state.event = Some(MouseEvent::Down(button_down))
+            state.event = Some(MouseEvent::Down(ButtonDownEvent{
+                mouse_button: button,
+                position: mouse_position
+            }));
         });
     }
 
@@ -352,7 +354,10 @@ fn button_down_creates_a_button_down_event() {
     let button_state = mouse.buttons.get(MouseButton::Left);
 
     match button_state.event {
-        Some(MouseEvent::Down(_)) => {},
+        Some(MouseEvent::Down(button_down_event)) => {
+            assert_eq!(mouse.xy, button_down_event.position);
+            assert_eq!(MouseButton::Left, button_down_event.mouse_button);
+        },
         _ => panic!("Expected a button down event")
     }
 }

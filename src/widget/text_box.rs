@@ -361,8 +361,12 @@ fn get_new_interaction<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> In
         .flat_map(|mouse| mouse.events())
         // map MouseEvent to an Option<Interaction>
         .filter_map(|event| {
-            use ::mouse::events::MouseEvent::{Click, Drag};
+            use ::mouse::events::MouseEvent::{Click, Down, Drag};
             match event {
+                Down(down_info) if down_info.mouse_button == MouseButton::Left => {
+                    let clicked_elem = get_clicked_elem(text, down_info.position, args);
+                    Some(get_interaction_for_click(text, clicked_elem))
+                },
                 Click(click_info) if click_info.mouse_button == MouseButton::Left => {
                     let clicked_elem = get_clicked_elem(text, click_info.position, args);
                     Some(get_interaction_for_click(text, clicked_elem))

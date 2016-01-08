@@ -5,6 +5,7 @@
 use input::MouseButton;
 use position::Point;
 use time::SteadyTime;
+use ::vecmath::vec2_sub;
 
 #[cfg(test)]
 use position::Scalar;
@@ -17,7 +18,7 @@ use position::Scalar;
 pub enum MouseEvent {
     /// When the mouse button has been pressed but not yet released or dragged.
     /// This event is created as soon as the button is pressed.
-    Down(MouseButtonDown),
+    Down(ButtonDownEvent),
     /// Indicates that the mouse was clicked. A Click event is created when the mouse button is released, not depressed
     Click(MouseClick),
     /// Drag event is created when the mouse was moved over a certain threshold while a button was depressed
@@ -54,6 +55,16 @@ pub struct MouseDragEvent {
     pub button_released: bool
 }
 
+/// Event that is created when a mouse button if first pressed (but not yet released)
+/// a ButtonDownEvent will always precipitate either a Click or a Drag event.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ButtonDownEvent {
+    /// The mouse button that was pressed
+    pub mouse_button: MouseButton,
+    /// The position of the mouse when the button was pressed
+    pub position: Point,
+}
+
 /// Holds info on when a mouse button was depressed or released.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct MouseButtonDown {
@@ -77,8 +88,6 @@ impl MouseClick {
 
     /// Returns a new copy of the event data relative to the given point
     pub fn relative_to(&self, xy: Point) -> MouseClick {
-        use ::vecmath::vec2_sub;
-
         MouseClick{
             position: vec2_sub(self.position, xy),
             ..*self
@@ -93,6 +102,17 @@ impl MouseDragEvent {
         MouseDragEvent{
             start: self.start.relative_to(xy),
             current: self.current.relative_to(xy),
+            ..*self
+        }
+    }
+}
+
+impl ButtonDownEvent {
+
+    /// Returns a new copy of the event data relative to the given point
+    pub fn relative_to(&self, xy: Point) -> ButtonDownEvent {
+        ButtonDownEvent {
+            position: vec2_sub(self.position, xy),
             ..*self
         }
     }
@@ -117,8 +137,6 @@ impl MouseButtonDown {
 
     /// Returns a new copy of the event data relative to the given point
     pub fn relative_to(&self, xy: Point) -> MouseButtonDown {
-        use ::vecmath::vec2_sub;
-
         MouseButtonDown{
             position: vec2_sub(self.position, xy),
             ..*self
