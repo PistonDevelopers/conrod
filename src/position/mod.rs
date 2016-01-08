@@ -35,6 +35,15 @@ pub type Point = [Scalar; 2];
 /// The margin for some `Place`ment on either end of an axis.
 pub type Margin = Scalar;
 
+/// Represents either **Axis** in the 2-dimensional plane.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Axis {
+    /// The horizontal plane's Axis.
+    X,
+    /// The vertical plane's Axis.
+    Y,
+}
+
 /// Some **Position** of some **Widget** along a single axis.
 ///
 /// **Position**s for both the *x* and *y* axes are stored internally within the
