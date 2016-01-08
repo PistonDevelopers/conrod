@@ -9,7 +9,6 @@ use {
     GlyphCache,
     IndexSlot,
     Line,
-    Mouse,
     Padding,
     Point,
     Positionable,
@@ -18,11 +17,11 @@ use {
     Scalar,
     Text,
     Theme,
-    Widget,
 };
+
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
-use widget::{self, KidArea};
+use widget::{self, Widget, KidArea, UpdateArgs};
 
 
 pub type Idx = usize;
@@ -177,8 +176,6 @@ impl Cursor {
     }
 }
 
-// widget_fns!(TextBox, State, Kind::TextBox(State::Uncaptured(Uncaptured::Normal)));
-
 /// Find the position of a character in a text box.
 fn cursor_position<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                       idx: usize,
@@ -242,70 +239,6 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
     (text.chars().count(), text_start_x + text_w)
 }
 
-/// Check and return the current state of the TextBox.
-fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Interaction::{Captured, Uncaptured};
-    use self::Uncaptured::{Normal, Highlighted};
-
-    match prev_interaction {
-        Interaction::Captured(mut prev) => match mouse.left.position {
-            Down => match over_elem {
-                Elem::Nill => if prev.cursor.anchor == Anchor::None {
-                    Uncaptured(Normal)
-                } else {
-                    prev_interaction
-                },
-                Elem::Rect =>  if prev.cursor.anchor == Anchor::None {
-                    prev.cursor = Cursor::from_index(0);
-                    Captured(prev)
-                } else {
-                    prev_interaction
-                },
-                Elem::Char(idx) => {
-                    match prev.cursor.anchor {
-                        Anchor::None  => prev.cursor = Cursor::from_index(idx),
-                        Anchor::Start => prev.cursor = Cursor::from_range(prev.cursor.start, idx),
-                        Anchor::End   => prev.cursor = Cursor::from_range(prev.cursor.end, idx),
-                    }
-                    Captured(prev)
-                },
-            },
-            Up => {
-                prev.cursor.anchor = Anchor::None;
-                Captured(prev)
-            },
-        },
-
-        Interaction::Uncaptured(prev) => match mouse.left.position {
-            Down => match over_elem {
-                Elem::Nill => Uncaptured(Normal),
-                Elem::Rect => match prev {
-                    Normal => prev_interaction,
-                    Highlighted => Captured(View {
-                         cursor: Cursor::from_index(0),
-                         offset: 0.0,
-                    })
-                },
-                Elem::Char(idx) =>  match prev {
-                    Normal => prev_interaction,
-                    Highlighted => Captured(View {
-                        cursor: Cursor::from_index(idx),
-                        offset: 0.0,
-                    })
-                },
-            },
-            Up => match over_elem {
-                Elem::Nill => Uncaptured(Normal),
-                Elem::Char(_) | Elem::Rect => match prev {
-                    Normal => Uncaptured(Highlighted),
-                    Highlighted => prev_interaction,
-                },
-            },
-        },
-    }
-}
-
 impl<'a, F> TextBox<'a, F> {
 
     /// Construct a TextBox widget.
@@ -339,6 +272,132 @@ impl<'a, F> TextBox<'a, F> {
     }
 
 }
+
+fn get_clicked_elem<C, F>(text: &str, point: Point, args: &UpdateArgs<TextBox<F>, C>) -> Elem
+                                                                        where C: CharacterCache,
+                                                                        F: FnMut(&mut String) {
+    let style = args.style;
+    let theme = args.ui.theme();
+    let font_size = style.font_size(theme);
+    let (_xy, widget_dimension) = args.rect.xy_dim();
+    let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
+    let glyph_cache = args.ui.glyph_cache();
+    let text_w = glyph_cache.width(font_size, text);
+    let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
+    let text_start_x = text_x - text_w / 2.0;
+    over_elem(args.ui.glyph_cache(),
+        point,
+        widget_dimension,
+        inner_dimension,
+        text_start_x,
+        text_w,
+        font_size,
+        text)
+}
+
+fn get_elem_for_drag<C, F>(text: &str, point: Point, args: &UpdateArgs<TextBox<F>, C>) -> Elem
+                                                                        where C: CharacterCache,
+                                                                        F: FnMut(&mut String) {
+    let style = args.style;
+    let theme = args.ui.theme();
+    let font_size = style.font_size(theme);
+    let (_xy, widget_dimension) = args.rect.xy_dim();
+    let inner_dimension = get_inner_dimensions(widget_dimension, style, theme);
+    let glyph_cache = args.ui.glyph_cache();
+    let text_w = glyph_cache.width(font_size, text);
+    let text_x = text_w / 2.0 - inner_dimension[0] / 2.0 + TEXT_PADDING;
+    let text_start_x = text_x - text_w / 2.0;
+    let (cursor_index, _) = closest_idx(args.ui.glyph_cache(),
+                                        point,
+                                        text_start_x,
+                                        text_w,
+                                        font_size,
+                                        text);
+    Elem::Char(cursor_index)
+}
+
+fn get_interaction_for_click(text: &str, clicked_elem: Elem) -> Interaction {
+    match clicked_elem {
+        Elem::Char(idx) => Interaction::Captured(View{
+            cursor: Cursor::from_index(idx),
+            offset: 0f64
+        }),
+        Elem::Rect => Interaction::Captured(View{
+            cursor: Cursor::from_range(0, text.chars().count()),
+            offset: 0f64
+        }),
+        Elem::Nill => Interaction::Uncaptured(Uncaptured::Normal)
+    }
+}
+
+fn get_interaction_for_drag(start_elem: Elem, end_elem: Elem) -> Interaction {
+    if let (Elem::Char(start_idx), Elem::Char(end_idx)) = (start_elem, end_elem) {
+        Interaction::Captured(View{
+            cursor: Cursor::from_range(start_idx, end_idx),
+            offset: 0f64
+        })
+    } else {
+        Interaction::Captured(View{
+            cursor: Cursor::from_index(0),
+            offset: 0f64
+        })
+    }
+}
+
+fn get_highlight_all_interaction(text: &str) -> Interaction {
+    Interaction::Captured(View{
+        cursor: Cursor::from_range(0, text.chars().count()),
+        offset: 0.0
+    })
+}
+
+fn get_new_interaction<C, F>(text: &str, args: &UpdateArgs<TextBox<F>, C>) -> Interaction
+                                                            where C: CharacterCache,
+                                                            F: FnMut(&mut String) {
+    use ::mouse::MouseButton;
+
+    let maybe_mouse = args.ui.input().maybe_mouse;
+    maybe_mouse.map(|m| m.relative_to(args.rect.xy())).iter()
+        .flat_map(|mouse| mouse.events())
+        // map MouseEvent to an Option<Interaction>
+        .filter_map(|event| {
+            use ::mouse::events::MouseEvent::{Click, Down, Drag};
+            match event {
+                Down(down_info) if down_info.mouse_button == MouseButton::Left => {
+                    let clicked_elem = get_clicked_elem(text, down_info.position, args);
+                    Some(get_interaction_for_click(text, clicked_elem))
+                },
+                Click(click_info) if click_info.mouse_button == MouseButton::Left => {
+                    let clicked_elem = get_clicked_elem(text, click_info.position, args);
+                    Some(get_interaction_for_click(text, clicked_elem))
+                },
+                Drag(drag_info) if drag_info.mouse_button == MouseButton::Left => {
+                    let drag_start = get_elem_for_drag(text, drag_info.start.position, args);
+                    let drag_end = get_elem_for_drag(text, drag_info.current.position, args);
+                    Some(get_interaction_for_drag(drag_start, drag_end))
+                },
+                _ => None
+            }
+        }).next()
+        .unwrap_or_else(|| {
+            // If there was no interaction from a new mouse event, then we check previous interaction
+            let prev_interaction = args.state.view().interaction;
+            let is_capturing_keyboard = args.ui.is_capturing_keyboard();
+            match prev_interaction {
+                Interaction::Captured(_) if is_capturing_keyboard => prev_interaction,
+                _ if is_capturing_keyboard && maybe_mouse.is_none() =>
+                        get_highlight_all_interaction(text),
+                _ if maybe_mouse.is_some() => Interaction::Uncaptured(Uncaptured::Highlighted),
+                _ => Interaction::Uncaptured(Uncaptured::Normal)
+            }
+        })
+}
+
+fn get_inner_dimensions(outer_rect: Dimensions, style: &Style, theme: &Theme) -> Dimensions {
+    let frame_width = style.frame(theme);
+    vec2_sub(outer_rect, [frame_width * 2.0; 2])
+}
+
 
 impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     type State = State;
@@ -381,12 +440,13 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         }
     }
 
+
     /// Update the state of the TextBox.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        let mut new_interaction = get_new_interaction(&self.text, &args);
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
-        let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let font_size = style.font_size(ui.theme());
@@ -395,14 +455,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let text_x = text_w / 2.0 - pad_dim[0] / 2.0 + TEXT_PADDING;
         let text_start_x = text_x - text_w / 2.0;
         let mut new_control_pressed = state.view().control_pressed;
-        let mut new_interaction = match (self.enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
-            (true, Some(mouse)) => {
-                let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
-                                          text_w, font_size, &self.text);
-                get_new_interaction(over_elem, state.view().interaction, mouse)
-            },
-        };
 
         // Check cursor validity (and update new_interaction if necessary).
         if let Interaction::Captured(view) = new_interaction {
@@ -522,13 +574,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             cursor.limit_end_to(self.text.chars().count());
 
             new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
-        }
-
-        // Check the interactions to determine whether we need to capture or uncapture the keyboard.
-        match (state.view().interaction, new_interaction) {
-            (Interaction::Uncaptured(_), Interaction::Captured(_)) => { ui.capture_keyboard(); },
-            (Interaction::Captured(_), Interaction::Uncaptured(_)) => { ui.uncapture_keyboard(); },
-            _ => (),
         }
 
         if state.view().interaction != new_interaction {
@@ -674,4 +719,3 @@ impl<'a, F> Frameable for TextBox<'a, F> {
         self
     }
 }
-

@@ -695,7 +695,7 @@ pub trait Widget: Sized {
 /// For all following occasions, the pre-existing cached state will be compared and updated.
 ///
 /// Note that this is a very imperative, mutation oriented segment of code. We try to move as much
-/// imperativeness and mutation out of the users hands and into this function as possible, so that 
+/// imperativeness and mutation out of the users hands and into this function as possible, so that
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
@@ -703,6 +703,8 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     C: CharacterCache,
     W: Widget,
 {
+    use mouse::MouseButton;
+
     let kind = widget.unique_kind();
 
     // Take the previous state of the widget from the cache if there is some to collect.
@@ -834,7 +836,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 let maybe_mouse = ui::get_mouse_state(ui, idx);
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
-                        if mouse.left.position == ::mouse::ButtonPosition::Down {
+                        if mouse.buttons.get(MouseButton::Left).is_down() {
                             Some(new_floating())
                         } else {
                             Some(prev_floating)
@@ -1056,6 +1058,16 @@ impl<'a, C> UiCell<'a, C> {
         ui::keyboard_uncaptured_by(self.ui, self.idx)
     }
 
+    /// Returns true if the widget is currently capturing the keyboard
+    pub fn is_capturing_keyboard(&self) -> bool {
+        self.ui.is_capturing_keyboard(self.idx)
+    }
+
+    /// Returns true if the widget is currently capturing the mouse
+    pub fn is_capturing_mouse(&self) -> bool {
+        self.ui.is_capturing_mouse(self.idx)
+    }
+
     /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
     /// This should only be called once for each unique widget needed to avoid unnecessary bloat
     /// within the `Ui`'s widget graph.
@@ -1258,7 +1270,7 @@ impl<W> Sizeable for W where W: Widget {
 //         }
 //     };
 // }
-// 
+//
 // style_retrieval! {
 //     fn_name: color,
 //     member: maybe_color,

@@ -158,6 +158,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
     /// Update the state of the DropDownList.
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+        use mouse::MouseButton;
+
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (global_mouse, window_dim) = {
@@ -280,7 +282,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
                     MenuState::Closed
                 // Otherwise if the mouse was released somewhere else we should close the menu.
-                } else if global_mouse.left.was_just_pressed
+            } else if global_mouse.buttons.get(MouseButton::Left).was_just_pressed
                 && !canvas_rect.is_over(global_mouse.xy) {
                     MenuState::Closed
                 } else {

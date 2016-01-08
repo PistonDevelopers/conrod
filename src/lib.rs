@@ -65,10 +65,13 @@ pub use frame::{Framing, Frameable};
 pub use glyph_cache::{GlyphCache, LineBreak};
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
-pub use mouse::Mouse;
+
+pub use mouse::{Mouse, MouseButton, NUM_MOUSE_BUTTONS};
+pub use mouse::ButtonMap as MouseButtonMap;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
-pub use mouse::Scroll as MouseScroll;
+pub use mouse::events::Scroll as MouseScroll;
+pub use mouse::events as simple_mouse_events;
 pub use position::{Align, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin, Padding,
                    Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use position::Matrix as PositionMatrix;
@@ -108,10 +111,10 @@ mod widget;
 /// This is the recommended way of generating `WidgetId`s as it greatly lessens the chances of
 /// making errors when adding or removing widget ids.
 ///
-/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state 
+/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state
 /// between updates.
 ///
-/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for 
+/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for
 /// each identifier given in the list.
 ///
 /// The `with n` syntax reserves `n` number of `WidgetId`s for that identifier rather than just one.

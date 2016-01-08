@@ -4,7 +4,7 @@ use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
-use mouse::{self, Mouse};
+use mouse::Mouse;
 use input;
 use input::{
     GenericEvent,
@@ -183,6 +183,16 @@ impl<C> Ui<C> {
         self.rect_of(idx).map(|rect| rect.w())
     }
 
+    /// Returns true if the given widget is currently capturing the keyboard
+    pub fn is_capturing_keyboard(&self, id: widget::Index) -> bool {
+        self.maybe_captured_keyboard == Some(Capturing::Captured(id))
+    }
+
+    /// Returns true if the given widget is currently capturing the mouse
+    pub fn is_capturing_mouse(&self, id: widget::Index) -> bool {
+        self.maybe_captured_mouse == Some(Capturing::Captured(id))
+    }
+
     /// The absolute height of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
@@ -234,28 +244,20 @@ impl<C> Ui<C> {
 
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
-            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.mouse.move_to([x - self.win_w / 2.0, -(y - self.win_h / 2.0)])
         });
 
         event.mouse_scroll(|x, y| {
-            self.mouse.scroll.x += x;
-            self.mouse.scroll.y += y;
+            self.mouse.scroll(x, y);
         });
 
         event.press(|button_type| {
             use input::Button;
-            use input::MouseButton::{Left, Middle, Right};
 
             match button_type {
                 Button::Mouse(button) => {
-                    let mouse_button = match button {
-                        Left => &mut self.mouse.left,
-                        Right => &mut self.mouse.right,
-                        Middle => &mut self.mouse.middle,
-                        _ => &mut self.mouse.unknown,
-                    };
-                    mouse_button.position = mouse::ButtonPosition::Down;
-                    mouse_button.was_just_pressed = true;
+                    self.widget_under_mouse_captures_keyboard();
+                    self.mouse.button_down(button);
                 },
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
                 _ => {}
@@ -264,17 +266,11 @@ impl<C> Ui<C> {
 
         event.release(|button_type| {
             use input::Button;
-            use input::MouseButton::{Left, Middle, Right};
+
             match button_type {
                 Button::Mouse(button) => {
-                    let mouse_button = match button {
-                        Left => &mut self.mouse.left,
-                        Right => &mut self.mouse.right,
-                        Middle => &mut self.mouse.middle,
-                        _ => &mut self.mouse.unknown,
-                    };
-                    mouse_button.position = mouse::ButtonPosition::Up;
-                    mouse_button.was_just_released = true;
+                    self.widget_under_mouse_captures_keyboard();
+                    self.mouse.button_up(button);
                 },
                 Button::Keyboard(key) => self.keys_just_released.push(key),
                 _ => {}
@@ -286,6 +282,11 @@ impl<C> Ui<C> {
         });
     }
 
+    fn widget_under_mouse_captures_keyboard(&mut self) {
+        self.maybe_widget_under_mouse.map(|widget_index| {
+            self.maybe_captured_keyboard = Some(Capturing::Captured(widget_index));
+        });
+    }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///
@@ -490,11 +491,7 @@ impl<C> Ui<C> {
         self.text_just_entered.clear();
 
         // Reset the mouse state.
-        self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
-        self.mouse.left.reset_pressed_and_released();
-        self.mouse.middle.reset_pressed_and_released();
-        self.mouse.right.reset_pressed_and_released();
-        self.mouse.unknown.reset_pressed_and_released();
+        self.mouse.reset();
     }
 
 
@@ -624,7 +621,7 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 
 /// Attempts to infer the parent of a widget from its *x*/*y* `Position`s and the current state of
 /// the `Ui`.
-/// 
+///
 /// If no parent can be inferred via the `Position`s, the `maybe_current_parent_idx` will be used.
 ///
 /// If `maybe_current_parent_idx` is `None`, the `Ui`'s `window` widget will be used.
@@ -680,21 +677,12 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
 pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_idx)) =>
-            if idx == captured_idx { Some(ui.mouse) } else { None },
-        Some(Capturing::JustReleased) =>
-            None,
-        None => match ui.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_idx)) =>
-                if idx == captured_idx { Some(ui.mouse) } else { None },
-            _ =>
-                if Some(idx) == ui.maybe_widget_under_mouse 
-                || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
-                    Some(ui.mouse)
-                } else {
-                    None
-                },
-        },
+        Some(Capturing::Captured(captured_idx)) if idx == captured_idx =>
+            Some(ui.mouse),
+        None if ui.maybe_widget_under_mouse == Some(idx) =>
+            Some(ui.mouse),
+        _ =>
+            None
     }
 }
 
@@ -702,7 +690,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 /// Indicate that the widget with the given widget::Index has captured the mouse.
 ///
 /// Returns true if the mouse was successfully captured.
-/// 
+///
 /// Returns false if the mouse was already captured.
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     // If the mouse isn't already captured, set idx as the capturing widget.
@@ -819,4 +807,3 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-

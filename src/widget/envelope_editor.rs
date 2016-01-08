@@ -29,6 +29,7 @@ use std::default::Default;
 use std::fmt::Debug;
 use utils::{clamp, map_range, percentage, val_to_string};
 use widget;
+use mouse::MouseButton;
 
 
 /// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
@@ -110,14 +111,6 @@ pub enum Elem {
     // CurvePoint(usize, (f64, f64)),
 }
 
-/// An enum to define which button is clicked.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum MouseButton {
-    Left,
-    Right,
-}
-
-
 /// `EnvPoint` must be implemented for any type that is used as a 2D point within the
 /// EnvelopeEditor.
 pub trait EnvelopePoint: Any + Clone + Debug + PartialEq {
@@ -175,14 +168,17 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                        mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
     use self::Elem::{EnvPoint};//, CurvePoint};
-    use self::MouseButton::{Left, Right};
+    use mouse::MouseButton::{Left, Right};
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left.position, mouse.right.position) {
-        (Some(_), Normal, Down, Up) => Normal,
+
+    let left_button_position = mouse.buttons.get(Left).position;
+    let right_button_position = mouse.buttons.get(Right).position;
+    match (is_over_elem, prev, left_button_position, right_button_position) {
+        (Some(_), Normal, Down(_), Up) => Normal,
         (Some(elem), _, Up, Up) => Highlighted(elem),
-        (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),
-        (Some(_), Clicked(p_elem, m_button), Down, Up) |
-        (Some(_), Clicked(p_elem, m_button), Up, Down) => {
+        (Some(elem), Highlighted(_), Down(_), Up) => Clicked(elem, Left),
+        (Some(_), Clicked(p_elem, m_button), Down(_), Up) |
+        (Some(_), Clicked(p_elem, m_button), Up, Down(_)) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
                 // CurvePoint(idx, _) =>
@@ -190,7 +186,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                 _ => Clicked(p_elem, m_button),
             }
         },
-        (None, Clicked(p_elem, m_button), Down, Up) => {
+        (None, Clicked(p_elem, m_button), Down(_), Up) => {
             match (p_elem, m_button) {
                 (EnvPoint(idx, _), Left) =>
                     Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
@@ -199,7 +195,7 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
                 _ => Clicked(p_elem, Left),
             }
         },
-        (Some(_), Highlighted(p_elem), Up, Down) => {
+        (Some(_), Highlighted(p_elem), Up, Down(_)) => {
             match p_elem {
                 EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
                 // CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
@@ -467,6 +463,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                                     react(env, idx);
                                 }
                             },
+                            _ => {}
                         }
                     },
                     (Clicked(_, prev_m_button), Clicked(_, m_button)) => {

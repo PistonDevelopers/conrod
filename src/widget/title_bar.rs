@@ -82,12 +82,14 @@ impl Style {
 /// Check the current state of the button.
 fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
+    use mouse::MouseButton::Left as LeftButton;
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
+
+    match (is_over, prev, mouse.buttons.get(LeftButton).position) {
+        (true,  Normal,  Down(_)) => Normal,
+        (true,  _,       Down(_)) => Clicked,
         (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
+        (false, Clicked, Down(_)) => Clicked,
         _                      => Normal,
     }
 }
@@ -249,4 +251,3 @@ impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
         self
     }
 }
-

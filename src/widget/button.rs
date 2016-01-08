@@ -77,12 +77,15 @@ impl Interaction {
 /// Check the current state of the button.
 fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
+    use mouse::MouseButton::Left;
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
+
+    let left_mouse_button = mouse.buttons.get(Left);
+    match (is_over, prev, left_mouse_button.position) {
+        (true,  Normal,  Down(_)) => Normal,
+        (true,  _,       Down(_)) => Clicked,
         (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
+        (false, Clicked, Down(_)) => Clicked,
         _                      => Normal,
     }
 }

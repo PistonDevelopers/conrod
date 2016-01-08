@@ -186,19 +186,20 @@ fn is_over(mouse_xy: Point,
 /// Check and return the current state of the NumberDialer.
 fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
+    use mouse::MouseButton::Left as LeftButton;
     use self::Elem::ValueGlyph;
     use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left.position) {
-        (Some(_),    Normal,          Down) => Normal,
+    match (is_over_elem, prev, mouse.buttons.get(LeftButton).position) {
+        (Some(_),    Normal,          Down(_)) => Normal,
         (Some(elem), _,               Up)   => Highlighted(elem),
-        (Some(elem), Highlighted(_),  Down) => Clicked(elem),
-        (Some(_),    Clicked(p_elem), Down) => {
+        (Some(elem), Highlighted(_),  Down(_)) => Clicked(elem),
+        (Some(_),    Clicked(p_elem), Down(_)) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
                 _                  => Clicked(p_elem),
             }
         },
-        (None,       Clicked(p_elem), Down) => {
+        (None,       Clicked(p_elem), Down(_)) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
                 _                  => Clicked(p_elem),
@@ -569,4 +570,3 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
         self
     }
 }
-
