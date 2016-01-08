@@ -224,6 +224,22 @@ impl<C> Ui<C> {
         &self.widget_graph
     }
 
+    /// Borrow the **Ui**'s set of updated widgets.
+    ///
+    /// This set indicates which widgets have been instantiated since the beginning of the most
+    /// recent `Ui::set_widgets` call.
+    pub fn updated_widgets(&self) -> &HashSet<NodeIndex> {
+        &self.updated_widgets
+    }
+
+    /// Borrow the **Ui**'s set of updated widgets.
+    ///
+    /// This set indicates which widgets have were instantiated during the previous call to
+    /// `Ui::set_widgets`.
+    pub fn prev_updated_widgets(&self) -> &HashSet<NodeIndex> {
+        &self.prev_updated_widgets
+    }
+
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
 
@@ -580,7 +596,15 @@ impl<C> Ui<C> {
     /// The **Rect** that bounds the kids of the widget with the given index.
     pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        graph::algo::bounding_box(&self.widget_graph, false, None, true, idx, None)
+        const INCLUDE_SELF: bool = false;
+        const USE_KID_AREA: bool = true;
+        graph::algo::bounding_box(&self.widget_graph,
+                                  &self.prev_updated_widgets,
+                                  INCLUDE_SELF,
+                                  None,
+                                  USE_KID_AREA,
+                                  idx,
+                                  None)
     }
 
 
