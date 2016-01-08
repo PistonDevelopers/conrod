@@ -181,8 +181,11 @@ fn visit_by_depth(graph: &Graph,
     }
 
     // If the widget is scrollable, we should add its scrollbar to the visit order also.
-    if graph.widget_scroll_state(idx).is_some() {
-        depth_order.push(Visitable::Scrollbar(idx));
+    if let Some(widget) = graph.widget(idx) {
+        if widget.maybe_x_scroll_state.is_some()
+        || widget.maybe_y_scroll_state.is_some() {
+            depth_order.push(Visitable::Scrollbar(idx));
+        }
     }
 }
 
