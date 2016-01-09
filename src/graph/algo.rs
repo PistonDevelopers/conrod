@@ -158,97 +158,57 @@ pub fn pick_scrollable_widget(graph: &Graph, depth_order: &[Visitable], xy: Poin
 }
 
 
-/// The box that bounds the widget with the given ID as well as all its widget kids.
-///
-/// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
-///
-/// If no target xy is given, the bounds will be given relative to the centre of the widget.
-///
-/// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
-/// `kid_area` of the widget, rather than the regular dimensions.
-///
-/// The `maybe_deepest_parent_idx` refers to the index of the parent that began the recursion, and
-/// is used when calculating the "visible area" for each widget. If `None` is given, it means we
-/// are the first widget in the recursion, and we will use ourselves as the deepest_parent_idx.
+/// Find the absolute `Rect` that bounds all widgets that are `Depth` children of the widget at the
+/// given `idx`.
 ///
 /// FIXME: This currently uses call stack recursion to do a depth-first search through all
 /// depth_children for the total bounding box. This should use a proper `Dfs` type with it's own
 /// stack for safer traversal that won't blow the stack on hugely deep GUIs.
-pub fn bounding_box<I>(graph: &Graph,
-                       prev_updated: &HashSet<NodeIndex>,
-                       include_self: bool,
-                       maybe_target_xy: Option<Point>,
-                       use_kid_area: bool,
-                       idx: I,
-                       maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
+pub fn kids_bounding_box<I>(graph: &Graph,
+                            prev_updated: &HashSet<NodeIndex>,
+                            idx: I) -> Option<Rect>
     where I: GraphIndex,
 {
-    graph.node_index(idx).and_then(|idx| {
-        graph.widget(idx).and_then(|container| {
+    // When traversing the `depth_kids`, we only want to visit those who:
+    // - are not also graphic kid widgets.
+    // - are currently active within the `Ui`. In other words, they *were* updated during the last
+    // call to `Ui::set_widgets`.
+    let kid_filter = &|g: &Graph, _e, n| -> bool {
+        let is_not_graphic_kid = !g.graphic_parent::<_, NodeIndex>(n).is_some();
+        let is_set = prev_updated.contains(&n);
+        is_not_graphic_kid && is_set
+    };
 
-            // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
-            // the regular dim and xy.
-            //
-            // If we're given some deepest parent index, we must only use the visible area within
-            // the depth range that approaches it.
-            let rect = if let Some(deepest_parent_idx) = maybe_deepest_parent_idx {
-                match visible_area_of_widget_within_depth(graph, idx, deepest_parent_idx) {
-                    Some(visible_rect) => if use_kid_area {
-                        match visible_rect.overlap(container.kid_area.rect) {
-                            Some(visible_kid_area) => visible_kid_area,
-                            None => return None,
-                        }
-                    } else {
-                        visible_rect
-                    },
-                    None => return None,
-                }
-            } else {
-                if use_kid_area { container.kid_area.rect } else { container.rect }
-            };
-
-            // Determine our bounds relative to the target_xy position.
-            let (xy, dim) = rect.xy_dim();
-            let target_xy = maybe_target_xy.unwrap_or(xy);
-            let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
-            let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
-
-            // Get the deepest parent so that we can consider it in the calculation of the kids
-            // bounds.
-            let deepest_parent_idx = maybe_deepest_parent_idx.or(Some(idx));
+    // A function for doing a recursive depth-first search through all depth kids that satisfy the
+    // `kid_filter` (see above) in order to find the maximum "bounding box".
+    fn kids_dfs<F>(graph: &Graph,
+                   idx: NodeIndex,
+                   deepest_parent_idx: NodeIndex,
+                   kid_filter: &F) -> Option<Rect>
+        where F: Fn(&Graph, EdgeIndex, NodeIndex) -> bool,
+    {
+        // If we're given some deepest parent index, we must only use the visible area within
+        // the depth range that approaches it.
+        visible_area_of_widget_within_depth(graph, idx, deepest_parent_idx).map(|rect| {
 
             // An iterator yielding the bounding_box returned by each of our children.
-            let mut kids_bounds = graph.depth_children(idx)
-                .filter(|g, _, n| {
-                    let is_not_graphic_kid = !g.graphic_parent::<_, NodeIndex>(n).is_some();
-                    let is_set = prev_updated.contains(&n);
-                    is_not_graphic_kid && is_set
-                })
-                .iter(graph).nodes()
-                .filter_map(|n| {
-                    let include_self = true;
-                    let use_kid_area = false;
-                    bounding_box(graph,
-                                 prev_updated,
-                                 include_self,
-                                 Some(target_xy),
-                                 use_kid_area,
-                                 n,
-                                 deepest_parent_idx)
-                });
+            let kids_bounds = graph.depth_children(idx).filter(kid_filter).iter(graph).nodes()
+                .filter_map(|n| kids_dfs(graph, n, deepest_parent_idx, kid_filter));
 
-            // Work out the initial bounds to use for our max_bounds fold.
-            let init_bounds = if include_self {
-                relative_bounds()
-            } else {
-                match kids_bounds.next() {
-                    Some(first_kid_bounds) => first_kid_bounds,
-                    None => return None,
-                }
-            };
+            kids_bounds.fold(rect, |max, next| max.max(next))
+        })
+    }
 
-            // Fold the Rect for each kid into the total encompassing bounds.
-            Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)))
+    graph.node_index(idx).and_then(|idx| {
+        graph.widget(idx).and_then(|_| {
+
+            // An iterator yielding the bounding_box returned by each of our children.
+            let mut kids_bounds = graph.depth_children(idx).filter(kid_filter).iter(graph).nodes()
+                .filter_map(|n| kids_dfs(graph, n, idx, kid_filter));
+
+            kids_bounds.next().map(|first| {
+                kids_bounds.fold(first, |max, next| max.max(next))
+            })
         })
     })
 }
@@ -296,12 +256,12 @@ pub fn scroll_offset<I: GraphIndex>(graph: &Graph, idx: I) -> Point {
                     };
 
                     let x_offset = depth_parent_widget.maybe_x_scroll_state.map(|scroll| {
-                        let mut position_parents = graph.x_position_parent_recursion(idx);
+                        let position_parents = graph.x_position_parent_recursion(idx);
                         if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
                     }).unwrap_or(0.0);
 
                     let y_offset = depth_parent_widget.maybe_y_scroll_state.map(|scroll| {
-                        let mut position_parents = graph.y_position_parent_recursion(idx);
+                        let position_parents = graph.y_position_parent_recursion(idx);
                         if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
                     }).unwrap_or(0.0);
 
