@@ -37,6 +37,7 @@ use conrod::{
 };
 use conrod::color::{self, rgb};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use std::sync::mpsc;
 
 
 type Ui = conrod::Ui<Glyphs>;
@@ -76,12 +77,16 @@ struct DemoApp {
     circle_pos: Point,
     /// Envelope for demonstration of EnvelopeEditor.
     envelopes: Vec<(Vec<Point>, String)>,
+    /// A channel for sending results from the `WidgetMatrix`.
+    elem_sender: mpsc::Sender<(usize, usize, bool)>,
+    elem_receiver: mpsc::Receiver<(usize, usize, bool)>,
 }
 
 impl DemoApp {
 
     /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
+        let (elem_sender, elem_receiver) = mpsc::channel();
         DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
@@ -114,6 +119,8 @@ impl DemoApp {
                                    [0.3, 0.2],
                                    [0.6, 0.6],
                                    [1.0, 0.0], ], "Envelope B".to_string())],
+            elem_sender: elem_sender,
+            elem_receiver: elem_receiver,
         }
     }
 
@@ -327,13 +334,19 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             // You can return any type that implements `Widget`.
             // The returned widget will automatically be positioned and sized to the matrix
             // element's rectangle.
-            let elem = &mut app.bool_matrix[col][row];
-            Toggle::new(*elem)
+            let elem = app.bool_matrix[col][row];
+            let elem_sender = app.elem_sender.clone();
+            Toggle::new(elem)
                 .rgba(r, g, b, a)
                 .frame(app.frame_width)
-                .react(move |new_val: bool| *elem = new_val)
+                .react(move |new_val: bool| elem_sender.send((col, row, new_val)).unwrap())
         })
         .set(TOGGLE_MATRIX, ui);
+
+    // Receive updates to the matrix from the `WidgetMatrix`.
+    while let Ok((col, row, value)) = app.elem_receiver.try_recv() {
+        app.bool_matrix[col][row] = value;
+    }
 
     // A demonstration using a DropDownList to select its own color.
     let mut ddl_color = app.ddl_color;
