@@ -596,15 +596,7 @@ impl<C> Ui<C> {
     /// The **Rect** that bounds the kids of the widget with the given index.
     pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        const INCLUDE_SELF: bool = false;
-        const USE_KID_AREA: bool = true;
-        graph::algo::bounding_box(&self.widget_graph,
-                                  &self.prev_updated_widgets,
-                                  INCLUDE_SELF,
-                                  None,
-                                  USE_KID_AREA,
-                                  idx,
-                                  None)
+        graph::algo::kids_bounding_box(&self.widget_graph, &self.prev_updated_widgets, idx)
     }
 
 
