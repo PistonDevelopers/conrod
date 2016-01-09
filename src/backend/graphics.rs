@@ -368,7 +368,7 @@ pub fn draw_scrolling<G>(context: &Context,
               A: scroll::Axis,
     {
         use widget::scroll::Elem::{Handle, Track};
-        use widget::scroll::Interaction::{Normal, Highlighted, Clicked};
+        use widget::scroll::Interaction::{Highlighted, Clicked};
 
         let color = scroll_state.color;
         let track_color = match scroll_state.interaction {
