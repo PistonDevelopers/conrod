@@ -53,22 +53,29 @@ pub fn draw_from_graph<G, C>(context: Context,
 
                     // If the current widget is some scrollable widget, we need to add a context
                     // for it to the top of the stack.
-                    if let Some(scrolling) = container.maybe_scrolling {
-                        let context = crop_context(context, scrolling.visible);
+                    //
+                    // TODO: Make this more generic than just "if scrolling crop to kid_area".
+                    if container.maybe_x_scroll_state.is_some()
+                    || container.maybe_y_scroll_state.is_some() {
+                        let context = crop_context(context, container.kid_area.rect);
                         scroll_stack.push(context);
                     }
                 }
             },
 
             Visitable::Scrollbar(idx) => {
-                if let Some(scrolling) = graph.widget_scroll_state(idx) {
+                if let Some(widget) = graph.widget(idx) {
 
                     // Now that we've come across a scrollbar, we'll pop its Context from the
                     // scroll_stack and draw it if necessary.
                     let context = scroll_stack.pop().unwrap_or(context);
 
                     // Draw the scrollbar(s)!
-                    draw_scrolling(&context, graphics, scrolling);
+                    draw_scrolling(&context,
+                                   graphics,
+                                   widget.kid_area.rect,
+                                   widget.maybe_x_scroll_state,
+                                   widget.maybe_y_scroll_state);
                 }
             }
 
@@ -174,10 +181,6 @@ pub fn draw_from_container<G, C>(context: &Context,
                     ShapeStyle::Fill(_) => {
                         let color = rectangle.style.get_color(theme);
                         draw_rectangle(context, graphics, container.rect, color);
-                        // let (l, b, w, h) = container.rect.l_b_w_h();
-                        // let lbwh = [l, b, w, h];
-                        // let rectangle = graphics::Rectangle::new(color);
-                        // rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
                         let (l, r, b, t) = container.rect.l_r_b_t();
@@ -350,48 +353,48 @@ pub fn draw_lines<G, I>(context: &Context,
 /// Draw the scroll bars (if necessary) for the given widget's scroll state.
 pub fn draw_scrolling<G>(context: &Context,
                          graphics: &mut G,
-                         scroll_state: &widget::scroll::State)
+                         kid_area_rect: Rect,
+                         maybe_x_scroll_state: Option<widget::scroll::StateX>,
+                         maybe_y_scroll_state: Option<widget::scroll::StateY>)
     where G: Graphics,
 {
     use widget::scroll;
 
-    let color = scroll_state.color;
-    let track_color = color.alpha(0.2);
-    let thickness = scroll_state.thickness;
-    let visible = scroll_state.visible;
+    fn draw_axis<G, A>(context: &Context,
+                       graphics: &mut G,
+                       kid_area_rect: Rect,
+                       scroll_state: &scroll::State<A>)
+        where G: Graphics,
+              A: scroll::Axis,
+    {
+        use widget::scroll::Elem::{Handle, Track};
+        use widget::scroll::Interaction::{Highlighted, Clicked};
 
-    let draw_bar = |g: &mut G, bar: scroll::Bar, track: Rect, handle: Rect| {
-        // We only want to see the scrollbar if it's highlighted or clicked.
-        if let scroll::Interaction::Normal = bar.interaction {
-            return;
-        }
-        let color = bar.interaction.color(color);
-        draw_rectangle(context, g, track, track_color);
-        draw_rectangle(context, g, handle, color);
-    };
+        let color = scroll_state.color;
+        let track_color = match scroll_state.interaction {
+            Clicked(Track) => color.highlighted(),
+            Highlighted(_) | Clicked(_) => color,
+            _ if scroll_state.is_scrolling => color,
+            _ => return,
+        }.alpha(0.2);
+        let handle_color = match scroll_state.interaction {
+            Clicked(Handle(_)) => color.clicked(),
+            Highlighted(_) | Clicked(_) => color,
+            _ if scroll_state.is_scrolling => color,
+            _ => return,
+        };
+        let thickness = scroll_state.thickness;
+        let track = scroll::track::<A>(kid_area_rect, thickness);
+        let handle = scroll::handle::<A>(track, &scroll_state);
+        draw_rectangle(context, graphics, track, track_color);
+        draw_rectangle(context, graphics, handle, handle_color);
+    }
 
-    // The element for a vertical scroll Bar.
-    let vertical = |g: &mut G, bar: scroll::Bar| {
-        let track = scroll::vertical_track(visible, thickness);
-        let handle = scroll::vertical_handle(&bar, track, scroll_state.total_dim[1]);
-        draw_bar(g, bar, track, handle);
-    };
+    if let Some(ref scroll_state) = maybe_y_scroll_state {
+        draw_axis::<G, scroll::Y>(context, graphics, kid_area_rect, scroll_state)
+    }
 
-    // An element for a horizontal scroll Bar.
-    let horizontal = |g: &mut G, bar: scroll::Bar| {
-        let track = scroll::horizontal_track(visible, thickness);
-        let handle = scroll::horizontal_handle(&bar, track, scroll_state.total_dim[0]);
-        draw_bar(g, bar, track, handle);
-    };
-
-    // Whether we draw horizontal or vertical or both depends on our state.
-    match (scroll_state.maybe_vertical, scroll_state.maybe_horizontal) {
-        (Some(v_bar), Some(h_bar)) => {
-            horizontal(graphics, h_bar);
-            vertical(graphics, v_bar);
-        },
-        (Some(bar), None) => vertical(graphics, bar),
-        (None, Some(bar)) => horizontal(graphics, bar),
-        (None, None) => (),
+    if let Some(ref scroll_state) = maybe_x_scroll_state {
+        draw_axis::<G, scroll::X>(context, graphics, kid_area_rect, scroll_state)
     }
 }

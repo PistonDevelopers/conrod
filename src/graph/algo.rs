@@ -7,12 +7,9 @@
 
 use daggy::Walker;
 use position::{Point, Rect};
+use std::collections::HashSet;
 use super::depth_order::Visitable;
-use super::{
-    Graph,
-    GraphIndex,
-    NodeIndex,
-};
+use super::{EdgeIndex, Graph, GraphIndex, NodeIndex};
 use widget;
 
 
@@ -61,8 +58,11 @@ fn visible_area_of_widget_maybe_within_depth<I>(graph: &Graph,
 
                 // Check to see if our parent is a scrollable widget and whether or not we need to
                 // update the overlap.
+                //
+                // TODO: Consider "cropped area" here once implemented instead of scrolling.
                 if let Some(depth_parent_widget) = graph.widget(depth_parent) {
-                    if depth_parent_widget.maybe_scrolling.is_some() {
+                    if depth_parent_widget.maybe_x_scroll_state.is_some()
+                    || depth_parent_widget.maybe_y_scroll_state.is_some() {
 
                         // If the depth_parent is also a **Graphic** parent, there is no need to
                         // calculate overlap as the child is a graphical element of the parent and
@@ -103,9 +103,16 @@ pub fn pick_widget(graph: &Graph, depth_order: &[Visitable], xy: Point) -> Optio
                     }
                 },
                 Visitable::Scrollbar(idx) => {
-                    if let Some(scrolling) = graph.widget_scroll_state(idx) {
-                        if scrolling.is_over(xy) {
-                            return true;
+                    if let Some(widget) = graph.widget(idx) {
+                        if let Some(x_scroll_state) = widget.maybe_x_scroll_state {
+                            if x_scroll_state.is_over(xy, widget.kid_area.rect) {
+                                return true;
+                            }
+                        }
+                        if let Some(y_scroll_state) = widget.maybe_y_scroll_state {
+                            if y_scroll_state.is_over(xy, widget.kid_area.rect) {
+                                return true;
+                            }
                         }
                     }
                 },
@@ -138,7 +145,8 @@ pub fn pick_scrollable_widget(graph: &Graph, depth_order: &[Visitable], xy: Poin
         })
         .find(|&idx| {
             if let Some(ref container) = graph.widget(idx) {
-                if container.maybe_scrolling.is_some() {
+                if container.maybe_x_scroll_state.is_some()
+                || container.maybe_y_scroll_state.is_some() {
                     if container.rect.is_over(xy) {
                         return true;
                     }
@@ -150,166 +158,118 @@ pub fn pick_scrollable_widget(graph: &Graph, depth_order: &[Visitable], xy: Poin
 }
 
 
-/// The box that bounds the widget with the given ID as well as all its widget kids.
+/// Find the absolute `Rect` that bounds all widgets that are `Depth` children of the widget at the
+/// given `idx`.
 ///
-/// Bounds are given as (max y, min y, min x, max x) from the given target xy position.
-///
-/// If no target xy is given, the bounds will be given relative to the centre of the widget.
-///
-/// If `use_kid_area` is true, then bounds will be calculated relative to the centre of the
-/// `kid_area` of the widget, rather than the regular dimensions.
-///
-/// The `maybe_deepest_parent_idx` refers to the index of the parent that began the recursion, and
-/// is used when calculating the "visible area" for each widget. If `None` is given, it means we
-/// are the first widget in the recursion, and we will use ourselves as the deepest_parent_idx.
-pub fn bounding_box<I: GraphIndex>(graph: &Graph,
-                               include_self: bool,
-                               maybe_target_xy: Option<Point>,
-                               use_kid_area: bool,
-                               idx: I,
-                               maybe_deepest_parent_idx: Option<NodeIndex>) -> Option<Rect>
+/// FIXME: This currently uses call stack recursion to do a depth-first search through all
+/// depth_children for the total bounding box. This should use a proper `Dfs` type with it's own
+/// stack for safer traversal that won't blow the stack on hugely deep GUIs.
+pub fn kids_bounding_box<I>(graph: &Graph,
+                            prev_updated: &HashSet<NodeIndex>,
+                            idx: I) -> Option<Rect>
+    where I: GraphIndex,
 {
-    graph.node_index(idx).and_then(|idx| {
-        graph.widget(idx).and_then(|container| {
+    // When traversing the `depth_kids`, we only want to visit those who:
+    // - are not also graphic kid widgets.
+    // - are currently active within the `Ui`. In other words, they *were* updated during the last
+    // call to `Ui::set_widgets`.
+    let kid_filter = &|g: &Graph, _e, n| -> bool {
+        let is_not_graphic_kid = !g.graphic_parent::<_, NodeIndex>(n).is_some();
+        let is_set = prev_updated.contains(&n);
+        is_not_graphic_kid && is_set
+    };
 
-            // If we're to use the kid area, we'll get the rect from that, otherwise we'll use
-            // the regular dim and xy.
-            //
-            // If we're given some deepest parent index, we must only use the visible area within
-            // the depth range that approaches it.
-            let rect = if let Some(deepest_parent_idx) = maybe_deepest_parent_idx {
-                match visible_area_of_widget_within_depth(graph, idx, deepest_parent_idx) {
-                    Some(visible_rect) => if use_kid_area {
-                        match visible_rect.overlap(container.kid_area.rect) {
-                            Some(visible_kid_area) => visible_kid_area,
-                            None => return None,
-                        }
-                    } else {
-                        visible_rect
-                    },
-                    None => return None,
-                }
-            } else {
-                if use_kid_area { container.kid_area.rect } else { container.rect }
-            };
-
-            // Determine our bounds relative to the target_xy position.
-            let (xy, dim) = rect.xy_dim();
-            let target_xy = maybe_target_xy.unwrap_or(xy);
-            let relative_target_xy = ::vecmath::vec2_sub(xy, target_xy);
-            let relative_bounds = || Rect::from_xy_dim(relative_target_xy, dim);
-
-            // Get the deepest parent so that we can consider it in the calculation of the kids
-            // bounds.
-            let deepest_parent_idx = maybe_deepest_parent_idx.or(Some(idx));
+    // A function for doing a recursive depth-first search through all depth kids that satisfy the
+    // `kid_filter` (see above) in order to find the maximum "bounding box".
+    fn kids_dfs<F>(graph: &Graph,
+                   idx: NodeIndex,
+                   deepest_parent_idx: NodeIndex,
+                   kid_filter: &F) -> Option<Rect>
+        where F: Fn(&Graph, EdgeIndex, NodeIndex) -> bool,
+    {
+        // If we're given some deepest parent index, we must only use the visible area within
+        // the depth range that approaches it.
+        visible_area_of_widget_within_depth(graph, idx, deepest_parent_idx).map(|rect| {
 
             // An iterator yielding the bounding_box returned by each of our children.
-            let mut kids_bounds = graph.depth_children(idx)
-                .filter(|g, _, n| !g.graphic_parent::<_, NodeIndex>(n).is_some())
-                .iter(graph).nodes()
-                .filter_map(|n| {
-                    bounding_box(graph, true, Some(target_xy), false, n, deepest_parent_idx)
-                });
+            let kids_bounds = graph.depth_children(idx).filter(kid_filter).iter(graph).nodes()
+                .filter_map(|n| kids_dfs(graph, n, deepest_parent_idx, kid_filter));
 
-            // Work out the initial bounds to use for our max_bounds fold.
-            let init_bounds = if include_self {
-                relative_bounds()
-            } else {
-                match kids_bounds.next() {
-                    Some(first_kid_bounds) => first_kid_bounds,
-                    None => return None,
-                }
-            };
+            kids_bounds.fold(rect, |max, next| max.max(next))
+        })
+    }
 
-            // Fold the Rect for each kid into the total encompassing bounds.
-            Some(kids_bounds.fold(init_bounds, |a, b| a.max(b)))
+    graph.node_index(idx).and_then(|idx| {
+        graph.widget(idx).and_then(|_| {
+
+            // An iterator yielding the bounding_box returned by each of our children.
+            let mut kids_bounds = graph.depth_children(idx).filter(kid_filter).iter(graph).nodes()
+                .filter_map(|n| kids_dfs(graph, n, idx, kid_filter));
+
+            kids_bounds.next().map(|first| {
+                kids_bounds.fold(first, |max, next| max.max(next))
+            })
         })
     })
 }
 
 
-
-/// Calculate the total scroll offset for the widget with the given index.
+/// Return the `scroll_offset` for the widget at the given index.
+///
+/// The offset is retrieved from the widget that is the immediate `depth_parent` of the widget at
+/// the given `idx` unless:
+///
+/// - the immediate `depth_parent` of `idx` is also a `graphic_parent` to `idx`. In this case,
+/// `NO_OFFSET` will be returned, as child widgets that are graphical elements of their parents
+/// should not be affected by scrolling.
+/// - one of the position parents also has the same `depth_parent`. In this case, `NO_OFFSET` will
+/// be returned, as we know that our scroll offset has already been applied via the widget to which
+/// we are relatively positioned.
 pub fn scroll_offset<I: GraphIndex>(graph: &Graph, idx: I) -> Point {
-    let mut offset = [0.0, 0.0];
-    let mut idx = match graph.node_index(idx) {
-        Some(idx) => idx,
-        // If the ID is not yet present within the graph, just return the zeroed offset.
-        None => return offset,
-    };
+    const NO_OFFSET: Point = [0.0, 0.0];
 
-    // Check the widget at the given index for any scroll offset and add it to our total offset.
-    let add_to_offset = |offset: &mut Point, idx: NodeIndex| {
-        if let Some(scrolling) = graph.widget_scroll_state(idx) {
-            let scroll_offset = scrolling.kids_pos_offset();
-            offset[0] += scroll_offset[0].round();
-            offset[1] += scroll_offset[1].round();
-        }
-    };
+    if let Some(idx) = graph.node_index(idx) {
+        if let Some(depth_parent) = graph.depth_parent(idx) {
+            if let Some(depth_parent_widget) = graph.widget(depth_parent) {
+                if depth_parent_widget.maybe_x_scroll_state.is_some()
+                || depth_parent_widget.maybe_y_scroll_state.is_some() {
 
-    // We need to calculate the offset by summing the offset of each scrollable parent, while
-    // considering relative positioning and graphic parents.
-    let mut depth_parents = graph.depth_parent_recursion(idx);
-    while let Some(depth_parent) = depth_parents.next_node(graph) {
-
-        // If the widget has some parent graphic edge, we may need to skip its offset.
-        // This is because **Graphic** edges describe that the child widget is a graphical
-        // element of the parent widget, so despite being instantiated at a higher depth, we
-        // should consider its offset equal to the graphic parent.
-        if let Some(graphic_parent) = graph.graphic_parent(idx) {
-            match graph.position_parent::<_, NodeIndex>(idx) {
-
-                // If we have a graphic parent but no position parent, we should skip straight
-                // to the graphic parent.
-                None => {
-                    idx = graphic_parent;
-                    depth_parents = graph.depth_parent_recursion(idx);
-                    continue;
-                },
-
-                // Otherwise, we need to consider the given position parent.
-                Some(position_parent) => {
-
-                    // If our position parent is equal to or some child of our graphic parent,
-                    // we don't need any offset.
-                    // TODO: Review this part of the algorithm.
-                    if position_parent == graphic_parent
-                    || graph.does_recursive_depth_edge_exist(graphic_parent, position_parent) {
-                        return offset;
+                    // If our depth parent is also a graphic parent, we don't want any offset.
+                    if graph.graphic_parent_recursion(idx)
+                        .any(graph, |_g, _e, n| n == depth_parent)
+                    {
+                        return NO_OFFSET;
                     }
-                },
 
+                    // If we have a position_parent along the axis whose depth_parent is the same
+                    // as ours, then the offset has already been applied via our relative
+                    // positioning.
+                    let is_already_offset = |mut position_parents: super::RecursiveWalk<_>| {
+                        while let Some(position_parent) = position_parents.next_node(graph) {
+                            if graph.depth_parent_recursion(position_parent)
+                                .any(graph, |_g, _e, n| n == depth_parent)
+                            {
+                                return true;
+                            }
+                        }
+                        false
+                    };
+
+                    let x_offset = depth_parent_widget.maybe_x_scroll_state.map(|scroll| {
+                        let position_parents = graph.x_position_parent_recursion(idx);
+                        if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
+                    }).unwrap_or(0.0);
+
+                    let y_offset = depth_parent_widget.maybe_y_scroll_state.map(|scroll| {
+                        let position_parents = graph.y_position_parent_recursion(idx);
+                        if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
+                    }).unwrap_or(0.0);
+
+                    return [x_offset, y_offset];
+                }
             }
         }
-
-        // Recursively check all nodes with incoming `Position` edges for a parent that
-        // matches our own parent. If any match, then we don't need to calculate any
-        // additional offset as the widget we are being positioned relatively to has
-        // already applied the necessary scroll offset.
-        let mut position_parents = graph.position_parent_recursion(idx);
-        while let Some(position_parent) = position_parents.next_node(graph) {
-
-            // If our parent depth edge is also the parent position edge, we'll add
-            // offset for that parent before finishing.
-            if depth_parent == position_parent {
-                add_to_offset(&mut offset, depth_parent);
-                return offset;
-            }
-
-            // If our position_parent has some depth parent or grandparent that matches our
-            // current depth_parent_idx, we can assume that the scroll offset for our widget
-            // has already been calculated by this position_parent.
-            if graph.does_recursive_depth_edge_exist(depth_parent, position_parent) {
-                return offset;
-            }
-        }
-
-        add_to_offset(&mut offset, depth_parent);
-
-        // Set the parent as the new current idx and continue traversing.
-        idx = depth_parent;
     }
 
-    offset
+    NO_OFFSET
 }
-

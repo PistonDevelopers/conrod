@@ -37,6 +37,7 @@ use conrod::{
 };
 use conrod::color::{self, rgb};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use std::sync::mpsc;
 
 
 type Ui = conrod::Ui<Glyphs>;
@@ -76,12 +77,16 @@ struct DemoApp {
     circle_pos: Point,
     /// Envelope for demonstration of EnvelopeEditor.
     envelopes: Vec<(Vec<Point>, String)>,
+    /// A channel for sending results from the `WidgetMatrix`.
+    elem_sender: mpsc::Sender<(usize, usize, bool)>,
+    elem_receiver: mpsc::Receiver<(usize, usize, bool)>,
 }
 
 impl DemoApp {
 
     /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
+        let (elem_sender, elem_receiver) = mpsc::channel();
         DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
@@ -114,6 +119,8 @@ impl DemoApp {
                                    [0.3, 0.2],
                                    [0.6, 0.6],
                                    [1.0, 0.0], ], "Envelope B".to_string())],
+            elem_sender: elem_sender,
+            elem_receiver: elem_receiver,
         }
     }
 
@@ -173,11 +180,16 @@ fn main() {
 fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Canvas::new().frame(app.frame_width).color(app.bg_color).scrolling(true).set(CANVAS, ui);
+    Canvas::new()
+        .frame(app.frame_width)
+        .pad(30.0)
+        .color(app.bg_color)
+        .scroll_kids()
+        .set(CANVAS, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
-        .top_left_with_margins_on(CANVAS, 25.0, app.title_pad)
+        .top_left_with_margins_on(CANVAS, 0.0, app.title_pad)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
         .set(TITLE, ui);
@@ -187,7 +199,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Button widget example button.
         Button::new()
             .w_h(200.0, 50.0)
-            .mid_left_with_margin_on(CANVAS, 30.0)
+            .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
@@ -212,7 +224,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .w_h(200.0, 50.0)
-            .mid_left_with_margin_on(CANVAS, 30.0)
+            .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
@@ -327,13 +339,19 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
             // You can return any type that implements `Widget`.
             // The returned widget will automatically be positioned and sized to the matrix
             // element's rectangle.
-            let elem = &mut app.bool_matrix[col][row];
-            Toggle::new(*elem)
+            let elem = app.bool_matrix[col][row];
+            let elem_sender = app.elem_sender.clone();
+            Toggle::new(elem)
                 .rgba(r, g, b, a)
                 .frame(app.frame_width)
-                .react(move |new_val: bool| *elem = new_val)
+                .react(move |new_val: bool| elem_sender.send((col, row, new_val)).unwrap())
         })
         .set(TOGGLE_MATRIX, ui);
+
+    // Receive updates to the matrix from the `WidgetMatrix`.
+    while let Ok((col, row, value)) = app.elem_receiver.try_recv() {
+        app.bool_matrix[col][row] = value;
+    }
 
     // A demonstration using a DropDownList to select its own color.
     let mut ddl_color = app.ddl_color;

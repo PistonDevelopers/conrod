@@ -69,8 +69,8 @@ pub use mouse::Mouse;
 pub use mouse::ButtonState as MouseButtonState;
 pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
-pub use position::{Align, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin, Padding,
-                   Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
+pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
+                   Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
 pub use ui::{Ui, UserInput};

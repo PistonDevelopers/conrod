@@ -1,49 +1,56 @@
-//! 
-//! Types and functionality related to the scrolling behaviour of widgets.
-//!
+//! Scroll related types and logic.
 
 use {
+    Align,
     Color,
-    Dimensions,
-    Mouse,
+    MouseScroll,
     Point,
+    Padding,
     Range,
     Rect,
     Scalar,
     Theme,
+    Ui,
 };
-use utils::{map_range, partial_max};
+use std::marker::PhantomData;
+use ui;
 
 
-/// A type for building a scrollbar widget.
+/// Arguments given via a scrollable `Widget`'s builder methods for the scrolling along a single
+/// axis.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Scrolling {
-    /// Is there horizontal scrolling.
-    pub horizontal: bool,
-    /// Is there vertical scrolling.
-    pub vertical: bool,
-    /// Styling for the Scrolling.
-    pub style: Style,
+pub struct Scroll {
+    maybe_initial_alignment: Option<Align>,
+    style: Style,
 }
 
-
-/// State related to scrolling.
+/// Scroll state calculated for a single axis.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct State {
-    /// vertical scrollbar.
-    pub maybe_vertical: Option<Bar>,
-    /// Horizontal scrollbar.
-    pub maybe_horizontal: Option<Bar>,
-    /// The rectangle representing the Visible area used tot calculate the Bar offsets.
-    pub visible: Rect,
-    /// The dimensions of the maximum bounding box around both the visible and kids Rects.
-    pub total_dim: Dimensions,
+pub struct State<A> {
+    /// The distance that has been scrolled from the origin.
+    ///
+    /// A positive offset pushes the scrollable range that is under the kid_area upwards.
+    ///
+    /// A negative offset pushes the scrollable range that is under the kid_area downwards.
+    pub offset: Scalar,
+    /// The start and end bounds for the offset along the axis.
+    offset_bounds: Range,
+    /// The total range which may be "offset" from the "root" range (aka the `kid_area`).
+    ///
+    /// The `scrollable_range` is determined as the bounding range around both the `kid_area` and
+    /// all **un-scrolled** **visible** children widgets.
+    scrollable_range_len: Scalar,
     /// The width for vertical scrollbars, the height for horizontal scrollbars.
     pub thickness: Scalar,
     /// The color of the scrollbar.
     pub color: Color,
+    /// The current state of interaction between the mouse and the scrollbar.
+    pub interaction: Interaction,
+    /// The axis type used to instantiate this state.
+    axis: PhantomData<A>,
+    /// Whether or not the this axis is currently scrolling.
+    pub is_scrolling: bool,
 }
-
 
 /// Style for the Scrolling.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -54,59 +61,321 @@ pub struct Style {
     pub maybe_color: Option<Color>,
 }
 
-
-/// The state of a single scrollbar.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Bar {
-    /// The current interaction with the Scrollbar.
-    pub interaction: Interaction,
-    /// The range to which the start of the visible range is bounded.
-    pub scrollable: Range,
-    /// The distance from the start of the scrollable range and the start of the visible range.
-    /// i.e. visible.start - scrollable.start
-    pub offset: Scalar,
-    /// If the start of the visible range would start before the range of the widget's kids'
-    /// bounding box, this amount will represent the difference as a positive scalar value.
-    ///
-    /// Otherwise, it will remain 0.0.
-    ///
-    /// We need to keep track of this as we should never let the offset become before the start
-    /// overlap when being scrolled.
-    pub start_overlap: Scalar,
-}
-
-
-/// The current interaction with the 
+/// Represents an interaction between the mouse cursor and the scroll bar.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Interaction {
-    /// No interaction with the Scrollbar.
+    /// There are currently no interactions.
     Normal,
-    /// Part of the scrollbar is highlighted.
+    /// The mouse is over either the track or the handle of the scroll bar.
     Highlighted(Elem),
-    /// Part of the scrollbar is clicked.
+    /// The scrollbar handle is currently clicked by the mouse.
     Clicked(Elem),
 }
 
-
-/// The elements that make up a ScrollBar.
+/// The elements that make up the scrollbar.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Elem {
-    /// The draggable part of the bar and the mouse's position.
+    /// The draggable part of the scrollbar and the mouse's position.
     Handle(Scalar),
-    /// The track along which the bar can be dragged.
+    /// The track along which the `Handle` can be dragged.
     Track,
 }
 
+/// Methods for distinguishing behaviour between both scroll axes at compile-time.
+pub trait Axis {
+    /// The range of the given `Rect` that is parallel with this `Axis`.
+    fn parallel_range(Rect) -> Range;
+    /// The range of the given `Rect` that is perpendicular with this `Axis`.
+    fn perpendicular_range(Rect) -> Range;
+    /// Given some rectangular `Padding`, return the `Range` that corresponds with this `Axis`.
+    fn padding_range(Padding) -> Range;
+    /// The `Rect` for a scroll "track" with the given `thickness` for a container with the given
+    /// `Rect`.
+    fn track(container: Rect, thickness: Scalar) -> Rect;
+    /// The coordinate of the given mouse position that corresponds with this `Axis`.
+    fn mouse_scalar(mouse_xy: Point) -> Scalar;
+    /// The coordinate of the given `MouseScroll` that corresponds with this `Axis`.
+    fn mouse_scroll_axis(MouseScroll) -> Scalar;
+    /// The `Rect` for a scroll handle given both `Range`s.
+    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect;
+    /// A `Scalar` multiplier representing the direction in which positive offset shifts the
+    /// `scrollable_range` (either `-1.0` or `1.0).
+    fn offset_direction() -> Scalar;
+}
 
-impl Scrolling {
-    /// Constructs the default Scrolling.
-    pub fn new() -> Scrolling {
-        Scrolling {
-            vertical: false,
-            horizontal: false,
+/// Behaviour for scrolling across the `X` axis.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum X {}
+
+/// Behaviour for scrolling across the `Y` axis.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Y {}
+
+/// State for scrolling along the **X** axis.
+pub type StateX = State<X>;
+
+/// State for scrolling along the **Y** axis.
+pub type StateY = State<Y>;
+
+
+impl Scroll {
+    /// The default `Scroll` args.
+    pub fn new() -> Self {
+        Scroll {
+            maybe_initial_alignment: None,
             style: Style::new(),
         }
     }
+}
+
+
+impl<A> State<A>
+    where A: Axis
+{
+
+    /// Calculate the new scroll state for the single axis of a `Widget`.
+    ///
+    /// ```txt
+    ///
+    ///           >     +---+
+    ///           |     |   |
+    ///           |   =========================
+    ///           |   | | a | scroll root     |
+    ///           |   | +---+ aka `kid_area`  |
+    ///           |   |            +--------+ |
+    ///           |   |            |        | |
+    ///           |   =========================
+    ///           |                |   b    |
+    ///           |                +--------+
+    /// scrollable|    +--------+
+    ///    range y|    |        |
+    ///           |    |        | +------+
+    ///           |    |    c   | |      |
+    ///           |    +--------+ |  d   |
+    ///           |               |      |
+    ///           >               +------+
+    ///
+    ///                ^--------------------^
+    ///                     scrollable
+    ///                      range x
+    ///
+    /// ```
+    ///
+    /// - `kid_area` is the cropped area of the container widget in which kid widgets may be
+    /// viewed.
+    /// - `a`, `b`, `c` and `d` are widgets that are kids of the "scroll root" widget in their
+    /// original, un-scrolled positions.
+    /// - `scrollable_range` is the total range occuppied by all children widgets in their
+    /// original, un-scrolled positions.
+    ///
+    /// Everything above and below the set of ==== bars of the parent widget is hidden, i.e:
+    ///
+    /// ```txt
+    ///
+    /// =========================
+    /// | | a | scroll root     |
+    /// | +---+ aka `kid_area`  |
+    /// |            +--------+ |
+    /// |            |   b    | |
+    /// =========================
+    ///
+    /// ```
+    ///
+    /// The `scrollable_range` on each axis only becomes scrollable if its length exceeds the
+    /// length of the `kid_area` on the same axis. Thus, in the above example, only the *y*
+    /// scrollable_range is scrollable.
+    ///
+    /// The `offset_bounds` are calculated as the amount which the original, un-scrolled,
+    /// `scrollable_range` may be offset from its origin.
+    ///
+    /// ```txt
+    ///
+    ///   offset +              >
+    ///   bounds v              |
+    ///   .start >              |   =========================
+    ///                         |   |                       |
+    ///                         |   |        kid_area       |
+    ///                         |   |                       |
+    ///                         |   |                       |
+    ///          >   scrollable |   =========================
+    ///          ^      range y |
+    ///          ^              |    
+    ///          ^              |    
+    ///   offset ^              |    
+    ///   bounds ^              |    
+    ///     .end ^              |    
+    ///          ^              |    
+    ///          ^              |    
+    ///          +              >    
+    ///
+    /// ```
+    pub fn update<C>(ui: &mut Ui<C>,
+                     idx: super::Index,
+                     scroll_args: Scroll,
+                     kid_area: &super::KidArea,
+                     maybe_prev_scroll_state: Option<Self>) -> Self
+    {
+
+        // Retrieve the *current* scroll offset.
+        let current_offset = maybe_prev_scroll_state.as_ref()
+            .map(|state| state.offset)
+            .unwrap_or(0.0);
+
+        // Get the range for the Axis that concerns this particular scroll `State`.
+        let kid_area_range = A::parallel_range(kid_area.rect);
+
+        // The `kid_area_range` but centred at zero.
+        let kid_area_range_origin = Range::from_pos_and_len(0.0, kid_area_range.magnitude());
+
+        // The mouse state for the widget whose scroll state we're calculating.
+        let maybe_mouse = ui::get_mouse_state(ui, idx);
+
+        // The un-scrolled, scrollable_range relative to the kid_area_range's position.
+        let scrollable_range = {
+            ui.kids_bounding_box(idx)
+                .map(|kids| {
+                    A::parallel_range(kids)
+                        .shift(-current_offset)
+                        .shift(-kid_area_range.middle())
+                })
+                .unwrap_or_else(|| Range::new(0.0, 0.0))
+        };
+
+        // Determine the min and max offst bounds. These bounds are the limits to which the
+        // scrollable_range may be shifted in either direction across the range.
+        let offset_bounds = {
+            let padding = A::padding_range(kid_area.pad);
+            let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
+            let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
+            Range::new(min_offset, max_offset).pad_ends(-padding.start, -padding.end)
+        };
+
+        // Determine the total `additional_scroll_offset` that we want to add to the
+        // `current_offset`. We only need to check for additional offset and interactions if the
+        // scrollable_range is actually longer than our kid_area.
+        let (additional_offset, new_interaction) = if scrollable_range.len() > kid_area_range.len() {
+
+            let (scroll_bar_drag_offset, new_interaction) = match maybe_prev_scroll_state {
+                Some(prev_scroll_state) => {
+                    use self::Elem::{Track, Handle};
+                    use self::Interaction::{Normal, Highlighted, Clicked};
+                    use utils::map_range;
+
+                    let track = track::<A>(kid_area.rect, prev_scroll_state.thickness);
+                    let handle = handle::<A>(track, &prev_scroll_state);
+                    let handle_range = A::parallel_range(handle);
+                    let handle_pos_range_len = || {
+                        let track_range = A::parallel_range(track);
+                        let handle_pos_at_start = handle_range.align_start_of(track_range).middle();
+                        let handle_pos_at_end = handle_range.align_end_of(track_range).middle();
+                        let handle_pos_range = Range::new(handle_pos_at_start, handle_pos_at_end);
+                        handle_pos_range.len()
+                    };
+                    let prev_interaction = prev_scroll_state.interaction;
+                    let is_scrollable = offset_bounds.len() > 0.0;
+                    let new_interaction = match (maybe_mouse, is_scrollable) {
+                        (Some(mouse), true) => {
+                            use mouse::ButtonPosition::{Down, Up};
+                            let mouse_scalar = A::mouse_scalar(mouse.xy);
+
+                            // Check if the mouse is currently over part of the scroll bar.
+                            let is_over_elem = if handle.is_over(mouse.xy) {
+                                Some(Handle(mouse_scalar))
+                            } else if track.is_over(mouse.xy) {
+                                Some(Track)
+                            } else {
+                                None
+                            };
+
+                            // Determine the new `Interaction` between the mouse and scrollbar.
+                            match (is_over_elem, prev_interaction, mouse.left.position) {
+                                (Some(_),    Normal,             Down) => Normal,
+                                (Some(elem), _,                  Up)   => Highlighted(elem),
+                                (Some(_),    Highlighted(_),     Down) |
+                                (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
+                                (_,          Clicked(elem),      Down) => Clicked(elem),
+                                _                                      => Normal,
+                            }
+                        },
+                        _ => Normal,
+                    };
+
+                    // Check whether or not the mouse interactions require (un)capturing of mouse.
+                    match (prev_interaction, new_interaction) {
+                        (Highlighted(_), Clicked(_)) => { ui::mouse_captured_by(ui, idx); }
+                        (Clicked(_), Highlighted(_)) |
+                        (Clicked(_), Normal) => { ui::mouse_uncaptured_by(ui, idx); }
+                        _ => (),
+                    }
+
+                    let scroll_bar_drag_offset = match (prev_interaction, new_interaction) {
+
+                        // When the track is clicked and the handle snaps to the cursor.
+                        (Highlighted(Track), Clicked(Handle(mouse_scalar))) => {
+                            let handle_pos_range_len = handle_pos_range_len();
+                            let offset_range_len = offset_bounds.len();
+                            let pos_offset = mouse_scalar - handle_range.middle();
+                            let offset = map_range(pos_offset,
+                                                   0.0, handle_pos_range_len,
+                                                   0.0, offset_range_len);
+                            -offset
+                        },
+
+                        // When the handle is dragged.
+                        (Clicked(Handle(prev_mouse_scalar)), Clicked(Handle(new_mouse_scalar))) => {
+                            let handle_pos_range_len = handle_pos_range_len();
+                            let offset_range_len = offset_bounds.len();
+                            let pos_offset = new_mouse_scalar - prev_mouse_scalar;
+                            let offset = map_range(pos_offset,
+                                                   0.0, handle_pos_range_len,
+                                                   0.0, offset_range_len);
+                            -offset
+                        },
+
+                        _ => 0.0,
+                    }.round();
+
+                    (scroll_bar_drag_offset, new_interaction)
+                },
+                None => (0.0, Interaction::Normal),
+            };
+
+            // Additional offset from mouse scroll events provided by the window.
+            let scroll_wheel_offset = {
+                maybe_mouse
+                    .map(|mouse| A::mouse_scroll_axis(mouse.scroll) * A::offset_direction())
+                    .unwrap_or(0.0)
+            };
+
+            let additional_offset = scroll_bar_drag_offset + scroll_wheel_offset;
+
+            (additional_offset, new_interaction)
+
+        // Otherwise, our scrollable_range length is shorter than our kid_area, so no need for
+        // additional scroll offset or interactions.
+        } else {
+            (0.0, Interaction::Normal)
+        };
+
+        let new_offset = offset_bounds.clamp_value(current_offset + additional_offset);
+
+        State {
+            offset: new_offset,
+            offset_bounds: offset_bounds,
+            scrollable_range_len: scrollable_range.len(),
+            thickness: scroll_args.style.thickness(&ui.theme),
+            color: scroll_args.style.color(&ui.theme),
+            interaction: new_interaction,
+            axis: PhantomData,
+            is_scrolling: additional_offset != 0.0,
+        }
+    }
+
+    /// Whether or not the given `xy` point is over the scroll track.
+    pub fn is_over(&self, xy: Point, kid_area_rect: Rect) -> bool {
+        A::track(kid_area_rect, self.thickness).is_over(xy)
+    }
+
 }
 
 
@@ -138,417 +407,112 @@ impl Style {
 }
 
 
-impl Interaction {
-    /// The stateful version of the given color.
-    pub fn color(&self, color: Color) -> Color {
-        match *self {
-            Interaction::Normal => color,
-            Interaction::Highlighted(_) => color.highlighted(),
-            Interaction::Clicked(_) => color.clicked(),
-        }
-    }
+/// Calculates the `Rect` for a scroll "track" with the given `thickness` over the given axis for
+/// the given `container`.
+pub fn track<A: Axis>(container: Rect, thickness: Scalar) -> Rect {
+    A::track(container, thickness)
+}
+
+/// Calculates the `Rect` for a scroll "handle" sitting on the given `track` with an offset and
+/// length that represents the given `Axis`' `state`.
+pub fn handle<A: Axis>(track: Rect, state: &State<A>) -> Rect {
+    let track_range = A::parallel_range(track);
+    let track_len = track_range.len();
+    let len = track_len * (track_len / state.scrollable_range_len);
+    let handle_range = Range::from_pos_and_len(0.0, len);
+    let pos = {
+        let pos_min = handle_range.align_start_of(track_range).middle();
+        let pos_max = handle_range.align_end_of(track_range).middle();
+        let pos_bounds = Range::new(pos_min, pos_max);
+        state.offset_bounds.map_value_to(state.offset, &pos_bounds)
+    };
+    let perpendicular_track_range = A::perpendicular_range(track);
+    let range = Range::from_pos_and_len(pos, len);
+    A::handle_rect(perpendicular_track_range, range)
 }
 
 
-impl State {
+impl Axis for X {
 
-    /// Construct a new State.
-    /// The `visible` rect corresponds to a Widget's `kid_area` aka the viewable container.
-    /// The `kids` rect is the area *actually occupied* by the children widgets.
-    pub fn new(scrolling: Scrolling, 
-               visible: Rect,
-               kids: Rect,
-               theme: &Theme,
-               maybe_prev: Option<&State>) -> State
-    {
-        State {
-
-            maybe_vertical: if scrolling.vertical {
-                let maybe_prev = maybe_prev.as_ref()
-                    .and_then(|prev| prev.maybe_vertical.as_ref());
-                // For a vertical scrollbar, we want the range to start at the top and end at
-                // the bottom. To do this, we will use the invert of our visible and kids y ranges.
-                Bar::new_if_scrollable(visible.y.invert(), kids.y.invert(), maybe_prev)
-            } else {
-                None
-            },
-
-            maybe_horizontal: if scrolling.horizontal {
-                let maybe_prev = maybe_prev.as_ref()
-                    .and_then(|prev| prev.maybe_horizontal.as_ref());
-                Bar::new_if_scrollable(visible.x, kids.x, maybe_prev)
-            } else {
-                None
-            },
-
-            total_dim: visible.max(kids).dim(),
-            visible: visible,
-            thickness: scrolling.style.thickness(theme),
-            color: scrolling.style.color(theme),
-        }
+    fn parallel_range(rect: Rect) -> Range {
+        rect.x
     }
 
-    /// Given some mouse input, update the State and return the resulting State.
-    pub fn handle_input(self, mouse: Mouse) -> State {
-        State {
+    fn perpendicular_range(rect: Rect) -> Range {
+        rect.y
+    }
 
-            maybe_vertical: self.maybe_vertical.map(|bar| {
-                let track = vertical_track(self.visible, self.thickness);
-                let handle = vertical_handle(&bar, track, self.total_dim[1]);
-                // Invert the visible y axis so that it points downward for vertical scrolling.
-                let visible = self.visible.y.invert();
-                let mouse_pos_scalar = mouse.xy[1] - track.top();
-                bar.handle_input(visible, track, handle, &mouse, mouse_pos_scalar, mouse.scroll.y)
-            }),
+    fn padding_range(padding: Padding) -> Range {
+        padding.x
+    }
 
-            maybe_horizontal: self.maybe_horizontal.map(|bar| {
-                let track = horizontal_track(self.visible, self.thickness);
-                let handle = horizontal_handle(&bar, track, self.total_dim[0]);
-                let visible = self.visible.x;
-                let mouse_pos_scalar = mouse.xy[0] - track.left();
-                bar.handle_input(visible, track, handle, &mouse, mouse_pos_scalar, -mouse.scroll.x)
-            }),
+    fn track(container: Rect, thickness: Scalar) -> Rect {
+        let h = thickness;
+        let w = container.w();
+        let x = container.x();
+        Rect::from_xy_dim([x, 0.0], [w, h]).align_bottom_of(container)
+    }
 
-            .. self
+    fn mouse_scalar(mouse_xy: Point) -> Scalar {
+        mouse_xy[0]
+    }
+
+    fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
+        scroll.x
+    }
+
+    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect {
+        Rect {
+            x: handle_range,
+            y: perpendicular_track_range,
         }
     }
 
-    /// Is the given xy over either scroll Bars.
-    pub fn is_over(&self, target_xy: Point) -> bool {
-        if self.maybe_vertical.is_some() {
-            if vertical_track(self.visible, self.thickness).is_over(target_xy) {
-                return true;
-            }
-        }
-        if self.maybe_horizontal.is_some() {
-            if horizontal_track(self.visible, self.thickness).is_over(target_xy) {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Converts the Bars' current offset to a positional offset along its visible area.
-    pub fn kids_pos_offset(&self) -> Dimensions {
-        let maybe_x_offset = self.maybe_horizontal.map(|bar| bar.kids_pos_offset());
-        let maybe_y_offset = self.maybe_vertical.map(|bar| bar.kids_pos_offset());
-        [maybe_x_offset.unwrap_or(0.0), maybe_y_offset.unwrap_or(0.0)]
+    fn offset_direction() -> Scalar {
+        1.0
     }
 
 }
 
 
-impl Bar {
+impl Axis for Y {
 
-    /// Construct a new Bar for a widget from a given visible range as well as the range occuppied
-    /// by the widget's child widgets.
-    ///
-    /// The given `kids` Range should be relative to the visible range.
-    ///
-    /// If there is some previous Bar its interaction will be carried through to the Bar.
-    pub fn new_if_scrollable(visible: Range, kids: Range, maybe_prev: Option<&Bar>) -> Option<Bar> {
+    fn parallel_range(rect: Rect) -> Range {
+        rect.y
+    }
 
-        // The range occuppied by kid widgets when the scroll offset is at 0.0.
-        let kids_at_origin = {
-            let offset_from_origin = maybe_prev.map(|bar| bar.kids_pos_offset()).unwrap_or(0.0);
-            kids.shift(-offset_from_origin)
-        };
+    fn perpendicular_range(rect: Rect) -> Range {
+        rect.x
+    }
 
-        // Total combined range of the visible and kids_at_origin ranges.
-        let total = visible.max_directed(kids_at_origin);
+    fn padding_range(padding: Padding) -> Range {
+        padding.y
+    }
 
-        // The range that describes the area upon which the start of the visible range can scroll.
-        let scrollable = Range::new(total.start, total.end - visible.magnitude());
+    fn track(container: Rect, thickness: Scalar) -> Rect {
+        let w = thickness;
+        let h = container.h();
+        let y = container.y();
+        Rect::from_xy_dim([0.0, y], [w, h]).align_right_of(container)
+    }
 
-        // We only need to calculate offsets if we actually have some scrollable area.
-        if scrollable.magnitude().is_normal() && scrollable.direction() == kids.direction() {
+    fn mouse_scalar(mouse_xy: Point) -> Scalar {
+        mouse_xy[1]
+    }
 
-            let interaction = maybe_prev.map(|bar| bar.interaction)
-                .unwrap_or(Interaction::Normal);
+    fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
+        scroll.y
+    }
 
-            // The amount that the visible range overlaps the start of the kids range when at its
-            // origin position (non-scrolled).
-            let start_overlap = {
-                let start_diff_at_origin = kids_at_origin.start - visible.start;
-                if start_diff_at_origin.signum() == visible.direction() {
-                    start_diff_at_origin
-                } else {
-                    0.0
-                }
-            };
-
-            // The positional scroll offset.
-            let offset = maybe_prev.map(|bar| bar.offset).unwrap_or(0.0);
-
-            Some(Bar {
-                interaction: interaction,
-                scrollable: scrollable,
-                offset: offset,
-                start_overlap: start_overlap,
-            })
-        // Otherwise our offsets are zeroed.
-        } else {
-            None
+    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect {
+        Rect {
+            x: perpendicular_track_range,
+            y: handle_range,
         }
     }
 
-
-    /// Update a scroll `Bar` with the given mouse input.
-    pub fn handle_input(self,
-                        visible: Range,
-                        track: Rect,
-                        handle: Rect,
-                        mouse: &Mouse,
-                        mouse_pos_scalar: Scalar,
-                        mouse_scroll_scalar: Scalar) -> Bar
-    {
-        use self::Elem::{Handle, Track};
-        use self::Interaction::{Highlighted, Clicked};
-
-        // Determine whether or not the mouse is over part of the Scrollbar.
-        let is_over_elem = is_over_elem(track, handle, mouse, mouse_pos_scalar);
-
-        // Determine the new current `Interaction`.
-        let new_interaction = new_interaction(&self, is_over_elem, mouse, mouse_pos_scalar);
-
-        // Calculate the maximum bar offset.
-        let bar_offset_max = || {
-            let bar_mag = handle.len() * visible.direction();
-            track.len() * visible.direction() - bar_mag
-        };
-
-        // Calculate a positional offset given some bar offset.
-        let pos_offset_from_bar_offset = |bar_offset: Scalar, bar_offset_max: Scalar| {
-            map_range(bar_offset, 0.0, bar_offset_max, 0.0, self.scrollable.magnitude())
-        };
-
-        // Determine the new offset for the scrollbar.
-        let new_offset = match (self.interaction, new_interaction) {
-
-            // When the track is clicked and the handle snaps to the cursor.
-            (Highlighted(Track), Clicked(Handle(mouse_pos_scalar))) => {
-                // Should try snap the handle so that the mouse is in the middle of it.
-                let direction = visible.direction();
-                let half_handle_len = handle.len() * direction / 2.0;
-                let target_offset = mouse_pos_scalar - half_handle_len;
-                let target_pos_offset = pos_offset_from_bar_offset(target_offset, bar_offset_max());
-                ::utils::clamp(target_pos_offset, 0.0, self.scrollable.magnitude())
-            },
-
-            // When the handle is dragged.
-            (Clicked(Handle(prev_mouse_scalar)), Clicked(Handle(mouse_pos_scalar))) => {
-                let scroll_amount = mouse_pos_scalar - prev_mouse_scalar;// * visible.direction();
-                let pos_scroll_amount = pos_offset_from_bar_offset(scroll_amount, bar_offset_max());
-                self.add_to_scroll_offset(pos_scroll_amount)
-            },
-
-            // The mouse has been scrolled using a wheel/trackpad/touchpad.
-            (_, _) if mouse_scroll_scalar != 0.0 =>
-                self.add_to_scroll_offset(mouse_scroll_scalar),
-
-            // Otherwise, we'll assume the offset is unchanged.
-            _ => self.offset,
-        };
-
-        Bar { interaction: new_interaction, offset: new_offset, ..self }
-    }
-
-
-    /// A function for shifting some current offset by some amount while ensuring it remains within the
-    /// Bar's Range.
-    fn add_to_scroll_offset(&self, amount: Scalar) -> Scalar {
-        use utils::clamp;
-        let target_offset = self.offset + amount;
-        let min_offset = self.start_overlap;
-        let max_offset = self.scrollable.magnitude();
-
-        // If the offset is before the start, only let it be dragged towards the end.
-        let clamp_current_to_max = || clamp(target_offset, self.offset, max_offset);
-        // If the offset is past the end, only let it be dragged towards the start.
-        let clamp_min_to_current = || clamp(target_offset, min_offset, self.offset);
-        // Otherwise, clamp it between 0.0 and the max.
-        let clamp_min_to_max = || clamp(target_offset, min_offset, max_offset);
-
-        // For a positive range, check the start and end of the range normally.
-        if max_offset >= 0.0 {
-            if      self.offset < min_offset { clamp_current_to_max() }
-            else if self.offset > max_offset { clamp_min_to_current() }
-            else                             { clamp_min_to_max() }
-
-        // Otherwise, check the inverse.
-        } else {
-            if      self.offset > min_offset { clamp_current_to_max() }
-            else if self.offset < max_offset { clamp_min_to_current() }
-            else                             { clamp_min_to_max() }
-        }
-    }
-
-
-    /// Converts the Bar's current offset to the positional offset required to shift the children
-    /// widgets in accordance with the scrolling.
-    pub fn kids_pos_offset(&self) -> Scalar {
-        let Bar { offset, scrollable, .. } = *self;
-        if scrollable.len() == 0.0 { 0.0 } else { -offset }
-    }
-
-    /// Converts the given bar offset to a positional offset.
-    ///
-    /// TODO: Needs testing.
-    pub fn pos_offset_from_bar_offset(&self, bar_offset: Scalar, bar_len: Scalar) -> Scalar {
-        map_range(bar_offset, 0.0, bar_len, 0.0, self.scrollable.magnitude())
+    fn offset_direction() -> Scalar {
+        -1.0
     }
 
 }
-
-
-/// The area for a vertical scrollbar track as its dimensions and position.
-pub fn vertical_track(container: Rect, thickness: Scalar) -> Rect {
-    let w = thickness;
-    let x = container.x() + container.w() / 2.0 - w / 2.0;
-    Rect {
-        x: Range::from_pos_and_len(x, w),
-        y: container.y,
-    }
-}
-
-/// The area for a vertical scrollbar handle as its dimensions and position.
-pub fn vertical_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
-    let offset = partial_max(bar.start_overlap - bar.offset, 0.0);
-    let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
-    let track_h = track.h();
-    let h = map_range(track_h, 0.0, total_len, 0.0, track_h);
-    let y = map_range(offset, 0.0, max_offset, track.top(), track.bottom() + h) - h / 2.0;
-    Rect {
-        x: track.x,
-        y: Range::from_pos_and_len(y, h),
-    }
-}
-
-/// The area for a horizontal scrollbar track as its dimensions and position.
-pub fn horizontal_track(container: Rect, thickness: Scalar) -> Rect {
-    let h = thickness;
-    let y = container.y() - container.h() / 2.0 + h / 2.0;
-    Rect {
-        x: container.x,
-        y: Range::from_pos_and_len(y, h),
-    }
-}
-
-/// The area for a horizontal scrollbar handle as its dimensions and position.
-pub fn horizontal_handle(bar: &Bar, track: Rect, total_len: Scalar) -> Rect {
-    let offset = partial_max(bar.offset - bar.start_overlap, 0.0);
-    let max_offset = bar.scrollable.len() - (bar.offset.abs() - offset);
-    let track_w = track.w();
-    let w = map_range(track_w, 0.0, total_len, 0.0, track_w);
-    let x = map_range(offset, 0.0, max_offset, track.left(), track.right() - w) + w / 2.0;
-    Rect {
-        x: Range::from_pos_and_len(x, w),
-        y: track.y,
-    }
-}
-
-
-/// Whether or not the mouse is currently over the Bar, and if so, which Elem.
-fn is_over_elem(track: Rect, handle: Rect, mouse: &Mouse, mouse_scalar: Scalar) -> Option<Elem> {
-    if handle.is_over(mouse.xy) {
-        Some(Elem::Handle(mouse_scalar))
-    } else if track.is_over(mouse.xy) {
-        Some(Elem::Track)
-    } else {
-        None
-    }
-}
-
-/// Determine the new current `Interaction` for a Bar.
-/// The given mouse_scalar is the position of the mouse to be recorded by the Handle.
-/// For vertical handle this is mouse.y, for horizontal this is mouse.x.
-fn new_interaction(bar: &Bar,
-                   is_over_elem: Option<Elem>,
-                   mouse: &Mouse,
-                   mouse_scalar: Scalar) -> Interaction
-{
-    use self::Interaction::{Normal, Highlighted, Clicked};
-
-    // If there's no need for a scroll bar, leave the interaction as `Normal`.
-    if bar.scrollable.len() == 0.0 {
-        Normal
-    } else {
-        use self::Elem::Handle;
-        use mouse::ButtonPosition::{Down, Up};
-        match (is_over_elem, bar.interaction, mouse.left.position) {
-            (Some(_),    Normal,             Down) => Normal,
-            (Some(elem), _,                  Up)   => Highlighted(elem),
-            (Some(_),    Highlighted(_),     Down) |
-            (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
-            (_,          Clicked(elem),      Down) => Clicked(elem),
-            _                                      => Normal,
-        }
-    }
-}
-
-
-
-/// Whether or not the scrollbar should capture the mouse given previous and new states.
-pub fn capture_mouse(prev: &State, new: &State) -> bool {
-    match (prev.maybe_vertical, new.maybe_vertical) {
-        (Some(ref prev_bar), Some(ref new_bar)) =>
-            match (prev_bar.interaction, new_bar.interaction) {
-                (Interaction::Highlighted(_), Interaction::Clicked(_)) => return true,
-                _ => (),
-            },
-        _ => (),
-    }
-    match (prev.maybe_horizontal, new.maybe_horizontal) {
-        (Some(ref prev_bar), Some(ref new_bar)) =>
-            match (prev_bar.interaction, new_bar.interaction) {
-                (Interaction::Highlighted(_), Interaction::Clicked(_)) => return true,
-                _ => (),
-            },
-        _ => (),
-    }
-    false
-}
-
-
-/// Whether or not the scrollbar should uncapture the mouse given previous and new states.
-pub fn uncapture_mouse(prev: &State, new: &State) -> bool {
-    match (prev.maybe_vertical, new.maybe_vertical) {
-        (Some(ref prev_bar), Some(ref new_bar)) =>
-            match (prev_bar.interaction, new_bar.interaction) {
-                (Interaction::Clicked(_), Interaction::Highlighted(_)) |
-                (Interaction::Clicked(_), Interaction::Normal)         => return true,
-                _ => (),
-            },
-        _ => (),
-    }
-    match (prev.maybe_horizontal, new.maybe_horizontal) {
-        (Some(ref prev_bar), Some(ref new_bar)) =>
-            match (prev_bar.interaction, new_bar.interaction) {
-                (Interaction::Clicked(_), Interaction::Highlighted(_)) |
-                (Interaction::Clicked(_), Interaction::Normal)         => return true,
-                _ => (),
-            },
-        _ => (),
-    }
-    false
-}
-
-
-#[test]
-fn test_bar_new_no_scroll() {
-    // Create a `Bar` that shouldn't scroll.
-    let visible = Range::new(-5.0, 5.0);
-    let kids = Range::new(-3.0, 3.0);
-    let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
-    assert_eq!(maybe_bar, None);
-}
-
-#[test]
-fn test_bar_new_no_scroll_rev_range() {
-    // Now with a reversed range.
-    let visible = Range::new(5.0, -5.0);
-    let kids = Range::new(3.0, -3.0);
-    let maybe_bar = Bar::new_if_scrollable(visible, kids, None);
-    assert_eq!(maybe_bar, None);
-}
-
