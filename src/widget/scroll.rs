@@ -124,7 +124,8 @@ impl<A> State<A>
 
     /// Calculate the new scroll state for the single axis of a `Widget`.
     ///
-    /// ```
+    /// ```txt
+    ///
     ///           >     +---+
     ///           |     |   |
     ///           |   =========================
@@ -146,6 +147,7 @@ impl<A> State<A>
     ///                ^--------------------^
     ///                     scrollable
     ///                      range x
+    ///
     /// ```
     ///
     /// - `kid_area` is the cropped area of the container widget in which kid widgets may be
@@ -157,13 +159,15 @@ impl<A> State<A>
     ///
     /// Everything above and below the set of ==== bars of the parent widget is hidden, i.e:
     ///
-    /// ```
+    /// ```txt
+    ///
     /// =========================
     /// | | a | scroll root     |
     /// | +---+ aka `kid_area`  |
     /// |            +--------+ |
     /// |            |   b    | |
     /// =========================
+    ///
     /// ```
     ///
     /// The `scrollable_range` on each axis only becomes scrollable if its length exceeds the
