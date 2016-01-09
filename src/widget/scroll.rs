@@ -3,7 +3,6 @@
 use {
     Align,
     Color,
-    Mouse,
     MouseScroll,
     Point,
     Range,
@@ -83,12 +82,21 @@ pub enum Elem {
 
 /// Methods for distinguishing behaviour between both scroll axes at compile-time.
 pub trait Axis {
+    /// The range of the given `Rect` that is parallel with this `Axis`.
     fn parallel_range(Rect) -> Range;
+    /// The range of the given `Rect` that is perpendicular with this `Axis`.
     fn perpendicular_range(Rect) -> Range;
+    /// The `Rect` for a scroll "track" with the given `thickness` for a container with the given
+    /// `Rect`.
     fn track(container: Rect, thickness: Scalar) -> Rect;
+    /// The coordinate of the given mouse position that corresponds with this `Axis`.
     fn mouse_scalar(mouse_xy: Point) -> Scalar;
+    /// The coordinate of the given `MouseScroll` that corresponds with this `Axis`.
     fn mouse_scroll_axis(MouseScroll) -> Scalar;
+    /// The `Rect` for a scroll handle given both `Range`s.
     fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect;
+    /// A `Scalar` multiplier representing the direction in which positive offset shifts the
+    /// `scrollable_range` (either `-1.0` or `1.0).
     fn offset_direction() -> Scalar;
 }
 
@@ -173,6 +181,31 @@ impl<A> State<A>
     /// The `scrollable_range` on each axis only becomes scrollable if its length exceeds the
     /// length of the `kid_area` on the same axis. Thus, in the above example, only the *y*
     /// scrollable_range is scrollable.
+    ///
+    /// The `offset_bounds` are calculated as the amount which the original, un-scrolled,
+    /// `scrollable_range` may be offset from its origin.
+    ///
+    /// ```txt
+    ///
+    ///   offset +              >
+    ///   bounds v              |
+    ///   .start >              |   =========================
+    ///                         |   |                       |
+    ///                         |   |        kid_area       |
+    ///                         |   |                       |
+    ///                         |   |                       |
+    ///          >   scrollable |   =========================
+    ///          ^      range y |
+    ///          ^              |    
+    ///          ^              |    
+    ///   offset ^              |    
+    ///   bounds ^              |    
+    ///     .end ^              |    
+    ///          ^              |    
+    ///          ^              |    
+    ///          +              >    
+    ///
+    /// ```
     pub fn update<C>(ui: &mut Ui<C>,
                      idx: super::Index,
                      scroll_args: Scroll,
@@ -188,41 +221,35 @@ impl<A> State<A>
         // Get the range for the Axis that concerns this particular scroll `State`.
         let kid_area_range = A::parallel_range(kid_area_rect);
 
+        // The `kid_area_range` but centred at zero.
+        let kid_area_range_origin = Range::from_pos_and_len(0.0, kid_area_range.magnitude());
+
         // The mouse state for the widget whose scroll state we're calculating.
         let maybe_mouse = ui::get_mouse_state(ui, idx);
 
-        // Retrieve the entire scrollable_range. This is the total range which may be "offset" from
-        // the "root" range (aka the `kid_area`). The scrollable_range is determined as the
-        // bounding range around both the kid_area and all **un-scrolled** **visible** children
-        // widgets. Note that this means when reading all children widget's `Range`s to construct
-        // the bounding `Range`, we must first subtract the `current_scroll_offset` in order to get
-        // the *original* aka *un-scrolled* position. Thus, the calculated `scrollable_range`
-        // should be entirely unaffected by the `scroll_offset`. Notice also that we add the
-        // position of the `kid_area` to the `kids_bounding_range`. This allows us to create the
-        // `scrollable_range` relative to the `kid_area_range`.
+        // The un-scrolled, scrollable_range relative to the kid_area_range's position.
         let scrollable_range = {
-            let kids_bounding_range = ui.kids_bounding_box(idx)
+            ui.kids_bounding_box(idx)
                 .map(|kids| {
                     A::parallel_range(kids)
                         .shift(-current_offset)
-                        .shift(kid_area_range.middle())
+                        .shift(-kid_area_range.middle())
                 })
-                .unwrap_or_else(|| kid_area_range);
-            kid_area_range.max(kids_bounding_range)
+                .unwrap_or_else(|| Range::new(0.0, 0.0))
         };
 
         // Determine the min and max offst bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
         let offset_bounds = {
-            let min_offset = kid_area_range.start - scrollable_range.start;
-            let max_offset = scrollable_range.end - kid_area_range.end;
-            let max_offset = min_offset - (max_offset - min_offset) * A::offset_direction();
+            let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
+            let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
             Range { start: min_offset, end: max_offset }
         };
 
         // Determine the total `additional_scroll_offset` that we want to add to the
-        // `current_offset`.
-        let (additional_offset, new_interaction) = {
+        // `current_offset`. We only need to check for additional offset and interactions if the
+        // scrollable_range is actually longer than our kid_area.
+        let (additional_offset, new_interaction) = if scrollable_range.len() > kid_area_range.len() {
 
             let (scroll_bar_drag_offset, new_interaction) = match maybe_prev_scroll_state {
                 Some(prev_scroll_state) => {
@@ -302,13 +329,14 @@ impl<A> State<A>
                         },
 
                         _ => 0.0,
-                    };
+                    }.round();
 
                     (scroll_bar_drag_offset, new_interaction)
                 },
                 None => (0.0, Interaction::Normal),
             };
 
+            // Additional offset from mouse scroll events provided by the window.
             let scroll_wheel_offset = {
                 maybe_mouse
                     .map(|mouse| A::mouse_scroll_axis(mouse.scroll) * A::offset_direction())
@@ -318,6 +346,11 @@ impl<A> State<A>
             let additional_offset = scroll_bar_drag_offset + scroll_wheel_offset;
 
             (additional_offset, new_interaction)
+
+        // Otherwise, our scrollable_range length is shorter than our kid_area, so no need for
+        // additional scroll offset or interactions.
+        } else {
+            (0.0, Interaction::Normal)
         };
 
         let new_offset = offset_bounds.clamp_value(current_offset + additional_offset);
@@ -370,6 +403,14 @@ impl Style {
 }
 
 
+/// Calculates the `Rect` for a scroll "track" with the given `thickness` over the given axis for
+/// the given `container`.
+pub fn track<A: Axis>(container: Rect, thickness: Scalar) -> Rect {
+    A::track(container, thickness)
+}
+
+/// Calculates the `Rect` for a scroll "handle" sitting on the given `track` with an offset and
+/// length that represents the given `Axis`' `state`.
 pub fn handle<A: Axis>(track: Rect, state: &State<A>) -> Rect {
     let track_range = A::parallel_range(track);
     let track_len = track_range.len();
@@ -384,10 +425,6 @@ pub fn handle<A: Axis>(track: Rect, state: &State<A>) -> Rect {
     let perpendicular_track_range = A::perpendicular_range(track);
     let range = Range::from_pos_and_len(pos, len);
     A::handle_rect(perpendicular_track_range, range)
-}
-
-pub fn track<A: Axis>(container: Rect, thickness: Scalar) -> Rect {
-    A::track(container, thickness)
 }
 
 
