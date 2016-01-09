@@ -253,6 +253,8 @@ pub struct CommonState {
     pub drag_state: drag::State,
     /// Floating state for the widget if it is floating.
     pub maybe_floating: Option<Floating>,
+    /// The area of the widget upon which kid widgets are placed.
+    pub kid_area: KidArea,
 }
 
 /// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
@@ -754,6 +756,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 maybe_floating,
                 maybe_x_scroll_state,
                 maybe_y_scroll_state,
+                kid_area,
                 ..
             } = prev;
 
@@ -763,6 +766,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 depth: depth,
                 drag_state: drag_state,
                 maybe_floating: maybe_floating,
+                kid_area: kid_area,
             };
 
             (Some(state),
@@ -880,12 +884,17 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         widget.kid_area(args)
     };
 
-    // If either axis is scrollable, retrieve the up-to-date scroll_offset for that axis.
+    // If either axis is scrollable, retrieve the up-to-date `scroll::State` for that axis.
+    //
+    // We must step the scrolling using the previous `kid_area` state so that the bounding box
+    // around our kid widgets is in sync with the position of the `kid_area`.
+    let kid_area_rect = maybe_prev_common.map(|common| common.kid_area.rect)
+        .unwrap_or_else(|| kid_area.rect);
     let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, kid_area.rect, maybe_prev_x_scroll_state)
+        scroll::State::update(ui, idx, scroll_args, kid_area_rect, maybe_prev_x_scroll_state)
     });
     let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, kid_area.rect, maybe_prev_y_scroll_state)
+        scroll::State::update(ui, idx, scroll_args, kid_area_rect, maybe_prev_y_scroll_state)
     });
 
     // Determine whether or not this is the first time set has been called.
@@ -934,6 +943,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         depth: depth,
         drag_state: drag_state,
         maybe_floating: maybe_floating,
+        kid_area: kid_area,
     });
 
     // Retrieve the widget's unique state and update it via `Widget::update`.
