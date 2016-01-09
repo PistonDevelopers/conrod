@@ -5,6 +5,7 @@ use {
     Color,
     MouseScroll,
     Point,
+    Padding,
     Range,
     Rect,
     Scalar,
@@ -86,6 +87,8 @@ pub trait Axis {
     fn parallel_range(Rect) -> Range;
     /// The range of the given `Rect` that is perpendicular with this `Axis`.
     fn perpendicular_range(Rect) -> Range;
+    /// Given some rectangular `Padding`, return the `Range` that corresponds with this `Axis`.
+    fn padding_range(Padding) -> Range;
     /// The `Rect` for a scroll "track" with the given `thickness` for a container with the given
     /// `Rect`.
     fn track(container: Rect, thickness: Scalar) -> Rect;
@@ -209,7 +212,7 @@ impl<A> State<A>
     pub fn update<C>(ui: &mut Ui<C>,
                      idx: super::Index,
                      scroll_args: Scroll,
-                     kid_area_rect: Rect,
+                     kid_area: &super::KidArea,
                      maybe_prev_scroll_state: Option<Self>) -> Self
     {
 
@@ -219,7 +222,7 @@ impl<A> State<A>
             .unwrap_or(0.0);
 
         // Get the range for the Axis that concerns this particular scroll `State`.
-        let kid_area_range = A::parallel_range(kid_area_rect);
+        let kid_area_range = A::parallel_range(kid_area.rect);
 
         // The `kid_area_range` but centred at zero.
         let kid_area_range_origin = Range::from_pos_and_len(0.0, kid_area_range.magnitude());
@@ -241,9 +244,10 @@ impl<A> State<A>
         // Determine the min and max offst bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
         let offset_bounds = {
+            let padding = A::padding_range(kid_area.pad);
             let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
             let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
-            Range { start: min_offset, end: max_offset }
+            Range::new(min_offset, max_offset).pad_ends(-padding.start, -padding.end)
         };
 
         // Determine the total `additional_scroll_offset` that we want to add to the
@@ -257,7 +261,7 @@ impl<A> State<A>
                     use self::Interaction::{Normal, Highlighted, Clicked};
                     use utils::map_range;
 
-                    let track = track::<A>(kid_area_rect, prev_scroll_state.thickness);
+                    let track = track::<A>(kid_area.rect, prev_scroll_state.thickness);
                     let handle = handle::<A>(track, &prev_scroll_state);
                     let handle_range = A::parallel_range(handle);
                     let handle_pos_range_len = || {
@@ -438,6 +442,10 @@ impl Axis for X {
         rect.y
     }
 
+    fn padding_range(padding: Padding) -> Range {
+        padding.x
+    }
+
     fn track(container: Rect, thickness: Scalar) -> Rect {
         let h = thickness;
         let w = container.w();
@@ -475,6 +483,10 @@ impl Axis for Y {
 
     fn perpendicular_range(rect: Rect) -> Range {
         rect.x
+    }
+
+    fn padding_range(padding: Padding) -> Range {
+        padding.y
     }
 
     fn track(container: Rect, thickness: Scalar) -> Rect {

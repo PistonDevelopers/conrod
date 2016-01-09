@@ -888,13 +888,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
     //
     // We must step the scrolling using the previous `kid_area` state so that the bounding box
     // around our kid widgets is in sync with the position of the `kid_area`.
-    let kid_area_rect = maybe_prev_common.map(|common| common.kid_area.rect)
-        .unwrap_or_else(|| kid_area.rect);
+    let prev_kid_area = maybe_prev_common.map(|common| common.kid_area)
+        .unwrap_or_else(|| kid_area);
     let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, kid_area_rect, maybe_prev_x_scroll_state)
+        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_x_scroll_state)
     });
     let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, kid_area_rect, maybe_prev_y_scroll_state)
+        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_y_scroll_state)
     });
 
     // Determine whether or not this is the first time set has been called.
