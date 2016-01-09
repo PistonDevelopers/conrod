@@ -180,11 +180,16 @@ fn main() {
 fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Canvas::new().frame(app.frame_width).color(app.bg_color).scroll_kids().set(CANVAS, ui);
+    Canvas::new()
+        .frame(app.frame_width)
+        .pad(30.0)
+        .color(app.bg_color)
+        .scroll_kids()
+        .set(CANVAS, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
-        .top_left_with_margins_on(CANVAS, 25.0, app.title_pad)
+        .top_left_with_margins_on(CANVAS, 0.0, app.title_pad)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
         .set(TITLE, ui);
@@ -194,7 +199,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Button widget example button.
         Button::new()
             .w_h(200.0, 50.0)
-            .mid_left_with_margin_on(CANVAS, 30.0)
+            .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
@@ -219,7 +224,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         // Slider widget example slider(value, min, max).
         Slider::new(pad as f32, 30.0, 700.0)
             .w_h(200.0, 50.0)
-            .mid_left_with_margin_on(CANVAS, 30.0)
+            .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.5, 0.3, 0.6)
             .frame(app.frame_width)
