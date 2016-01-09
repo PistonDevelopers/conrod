@@ -91,9 +91,9 @@ pub struct Container {
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
     /// Scroll related state (is only `Some` if this axis is scrollable).
-    pub maybe_x_scroll_state: Option<widget::scroll::State>,
+    pub maybe_x_scroll_state: Option<widget::scroll::StateX>,
     /// Scroll related state (is only `Some` if this axis is scrollable).
-    pub maybe_y_scroll_state: Option<widget::scroll::State>,
+    pub maybe_y_scroll_state: Option<widget::scroll::StateY>,
     /// Represents the Widget's position within the overall instantiation ordering of the widgets.
     ///
     /// i.e. if foo's `instantiation_order_idx` is lower than bar's, it means that foo was
@@ -657,18 +657,22 @@ impl Graph {
         self.does_recursive_edge_exist(parent, child, |e| e == Edge::Depth)
     }
 
-    /// Are the given `parent` and `child` nodes connected by a single chain of **Position** edges?
-    ///
-    /// i.e. `parent` -> x -> y -> `child`.
-    ///
-    /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_recursive_position_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
-        let is_edge = |e| e == Edge::Position(Axis::X) || e == Edge::Position(Axis::Y);
-        self.does_recursive_edge_exist(parent, child, is_edge)
-    }
+    // FIXME: This only recurses down the *first* edge that satisfies the predicate, whereas we
+    // want to check *every* position parent edge. This means we need to do a DFS or BFS over
+    // position edges from the parent node until we find the child node.
+    // ///
+    // /// Are the given `parent` and `child` nodes connected by a single chain of **Position** edges?
+    // ///
+    // /// i.e. `parent` -> x -> y -> `child`.
+    // ///
+    // /// Returns `false` if either of the given node indices do not exist.
+    // pub fn does_recursive_position_edge_exist<P, C>(&self, parent: P, child: C) -> bool
+    //     where P: GraphIndex,
+    //           C: GraphIndex,
+    // {
+    //     let is_edge = |e| e == Edge::Position(Axis::X) || e == Edge::Position(Axis::Y);
+    //     self.does_recursive_edge_exist(parent, child, is_edge)
+    // }
 
     /// Are the given `parent` and `child` nodes connected by a single chain of **Graphic** edges?
     ///

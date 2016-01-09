@@ -281,23 +281,30 @@ pub fn scroll_offset<I: GraphIndex>(graph: &Graph, idx: I) -> Point {
                         return NO_OFFSET;
                     }
 
-                    // If we have a position_parent whose depth_parent is the same as ours, then
-                    // the offset has already been applied via our relative positioning.
-                    let mut position_parents = graph.x_position_parent_recursion(idx)
-                        .chain(graph.y_position_parent_recursion(idx));
-                    while let Some(position_parent) = position_parents.next_node(graph) {
-                        if graph.depth_parent_recursion(position_parent)
-                            .any(graph, |_g, _e, n| n == depth_parent)
-                        {
-                            return NO_OFFSET
+                    // If we have a position_parent along the axis whose depth_parent is the same
+                    // as ours, then the offset has already been applied via our relative
+                    // positioning.
+                    let is_already_offset = |mut position_parents: super::RecursiveWalk<_>| {
+                        while let Some(position_parent) = position_parents.next_node(graph) {
+                            if graph.depth_parent_recursion(position_parent)
+                                .any(graph, |_g, _e, n| n == depth_parent)
+                            {
+                                return true;
+                            }
                         }
-                    }
+                        false
+                    };
 
-                    // Retrieve the offset from the `depth_parent`.
-                    let x_offset = depth_parent_widget.maybe_x_scroll_state
-                        .map(|scroll| scroll.offset).unwrap_or(0.0);
-                    let y_offset = depth_parent_widget.maybe_y_scroll_state
-                        .map(|scroll| scroll.offset).unwrap_or(0.0);
+                    let x_offset = depth_parent_widget.maybe_x_scroll_state.map(|scroll| {
+                        let mut position_parents = graph.x_position_parent_recursion(idx);
+                        if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
+                    }).unwrap_or(0.0);
+
+                    let y_offset = depth_parent_widget.maybe_y_scroll_state.map(|scroll| {
+                        let mut position_parents = graph.y_position_parent_recursion(idx);
+                        if is_already_offset(position_parents) { 0.0 } else { scroll.offset }
+                    }).unwrap_or(0.0);
+
                     return [x_offset, y_offset];
                 }
             }

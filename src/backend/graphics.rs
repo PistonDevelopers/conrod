@@ -354,22 +354,47 @@ pub fn draw_lines<G, I>(context: &Context,
 pub fn draw_scrolling<G>(context: &Context,
                          graphics: &mut G,
                          kid_area_rect: Rect,
-                         maybe_x_scroll_state: Option<widget::scroll::State>,
-                         maybe_y_scroll_state: Option<widget::scroll::State>)
+                         maybe_x_scroll_state: Option<widget::scroll::StateX>,
+                         maybe_y_scroll_state: Option<widget::scroll::StateY>)
     where G: Graphics,
 {
     use widget::scroll;
 
+    fn draw_axis<G, A>(context: &Context,
+                       graphics: &mut G,
+                       kid_area_rect: Rect,
+                       scroll_state: &scroll::State<A>)
+        where G: Graphics,
+              A: scroll::Axis,
+    {
+        use widget::scroll::Elem::{Handle, Track};
+        use widget::scroll::Interaction::{Normal, Highlighted, Clicked};
 
-    if let Some(scroll_state) = maybe_y_scroll_state {
         let color = scroll_state.color;
-        let track_color = color.alpha(0.2);
+        let track_color = match scroll_state.interaction {
+            Clicked(Track) => color.highlighted(),
+            Highlighted(_) | Clicked(_) => color,
+            _ if scroll_state.is_scrolling => color,
+            _ => return,
+        }.alpha(0.2);
+        let handle_color = match scroll_state.interaction {
+            Clicked(Handle(_)) => color.clicked(),
+            Highlighted(_) | Clicked(_) => color,
+            _ if scroll_state.is_scrolling => color,
+            _ => return,
+        };
         let thickness = scroll_state.thickness;
-        let track = scroll::track(kid_area_rect, thickness);
-        let handle = scroll::handle(track, &scroll_state);
-
+        let track = scroll::track::<A>(kid_area_rect, thickness);
+        let handle = scroll::handle::<A>(track, &scroll_state);
         draw_rectangle(context, graphics, track, track_color);
-        draw_rectangle(context, graphics, handle, color);
+        draw_rectangle(context, graphics, handle, handle_color);
     }
 
+    if let Some(ref scroll_state) = maybe_y_scroll_state {
+        draw_axis::<G, scroll::Y>(context, graphics, kid_area_rect, scroll_state)
+    }
+
+    if let Some(ref scroll_state) = maybe_x_scroll_state {
+        draw_axis::<G, scroll::X>(context, graphics, kid_area_rect, scroll_state)
+    }
 }

@@ -272,9 +272,9 @@ pub struct Cached<W> where W: Widget {
     /// Whether or not the Widget is a "floating" Widget.
     pub maybe_floating: Option<Floating>,
     /// The state for a widget's scrollable *x* axis.
-    pub maybe_x_scroll_state: Option<scroll::State>,
+    pub maybe_x_scroll_state: Option<scroll::StateX>,
     /// The state for a widget's scrollable *y* axis.
-    pub maybe_y_scroll_state: Option<scroll::State>,
+    pub maybe_y_scroll_state: Option<scroll::StateY>,
 }
 
 /// A unique identifier for a **Widget** type.
@@ -312,9 +312,9 @@ pub struct PreUpdateCache {
     /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
     /// Scrolling data for the **Widget**'s *x* axis if there is some.
-    pub maybe_x_scroll_state: Option<scroll::State>,
+    pub maybe_x_scroll_state: Option<scroll::StateX>,
     /// Scrolling data for the **Widget**'s *y* axis if there is some.
-    pub maybe_y_scroll_state: Option<scroll::State>,
+    pub maybe_y_scroll_state: Option<scroll::StateY>,
     /// Whether or not the **Widget** has been instantiated as a graphical element for some other
     /// widget.
     pub maybe_graphics_for: Option<Index>,
@@ -880,24 +880,13 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
         widget.kid_area(args)
     };
 
-    // If the `y` range is scrollable, retrieve the up-to-date scroll_offset.
-    let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
-        let kid_area_range = kid_area.rect.y;
-        scroll::State::update(ui, idx, scroll_args, kid_area_range, maybe_prev_y_scroll_state)
+    // If either axis is scrollable, retrieve the up-to-date scroll_offset for that axis.
+    let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
+        scroll::State::update(ui, idx, scroll_args, kid_area.rect, maybe_prev_x_scroll_state)
     });
-
-    let maybe_x_scroll_state = None;
-
-    // TODO
-    // // Check whether or not our new scrolling state should capture or uncapture the mouse.
-    // if let (Some(ref prev), Some(ref new)) = (maybe_prev_scrolling, maybe_new_scrolling) {
-    //     if scroll::capture_mouse(prev, new) {
-    //         ui::mouse_captured_by(ui, idx);
-    //     }
-    //     if scroll::uncapture_mouse(prev, new) {
-    //         ui::mouse_uncaptured_by(ui, idx);
-    //     }
-    // }
+    let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
+        scroll::State::update(ui, idx, scroll_args, kid_area.rect, maybe_prev_y_scroll_state)
+    });
 
     // Determine whether or not this is the first time set has been called.
     // We'll use this to determine whether or not we need to draw for the first time.
