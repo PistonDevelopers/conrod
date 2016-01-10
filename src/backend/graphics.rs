@@ -53,7 +53,7 @@ pub fn draw_from_graph<G, C>(context: Context,
     // here.
     let is_visible = |idx: NodeIndex, container: &Container| -> bool {
         container.rect.overlap(window.rect).is_some()
-        && graph::algo::visible_area_of_widget(graph, idx).is_some()
+        && graph::algo::cropped_area_of_widget(graph, idx).is_some()
     };
 
     // The depth order describes the order in which widgets should be drawn.
