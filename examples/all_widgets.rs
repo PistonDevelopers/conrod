@@ -131,7 +131,7 @@ fn main() {
 
     // Construct the window.
     let window: PistonWindow =
-        WindowSettings::new("All The Widgets!", [1100, 550])
+        WindowSettings::new("All The Widgets!", [1100, 560])
             .exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.

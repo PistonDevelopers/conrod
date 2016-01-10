@@ -13,6 +13,7 @@ use input::{
     PressEvent,
     ReleaseEvent,
     RenderEvent,
+    ResizeEvent,
     TextEvent,
 };
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
@@ -242,6 +243,12 @@ impl<C> Ui<C> {
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
+
+        event.resize(|w, h| {
+            self.win_w = w as f64;
+            self.win_h = h as f64;
+            self.needs_redraw();
+        });
 
         event.render(|args| {
             self.win_w = args.width as f64;
