@@ -9,7 +9,7 @@
 
 
 use ::{Color, Point, Rect, Scalar};
-use graph::{Container, Graph, Visitable};
+use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
 use std::iter::once;
 use theme::Theme;
@@ -38,6 +38,24 @@ pub fn draw_from_graph<G, C>(context: Context,
     // (perhaps owned by the Ui) for this.
     let mut scroll_stack: Vec<Context> = Vec::new();
 
+    // Retrieve the core window widget so that we can use it to filter visible widgets.
+    let window_idx = NodeIndex::new(0);
+    let window = match graph.widget(window_idx){
+        Some(window) => window,
+        // If we don't yet have the window widget, we won't have *any* widgets, so bail out.
+        None => return,
+    };
+
+    // A function for checking whether or not a widget would be visible.
+    //
+    // TODO: Refactor this into a `visible_area_of_widget` graph algo. Also, consider calculating
+    // the visible area during the `set_widgets` stage, as it might be more optimal than doing so
+    // here.
+    let is_visible = |idx: NodeIndex, container: &Container| -> bool {
+        container.rect.overlap(window.rect).is_some()
+        && graph::algo::cropped_area_of_widget(graph, idx).is_some()
+    };
+
     // The depth order describes the order in which widgets should be drawn.
     for &visitable in depth_order {
         match visitable {
@@ -48,8 +66,10 @@ pub fn draw_from_graph<G, C>(context: Context,
                     // Check the stack for the current Context.
                     let context = *scroll_stack.last().unwrap_or(&context);
 
-                    // Draw the widget from its container.
-                    draw_from_container(&context, graphics, character_cache, container, theme);
+                    // Draw the widget, but only if it would actually be visible on the window.
+                    if is_visible(idx, container) {
+                        draw_from_container(&context, graphics, character_cache, container, theme);
+                    }
 
                     // If the current widget is some scrollable widget, we need to add a context
                     // for it to the top of the stack.

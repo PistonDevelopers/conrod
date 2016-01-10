@@ -1,7 +1,7 @@
 [package]
 
 name = "conrod"
-version = "0.29.1"
+version = "0.30.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -22,7 +22,7 @@ path = "./src/lib.rs"
 
 
 [dependencies]
-daggy = "0.3.0"
+daggy = "0.4.0"
 pistoncore-input = "0.8.0"
 piston2d-graphics = "0.13.0"
 num = "0.1.27"
