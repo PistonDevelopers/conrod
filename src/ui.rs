@@ -613,7 +613,7 @@ impl<C> Ui<C> {
     /// Otherwise, return None if the widget is not visible.
     pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        graph::algo::visible_area_of_widget(&self.widget_graph, idx)
+        graph::algo::cropped_area_of_widget(&self.widget_graph, idx)
     }
 
 }

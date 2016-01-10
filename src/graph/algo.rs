@@ -18,8 +18,8 @@ use widget;
 /// Specifically, this considers the cropped scroll area for all parents.
 ///
 /// Otherwise, return None if the widget is hidden.
-pub fn visible_area_of_widget<I: GraphIndex>(graph: &Graph, idx: I) -> Option<Rect> {
-    visible_area_of_widget_maybe_within_depth(graph, idx, None)
+pub fn cropped_area_of_widget<I: GraphIndex>(graph: &Graph, idx: I) -> Option<Rect> {
+    cropped_area_of_widget_maybe_within_depth(graph, idx, None)
 }
 
 
@@ -29,18 +29,18 @@ pub fn visible_area_of_widget<I: GraphIndex>(graph: &Graph, idx: I) -> Option<Re
 /// the deepest_parent_idx is reached.
 ///
 /// Otherwise, return None if the widget is hidden.
-pub fn visible_area_of_widget_within_depth<I>(graph: &Graph,
+pub fn cropped_area_of_widget_within_depth<I>(graph: &Graph,
                                               idx: I,
                                               deepest_parent_idx: NodeIndex) -> Option<Rect>
     where I: GraphIndex,
 {
-    visible_area_of_widget_maybe_within_depth(graph, idx, Some(deepest_parent_idx))
+    cropped_area_of_widget_maybe_within_depth(graph, idx, Some(deepest_parent_idx))
 }
 
 
-/// Logic shared between the `visible_area_of_widget` and `visible_area_of_widget_within_depth`
+/// Logic shared between the `cropped_area_of_widget` and `cropped_area_of_widget_within_depth`
 /// functions.
-fn visible_area_of_widget_maybe_within_depth<I>(graph: &Graph,
+fn cropped_area_of_widget_maybe_within_depth<I>(graph: &Graph,
                                                 idx: I,
                                                 deepest_idx: Option<NodeIndex>) -> Option<Rect>
     where I: GraphIndex,
@@ -96,7 +96,7 @@ pub fn pick_widget(graph: &Graph, depth_order: &[Visitable], xy: Point) -> Optio
         .find(|&&visitable| {
             match visitable {
                 Visitable::Widget(idx) => {
-                    if let Some(visible_rect) = visible_area_of_widget(graph, idx) {
+                    if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
                         if visible_rect.is_over(xy) {
                             return true
                         }
@@ -189,7 +189,7 @@ pub fn kids_bounding_box<I>(graph: &Graph,
     {
         // If we're given some deepest parent index, we must only use the visible area within
         // the depth range that approaches it.
-        visible_area_of_widget_within_depth(graph, idx, deepest_parent_idx).map(|rect| {
+        cropped_area_of_widget_within_depth(graph, idx, deepest_parent_idx).map(|rect| {
 
             // An iterator yielding the bounding_box returned by each of our children.
             let kids_bounds = graph.depth_children(idx).filter(kid_filter).iter(graph).nodes()
