@@ -221,8 +221,11 @@ impl<A> State<A>
             .map(|state| state.offset)
             .unwrap_or(0.0);
 
+        // Padding for the range.
+        let padding = A::padding_range(kid_area.pad);
+
         // Get the range for the Axis that concerns this particular scroll `State`.
-        let kid_area_range = A::parallel_range(kid_area.rect);
+        let kid_area_range = A::parallel_range(kid_area.rect).pad_ends(padding.start, padding.end);
 
         // The `kid_area_range` but centred at zero.
         let kid_area_range_origin = Range::from_pos_and_len(0.0, kid_area_range.magnitude());
@@ -244,16 +247,18 @@ impl<A> State<A>
         // Determine the min and max offst bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
         let offset_bounds = {
-            let padding = A::padding_range(kid_area.pad);
             let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
             let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
-            Range::new(min_offset, max_offset).pad_ends(-padding.start, -padding.end)
+            Range::new(min_offset, max_offset)
         };
+
+        // The range is only scrollable if it is longer than the padded kid_area_range.
+        let is_scrollable = scrollable_range.len() > kid_area_range.len();
 
         // Determine the total `additional_scroll_offset` that we want to add to the
         // `current_offset`. We only need to check for additional offset and interactions if the
         // scrollable_range is actually longer than our kid_area.
-        let (additional_offset, new_interaction) = if scrollable_range.len() > kid_area_range.len() {
+        let (additional_offset, new_interaction) = if is_scrollable {
 
             let (scroll_bar_drag_offset, new_interaction) = match maybe_prev_scroll_state {
                 Some(prev_scroll_state) => {
