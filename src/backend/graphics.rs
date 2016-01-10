@@ -38,6 +38,12 @@ pub fn draw_from_graph<G, C>(context: Context,
     // (perhaps owned by the Ui) for this.
     let mut scroll_stack: Vec<Context> = Vec::new();
 
+    // Retrieve the core window widget so that we can use it to filter visible widgets.
+    let window = match graph.widget(::graph::NodeIndex::new(0)){
+        Some(window) => window,
+        None => return,
+    };
+
     // The depth order describes the order in which widgets should be drawn.
     for &visitable in depth_order {
         match visitable {
@@ -48,8 +54,10 @@ pub fn draw_from_graph<G, C>(context: Context,
                     // Check the stack for the current Context.
                     let context = *scroll_stack.last().unwrap_or(&context);
 
-                    // Draw the widget from its container.
-                    draw_from_container(&context, graphics, character_cache, container, theme);
+                    if container.rect.overlap(window.rect).is_some() {
+                        // Draw the widget from its container.
+                        draw_from_container(&context, graphics, character_cache, container, theme);
+                    }
 
                     // If the current widget is some scrollable widget, we need to add a context
                     // for it to the top of the stack.
