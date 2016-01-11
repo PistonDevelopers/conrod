@@ -452,8 +452,8 @@ impl Style {
     /// Get the color for the Canvas' Element.
     pub fn color(&self, theme: &Theme) -> Color {
         self.framed_rectangle.maybe_color
-            .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.framed_rectangle.maybe_color.unwrap_or(theme.background_color)
+            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
+                default.style.framed_rectangle.maybe_color
             }))
             .unwrap_or(theme.background_color)
     }
@@ -461,8 +461,8 @@ impl Style {
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
         self.framed_rectangle.maybe_frame
-            .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.framed_rectangle.maybe_frame.unwrap_or(theme.frame_width)
+            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
+                default.style.framed_rectangle.maybe_frame
             }))
             .unwrap_or(theme.frame_width)
     }
@@ -470,8 +470,8 @@ impl Style {
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
         self.framed_rectangle.maybe_frame_color
-            .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.framed_rectangle.maybe_frame_color.unwrap_or(theme.frame_color)
+            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
+                default.style.framed_rectangle.maybe_frame_color
             }))
             .unwrap_or(theme.frame_color)
     }
@@ -479,8 +479,8 @@ impl Style {
     /// Get the font size of the title bar.
     pub fn title_bar_font_size(&self, theme: &Theme) -> FontSize {
         self.text.maybe_font_size
-            .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.text.maybe_font_size.unwrap_or(theme.font_size_medium)
+            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
+                default.style.text.maybe_font_size
             }))
             .unwrap_or(theme.font_size_medium)
     }
@@ -515,19 +515,19 @@ impl Style {
         let default_style = theme.widget_style::<Style>(KIND);
         position::Padding {
             x: Range {
-                start: self.padding.maybe_left.or_else(|| default_style.as_ref().map(|default| {
-                    default.style.padding.maybe_left.unwrap_or(theme.padding.x.start)
+                start: self.padding.maybe_left.or_else(|| default_style.as_ref().and_then(|default| {
+                    default.style.padding.maybe_left
                 })).unwrap_or(theme.padding.x.start),
-                end: self.padding.maybe_right.or_else(|| default_style.as_ref().map(|default| {
-                    default.style.padding.maybe_right.unwrap_or(theme.padding.x.end)
+                end: self.padding.maybe_right.or_else(|| default_style.as_ref().and_then(|default| {
+                    default.style.padding.maybe_right
                 })).unwrap_or(theme.padding.x.end),
             },
             y: Range {
-                start: self.padding.maybe_bottom.or_else(|| default_style.as_ref().map(|default| {
-                    default.style.padding.maybe_bottom.unwrap_or(theme.padding.y.start)
+                start: self.padding.maybe_bottom.or_else(|| default_style.as_ref().and_then(|default| {
+                    default.style.padding.maybe_bottom
                 })).unwrap_or(theme.padding.y.start),
-                end: self.padding.maybe_top.or_else(|| default_style.as_ref().map(|default| {
-                    default.style.padding.maybe_top.unwrap_or(theme.padding.y.end)
+                end: self.padding.maybe_top.or_else(|| default_style.as_ref().and_then(|default| {
+                    default.style.padding.maybe_top
                 })).unwrap_or(theme.padding.y.end),
             },
         }
