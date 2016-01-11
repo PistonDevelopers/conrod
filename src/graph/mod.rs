@@ -138,7 +138,7 @@ pub enum Edge {
 }
 
 /// The number of different variants within the **Edge** enum.
-pub const NUM_EDGE_VARIANTS: usize = 3;
+pub const NUM_EDGE_VARIANTS: usize = 4;
 
 /// An alias for the petgraph::Graph used within our Ui Graph.
 type Dag = daggy::Dag<Node, Edge>;
