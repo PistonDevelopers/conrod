@@ -14,11 +14,6 @@
 use std::f32::consts::PI;
 use utils::{degrees, fmod, turns};
 
-macro_rules! make_color {
-	($r:expr, $g:expr, $b:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, 1.0));
-	($r:expr, $g:expr, $b:expr, $a:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, $a as f32 / 255.0));
-}
-
 /// Color supporting RGB and HSL variants.
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum Color {
@@ -370,6 +365,11 @@ pub fn radial(start: (f64, f64), start_r: f64,
 /// [Tango palette](http://tango.freedesktop.org/Tango_Icon_Theme_Guidelines) which provides
 /// aesthetically reasonable defaults for colors. Each color also comes with a light and dark
 /// version.
+
+macro_rules! make_color {
+	($r:expr, $g:expr, $b:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, 1.0));
+	($r:expr, $g:expr, $b:expr, $a:expr) => ( Color::Rgba($r as f32 / 255.0, $g as f32 / 255.0, $b as f32 / 255.0, $a as f32 / 255.0));
+}
 
 /// Scarlet Red - Light - #EF2929                         
 pub const LIGHT_RED      :  Color = make_color!(239, 41, 41);
