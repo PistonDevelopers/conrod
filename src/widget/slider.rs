@@ -16,7 +16,6 @@ use {
     Rectangle,
     Scalar,
     Text,
-    Theme,
     Widget,
 };
 use num::{Float, NumCast, ToPrimitive};
@@ -39,19 +38,21 @@ pub struct Slider<'a, T, F> {
     enabled: bool,
 }
 
-/// Styling for the Slider, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// The color of the slidable rectangle.
-    pub maybe_color: Option<Color>,
-    /// The length of the frame around the edges of the slidable rectangle.
-    pub maybe_frame: Option<Scalar>,
-    /// The color of the Slider's frame.
-    pub maybe_frame_color: Option<Color>,
-    /// The color of the Slider's label.
-    pub maybe_label_color: Option<Color>,
-    /// The font-size for the Slider's label.
-    pub maybe_label_font_size: Option<u32>,
+widget_style!{
+    KIND;
+    /// Graphical styling unique to the Slider widget.
+    style Style {
+        /// The color of the slidable rectangle.
+        - color: Color { theme.shape_color },
+        /// The length of the frame around the edges of the slidable rectangle.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the Slider's frame.
+        - frame_color: Color { theme.frame_color },
+        /// The color of the Slider's label.
+        - label_color: Color { theme.label_color },
+        /// The font-size for the Slider's label.
+        - label_font_size: FontSize { theme.font_size_medium }
+    }
 }
 
 /// Represents the state of the Slider widget.
@@ -350,71 +351,20 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
 }
 
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-}
-
-
 impl<'a, T, F> Colorable for Slider<'a, T, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, T, F> Frameable for Slider<'a, T, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -426,12 +376,12 @@ impl<'a, T, F> Labelable<'a> for Slider<'a, T, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }

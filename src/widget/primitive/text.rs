@@ -10,7 +10,6 @@ use {
     Range,
     Rect,
     Scalar,
-    Theme,
     Ui,
     Widget,
 };
@@ -32,28 +31,29 @@ pub struct Text<'a> {
     pub style: Style,
 }
 
-
-/// The styling for a **Text**'s graphics.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// The font size for the **Text**.
-    pub maybe_font_size: Option<FontSize>,
-    /// The color of the **Text**.
-    pub maybe_color: Option<Color>,
-    /// Whether or not the text should wrap around the width.
-    pub maybe_wrap: Option<Option<Wrap>>,
-    /// The spacing between consecutive lines.
-    pub maybe_line_spacing: Option<Scalar>,
-    /// Alignment of the text along the *x* axis.
-    pub maybe_text_align: Option<Align>,
-    // /// The typeface with which the Text is rendered.
-    // pub maybe_typeface: Option<Path>,
-    // /// The line styling for the text.
-    // pub maybe_line: Option<Option<Line>>,
-}
-
 /// The unique kind for the widget.
 pub const KIND: widget::Kind = "Text";
+
+widget_style!{
+    KIND;
+    /// The styling for a **Text**'s graphics.
+    style Style {
+        /// The font size for the **Text**.
+        - font_size: FontSize { theme.font_size_medium },
+        /// The color of the **Text**.
+        - color: Color { theme.label_color },
+        /// Whether or not the text should wrap around the width.
+        - maybe_wrap: Option<Wrap> { Some(Wrap::Whitespace) },
+        /// The spacing between consecutive lines.
+        - line_spacing: Scalar { 1.0 },
+        /// Alignment of the text along the *x* axis.
+        - text_align: Align { Align::Start },
+        // /// The typeface with which the Text is rendered.
+        // - typeface: Path,
+        // /// The line styling for the text.
+        // - line: Option<Line> { None },
+    }
+}
 
 /// The way in which text should wrap around the width.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -97,7 +97,7 @@ impl<'a> Text<'a> {
 
     /// Build the **Text** with the given font size.
     pub fn font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_font_size = Some(size);
+        self.style.font_size = Some(size);
         self
     }
 
@@ -127,75 +127,26 @@ impl<'a> Text<'a> {
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
     pub fn align_text_left(mut self) -> Self {
-        self.style.maybe_text_align = Some(Align::Start);
+        self.style.text_align = Some(Align::Start);
         self
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
     pub fn align_text_middle(mut self) -> Self {
-        self.style.maybe_text_align = Some(Align::Middle);
+        self.style.text_align = Some(Align::Middle);
         self
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
     pub fn align_text_right(mut self) -> Self {
-        self.style.maybe_text_align = Some(Align::End);
+        self.style.text_align = Some(Align::End);
         self
     }
 
     /// The height of the space used between consecutive lines.
     pub fn line_spacing(mut self, height: Scalar) -> Self {
-        self.style.maybe_line_spacing = Some(height);
+        self.style.line_spacing = Some(height);
         self
-    }
-
-}
-
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_font_size: None,
-            maybe_wrap: None,
-            maybe_line_spacing: None,
-            maybe_text_align: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.unwrap_or(theme.label_color)
-    }
-
-    /// Get the text font size for an Element.
-    pub fn font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_font_size.unwrap_or(theme.font_size_medium)
-    }
-
-    /// Get whether or not the text should wrap around if the length exceeds the width.
-    pub fn wrap(&self, theme: &Theme) -> Option<Wrap> {
-        const DEFAULT_WRAP: Option<Wrap> = Some(Wrap::Whitespace);
-        self.maybe_wrap.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_wrap.unwrap_or(DEFAULT_WRAP)
-        })).unwrap_or(DEFAULT_WRAP)
-    }
-
-    /// Get the length of the separating space between consecutive lines of text.
-    pub fn line_spacing(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_LINE_SPACING: Scalar = 1.0;
-        self.maybe_line_spacing.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_line_spacing.unwrap_or(DEFAULT_LINE_SPACING)
-        })).unwrap_or(DEFAULT_LINE_SPACING)
-    }
-
-    /// Get the text alignment along the **Text**'s bounding **Rect**'s *x* axis.
-    pub fn text_align(&self, theme: &Theme) -> Align {
-        const DEFAULT_TEXT_ALIGN: Align = Align::Start;
-        self.maybe_text_align.or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
-            default.style.maybe_text_align
-        })).unwrap_or(DEFAULT_TEXT_ALIGN)
     }
 
 }
@@ -244,7 +195,7 @@ impl<'a> Widget for Text<'a> {
         use position::Sizeable;
         let text = &self.text;
         let font_size = self.style.font_size(&ui.theme);
-        let num_lines = match self.style.wrap(&ui.theme) {
+        let num_lines = match self.style.maybe_wrap(&ui.theme) {
             None => text.lines().count(),
             Some(wrap) => match self.get_w(ui) {
                 None => text.lines().count(),
@@ -266,7 +217,7 @@ impl<'a> Widget for Text<'a> {
         let widget::UpdateArgs { rect, state, style, ui, .. } = args;
         let Text { text, .. } = self;
 
-        let maybe_wrap = style.wrap(ui.theme());
+        let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_size = style.font_size(ui.theme());
 
         // Produces an iterator yielding the line breaks for the `text`.
@@ -312,7 +263,7 @@ impl<'a> Widget for Text<'a> {
 
 impl<'a> Colorable for Text<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }

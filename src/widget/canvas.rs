@@ -451,36 +451,36 @@ impl Style {
 
     /// Get the color for the Canvas' Element.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.framed_rectangle.maybe_color
+        self.framed_rectangle.color
             .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.maybe_color
+                default.style.framed_rectangle.color
             }))
             .unwrap_or(theme.background_color)
     }
 
     /// Get the frame for an Element.
     pub fn frame(&self, theme: &Theme) -> f64 {
-        self.framed_rectangle.maybe_frame
+        self.framed_rectangle.frame
             .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.maybe_frame
+                default.style.framed_rectangle.frame
             }))
             .unwrap_or(theme.frame_width)
     }
 
     /// Get the frame Color for an Element.
     pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.framed_rectangle.maybe_frame_color
+        self.framed_rectangle.frame_color
             .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.maybe_frame_color
+                default.style.framed_rectangle.frame_color
             }))
             .unwrap_or(theme.frame_color)
     }
 
     /// Get the font size of the title bar.
     pub fn title_bar_font_size(&self, theme: &Theme) -> FontSize {
-        self.text.maybe_font_size
+        self.text.font_size
             .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.text.maybe_font_size
+                default.style.text.font_size
             }))
             .unwrap_or(theme.font_size_medium)
     }
@@ -503,9 +503,9 @@ impl Style {
 
     /// Get the color of the title bar label.
     pub fn title_bar_label_color(&self, theme: &Theme) -> Color {
-        self.text.maybe_color
+        self.text.color
             .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.text.maybe_color.unwrap_or(theme.label_color)
+                default.style.text.color.unwrap_or(theme.label_color)
             }))
             .unwrap_or(theme.label_color)
     }
@@ -538,18 +538,18 @@ impl Style {
 
 impl<'a> ::color::Colorable for Canvas<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_color = Some(color);
+        self.style.framed_rectangle.color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Canvas<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.framed_rectangle.maybe_frame = Some(width);
+        self.style.framed_rectangle.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_frame_color = Some(color);
+        self.style.framed_rectangle.frame_color = Some(color);
         self
     }
 }
@@ -559,11 +559,11 @@ impl<'a> ::label::Labelable<'a> for Canvas<'a> {
         self.title_bar(text)
     }
     fn label_color(mut self, color: Color) -> Self {
-        self.style.text.maybe_color = Some(color);
+        self.style.text.color = Some(color);
         self
     }
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.text.maybe_font_size = Some(size);
+        self.style.text.font_size = Some(size);
         self
     }
 }

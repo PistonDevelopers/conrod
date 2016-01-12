@@ -217,18 +217,18 @@ impl<'a, F> Widget for TitleBar<'a, F>
 
 impl<'a, F> Colorable for TitleBar<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_color = Some(color);
+        self.style.framed_rectangle.color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for TitleBar<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.framed_rectangle.maybe_frame = Some(width);
+        self.style.framed_rectangle.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_frame_color = Some(color);
+        self.style.framed_rectangle.frame_color = Some(color);
         self
     }
 }
@@ -240,12 +240,12 @@ impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.text.maybe_color = Some(color);
+        self.style.text.color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.text.maybe_font_size = Some(size);
+        self.style.text.font_size = Some(size);
         self
     }
 }

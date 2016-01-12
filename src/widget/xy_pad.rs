@@ -14,7 +14,6 @@ use {
     Scalar,
     Sizeable,
     Text,
-    Theme,
     Widget,
 };
 use num::Float;
@@ -36,23 +35,28 @@ pub struct XYPad<'a, X, Y, F> {
     enabled: bool,
 }
 
-/// Styling for the XYPad, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// The color of the XYPad's rectangle.
-    pub maybe_color: Option<Color>,
-    /// The width of the frame surrounding the rectangle.
-    pub maybe_frame: Option<Scalar>,
-    /// The color of the surrounding rectangle frame.
-    pub maybe_frame_color: Option<Color>,
-    /// The color of the XYPad's label and value label text.
-    pub maybe_label_color: Option<Color>,
-    /// The font size for the XYPad's label.
-    pub maybe_label_font_size: Option<FontSize>,
-    /// The font size for the XYPad's *value* label.
-    pub maybe_value_font_size: Option<FontSize>,
-    /// The thickness of the XYPad's crosshair lines.
-    pub maybe_line_thickness: Option<f64>,
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "XYPad";
+
+widget_style!{
+    KIND;
+    /// Unique graphical styling for the XYPad.
+    style Style {
+        /// The color of the XYPad's rectangle.
+        - color: Color { theme.shape_color },
+        /// The width of the frame surrounding the rectangle.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the surrounding rectangle frame.
+        - frame_color: Color { theme.frame_color },
+        /// The color of the XYPad's label and value label text.
+        - label_color: Color { theme.label_color },
+        /// The font size for the XYPad's label.
+        - label_font_size: FontSize { theme.font_size_medium },
+        /// The font size for the XYPad's *value* label.
+        - value_font_size: FontSize { 14 },
+        /// The thickness of the XYPad's crosshair lines.
+        - line_thickness: Scalar { 2.0 },
+    }
 }
 
 /// The state of the XYPad.
@@ -67,9 +71,6 @@ pub struct State<X, Y> {
     v_line_idx: IndexSlot,
     value_label_idx: IndexSlot,
 }
-
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "XYPad";
 
 /// The interaction state of the XYPad.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -124,13 +125,13 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
 
     /// Set the width of the XYPad's crosshair lines.
     pub fn line_thickness(mut self, width: f64) -> Self {
-        self.style.maybe_line_thickness = Some(width);
+        self.style.line_thickness = Some(width);
         self
     }
 
     /// Set the font size for the displayed crosshair value.
     pub fn value_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_value_font_size = Some(size);
+        self.style.value_font_size = Some(size);
         self
     }
 
@@ -355,88 +356,20 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 }
 
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-            maybe_value_font_size: None,
-            maybe_line_thickness: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-    /// Get the value font size for an Element.
-    pub fn value_font_size(&self, theme: &Theme) -> FontSize {
-        const DEFAULT_VALUE_FONT_SIZE: u32 = 14;
-        self.maybe_value_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_value_font_size.unwrap_or(DEFAULT_VALUE_FONT_SIZE)
-        })).unwrap_or(DEFAULT_VALUE_FONT_SIZE)
-    }
-
-    /// Get the point radius size for an Element.
-    pub fn line_thickness(&self, theme: &Theme) -> f64 {
-        const DEFAULT_LINE_THICKNESS: f64 = 2.0;
-        self.maybe_line_thickness.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_line_thickness.unwrap_or(DEFAULT_LINE_THICKNESS)
-        })).unwrap_or(DEFAULT_LINE_THICKNESS)
-    }
-
-}
-
 impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -449,12 +382,12 @@ impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }

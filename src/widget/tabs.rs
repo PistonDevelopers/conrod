@@ -423,18 +423,18 @@ impl Style {
 
 impl<'a> ::color::Colorable for Tabs<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.canvas.framed_rectangle.maybe_color = Some(color);
+        self.style.canvas.framed_rectangle.color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Tabs<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.canvas.framed_rectangle.maybe_frame = Some(width);
+        self.style.canvas.framed_rectangle.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.canvas.framed_rectangle.maybe_frame_color = Some(color);
+        self.style.canvas.framed_rectangle.frame_color = Some(color);
         self
     }
 }

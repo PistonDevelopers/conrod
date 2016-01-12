@@ -15,7 +15,6 @@ use ::{
     Rectangle,
     Scalar,
     Sizeable,
-    Theme,
 };
 use widget::{self, Widget};
 
@@ -37,22 +36,26 @@ pub struct DropDownList<'a, F> {
     enabled: bool,
 }
 
-/// Styling for the DropDownList, necessary for constructing its renderable Element.
-#[allow(missing_copy_implementations)]
-#[derive(PartialEq, Clone, Debug)]
-pub struct Style {
-    /// Color of the widget.
-    pub maybe_color: Option<Color>,
-    /// Width of the widget's frame.
-    pub maybe_frame: Option<f64>,
-    /// Color of the widget's frame.
-    pub maybe_frame_color: Option<Color>,
-    /// Color of the item labels.
-    pub maybe_label_color: Option<Color>,
-    /// Font size for the item labels.
-    pub maybe_label_font_size: Option<u32>,
-    /// Maximum height of the Open menu before the scrollbar appears.
-    pub maybe_max_visible_height: Option<MaxHeight>,
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "DropDownList";
+
+widget_style!{
+    KIND;
+    /// Styling for the DropDownList, necessary for constructing its renderable Element.
+    style Style {
+        /// Color of the widget.
+        - color: Color { theme.shape_color },
+        /// Width of the widget's frame.
+        - frame: Scalar { theme.frame_width },
+        /// Color of the widget's frame.
+        - frame_color: Color { theme.frame_color },
+        /// Color of the item labels.
+        - label_color: Color { theme.label_color },
+        /// Font size for the item labels.
+        - label_font_size: FontSize { theme.font_size_medium },
+        /// Maximum height of the Open menu before the scrollbar appears.
+        - maybe_max_visible_height: Option<MaxHeight> { None },
+    }
 }
 
 /// Represents the state of the DropDownList.
@@ -63,9 +66,6 @@ pub struct State {
     maybe_selected: Option<Idx>,
     canvas_idx: IndexSlot,
 }
-
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "DropDownList";
 
 /// Representations of the max height of the visible area of the DropDownList.
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -111,14 +111,14 @@ impl<'a, F> DropDownList<'a, F> {
     /// Set the maximum height of the DropDownList (before the scrollbar appears) as a number of
     /// items.
     pub fn max_visible_items(mut self, num: usize) -> Self {
-        self.style.maybe_max_visible_height = Some(MaxHeight::Items(num));
+        self.style.maybe_max_visible_height = Some(Some(MaxHeight::Items(num)));
         self
     }
 
     /// Set the maximum height of the DropDownList (before the scrollbar appears) as a scalar
     /// height.
     pub fn max_visible_height(mut self, height: f64) -> Self {
-        self.style.maybe_max_visible_height = Some(MaxHeight::Scalar(height));
+        self.style.maybe_max_visible_height = Some(Some(MaxHeight::Scalar(height)));
         self
     }
 
@@ -187,10 +187,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             None
         };
 
-        // A function to simplify retrieval of the current list of buttons.
-        fn get_buttons<'a>(maybe_new: &'a Option<Vec<(NodeIndex, String)>>,
-                           state: &'a widget::State<State>) -> &'a [(NodeIndex, String)] {
-            maybe_new.as_ref().map(|vec| &vec[..]).unwrap_or_else(|| &state.view().buttons[..])
+        if let Some(new_buttons) = maybe_new_buttons {
+            state.update(|state| state.buttons = new_buttons);
         }
 
         // Determine the new menu state by checking whether or not any of our Button's reactions
@@ -199,7 +197,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
-                let buttons = get_buttons(&maybe_new_buttons, state);
+                let buttons = &state.view().buttons;
 
                 // Get the button index and the label for the closed menu's button.
                 let (button_idx, label) = selected
@@ -232,7 +230,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     let bottom_win_y = (-window_dim[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
                     let max = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
-                    style.max_visible_height(ui.theme()).map(|max_height| {
+                    style.maybe_max_visible_height(ui.theme()).map(|max_height| {
                         let height = match max_height {
                             MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
                             MaxHeight::Scalar(height) => height,
@@ -290,10 +288,6 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
         };
 
-        if let Some(new_buttons) = maybe_new_buttons {
-            state.update(|state| state.buttons = new_buttons);
-        }
-
         if state.view().menu_state != new_menu_state {
             state.update(|state| state.menu_state = new_menu_state);
         }
@@ -301,12 +295,6 @@ impl<'a, F> Widget for DropDownList<'a, F> where
         if state.view().maybe_selected != *self.selected {
             state.update(|state| state.maybe_selected = *self.selected);
         }
-
-        // if state.view().maybe_label.as_ref().map(|label| &label[..]) != self.maybe_label {
-        //     state.update(|state| {
-        //         state.maybe_label = self.maybe_label.as_ref().map(|label| label.to_string());
-        //     });
-        // }
     }
 
 }
@@ -314,68 +302,14 @@ impl<'a, F> Widget for DropDownList<'a, F> where
 
 impl Style {
 
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-            maybe_max_visible_height: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-    /// Get the maximum visible height of the DropDownList.
-    pub fn max_visible_height(&self, theme: &Theme) -> Option<MaxHeight> {
-        self.maybe_max_visible_height.map(|h| Some(h)).or_else(|| {
-            theme.widget_style::<Self>(KIND).map(|default| default.style.maybe_max_visible_height)
-        }).unwrap_or(None)
-    }
-
     /// Style for a `Button` given this `Style`'s current state.
     pub fn button_style(&self, is_selected: bool) -> ButtonStyle {
         ButtonStyle {
-            maybe_color: self.maybe_color.map(|c| if is_selected { c.highlighted() } else { c }),
-            maybe_frame: self.maybe_frame,
-            maybe_frame_color: self.maybe_frame_color,
-            maybe_label_color: self.maybe_label_color,
-            maybe_label_font_size: self.maybe_label_font_size,
+            color: self.color.map(|c| if is_selected { c.highlighted() } else { c }),
+            frame: self.frame,
+            frame_color: self.frame_color,
+            label_color: self.label_color,
+            label_font_size: self.label_font_size,
         }
     }
 
@@ -384,18 +318,18 @@ impl Style {
 
 impl<'a, F> Colorable for DropDownList<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for DropDownList<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -407,12 +341,12 @@ impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }
