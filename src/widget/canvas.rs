@@ -132,7 +132,7 @@ enum Direction {
 impl<'a> Canvas<'a> {
 
     /// Construct a new Canvas builder.
-    pub fn new() -> Canvas<'a> {
+    pub fn new() -> Self {
         Canvas {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
@@ -141,10 +141,13 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    /// Show or hide the title bar.
-    pub fn title_bar(mut self, label: &'a str) -> Self {
-        self.maybe_title_bar_label = Some(label);
-        self
+    builder_methods!{
+        pub title_bar { maybe_title_bar_label = Some(&'a str) }
+        pub pad_left { style.pad_left = Some(Scalar) }
+        pub pad_right { style.pad_right = Some(Scalar) }
+        pub pad_bottom { style.pad_bottom = Some(Scalar) }
+        pub pad_top { style.pad_top = Some(Scalar) }
+        pub with_style { style = Style }
     }
 
     /// Set the length of the Split as an absolute scalar.
@@ -187,34 +190,6 @@ impl<'a> Canvas<'a> {
         self.flow(Direction::Y(Backwards), splits)
     }
 
-    /// Set the padding of the left of the area where child widgets will be placed.
-    #[inline]
-    pub fn pad_left(mut self, pad: Scalar) -> Self {
-        self.style.pad_left = Some(pad);
-        self
-    }
-
-    /// Set the padding of the right of the area where child widgets will be placed.
-    #[inline]
-    pub fn pad_right(mut self, pad: Scalar) -> Self {
-        self.style.pad_right = Some(pad);
-        self
-    }
-
-    /// Set the padding of the bottom of the area where child widgets will be placed.
-    #[inline]
-    pub fn pad_bottom(mut self, pad: Scalar) -> Self {
-        self.style.pad_bottom = Some(pad);
-        self
-    }
-
-    /// Set the padding of the top of the area where child widgets will be placed.
-    #[inline]
-    pub fn pad_top(mut self, pad: Scalar) -> Self {
-        self.style.pad_top = Some(pad);
-        self
-    }
-
     /// Set the padding for all edges of the area where child widgets will be placed.
     #[inline]
     pub fn pad(self, pad: Scalar) -> Self {
@@ -228,12 +203,6 @@ impl<'a> Canvas<'a> {
             .pad_right(pad.x.end)
             .pad_bottom(pad.y.start)
             .pad_top(pad.y.end)
-    }
-
-    /// Build the **Canvas** with the given **Style**.
-    pub fn with_style(mut self, style: Style) -> Self {
-        self.style = style;
-        self
     }
 
 }
@@ -458,20 +427,13 @@ impl Style {
 }
 
 impl<'a> ::color::Colorable for Canvas<'a> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a> ::frame::Frameable for Canvas<'a> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
@@ -479,13 +441,9 @@ impl<'a> ::label::Labelable<'a> for Canvas<'a> {
     fn label(self, text: &'a str) -> Self {
         self.title_bar(text)
     }
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.title_bar_text_color = Some(color);
-        self
-    }
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.title_bar_font_size = Some(size);
-        self
+    builder_methods!{
+        label_color { style.title_bar_text_color = Some(Color) }
+        label_font_size { style.title_bar_font_size = Some(FontSize) }
     }
 }
 
