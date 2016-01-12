@@ -10,6 +10,9 @@ use ui::{self, Ui, UserInput};
 pub use self::id::Id;
 pub use self::index::Index;
 
+#[macro_use]
+pub mod style;
+
 pub mod drag;
 mod id;
 mod index;
