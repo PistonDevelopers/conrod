@@ -4,6 +4,8 @@
 /// Defines a struct called `$Style`.
 ///
 /// Each given `$field_name` `$FieldType` pair will be defined as `Option` fields.
+#[doc(hidden)]
+#[macro_export]
 macro_rules! define_widget_style_struct {
 
     (
@@ -43,6 +45,8 @@ macro_rules! define_widget_style_struct {
 
 
 /// Produces a default instance of `$Style` (aka all fields set to `None`).
+#[doc(hidden)]
+#[macro_export]
 macro_rules! default_widget_style_struct {
 
     (
@@ -81,6 +85,8 @@ macro_rules! default_widget_style_struct {
 }
 
 /// Implements the static method `new` for the `$Style` type.
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_widget_style_new {
     ($Style:ident { $($fields:tt)* }) => {
         impl $Style {
@@ -93,6 +99,8 @@ macro_rules! impl_widget_style_new {
 }
 
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_widget_style_retrieval_method {
     ($KIND:ident, $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }) => {
         /// Retrieves the value from the `Style`.
@@ -120,6 +128,8 @@ macro_rules! impl_widget_style_retrieval_method {
     };
 }
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_widget_style_retrieval_methods {
 
     // Retrieval methods with a field on the `theme` to use as the default.
@@ -166,7 +176,158 @@ macro_rules! impl_widget_style_retrieval_methods {
 
 
 
-/// A macro for removing the boilerplate present in widget `Style` type implementations.
+
+/// A macro for vastly simplifying the definition and implementation of a widget's associated
+/// `Style` type.
+///
+/// For more information on the purpose of this `Style` type, see the associated `type Style` docs
+/// in the [`Widget` trait documentation](./trait.Widget.html).
+///
+/// Using the macro looks like this:
+///
+/// ```
+/// # #[macro_use] extern crate conrod;
+/// # fn main() {}
+/// # const KIND: conrod::WidgetKind = "Example";
+/// widget_style!{
+///     KIND;
+///     // Doc comment or attr for the generated `Style` struct can go here.
+///     style Style {
+///         // Fields and their type T (which get converted to `Option<T>` in the struct definition)
+///         // along with their default expression go here.
+///         // You can also write doc comments or attr above each field.
+///         - color: conrod::Color { theme.shape_color },
+///         - label_color: conrod::Color { conrod::color::BLUE },
+///         // .. more fields.
+///     }
+/// }
+/// ```
+///
+/// An invocation of the macro expands into two things:
+///
+/// 1. A struct definition with the given name following the `style` token.
+/// 2. An `impl Style` block with a `new` constructor as well as a style retrieval method for each
+///    given field. These retrieval methods do the following:
+///
+///    1. Attempt to use the value at the field.
+///    2. If the field is `None`, attempts to retreive a default from the `widget_styling` map in
+///       the `Ui`'s current `Theme`.
+///    3. If no defaults were found, evaluates the given default expression (or `theme.field`).
+///
+///
+/// # Examples
+///
+/// The following is a typical usage example for the `widget_style!` macro.
+///
+/// ```
+/// #[macro_use]
+/// extern crate conrod;
+/// 
+/// struct MyWidget {
+///     style: Style,
+///     // Other necessary fields...
+/// }
+///
+/// /// A unique string used to dynamically identify the widget type.
+/// ///
+/// /// Conrod uses this to store unique styling for each widget in a `HashMap` within the `Theme`.
+/// const KIND: conrod::WidgetKind = "MyWidget";
+///
+/// widget_style!{
+///     KIND;
+///     /// Unique, awesome styling for a `MyWidget`.
+///     style Style {
+///         /// The totally amazing color to use for the `MyWidget`.
+///         ///
+///         /// If the `color` is unspecified and there is no default given via the `Theme`, the
+///         /// `Theme`'s standard `shape_color` field will be used as a fallback.
+///         - color: conrod::Color { theme.shape_color },
+///         /// The extremely pretty color to use for the `MyWidget`'s label.
+///         ///
+///         /// If the `label_color` is unspecified and there is no default given via the `Theme`,
+///         /// the label will fallback to `conrod::color::PURPLE`.
+///         - label_color: conrod::Color { conrod::color::PURPLE },
+///     }
+/// }
+///
+/// // We can now retrieve the `color` or `label_color` for a `MyWidget` like so:
+/// // let color = my_widget.style.color(&theme);
+/// // let label_color = my_widget.style.label_color(&theme);
+/// 
+/// # fn main() {}
+/// ```
+///
+/// And here is what it expands into:
+///
+/// ```
+/// #[macro_use]
+/// extern crate conrod;
+///
+/// struct MyWidget {
+///     style: Style,
+///     // Other necessary fields...
+/// }
+///
+/// /// A unique string used to dynamically identify the widget type.
+/// ///
+/// /// Conrod uses this to store unique styling for each widget in a `HashMap` within the `Theme`.
+/// const KIND: conrod::WidgetKind = "MyWidget";
+///
+/// /// Unique, awesome styling for a `MyWidget`.
+/// #[derive(Copy, Clone, Debug, PartialEq)]
+/// pub struct Style {
+///     /// The totally amazing color to use for the `MyWidget`.
+///     ///
+///     /// If the `color` is unspecified and there is no default given via the `Theme`, the
+///     /// `Theme`'s standard `shape_color` field will be used as a fallback.
+///     color: Option<conrod::Color>,
+///     /// The extremely pretty color to use for the `MyWidget`'s label.
+///     ///
+///     /// If the `label_color` is unspecified and there is no default given via the `Theme`,
+///     /// the label will fallback to `conrod::color::PURPLE`.
+///     label_color: Option<conrod::Color>,
+/// }
+///
+/// impl Style {
+///
+///     /// Construct the default `Style`, initialising all fields to `None`.
+///     pub fn new() -> Self {
+///         Style {
+///             color: None,
+///             label_color: None,
+///         }
+///     }
+/// 
+///     /// Retrieves the value from the `Style`.
+///     ///
+///     /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
+///     pub fn color(&self, theme: &conrod::Theme) -> conrod::Color {
+///         self.color
+///             .or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+///                 default.style.color
+///             }))
+///             .unwrap_or_else(|| theme.shape_color)
+///     }
+///
+///     /// Retrieves the value from the `Style`.
+///     ///
+///     /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
+///     pub fn label_color(&self, theme: &conrod::Theme) -> conrod::Color {
+///         self.label_color
+///             .or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+///                 default.style.label_color
+///             }))
+///             .unwrap_or_else(|| conrod::color::PURPLE)
+///     }
+///
+/// }
+///
+/// // We can now retrieve the `color` or `label_color` for a `MyWidget` like so:
+/// // let color = my_widget.style.color(&theme);
+/// // let label_color = my_widget.style.label_color(&theme);
+///
+/// # fn main() {}
+/// ```
 #[macro_export]
 macro_rules! widget_style {
     (

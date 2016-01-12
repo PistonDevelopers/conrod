@@ -94,7 +94,7 @@ impl Theme {
 
     /// Retrieve the unique default styling for a widget.
     ///
-    /// Attempts to cast the `Box<WidgetStyle>` to the **Widget**'s unique style **T**.
+    /// Attempts to cast the `Box<WidgetStyle>` to the **Widget**'s unique associated style **T**.
     pub fn widget_style<T>(&self, kind: &'static str) -> Option<UniqueDefault<T>>
         where T: widget::Style,
     {

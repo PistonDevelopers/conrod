@@ -10,9 +10,11 @@ use ui::{self, Ui, UserInput};
 pub use self::id::Id;
 pub use self::index::Index;
 
+// Provides the `widget_style!` macro.
 #[macro_use]
-pub mod style;
+mod style;
 
+// Widget functionality modules.
 pub mod drag;
 mod id;
 mod index;
@@ -437,6 +439,7 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
 /// rather is used to update an instance of the **Widget**'s **Widget::State**, which *is* stored.
 ///
 /// Methods that *must* be overridden:
+///
 /// - common
 /// - common_mut
 /// - unique_kind
@@ -445,6 +448,7 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
 /// - update
 ///
 /// Methods that can be optionally overridden:
+///
 /// - default_x_position
 /// - default_y_position
 /// - default_width
@@ -453,6 +457,7 @@ pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
 /// - kid_area
 ///
 /// Methods that should not be overridden:
+///
 /// - floating
 /// - scroll_kids
 /// - scroll_kids_vertically
@@ -470,13 +475,61 @@ pub trait Widget: Sized {
     ///
     /// Conrod will never clone the state, it will only ever be moved.
     type State: Any + PartialEq + ::std::fmt::Debug;
-    /// Styling used by the widget to draw its graphics.
+    /// Every widget is required to have its own associated `Style` type. This type is intended to
+    /// contain high-level styling information for the widget that can be *optionally specified* by
+    /// a user of the widget.
     ///
-    /// Styling is useful to have in its own abstraction in order to make `Theme` defaults
-    /// easier to retrieve.
+    /// All `Style` structs are typically `Copy` and contain simple, descriptive fields like
+    /// `color`, `font_size`, `line_spacing`, `frame_width`, etc. These types are also required to
+    /// be `PartialEq`. This is so that the `Ui` may automatically compare the previous style to
+    /// the new style each time `.set` is called, allowing conrod to automatically determine
+    /// whether or not something has changed and if a re-draw is required.
+    ///
+    /// Each field in a `Style` struct is typically an `Option<T>`. This is so that each field may
+    /// be *optionally specified*, indicating to fall back to defaults if the fields are `None`
+    /// upon style retrieval.
+    ///
+    /// The reason this data is required to be in its own `Style` type (rather than in the widget
+    /// type itself) is so that conrod can distinguish between default style data that may be
+    /// stored within the `Theme`'s `widget_styling`, and other data that is necessary for the
+    /// widget's behaviour logic. Having `Style` be an associated type makes it trivial to retrieve
+    /// unique, widget-specific styling data for each widget from a single method (see
+    /// [`Theme::widget_style`](./theme/struct.Theme.html#method.widget_style)).
+    ///
+    /// These types are often quite similar and can involve a lot of boilerplate when written by
+    /// hand due to rust's lack of field inheritance. To get around this, conrod provides
+    /// [`widget_style!`][1] - a macro that vastly simplifies the definition and implementation of
+    /// widget `Style` types.
     ///
     /// Conrod doesn't yet support serializing widget styling with the `Theme` type, but we hope to
     /// soon.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate conrod;
+    /// # use conrod::{Color, FontSize, Scalar};
+    /// # fn main() {}
+    /// /// Unique styling for a Button widget.
+    /// pub struct Style {
+    ///     /// Color of the Button's pressable area.
+    ///     pub color: Option<Color>,
+    ///     /// Width of the frame surrounding the button.
+    ///     pub frame: Option<Scalar>,
+    ///     /// The color of the Button's rectangular frame.
+    ///     pub frame_color: Option<Color>,
+    ///     /// The color of the Button's label.
+    ///     pub label_color: Option<Color>,
+    ///     /// The font size for the Button's label.
+    ///     pub label_font_size: Option<FontSize>,
+    /// }
+    /// ```
+    ///
+    /// Note: It is recommended that you don't write these types yourself as it can get tedious.
+    /// Instead, we suggest using the [`widget_style!`][1] macro which also provides all necessary
+    /// style retrieval method implementations.
+    ///
+    /// [1]: ./macro.widget_style!.html
     type Style: Style;
 
     /// Return a reference to a **CommonBuilder** struct owned by the Widget.
