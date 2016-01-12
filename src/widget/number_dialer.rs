@@ -38,8 +38,13 @@ pub struct NumberDialer<'a, T, F> {
     max: T,
     maybe_label: Option<&'a str>,
     precision: u8,
+    /// The reaction function for the NumberDialer.
+    ///
+    /// It will be triggered when the value is updated or if the mouse button is released while the
+    /// cursor is above the widget.
     maybe_react: Option<F>,
     style: Style,
+    /// If true, will allow user input. If false, will disallow user inputs.
     enabled: bool,
 }
 
@@ -228,17 +233,9 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
         }
     }
 
-    /// Set the reaction for the NumberDialer. It will be triggered when the value is updated or if
-    /// the mouse button is released while the cursor is above the widget.
-    pub fn react(mut self, reaction: F) -> Self {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
@@ -486,38 +483,21 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
 
 
 impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
-impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
-{
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F> {
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
 
