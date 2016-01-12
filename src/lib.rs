@@ -23,7 +23,7 @@ pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
 pub use widget::primitive::shape::polygon::Polygon;
 pub use widget::primitive::shape::oval::Oval;
 pub use widget::primitive::shape::rectangle::Rectangle;
-pub use widget::primitive::text::Text;
+pub use widget::primitive::text::{Text, Wrap as TextWrap};
 
 pub use widget::button::Button;
 pub use widget::canvas::Canvas;
