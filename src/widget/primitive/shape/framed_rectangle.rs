@@ -46,11 +46,7 @@ impl FramedRectangle {
         }.wh(dim)
     }
 
-    /// Build the **FramedRectangle** with the given styling.
-    pub fn with_style(mut self, style: Style) -> Self {
-        self.style = style;
-        self
-    }
+    builder_method!(pub with_style { style = Style });
 
 }
 
@@ -88,20 +84,13 @@ impl Widget for FramedRectangle {
 
 
 impl Colorable for FramedRectangle {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 
 impl Frameable for FramedRectangle {
-    fn frame(mut self, width: Scalar) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }

@@ -34,9 +34,13 @@ const TEXT_PADDING: Scalar = 5.0;
 pub struct TextBox<'a, F> {
     common: widget::CommonBuilder,
     text: &'a mut String,
-    maybe_react: Option<F>,
+    /// The reaction for the TextBox.
+    ///
+    /// If `Some`, this will be triggered upon pressing of the `Enter`/`Return` key.
+    pub maybe_react: Option<F>,
     style: Style,
-    enabled: bool,
+    /// Whether or not user input is enabled for the TextBox.
+    pub enabled: bool,
 }
 
 /// Unique kind for the widget type.
@@ -320,23 +324,10 @@ impl<'a, F> TextBox<'a, F> {
         }
     }
 
-    /// Set the font size of the text.
-    pub fn font_size(mut self, font_size: FontSize) -> TextBox<'a, F> {
-        self.style.font_size = Some(font_size);
-        self
-    }
-
-    /// Set the reaction for the TextBox. It will be triggered upon pressing of the
-    /// `Enter`/`Return` key.
-    pub fn react(mut self, reaction: F) -> TextBox<'a, F> {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub font_size { style.font_size = Some(FontSize) }
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
@@ -609,19 +600,12 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
 
 impl<'a, F> Colorable for TextBox<'a, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, F> Frameable for TextBox<'a, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }

@@ -84,7 +84,7 @@ pub enum MenuState {
 impl<'a, F> DropDownList<'a, F> {
 
     /// Construct a new DropDownList.
-    pub fn new(strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>) -> DropDownList<'a, F> {
+    pub fn new(strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>) -> Self {
         DropDownList {
             common: widget::CommonBuilder::new(),
             strings: strings,
@@ -96,16 +96,9 @@ impl<'a, F> DropDownList<'a, F> {
         }
     }
 
-    /// Set the DropDownList's reaction. It will be triggered upon selection of a list item.
-    pub fn react(mut self, reaction: F) -> DropDownList<'a, F> {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
     /// Set the maximum height of the DropDownList (before the scrollbar appears) as a number of
@@ -317,36 +310,20 @@ impl Style {
 
 
 impl<'a, F> Colorable for DropDownList<'a, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, F> Frameable for DropDownList<'a, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
 impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }

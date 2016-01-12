@@ -31,11 +31,23 @@ pub struct Slider<'a, T, F> {
     value: T,
     min: T,
     max: T,
-    skew: f32,
-    maybe_react: Option<F>,
+    /// The amount in which the slider's display should be skewed.
+    ///
+    /// Higher skew amounts (above 1.0) will weight lower values.
+    ///
+    /// Lower skew amounts (below 1.0) will weight heigher values.
+    ///
+    /// All skew amounts should be greater than 0.0.
+    pub skew: f32,
+    /// Set the reaction for the Slider.
+    ///
+    /// It will be triggered if the value is updated or if the mouse button is released while the
+    /// cursor is above the rectangle.
+    pub maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
-    enabled: bool,
+    /// Whether or not user input is enabled for the Slider.
+    pub enabled: bool,
 }
 
 widget_style!{
@@ -121,33 +133,10 @@ impl<'a, T, F> Slider<'a, T, F> {
         }
     }
 
-    /// Set the amount in which the slider's display should be skewed.
-    ///
-    /// Higher skew amounts (above 1.0) will weight lower values.
-    ///
-    /// Lower skew amounts (below 1.0) will weight heigher values.
-    ///
-    /// All skew amounts should be greater than 0.0.
-    pub fn skew(mut self, skew: f32) -> Self {
-        self.skew = skew;
-        self
-    }
-
-    /// Set the reaction for the Slider.
-    ///
-    /// It will be triggered if the value is updated or if the mouse button is released while the
-    /// cursor is above the rectangle.
-    pub fn react(mut self, reaction: F) -> Self {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow adjusting the slider.
-    ///
-    /// If false, will disallow adjusting the slider.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub skew { skew = f32 }
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
@@ -352,36 +341,20 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
 
 
 impl<'a, T, F> Colorable for Slider<'a, T, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T, F> Frameable for Slider<'a, T, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
 impl<'a, T, F> Labelable<'a> for Slider<'a, T, F> {
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }

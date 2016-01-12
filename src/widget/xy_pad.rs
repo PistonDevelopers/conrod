@@ -30,9 +30,14 @@ pub struct XYPad<'a, X, Y, F> {
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     maybe_label: Option<&'a str>,
-    maybe_react: Option<F>,
+    /// The reaction function for the XYPad.
+    ///
+    /// It will be triggered when the value is updated or if the mouse button is released while the
+    /// cursor is above the rectangle.
+    pub maybe_react: Option<F>,
     style: Style,
-    enabled: bool,
+    /// Indicates whether the XYPad will respond to user input.
+    pub enabled: bool,
 }
 
 /// Unique kind for the widget type.
@@ -123,40 +128,19 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         }
     }
 
-    /// Set the width of the XYPad's crosshair lines.
-    pub fn line_thickness(mut self, width: f64) -> Self {
-        self.style.line_thickness = Some(width);
-        self
-    }
-
-    /// Set the font size for the displayed crosshair value.
-    pub fn value_font_size(mut self, size: FontSize) -> Self {
-        self.style.value_font_size = Some(size);
-        self
-    }
-
-    /// Set the reaction for the XYPad.
-    ///
-    /// It will be triggered when the value is updated or if the mouse button is released while the
-    /// cursor is above the rectangle.
-    pub fn react(mut self, reaction: F) -> Self {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub line_thickness { style.line_thickness = Some(Scalar) }
+        pub value_font_size { style.value_font_size = Some(FontSize) }
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
-    where
-        X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-        Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-        F: FnOnce(X, Y),
+    where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+          Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+          F: FnOnce(X, Y),
 {
     type State = State<X, Y>;
     type Style = Style;
@@ -357,38 +341,21 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
 
 impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
-impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F>
-{
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F> {
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
 
