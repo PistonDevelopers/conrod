@@ -7,6 +7,7 @@ macro_rules! builder_method {
     // A public builder method that assigns the given `$Type` value to the optional `$assignee`.
     (pub $fn_name:ident { $($assignee:ident).+ = Some($Type:ty) }) => {
         /// Build the type's self.$($assignee).+ with the given $Type.
+        #[inline]
         pub fn $fn_name(mut self, $fn_name: $Type) -> Self {
             self.$($assignee).+ = Some($fn_name);
             self
@@ -16,6 +17,7 @@ macro_rules! builder_method {
     // A builder method that assigns the given `$Type` value to the optional `$assignee`.
     ($fn_name:ident { $($assignee:ident).+ = Some($Type:ty) }) => {
         /// Build the type's self.$($assignee).+ with the given $Type.
+        #[inline]
         fn $fn_name(mut self, $fn_name: $Type) -> Self {
             self.$($assignee).+ = Some($fn_name);
             self
@@ -25,6 +27,7 @@ macro_rules! builder_method {
     // A public builder method that assigns the given `$Type` value to the `$assignee`.
     (pub $fn_name:ident { $($assignee:ident).+ = $Type:ty }) => {
         /// Build the type's self.$($assignee).+ with the given $Type.
+        #[inline]
         pub fn $fn_name(mut self, $fn_name: $Type) -> Self {
             self.$($assignee).+ = $fn_name;
             self
@@ -34,6 +37,7 @@ macro_rules! builder_method {
     // A builder method that assigns the given `$Type` value to the `$assignee`.
     ($fn_name:ident { $($assignee:ident).+ = $Type:ty }) => {
         /// Build the type's self.$($assignee).+ with the given $Type.
+        #[inline]
         fn $fn_name(mut self, $fn_name: $Type) -> Self {
             self.$($assignee).+ = $fn_name;
             self
