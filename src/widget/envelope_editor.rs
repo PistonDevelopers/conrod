@@ -37,7 +37,9 @@ use widget;
 pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
     common: widget::CommonBuilder,
     env: &'a mut Vec<E>,
-    skew_y_range: f32,
+    /// The value skewing for the envelope's y-axis. This is useful for displaying exponential
+    /// ranges such as frequency.
+    pub skew_y_range: f32,
     min_x: E::X, max_x: E::X,
     min_y: E::Y, max_y: E::Y,
     maybe_react: Option<F>,
@@ -214,34 +216,6 @@ fn get_new_interaction(is_over_elem: Option<Elem>,
 
 impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 
-    /// Set the radius of the envelope point circle.
-    #[inline]
-    pub fn point_radius(mut self, radius: f64) -> EnvelopeEditor<'a, E, F> {
-        self.style.point_radius = Some(radius);
-        self
-    }
-
-    /// Set the width of the envelope lines.
-    #[inline]
-    pub fn line_thickness(mut self, width: f64) -> EnvelopeEditor<'a, E, F> {
-        self.style.line_thickness = Some(width);
-        self
-    }
-
-    /// Set the font size for the displayed values.
-    #[inline]
-    pub fn value_font_size(mut self, size: FontSize) -> EnvelopeEditor<'a, E, F> {
-        self.style.value_font_size = Some(size);
-        self
-    }
-
-    /// Set the value skewing for the envelope's y-axis. This is useful for displaying exponential
-    /// ranges such as frequency.
-    #[inline]
-    pub fn skew_y(self, skew: f32) -> EnvelopeEditor<'a, E, F> {
-        EnvelopeEditor { skew_y_range: skew, ..self }
-    }
-
     /// Construct an EnvelopeEditor widget.
     pub fn new(env: &'a mut Vec<E>, min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y)
     -> EnvelopeEditor<'a, E, F> {
@@ -258,27 +232,23 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         }
     }
 
-    /// Set the reaction for the EnvelopeEditor.
-    pub fn react(mut self, reaction: F) -> EnvelopeEditor<'a, E, F> {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub point_radius { style.point_radius = Some(Scalar) }
+        pub line_thickness { style.line_thickness = Some(Scalar) }
+        pub value_font_size { style.value_font_size = Some(FontSize) }
+        pub skew_y { skew_y_range = f32 }
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
 
 
 impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
-    where
-        E: EnvelopePoint,
-        E::X: Any,
-        E::Y: Any,
-        F: FnMut(&mut Vec<E>, usize),
+    where E: EnvelopePoint,
+          E::X: Any,
+          E::Y: Any,
+          F: FnMut(&mut Vec<E>, usize),
 {
     type State = State<E>;
     type Style = Style;
@@ -701,23 +671,16 @@ impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint
 {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint
 {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
@@ -725,18 +688,9 @@ impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint
 {
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }

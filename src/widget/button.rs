@@ -21,9 +21,11 @@ use widget;
 pub struct Button<'a, F> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
+    /// The reaction for the Button. The reaction will be triggered upon release of the button.
     maybe_react: Option<F>,
     /// Unique styling for the Button.
     pub style: Style,
+    /// Whether or not user input is enabled.
     enabled: bool,
 }
 
@@ -103,16 +105,9 @@ impl<'a, F> Button<'a, F> {
         }
     }
 
-    /// Set the reaction for the Button. The reaction will be triggered upon release of the button.
-    pub fn react(mut self, reaction: F) -> Self {
-        self.maybe_react = Some(reaction);
-        self
-    }
-
-    /// If true, will allow user inputs.  If false, will disallow user inputs.
-    pub fn enabled(mut self, flag: bool) -> Self {
-        self.enabled = flag;
-        self
+    builder_methods!{
+        pub react { maybe_react = Some(F) }
+        pub enabled { enabled = bool }
     }
 
 }
@@ -217,36 +212,20 @@ impl<'a, F> Widget for Button<'a, F>
 
 
 impl<'a, F> Colorable for Button<'a, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, F> Frameable for Button<'a, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
 impl<'a, F> Labelable<'a> for Button<'a, F> {
-    fn label(mut self, text: &'a str) -> Self {
-        self.maybe_label = Some(text);
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
+    builder_methods!{
+        label { maybe_label = Some(&'a str) }
+        label_color { style.label_color = Some(Color) }
+        label_font_size { style.label_font_size = Some(FontSize) }
     }
 }

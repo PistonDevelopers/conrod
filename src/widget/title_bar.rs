@@ -111,24 +111,6 @@ impl<'a, F> TitleBar<'a, F>
         }.w_of(idx).mid_top_of(idx)
     }
 
-    /// Build the **TitleBar** with the given color.
-    pub fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
-
-    /// Build the **TitleBar** with the given frame width.
-    pub fn frame(mut self, frame: Scalar) -> Self {
-        self.style.frame = Some(frame);
-        self
-    }
-
-    /// Build the **TitleBar** with the given frame color.
-    pub fn frame_color(mut self, frame_color: Color) -> Self {
-        self.style.frame_color = Some(frame_color);
-        self
-    }
-
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
     pub fn align_text_left(mut self) -> Self {
         self.style.text_align = Some(Align::Start);
@@ -147,16 +129,9 @@ impl<'a, F> TitleBar<'a, F>
         self
     }
 
-    /// The height of the space used between consecutive lines.
-    pub fn line_spacing(mut self, height: Scalar) -> Self {
-        self.style.line_spacing = Some(height);
-        self
-    }
-
-    /// Pass the title bar some function to call upon interaction changes.
-    pub fn react(mut self, f: F) -> Self {
-        self.maybe_react = Some(f);
-        self
+    builder_methods!{
+        pub line_spacing { style.line_spacing = Some(Scalar) }
+        pub react { maybe_react = Some(F) }
     }
 
 }
@@ -264,37 +239,21 @@ impl<'a, F> Widget for TitleBar<'a, F>
 
 
 impl<'a, F> Colorable for TitleBar<'a, F> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
+    builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, F> Frameable for TitleBar<'a, F> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.frame = Some(width);
-        self
-    }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.frame_color = Some(color);
-        self
+    builder_methods!{
+        frame { style.frame = Some(Scalar) }
+        frame_color { style.frame_color = Some(Color) }
     }
 }
 
 impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
-    fn label(mut self, text: &'a str) -> Self {
-        self.label = text;
-        self
-    }
-
-    fn label_color(mut self, color: Color) -> Self {
-        self.style.text_color = Some(color);
-        self
-    }
-
-    fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.font_size = Some(size);
-        self
+    builder_methods!{
+        label { label = &'a str }
+        label_color { style.text_color = Some(Color) }
+        label_font_size { style.font_size = Some(FontSize) }
     }
 }
 

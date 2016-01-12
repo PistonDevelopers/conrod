@@ -10,9 +10,9 @@ use ui::{self, Ui, UserInput};
 pub use self::id::Id;
 pub use self::index::Index;
 
-// Provides the `widget_style!` macro.
-#[macro_use]
-mod style;
+// Macro providing modules.
+#[macro_use] mod builder;
+#[macro_use] mod style;
 
 // Widget functionality modules.
 pub mod drag;

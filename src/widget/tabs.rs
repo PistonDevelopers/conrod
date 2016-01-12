@@ -93,18 +93,6 @@ impl<'a> Tabs<'a> {
         }
     }
 
-    /// Set the exact width of the tab bar.
-    pub fn bar_width(mut self, width: Scalar) -> Self {
-        self.style.maybe_bar_width = Some(width);
-        self
-    }
-
-    /// Set the initially selected tab with an index for our tab list.
-    pub fn starting_tab_idx(mut self, idx: usize) -> Self {
-        self.maybe_starting_tab_idx = Some(idx);
-        self
-    }
-
     /// Set the initially selected tab with a Canvas via its widget::Id.
     pub fn starting_canvas(mut self, canvas_id: widget::Id) -> Self {
         let maybe_idx = self.tabs.iter().enumerate()
@@ -112,6 +100,11 @@ impl<'a> Tabs<'a> {
             .map(|(idx, &(_, _))| idx);
         self.maybe_starting_tab_idx = maybe_idx;
         self
+    }
+
+    /// Set the padding for all edges.
+    pub fn pad(self, pad: Scalar) -> Tabs<'a> {
+        self.pad_left(pad).pad_right(pad).pad_top(pad).pad_bottom(pad)
     }
 
     /// Layout the tabs horizontally.
@@ -126,54 +119,18 @@ impl<'a> Tabs<'a> {
         self
     }
 
-    /// The color of the tab labels.
-    pub fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
-        self
+    builder_methods!{
+        pub bar_width { style.maybe_bar_width = Some(Scalar) }
+        pub starting_tab_idx { maybe_starting_tab_idx = Some(usize) }
+        pub label_color { style.maybe_label_color = Some(Color) }
+        pub label_font_size { style.maybe_label_font_size = Some(FontSize) }
+        pub canvas_style { style.canvas = canvas::Style }
+        pub pad_left { style.canvas.pad_left = Some(Scalar) }
+        pub pad_right { style.canvas.pad_right = Some(Scalar) }
+        pub pad_bottom { style.canvas.pad_bottom = Some(Scalar) }
+        pub pad_top { style.canvas.pad_top = Some(Scalar) }
     }
 
-    /// The font size for the tab labels.
-    pub fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
-        self
-    }
-
-    ///// Styling inherited by the inner canvas. /////
-
-    /// The style that will be used for the selected Canvas.
-    pub fn canvas_style(mut self, canvas_style: canvas::Style) -> Self {
-        self.style.canvas = canvas_style;
-        self
-    }
-
-    /// Set the padding from the left edge.
-    pub fn pad_left(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.pad_left = Some(pad);
-        self
-    }
-
-    /// Set the padding from the right edge.
-    pub fn pad_right(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.pad_right = Some(pad);
-        self
-    }
-
-    /// Set the padding from the top edge.
-    pub fn pad_top(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.pad_top = Some(pad);
-        self
-    }
-
-    /// Set the padding from the bottom edge.
-    pub fn pad_bottom(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.pad_bottom = Some(pad);
-        self
-    }
-
-    /// Set the padding for all edges.
-    pub fn pad(self, pad: Scalar) -> Tabs<'a> {
-        self.pad_left(pad).pad_right(pad).pad_top(pad).pad_bottom(pad)
-    }
 }
 
 
