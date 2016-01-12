@@ -1,4 +1,5 @@
 use {
+    Align,
     CharacterCache,
     Color,
     Colorable,
@@ -6,7 +7,6 @@ use {
     FontSize,
     Frameable,
     FramedRectangle,
-    FramedRectangleStyle,
     IndexSlot,
     Labelable,
     Padding,
@@ -17,7 +17,7 @@ use {
     Rect,
     Scalar,
     Sizeable,
-    TextStyle,
+    TextWrap,
     Theme,
     TitleBar,
     Ui,
@@ -62,17 +62,39 @@ pub struct State {
     title_bar_idx: IndexSlot,
 }
 
-/// Describes the style of a Canvas.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Styling for the Canvas' rectangle.
-    pub framed_rectangle: FramedRectangleStyle,
-    /// The label and styling for the Canvas' title bar if it has one.
-    pub text: TextStyle,
-    /// Padding of the kid area.
-    pub padding: PaddingBuilder,
-    /// If this **Canvas** is a split of some parent **Canvas**, this is the length of the split.
-    pub maybe_length: Option<Length>,
+widget_style!{
+    KIND;
+    /// Unique styling for the Canvas.
+    style Style {
+        /// The color of the Canvas' rectangle surface.
+        - color: Color { theme.background_color },
+        /// The width of the frame surrounding the Canvas' rectangle.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the Canvas' frame.
+        - frame_color: Color { theme.frame_color },
+        /// If this Canvas is a split of some parent Canvas, this is the length of the split.
+        - length: Length { Length::Weight(1.0) },
+
+        /// Padding for the left edge of the Canvas' kid area.
+        - pad_left: Scalar { theme.padding.x.start },
+        /// Padding for the right edge of the Canvas' kid area.
+        - pad_right: Scalar { theme.padding.x.end },
+        /// Padding for the bottom edge of the Canvas' kid area.
+        - pad_bottom: Scalar { theme.padding.y.start },
+        /// Padding for the top edge of the Canvas' kid area.
+        - pad_top: Scalar { theme.padding.y.end },
+
+        /// The color of the title bar's text.
+        - title_bar_text_color: Color { theme.label_color },
+        /// The font size for the title bar's text.
+        - title_bar_font_size: FontSize { theme.font_size_medium },
+        /// The way in which the title bar's text should wrap.
+        - title_bar_maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) },
+        /// The distance between lines for multi-line title bar text.
+        - title_bar_line_spacing: Scalar { 1.0 },
+        /// The horizontal alignment of the title bar text.
+        - title_bar_text_align: Align { Align::Middle },
+    }
 }
 
 /// Unique kind for the widget type.
@@ -83,19 +105,6 @@ pub type ListOfSplits<'a> = &'a [(widget::Id, Canvas<'a>)];
 
 /// A series of **Canvas** splits flowing in the specified direction.
 pub type FlowOfSplits<'a> = (Direction, ListOfSplits<'a>);
-
-/// A builder for the padding of the area where child widgets will be placed.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct PaddingBuilder {
-    /// The padding for the left of the area where child widgets will be placed.
-    pub maybe_left: Option<Scalar>,
-    /// The padding for the right of the area where child widgets will be placed.
-    pub maybe_right: Option<Scalar>,
-    /// The padding for the top of the area where child widgets will be placed.
-    pub maybe_top: Option<Scalar>,
-    /// The padding for the bottom of the area where child widgets will be placed.
-    pub maybe_bottom: Option<Scalar>,
-}
 
 /// The length of a `Split` given as a weight.
 ///
@@ -140,7 +149,7 @@ impl<'a> Canvas<'a> {
 
     /// Set the length of the Split as an absolute scalar.
     pub fn length(mut self, length: Scalar) -> Self {
-        self.style.maybe_length = Some(Length::Absolute(length));
+        self.style.length = Some(Length::Absolute(length));
         self
     }
 
@@ -148,7 +157,7 @@ impl<'a> Canvas<'a> {
     ///
     /// The default length weight for each widget is `1.0`.
     pub fn length_weight(mut self, weight: Weight) -> Self {
-        self.style.maybe_length = Some(Length::Weight(weight));
+        self.style.length = Some(Length::Weight(weight));
         self
     }
 
@@ -181,28 +190,28 @@ impl<'a> Canvas<'a> {
     /// Set the padding of the left of the area where child widgets will be placed.
     #[inline]
     pub fn pad_left(mut self, pad: Scalar) -> Self {
-        self.style.padding.maybe_left = Some(pad);
+        self.style.pad_left = Some(pad);
         self
     }
 
     /// Set the padding of the right of the area where child widgets will be placed.
     #[inline]
     pub fn pad_right(mut self, pad: Scalar) -> Self {
-        self.style.padding.maybe_right = Some(pad);
+        self.style.pad_right = Some(pad);
         self
     }
 
     /// Set the padding of the bottom of the area where child widgets will be placed.
     #[inline]
     pub fn pad_bottom(mut self, pad: Scalar) -> Self {
-        self.style.padding.maybe_bottom = Some(pad);
+        self.style.pad_bottom = Some(pad);
         self
     }
 
     /// Set the padding of the top of the area where child widgets will be placed.
     #[inline]
     pub fn pad_top(mut self, pad: Scalar) -> Self {
-        self.style.padding.maybe_top = Some(pad);
+        self.style.pad_top = Some(pad);
         self
     }
 
@@ -270,7 +279,7 @@ impl<'a> Widget for Canvas<'a> {
     /// Note: the position of the returned **Rect** should be relative to the center of the widget.
     fn drag_area(&self, dim: Dimensions, style: &Style, theme: &Theme) -> Option<Rect> {
         self.maybe_title_bar_label.map(|_| {
-            let font_size = style.text.font_size(theme);
+            let font_size = style.title_bar_font_size(theme);
             let (h, rel_y) = title_bar_h_rel_y(dim[1], font_size);
             let rel_xy = [0.0, rel_y];
             let dim = [dim[0], h];
@@ -282,7 +291,7 @@ impl<'a> Widget for Canvas<'a> {
     fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, .. } = args;
         if self.maybe_title_bar_label.is_some() {
-            let font_size = style.text.font_size(theme);
+            let font_size = style.title_bar_font_size(theme);
             let title_bar = title_bar(rect, font_size);
             widget::KidArea {
                 rect: rect.pad_top(title_bar.h()),
@@ -320,13 +329,20 @@ impl<'a> Widget for Canvas<'a> {
         if let Some(label) = maybe_title_bar_label {
             let title_bar_idx = state.view().title_bar_idx.get(&mut ui);
             let font_size = style.title_bar_font_size(ui.theme());
-            let label_color = style.title_bar_label_color(ui.theme());
-            TitleBar::new(label, rectangle_idx)
+            let label_color = style.title_bar_text_color(ui.theme());
+            let text_align = style.title_bar_text_align(ui.theme());
+            let line_spacing = style.title_bar_line_spacing(ui.theme());
+            let maybe_wrap = style.title_bar_maybe_wrap(ui.theme());
+            let mut title_bar = TitleBar::new(label, rectangle_idx);
+            title_bar.style.maybe_wrap = Some(maybe_wrap);
+            title_bar.style.text_align = Some(text_align);
+            title_bar
                 .color(color)
                 .frame(frame)
                 .frame_color(frame_color)
                 .label_font_size(font_size)
                 .label_color(label_color)
+                .line_spacing(line_spacing)
                 .graphics_for(idx)
                 .place_on_kid_area(false)
                 .react(|_interaction| ())
@@ -431,125 +447,30 @@ fn title_bar(canvas: Rect, font_size: FontSize) -> Rect {
     Rect::from_xy_dim(xy, dim)
 }
 
-
 impl Style {
-
-    /// Construct a default Canvas Style.
-    pub fn new() -> Style {
-        Style {
-            framed_rectangle: FramedRectangleStyle::new(),
-            text: TextStyle::new(),
-            padding: PaddingBuilder {
-                maybe_left: None,
-                maybe_right: None,
-                maybe_top: None,
-                maybe_bottom: None,
-            },
-            maybe_length: None,
-        }
-    }
-
-    /// Get the color for the Canvas' Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.framed_rectangle.color
-            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.color
-            }))
-            .unwrap_or(theme.background_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.framed_rectangle.frame
-            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.frame
-            }))
-            .unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.framed_rectangle.frame_color
-            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.framed_rectangle.frame_color
-            }))
-            .unwrap_or(theme.frame_color)
-    }
-
-    /// Get the font size of the title bar.
-    pub fn title_bar_font_size(&self, theme: &Theme) -> FontSize {
-        self.text.font_size
-            .or_else(|| theme.widget_style::<Style>(KIND).and_then(|default| {
-                default.style.text.font_size
-            }))
-            .unwrap_or(theme.font_size_medium)
-    }
-
-    // /// Get the alignment of the title bar label.
-    // pub fn title_bar_label_align(&self, theme: &Theme) -> Horizontal {
-    //     const DEFAULT_ALIGN: Horizontal = Horizontal::Middle;
-    //     self.maybe_title_bar_label_align.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-    //         default.style.maybe_title_bar_label_align.unwrap_or(DEFAULT_ALIGN)
-    //     })).unwrap_or(DEFAULT_ALIGN)
-    // }
-
-    /// The length of the Canvas when instantiated as a split of some parent canvas.
-    pub fn length(&self, theme: &Theme) -> Length {
-        const DEFAULT_LENGTH: Length = Length::Weight(1.0);
-        self.maybe_length.or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
-            default.style.maybe_length
-        })).unwrap_or(DEFAULT_LENGTH)
-    }
-
-    /// Get the color of the title bar label.
-    pub fn title_bar_label_color(&self, theme: &Theme) -> Color {
-        self.text.color
-            .or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
-                default.style.text.color.unwrap_or(theme.label_color)
-            }))
-            .unwrap_or(theme.label_color)
-    }
-
     /// Get the Padding for the Canvas' kid area.
     pub fn padding(&self, theme: &Theme) -> position::Padding {
-        let default_style = theme.widget_style::<Style>(KIND);
         position::Padding {
-            x: Range {
-                start: self.padding.maybe_left.or_else(|| default_style.as_ref().and_then(|default| {
-                    default.style.padding.maybe_left
-                })).unwrap_or(theme.padding.x.start),
-                end: self.padding.maybe_right.or_else(|| default_style.as_ref().and_then(|default| {
-                    default.style.padding.maybe_right
-                })).unwrap_or(theme.padding.x.end),
-            },
-            y: Range {
-                start: self.padding.maybe_bottom.or_else(|| default_style.as_ref().and_then(|default| {
-                    default.style.padding.maybe_bottom
-                })).unwrap_or(theme.padding.y.start),
-                end: self.padding.maybe_top.or_else(|| default_style.as_ref().and_then(|default| {
-                    default.style.padding.maybe_top
-                })).unwrap_or(theme.padding.y.end),
-            },
+            x: Range::new(self.pad_left(theme), self.pad_right(theme)),
+            y: Range::new(self.pad_bottom(theme), self.pad_top(theme)),
         }
     }
-
 }
-
 
 impl<'a> ::color::Colorable for Canvas<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Canvas<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.framed_rectangle.frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -559,11 +480,11 @@ impl<'a> ::label::Labelable<'a> for Canvas<'a> {
         self.title_bar(text)
     }
     fn label_color(mut self, color: Color) -> Self {
-        self.style.text.color = Some(color);
+        self.style.title_bar_text_color = Some(color);
         self
     }
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.text.font_size = Some(size);
+        self.style.title_bar_font_size = Some(size);
         self
     }
 }
