@@ -10,8 +10,8 @@ use {
     Labelable,
     Mouse,
     Positionable,
+    Scalar,
     Text,
-    Theme,
     Widget,
 };
 use widget;
@@ -27,19 +27,24 @@ pub struct Button<'a, F> {
     enabled: bool,
 }
 
-/// Styling for the Button, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Color of the Button's pressable area.
-    pub maybe_color: Option<Color>,
-    /// Width of the frame surrounding the button
-    pub maybe_frame: Option<f64>,
-    /// The color of the frame.
-    pub maybe_frame_color: Option<Color>,
-    /// The color of the Button's label.
-    pub maybe_label_color: Option<Color>,
-    /// The font size of the Button's label.
-    pub maybe_label_font_size: Option<u32>,
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "Button";
+
+widget_style!{
+    KIND;
+    /// Unique styling for the Button.
+    style Style {
+        /// Color of the Button's pressable area.
+        - color: Color { theme.shape_color },
+        /// Width of the frame surrounding the button
+        - frame: Scalar { theme.frame_width },
+        /// The color of the frame.
+        - frame_color: Color { theme.frame_color },
+        /// The color of the Button's label.
+        - label_color: Color { theme.label_color },
+        /// The font size of the Button's label.
+        - label_font_size: FontSize { theme.font_size_medium },
+    }
 }
 
 /// Represents the state of the Button widget.
@@ -49,9 +54,6 @@ pub struct State {
     label_idx: IndexSlot,
     interaction: Interaction,
 }
-
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "Button";
 
 /// Represents an interaction with the Button widget.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -91,7 +93,7 @@ fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Intera
 impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
-    pub fn new() -> Button<'a, F> {
+    pub fn new() -> Self {
         Button {
             common: widget::CommonBuilder::new(),
             maybe_react: None,
@@ -213,71 +215,21 @@ impl<'a, F> Widget for Button<'a, F>
 
 }
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-}
-
 
 impl<'a, F> Colorable for Button<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for Button<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -289,12 +241,12 @@ impl<'a, F> Labelable<'a> for Button<'a, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }

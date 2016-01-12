@@ -148,25 +148,25 @@ impl<'a> Tabs<'a> {
 
     /// Set the padding from the left edge.
     pub fn pad_left(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.padding.maybe_left = Some(pad);
+        self.style.canvas.pad_left = Some(pad);
         self
     }
 
     /// Set the padding from the right edge.
     pub fn pad_right(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.padding.maybe_right = Some(pad);
+        self.style.canvas.pad_right = Some(pad);
         self
     }
 
     /// Set the padding from the top edge.
     pub fn pad_top(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.padding.maybe_top = Some(pad);
+        self.style.canvas.pad_top = Some(pad);
         self
     }
 
     /// Set the padding from the bottom edge.
     pub fn pad_bottom(mut self, pad: Scalar) -> Tabs<'a> {
-        self.style.canvas.padding.maybe_bottom = Some(pad);
+        self.style.canvas.pad_bottom = Some(pad);
         self
     }
 
@@ -423,18 +423,18 @@ impl Style {
 
 impl<'a> ::color::Colorable for Tabs<'a> {
     fn color(mut self, color: Color) -> Self {
-        self.style.canvas.framed_rectangle.maybe_color = Some(color);
+        self.style.canvas.color = Some(color);
         self
     }
 }
 
 impl<'a> ::frame::Frameable for Tabs<'a> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.canvas.framed_rectangle.maybe_frame = Some(width);
+        self.style.canvas.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.canvas.framed_rectangle.maybe_frame_color = Some(color);
+        self.style.canvas.frame_color = Some(color);
         self
     }
 }

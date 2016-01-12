@@ -1,4 +1,5 @@
 use {
+    Align,
     CharacterCache,
     Color,
     Colorable,
@@ -6,7 +7,6 @@ use {
     FontSize,
     Frameable,
     FramedRectangle,
-    FramedRectangleStyle,
     IndexSlot,
     Labelable,
     Mouse,
@@ -14,7 +14,7 @@ use {
     Scalar,
     Sizeable,
     Text,
-    TextStyle,
+    TextWrap,
     Ui,
 };
 use widget::{self, Widget};
@@ -40,13 +40,28 @@ pub struct State {
     label_idx: IndexSlot,
 }
 
-/// Unique styling for the **TitleBar** widget.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Shape styling for the rectangle.
-    pub framed_rectangle: FramedRectangleStyle,
-    /// Styling for the label.
-    pub text: TextStyle,
+widget_style!{
+    KIND;
+    /// Unique styling for the **TitleBar** widget.
+    style Style {
+        /// The color of the TitleBar's rectangle surface.
+        - color: Color { theme.background_color },
+        /// The width of the frame surrounding the TitleBar's rectangle.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the TitleBar's frame.
+        - frame_color: Color { theme.frame_color },
+
+        /// The color of the title bar's text.
+        - text_color: Color { theme.label_color },
+        /// The font size for the title bar's text.
+        - font_size: FontSize { theme.font_size_medium },
+        /// The way in which the title bar's text should wrap.
+        - maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) },
+        /// The distance between lines for multi-line title bar text.
+        - line_spacing: Scalar { 1.0 },
+        /// The horizontal alignment of the title bar text.
+        - text_align: Align { Align::Middle },
+    }
 }
 
 /// Some interaction with the **TitleBar**.
@@ -64,19 +79,6 @@ pub const KIND: widget::Kind = "TitleBar";
 ///
 /// This is used to determine the size of the TitleBar.
 const LABEL_PADDING: f64 = 4.0;
-
-
-impl Style {
-
-    /// A new default Style.
-    pub fn new() -> Self {
-        Style {
-            framed_rectangle: FramedRectangleStyle::new(),
-            text: TextStyle::new(),
-        }
-    }
-
-}
 
 
 /// Check the current state of the button.
@@ -109,15 +111,45 @@ impl<'a, F> TitleBar<'a, F>
         }.w_of(idx).mid_top_of(idx)
     }
 
-    /// Pass some styling for the **TitleBar**'s **Label**.
-    pub fn label_style(mut self, style: TextStyle) -> Self {
-        self.style.text = style;
+    /// Build the **TitleBar** with the given color.
+    pub fn color(mut self, color: Color) -> Self {
+        self.style.color = Some(color);
         self
     }
 
-    /// Pass some styling for the **TitleBar**'s **FramedRectangle**.
-    pub fn rect_style(mut self, style: FramedRectangleStyle) -> Self {
-        self.style.framed_rectangle = style;
+    /// Build the **TitleBar** with the given frame width.
+    pub fn frame(mut self, frame: Scalar) -> Self {
+        self.style.frame = Some(frame);
+        self
+    }
+
+    /// Build the **TitleBar** with the given frame color.
+    pub fn frame_color(mut self, frame_color: Color) -> Self {
+        self.style.frame_color = Some(frame_color);
+        self
+    }
+
+    /// Align the text to the left of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_left(mut self) -> Self {
+        self.style.text_align = Some(Align::Start);
+        self
+    }
+
+    /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_middle(mut self) -> Self {
+        self.style.text_align = Some(Align::Middle);
+        self
+    }
+
+    /// Align the text to the right of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_right(mut self) -> Self {
+        self.style.text_align = Some(Align::End);
+        self
+    }
+
+    /// The height of the space used between consecutive lines.
+    pub fn line_spacing(mut self, height: Scalar) -> Self {
+        self.style.line_spacing = Some(height);
         self
     }
 
@@ -167,7 +199,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
     }
 
     fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
-        let font_size = self.style.text.font_size(&ui.theme);
+        let font_size = self.style.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
@@ -188,17 +220,33 @@ impl<'a, F> Widget for TitleBar<'a, F>
         // FramedRectangle widget.
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
+        let color = style.color(ui.theme());
+        let frame = style.frame(ui.theme());
+        let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
-            .with_style(style.framed_rectangle)
+            .color(color)
+            .frame(frame)
+            .frame_color(frame_color)
             .middle_of(idx)
             .graphics_for(idx)
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
         let label_idx = state.view().label_idx.get(&mut ui);
-        Text::new(label)
-            .with_style(style.text)
+        let text_color = style.text_color(ui.theme());
+        let text_align = style.text_align(ui.theme());
+        let font_size = style.font_size(ui.theme());
+        let line_spacing = style.line_spacing(ui.theme());
+        let maybe_wrap = style.maybe_wrap(ui.theme());
+        let mut text = Text::new(label);
+        text.style.maybe_wrap = Some(maybe_wrap);
+        text.style.text_align = Some(text_align);
+        text
+            .padded_w_of(rectangle_idx, frame)
             .middle_of(rectangle_idx)
+            .color(text_color)
+            .font_size(font_size)
+            .line_spacing(line_spacing)
             .graphics_for(idx)
             .set(label_idx, &mut ui);
 
@@ -217,18 +265,18 @@ impl<'a, F> Widget for TitleBar<'a, F>
 
 impl<'a, F> Colorable for TitleBar<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for TitleBar<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.framed_rectangle.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.framed_rectangle.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -240,12 +288,12 @@ impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.text.maybe_color = Some(color);
+        self.style.text_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.text.maybe_font_size = Some(size);
+        self.style.font_size = Some(size);
         self
     }
 }

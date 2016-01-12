@@ -14,9 +14,9 @@ use {
     Point,
     Positionable,
     Rectangle,
+    Scalar,
     Sizeable,
     Text,
-    Theme,
     Widget,
 };
 use num::{Float, NumCast};
@@ -43,23 +43,25 @@ pub struct NumberDialer<'a, T, F> {
     enabled: bool,
 }
 
-/// Styling for the NumberDialer, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Color of the NumberDialer's rectangle.
-    pub maybe_color: Option<Color>,
-    /// The frame around the NumberDialer's rectangle.
-    pub maybe_frame: Option<f64>,
-    /// The color of the rectangle frame.
-    pub maybe_frame_color: Option<Color>,
-    /// The color of the NumberDialer's label.
-    pub maybe_label_color: Option<Color>,
-    /// The font size for the NumberDialer's label.
-    pub maybe_label_font_size: Option<u32>,
-}
-
 /// Unique kind for the widget.
 pub const KIND: widget::Kind = "NumberDialer";
+
+widget_style!{
+    KIND;
+    /// Unique graphical styling for the NumberDialer.
+    style Style {
+        /// Color of the NumberDialer's rectangle.
+        - color: Color { theme.shape_color },
+        /// The color of the rectangle frame.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the rectangle frame.
+        - frame_color: Color { theme.frame_color },
+        /// The color of the NumberDialer's label.
+        - label_color: Color { theme.label_color },
+        /// The font size for the NumberDialer's label.
+        - label_font_size: FontSize { theme.font_size_medium }
+    }
+}
 
 /// Represents the specific elements that the NumberDialer is made up of. This is used to specify
 /// which element is Highlighted or Clicked when storing State.
@@ -483,71 +485,20 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
 }
 
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-}
-
-
 impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -560,12 +511,12 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F>
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }

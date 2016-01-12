@@ -19,7 +19,6 @@ use {
     Scalar,
     Sizeable,
     Text,
-    Theme,
     Widget,
 };
 use num::Float;
@@ -47,25 +46,30 @@ pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
     enabled: bool,
 }
 
-/// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Coloring for the EnvelopeEditor's **FramedRectangle**.
-    pub maybe_color: Option<Color>,
-    /// Thickness of the **FramedRectangle**'s frame.
-    pub maybe_frame: Option<f64>,
-    /// Color of the frame.
-    pub maybe_frame_color: Option<Color>,
-    /// Color of the label.
-    pub maybe_label_color: Option<Color>,
-    /// The font size of the **EnvelopeEditor**'s label if one was given.
-    pub maybe_label_font_size: Option<FontSize>,
-    /// The font size of the value label.
-    pub maybe_value_font_size: Option<FontSize>,
-    /// The radius of the envelope points.
-    pub maybe_point_radius: Option<f64>,
-    /// The thickness of the envelope lines.
-    pub maybe_line_thickness: Option<f64>,
+/// Unique kind for the widget.
+pub const KIND: widget::Kind = "EnvelopeEditor";
+
+widget_style!{
+    KIND;
+    /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
+    style Style {
+        /// Coloring for the EnvelopeEditor's **FramedRectangle**.
+        - color: Color { theme.shape_color },
+        /// Thickness of the **FramedRectangle**'s frame.
+        - frame: f64 { theme.frame_width },
+        /// Color of the frame.
+        - frame_color: Color { theme.frame_color },
+        /// Color of the label.
+        - label_color: Color { theme.label_color },
+        /// The font size of the **EnvelopeEditor**'s label if one was given.
+        - label_font_size: FontSize { theme.font_size_medium },
+        /// The font size of the value label.
+        - value_font_size: FontSize { 14 },
+        /// The radius of the envelope points.
+        - point_radius: Scalar { 6.0 },
+        /// The thickness of the envelope lines.
+        - line_thickness: Scalar { 2.0 },
+    }
 }
 
 /// Represents the state of the EnvelopeEditor widget.
@@ -84,9 +88,6 @@ pub struct State<E> where E: EnvelopePoint {
     point_path_idx: IndexSlot,
     point_indices: Vec<NodeIndex>,
 }
-
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "EnvelopeEditor";
 
 /// Describes an interaction with the EnvelopeEditor.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -216,21 +217,21 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
     /// Set the radius of the envelope point circle.
     #[inline]
     pub fn point_radius(mut self, radius: f64) -> EnvelopeEditor<'a, E, F> {
-        self.style.maybe_point_radius = Some(radius);
+        self.style.point_radius = Some(radius);
         self
     }
 
     /// Set the width of the envelope lines.
     #[inline]
     pub fn line_thickness(mut self, width: f64) -> EnvelopeEditor<'a, E, F> {
-        self.style.maybe_line_thickness = Some(width);
+        self.style.line_thickness = Some(width);
         self
     }
 
     /// Set the font size for the displayed values.
     #[inline]
     pub fn value_font_size(mut self, size: FontSize) -> EnvelopeEditor<'a, E, F> {
-        self.style.maybe_value_font_size = Some(size);
+        self.style.value_font_size = Some(size);
         self
     }
 
@@ -696,90 +697,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 }
 
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-            maybe_value_font_size: None,
-            maybe_point_radius: None,
-            maybe_line_thickness: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label Color for an Element.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn label_font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-    /// Get the value font size for an Element.
-    pub fn value_font_size(&self, theme: &Theme) -> FontSize {
-        const DEFAULT_VALUE_FONT_SIZE: u32 = 14;
-        self.maybe_value_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_value_font_size.unwrap_or(DEFAULT_VALUE_FONT_SIZE)
-        })).unwrap_or(DEFAULT_VALUE_FONT_SIZE)
-    }
-
-    /// Get the point radius size for an Element.
-    pub fn point_radius(&self, theme: &Theme) -> f64 {
-        const DEFAULT_POINT_RADIUS: f64 = 6.0;
-        self.maybe_point_radius.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_point_radius.unwrap_or(DEFAULT_POINT_RADIUS)
-        })).unwrap_or(DEFAULT_POINT_RADIUS)
-    }
-
-    /// Get the point radius size for an Element.
-    pub fn line_thickness(&self, theme: &Theme) -> f64 {
-        const DEFAULT_LINE_THICKNESS: f64 = 2.0;
-        self.maybe_line_thickness.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_line_thickness.unwrap_or(DEFAULT_LINE_THICKNESS)
-        })).unwrap_or(DEFAULT_LINE_THICKNESS)
-    }
-
-}
-
-
 impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint
 {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
@@ -789,11 +712,11 @@ impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
         E: EnvelopePoint
 {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
@@ -808,12 +731,12 @@ impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
     }
 
     fn label_color(mut self, color: Color) -> Self {
-        self.style.maybe_label_color = Some(color);
+        self.style.label_color = Some(color);
         self
     }
 
     fn label_font_size(mut self, size: FontSize) -> Self {
-        self.style.maybe_label_font_size = Some(size);
+        self.style.label_font_size = Some(size);
         self
     }
 }

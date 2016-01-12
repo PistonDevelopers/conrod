@@ -17,7 +17,6 @@ use {
     Rectangle,
     Scalar,
     Text,
-    Theme,
     Widget,
 };
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
@@ -40,20 +39,25 @@ pub struct TextBox<'a, F> {
     enabled: bool,
 }
 
-/// Styling for the TextBox, necessary for constructing its renderable Element.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
-    /// color with a zeroed alpha.
-    pub maybe_color: Option<Color>,
-    /// The frame around the rectangle behind the text.
-    pub maybe_frame: Option<Scalar>,
-    /// The color of the frame.
-    pub maybe_frame_color: Option<Color>,
-    /// The font size for the text.
-    pub maybe_font_size: Option<u32>,
-    /// The color of the text.
-    pub maybe_text_color: Option<Color>,
+/// Unique kind for the widget type.
+pub const KIND: widget::Kind = "TextBox";
+
+widget_style!{
+    KIND;
+    /// Unique graphical styling for the TextBox.
+    style Style {
+        /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
+        /// color with a zeroed alpha.
+        - color: Color { theme.shape_color },
+        /// The frame around the rectangle behind the text.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the frame.
+        - frame_color: Color { theme.frame_color },
+        /// The font size for the text.
+        - font_size: FontSize { 24 },
+        /// The color of the text.
+        - text_color: Color { theme.label_color },
+    }
 }
 
 /// The State of the TextBox widget that will be cached within the Ui.
@@ -66,9 +70,6 @@ pub struct State {
     highlight_idx: IndexSlot,
     control_pressed: bool
 }
-
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "TextBox";
 
 /// Represents the state of the text_box widget.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -321,7 +322,7 @@ impl<'a, F> TextBox<'a, F> {
 
     /// Set the font size of the text.
     pub fn font_size(mut self, font_size: FontSize) -> TextBox<'a, F> {
-        self.style.maybe_font_size = Some(font_size);
+        self.style.font_size = Some(font_size);
         self
     }
 
@@ -606,72 +607,21 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
 }
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-            maybe_font_size: None,
-            maybe_text_color: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame.unwrap_or(theme.frame_width)
-        })).unwrap_or(theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_frame_color.unwrap_or(theme.frame_color)
-        })).unwrap_or(theme.frame_color)
-    }
-
-    /// Get the label font size for an Element.
-    pub fn font_size(&self, theme: &Theme) -> FontSize {
-        const DEFAULT_FONT_SIZE: u32 = 24;
-        self.maybe_font_size.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_font_size.unwrap_or(DEFAULT_FONT_SIZE)
-        })).unwrap_or(DEFAULT_FONT_SIZE)
-    }
-
-    /// Get the Color for of the Text.
-    pub fn text_color(&self, theme: &Theme) -> Color {
-        self.maybe_text_color.or_else(|| theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_text_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-}
 
 impl<'a, F> Colorable for TextBox<'a, F> {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
 
 impl<'a, F> Frameable for TextBox<'a, F> {
     fn frame(mut self, width: f64) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
-

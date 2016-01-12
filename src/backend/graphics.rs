@@ -214,13 +214,13 @@ pub fn draw_from_container<G, C>(context: &Context,
 
         primitive::shape::framed_rectangle::KIND => {
             if let Some(framed_rectangle) = container.unique_widget_state::<::FramedRectangle>() {
-                let frame = framed_rectangle.style.get_frame(theme);
+                let frame = framed_rectangle.style.frame(theme);
                 if frame > 0.0 {
-                    let frame_color = framed_rectangle.style.get_frame_color(theme);
+                    let frame_color = framed_rectangle.style.frame_color(theme);
                     let frame_rect = container.rect;
                     draw_rectangle(context, graphics, frame_rect, frame_color);
                 }
-                let color = framed_rectangle.style.get_color(theme);
+                let color = framed_rectangle.style.color(theme);
                 let rect = container.rect.pad(frame);
                 draw_rectangle(context, graphics, rect, color);
             }

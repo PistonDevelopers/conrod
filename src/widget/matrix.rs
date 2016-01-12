@@ -1,5 +1,5 @@
 
-use {CharacterCache, NodeIndex, Scalar, Theme, Widget};
+use {CharacterCache, NodeIndex, Scalar, Widget};
 use widget;
 
 
@@ -33,17 +33,19 @@ pub struct State {
     indices: Vec<Vec<NodeIndex>>,
 }
 
-/// Unique styling for the `Matrix`.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// The width of the padding for each matrix element's "cell".
-    maybe_cell_pad_w: Option<Scalar>,
-    /// The height of the padding for each matrix element's "cell".
-    maybe_cell_pad_h: Option<Scalar>,
-}
-
 /// Unique kind for the widget.
 pub const KIND: &'static str = "WidgetMatrix";
+
+widget_style!{
+    KIND;
+    /// Unique styling for the `Matrix`.
+    style Style {
+        /// The width of the padding for each matrix element's "cell".
+        - cell_pad_w: Scalar { 0.0 },
+        /// The height of the padding for each matrix element's "cell".
+        - cell_pad_h: Scalar { 0.0 },
+    }
+}
 
 impl<F> Matrix<F> {
 
@@ -70,8 +72,8 @@ impl<F> Matrix<F> {
 
     /// A builder method for adding padding to the cell.
     pub fn cell_padding(mut self, w: Scalar, h: Scalar) -> Matrix<F> {
-        self.style.maybe_cell_pad_w = Some(w);
-        self.style.maybe_cell_pad_h = Some(h);
+        self.style.cell_pad_w = Some(w);
+        self.style.cell_pad_h = Some(h);
         self
     }
 
@@ -175,35 +177,6 @@ impl<'a, F, W> Widget for Matrix<F> where
         if let Some(new_indices) = maybe_new_indices {
             state.update(|state| state.indices = new_indices);
         }
-    }
-
-}
-
-
-impl Style {
-
-    /// Constructor for a new default Matrix Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_cell_pad_w: None,
-            maybe_cell_pad_h: None,
-        }
-    }
-
-    /// Get the width of the padding for each matrix element's cell.
-    pub fn cell_pad_w(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_CELL_PAD_W: Scalar = 0.0;
-        self.maybe_cell_pad_w.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_cell_pad_w.unwrap_or(DEFAULT_CELL_PAD_W)
-        })).unwrap_or(DEFAULT_CELL_PAD_W)
-    }
-
-    /// Get the height of the padding for each matrix element's cell.
-    pub fn cell_pad_h(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_CELL_PAD_H: Scalar = 0.0;
-        self.maybe_cell_pad_h.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_cell_pad_h.unwrap_or(DEFAULT_CELL_PAD_H)
-        })).unwrap_or(DEFAULT_CELL_PAD_H)
     }
 
 }

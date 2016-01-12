@@ -6,7 +6,6 @@ use {
     Frameable,
     Scalar,
     Sizeable,
-    Theme,
     Widget,
 };
 use widget;
@@ -21,20 +20,21 @@ pub struct FramedRectangle {
     pub style: Style,
 }
 
-
-/// Unique styling for the **FramedRectangle** widget.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// Shape styling for the inner rectangle.
-    pub maybe_color: Option<Color>,
-    /// The thickness of the frame.
-    pub maybe_frame: Option<Scalar>,
-    /// The color of the frame.
-    pub maybe_frame_color: Option<Color>,
-}
-
 /// Unique kind for the Widget.
 pub const KIND: widget::Kind = "FramedRectangle";
+
+widget_style!{
+    KIND;
+    /// Unique styling for the **FramedRectangle** widget.
+    style Style {
+        /// Shape styling for the inner rectangle.
+        - color: Color { theme.shape_color },
+        /// The thickness of the frame.
+        - frame: Scalar { theme.frame_width },
+        /// The color of the frame.
+        - frame_color: Color { theme.frame_color },
+    }
+}
 
 impl FramedRectangle {
 
@@ -87,40 +87,9 @@ impl Widget for FramedRectangle {
 }
 
 
-impl Style {
-
-    /// Construct the default Style.
-    pub fn new() -> Style {
-        Style {
-            maybe_color: None,
-            maybe_frame: None,
-            maybe_frame_color: None,
-        }
-    }
-
-    /// Get the Color for an Element.
-    pub fn get_color(&self, theme: &Theme) -> Color {
-        self.maybe_color.unwrap_or_else(|| theme.shape_color)
-    }
-
-    /// Get the frame for an Element.
-    pub fn get_frame(&self, theme: &Theme) -> f64 {
-        self.maybe_frame.unwrap_or_else(|| theme.frame_width)
-    }
-
-    /// Get the frame Color for an Element.
-    pub fn get_frame_color(&self, theme: &Theme) -> Color {
-        self.maybe_frame_color.unwrap_or_else(|| theme.frame_color)
-    }
-
-}
-
-
-
-
 impl Colorable for FramedRectangle {
     fn color(mut self, color: Color) -> Self {
-        self.style.maybe_color = Some(color);
+        self.style.color = Some(color);
         self
     }
 }
@@ -128,11 +97,11 @@ impl Colorable for FramedRectangle {
 
 impl Frameable for FramedRectangle {
     fn frame(mut self, width: Scalar) -> Self {
-        self.style.maybe_frame = Some(width);
+        self.style.frame = Some(width);
         self
     }
     fn frame_color(mut self, color: Color) -> Self {
-        self.style.maybe_frame_color = Some(color);
+        self.style.frame_color = Some(color);
         self
     }
 }
