@@ -346,8 +346,9 @@ impl Graph {
         let b = self.node_index(b).expect(NO_MATCHING_NODE_INDEX);
 
         // Check to see if the node already has some matching incoming edge.
-        // Keep it if it's the one we want. Otherwise, remove any incoming edge that matches the given
-        // edge kind but isn't coming from the node that we desire.
+        // Keep it if it's the one we want. Otherwise, remove any incoming edge
+        // that matches the given edge kind but isn't coming from the node
+        // that we desire.
         let mut parents = self.parents(b);
         let mut already_set = None;
 

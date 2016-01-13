@@ -268,7 +268,8 @@ impl<'a, F> Widget for DropDownList<'a, F> where F: FnMut(&mut Option<Idx>, Idx,
 
                     MenuState::Closed
                     // Otherwise if the mouse was released somewhere else we should close the menu.
-                } else if global_mouse.left.was_just_pressed && !canvas_rect.is_over(global_mouse.xy) {
+                } else if global_mouse.left.was_just_pressed &&
+                    !canvas_rect.is_over(global_mouse.xy) {
                     MenuState::Closed
                 } else {
                     MenuState::Open
