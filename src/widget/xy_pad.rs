@@ -1,21 +1,6 @@
 
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Frameable,
-    FramedRectangle,
-    FontSize,
-    IndexSlot,
-    Labelable,
-    Line,
-    Mouse,
-    Positionable,
-    Scalar,
-    Sizeable,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, Frameable, FramedRectangle, FontSize, IndexSlot, Labelable,
+     Line, Mouse, Positionable, Scalar, Sizeable, Text, Widget};
 use num::Float;
 use widget;
 use utils::{map_range, val_to_string};
@@ -27,8 +12,12 @@ use utils::{map_range, val_to_string};
 /// the cursor is above the rectangle.
 pub struct XYPad<'a, X, Y, F> {
     common: widget::CommonBuilder,
-    x: X, min_x: X, max_x: X,
-    y: Y, min_y: Y, max_y: Y,
+    x: X,
+    min_x: X,
+    max_x: X,
+    y: Y,
+    min_y: Y,
+    max_y: Y,
     maybe_label: Option<&'a str>,
     /// The reaction function for the XYPad.
     ///
@@ -67,8 +56,12 @@ widget_style!{
 /// The state of the XYPad.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State<X, Y> {
-    x: X, min_x: X, max_x: X,
-    y: Y, min_y: Y, max_y: Y,
+    x: X,
+    min_x: X,
+    max_x: X,
+    y: Y,
+    min_y: Y,
+    max_y: Y,
     interaction: Interaction,
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
@@ -98,29 +91,30 @@ impl Interaction {
 
 
 /// Check the current state of the button.
-fn get_new_interaction(is_over: bool,
-                       prev: Interaction,
-                       mouse: Mouse) -> Interaction {
+fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
         (false, Clicked, Down) => Clicked,
-        _                      => Normal,
+        _ => Normal,
     }
 }
 
 
 impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
-
     /// Build a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
         XYPad {
             common: widget::CommonBuilder::new(),
-            x: x_val, min_x: min_x, max_x: max_x,
-            y: y_val, min_y: min_y, max_y: max_y,
+            x: x_val,
+            min_x: min_x,
+            max_x: max_x,
+            y: y_val,
+            min_y: min_y,
+            max_y: max_y,
             maybe_react: None,
             maybe_label: None,
             style: Style::new(),
@@ -134,13 +128,12 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
 impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-          F: FnOnce(X, Y),
+          F: FnOnce(X, Y)
 {
     type State = State<X, Y>;
     type Style = Style;
@@ -160,8 +153,12 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     fn init_state(&self) -> State<X, Y> {
         State {
             interaction: Interaction::Normal,
-            x: self.x, min_x: self.min_x, max_x: self.max_x,
-            y: self.y, min_y: self.min_y, max_y: self.max_y,
+            x: self.x,
+            min_x: self.min_x,
+            max_x: self.max_x,
+            y: self.y,
+            min_y: self.min_y,
+            max_y: self.max_y,
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
             h_line_idx: IndexSlot::new(),
@@ -198,13 +195,17 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             (true, Some(mouse)) => {
                 let is_over_inner = inner_rect.is_over(mouse.xy);
                 get_new_interaction(is_over_inner, interaction, mouse)
-            },
+            }
         };
 
         // Capture the mouse if clicked, uncapture if released.
         match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(); },
-            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(); },
+            (Highlighted, Clicked) => {
+                ui.capture_mouse();
+            }
+            (Clicked, Highlighted) | (Clicked, Normal) => {
+                ui.uncapture_mouse();
+            }
             _ => (),
         }
 
@@ -218,14 +219,14 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
                 let new_x = map_range(clamped_x, l, r, min_x, max_x);
                 let new_y = map_range(clamped_y, b, t, min_y, max_y);
                 (new_x, new_y)
-            },
+            }
         };
 
         // React if value is changed or the pad is clicked/released.
         if let Some(react) = maybe_react {
-            let should_react = x != new_x || y != new_y
-                || (interaction == Highlighted && new_interaction == Clicked)
-                || (interaction == Clicked && new_interaction == Highlighted);
+            let should_react = x != new_x || y != new_y ||
+                               (interaction == Highlighted && new_interaction == Clicked) ||
+                               (interaction == Clicked && new_interaction == Highlighted);
             if should_react {
                 react(new_x, new_y);
             }
@@ -237,9 +238,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         let value_or_bounds_have_changed = {
             let v = state.view();
-            v.x != x || v.y != y
-                || v.min_x != min_x || v.max_x != max_x
-                || v.min_y != min_y || v.max_y != max_y
+            v.x != x || v.y != y || v.min_x != min_x || v.max_x != max_x || v.min_y != min_y ||
+            v.max_y != max_y
         };
 
         if value_or_bounds_have_changed {
@@ -336,7 +336,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .font_size(value_font_size)
             .set(value_label_idx, &mut ui);
     }
-
 }
 
 
@@ -358,4 +357,3 @@ impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F> {
         label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
-

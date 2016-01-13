@@ -1,15 +1,4 @@
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Point,
-    Positionable,
-    Range,
-    Rect,
-    Scalar,
-    Sizeable,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, Point, Positionable, Range, Rect, Scalar, Sizeable, Widget};
 use vecmath::{vec2_add, vec2_sub};
 use widget;
 
@@ -43,20 +32,27 @@ pub const KIND: widget::Kind = "PointPath";
 
 /// Find the bounding rect for the given series of points.
 fn bounding_box_for_points<I>(mut points: I) -> Rect
-    where I: Iterator<Item=Point>,
+    where I: Iterator<Item = Point>
 {
-    points.next().map(|first| {
-        let start_rect = Rect {
-            x: Range { start: first[0], end: first[0] },
-            y: Range { start: first[1], end: first[1] },
-        };
-        points.fold(start_rect, Rect::stretch_to_point)
-    }).unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
+    points.next()
+          .map(|first| {
+              let start_rect = Rect {
+                  x: Range {
+                      start: first[0],
+                      end: first[0],
+                  },
+                  y: Range {
+                      start: first[1],
+                      end: first[1],
+                  },
+              };
+              points.fold(start_rect, Rect::stretch_to_point)
+          })
+          .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
 }
 
 
 impl<I> PointPath<I> {
-
     /// The same as [**PointPath::new**](./struct.PointPath#method.new) but with th given style.
     pub fn styled(points: I, style: Style) -> Self {
         PointPath {
@@ -83,7 +79,7 @@ impl<I> PointPath<I> {
     /// If you would rather centre the points to the middle of the bounding box, use
     /// [**PointPath::centred**](./struct.PointPath#method.centred) instead.
     pub fn abs(points: I) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+        where I: IntoIterator<Item = Point> + Clone
     {
         PointPath::abs_styled(points, Style::new())
     }
@@ -91,7 +87,7 @@ impl<I> PointPath<I> {
     /// The same as [**PointPath::abs**](./struct.PointPath#method.abs) but constructs the
     /// **PointPath** with the given style.
     pub fn abs_styled(points: I, style: Style) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+        where I: IntoIterator<Item = Point> + Clone
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
@@ -107,7 +103,7 @@ impl<I> PointPath<I> {
     /// If you would rather centre the bounding box to the points, use
     /// [**PointPath::abs**](./struct.PointPath#method.abs) instead.
     pub fn centred(points: I) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+        where I: IntoIterator<Item = Point> + Clone
     {
         PointPath::centred_styled(points, Style::new())
     }
@@ -115,7 +111,7 @@ impl<I> PointPath<I> {
     /// The same as [**PointPath::centred**](./struct.PointPath#method.centred) but constructs the
     /// **PointPath** with the given style.
     pub fn centred_styled(points: I, style: Style) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+        where I: IntoIterator<Item = Point> + Clone
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
@@ -150,12 +146,10 @@ impl<I> PointPath<I> {
         self.style.set_pattern(Pattern::Dotted);
         self
     }
-
 }
 
 
-impl<I> Widget for PointPath<I>
-    where I: IntoIterator<Item=Point>,
+impl<I> Widget for PointPath<I> where I: IntoIterator<Item = Point>
 {
     type State = State;
     type Style = Style;
@@ -173,9 +167,7 @@ impl<I> Widget for PointPath<I>
     }
 
     fn init_state(&self) -> State {
-        State {
-            points: Vec::new(),
-        }
+        State { points: Vec::new() }
     }
 
     fn style(&self) -> Self::Style {
@@ -191,17 +183,21 @@ impl<I> Widget for PointPath<I>
         // A function that compares the given points iterator to the points currently owned by
         // `State` and updates only if necessary.
         fn update_points<I>(state: &mut widget::State<State>, points: I)
-            where I: IntoIterator<Item=Point>,
+            where I: IntoIterator<Item = Point>
         {
             match iter_diff(&state.view().points, points) {
-                Some(IterDiff::FirstMismatch(i, mismatch)) => state.update(|state| {
-                    state.points.truncate(i);
-                    state.points.extend(mismatch);
-                }),
-                Some(IterDiff::Longer(remaining)) =>
-                    state.update(|state| state.points.extend(remaining)),
-                Some(IterDiff::Shorter(total)) =>
-                    state.update(|state| state.points.truncate(total)),
+                Some(IterDiff::FirstMismatch(i, mismatch)) => {
+                    state.update(|state| {
+                        state.points.truncate(i);
+                        state.points.extend(mismatch);
+                    })
+                }
+                Some(IterDiff::Longer(remaining)) => {
+                    state.update(|state| state.points.extend(remaining))
+                }
+                Some(IterDiff::Shorter(total)) => {
+                    state.update(|state| state.points.truncate(total))
+                }
                 None => (),
             }
         }
@@ -210,12 +206,12 @@ impl<I> Widget for PointPath<I>
             Some(original) => {
                 let xy = rect.xy();
                 let difference = vec2_sub(xy, original);
-                update_points(state, points.into_iter().map(|point| vec2_add(point, difference)))
-            },
+                update_points(state,
+                              points.into_iter().map(|point| vec2_add(point, difference)))
+            }
             None => update_points(state, points),
         }
     }
-
 }
 
 impl<I> Colorable for PointPath<I> {

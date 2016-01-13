@@ -76,8 +76,8 @@ pub use theme::Theme;
 pub use ui::{Ui, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent, UiCell,
-                 UpdateArgs, Widget};
+pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
+                 UiCell, UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
@@ -108,10 +108,10 @@ mod widget;
 /// This is the recommended way of generating `WidgetId`s as it greatly lessens the chances of
 /// making errors when adding or removing widget ids.
 ///
-/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state 
+/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state
 /// between updates.
 ///
-/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for 
+/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for
 /// each identifier given in the list.
 ///
 /// The `with n` syntax reserves `n` number of `WidgetId`s for that identifier rather than just one.

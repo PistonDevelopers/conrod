@@ -28,7 +28,6 @@ pub enum Corner {
 
 
 impl Rect {
-
     /// Construct a Rect from a given `Point` and `Dimensions`.
     pub fn from_xy_dim(xy: Point, dim: Dimensions) -> Self {
         Rect {
@@ -39,11 +38,25 @@ impl Rect {
 
     /// Construct a Rect from the coordinates of two points.
     pub fn from_corners(a: Point, b: Point) -> Self {
-        let (left, right) = if a[0] < b[0] { (a[0], b[0]) } else { (b[0], a[0]) };
-        let (bottom, top) = if a[1] < b[1] { (a[1], b[1]) } else { (b[1], a[1]) };
+        let (left, right) = if a[0] < b[0] {
+            (a[0], b[0])
+        } else {
+            (b[0], a[0])
+        };
+        let (bottom, top) = if a[1] < b[1] {
+            (a[1], b[1])
+        } else {
+            (b[1], a[1])
+        };
         Rect {
-            x: Range { start: left, end: right },
-            y: Range { start: bottom, end: top },
+            x: Range {
+                start: left,
+                end: right,
+            },
+            y: Range {
+                start: bottom,
+                end: top,
+            },
         }
     }
 
@@ -216,7 +229,10 @@ impl Rect {
     /// The Rect with some padding amount applied to each edge.
     pub fn pad(self, pad: Scalar) -> Self {
         let Rect { x, y } = self;
-        Rect { x: x.pad(pad), y: y.pad(pad) }
+        Rect {
+            x: x.pad(pad),
+            y: y.pad(pad),
+        }
     }
 
     /// The Rect with some padding applied.
@@ -373,7 +389,6 @@ impl Rect {
             (Edge::End, Edge::End) => Corner::TopRight,
         }
     }
-
 }
 
 /// A function to simplify determining whether or not a point `xy` is over a rectangle.
@@ -381,4 +396,3 @@ impl Rect {
 pub fn is_over(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
     Rect::from_xy_dim(rect_xy, rect_dim).is_over(xy)
 }
-

@@ -25,7 +25,6 @@ pub struct Matrix {
 }
 
 impl Matrix {
-
     /// Start building a new position **Matrix**.
     pub fn new(cols: usize, rows: usize) -> Matrix {
         Matrix {
@@ -48,9 +47,9 @@ impl Matrix {
     }
 
     /// Call the given function for every element in the Matrix.
-    pub fn each_widget<C, F>(self, ui: &mut Ui<C>, mut f: F) where
-        C: CharacterCache,
-        F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions),
+    pub fn each_widget<C, F>(self, ui: &mut Ui<C>, mut f: F)
+        where C: CharacterCache,
+              F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions)
     {
         use utils::map_range;
 
@@ -83,7 +82,6 @@ impl Matrix {
             }
         }
     }
-
 }
 
 impl Positionable for Matrix {
@@ -129,18 +127,23 @@ impl Sizeable for Matrix {
     #[inline]
     fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
         const DEFAULT_WIDTH: Dimension = Dimension::Absolute(256.0);
-        self.maybe_x_dimension.or_else(|| {
-            ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
-                .map(|default| default.common.maybe_x_dimension.unwrap_or(DEFAULT_WIDTH))
-        }).unwrap_or(DEFAULT_WIDTH)
+        self.maybe_x_dimension
+            .or_else(|| {
+                ui.theme
+                  .widget_style::<widget::matrix::Style>(widget::matrix::KIND)
+                  .map(|default| default.common.maybe_x_dimension.unwrap_or(DEFAULT_WIDTH))
+            })
+            .unwrap_or(DEFAULT_WIDTH)
     }
     #[inline]
     fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
         const DEFAULT_HEIGHT: Dimension = Dimension::Absolute(256.0);
-        self.maybe_y_dimension.or_else(|| {
-            ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
-                .map(|default| default.common.maybe_y_dimension.unwrap_or(DEFAULT_HEIGHT))
-        }).unwrap_or(DEFAULT_HEIGHT)
+        self.maybe_y_dimension
+            .or_else(|| {
+                ui.theme
+                  .widget_style::<widget::matrix::Style>(widget::matrix::KIND)
+                  .map(|default| default.common.maybe_y_dimension.unwrap_or(DEFAULT_HEIGHT))
+            })
+            .unwrap_or(DEFAULT_HEIGHT)
     }
 }
-

@@ -203,7 +203,11 @@ pub trait Positionable: Sized {
     }
 
     /// Set the position relative to the widget with the given widget::Index.
-    fn x_y_relative_to<I: Into<widget::Index> + Copy>(self, other: I, x: Scalar, y: Scalar) -> Self {
+    fn x_y_relative_to<I: Into<widget::Index> + Copy>(self,
+                                                      other: I,
+                                                      x: Scalar,
+                                                      y: Scalar)
+                                                      -> Self {
         self.xy_relative_to(other, [x, y])
     }
 
@@ -241,14 +245,14 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from the given widget.
     fn x_direction_from<I>(self, other: I, direction: Direction, x: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_position(Position::Direction(direction, x, Some(other.into())))
     }
 
     /// Build with the **Position** along the *y* axis as some distance from the given widget.
     fn y_direction_from<I>(self, other: I, direction: Direction, y: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.y_position(Position::Direction(direction, y, Some(other.into())))
     }
@@ -355,7 +359,7 @@ pub trait Positionable: Sized {
         self.y_align_to(other, Align::Start)
     }
 
-    ///// `Place` methods. /////
+    /// // `Place` methods. /////
 
     /// Place the widget at some position on the `other` Widget along the *x* axis.
     fn x_place_on<I: Into<widget::Index>>(self, other: I, place: Place) -> Self {
@@ -380,7 +384,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the top left corner of the given Widget with the given margin between
     /// both edges.
     fn top_left_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::End(Some(mgn)))
     }
@@ -388,7 +392,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the top left corner of the given Widget with the given margins between
     /// each respective edge.
     fn top_left_with_margins_on<I>(self, other: I, top: Scalar, left: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Start(Some(left))).y_place_on(other, Place::End(Some(top)))
     }
@@ -401,7 +405,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the top right corner of the given Widget with the given margin
     /// between both edges.
     fn top_right_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::End(Some(mgn)))
     }
@@ -409,7 +413,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the top right corner of the given Widget with the given margins between
     /// each respective edge.
     fn top_right_with_margins_on<I>(self, other: I, top: Scalar, right: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::End(Some(right))).y_place_on(other, Place::End(Some(top)))
     }
@@ -422,7 +426,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom left corner of the given Widget with the given margin
     /// between both edges.
     fn bottom_left_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::Start(Some(mgn)))
     }
@@ -430,9 +434,10 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom left corner of the given Widget with the given margins
     /// between each respective edge.
     fn bottom_left_with_margins_on<I>(self, other: I, bottom: Scalar, left: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
-        self.x_place_on(other, Place::Start(Some(left))).y_place_on(other, Place::Start(Some(bottom)))
+        self.x_place_on(other, Place::Start(Some(left)))
+            .y_place_on(other, Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the bottom right corner of the given Widget.
@@ -443,7 +448,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom right corner of the given Widget with the given margin
     /// between both edges.
     fn bottom_right_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::Start(Some(mgn)))
     }
@@ -451,9 +456,10 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom right corner of the given Widget with the given margins
     /// between each respective edge.
     fn bottom_right_with_margins_on<I>(self, other: I, bottom: Scalar, right: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
-        self.x_place_on(other, Place::End(Some(right))).y_place_on(other, Place::Start(Some(bottom)))
+        self.x_place_on(other, Place::End(Some(right)))
+            .y_place_on(other, Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the middle of the top edge of the given Widget.
@@ -464,7 +470,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the middle of the top edge of the given Widget with the given margin
     /// between the edges.
     fn mid_top_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Middle).y_place_on(other, Place::End(Some(mgn)))
     }
@@ -477,7 +483,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the middle of the bottom edge of the given Widget with the given margin
     /// between the edges.
     fn mid_bottom_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Middle).y_place_on(other, Place::Start(Some(mgn)))
     }
@@ -490,7 +496,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the middle of the left edge of the given Widget with the given margin
     /// between the edges.
     fn mid_left_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::Middle)
     }
@@ -503,7 +509,7 @@ pub trait Positionable: Sized {
     /// Place the widget in the middle of the right edge of the given Widget with the given margin
     /// between the edges.
     fn mid_right_with_margin_on<I>(self, other: I, mgn: Scalar) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::Middle)
     }
@@ -635,7 +641,7 @@ pub trait Positionable: Sized {
         self.x_place(Place::End(Some(mgn))).y_place(Place::Middle)
     }
 
-    ///// Rendering Depth (aka Z axis) /////
+    /// // Rendering Depth (aka Z axis) /////
 
     /// The depth at which the widget should be rendered relatively to its sibling widgets.
     fn depth(self, depth: Depth) -> Self;

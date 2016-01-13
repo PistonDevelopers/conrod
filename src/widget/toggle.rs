@@ -1,19 +1,6 @@
 
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    FontSize,
-    Frameable,
-    FramedRectangle,
-    IndexSlot,
-    Labelable,
-    Mouse,
-    Positionable,
-    Scalar,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, FontSize, Frameable, FramedRectangle, IndexSlot, Labelable,
+     Mouse, Positionable, Scalar, Text, Widget};
 use widget;
 
 
@@ -86,23 +73,20 @@ impl Interaction {
 
 
 /// Check the current state of the button.
-fn get_new_interaction(is_over: bool,
-                       prev: Interaction,
-                       mouse: Mouse) -> Interaction {
+fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
         (false, Clicked, Down) => Clicked,
-        _                      => Normal,
+        _ => Normal,
     }
 }
 
 
 impl<'a, F> Toggle<'a, F> {
-
     /// Construct a new Toggle widget.
     pub fn new(value: bool) -> Toggle<'a, F> {
         Toggle {
@@ -119,11 +103,9 @@ impl<'a, F> Toggle<'a, F> {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
-impl<'a, F> Widget for Toggle<'a, F>
-    where F: FnOnce(bool),
+impl<'a, F> Widget for Toggle<'a, F> where F: FnOnce(bool)
 {
     type State = State;
     type Style = Style;
@@ -165,14 +147,18 @@ impl<'a, F> Widget for Toggle<'a, F>
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, state.view().interaction, mouse)
-            },
+            }
         };
 
         // Capture the mouse if clicked, uncapture if released.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
+            (Interaction::Highlighted, Interaction::Clicked) => {
+                ui.capture_mouse();
+            }
             (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+            (Interaction::Clicked, Interaction::Normal) => {
+                ui.uncapture_mouse();
+            }
             _ => (),
         }
 
@@ -184,7 +170,7 @@ impl<'a, F> Widget for Toggle<'a, F>
                     react(new_value)
                 }
                 new_value
-            },
+            }
             _ => value,
         };
 
@@ -194,7 +180,11 @@ impl<'a, F> Widget for Toggle<'a, F>
         let frame = style.frame(ui.theme());
         let color = {
             let color = style.color(ui.theme());
-            let color = if new_value { color } else { color.with_luminance(0.1) };
+            let color = if new_value {
+                color
+            } else {
+                color.with_luminance(0.1)
+            };
             new_interaction.color(color)
         };
         let frame_color = style.frame_color(ui.theme());

@@ -9,7 +9,9 @@ pub struct Id(pub usize);
 
 impl From<usize> for Id {
     #[inline]
-    fn from(u: usize) -> Id { Id(u) }
+    fn from(u: usize) -> Id {
+        Id(u)
+    }
 }
 
 
@@ -21,6 +23,7 @@ impl From<usize> for Id {
 ///
 impl ::std::ops::Add<usize> for Id {
     type Output = Id;
-    fn add(self, rhs: usize) -> Id { Id(self.0 + rhs) }
+    fn add(self, rhs: usize) -> Id {
+        Id(self.0 + rhs)
+    }
 }
-

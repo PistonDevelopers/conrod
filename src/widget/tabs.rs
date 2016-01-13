@@ -1,19 +1,6 @@
 
-use {
-    Button,
-    Canvas,
-    CharacterCache,
-    Color,
-    Dimensions,
-    FontSize,
-    GlyphCache,
-    NodeIndex,
-    Point,
-    Rect,
-    Scalar,
-    Theme,
-    Widget,
-};
+use {Button, Canvas, CharacterCache, Color, Dimensions, FontSize, GlyphCache, NodeIndex, Point,
+     Rect, Scalar, Theme, Widget};
 use super::canvas;
 use widget;
 
@@ -82,7 +69,6 @@ pub enum Layout {
 
 
 impl<'a> Tabs<'a> {
-
     /// Construct some new Canvas Tabs.
     pub fn new(tabs: &'a [(widget::Id, &'a str)]) -> Tabs<'a> {
         Tabs {
@@ -95,9 +81,11 @@ impl<'a> Tabs<'a> {
 
     /// Set the initially selected tab with a Canvas via its widget::Id.
     pub fn starting_canvas(mut self, canvas_id: widget::Id) -> Self {
-        let maybe_idx = self.tabs.iter().enumerate()
-            .find(|&(_, &(id, _))| canvas_id == id)
-            .map(|(idx, &(_, _))| idx);
+        let maybe_idx = self.tabs
+                            .iter()
+                            .enumerate()
+                            .find(|&(_, &(id, _))| canvas_id == id)
+                            .map(|(idx, &(_, _))| idx);
         self.maybe_starting_tab_idx = maybe_idx;
         self
     }
@@ -130,7 +118,6 @@ impl<'a> Tabs<'a> {
         pub pad_bottom { style.canvas.pad_bottom = Some(Scalar) }
         pub pad_top { style.canvas.pad_top = Some(Scalar) }
     }
-
 }
 
 
@@ -173,7 +160,7 @@ impl<'a> Widget for Tabs<'a> {
                     rect: rect.pad_top(tab_bar_h),
                     pad: style.canvas.padding(theme),
                 }
-            },
+            }
             Layout::Vertical => {
                 let max_text_width = max_text_width(self.tabs.iter(), font_size, glyph_cache);
                 let tab_bar_w = vertical_tab_bar_w(style.maybe_bar_width, max_text_width as Scalar);
@@ -181,7 +168,7 @@ impl<'a> Widget for Tabs<'a> {
                     rect: rect.pad_left(tab_bar_w),
                     pad: style.canvas.padding(theme),
                 }
-            },
+            }
         }
     }
 
@@ -197,13 +184,19 @@ impl<'a> Widget for Tabs<'a> {
         let font_height = font_size as Scalar;
         let maybe_bar_width = style.maybe_bar_width;
         let dim = rect.dim();
-        let rel_tab_bar_rect =
-            rel_tab_bar_area(dim, layout, maybe_bar_width, font_height, max_text_width);
+        let rel_tab_bar_rect = rel_tab_bar_area(dim,
+                                                layout,
+                                                maybe_bar_width,
+                                                font_height,
+                                                max_text_width);
 
         // Update the `tabs` **Vec** stored within our **State**, only if there have been changes.
-        let tabs_have_changed = state.view().tabs.len() != tabs.len()
-            || state.view().tabs.iter().zip(tabs.iter())
-                .any(|(tab, &(id, _))| tab.id != id);
+        let tabs_have_changed = state.view().tabs.len() != tabs.len() ||
+                                state.view()
+                                     .tabs
+                                     .iter()
+                                     .zip(tabs.iter())
+                                     .any(|(tab, &(id, _))| tab.id != id);
         if tabs_have_changed {
             state.update(|state| {
                 let num_tabs = state.tabs.len();
@@ -216,9 +209,11 @@ impl<'a> Widget for Tabs<'a> {
 
                 // If we have less tabs than we need, extend our `tabs` Vec.
                 if num_tabs < num_new_tabs {
-                    let extension = tabs[num_tabs..].iter().map(|&(id, _)| Tab {
-                        id: id,
-                        button_idx: ui.new_unique_node_index(),
+                    let extension = tabs[num_tabs..].iter().map(|&(id, _)| {
+                        Tab {
+                            id: id,
+                            button_idx: ui.new_unique_node_index(),
+                        }
                     });
                     state.tabs.extend(extension);
                 }
@@ -232,9 +227,16 @@ impl<'a> Widget for Tabs<'a> {
             let frame = style.canvas.frame(ui.theme());
             let frame_color = style.canvas.frame_color(ui.theme());
             let label_color = style.label_color(ui.theme());
-            let mut maybe_selected_tab_idx = state.view().maybe_selected_tab_idx
-                .or(maybe_starting_tab_idx)
-                .or_else(|| if tabs.len() > 0 { Some(0) } else { None });
+            let mut maybe_selected_tab_idx = state.view()
+                                                  .maybe_selected_tab_idx
+                                                  .or(maybe_starting_tab_idx)
+                                                  .or_else(|| {
+                                                      if tabs.len() > 0 {
+                                                          Some(0)
+                                                      } else {
+                                                          None
+                                                      }
+                                                  });
             let mut tab_rects = TabRects::new(tabs, layout, rel_tab_bar_rect);
             let mut i = 0;
             while let Some((tab_rect, _, label)) = tab_rects.next_with_id_and_label() {
@@ -278,18 +280,21 @@ impl<'a> Widget for Tabs<'a> {
         }
 
     }
-
 }
 
 
 /// Calculate the max text width yielded by a string in the tabs slice.
 fn max_text_width<'a, I, C>(tabs: I, font_size: FontSize, glyph_cache: &GlyphCache<C>) -> Scalar
-    where I: Iterator<Item=&'a (widget::Id, &'a str)>,
-          C: CharacterCache,
+    where I: Iterator<Item = &'a (widget::Id, &'a str)>,
+          C: CharacterCache
 {
     tabs.fold(0.0, |max_w, &(_, string)| {
         let w = glyph_cache.width(font_size, &string);
-        if w > max_w { w } else { max_w }
+        if w > max_w {
+            w
+        } else {
+            max_w
+        }
     })
 }
 
@@ -299,8 +304,8 @@ fn rel_tab_bar_area(dim: Dimensions,
                     layout: Layout,
                     maybe_bar_width: Option<Scalar>,
                     font_size: f64,
-                    max_text_width: f64) -> Rect
-{
+                    max_text_width: f64)
+                    -> Rect {
     match layout {
         Layout::Horizontal => {
             let w = dim[0];
@@ -308,14 +313,14 @@ fn rel_tab_bar_area(dim: Dimensions,
             let x = 0.0;
             let y = dim[1] / 2.0 - h / 2.0;
             Rect::from_xy_dim([x, y], [w, h])
-        },
+        }
         Layout::Vertical => {
             let w = vertical_tab_bar_w(maybe_bar_width, max_text_width);
             let h = dim[1];
             let x = -dim[0] / 2.0 + w / 2.0;
             let y = 0.0;
             Rect::from_xy_dim([x, y], [w, h])
-        },
+        }
     }
 }
 
@@ -332,16 +337,13 @@ fn vertical_tab_bar_w(maybe_bar_width: Option<Scalar>, max_text_width: Scalar) -
 fn tab_dim(num_tabs: usize, tab_bar_dim: Dimensions, layout: Layout) -> Dimensions {
     let width_multi = 1.0 / num_tabs as Scalar;
     match layout {
-        Layout::Horizontal =>
-            [width_multi * tab_bar_dim[0], tab_bar_dim[1]],
-        Layout::Vertical =>
-            [tab_bar_dim[0], width_multi * tab_bar_dim[1]],
+        Layout::Horizontal => [width_multi * tab_bar_dim[0], tab_bar_dim[1]],
+        Layout::Vertical => [tab_bar_dim[0], width_multi * tab_bar_dim[1]],
     }
 }
 
 
 impl Style {
-
     /// Construct the default `Tabs` style.
     pub fn new() -> Style {
         Style {
@@ -356,25 +358,28 @@ impl Style {
     /// Get the layout of the tabs for the `Tabs` widget.
     pub fn layout(&self, theme: &Theme) -> Layout {
         const DEFAULT_LAYOUT: Layout = Layout::Horizontal;
-        self.maybe_layout.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_layout.unwrap_or(DEFAULT_LAYOUT)
-        })).unwrap_or(DEFAULT_LAYOUT)
+        self.maybe_layout
+            .or(theme.widget_style::<Self>(KIND)
+                     .map(|default| default.style.maybe_layout.unwrap_or(DEFAULT_LAYOUT)))
+            .unwrap_or(DEFAULT_LAYOUT)
     }
 
     /// Get the color for the tab labels.
     pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
+        self.maybe_label_color
+            .or(theme.widget_style::<Self>(KIND)
+                     .map(|default| default.style.maybe_label_color.unwrap_or(theme.label_color)))
+            .unwrap_or(theme.label_color)
     }
 
     /// Get the font size for the tab labels.
     pub fn font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
+        self.maybe_label_font_size
+            .or(theme.widget_style::<Self>(KIND).map(|default| {
+                default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
+            }))
+            .unwrap_or(theme.font_size_medium)
     }
-
 }
 
 
@@ -405,12 +410,8 @@ pub struct TabRects<'a> {
 }
 
 impl<'a> TabRects<'a> {
-
     /// Construct a new **TabRects** iterator.
-    pub fn new(tabs: &'a [(widget::Id, &'a str)],
-               layout: Layout,
-               rel_tab_bar_rect: Rect) -> Self
-    {
+    pub fn new(tabs: &'a [(widget::Id, &'a str)], layout: Layout, rel_tab_bar_rect: Rect) -> Self {
         let num_tabs = tabs.len();
         let tab_bar_dim = rel_tab_bar_rect.dim();
         let tab_dim = tab_dim(num_tabs, tab_bar_dim, layout);
@@ -439,5 +440,4 @@ impl<'a> TabRects<'a> {
             (rect, id, label)
         })
     }
-
 }

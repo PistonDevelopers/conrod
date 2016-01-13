@@ -77,7 +77,7 @@ macro_rules! builder_method {
 ///     pub fn new() -> Self {
 ///         Button { color: None }
 ///     }
-///     
+///
 ///     /// A Color "builder method".
 ///     ///
 ///     /// Builds the Button with the given Color.
@@ -173,7 +173,7 @@ macro_rules! builder_methods {
         builder_method!($fn_name { $($assignee).+ = Some($Type) });
         builder_methods!($($rest)*);
     };
-    
+
     (pub $fn_name:ident { $($assignee:ident).+ = $Type:ty } $($rest:tt)*) => {
         builder_method!(pub $fn_name { $($assignee).+ = $Type });
         builder_methods!($($rest)*);

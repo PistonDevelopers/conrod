@@ -1,21 +1,6 @@
 
-use ::{
-    Button,
-    ButtonStyle,
-    CharacterCache,
-    Color,
-    Colorable,
-    FontSize,
-    Frameable,
-    IndexSlot,
-    Labelable,
-    NodeIndex,
-    Positionable,
-    Rect,
-    Rectangle,
-    Scalar,
-    Sizeable,
-};
+use {Button, ButtonStyle, CharacterCache, Color, Colorable, FontSize, Frameable, IndexSlot,
+     Labelable, NodeIndex, Positionable, Rect, Rectangle, Scalar, Sizeable};
 use widget::{self, Widget};
 
 
@@ -82,7 +67,6 @@ pub enum MenuState {
 }
 
 impl<'a, F> DropDownList<'a, F> {
-
     /// Construct a new DropDownList.
     pub fn new(strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>) -> Self {
         DropDownList {
@@ -114,12 +98,10 @@ impl<'a, F> DropDownList<'a, F> {
         self.style.maybe_max_visible_height = Some(Some(MaxHeight::Scalar(height)));
         self
     }
-
 }
 
 
-impl<'a, F> Widget for DropDownList<'a, F> where
-    F: FnMut(&mut Option<Idx>, Idx, &str),
+impl<'a, F> Widget for DropDownList<'a, F> where F: FnMut(&mut Option<Idx>, Idx, &str)
 {
     type State = State;
     type Style = Style;
@@ -163,18 +145,26 @@ impl<'a, F> Widget for DropDownList<'a, F> where
         let canvas_idx = state.view().canvas_idx.get(&mut ui);
 
         // Check that the selected index, if given, is not greater than the number of strings.
-        let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
-                                                    else { None });
+        let selected = self.selected.and_then(|idx| {
+            if idx < num_strings {
+                Some(idx)
+            } else {
+                None
+            }
+        });
 
         // If the number of buttons that we have in our previous state doesn't match the number of
         // strings we've just been given, we need to resize our buttons Vec.
         let num_buttons = state.view().buttons.len();
         let maybe_new_buttons = if num_buttons < num_strings {
-            let new_buttons = (num_buttons..num_strings)
-                .map(|i| (ui.new_unique_node_index(), self.strings[i].to_owned()));
-            let total_new_buttons = state.view().buttons.iter()
-                .map(|&(idx, ref string)| (idx, string.clone()))
-                .chain(new_buttons);
+            let new_buttons = (num_buttons..num_strings).map(|i| {
+                (ui.new_unique_node_index(), self.strings[i].to_owned())
+            });
+            let total_new_buttons = state.view()
+                                         .buttons
+                                         .iter()
+                                         .map(|&(idx, ref string)| (idx, string.clone()))
+                                         .chain(new_buttons);
             Some(total_new_buttons.collect())
         } else {
             None
@@ -193,27 +183,32 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let buttons = &state.view().buttons;
 
                 // Get the button index and the label for the closed menu's button.
-                let (button_idx, label) = selected
-                    .map(|i| (buttons[i].0, &self.strings[i][..]))
-                    .unwrap_or_else(|| (buttons[0].0, self.maybe_label.unwrap_or("")));
+                let (button_idx, label) = selected.map(|i| (buttons[i].0, &self.strings[i][..]))
+                                                  .unwrap_or_else(|| {
+                                                      (buttons[0].0, self.maybe_label.unwrap_or(""))
+                                                  });
 
                 // Use the pre-existing button widget to act as our button.
                 let mut was_clicked = false;
                 {
                     let mut button = Button::new()
-                        .xy(rect.xy())
-                        .wh(rect.dim())
-                        .label(label)
-                        .parent(idx)
-                        .react(|| was_clicked = true);
+                                         .xy(rect.xy())
+                                         .wh(rect.dim())
+                                         .label(label)
+                                         .parent(idx)
+                                         .react(|| was_clicked = true);
                     let is_selected = false;
                     button.style = style.button_style(is_selected);
                     button.set(button_idx, &mut ui);
                 }
 
                 // If the closed menu was clicked, we want to open it.
-                if was_clicked { MenuState::Open } else { MenuState::Closed }
-            },
+                if was_clicked {
+                    MenuState::Open
+                } else {
+                    MenuState::Closed
+                }
+            }
 
             // Otherwise if open, we want to set all the buttons that would be currently visible.
             MenuState::Open => {
@@ -223,13 +218,15 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     let bottom_win_y = (-window_dim[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
                     let max = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
-                    style.maybe_max_visible_height(ui.theme()).map(|max_height| {
-                        let height = match max_height {
-                            MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
-                            MaxHeight::Scalar(height) => height,
-                        };
-                        ::utils::partial_min(height, max)
-                    }).unwrap_or(max)
+                    style.maybe_max_visible_height(ui.theme())
+                         .map(|max_height| {
+                             let height = match max_height {
+                                 MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
+                                 MaxHeight::Scalar(height) => height,
+                             };
+                             ::utils::partial_min(height, max)
+                         })
+                         .unwrap_or(max)
                 };
                 let canvas_dim = [dim[0], max_visible_height];
                 let canvas_shift_y = dim[1] / 2.0 - canvas_dim[1] / 2.0;
@@ -251,11 +248,11 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                 let mut was_clicked = None;
                 for (i, ((label, button_node_idx), button_xy)) in iter {
                     let mut button = Button::new()
-                        .wh(dim)
-                        .label(label)
-                        .parent(canvas_idx)
-                        .xy(button_xy)
-                        .react(|| was_clicked = Some(i));
+                                         .wh(dim)
+                                         .label(label)
+                                         .parent(canvas_idx)
+                                         .xy(button_xy)
+                                         .react(|| was_clicked = Some(i));
                     button.style = style.button_style(Some(i) == selected);
                     button.set(button_node_idx, &mut ui);
                 }
@@ -270,14 +267,14 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     }
 
                     MenuState::Closed
-                // Otherwise if the mouse was released somewhere else we should close the menu.
-                } else if global_mouse.left.was_just_pressed
-                && !canvas_rect.is_over(global_mouse.xy) {
+                    // Otherwise if the mouse was released somewhere else we should close the menu.
+                } else if global_mouse.left.was_just_pressed &&
+                    !canvas_rect.is_over(global_mouse.xy) {
                     MenuState::Closed
                 } else {
                     MenuState::Open
                 }
-            },
+            }
 
         };
 
@@ -289,23 +286,26 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             state.update(|state| state.maybe_selected = *self.selected);
         }
     }
-
 }
 
 
 impl Style {
-
     /// Style for a `Button` given this `Style`'s current state.
     pub fn button_style(&self, is_selected: bool) -> ButtonStyle {
         ButtonStyle {
-            color: self.color.map(|c| if is_selected { c.highlighted() } else { c }),
+            color: self.color.map(|c| {
+                if is_selected {
+                    c.highlighted()
+                } else {
+                    c
+                }
+            }),
             frame: self.frame,
             frame_color: self.frame_color,
             label_color: self.label_color,
             label_font_size: self.label_font_size,
         }
     }
-
 }
 
 

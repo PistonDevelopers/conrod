@@ -1,23 +1,6 @@
 
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    FontSize,
-    Frameable,
-    Labelable,
-    IndexSlot,
-    KidArea,
-    Mouse,
-    Padding,
-    Positionable,
-    Range,
-    Rect,
-    Rectangle,
-    Scalar,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, FontSize, Frameable, Labelable, IndexSlot, KidArea, Mouse,
+     Padding, Positionable, Range, Rect, Rectangle, Scalar, Text, Widget};
 use num::{Float, NumCast, ToPrimitive};
 use widget;
 
@@ -108,16 +91,15 @@ fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Intera
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
         (false, Clicked, Down) => Clicked,
         _ => Normal,
     }
 }
 
 impl<'a, T, F> Slider<'a, T, F> {
-
     /// Construct a new Slider widget.
     pub fn new(value: T, min: T, max: T) -> Self {
         Slider {
@@ -138,12 +120,11 @@ impl<'a, T, F> Slider<'a, T, F> {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F> where
-    F: FnOnce(T),
-    T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+impl<'a, T, F> Widget for Slider<'a, T, F>
+    where F: FnOnce(T),
+          T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive
 {
     type State = State<T>;
     type Style = Style;
@@ -203,13 +184,17 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, interaction, mouse)
-            },
+            }
         };
 
         match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(); },
+            (Highlighted, Clicked) => {
+                ui.capture_mouse();
+            }
             (Clicked, Highlighted) |
-            (Clicked, Normal)      => { ui.uncapture_mouse(); },
+            (Clicked, Normal) => {
+                ui.uncapture_mouse();
+            }
             _ => (),
         }
 
@@ -226,13 +211,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
                         let perc = clamp(slider_w, 0.0, inner_w) / inner_w;
                         let skewed_perc = (perc).powf(skew as f64);
                         skewed_perc
-                    },
+                    }
                     _ => {
                         let value_percentage = percentage(value, min, max);
                         let slider_w = clamp(value_percentage as f64 * inner_w, 0.0, inner_w);
                         let perc = slider_w / inner_w;
                         perc
-                    },
+                    }
                 };
                 value_from_perc(w_perc as f32, min, max)
             } else {
@@ -244,13 +229,13 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
                         let perc = clamp(slider_h, 0.0, inner_h) / inner_h;
                         let skewed_perc = (perc).powf(skew as f64);
                         skewed_perc
-                    },
+                    }
                     _ => {
                         let value_percentage = percentage(value, min, max);
                         let slider_h = clamp(value_percentage as f64 * inner_h, 0.0, inner_h);
                         let perc = slider_h / inner_h;
                         perc
-                    },
+                    }
                 };
                 value_from_perc(h_perc as f32, min, max)
             }
@@ -261,9 +246,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         // If the value has just changed, or if the slider has been clicked/released, call the
         // reaction function.
         if let Some(react) = maybe_react {
-            let should_react = value != new_value
-                || (interaction == Highlighted && new_interaction == Clicked)
-                || (interaction == Clicked && new_interaction == Highlighted);
+            let should_react = value != new_value ||
+                               (interaction == Highlighted && new_interaction == Clicked) ||
+                               (interaction == Clicked && new_interaction == Highlighted);
             if should_react {
                 react(new_value)
             }
@@ -326,17 +311,19 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
-            //const TEXT_PADDING: f64 = 10.0;
+            // const TEXT_PADDING: f64 = 10.0;
             let label_idx = state.view().label_idx.get(&mut ui);
-            if is_horizontal { Text::new(label).mid_left_of(idx) }
-            else             { Text::new(label).mid_bottom_of(idx) }
-                .graphics_for(idx)
-                .color(label_color)
-                .font_size(font_size)
-                .set(label_idx, &mut ui);
+            if is_horizontal {
+                Text::new(label).mid_left_of(idx)
+            } else {
+                Text::new(label).mid_bottom_of(idx)
+            }
+            .graphics_for(idx)
+            .color(label_color)
+            .font_size(font_size)
+            .set(label_idx, &mut ui);
         }
     }
-
 }
 
 

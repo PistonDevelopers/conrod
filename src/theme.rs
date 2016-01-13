@@ -71,7 +71,6 @@ impl WidgetDefault {
 
 
 impl Theme {
-
     /// The default theme if not loading from file.
     pub fn default() -> Theme {
         Theme {
@@ -96,7 +95,7 @@ impl Theme {
     ///
     /// Attempts to cast the `Box<WidgetStyle>` to the **Widget**'s unique associated style **T**.
     pub fn widget_style<T>(&self, kind: &'static str) -> Option<UniqueDefault<T>>
-        where T: widget::Style,
+        where T: widget::Style
     {
         self.widget_styling.get(kind).and_then(|boxed_default| {
             boxed_default.style.downcast_ref().map(|style| {
@@ -108,6 +107,4 @@ impl Theme {
             })
         })
     }
-
 }
-

@@ -15,7 +15,6 @@ pub struct IndexMap {
 
 
 impl IndexMap {
-
     /// Construct an empty **IndexMap**.
     pub fn new() -> Self {
         IndexMap {
@@ -49,7 +48,6 @@ impl IndexMap {
     pub fn get_widget_id(&self, idx: NodeIndex) -> Option<WidgetId> {
         self.widgets.get(&idx).map(|&id| id)
     }
-
 }
 
 impl Index<WidgetId> for IndexMap {
@@ -104,7 +102,6 @@ impl GraphIndex for NodeIndex {
 }
 
 impl GraphIndex for widget::Index {
-
     /// Coerce a widget::Index into an Option<NodeIndex>.
     /// If the Index is the Internal variant, that idx will be used directly.
     /// If the Index is the Public variant, the index_map will be used to find the matching
@@ -131,8 +128,8 @@ impl GraphIndex for widget::Index {
     /// First tries to construct a Public variant by checking the IndexMap for a matching WidgetId.
     /// If not WidgetId is found, then tries to find a matching NodeIndex.
     fn from_idx<I: GraphIndex>(other: I, map: &IndexMap) -> Option<Self> {
-        other.to_widget_id(map).map(|id| widget::Index::Public(id))
-            .or_else(|| other.to_node_index(map).map(|idx| widget::Index::Internal(idx)))
+        other.to_widget_id(map)
+             .map(|id| widget::Index::Public(id))
+             .or_else(|| other.to_node_index(map).map(|idx| widget::Index::Internal(idx)))
     }
-
 }

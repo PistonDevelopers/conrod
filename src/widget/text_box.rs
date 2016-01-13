@@ -1,24 +1,6 @@
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimensions,
-    FontSize,
-    Frameable,
-    FramedRectangle,
-    GlyphCache,
-    IndexSlot,
-    Line,
-    Mouse,
-    Padding,
-    Point,
-    Positionable,
-    Range,
-    Rectangle,
-    Scalar,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, Dimensions, FontSize, Frameable, FramedRectangle,
+     GlyphCache, IndexSlot, Line, Mouse, Padding, Point, Positionable, Range, Rectangle, Scalar,
+     Text, Widget};
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
 use vecmath::vec2_sub;
 use widget::{self, KidArea};
@@ -72,7 +54,7 @@ pub struct State {
     text_idx: IndexSlot,
     cursor_idx: IndexSlot,
     highlight_idx: IndexSlot,
-    control_pressed: bool
+    control_pressed: bool,
 }
 
 /// Represents the state of the text_box widget.
@@ -124,9 +106,11 @@ impl Interaction {
     fn color(&self, color: Color) -> Color {
         match *self {
             Interaction::Captured(_) => color,
-            Interaction::Uncaptured(state) => match state {
-                Uncaptured::Highlighted => color.highlighted(),
-                Uncaptured::Normal => color,
+            Interaction::Uncaptured(state) => {
+                match state {
+                    Uncaptured::Highlighted => color.highlighted(),
+                    Uncaptured::Normal => color,
+                }
             }
         }
     }
@@ -134,18 +118,29 @@ impl Interaction {
 
 
 impl Cursor {
-
     /// Construct a Cursor from a String index.
     fn from_index(idx: Idx) -> Cursor {
-        Cursor { anchor: Anchor::Start, start: idx, end: idx }
+        Cursor {
+            anchor: Anchor::Start,
+            start: idx,
+            end: idx,
+        }
     }
 
     /// Construct a Cursor from an index range.
     fn from_range(start: Idx, end: Idx) -> Cursor {
         if start < end {
-            Cursor { anchor: Anchor::Start, start: start, end: end }
+            Cursor {
+                anchor: Anchor::Start,
+                start: start,
+                end: end,
+            }
         } else {
-            Cursor { anchor: Anchor::End, start: end, end: start }
+            Cursor {
+                anchor: Anchor::End,
+                start: end,
+                end: start,
+            }
         }
     }
 
@@ -156,10 +151,9 @@ impl Cursor {
             self.start = end_limit;
             self.end = end_limit;
             return true;
-        }
-        else if self.end > end_limit {
+        } else if self.end > end_limit {
             self.end = end_limit;
-            return true
+            return true;
         }
         false
     }
@@ -167,7 +161,7 @@ impl Cursor {
     /// Shift the curosr by the given number of indices.
     fn shift(&mut self, by: i32) {
         if by == 0 {
-             return;
+            return;
         }
         let mut new_idx = self.start as i32 + by;
         if new_idx < 0 {
@@ -189,15 +183,18 @@ fn cursor_position<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                       idx: usize,
                                       mut text_start_x: f64,
                                       font_size: FontSize,
-                                      text: &str) -> CursorX {
+                                      text: &str)
+                                      -> CursorX {
     assert!(idx <= text.chars().count());
 
     if idx == 0 {
-         return text_start_x;
+        return text_start_x;
     }
 
     for (i, ch) in text.chars().enumerate() {
-        if i >= idx { break; }
+        if i >= idx {
+            break;
+        }
         text_start_x += glyph_cache.char_width(font_size, ch);
     }
     text_start_x
@@ -211,11 +208,17 @@ fn over_elem<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                 text_start_x: f64,
                                 text_w: f64,
                                 font_size: FontSize,
-                                text: &str) -> Elem {
+                                text: &str)
+                                -> Elem {
     use position::is_over_rect;
     if is_over_rect([0.0, 0.0], dim, mouse_xy) {
         if is_over_rect([0.0, 0.0], pad_dim, mouse_xy) {
-            let (idx, _) = closest_idx(glyph_cache, mouse_xy, text_start_x, text_w, font_size, text);
+            let (idx, _) = closest_idx(glyph_cache,
+                                       mouse_xy,
+                                       text_start_x,
+                                       text_w,
+                                       font_size,
+                                       text);
             Elem::Char(idx)
         } else {
             Elem::Rect
@@ -231,8 +234,11 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
                                   text_start_x: f64,
                                   text_w: f64,
                                   font_size: FontSize,
-                                  text: &str) -> (Idx, f64) {
-    if mouse_xy[0] <= text_start_x { return (0, text_start_x) }
+                                  text: &str)
+                                  -> (Idx, f64) {
+    if mouse_xy[0] <= text_start_x {
+        return (0, text_start_x);
+    }
     let mut left_x = text_start_x;
     let mut x = left_x;
     let mut prev_x = x;
@@ -240,7 +246,9 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
         let char_w = glyph_cache.char_width(font_size, ch);
         x += char_w;
         let right_x = prev_x + char_w / 2.0;
-        if mouse_xy[0] > left_x && mouse_xy[0] <= right_x { return (i, prev_x) }
+        if mouse_xy[0] > left_x && mouse_xy[0] <= right_x {
+            return (i, prev_x);
+        }
         prev_x = x;
         left_x = right_x;
     }
@@ -248,71 +256,101 @@ fn closest_idx<C: CharacterCache>(glyph_cache: &GlyphCache<C>,
 }
 
 /// Check and return the current state of the TextBox.
-fn get_new_interaction(over_elem: Elem, prev_interaction: Interaction, mouse: Mouse) -> Interaction {
+fn get_new_interaction(over_elem: Elem,
+                       prev_interaction: Interaction,
+                       mouse: Mouse)
+                       -> Interaction {
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Captured, Uncaptured};
     use self::Uncaptured::{Normal, Highlighted};
 
     match prev_interaction {
-        Interaction::Captured(mut prev) => match mouse.left.position {
-            Down => match over_elem {
-                Elem::Nill => if prev.cursor.anchor == Anchor::None {
-                    Uncaptured(Normal)
-                } else {
-                    prev_interaction
-                },
-                Elem::Rect =>  if prev.cursor.anchor == Anchor::None {
-                    prev.cursor = Cursor::from_index(0);
-                    Captured(prev)
-                } else {
-                    prev_interaction
-                },
-                Elem::Char(idx) => {
-                    match prev.cursor.anchor {
-                        Anchor::None  => prev.cursor = Cursor::from_index(idx),
-                        Anchor::Start => prev.cursor = Cursor::from_range(prev.cursor.start, idx),
-                        Anchor::End   => prev.cursor = Cursor::from_range(prev.cursor.end, idx),
+        Interaction::Captured(mut prev) => {
+            match mouse.left.position {
+                Down => {
+                    match over_elem {
+                        Elem::Nill => {
+                            if prev.cursor.anchor == Anchor::None {
+                                Uncaptured(Normal)
+                            } else {
+                                prev_interaction
+                            }
+                        }
+                        Elem::Rect => {
+                            if prev.cursor.anchor == Anchor::None {
+                                prev.cursor = Cursor::from_index(0);
+                                Captured(prev)
+                            } else {
+                                prev_interaction
+                            }
+                        }
+                        Elem::Char(idx) => {
+                            match prev.cursor.anchor {
+                                Anchor::None => prev.cursor = Cursor::from_index(idx),
+                                Anchor::Start => {
+                                    prev.cursor = Cursor::from_range(prev.cursor.start, idx)
+                                }
+                                Anchor::End => {
+                                    prev.cursor = Cursor::from_range(prev.cursor.end, idx)
+                                }
+                            }
+                            Captured(prev)
+                        }
                     }
+                }
+                Up => {
+                    prev.cursor.anchor = Anchor::None;
                     Captured(prev)
-                },
-            },
-            Up => {
-                prev.cursor.anchor = Anchor::None;
-                Captured(prev)
-            },
-        },
+                }
+            }
+        }
 
-        Interaction::Uncaptured(prev) => match mouse.left.position {
-            Down => match over_elem {
-                Elem::Nill => Uncaptured(Normal),
-                Elem::Rect => match prev {
-                    Normal => prev_interaction,
-                    Highlighted => Captured(View {
-                         cursor: Cursor::from_index(0),
-                         offset: 0.0,
-                    })
-                },
-                Elem::Char(idx) =>  match prev {
-                    Normal => prev_interaction,
-                    Highlighted => Captured(View {
-                        cursor: Cursor::from_index(idx),
-                        offset: 0.0,
-                    })
-                },
-            },
-            Up => match over_elem {
-                Elem::Nill => Uncaptured(Normal),
-                Elem::Char(_) | Elem::Rect => match prev {
-                    Normal => Uncaptured(Highlighted),
-                    Highlighted => prev_interaction,
-                },
-            },
-        },
+        Interaction::Uncaptured(prev) => {
+            match mouse.left.position {
+                Down => {
+                    match over_elem {
+                        Elem::Nill => Uncaptured(Normal),
+                        Elem::Rect => {
+                            match prev {
+                                Normal => prev_interaction,
+                                Highlighted => {
+                                    Captured(View {
+                                        cursor: Cursor::from_index(0),
+                                        offset: 0.0,
+                                    })
+                                }
+                            }
+                        }
+                        Elem::Char(idx) => {
+                            match prev {
+                                Normal => prev_interaction,
+                                Highlighted => {
+                                    Captured(View {
+                                        cursor: Cursor::from_index(idx),
+                                        offset: 0.0,
+                                    })
+                                }
+                            }
+                        }
+                    }
+                }
+                Up => {
+                    match over_elem {
+                        Elem::Nill => Uncaptured(Normal),
+                        Elem::Char(_) | Elem::Rect => {
+                            match prev {
+                                Normal => Uncaptured(Highlighted),
+                                Highlighted => prev_interaction,
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 impl<'a, F> TextBox<'a, F> {
-
     /// Construct a TextBox widget.
     pub fn new(text: &'a mut String) -> TextBox<'a, F> {
         TextBox {
@@ -329,10 +367,10 @@ impl<'a, F> TextBox<'a, F> {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
-impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
+impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String)
+{
     type State = State;
     type Style = Style;
 
@@ -390,10 +428,16 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         let mut new_interaction = match (self.enabled, maybe_mouse) {
             (false, _) | (true, None) => Interaction::Uncaptured(Uncaptured::Normal),
             (true, Some(mouse)) => {
-                let over_elem = over_elem(ui.glyph_cache(), mouse.xy, dim, pad_dim, text_start_x,
-                                          text_w, font_size, &self.text);
+                let over_elem = over_elem(ui.glyph_cache(),
+                                          mouse.xy,
+                                          dim,
+                                          pad_dim,
+                                          text_start_x,
+                                          text_w,
+                                          font_size,
+                                          &self.text);
                 get_new_interaction(over_elem, state.view().interaction, mouse)
-            },
+            }
         };
 
         // Check cursor validity (and update new_interaction if necessary).
@@ -409,7 +453,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui.glyph_cache(), cursor_idx, text_start_x, font_size,
+            let cursor_x = cursor_position(ui.glyph_cache(),
+                                           cursor_idx,
+                                           text_start_x,
+                                           font_size,
                                            &self.text);
 
             if cursor.is_cursor() || cursor.anchor != Anchor::None {
@@ -424,7 +471,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             }
 
             // Set the updated state.
-            new_interaction = Interaction::Captured(View { cursor: cursor, offset: v_offset });
+            new_interaction = Interaction::Captured(View {
+                cursor: cursor,
+                offset: v_offset,
+            });
         }
 
         // If TextBox is captured, check for recent input and update the text accordingly.
@@ -434,11 +484,17 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
             // Check for entered text.
             for text in input.entered_text {
-                if new_control_pressed { break; }
-                if text.chars().count() == 0 { continue; }
+                if new_control_pressed {
+                    break;
+                }
+                if text.chars().count() == 0 {
+                    continue;
+                }
 
                 let max_w = pad_dim[0] - TEXT_PADDING * 2.0;
-                if text_w + ui.glyph_cache().width(font_size, &text) > max_w { continue; }
+                if text_w + ui.glyph_cache().width(font_size, &text) > max_w {
+                    continue;
+                }
 
                 let end: String = self.text.chars().skip(cursor.end).collect();
                 let start: String = self.text.chars().take(cursor.start).collect();
@@ -452,50 +508,61 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             // Check for control keys.
             for key in input.pressed_keys.iter() {
                 match *key {
-                    Backspace => if cursor.is_cursor() {
-                        if cursor.start > 0 {
-                            let start: String = self.text.chars().take(cursor.start-1).collect();
+                    Backspace => {
+                        if cursor.is_cursor() {
+                            if cursor.start > 0 {
+                                let start: String = self.text
+                                                        .chars()
+                                                        .take(cursor.start - 1)
+                                                        .collect();
+                                let end: String = self.text.chars().skip(cursor.end).collect();
+                                self.text.clear();
+                                self.text.push_str(&start);
+                                self.text.push_str(&end);
+                                cursor.shift(-1);
+                            }
+                        } else {
+                            let start: String = self.text.chars().take(cursor.start).collect();
                             let end: String = self.text.chars().skip(cursor.end).collect();
                             self.text.clear();
                             self.text.push_str(&start);
                             self.text.push_str(&end);
+                            cursor.end = cursor.start;
+                        }
+                    }
+                    Left => {
+                        if cursor.is_cursor() {
                             cursor.shift(-1);
                         }
-                    } else {
-                        let start: String = self.text.chars().take(cursor.start).collect();
-                        let end: String = self.text.chars().skip(cursor.end).collect();
-                        self.text.clear();
-                        self.text.push_str(&start);
-                        self.text.push_str(&end);
-                        cursor.end = cursor.start;
-                    },
-                    Left => if cursor.is_cursor() {
-                        cursor.shift(-1);
-                    },
-                    Right => if cursor.is_cursor() && self.text.chars().count() > cursor.end {
-                        cursor.shift(1);
-                    },
-                    Return => if self.text.chars().count() > 0 {
-                        let TextBox { ref mut maybe_react, ref mut text, .. } = self;
-                        if let Some(ref mut react) = *maybe_react {
-                            react(*text);
+                    }
+                    Right => {
+                        if cursor.is_cursor() && self.text.chars().count() > cursor.end {
+                            cursor.shift(1);
                         }
-                    },
+                    }
+                    Return => {
+                        if self.text.chars().count() > 0 {
+                            let TextBox { ref mut maybe_react, ref mut text, .. } = self;
+                            if let Some(ref mut react) = *maybe_react {
+                                react(*text);
+                            }
+                        }
+                    }
                     LCtrl | RCtrl if !new_control_pressed => {
                         new_control_pressed = true;
-                    },
+                    }
                     A if new_control_pressed => {
                         if cursor.is_cursor() {
                             cursor.start = 0;
                             cursor.end = self.text.chars().count();
                         }
-                    },
+                    }
                     E if new_control_pressed => {
                         if cursor.is_cursor() {
                             cursor.start = self.text.chars().count();
                             cursor.end = self.text.chars().count();
                         }
-                    },
+                    }
                     _ => (),
                 }
             }
@@ -504,7 +571,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
                 match *key {
                     LCtrl | RCtrl if new_control_pressed => {
                         new_control_pressed = false;
-                    },
+                    }
                     _ => (),
                 }
             }
@@ -513,13 +580,17 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             // the cursor is limited to the current number of chars.
             cursor.limit_end_to(self.text.chars().count());
 
-            new_interaction = Interaction::Captured(View { cursor: cursor, .. captured });
+            new_interaction = Interaction::Captured(View { cursor: cursor, ..captured });
         }
 
         // Check the interactions to determine whether we need to capture or uncapture the keyboard.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Uncaptured(_), Interaction::Captured(_)) => { ui.capture_keyboard(); },
-            (Interaction::Captured(_), Interaction::Uncaptured(_)) => { ui.uncapture_keyboard(); },
+            (Interaction::Uncaptured(_), Interaction::Captured(_)) => {
+                ui.capture_keyboard();
+            }
+            (Interaction::Captured(_), Interaction::Uncaptured(_)) => {
+                ui.uncapture_keyboard();
+            }
             _ => (),
         }
 
@@ -562,7 +633,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
                 Anchor::End => cursor.start,
                 Anchor::Start | Anchor::None => cursor.end,
             };
-            let cursor_x = cursor_position(ui.glyph_cache(), cursor_idx, text_start_x, font_size,
+            let cursor_x = cursor_position(ui.glyph_cache(),
+                                           cursor_idx,
+                                           text_start_x,
+                                           font_size,
                                            &self.text);
 
             if cursor.is_cursor() {
@@ -578,7 +652,10 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             } else {
                 let (rel_x, w) = {
                     let (start, end) = (cursor.start, cursor.end);
-                    let cursor_x = cursor_position(ui.glyph_cache(), start, text_start_x, font_size,
+                    let cursor_x = cursor_position(ui.glyph_cache(),
+                                                   start,
+                                                   text_start_x,
+                                                   font_size,
                                                    &self.text);
                     let highlighted_text = &self.text[start..end];
                     let w = ui.glyph_cache().width(font_size, &highlighted_text);
@@ -595,7 +672,6 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
             }
         }
     }
-
 }
 
 

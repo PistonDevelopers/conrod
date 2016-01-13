@@ -1,13 +1,5 @@
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimensions,
-    LineStyle,
-    Sizeable,
-    Widget,
-};
-use super::Style as Style;
+use {CharacterCache, Color, Colorable, Dimensions, LineStyle, Sizeable, Widget};
+use super::Style;
 use widget;
 
 
@@ -40,13 +32,13 @@ pub const KIND: widget::Kind = "Rectangle";
 
 
 impl Rectangle {
-
     /// Build a rectangle with the dimensions and style.
     pub fn styled(dim: Dimensions, style: Style) -> Self {
         Rectangle {
             common: widget::CommonBuilder::new(),
             style: style,
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     /// Build a new filled rectangle.
@@ -68,7 +60,6 @@ impl Rectangle {
     pub fn outline_styled(dim: Dimensions, line_style: LineStyle) -> Self {
         Rectangle::styled(dim, Style::outline_styled(line_style))
     }
-
 }
 
 
@@ -89,9 +80,7 @@ impl Widget for Rectangle {
     }
 
     fn init_state(&self) -> State {
-        State {
-            kind: Kind::Fill,
-        }
+        State { kind: Kind::Fill }
     }
 
     fn style(&self) -> Style {
@@ -111,7 +100,6 @@ impl Widget for Rectangle {
             state.update(|state| state.kind = kind);
         }
     }
-
 }
 
 
