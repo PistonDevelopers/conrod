@@ -97,24 +97,21 @@ pub type LinesWrappedByWhitespace<'a, C> = LinesWrappedBy<'a, C, NextLineBreakFn
 
 
 impl<C> GlyphCache<C> {
-
     /// Construct a new **GlyphCache**.
     pub fn new(cache: C) -> Self {
-        GlyphCache {
-            ref_cell: RefCell::new(cache),
-        }
+        GlyphCache { ref_cell: RefCell::new(cache) }
     }
 
     /// The width of a single character with the given size.
     pub fn char_width(&self, font_size: FontSize, ch: char) -> Scalar
-        where C: CharacterCache,
+        where C: CharacterCache
     {
         self.ref_cell.borrow_mut().character(font_size, ch).width()
     }
 
     /// Converts the given sequence of `char`s into their Scalar widths.
     pub fn char_widths<I>(&self, font_size: FontSize, chars: I) -> CharWidths<C, I::IntoIter>
-        where I: IntoIterator<Item=char>,
+        where I: IntoIterator<Item = char>
     {
         CharWidths {
             font_size: font_size,
@@ -124,9 +121,13 @@ impl<C> GlyphCache<C> {
     }
 
     /// Converts the given sequnce of `char`s into their consecutive positions along the x-axis.
-    pub fn char_xs<I>(&self, font_size: FontSize, start_x: Scalar, chars: I) -> CharXs<C, I::IntoIter>
+    pub fn char_xs<I>(&self,
+                      font_size: FontSize,
+                      start_x: Scalar,
+                      chars: I)
+                      -> CharXs<C, I::IntoIter>
         where C: CharacterCache,
-              I: IntoIterator<Item=char>,
+              I: IntoIterator<Item = char>
     {
         let mut widths = self.char_widths(font_size, chars);
         let maybe_first = widths.next().map(|w| (w / 2.0, start_x));
@@ -138,14 +139,14 @@ impl<C> GlyphCache<C> {
 
     /// Return the width of the given text.
     pub fn width(&self, font_size: FontSize, text: &str) -> Scalar
-        where C: CharacterCache,
+        where C: CharacterCache
     {
         self.ref_cell.borrow_mut().width(font_size, text)
     }
 
     /// Converts the given sequence of `&str`s into their Scalar widths.
     pub fn widths<I>(&self, font_size: FontSize, strs: I) -> Widths<C, I::IntoIter>
-        where for<'a> I: IntoIterator<Item=&'a str>,
+        where for<'a> I: IntoIterator<Item = &'a str>
     {
         Widths {
             font_size: font_size,
@@ -160,8 +161,8 @@ impl<C> GlyphCache<C> {
                                  font_size: FontSize,
                                  text: &'a str,
                                  max_width: Scalar,
-                                 line_break_fn: F) -> LineBreaksBy<'a, C, F>
-    {
+                                 line_break_fn: F)
+                                 -> LineBreaksBy<'a, C, F> {
         LineBreaksBy {
             font_size: font_size,
             cache: self,
@@ -176,8 +177,9 @@ impl<C> GlyphCache<C> {
     pub fn line_breaks_by_character<'a>(&'a self,
                                         font_size: FontSize,
                                         text: &'a str,
-                                        max_width: Scalar) -> LineBreaksByCharacter<'a, C>
-        where C: CharacterCache,
+                                        max_width: Scalar)
+                                        -> LineBreaksByCharacter<'a, C>
+        where C: CharacterCache
     {
         self.line_breaks_by(font_size, text, max_width, LineBreak::next_by_character)
     }
@@ -186,8 +188,9 @@ impl<C> GlyphCache<C> {
     pub fn line_breaks_by_whitespace<'a>(&'a self,
                                          font_size: FontSize,
                                          text: &'a str,
-                                         max_width: Scalar) -> LineBreaksByWhitespace<'a, C>
-        where C: CharacterCache,
+                                         max_width: Scalar)
+                                         -> LineBreaksByWhitespace<'a, C>
+        where C: CharacterCache
     {
         self.line_breaks_by(font_size, text, max_width, LineBreak::next_by_whitespace)
     }
@@ -198,8 +201,8 @@ impl<C> GlyphCache<C> {
                                    font_size: FontSize,
                                    text: &'a str,
                                    max_width: Scalar,
-                                   wrap_fn: F) -> LinesWrappedBy<'a, C, F>
-    {
+                                   wrap_fn: F)
+                                   -> LinesWrappedBy<'a, C, F> {
         let line_breaks = self.line_breaks_by(font_size, text, max_width, wrap_fn);
         Lines::new(text, line_breaks)
     }
@@ -209,8 +212,9 @@ impl<C> GlyphCache<C> {
     pub fn lines_wrapped_by_character<'a>(&'a self,
                                           font_size: FontSize,
                                           text: &'a str,
-                                          max_width: Scalar) -> LinesWrappedByCharacter<'a, C>
-        where C: CharacterCache,
+                                          max_width: Scalar)
+                                          -> LinesWrappedByCharacter<'a, C>
+        where C: CharacterCache
     {
         let line_breaks = self.line_breaks_by_character(font_size, text, max_width);
         Lines::new(text, line_breaks)
@@ -221,13 +225,13 @@ impl<C> GlyphCache<C> {
     pub fn lines_wrapped_by_whitespace<'a>(&'a self,
                                            font_size: FontSize,
                                            text: &'a str,
-                                           max_width: Scalar) -> LinesWrappedByWhitespace<'a, C>
-        where C: CharacterCache,
+                                           max_width: Scalar)
+                                           -> LinesWrappedByWhitespace<'a, C>
+        where C: CharacterCache
     {
         let line_breaks = self.line_breaks_by_character(font_size, text, max_width);
         Lines::new(text, line_breaks)
     }
-
 }
 
 
@@ -247,7 +251,7 @@ impl<C> ::std::ops::DerefMut for GlyphCache<C> {
 
 impl<'a, C, I> Iterator for CharWidths<'a, C, I>
     where C: CharacterCache,
-          I: Iterator<Item=char>,
+          I: Iterator<Item = char>
 {
     type Item = Scalar;
     fn next(&mut self) -> Option<Self::Item> {
@@ -258,7 +262,7 @@ impl<'a, C, I> Iterator for CharWidths<'a, C, I>
 
 impl<'a, C, I> Iterator for Widths<'a, C, I>
     where C: CharacterCache,
-          for<'b> I: Iterator<Item=&'b str>,
+          for<'b> I: Iterator<Item = &'b str>
 {
     type Item = Scalar;
     fn next(&mut self) -> Option<Self::Item> {
@@ -269,7 +273,7 @@ impl<'a, C, I> Iterator for Widths<'a, C, I>
 
 impl<'a, C, I> Iterator for CharXs<'a, C, I>
     where C: CharacterCache,
-          I: Iterator<Item=char>,
+          I: Iterator<Item = char>
 {
     type Item = X;
     fn next(&mut self) -> Option<Self::Item> {
@@ -286,7 +290,7 @@ impl<'a, C, I> Iterator for CharXs<'a, C, I>
 
 impl<'a, C, F> Iterator for LineBreaksBy<'a, C, F>
     where C: CharacterCache,
-          for<'b> F: FnMut(&'b GlyphCache<C>, FontSize, &'b str, Scalar) -> Option<LineBreak>,
+          for<'b> F: FnMut(&'b GlyphCache<C>, FontSize, &'b str, Scalar) -> Option<LineBreak>
 {
     /// The index into the start of the line along with the line's break if it has one.
     type Item = (usize, Option<LineBreak>);
@@ -312,20 +316,21 @@ impl<'a, C, F> Iterator for LineBreaksBy<'a, C, F>
                     LineBreak::Wrap(idx, width) => idx + width,
                 };
                 Some(range)
-            },
-            None => if *start < text.len() {
-                let last = Some((*start, None));
-                *start = text.len();
-                last
-            } else {
-                None
-            },
+            }
+            None => {
+                if *start < text.len() {
+                    let last = Some((*start, None));
+                    *start = text.len();
+                    last
+                } else {
+                    None
+                }
+            }
         }
     }
 }
 
-impl<'a, I> Iterator for Lines<'a, I>
-    where I: Iterator<Item=(usize, Option<LineBreak>)>,
+impl<'a, I> Iterator for Lines<'a, I> where I: Iterator<Item = (usize, Option<LineBreak>)>
 {
     type Item = &'a str;
     fn next(&mut self) -> Option<Self::Item> {
@@ -333,16 +338,17 @@ impl<'a, I> Iterator for Lines<'a, I>
             ref text,
             ref mut line_breaks,
         } = *self;
-        line_breaks.next().map(|(start, maybe_line_break)| match maybe_line_break {
-            Some(line_break) => &text[start..line_break.index()],
-            None => &text[start..],
+        line_breaks.next().map(|(start, maybe_line_break)| {
+            match maybe_line_break {
+                Some(line_break) => &text[start..line_break.index()],
+                None => &text[start..],
+            }
         })
     }
 }
 
 
 impl LineBreak {
-
     /// Extracts the index at which the break occurs within the text (i.e. the index following the
     /// last byte of the line).
     pub fn index(self) -> usize {
@@ -357,8 +363,9 @@ impl LineBreak {
     pub fn next_by_character<C>(cache: &GlyphCache<C>,
                                 font_size: FontSize,
                                 text: &str,
-                                max_width: Scalar) -> Option<Self>
-        where C: CharacterCache,
+                                max_width: Scalar)
+                                -> Option<Self>
+        where C: CharacterCache
     {
         let mut width = 0.0;
         let mut char_indices = text.char_indices().peekable();
@@ -367,7 +374,7 @@ impl LineBreak {
             // Check for a newline.
             if ch == '\r' {
                 if let Some(&(_, '\n')) = char_indices.peek() {
-                    return Some(LineBreak::Newline(i, 2))
+                    return Some(LineBreak::Newline(i, 2));
                 }
             } else if ch == '\n' {
                 return Some(LineBreak::Newline(i, 1));
@@ -391,8 +398,9 @@ impl LineBreak {
     pub fn next_by_whitespace<C>(cache: &GlyphCache<C>,
                                  font_size: FontSize,
                                  text: &str,
-                                 max_width: Scalar) -> Option<Self>
-        where C: CharacterCache,
+                                 max_width: Scalar)
+                                 -> Option<Self>
+        where C: CharacterCache
     {
         let mut width = 0.0;
         let mut last_whitespace_start = 0;
@@ -402,14 +410,11 @@ impl LineBreak {
             // Check for a newline.
             if ch == '\r' {
                 if let Some(&(_, '\n')) = char_indices.peek() {
-                    return Some(LineBreak::Newline(i, 2))
+                    return Some(LineBreak::Newline(i, 2));
                 }
             } else if ch == '\n' {
                 return Some(LineBreak::Newline(i, 1));
-            }
-
-            // Check for a new whitespace.
-            else if ch.is_whitespace() {
+            } else if ch.is_whitespace() {
                 last_whitespace_start = i;
             }
 
@@ -423,7 +428,6 @@ impl LineBreak {
         }
         None
     }
-
 }
 
 

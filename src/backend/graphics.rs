@@ -8,7 +8,7 @@
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 
 
-use ::{Color, Point, Rect, Scalar};
+use {Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
 use std::iter::once;
@@ -29,7 +29,7 @@ pub fn draw_from_graph<G, C>(context: Context,
                              depth_order: &[Visitable],
                              theme: &Theme)
     where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
+          C: CharacterCache<Texture = G::Texture>
 {
 
     // A stack of contexts, one for each scroll group.
@@ -40,7 +40,7 @@ pub fn draw_from_graph<G, C>(context: Context,
 
     // Retrieve the core window widget so that we can use it to filter visible widgets.
     let window_idx = NodeIndex::new(0);
-    let window = match graph.widget(window_idx){
+    let window = match graph.widget(window_idx) {
         Some(window) => window,
         // If we don't yet have the window widget, we won't have *any* widgets, so bail out.
         None => return,
@@ -52,8 +52,8 @@ pub fn draw_from_graph<G, C>(context: Context,
     // the visible area during the `set_widgets` stage, as it might be more optimal than doing so
     // here.
     let is_visible = |idx: NodeIndex, container: &Container| -> bool {
-        container.rect.overlap(window.rect).is_some()
-        && graph::algo::cropped_area_of_widget(graph, idx).is_some()
+        container.rect.overlap(window.rect).is_some() &&
+        graph::algo::cropped_area_of_widget(graph, idx).is_some()
     };
 
     // The depth order describes the order in which widgets should be drawn.
@@ -75,13 +75,13 @@ pub fn draw_from_graph<G, C>(context: Context,
                     // for it to the top of the stack.
                     //
                     // TODO: Make this more generic than just "if scrolling crop to kid_area".
-                    if container.maybe_x_scroll_state.is_some()
-                    || container.maybe_y_scroll_state.is_some() {
+                    if container.maybe_x_scroll_state.is_some() ||
+                       container.maybe_y_scroll_state.is_some() {
                         let context = crop_context(context, container.kid_area.rect);
                         scroll_stack.push(context);
                     }
                 }
-            },
+            }
 
             Visitable::Scrollbar(idx) => {
                 if let Some(widget) = graph.widget(idx) {
@@ -149,8 +149,16 @@ fn crop_context(context: Context, rect: Rect) -> Context {
     // can't represent the negative coords with `u16` (the target DrawState dimension type).
     // We'll hold onto the lost negative values (x_neg and y_neg) so that we can compensate
     // with the width and height.
-    let x_neg = if x < 0 { x } else { 0 };
-    let y_neg = if y < 0 { y } else { 0 };
+    let x_neg = if x < 0 {
+        x
+    } else {
+        0
+    };
+    let y_neg = if y < 0 {
+        y
+    } else {
+        0
+    };
     let mut x = ::std::cmp::max(0, x) as u16;
     let mut y = ::std::cmp::max(0, y) as u16;
     let mut w = ::std::cmp::max(0, (w as i32 + x_neg)) as u16;
@@ -164,12 +172,28 @@ fn crop_context(context: Context, rect: Rect) -> Context {
             h = 0;
         } else {
             // If there is some intersection, calculate the overlapping rect.
-            let (a_l, a_r, a_b, a_t) = (x, x+w, y, y+h);
-            let (b_l, b_r, b_b, b_t) = (rect.x, rect.x+rect.w, rect.y, rect.y+rect.h);
-            let l = if a_l > b_l { a_l } else { b_l };
-            let r = if a_r < b_r { a_r } else { b_r };
-            let b = if a_b > b_b { a_b } else { b_b };
-            let t = if a_t < b_t { a_t } else { b_t };
+            let (a_l, a_r, a_b, a_t) = (x, x + w, y, y + h);
+            let (b_l, b_r, b_b, b_t) = (rect.x, rect.x + rect.w, rect.y, rect.y + rect.h);
+            let l = if a_l > b_l {
+                a_l
+            } else {
+                b_l
+            };
+            let r = if a_r < b_r {
+                a_r
+            } else {
+                b_r
+            };
+            let b = if a_b > b_b {
+                a_b
+            } else {
+                b_b
+            };
+            let t = if a_t < b_t {
+                a_t
+            } else {
+                b_t
+            };
             x = l;
             y = b;
             w = r - l;
@@ -189,7 +213,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                                  container: &Container,
                                  theme: &Theme)
     where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
+          C: CharacterCache<Texture = G::Texture>
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
@@ -201,16 +225,16 @@ pub fn draw_from_container<G, C>(context: &Context,
                     ShapeStyle::Fill(_) => {
                         let color = rectangle.style.get_color(theme);
                         draw_rectangle(context, graphics, container.rect, color);
-                    },
+                    }
                     ShapeStyle::Outline(line_style) => {
                         let (l, r, b, t) = container.rect.l_r_b_t();
                         let points = [[l, b], [l, t], [r, t], [r, b], [l, b]];
                         let points = points.iter().cloned();
                         draw_lines(context, graphics, theme, points, line_style);
-                    },
+                    }
                 }
             }
-        },
+        }
 
         primitive::shape::framed_rectangle::KIND => {
             if let Some(framed_rectangle) = container.unique_widget_state::<::FramedRectangle>() {
@@ -224,7 +248,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let rect = container.rect.pad(frame);
                 draw_rectangle(context, graphics, rect, color);
             }
-        },
+        }
 
         primitive::shape::oval::KIND => {
             if let Some(oval) = container.unique_widget_state::<::Oval>() {
@@ -235,7 +259,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
                 let hw = w / 2.0;
                 let hh = h / 2.0;
-                let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
+                let f = |i: Scalar| [x + hw * (t * i).cos(), y + hh * (t * i).sin()];
                 let mut points = [[0.0, 0.0]; NUM_POINTS];
                 for i in 0..NUM_POINTS {
                     points[i] = f(i as f64);
@@ -246,14 +270,14 @@ pub fn draw_from_container<G, C>(context: &Context,
                         let color = oval.style.get_color(theme).to_fsa();
                         let polygon = graphics::Polygon::new(color);
                         polygon.draw(&points, &context.draw_state, context.transform, graphics);
-                    },
+                    }
                     ShapeStyle::Outline(line_style) => {
                         let points = points.iter().cloned();
                         draw_lines(context, graphics, theme, points, line_style)
-                    },
+                    }
                 }
             }
-        },
+        }
 
         primitive::shape::polygon::KIND => {
             use widget::primitive::shape::Style;
@@ -266,23 +290,23 @@ pub fn draw_from_container<G, C>(context: &Context,
                         let points = &polygon.state.points[..];
                         let polygon = graphics::Polygon::new(color);
                         polygon.draw(points, &context.draw_state, context.transform, graphics);
-                    },
+                    }
                     ShapeStyle::Outline(line_style) => {
                         let mut points = polygon.state.points.iter().cloned();
                         let first = points.next();
                         let points = first.into_iter().chain(points).chain(first);
                         draw_lines(context, graphics, theme, points, line_style);
-                    },
+                    }
                 }
             }
-        },
+        }
 
         primitive::line::KIND => {
             if let Some(line) = container.unique_widget_state::<::Line>() {
                 let points = once(line.state.start).chain(once(line.state.end));
                 draw_lines(context, graphics, theme, points, line.style);
             }
-        },
+        }
 
         primitive::point_path::KIND => {
             use widget::primitive::point_path::{State, Style};
@@ -290,7 +314,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                 let points = point_path.state.points.iter().cloned();
                 draw_lines(context, graphics, theme, points, point_path.style);
             }
-        },
+        }
 
         primitive::text::KIND => {
             if let Some(text) = container.unique_widget_state::<::Text>() {
@@ -313,7 +337,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                         .draw(line, character_cache, draw_state, transform, graphics);
                 }
             }
-        },
+        }
 
         _ => (),
     }
@@ -321,11 +345,8 @@ pub fn draw_from_container<G, C>(context: &Context,
 
 
 /// Draw a rectangle at the given Rect.
-pub fn draw_rectangle<G>(context: &Context,
-                         graphics: &mut G,
-                         rect: Rect,
-                         color: Color)
-    where G: Graphics,
+pub fn draw_rectangle<G>(context: &Context, graphics: &mut G, rect: Rect, color: Color)
+    where G: Graphics
 {
     let (l, b, w, h) = rect.l_b_w_h();
     let lbwh = [l, b, w, h];
@@ -341,7 +362,7 @@ pub fn draw_lines<G, I>(context: &Context,
                         mut points: I,
                         style: primitive::line::Style)
     where G: Graphics,
-          I: Iterator<Item=Point>,
+          I: Iterator<Item = Point>
 {
     use widget::primitive::line::{Cap, Pattern};
 
@@ -362,7 +383,7 @@ pub fn draw_lines<G, I>(context: &Context,
                     line.draw(coords, &context.draw_state, context.transform, graphics);
                     start = end;
                 }
-            },
+            }
             Pattern::Dashed => unimplemented!(),
             Pattern::Dotted => unimplemented!(),
         }
@@ -376,7 +397,7 @@ pub fn draw_scrolling<G>(context: &Context,
                          kid_area_rect: Rect,
                          maybe_x_scroll_state: Option<widget::scroll::StateX>,
                          maybe_y_scroll_state: Option<widget::scroll::StateY>)
-    where G: Graphics,
+    where G: Graphics
 {
     use widget::scroll;
 
@@ -385,18 +406,19 @@ pub fn draw_scrolling<G>(context: &Context,
                        kid_area_rect: Rect,
                        scroll_state: &scroll::State<A>)
         where G: Graphics,
-              A: scroll::Axis,
+              A: scroll::Axis
     {
         use widget::scroll::Elem::{Handle, Track};
         use widget::scroll::Interaction::{Highlighted, Clicked};
 
         let color = scroll_state.color;
         let track_color = match scroll_state.interaction {
-            Clicked(Track) => color.highlighted(),
-            Highlighted(_) | Clicked(_) => color,
-            _ if scroll_state.is_scrolling => color,
-            _ => return,
-        }.alpha(0.2);
+                              Clicked(Track) => color.highlighted(),
+                              Highlighted(_) | Clicked(_) => color,
+                              _ if scroll_state.is_scrolling => color,
+                              _ => return,
+                          }
+                          .alpha(0.2);
         let handle_color = match scroll_state.interaction {
             Clicked(Handle(_)) => color.clicked(),
             Highlighted(_) | Clicked(_) => color,

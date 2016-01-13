@@ -1,4 +1,4 @@
-//! 
+//!
 //! A module for describing Mouse state.
 //!
 //! The `Ui` will continuously maintain the latest Mouse state, necessary for widget logic.
@@ -54,7 +54,6 @@ pub struct Scroll {
 
 
 impl ButtonState {
-
     /// Constructor for a default ButtonState.
     pub fn new() -> ButtonState {
         ButtonState {
@@ -69,12 +68,10 @@ impl ButtonState {
         self.was_just_released = false;
         self.was_just_pressed = false;
     }
-
 }
 
 
 impl Mouse {
-
     /// Constructor for a default Mouse struct.
     pub fn new() -> Mouse {
         Mouse {
@@ -91,6 +88,4 @@ impl Mouse {
     pub fn relative_to(self, xy: Point) -> Mouse {
         Mouse { xy: ::vecmath::vec2_sub(self.xy, xy), ..self }
     }
-
 }
-

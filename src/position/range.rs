@@ -27,7 +27,6 @@ pub enum Edge {
 
 
 impl Range {
-
     /// Construct a new `Range` from a given range, i.e. `Range::new(start, end)`.
     ///
     /// # Examples
@@ -122,7 +121,10 @@ impl Range {
     /// assert_eq!(Range::new(5.0, 1.0).invert(), Range::new(1.0, 5.0));
     /// ```
     pub fn invert(self) -> Range {
-        Range { start: self.end, end: self.start }
+        Range {
+            start: self.end,
+            end: self.start,
+        }
     }
 
     /// Map the given Scalar from `Self` to some other given `Range`.
@@ -164,7 +166,10 @@ impl Range {
     /// assert_eq!(Range::new(5.0, -5.0).shift(-5.0), Range::new(0.0, -10.0));
     /// ```
     pub fn shift(self, amount: Scalar) -> Range {
-        Range { start: self.start + amount, end: self.end + amount }
+        Range {
+            start: self.start + amount,
+            end: self.end + amount,
+        }
     }
 
     /// The direction of the Range represented as a normalised scalar.
@@ -179,9 +184,13 @@ impl Range {
     /// assert_eq!(Range::new(0.0, -5.0).direction(), -1.0);
     /// ```
     pub fn direction(&self) -> Scalar {
-        if      self.start < self.end { 1.0 }
-        else if self.start > self.end { -1.0 }
-        else                          { 0.0 }
+        if self.start < self.end {
+            1.0
+        } else if self.start > self.end {
+            -1.0
+        } else {
+            0.0
+        }
     }
 
     /// Converts the Range to an undirected Range. By ensuring that `start` <= `end`.
@@ -198,7 +207,11 @@ impl Range {
     /// assert_eq!(Range::new(10.0, -10.0).undirected(), Range::new(-10.0, 10.0));
     /// ```
     pub fn undirected(self) -> Range {
-        if self.start > self.end { self.invert() } else { self }
+        if self.start > self.end {
+            self.invert()
+        } else {
+            self
+        }
     }
 
     /// The Range that encompasses both self and the given Range.
@@ -245,7 +258,7 @@ impl Range {
     /// let c = Range::new(10.0, -30.0);
     /// let d = Range::new(-5.0, 20.0);
     /// assert_eq!(c.overlap(d), Some(Range::new(-5.0, 10.0)));
-    /// 
+    ///
     /// let e = Range::new(0.0, 2.5);
     /// let f = Range::new(50.0, 100.0);
     /// assert_eq!(e.overlap(f), None);
@@ -282,8 +295,11 @@ impl Range {
     /// assert_eq!(c.max_directed(d), Range::new(5.0, -30.0));
     /// ```
     pub fn max_directed(self, other: Self) -> Range {
-        if self.start <= self.end { self.max(other) }
-        else                      { self.max(other).invert() }
+        if self.start <= self.end {
+            self.max(other)
+        } else {
+            self.max(other).invert()
+        }
     }
 
     /// Is the given scalar within our range.
@@ -344,7 +360,11 @@ impl Range {
     /// assert_eq!(Range::new(10.0, 0.0).pad_start(2.0), Range::new(8.0, 0.0));
     /// ```
     pub fn pad_start(mut self, pad: Scalar) -> Range {
-        self.start += if self.start <= self.end { pad } else { -pad };
+        self.start += if self.start <= self.end {
+            pad
+        } else {
+            -pad
+        };
         self
     }
 
@@ -359,7 +379,11 @@ impl Range {
     /// assert_eq!(Range::new(10.0, 0.0).pad_end(2.0), Range::new(10.0, 2.0));
     /// ```
     pub fn pad_end(mut self, pad: Scalar) -> Range {
-        self.end += if self.start <= self.end { -pad } else { pad };
+        self.end += if self.start <= self.end {
+            -pad
+        } else {
+            pad
+        };
         self
     }
 
@@ -427,17 +451,29 @@ impl Range {
         let Range { start, end } = self;
         if start <= end {
             if value < start {
-                Range { start: value, end: end }
+                Range {
+                    start: value,
+                    end: end,
+                }
             } else if value > end {
-                Range { start: start, end: value }
+                Range {
+                    start: start,
+                    end: value,
+                }
             } else {
                 self
             }
         } else {
             if value < end {
-                Range { start: start, end: value }
+                Range {
+                    start: start,
+                    end: value,
+                }
             } else if value > start {
-                Range { start: value, end: end }
+                Range {
+                    start: value,
+                    end: end,
+                }
             } else {
                 self
             }
@@ -612,11 +648,20 @@ impl Range {
     /// ```
     pub fn closest_edge(&self, scalar: Scalar) -> Edge {
         let Range { start, end } = *self;
-        let start_diff = if scalar < start { start - scalar } else { scalar - start };
-        let end_diff = if scalar < end { end - scalar } else { scalar - end };
-        if start_diff <= end_diff { Edge::Start } else { Edge::End }
+        let start_diff = if scalar < start {
+            start - scalar
+        } else {
+            scalar - start
+        };
+        let end_diff = if scalar < end {
+            end - scalar
+        } else {
+            scalar - end
+        };
+        if start_diff <= end_diff {
+            Edge::Start
+        } else {
+            Edge::End
+        }
     }
-
 }
-
-

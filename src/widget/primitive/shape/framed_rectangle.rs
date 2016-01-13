@@ -1,13 +1,4 @@
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimensions,
-    Frameable,
-    Scalar,
-    Sizeable,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, Dimensions, Frameable, Scalar, Sizeable, Widget};
 use widget;
 
 
@@ -37,17 +28,16 @@ widget_style!{
 }
 
 impl FramedRectangle {
-
     /// Build a new **FramedRectangle**.
     pub fn new(dim: Dimensions) -> Self {
         FramedRectangle {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     builder_method!(pub with_style { style = Style });
-
 }
 
 
@@ -79,7 +69,6 @@ impl Widget for FramedRectangle {
     fn update<C: CharacterCache>(self, _args: widget::UpdateArgs<Self, C>) {
         // Nothing to update here!
     }
-
 }
 
 

@@ -6,16 +6,8 @@ use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use input;
-use input::{
-    GenericEvent,
-    MouseCursorEvent,
-    MouseScrollEvent,
-    PressEvent,
-    ReleaseEvent,
-    RenderEvent,
-    ResizeEvent,
-    TextEvent,
-};
+use input::{GenericEvent, MouseCursorEvent, MouseScrollEvent, PressEvent, ReleaseEvent,
+            RenderEvent, ResizeEvent, TextEvent};
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std::collections::HashSet;
 use std::io::Write;
@@ -116,14 +108,16 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 
 impl<C> Ui<C> {
-
-
     /// A new, empty **Ui**.
     pub fn new(character_cache: C, theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
         let updated_widgets = HashSet::new();
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        Self::new_internal(character_cache,
+                           theme,
+                           widget_graph,
+                           depth_order,
+                           updated_widgets)
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
@@ -131,7 +125,11 @@ impl<C> Ui<C> {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
         let updated_widgets = HashSet::with_capacity(n_widgets);
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        Self::new_internal(character_cache,
+                           theme,
+                           widget_graph,
+                           depth_order,
+                           updated_widgets)
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
@@ -139,8 +137,8 @@ impl<C> Ui<C> {
                     theme: Theme,
                     mut widget_graph: Graph,
                     depth_order: graph::DepthOrder,
-                    updated_widgets: HashSet<NodeIndex>) -> Self
-    {
+                    updated_widgets: HashSet<NodeIndex>)
+                    -> Self {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
         Ui {
@@ -210,9 +208,9 @@ impl<C> Ui<C> {
     /// Returns `None` if there is no widget for the given index.
     pub fn kid_area_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         let idx: widget::Index = idx.into();
-        self.widget_graph.widget(idx).map(|widget| {
-            widget.kid_area.rect.padding(widget.kid_area.pad)
-        })
+        self.widget_graph
+            .widget(idx)
+            .map(|widget| widget.kid_area.rect.padding(widget.kid_area.pad))
     }
 
     /// An index to the previously updated widget if there is one.
@@ -279,7 +277,7 @@ impl<C> Ui<C> {
                     };
                     mouse_button.position = mouse::ButtonPosition::Down;
                     mouse_button.was_just_pressed = true;
-                },
+                }
                 Button::Keyboard(key) => self.keys_just_pressed.push(key),
                 _ => {}
             }
@@ -298,15 +296,13 @@ impl<C> Ui<C> {
                     };
                     mouse_button.position = mouse::ButtonPosition::Up;
                     mouse_button.was_just_released = true;
-                },
+                }
                 Button::Keyboard(key) => self.keys_just_released.push(key),
                 _ => {}
             }
         });
 
-        event.text(|text| {
-            self.text_just_entered.push(text.to_string())
-        });
+        event.text(|text| self.text_just_entered.push(text.to_string()));
     }
 
 
@@ -322,8 +318,8 @@ impl<C> Ui<C> {
                    x_position: Position,
                    y_position: Position,
                    dim: Dimensions,
-                   place_on_kid_area: bool) -> Point
-    {
+                   place_on_kid_area: bool)
+                   -> Point {
         use vecmath::vec2_add;
 
         // Retrieves the absolute **Scalar** position from the given position for a single axis.
@@ -335,90 +331,116 @@ impl<C> Ui<C> {
                                       dim: Scalar,
                                       place_on_kid_area: bool,
                                       range_from_rect: R,
-                                      start_and_end_pad: P) -> Scalar
+                                      start_and_end_pad: P)
+                                      -> Scalar
             where R: FnOnce(Rect) -> Range,
-                  P: FnOnce(Padding) -> Range,
+                  P: FnOnce(Padding) -> Range
         {
             match position {
 
                 Position::Absolute(abs) => abs,
 
-                Position::Relative(rel, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
-                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
-                        .map(|other_range| other_range.middle() + rel)
-                        .unwrap_or(rel),
-
-                Position::Direction(direction, amt, maybe_idx) =>
+                Position::Relative(rel, maybe_idx) => {
                     maybe_idx.or(ui.maybe_prev_widget_idx)
-                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
-                        .map(|other_range| {
-                            let range = Range::from_pos_and_len(0.0, dim);
-                            match direction {
-                                Direction::Forwards => range.align_after(other_range).middle() + amt,
-                                Direction::Backwards => range.align_before(other_range).middle() - amt,
-                            }
-                        })
-                        .unwrap_or_else(|| match direction {
-                            Direction::Forwards => amt,
-                            Direction::Backwards => -amt,
-                        }),
+                             .or(Some(ui.window.into()))
+                             .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                             .map(|other_range| other_range.middle() + rel)
+                             .unwrap_or(rel)
+                }
 
-                Position::Align(align, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
-                        .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
-                        .map(|other_range| {
-                            let range = Range::from_pos_and_len(0.0, dim);
-                            match align {
-                                Align::Start => range.align_start_of(other_range).middle(),
-                                Align::Middle => other_range.middle(),
-                                Align::End => range.align_end_of(other_range).middle(),
-                            }
-                        })
-                        .unwrap_or(0.0),
+                Position::Direction(direction, amt, maybe_idx) => {
+                    maybe_idx.or(ui.maybe_prev_widget_idx)
+                             .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                             .map(|other_range| {
+                                 let range = Range::from_pos_and_len(0.0, dim);
+                                 match direction {
+                                     Direction::Forwards => {
+                                         range.align_after(other_range).middle() + amt
+                                     }
+                                     Direction::Backwards => {
+                                         range.align_before(other_range).middle() - amt
+                                     }
+                                 }
+                             })
+                             .unwrap_or_else(|| {
+                                 match direction {
+                                     Direction::Forwards => amt,
+                                     Direction::Backwards => -amt,
+                                 }
+                             })
+                }
+
+                Position::Align(align, maybe_idx) => {
+                    maybe_idx.or(ui.maybe_prev_widget_idx)
+                             .or(Some(ui.window.into()))
+                             .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
+                             .map(|other_range| {
+                                 let range = Range::from_pos_and_len(0.0, dim);
+                                 match align {
+                                     Align::Start => range.align_start_of(other_range).middle(),
+                                     Align::Middle => other_range.middle(),
+                                     Align::End => range.align_end_of(other_range).middle(),
+                                 }
+                             })
+                             .unwrap_or(0.0)
+                }
 
                 Position::Place(place, maybe_idx) => {
-                    let parent_idx = maybe_idx
-                        .or(ui.maybe_current_parent_idx)
-                        .unwrap_or(ui.window.into());
+                    let parent_idx = maybe_idx.or(ui.maybe_current_parent_idx)
+                                              .unwrap_or(ui.window.into());
                     let maybe_area = match place_on_kid_area {
-                        true => ui.widget_graph.widget(parent_idx)
-                            .map(|w| w.kid_area)
-                            .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
-                        false => ui.rect_of(parent_idx)
-                            .map(|rect| (range_from_rect(rect), Range::new(0.0, 0.0))),
+                        true => {
+                            ui.widget_graph
+                              .widget(parent_idx)
+                              .map(|w| w.kid_area)
+                              .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad)))
+                        }
+                        false => {
+                            ui.rect_of(parent_idx)
+                              .map(|rect| (range_from_rect(rect), Range::new(0.0, 0.0)))
+                        }
                     };
-                    maybe_area
-                        .map(|(parent_range, pad)| {
-                            let range = Range::from_pos_and_len(0.0, dim);
-                            let parent_range = parent_range.pad_start(pad.start).pad_end(pad.end);
-                            match place {
-                                Place::Start(maybe_mgn) =>
-                                    range.align_start_of(parent_range).middle() + maybe_mgn.unwrap_or(0.0),
-                                Place::Middle =>
-                                    parent_range.middle(),
-                                Place::End(maybe_mgn) =>
-                                    range.align_end_of(parent_range).middle() - maybe_mgn.unwrap_or(0.0),
-                            }
-                        })
-                        .unwrap_or(0.0)
-                },
+                    maybe_area.map(|(parent_range, pad)| {
+                                  let range = Range::from_pos_and_len(0.0, dim);
+                                  let parent_range = parent_range.pad_start(pad.start)
+                                                                 .pad_end(pad.end);
+                                  match place {
+                                      Place::Start(maybe_mgn) => {
+                                          range.align_start_of(parent_range).middle() +
+                                          maybe_mgn.unwrap_or(0.0)
+                                      }
+                                      Place::Middle => parent_range.middle(),
+                                      Place::End(maybe_mgn) => {
+                                          range.align_end_of(parent_range).middle() -
+                                          maybe_mgn.unwrap_or(0.0)
+                                      }
+                                  }
+                              })
+                              .unwrap_or(0.0)
+                }
 
             }
         }
 
-        fn x_range(rect: Rect) -> Range { rect.x }
-        fn y_range(rect: Rect) -> Range { rect.y }
-        fn x_pad(pad: Padding) -> Range { pad.x }
-        fn y_pad(pad: Padding) -> Range { pad.y }
+        fn x_range(rect: Rect) -> Range {
+            rect.x
+        }
+        fn y_range(rect: Rect) -> Range {
+            rect.y
+        }
+        fn x_pad(pad: Padding) -> Range {
+            pad.x
+        }
+        fn y_pad(pad: Padding) -> Range {
+            pad.y
+        }
         let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
         let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
         let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
-        maybe_idx
-            .map(|idx| vec2_add(xy, graph::algo::scroll_offset(&self.widget_graph, idx)))
-            .unwrap_or(xy)
+        maybe_idx.map(|idx| vec2_add(xy, graph::algo::scroll_offset(&self.widget_graph, idx)))
+                 .unwrap_or(xy)
     }
 
 
@@ -426,7 +448,7 @@ impl<C> Ui<C> {
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
         where C: CharacterCache,
-              F: FnOnce(&mut Self),
+              F: FnOnce(&mut Self)
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -440,10 +462,13 @@ impl<C> Ui<C> {
             self.maybe_captured_keyboard = None;
         }
 
-        self.maybe_widget_under_mouse =
-            graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+        self.maybe_widget_under_mouse = graph::algo::pick_widget(&self.widget_graph,
+                                                                 &self.depth_order.indices,
+                                                                 self.mouse.xy);
         self.maybe_top_scrollable_widget_under_mouse =
-            graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+            graph::algo::pick_scrollable_widget(&self.widget_graph,
+                                                &self.depth_order.indices,
+                                                self.mouse.xy);
 
 
         // Move the previous `updated_widgets` to `prev_updated_widgets` and clear
@@ -459,7 +484,7 @@ impl<C> Ui<C> {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
+            use {color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
             type Window = FramedRectangle;
             Window::new([self.win_w, self.win_h])
                 .no_parent()
@@ -483,11 +508,11 @@ impl<C> Ui<C> {
         // Update the graph's internal depth_order while considering the captured input.
         let maybe_captured_mouse = match self.maybe_captured_mouse {
             Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
+            _ => None,
         };
         let maybe_captured_keyboard = match self.maybe_captured_keyboard {
             Some(Capturing::Captured(id)) => Some(id),
-            _                             => None,
+            _ => None,
         };
 
         // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
@@ -542,7 +567,7 @@ impl<C> Ui<C> {
     /// `Ui::draw_if_changed` method instead.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
         where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
+              C: CharacterCache<Texture = G::Texture>
     {
         use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::{Deref, DerefMut};
@@ -567,7 +592,12 @@ impl<C> Ui<C> {
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph(context, graphics, character_cache, widget_graph, indices, theme);
+        draw_from_graph(context,
+                        graphics,
+                        character_cache,
+                        widget_graph,
+                        indices,
+                        theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -592,7 +622,7 @@ impl<C> Ui<C> {
     /// to set the redraw count manually.
     pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
         where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
+              C: CharacterCache<Texture = G::Texture>
     {
         if self.redraw_count > 0 {
             self.draw(context, graphics);
@@ -615,7 +645,6 @@ impl<C> Ui<C> {
         let idx: widget::Index = idx.into();
         graph::algo::cropped_area_of_widget(&self.widget_graph, idx)
     }
-
 }
 
 
@@ -628,18 +657,22 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
-    -> Option<widget::Index>
-{
+pub fn infer_parent_from_position<C>(ui: &Ui<C>,
+                                     x_pos: Position,
+                                     y_pos: Position)
+                                     -> Option<widget::Index> {
     use Position::{Place, Relative, Direction, Align};
     match (x_pos, y_pos) {
-        (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
-            maybe_parent_idx,
-        (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
-        (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        |
-        (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     =>
+        (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) => maybe_parent_idx,
+        (Direction(_, _, maybe_idx), _) |
+        (_, Direction(_, _, maybe_idx)) |
+        (Align(_, maybe_idx), _) |
+        (_, Align(_, maybe_idx)) |
+        (Relative(_, maybe_idx), _) |
+        (_, Relative(_, maybe_idx)) => {
             maybe_idx.or(ui.maybe_prev_widget_idx)
-                .and_then(|idx| ui.widget_graph.depth_parent(idx)),
+                     .and_then(|idx| ui.widget_graph.depth_parent(idx))
+        }
         _ => None,
     }
 }
@@ -647,7 +680,7 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 
 /// Attempts to infer the parent of a widget from its *x*/*y* `Position`s and the current state of
 /// the `Ui`.
-/// 
+///
 /// If no parent can be inferred via the `Position`s, the `maybe_current_parent_idx` will be used.
 ///
 /// If `maybe_current_parent_idx` is `None`, the `Ui`'s `window` widget will be used.
@@ -672,26 +705,34 @@ pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
 pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
     let maybe_mouse = get_mouse_state(ui, idx);
     let global_mouse = ui.mouse;
-    let without_keys = || UserInput {
-        maybe_mouse: maybe_mouse,
-        global_mouse: global_mouse,
-        pressed_keys: &[],
-        released_keys: &[],
-        entered_text: &[],
-        window_dim: [ui.win_w, ui.win_h],
+    let without_keys = || {
+        UserInput {
+            maybe_mouse: maybe_mouse,
+            global_mouse: global_mouse,
+            pressed_keys: &[],
+            released_keys: &[],
+            entered_text: &[],
+            window_dim: [ui.win_w, ui.win_h],
+        }
     };
-    let with_keys = || UserInput {
-        maybe_mouse: maybe_mouse,
-        global_mouse: global_mouse,
-        pressed_keys: &ui.keys_just_pressed,
-        released_keys: &ui.keys_just_released,
-        entered_text: &ui.text_just_entered,
-        window_dim: [ui.win_w, ui.win_h],
+    let with_keys = || {
+        UserInput {
+            maybe_mouse: maybe_mouse,
+            global_mouse: global_mouse,
+            pressed_keys: &ui.keys_just_pressed,
+            released_keys: &ui.keys_just_released,
+            entered_text: &ui.text_just_entered,
+            window_dim: [ui.win_w, ui.win_h],
+        }
     };
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_idx)) =>
-            if idx == captured_idx { with_keys()    }
-            else                   { without_keys() },
+        Some(Capturing::Captured(captured_idx)) => {
+            if idx == captured_idx {
+                with_keys()
+            } else {
+                without_keys()
+            }
+        }
         Some(Capturing::JustReleased) => without_keys(),
         None => with_keys(),
     }
@@ -703,21 +744,33 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
 pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
-        Some(Capturing::Captured(captured_idx)) =>
-            if idx == captured_idx { Some(ui.mouse) } else { None },
-        Some(Capturing::JustReleased) =>
-            None,
-        None => match ui.maybe_captured_keyboard {
-            Some(Capturing::Captured(captured_idx)) =>
-                if idx == captured_idx { Some(ui.mouse) } else { None },
-            _ =>
-                if Some(idx) == ui.maybe_widget_under_mouse 
-                || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
-                    Some(ui.mouse)
-                } else {
-                    None
-                },
-        },
+        Some(Capturing::Captured(captured_idx)) => {
+            if idx == captured_idx {
+                Some(ui.mouse)
+            } else {
+                None
+            }
+        }
+        Some(Capturing::JustReleased) => None,
+        None => {
+            match ui.maybe_captured_keyboard {
+                Some(Capturing::Captured(captured_idx)) => {
+                    if idx == captured_idx {
+                        Some(ui.mouse)
+                    } else {
+                        None
+                    }
+                }
+                _ => {
+                    if Some(idx) == ui.maybe_widget_under_mouse ||
+                       Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
+                        Some(ui.mouse)
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -758,20 +811,27 @@ pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns false if the keyboard was already captured by another widget.
 pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the keyboard, however it is \
-                     already captured by {:?}.", idx, captured_idx).unwrap();
-        },
+        Some(Capturing::Captured(captured_idx)) => {
+            if idx != captured_idx {
+                writeln!(::std::io::stderr(),
+                         "Warning: {:?} tried to capture the keyboard, however it is already \
+                          captured by {:?}.",
+                         idx,
+                         captured_idx)
+                    .unwrap();
+            }
+        }
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to capture the keyboard, however it was \
-                     already captured.", idx).unwrap();
-        },
+                     "Warning: {:?} tried to capture the keyboard, however it was already \
+                      captured.",
+                     idx)
+                .unwrap();
+        }
         None => {
             ui.maybe_captured_keyboard = Some(Capturing::Captured(idx));
             return true;
-        },
+        }
     }
     false
 }
@@ -784,24 +844,33 @@ pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns false if the keyboard wasn't captured by the given widget in the first place.
 pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
-        Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
-            writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the keyboard, however it is \
-                     actually captured by {:?}.", idx, captured_idx).unwrap();
-        } else {
-            ui.maybe_captured_keyboard = Some(Capturing::JustReleased);
-            return true;
-        },
+        Some(Capturing::Captured(captured_idx)) => {
+            if idx != captured_idx {
+                writeln!(::std::io::stderr(),
+                         "Warning: {:?} tried to uncapture the keyboard, however it is actually \
+                          captured by {:?}.",
+                         idx,
+                         captured_idx)
+                    .unwrap();
+            } else {
+                ui.maybe_captured_keyboard = Some(Capturing::JustReleased);
+                return true;
+            }
+        }
         Some(Capturing::JustReleased) => {
             writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the keyboard, however it had \
-                     already been released this cycle.", idx).unwrap();
-        },
+                     "Warning: {:?} tried to uncapture the keyboard, however it had already been \
+                      released this cycle.",
+                     idx)
+                .unwrap();
+        }
         None => {
             writeln!(::std::io::stderr(),
-                    "Warning: {:?} tried to uncapture the keyboard, however the mouse \
-                     was not captured", idx).unwrap();
-        },
+                     "Warning: {:?} tried to uncapture the keyboard, however the mouse was not \
+                      captured",
+                     idx)
+                .unwrap();
+        }
     }
     false
 }
@@ -810,8 +879,8 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
-    C: CharacterCache,
+pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache)
+    where C: CharacterCache
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
@@ -826,11 +895,11 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>) where
-    C: CharacterCache,
-    W: Widget,
-    W::State: 'static,
-    W::Style: 'static,
+pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>)
+    where C: CharacterCache,
+          W: Widget,
+          W::State: 'static,
+          W::Style: 'static
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
@@ -842,4 +911,3 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-

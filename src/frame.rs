@@ -41,4 +41,3 @@ pub trait Frameable: Sized {
     }
 
 }
-

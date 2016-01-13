@@ -1,22 +1,5 @@
-use {
-    Align,
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimension,
-    FontSize,
-    Frameable,
-    FramedRectangle,
-    IndexSlot,
-    Labelable,
-    Mouse,
-    Positionable,
-    Scalar,
-    Sizeable,
-    Text,
-    TextWrap,
-    Ui,
-};
+use {Align, CharacterCache, Color, Colorable, Dimension, FontSize, Frameable, FramedRectangle,
+     IndexSlot, Labelable, Mouse, Positionable, Scalar, Sizeable, Text, TextWrap, Ui};
 use widget::{self, Widget};
 
 
@@ -86,29 +69,29 @@ fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Intera
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
         (false, Clicked, Down) => Clicked,
-        _                      => Normal,
+        _ => Normal,
     }
 }
 
 
-impl<'a, F> TitleBar<'a, F>
-    where F: FnOnce(Interaction),
+impl<'a, F> TitleBar<'a, F> where F: FnOnce(Interaction)
 {
-
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
     pub fn new<I>(label: &'a str, idx: I) -> Self
-        where I: Into<widget::Index> + Copy,
+        where I: Into<widget::Index> + Copy
     {
         TitleBar {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             label: label,
             maybe_react: None,
-        }.w_of(idx).mid_top_of(idx)
+        }
+        .w_of(idx)
+        .mid_top_of(idx)
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
@@ -133,7 +116,6 @@ impl<'a, F> TitleBar<'a, F>
         pub line_spacing { style.line_spacing = Some(Scalar) }
         pub react { maybe_react = Some(F) }
     }
-
 }
 
 
@@ -143,8 +125,7 @@ pub fn calc_height(font_size: FontSize) -> Scalar {
 }
 
 
-impl<'a, F> Widget for TitleBar<'a, F>
-    where F: FnOnce(Interaction),
+impl<'a, F> Widget for TitleBar<'a, F> where F: FnOnce(Interaction)
 {
     type State = State;
     type Style = Style;
@@ -189,7 +170,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
             Some(mouse) => {
                 let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, state.view().interaction, mouse)
-            },
+            }
         };
 
         // FramedRectangle widget.
@@ -216,8 +197,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
         let mut text = Text::new(label);
         text.style.maybe_wrap = Some(maybe_wrap);
         text.style.text_align = Some(text_align);
-        text
-            .padded_w_of(rectangle_idx, frame)
+        text.padded_w_of(rectangle_idx, frame)
             .middle_of(rectangle_idx)
             .color(text_color)
             .font_size(font_size)
@@ -234,7 +214,6 @@ impl<'a, F> Widget for TitleBar<'a, F>
             state.update(|state| state.interaction = new_interaction);
         }
     }
-
 }
 
 
@@ -256,4 +235,3 @@ impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
         label_font_size { style.font_size = Some(FontSize) }
     }
 }
-

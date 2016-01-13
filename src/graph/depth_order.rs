@@ -2,12 +2,7 @@
 
 use daggy::Walker;
 use std::collections::HashSet;
-use super::{
-    Graph,
-    GraphIndex,
-    Node,
-    NodeIndex,
-};
+use super::{Graph, GraphIndex, Node, NodeIndex};
 
 
 /// Contains Node indices in order of depth, starting with the deepest.
@@ -34,7 +29,6 @@ pub enum Visitable {
 
 
 impl DepthOrder {
-
     /// Construct a new empty **DepthOrder**.
     pub fn new() -> DepthOrder {
         DepthOrder {
@@ -73,7 +67,7 @@ impl DepthOrder {
                         maybe_captured_mouse: Option<M>,
                         maybe_captured_keyboard: Option<K>)
         where M: GraphIndex,
-              K: GraphIndex,
+              K: GraphIndex
     {
         let DepthOrder { ref mut indices, ref mut floating } = *self;
 
@@ -98,13 +92,15 @@ impl DepthOrder {
                        floating);
 
         // Sort the floating widgets so that the ones clicked last come last.
-        floating.sort_by(|&a, &b| match (&graph[a], &graph[b]) {
-            (&Node::Widget(ref a), &Node::Widget(ref b)) => {
-                let a_floating = a.maybe_floating.expect("Not floating");
-                let b_floating = b.maybe_floating.expect("Not floating");
-                a_floating.time_last_clicked.cmp(&b_floating.time_last_clicked)
-            },
-            _ => ::std::cmp::Ordering::Equal,
+        floating.sort_by(|&a, &b| {
+            match (&graph[a], &graph[b]) {
+                (&Node::Widget(ref a), &Node::Widget(ref b)) => {
+                    let a_floating = a.maybe_floating.expect("Not floating");
+                    let b_floating = b.maybe_floating.expect("Not floating");
+                    a_floating.time_last_clicked.cmp(&b_floating.time_last_clicked)
+                }
+                _ => ::std::cmp::Ordering::Equal,
+            }
         });
 
         // Visit all of the floating widgets last.
@@ -119,7 +115,6 @@ impl DepthOrder {
                            floating);
         }
     }
-
 }
 
 
@@ -130,8 +125,7 @@ fn visit_by_depth(graph: &Graph,
                   maybe_captured_mouse: Option<NodeIndex>,
                   maybe_captured_keyboard: Option<NodeIndex>,
                   depth_order: &mut Vec<Visitable>,
-                  floating_deque: &mut Vec<NodeIndex>)
-{
+                  floating_deque: &mut Vec<NodeIndex>) {
     // First, if the current node is a widget and it was set in the current `set_widgets` stage,
     // store its index.
     match graph.widget(idx).is_some() && updated_widgets.contains(&idx) {
@@ -170,23 +164,22 @@ fn visit_by_depth(graph: &Graph,
         // Store floating widgets int he floating_deque for visiting after the current tree.
         match maybe_is_floating {
             Some(true) => floating_deque.push(child_idx),
-            _          => visit_by_depth(graph,
-                                         child_idx,
-                                         updated_widgets,
-                                         maybe_captured_mouse,
-                                         maybe_captured_keyboard,
-                                         depth_order,
-                                         floating_deque),
+            _ => {
+                visit_by_depth(graph,
+                               child_idx,
+                               updated_widgets,
+                               maybe_captured_mouse,
+                               maybe_captured_keyboard,
+                               depth_order,
+                               floating_deque)
+            }
         }
     }
 
     // If the widget is scrollable, we should add its scrollbar to the visit order also.
     if let Some(widget) = graph.widget(idx) {
-        if widget.maybe_x_scroll_state.is_some()
-        || widget.maybe_y_scroll_state.is_some() {
+        if widget.maybe_x_scroll_state.is_some() || widget.maybe_y_scroll_state.is_some() {
             depth_order.push(Visitable::Scrollbar(idx));
         }
     }
 }
-
-

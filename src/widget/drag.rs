@@ -1,4 +1,4 @@
-//! 
+//!
 //! Types and functionality related to the dragging behaviour of Widgets.
 //!
 
@@ -32,22 +32,19 @@ pub fn drag_widget(xy: Point, rel_rect: Rect, state: State, mouse: Mouse) -> (Po
 
     // Determine the new drag state.
     let new_state = match (is_over, state, mouse.left.position) {
-        (true,  Normal,     Down) => Normal,
-        (true,  _,          Up)   => Highlighted,
-        (true,  _,          Down) |
+        (true, Normal, Down) => Normal,
+        (true, _, Up) => Highlighted,
+        (true, _, Down) |
         (false, Clicked(_), Down) => Clicked(mouse.xy),
-        _                         => Normal,
+        _ => Normal,
     };
 
     // Drag the Canvas if the TitleBar remains clicked.
     let new_xy = match (state, new_state) {
-        //(Clicked(ax, ay), Clicked(bx, by)) => ::vecmath::vec2_add(xy, [bx - ax, by - ay]),
+        // (Clicked(ax, ay), Clicked(bx, by)) => ::vecmath::vec2_add(xy, [bx - ax, by - ay]),
         (Clicked(a), Clicked(b)) => ::vecmath::vec2_add(xy, ::vecmath::vec2_sub(b, a)),
-        _                        => xy,
+        _ => xy,
     };
 
     (new_xy, new_state)
 }
-
-
-

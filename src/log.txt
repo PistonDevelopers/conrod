@@ -1,0 +1,8 @@
+line 399 in color.rs - what is the proper form for shortening this?
+
+line 271 in drop_down_list.rs - what is the proper form for shortening this line?
+
+lines 249, 523, 535, 547, 558, 677, 751, 752, 753, 755, 763 in graph/mod.rs are all too long.
+
+lines 185 and 1049 in mod.rs are too long
+

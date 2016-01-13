@@ -1,19 +1,6 @@
 
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    FontSize,
-    Frameable,
-    FramedRectangle,
-    IndexSlot,
-    Labelable,
-    Mouse,
-    Positionable,
-    Scalar,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, FontSize, Frameable, FramedRectangle, IndexSlot, Labelable,
+     Mouse, Positionable, Scalar, Text, Widget};
 use widget;
 
 
@@ -83,17 +70,16 @@ fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Intera
     use mouse::ButtonPosition::{Down, Up};
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
+        (true, Normal, Down) => Normal,
+        (true, _, Down) => Clicked,
+        (true, _, Up) => Highlighted,
         (false, Clicked, Down) => Clicked,
-        _                      => Normal,
+        _ => Normal,
     }
 }
 
 
 impl<'a, F> Button<'a, F> {
-
     /// Create a button context to be built upon.
     pub fn new() -> Self {
         Button {
@@ -109,12 +95,10 @@ impl<'a, F> Button<'a, F> {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
 
-impl<'a, F> Widget for Button<'a, F>
-    where F: FnOnce(),
+impl<'a, F> Widget for Button<'a, F> where F: FnOnce()
 {
     type State = State;
     type Style = Style;
@@ -155,20 +139,24 @@ impl<'a, F> Widget for Button<'a, F>
             (true, Some(mouse)) => {
                 let is_over = rect.is_over(mouse.xy);
                 get_new_interaction(is_over, state.view().interaction, mouse)
-            },
+            }
         };
 
         // Capture the mouse if it was clicked, uncapture if it was released.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
+            (Interaction::Highlighted, Interaction::Clicked) => {
+                ui.capture_mouse();
+            }
             (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+            (Interaction::Clicked, Interaction::Normal) => {
+                ui.uncapture_mouse();
+            }
             _ => (),
         }
 
         // If the mouse was released over button, react.
-        if let (Interaction::Clicked, Interaction::Highlighted) =
-            (state.view().interaction, new_interaction) {
+        if let (Interaction::Clicked, Interaction::Highlighted) = (state.view().interaction,
+                                                                   new_interaction) {
             if let Some(react) = maybe_react {
                 react()
             }
@@ -207,7 +195,6 @@ impl<'a, F> Widget for Button<'a, F>
         }
 
     }
-
 }
 
 

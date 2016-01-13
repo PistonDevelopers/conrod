@@ -1,24 +1,7 @@
 
-use {
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimensions,
-    FontSize,
-    Frameable,
-    FramedRectangle,
-    IndexSlot,
-    Labelable,
-    Mouse,
-    NodeIndex,
-    Point,
-    Positionable,
-    Rectangle,
-    Scalar,
-    Sizeable,
-    Text,
-    Widget,
-};
+use {CharacterCache, Color, Colorable, Dimensions, FontSize, Frameable, FramedRectangle,
+     IndexSlot, Labelable, Mouse, NodeIndex, Point, Positionable, Rectangle, Scalar, Sizeable,
+     Text, Widget};
 use num::{Float, NumCast};
 use std::any::Any;
 use std::cmp::Ordering;
@@ -76,7 +59,7 @@ pub enum Elem {
     LabelGlyphs,
     /// Represents a value glyph slot at `usize` index as well as the last mouse.xy.y for
     /// comparison in determining new value.
-    ValueGlyph(usize, f64)
+    ValueGlyph(usize, f64),
 }
 
 /// The current interaction with the NumberDialer.
@@ -121,10 +104,10 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
         (None, _) => {
             val_string.push('.');
             val_string.extend(repeat('0').take(precision as usize));
-        },
+        }
         (Some(idx), 0) => {
             val_string.truncate(idx);
-        },
+        }
         (Some(idx), _) => {
             let (len, desired_len) = (val_string.len(), idx + precision as usize + 1);
             match len.cmp(&desired_len) {
@@ -132,7 +115,7 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
                 Ordering::Equal => (),
                 Ordering::Less => val_string.extend(repeat('0').take(desired_len - len)),
             }
-        },
+        }
     }
     // Now check that the total length matches. We already know that the decimal end of the string
     // is correct, so if the lengths don't match we know we must prepend the difference as '0's.
@@ -162,8 +145,8 @@ fn is_over(mouse_xy: Point,
            label_x: f64,
            label_dim: Dimensions,
            val_string_dim: Point,
-           val_string_len: usize) -> Option<Elem>
-{
+           val_string_len: usize)
+           -> Option<Elem> {
     use position::is_over_rect;
     if is_over_rect([0.0, 0.0], dim, mouse_xy) {
         if is_over_rect([label_x, 0.0], label_dim, mouse_xy) {
@@ -176,7 +159,7 @@ fn is_over(mouse_xy: Point,
                 let mut slot_xy = slot_rect_xy;
                 for i in 0..val_string_len {
                     if is_over_rect(slot_xy, [slot_w, pad_dim[1]], mouse_xy) {
-                        return Some(Elem::ValueGlyph(i, mouse_xy[1]))
+                        return Some(Elem::ValueGlyph(i, mouse_xy[1]));
                     }
                     slot_xy[0] += slot_w;
                 }
@@ -196,28 +179,28 @@ fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mou
     use self::Elem::ValueGlyph;
     use self::Interaction::{Normal, Highlighted, Clicked};
     match (is_over_elem, prev, mouse.left.position) {
-        (Some(_),    Normal,          Down) => Normal,
-        (Some(elem), _,               Up)   => Highlighted(elem),
-        (Some(elem), Highlighted(_),  Down) => Clicked(elem),
-        (Some(_),    Clicked(p_elem), Down) => {
+        (Some(_), Normal, Down) => Normal,
+        (Some(elem), _, Up) => Highlighted(elem),
+        (Some(elem), Highlighted(_), Down) => Clicked(elem),
+        (Some(_), Clicked(p_elem), Down) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
-                _                  => Clicked(p_elem),
+                _ => Clicked(p_elem),
             }
-        },
-        (None,       Clicked(p_elem), Down) => {
+        }
+        (None, Clicked(p_elem), Down) => {
             match p_elem {
                 ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
-                _                  => Clicked(p_elem),
+                _ => Clicked(p_elem),
             }
-        },
-        _                                   => Normal,
+        }
+        _ => Normal,
     }
 }
 
 
-impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
-
+impl<'a, T, F> NumberDialer<'a, T, F> where T: Float
+{
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
         NumberDialer {
@@ -237,12 +220,11 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
-impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
-    F: FnOnce(T),
-    T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
+impl<'a, T, F> Widget for NumberDialer<'a, T, F>
+    where F: FnOnce(T),
+          T: Any + ::std::fmt::Debug + Float + NumCast + ToString
 {
     type State = State<T>;
     type Style = Style;
@@ -291,7 +273,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         let font_size = style.label_font_size(ui.theme());
         let label_string = maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
         let label_dim = [ui.glyph_cache().width(font_size, &label_string), font_size as f64];
-        let precision_len = if precision == 0 { 0 } else { precision as usize + 1 };
+        let precision_len = if precision == 0 {
+            0
+        } else {
+            precision as usize + 1
+        };
         let val_string_len = max.to_string().len() + precision_len;
         let val_string = create_val_string(value, val_string_len, precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
@@ -300,17 +286,26 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         let new_interaction = match (enabled, maybe_mouse) {
             (false, _) | (true, None) => Normal,
             (true, Some(mouse)) => {
-                let is_over_elem = is_over(mouse.xy, rect.dim(), inner_rect.dim(), label_rel_x,
-                                           label_dim, val_string_dim, val_string_len);
+                let is_over_elem = is_over(mouse.xy,
+                                           rect.dim(),
+                                           inner_rect.dim(),
+                                           label_rel_x,
+                                           label_dim,
+                                           val_string_dim,
+                                           val_string_len);
                 get_new_interaction(is_over_elem, interaction, mouse)
-            },
+            }
         };
 
         // Capture the mouse if clicked, uncapture if released.
         match (interaction, new_interaction) {
-            (Highlighted(_), Clicked(_)) => { ui.capture_mouse(); },
+            (Highlighted(_), Clicked(_)) => {
+                ui.capture_mouse();
+            }
             (Clicked(_), Highlighted(_)) |
-            (Clicked(_), Normal)         => { ui.uncapture_mouse(); },
+            (Clicked(_), Normal) => {
+                ui.uncapture_mouse();
+            }
             _ => (),
         }
 
@@ -330,26 +325,28 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
                             match ord {
                                 Ordering::Greater => {
                                     clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
+                                }
                                 Ordering::Less => {
                                     clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
+                                }
                                 _ => val_f,
                             }
-                        },
+                        }
                         Some(dec_idx) => {
                             let mut power = dec_idx as isize - idx as isize - 1;
-                            if power < -1 { power += 1; }
+                            if power < -1 {
+                                power += 1;
+                            }
                             match ord {
                                 Ordering::Greater => {
                                     clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
+                                }
                                 Ordering::Less => {
                                     clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
+                                }
                                 _ => val_f,
                             }
-                        },
+                        }
                     };
                     new_val = NumCast::from(new_val_f).unwrap()
                 };
@@ -359,11 +356,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         // Call the `react` with the new value if the mouse is pressed/released on the widget or if
         // the value has changed.
         if let Some(react) = maybe_react {
-            let should_react = value != new_val
-                || match (interaction, new_interaction) {
-                    (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
-                    _ => false,
-                };
+            let should_react = value != new_val ||
+                               match (interaction, new_interaction) {
+                (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
+                _ => false,
+            };
             if should_react {
                 react(new_val);
             }
@@ -420,9 +417,11 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         if state.view().glyph_slot_indices.len() < val_string.chars().count() {
             state.update(|state| {
                 let range = state.glyph_slot_indices.len()..val_string.chars().count();
-                let extension = range.map(|_| GlyphSlot {
-                    rectangle_idx: ui.new_unique_node_index(),
-                    text_idx: ui.new_unique_node_index(),
+                let extension = range.map(|_| {
+                    GlyphSlot {
+                        rectangle_idx: ui.new_unique_node_index(),
+                        text_idx: ui.new_unique_node_index(),
+                    }
                 });
                 state.glyph_slot_indices.extend(extension);
             })
@@ -434,25 +433,37 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
         let val_string_pos = [label_rel_x + label_dim[0] / 2.0, 0.0];
         let mut rel_slot_x = slot_w / 2.0 + val_string_pos[0];
         for (i, _) in val_string.char_indices() {
-            let glyph_string = &val_string[i..i+1];
+            let glyph_string = &val_string[i..i + 1];
             let slot = state.view().glyph_slot_indices[i];
 
             // We only want to draw the slot if **Rectangle** if its highlighted or selected.
             let maybe_slot_color = match new_interaction {
-                Interaction::Highlighted(elem) => match elem {
-                    Elem::ValueGlyph(idx, _) =>
-                        if idx == i { Some(color.highlighted()) }
-                        else { None },
-                        //else { Some(color) },
-                    _ => None
-                },
-                Interaction::Clicked(elem) => match elem {
-                    Elem::ValueGlyph(idx, _) =>
-                        if idx == i { Some(color.clicked()) }
-                        else { None },
-                        //else { Some(color) },
-                    _ => None,
-                },
+                Interaction::Highlighted(elem) => {
+                    match elem {
+                        Elem::ValueGlyph(idx, _) => {
+                            if idx == i {
+                                Some(color.highlighted())
+                            } else {
+                                None
+                            }
+                        }
+                        // else { Some(color) },
+                        _ => None,
+                    }
+                }
+                Interaction::Clicked(elem) => {
+                    match elem {
+                        Elem::ValueGlyph(idx, _) => {
+                            if idx == i {
+                                Some(color.clicked())
+                            } else {
+                                None
+                            }
+                        }
+                        // else { Some(color) },
+                        _ => None,
+                    }
+                }
                 _ => None,
             };
             if let Some(slot_color) = maybe_slot_color {
@@ -478,7 +489,6 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
             rel_slot_x += slot_w;
         }
     }
-
 }
 
 
@@ -500,4 +510,3 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F> {
         label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
-

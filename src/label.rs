@@ -53,4 +53,3 @@ pub trait Labelable<'a>: Sized {
     }
 
 }
-

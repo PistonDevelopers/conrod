@@ -48,7 +48,6 @@ widget_style!{
 }
 
 impl<F> Matrix<F> {
-
     /// Create a widget matrix context.
     pub fn new(cols: usize, rows: usize) -> Matrix<F> {
         Matrix {
@@ -76,13 +75,12 @@ impl<F> Matrix<F> {
         self.style.cell_pad_h = Some(h);
         self
     }
-
 }
 
 
-impl<'a, F, W> Widget for Matrix<F> where
-    W: Widget,
-    F: FnMut(WidgetNum, ColNum, RowNum) -> W
+impl<'a, F, W> Widget for Matrix<F>
+    where W: Widget,
+          F: FnMut(WidgetNum, ColNum, RowNum) -> W
 {
     type State = State;
     type Style = Style;
@@ -116,10 +114,13 @@ impl<'a, F, W> Widget for Matrix<F> where
         let num_cols = state.view().indices.len();
         let num_rows = state.view().indices.get(0).map(|col| col.len()).unwrap_or(0);
         let maybe_new_indices = if num_cols < cols || num_rows < rows {
-            let mut total_cols: Vec<_> = state.view().indices.iter()
-                .map(|col| col.clone())
-                .chain((num_cols..cols).map(|_| Vec::with_capacity(rows)))
-                .collect();
+            let mut total_cols: Vec<_> = state.view()
+                                              .indices
+                                              .iter()
+                                              .map(|col| col.clone())
+                                              .chain((num_cols..cols)
+                                                         .map(|_| Vec::with_capacity(rows)))
+                                              .collect();
             for col in total_cols.iter_mut() {
                 let rows_in_col = col.len();
                 if rows_in_col < rows {
@@ -133,7 +134,8 @@ impl<'a, F, W> Widget for Matrix<F> where
 
         // A function to simplify getting the current slice of indices.
         fn get_indices<'a>(maybe_new: &'a Option<Vec<Vec<NodeIndex>>>,
-                           state: &'a widget::State<State>) -> &'a [Vec<NodeIndex>] {
+                           state: &'a widget::State<State>)
+                           -> &'a [Vec<NodeIndex>] {
             maybe_new.as_ref().map(|is| &is[..]).unwrap_or_else(|| &state.view().indices[..])
         }
 
@@ -178,5 +180,4 @@ impl<'a, F, W> Widget for Matrix<F> where
             state.update(|state| state.indices = new_indices);
         }
     }
-
 }

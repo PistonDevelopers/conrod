@@ -1,17 +1,6 @@
 //! Scroll related types and logic.
 
-use {
-    Align,
-    Color,
-    MouseScroll,
-    Point,
-    Padding,
-    Range,
-    Rect,
-    Scalar,
-    Theme,
-    Ui,
-};
+use {Align, Color, MouseScroll, Point, Padding, Range, Rect, Scalar, Theme, Ui};
 use std::marker::PhantomData;
 use ui;
 
@@ -129,10 +118,8 @@ impl Scroll {
 }
 
 
-impl<A> State<A>
-    where A: Axis
+impl<A> State<A> where A: Axis
 {
-
     /// Calculate the new scroll state for the single axis of a `Widget`.
     ///
     /// ```txt
@@ -199,27 +186,27 @@ impl<A> State<A>
     ///                         |   |                       |
     ///          >   scrollable |   =========================
     ///          ^      range y |
-    ///          ^              |    
-    ///          ^              |    
-    ///   offset ^              |    
-    ///   bounds ^              |    
-    ///     .end ^              |    
-    ///          ^              |    
-    ///          ^              |    
-    ///          +              >    
+    ///          ^              |
+    ///          ^              |
+    ///   offset ^              |
+    ///   bounds ^              |
+    ///     .end ^              |
+    ///          ^              |
+    ///          ^              |
+    ///          +              >
     ///
     /// ```
     pub fn update<C>(ui: &mut Ui<C>,
                      idx: super::Index,
                      scroll_args: Scroll,
                      kid_area: &super::KidArea,
-                     maybe_prev_scroll_state: Option<Self>) -> Self
-    {
+                     maybe_prev_scroll_state: Option<Self>)
+                     -> Self {
 
         // Retrieve the *current* scroll offset.
         let current_offset = maybe_prev_scroll_state.as_ref()
-            .map(|state| state.offset)
-            .unwrap_or(0.0);
+                                                    .map(|state| state.offset)
+                                                    .unwrap_or(0.0);
 
         // Padding for the range.
         let padding = A::padding_range(kid_area.pad);
@@ -236,19 +223,21 @@ impl<A> State<A>
         // The un-scrolled, scrollable_range relative to the kid_area_range's position.
         let scrollable_range = {
             ui.kids_bounding_box(idx)
-                .map(|kids| {
-                    A::parallel_range(kids)
-                        .shift(-current_offset)
-                        .shift(-kid_area_range.middle())
-                })
-                .unwrap_or_else(|| Range::new(0.0, 0.0))
+              .map(|kids| {
+                  A::parallel_range(kids)
+                      .shift(-current_offset)
+                      .shift(-kid_area_range.middle())
+              })
+              .unwrap_or_else(|| Range::new(0.0, 0.0))
         };
 
         // Determine the min and max offst bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
         let offset_bounds = {
-            let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
-            let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
+            let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start)
+                                 .magnitude();
+            let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end)
+                                 .magnitude();
             Range::new(min_offset, max_offset)
         };
 
@@ -294,70 +283,80 @@ impl<A> State<A>
 
                             // Determine the new `Interaction` between the mouse and scrollbar.
                             match (is_over_elem, prev_interaction, mouse.left.position) {
-                                (Some(_),    Normal,             Down) => Normal,
-                                (Some(elem), _,                  Up)   => Highlighted(elem),
-                                (Some(_),    Highlighted(_),     Down) |
-                                (_,          Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
-                                (_,          Clicked(elem),      Down) => Clicked(elem),
-                                _                                      => Normal,
+                                (Some(_), Normal, Down) => Normal,
+                                (Some(elem), _, Up) => Highlighted(elem),
+                                (Some(_), Highlighted(_), Down) |
+                                (_, Clicked(Handle(_)), Down) => Clicked(Handle(mouse_scalar)),
+                                (_, Clicked(elem), Down) => Clicked(elem),
+                                _ => Normal,
                             }
-                        },
+                        }
                         _ => Normal,
                     };
 
                     // Check whether or not the mouse interactions require (un)capturing of mouse.
                     match (prev_interaction, new_interaction) {
-                        (Highlighted(_), Clicked(_)) => { ui::mouse_captured_by(ui, idx); }
+                        (Highlighted(_), Clicked(_)) => {
+                            ui::mouse_captured_by(ui, idx);
+                        }
                         (Clicked(_), Highlighted(_)) |
-                        (Clicked(_), Normal) => { ui::mouse_uncaptured_by(ui, idx); }
+                        (Clicked(_), Normal) => {
+                            ui::mouse_uncaptured_by(ui, idx);
+                        }
                         _ => (),
                     }
 
-                    let scroll_bar_drag_offset = match (prev_interaction, new_interaction) {
+                    let scroll_bar_drag_offset =
+                        match (prev_interaction, new_interaction) {
 
-                        // When the track is clicked and the handle snaps to the cursor.
-                        (Highlighted(Track), Clicked(Handle(mouse_scalar))) => {
-                            let handle_pos_range_len = handle_pos_range_len();
-                            let offset_range_len = offset_bounds.len();
-                            let pos_offset = mouse_scalar - handle_range.middle();
-                            let offset = map_range(pos_offset,
-                                                   0.0, handle_pos_range_len,
-                                                   0.0, offset_range_len);
-                            -offset
-                        },
+                            // When the track is clicked and the handle snaps to the cursor.
+                            (Highlighted(Track), Clicked(Handle(mouse_scalar))) => {
+                                let handle_pos_range_len = handle_pos_range_len();
+                                let offset_range_len = offset_bounds.len();
+                                let pos_offset = mouse_scalar - handle_range.middle();
+                                let offset = map_range(pos_offset,
+                                                       0.0,
+                                                       handle_pos_range_len,
+                                                       0.0,
+                                                       offset_range_len);
+                                -offset
+                            }
 
-                        // When the handle is dragged.
-                        (Clicked(Handle(prev_mouse_scalar)), Clicked(Handle(new_mouse_scalar))) => {
-                            let handle_pos_range_len = handle_pos_range_len();
-                            let offset_range_len = offset_bounds.len();
-                            let pos_offset = new_mouse_scalar - prev_mouse_scalar;
-                            let offset = map_range(pos_offset,
-                                                   0.0, handle_pos_range_len,
-                                                   0.0, offset_range_len);
-                            -offset
-                        },
+                            // When the handle is dragged.
+                            (Clicked(Handle(prev_mouse_scalar)),
+                             Clicked(Handle(new_mouse_scalar))) => {
+                                let handle_pos_range_len = handle_pos_range_len();
+                                let offset_range_len = offset_bounds.len();
+                                let pos_offset = new_mouse_scalar - prev_mouse_scalar;
+                                let offset = map_range(pos_offset,
+                                                       0.0,
+                                                       handle_pos_range_len,
+                                                       0.0,
+                                                       offset_range_len);
+                                -offset
+                            }
 
-                        _ => 0.0,
-                    }.round();
+                            _ => 0.0,
+                        }
+                        .round();
 
                     (scroll_bar_drag_offset, new_interaction)
-                },
+                }
                 None => (0.0, Interaction::Normal),
             };
 
             // Additional offset from mouse scroll events provided by the window.
             let scroll_wheel_offset = {
-                maybe_mouse
-                    .map(|mouse| A::mouse_scroll_axis(mouse.scroll) * A::offset_direction())
-                    .unwrap_or(0.0)
+                maybe_mouse.map(|mouse| A::mouse_scroll_axis(mouse.scroll) * A::offset_direction())
+                           .unwrap_or(0.0)
             };
 
             let additional_offset = scroll_bar_drag_offset + scroll_wheel_offset;
 
             (additional_offset, new_interaction)
 
-        // Otherwise, our scrollable_range length is shorter than our kid_area, so no need for
-        // additional scroll offset or interactions.
+            // Otherwise, our scrollable_range length is shorter than our kid_area, so no need for
+            // additional scroll offset or interactions.
         } else {
             (0.0, Interaction::Normal)
         };
@@ -380,12 +379,10 @@ impl<A> State<A>
     pub fn is_over(&self, xy: Point, kid_area_rect: Rect) -> bool {
         A::track(kid_area_rect, self.thickness).is_over(xy)
     }
-
 }
 
 
 impl Style {
-
     /// Construct a new default Style.
     pub fn new() -> Style {
         Style {
@@ -397,18 +394,21 @@ impl Style {
     /// Get the thickness of the scrollbar or a default from the theme.
     pub fn thickness(&self, theme: &Theme) -> Scalar {
         const DEFAULT_THICKNESS: Scalar = 10.0;
-        self.maybe_thickness.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
-        })).unwrap_or(DEFAULT_THICKNESS)
+        self.maybe_thickness
+            .or(theme.maybe_scrollbar
+                     .as_ref()
+                     .map(|style| style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)))
+            .unwrap_or(DEFAULT_THICKNESS)
     }
 
     /// Get the **Color** for the scrollbar.
     pub fn color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or(theme.maybe_scrollbar.as_ref().map(|style| {
-            style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())
-        })).unwrap_or(theme.shape_color.plain_contrast())
+        self.maybe_color
+            .or(theme.maybe_scrollbar
+                     .as_ref()
+                     .map(|style| style.maybe_color.unwrap_or(theme.shape_color.plain_contrast())))
+            .unwrap_or(theme.shape_color.plain_contrast())
     }
-
 }
 
 
@@ -438,7 +438,6 @@ pub fn handle<A: Axis>(track: Rect, state: &State<A>) -> Rect {
 
 
 impl Axis for X {
-
     fn parallel_range(rect: Rect) -> Range {
         rect.x
     }
@@ -476,12 +475,10 @@ impl Axis for X {
     fn offset_direction() -> Scalar {
         1.0
     }
-
 }
 
 
 impl Axis for Y {
-
     fn parallel_range(rect: Rect) -> Range {
         rect.y
     }
@@ -519,5 +516,4 @@ impl Axis for Y {
     fn offset_direction() -> Scalar {
         -1.0
     }
-
 }

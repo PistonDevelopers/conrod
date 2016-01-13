@@ -1,18 +1,6 @@
 use std::cmp;
-use {
-    Align,
-    CharacterCache,
-    Color,
-    Colorable,
-    Dimension,
-    FontSize,
-    LineBreak,
-    Range,
-    Rect,
-    Scalar,
-    Ui,
-    Widget,
-};
+use {Align, CharacterCache, Color, Colorable, Dimension, FontSize, LineBreak, Range, Rect, Scalar,
+     Ui, Widget};
 use widget;
 
 
@@ -85,7 +73,6 @@ pub struct State {
 
 
 impl<'a> Text<'a> {
-
     /// Build a new **Text** widget.
     pub fn new(text: &'a str) -> Self {
         Text {
@@ -148,7 +135,6 @@ impl<'a> Text<'a> {
         self.style.line_spacing = Some(height);
         self
     }
-
 }
 
 
@@ -197,15 +183,25 @@ impl<'a> Widget for Text<'a> {
         let font_size = self.style.font_size(&ui.theme);
         let num_lines = match self.style.maybe_wrap(&ui.theme) {
             None => text.lines().count(),
-            Some(wrap) => match self.get_w(ui) {
-                None => text.lines().count(),
-                Some(max_w) => match wrap {
-                    Wrap::Character =>
-                        ui.glyph_cache.line_breaks_by_character(font_size, text, max_w).count(),
-                    Wrap::Whitespace =>
-                        ui.glyph_cache.line_breaks_by_whitespace(font_size, text, max_w).count(),
-                },
-            },
+            Some(wrap) => {
+                match self.get_w(ui) {
+                    None => text.lines().count(),
+                    Some(max_w) => {
+                        match wrap {
+                            Wrap::Character => {
+                                ui.glyph_cache
+                                  .line_breaks_by_character(font_size, text, max_w)
+                                  .count()
+                            }
+                            Wrap::Whitespace => {
+                                ui.glyph_cache
+                                  .line_breaks_by_whitespace(font_size, text, max_w)
+                                  .count()
+                            }
+                        }
+                    }
+                }
+            }
         };
         let line_spacing = self.style.line_spacing(&ui.theme);
         let height = total_height(cmp::max(num_lines, 1), font_size, line_spacing);
@@ -221,14 +217,16 @@ impl<'a> Widget for Text<'a> {
         let font_size = style.font_size(ui.theme());
 
         // Produces an iterator yielding the line breaks for the `text`.
-        let new_line_breaks = || match maybe_wrap {
-            None =>
-                // This branch could be faster if we just used `.lines()` somehow.
-                ui.glyph_cache().line_breaks_by_character(font_size, text, ::std::f64::MAX),
-            Some(Wrap::Character) =>
-                ui.glyph_cache().line_breaks_by_character(font_size, text, rect.w()),
-            Some(Wrap::Whitespace) =>
-                ui.glyph_cache().line_breaks_by_whitespace(font_size, text, rect.w()),
+        let new_line_breaks = || {
+            match maybe_wrap {
+                None => ui.glyph_cache().line_breaks_by_character(font_size, text, ::std::f64::MAX),
+                Some(Wrap::Character) => {
+                    ui.glyph_cache().line_breaks_by_character(font_size, text, rect.w())
+                }
+                Some(Wrap::Whitespace) => {
+                    ui.glyph_cache().line_breaks_by_whitespace(font_size, text, rect.w())
+                }
+            }
         };
 
         // If the string is different, we must update both the string and the line breaks.
@@ -238,7 +236,7 @@ impl<'a> Widget for Text<'a> {
                 state.line_breaks = new_line_breaks().collect();
             });
 
-        // Otherwise, we'll check to see if we have to update the line breaks.
+            // Otherwise, we'll check to see if we have to update the line breaks.
         } else {
             use utils::write_if_different;
             use std::borrow::Cow;
@@ -257,7 +255,6 @@ impl<'a> Widget for Text<'a> {
             }
         }
     }
-
 }
 
 
@@ -270,7 +267,6 @@ impl<'a> Colorable for Text<'a> {
 
 
 impl State {
-
     /// Iterator that yields a new line at both "newline"s (i.e. `\n`) and `line_wrap_indices`.
     pub fn lines(&self) -> Lines {
         ::glyph_cache::Lines::new(&self.string, self.line_breaks.iter().cloned())
@@ -288,8 +284,8 @@ impl State {
                           container: Rect,
                           h_align: Align,
                           font_size: FontSize,
-                          line_spacing: Scalar) -> LineRects<'a, Lines<'a>>
-    {
+                          line_spacing: Scalar)
+                          -> LineRects<'a, Lines<'a>> {
         let lines = self.lines();
         LineRects::new(lines, container, h_align, font_size, line_spacing)
     }
@@ -319,7 +315,6 @@ impl State {
     //         maybe_current_line: maybe_first_line,
     //     }
     // }
-
 }
 
 
@@ -332,7 +327,9 @@ pub fn total_height(num_lines: usize, font_size: FontSize, line_spacing: Scalar)
 
 /// Shorthand for the **Lines** iterator yielded by **State::lines**.
 pub type Lines<'a> =
-    ::glyph_cache::Lines<'a, ::std::iter::Cloned<::std::slice::Iter<'a, (usize, Option<LineBreak>)>>>;
+    ::glyph_cache::Lines<'a,
+                           ::std::iter::Cloned<::std::slice::Iter<'a,
+                                                                      (usize, Option<LineBreak>)>>>;
 
 
 /// An walker yielding a **Rect** (representing the absolute position and dimensions) for
@@ -349,14 +346,14 @@ pub struct LineRects<'a, I: 'a> {
 
 
 impl<'a, I> LineRects<'a, I> {
-
     /// Construct a new **LineRects**.
     pub fn new(lines: I,
                container: Rect,
                h_align: Align,
                font_size: FontSize,
-               line_spacing: Scalar) -> LineRects<'a, I>
-        where I: Iterator<Item=&'a str>,
+               line_spacing: Scalar)
+               -> LineRects<'a, I>
+        where I: Iterator<Item = &'a str>
     {
         let height = font_size as Scalar;
         LineRects {
@@ -389,19 +386,21 @@ impl<'a, I> LineRects<'a, I> {
     /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
     /// line's `&'a str` alongside the **Rect**.
     pub fn next_with_line<C>(&mut self, cache: &mut C) -> Option<(Rect, &'a str)>
-        where I: Iterator<Item=&'a str>,
-              C: CharacterCache,
+        where I: Iterator<Item = &'a str>,
+              C: CharacterCache
     {
-        let LineRects { ref mut lines, font_size, y_step, h_align, container_x, ref mut y, .. } = *self;
+        let LineRects { ref mut lines, font_size, y_step, h_align, container_x, ref mut y, .. } =
+            *self;
         lines.next().map(|line| {
             let w = cache.width(font_size, line);
             let h = font_size as Scalar;
             let w_range = Range::new(0.0, w);
             let x = match h_align {
-                Align::Start => w_range.align_start_of(container_x),
-                Align::Middle => w_range.align_middle_of(container_x),
-                Align::End => w_range.align_end_of(container_x),
-            }.middle();
+                        Align::Start => w_range.align_start_of(container_x),
+                        Align::Middle => w_range.align_middle_of(container_x),
+                        Align::End => w_range.align_end_of(container_x),
+                    }
+                    .middle();
             let xy = [x, *y];
             let wh = [w, h];
             let rect = Rect::from_xy_dim(xy, wh);
@@ -409,24 +408,23 @@ impl<'a, I> LineRects<'a, I> {
             (rect, line)
         })
     }
-
 }
 
 
 // /// Shorthand for the `CharWidths` iterator used within the `CharRects` iterator.
 // pub type CharWidths<'a, C> = ::glyph_cache::CharWidths<'a, C, ::std::str::Chars<'a>>;
-// 
+//
 // /// Shorthand for the `CharXs` iterator used within the `CharRects` iterator.
 // pub type CharXs<'a, C> = ::glyph_cache::CharXs<'a, C, ::std::str::Chars<'a>>;
-// 
+//
 // /// Shorthand for the `Zip`ped `CharWidths` and `CharXs` iterators used within the `CharRects`
 // /// iterator.
 // pub type CharWidthsAndXs<'a, C> = ::std::iter::Zip<CharWidths<'a, C>, CharXs<'a, C>>;
-// 
+//
 // /// Shorthand for the `Zip`ped `Lines` and `LineRects` iterators used within the `CharRects`
 // /// iterator.
 // pub type LinesWithRects<'a, C> = ::std::iter::Zip<Lines<'a>, LineRects<'a, C>>;
-// 
+//
 // type Y = Scalar;
 // type CurrentLine<'a, C> = (CharWidthsAndXs<'a, C>, Y);
 
@@ -439,8 +437,8 @@ impl<'a, I> LineRects<'a, I> {
 //     lines_with_rects: LinesWithRects<'a, C>,
 //     maybe_current_line: Option<CurrentLine<'a, C>>,
 // }
-// 
-// 
+//
+//
 // impl<'a, C> Iterator for CharRects<'a, C>
 //     where C: CharacterCache,
 // {
@@ -452,7 +450,7 @@ impl<'a, I> LineRects<'a, I> {
 //             ref mut lines_with_rects,
 //             ref mut maybe_current_line,
 //         } = *self;
-// 
+//
 //         // Continue trying each line until we find one with characters.
 //         loop {
 //             match *maybe_current_line {
@@ -468,7 +466,7 @@ impl<'a, I> LineRects<'a, I> {
 //                 // If we have no more lines, we're done.
 //                 None => return None,
 //             }
-// 
+//
 //             // If our line had no more characters, make the next line the current line.
 //             *maybe_current_line = lines_with_rects.next().and_then(|(line, line_rect)| {
 //                 char_widths_and_xs_for_line(cache, font_size, line, line_rect)
@@ -477,8 +475,8 @@ impl<'a, I> LineRects<'a, I> {
 //         }
 //     }
 // }
-// 
-// 
+//
+//
 // /// Returns a `CharWidthsAndXs` iterator for the given `line`.
 // ///
 // /// Rturns `None` if there are no characters within the `line`.
