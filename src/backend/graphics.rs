@@ -11,7 +11,6 @@
 use ::{Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
-use std::cmp::min;
 use std::iter::once;
 use theme::Theme;
 use widget::{self, primitive};
@@ -167,10 +166,10 @@ fn crop_context(context: Context, rect: Rect) -> Context {
             // If there is some intersection, calculate the overlapping rect.
             let (a_l, a_r, a_b, a_t) = (x, x+w, y, y+h);
             let (b_l, b_r, b_b, b_t) = (rect.x, rect.x+rect.w, rect.y, rect.y+rect.h);
-            let l = min(a_l, b_l);
-            let r = min(a_r, b_r);
-            let b = min(a_b, b_b);
-            let t = min(a_t, b_t);
+            let l = if a_l > b_l { a_l } else { b_l };
+            let r = if a_r < b_r { a_r } else { b_r };
+            let b = if a_b > b_b { a_b } else { b_b };
+            let t = if a_t < b_t { a_t } else { b_t };
             x = l;
             y = b;
             w = r - l;
