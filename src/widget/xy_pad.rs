@@ -358,4 +358,3 @@ impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F> {
         label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
-

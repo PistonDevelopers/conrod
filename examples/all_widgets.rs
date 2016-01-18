@@ -280,8 +280,8 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         let label = format!("{:.*}", 2, value);
 
         // Slider widget examples. slider(value, min, max)
-        if i == 0 { Slider::new(value, 0.0, 1.0).down(25.0) }
-        else      { Slider::new(value, 0.0, 1.0).right(20.0) }
+        Slider::new(value, 0.0, 1.0)
+            .and(|slider| if i == 0 { slider.down(25.0) } else { slider.right(20.0) })
             .w_h(40.0, app.v_slider_height)
             .color(color)
             .frame(app.frame_width)
@@ -408,8 +408,8 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         let &mut (ref mut env, ref mut text) = &mut app.envelopes[i];
 
         // Draw a TextBox. text_box(&mut String, FontSize)
-        if i == 0 { TextBox::new(text).right_from(COLOR_SELECT, 30.0) }
-        else      { TextBox::new(text) }
+        TextBox::new(text)
+            .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
             .w_h(320.0, 40.0)
             .frame(app.frame_width)

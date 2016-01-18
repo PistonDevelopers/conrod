@@ -213,10 +213,11 @@ impl<'a, F> Widget for TitleBar<'a, F>
         let font_size = style.font_size(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let maybe_wrap = style.maybe_wrap(ui.theme());
-        let mut text = Text::new(label);
-        text.style.maybe_wrap = Some(maybe_wrap);
-        text.style.text_align = Some(text_align);
-        text
+        Text::new(label)
+            .and_mut(|text| {
+                text.style.maybe_wrap = Some(maybe_wrap);
+                text.style.text_align = Some(text_align);
+            })
             .padded_w_of(rectangle_idx, frame)
             .middle_of(rectangle_idx)
             .color(text_color)
