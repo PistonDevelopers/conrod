@@ -86,6 +86,8 @@ pub use widget::Index as WidgetIndex;
 pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
+pub mod events;
+
 
 pub mod backend;
 mod background;
@@ -110,10 +112,10 @@ mod widget;
 /// This is the recommended way of generating `WidgetId`s as it greatly lessens the chances of
 /// making errors when adding or removing widget ids.
 ///
-/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state 
+/// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state
 /// between updates.
 ///
-/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for 
+/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for
 /// each identifier given in the list.
 ///
 /// The `with n` syntax reserves `n` number of `WidgetId`s for that identifier rather than just one.
