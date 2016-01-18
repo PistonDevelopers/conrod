@@ -736,6 +736,28 @@ pub trait Widget: Sized {
         self
     }
 
+    /// A method that conditionally builds the **Widget** with the given `build` function.
+    ///
+    /// If `cond` is `true`, `build(self)` is evaluated and returned.
+    ///
+    /// If `false`, `self` is returned.
+    fn and_if<F>(self, cond: bool, build: F) -> Self
+        where F: FnOnce(Self) -> Self,
+    {
+        if cond { build(self) } else { self }
+    }
+
+    /// A method that optionally builds the the **Widget** with the given `build` function.
+    ///
+    /// If `maybe` is `Some(t)`, `build(self, t)` is evaluated and returned.
+    ///
+    /// If `None`, `self` is returned.
+    fn and_then<T, F>(self, maybe: Option<T>, build: F) -> Self
+        where F: FnOnce(Self, T) -> Self,
+    {
+        if let Some(t) = maybe { build(self, t) } else { self }
+    }
+
     /// Note: There should be no need to override this method.
     ///
     /// After building the widget, you call this method to set its current state into the given
