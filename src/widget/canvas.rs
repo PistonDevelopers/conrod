@@ -302,10 +302,11 @@ impl<'a> Widget for Canvas<'a> {
             let text_align = style.title_bar_text_align(ui.theme());
             let line_spacing = style.title_bar_line_spacing(ui.theme());
             let maybe_wrap = style.title_bar_maybe_wrap(ui.theme());
-            let mut title_bar = TitleBar::new(label, rectangle_idx);
-            title_bar.style.maybe_wrap = Some(maybe_wrap);
-            title_bar.style.text_align = Some(text_align);
-            title_bar
+            TitleBar::new(label, rectangle_idx)
+                .and_mut(|title_bar| {
+                    title_bar.style.maybe_wrap = Some(maybe_wrap);
+                    title_bar.style.text_align = Some(text_align);
+                })
                 .color(color)
                 .frame(frame)
                 .frame_color(frame_color)

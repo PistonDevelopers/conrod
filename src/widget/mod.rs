@@ -736,6 +736,53 @@ pub trait Widget: Sized {
         self
     }
 
+    /// A builder method that "lifts" the **Widget** through the given `build` function.
+    ///
+    /// This method is solely for providing slight ergonomic improvement by helping to maintain
+    /// the symmetry of the `builder` pattern in some cases.
+    #[inline]
+    fn and<F>(self, build: F) -> Self
+        where F: FnOnce(Self) -> Self,
+    {
+        build(self)
+    }
+
+    /// A builder method that mutates the **Widget** with the given `mutate` function.
+    ///
+    /// This method is solely for providing slight ergonomic improvement by helping to maintain
+    /// the symmetry of the `builder` pattern in some cases.
+    #[inline]
+    fn and_mut<F>(mut self, mutate: F) -> Self
+        where F: FnOnce(&mut Self),
+    {
+        mutate(&mut self);
+        self
+    }
+
+    /// A method that conditionally builds the **Widget** with the given `build` function.
+    ///
+    /// If `cond` is `true`, `build(self)` is evaluated and returned.
+    ///
+    /// If `false`, `self` is returned.
+    #[inline]
+    fn and_if<F>(self, cond: bool, build: F) -> Self
+        where F: FnOnce(Self) -> Self,
+    {
+        if cond { build(self) } else { self }
+    }
+
+    /// A method that optionally builds the the **Widget** with the given `build` function.
+    ///
+    /// If `maybe` is `Some(t)`, `build(self, t)` is evaluated and returned.
+    ///
+    /// If `None`, `self` is returned.
+    #[inline]
+    fn and_then<T, F>(self, maybe: Option<T>, build: F) -> Self
+        where F: FnOnce(Self, T) -> Self,
+    {
+        if let Some(t) = maybe { build(self, t) } else { self }
+    }
+
     /// Note: There should be no need to override this method.
     ///
     /// After building the widget, you call this method to set its current state into the given

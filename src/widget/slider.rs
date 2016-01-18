@@ -328,8 +328,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
             let label_idx = state.view().label_idx.get(&mut ui);
-            if is_horizontal { Text::new(label).mid_left_of(idx) }
-            else             { Text::new(label).mid_bottom_of(idx) }
+            Text::new(label)
+                .and(|text| if is_horizontal { text.mid_left_of(idx) }
+                            else { text.mid_bottom_of(idx) })
                 .graphics_for(idx)
                 .color(label_color)
                 .font_size(font_size)
