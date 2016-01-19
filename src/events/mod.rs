@@ -4,8 +4,8 @@ mod mouse_button_map;
 mod tests;
 
 use self::mouse_button_map::ButtonMap;
-use input::{self, Input, MouseButton, Motion};
-use input::keyboard::ModifierKey;
+use input::{self, Input, MouseButton, Motion, Button};
+use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -45,6 +45,29 @@ pub struct ScrollEvent {
 pub trait ConrodEventHandler {
     fn push_event(&mut self, event: ConrodEvent);
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent>;
+    fn modifiers(&self) -> ModifierKey;
+
+    fn keys_just_released(&self) -> Vec<Key> {
+        use input::Button::Keyboard;
+
+        self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::Raw(Input::Release(Keyboard(key))) => Some(key),
+                _ => None
+            }
+        }).collect::<Vec<Key>>()
+    }
+
+    fn keys_just_pressed(&self) -> Vec<Key> {
+        use input::Button::Keyboard;
+
+        self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::Raw(Input::Press(Keyboard(key))) => Some(key),
+                _ => None
+            }
+        }).collect::<Vec<Key>>()
+    }
 
     fn scroll(&self) -> Option<ScrollEvent> {
         self.all_events().iter().filter_map(|evt| {
@@ -107,6 +130,7 @@ pub struct EventHandlerImpl {
     mouse_buttons: ButtonMap,
     mouse_position: Point,
     drag_threshold: Scalar,
+    modifiers: ModifierKey,
 }
 
 #[allow(missing_docs)]
@@ -118,6 +142,7 @@ impl EventHandlerImpl {
             mouse_buttons: ButtonMap::new(),
             mouse_position: [0.0, 0.0],
             drag_threshold: 4.0,
+            modifiers: ModifierKey::default(),
         }
     }
 
@@ -130,7 +155,7 @@ impl EventHandlerImpl {
                     start: btn_and_point.1,
                     end: move_to,
                     in_progress: true,
-                    modifier: ModifierKey::default()
+                    modifier: self.modifiers()
                 }))
             } else {
                 None
@@ -145,14 +170,14 @@ impl EventHandlerImpl {
                     button: button,
                     start: point,
                     end: self.mouse_position,
-                    modifier: ModifierKey::default(),
+                    modifier: self.modifiers(),
                     in_progress: false
                 })
             } else {
                 ConrodEvent::MouseClick(MouseClickEvent {
                     button: button,
                     location: point,
-                    modifier: ModifierKey::default()
+                    modifier: self.modifiers()
                 })
             }
         })
@@ -161,6 +186,31 @@ impl EventHandlerImpl {
     fn handle_mouse_press(&mut self, button: MouseButton) -> Option<ConrodEvent> {
         self.mouse_buttons.set(button, Some(self.mouse_position));
         None
+    }
+
+    fn handle_key_press(&mut self, key: Key) -> Option<ConrodEvent> {
+        use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+        match key {
+            Key::LCtrl | Key::RCtrl => self.modifiers.insert(CTRL),
+            Key::LShift | Key::RShift => self.modifiers.insert(SHIFT),
+            Key::LAlt | Key::RAlt => self.modifiers.insert(ALT),
+            Key::LGui | Key::RGui => self.modifiers.insert(GUI),
+            _ => {}
+        }
+        None
+    }
+
+    fn handle_key_release(&mut self, key: Key) -> Option<ConrodEvent> {
+        use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+        match key {
+            Key::LCtrl | Key::RCtrl => self.modifiers.remove(CTRL),
+            Key::LShift | Key::RShift => self.modifiers.remove(SHIFT),
+            Key::LAlt | Key::RAlt => self.modifiers.remove(ALT),
+            Key::LGui | Key::RGui => self.modifiers.remove(GUI),
+            _ => {}
+        }
+        None
+
     }
 
     fn is_drag(&self, a: Point, b: Point) -> bool {
@@ -183,6 +233,8 @@ impl ConrodEventHandler for EventHandlerImpl {
         use input::Button::Mouse;
 
         let maybe_new_event = match event {
+            ConrodEvent::Raw(Press(Button::Keyboard(key))) => self.handle_key_press(key),
+            ConrodEvent::Raw(Release(Button::Keyboard(key))) => self.handle_key_release(key),
             ConrodEvent::Raw(Press(Mouse(button))) => self.handle_mouse_press(button),
             ConrodEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
             ConrodEvent::Raw(Move(MouseCursor(x, y))) => self.handle_mouse_move([x, y]),
@@ -197,5 +249,9 @@ impl ConrodEventHandler for EventHandlerImpl {
 
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent> {
         &self.events
+    }
+
+    fn modifiers(&self) -> ModifierKey {
+        self.modifiers
     }
 }
