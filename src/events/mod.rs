@@ -1,7 +1,10 @@
 mod mouse_button_map;
 
+#[cfg(test)]
+mod tests;
+
 use self::mouse_button_map::ButtonMap;
-use input::{self, Input, MouseButton};
+use input::{self, Input, MouseButton, Motion};
 use input::keyboard::ModifierKey;
 use position::{Point, Scalar};
 
@@ -9,13 +12,13 @@ use position::{Point, Scalar};
 #[allow(missing_docs)]
 pub enum ConrodEvent {
     Raw(Input),
-    MouseClick(MouseButton, Point, ModifierKey),
+    MouseClick(MouseClickEvent),
     MouseDrag(MouseDragEvent),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[allow(missing_docs)]
-pub struct MouseDragEvent{
+pub struct MouseDragEvent {
     button: MouseButton,
     start: Point,
     end: Point,
@@ -23,11 +26,78 @@ pub struct MouseDragEvent{
     in_progress: bool,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[allow(missing_docs)]
+pub struct MouseClickEvent {
+    button: MouseButton,
+    location: Point,
+    modifier: ModifierKey,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[allow(missing_docs)]
+pub struct ScrollEvent {
+    x: f64,
+    y: f64
+}
 
 #[allow(missing_docs)]
 pub trait ConrodEventHandler {
     fn push_event(&mut self, event: ConrodEvent);
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent>;
+
+    fn scroll(&self) -> Option<ScrollEvent> {
+        self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::Raw(Input::Move(Motion::MouseScroll(x, y))) => {
+                    Some(ScrollEvent{x: x, y: y})
+                },
+                _ => None
+            }
+        }).fold(None, |maybe_scroll, scroll| {
+            if maybe_scroll.is_some() {
+                maybe_scroll.map(|acc| {
+                    ScrollEvent{
+                        x: acc.x + scroll.x,
+                        y: acc.y + scroll.y
+                    }
+                })
+            } else {
+                Some(scroll)
+            }
+        })
+    }
+
+    fn mouse_left_drag(&self) -> Option<MouseDragEvent> {
+        self.mouse_drag(MouseButton::Left)
+    }
+
+    fn mouse_drag(&self, button: MouseButton) -> Option<MouseDragEvent> {
+        self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
+                _ => None
+            }
+        }).last()
+    }
+
+    fn mouse_left_click(&self) -> Option<MouseClickEvent> {
+        self.mouse_click(MouseButton::Left)
+    }
+
+    fn mouse_right_click(&self) -> Option<MouseClickEvent> {
+        self.mouse_click(MouseButton::Right)
+    }
+
+    fn mouse_click(&self, button: MouseButton) -> Option<MouseClickEvent> {
+        self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::MouseClick(click) if click.button == button => Some(click),
+                _ => None
+            }
+        }).next()
+    }
+
 }
 
 
@@ -54,16 +124,14 @@ impl EventHandlerImpl {
     fn handle_mouse_move(&mut self, move_to: Point) -> Option<ConrodEvent> {
         self.mouse_position = move_to;
         self.mouse_buttons.pressed_button().and_then(|btn_and_point| {
-            let drag_distance = distance_between(move_to, btn_and_point.1);
-            if drag_distance > self.drag_threshold {
-                let drag = MouseDragEvent{
+            if self.is_drag(btn_and_point.1, move_to) {
+                Some(ConrodEvent::MouseDrag(MouseDragEvent{
                     button: btn_and_point.0,
                     start: btn_and_point.1,
                     end: move_to,
                     in_progress: true,
                     modifier: ModifierKey::default()
-                };
-                Some(ConrodEvent::MouseDrag(drag))
+                }))
             } else {
                 None
             }
@@ -72,13 +140,31 @@ impl EventHandlerImpl {
 
     fn handle_mouse_release(&mut self, button: MouseButton) -> Option<ConrodEvent> {
         self.mouse_buttons.take(button).map(|point| {
-            ConrodEvent::MouseClick(button, point, ModifierKey::default())
+            if self.is_drag(point, self.mouse_position) {
+                ConrodEvent::MouseDrag(MouseDragEvent{
+                    button: button,
+                    start: point,
+                    end: self.mouse_position,
+                    modifier: ModifierKey::default(),
+                    in_progress: false
+                })
+            } else {
+                ConrodEvent::MouseClick(MouseClickEvent {
+                    button: button,
+                    location: point,
+                    modifier: ModifierKey::default()
+                })
+            }
         })
     }
 
     fn handle_mouse_press(&mut self, button: MouseButton) -> Option<ConrodEvent> {
         self.mouse_buttons.set(button, Some(self.mouse_position));
         None
+    }
+
+    fn is_drag(&self, a: Point, b: Point) -> bool {
+        distance_between(a, b) > self.drag_threshold
     }
 }
 
@@ -112,137 +198,4 @@ impl ConrodEventHandler for EventHandlerImpl {
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent> {
         &self.events
     }
-}
-
-#[test]
-fn mouse_button_pressed_moved_released_creates_final_drag_event() {
-    use input::Button::Mouse;
-    use input::mouse::MouseButton as MB;
-    use input::Motion;
-
-    let mut handler = EventHandlerImpl::new();
-
-    let press = ConrodEvent::Raw(Input::Press(Mouse(MB::Left)));
-    let mouse_move = mouse_move_event(20.0, 10.0);
-    let release = ConrodEvent::Raw(Input::Release(Mouse(MB::Left)))
-    handler.push_event(press.clone());
-    handler.push_event(mouse_move .clone());
-    handler.push_event(release.clone());
-
-    let events = handler.all_events();
-
-    //TODO: fix this test!
-    
-    assert_eq!(5, events.len());
-
-    match events[3].clone() {
-        ConrodEvent::MouseDrag(drag) => {
-            assert_eq!(MB::Left, drag.button);
-            assert_eq!([0.0, 0.0], drag.start);
-            assert_eq!([30.0, 10.0], drag.end);
-            assert!(drag.in_progress);
-        },
-        wrong_event => panic!("Expected MouseDrag, got: {:?}", wrong_event)
-    };
-
-}
-
-#[test]
-fn mouse_button_pressed_then_moved_creates_drag_event() {
-    use input::Button::Mouse;
-    use input::mouse::MouseButton as MB;
-    use input::Motion;
-
-    let mut handler = EventHandlerImpl::new();
-
-    let press = ConrodEvent::Raw(Input::Press(Mouse(MB::Left)));
-    let mouse_move = mouse_move_event(20.0, 10.0);
-    handler.push_event(press.clone());
-    handler.push_event(mouse_move.clone());
-
-    let events = handler.all_events();
-    // Should have the two raw events, plus a new MouseClick event
-    assert_eq!(3, events.len());
-
-    match events[2].clone() {
-        ConrodEvent::MouseDrag(drag) => {
-            assert_eq!(MB::Left, drag.button);
-            assert_eq!([0.0, 0.0], drag.start);
-            assert_eq!([20.0, 10.0], drag.end);
-            assert!(drag.in_progress);
-        },
-        wrong_event => panic!("Expected MouseDrag, got: {:?}", wrong_event)
-    }
-}
-
-#[test]
-fn mouse_click_position_should_be_mouse_position_when_pressed() {
-    use input::Button::Mouse;
-    use input::mouse::MouseButton as MB;
-
-    let mut handler = EventHandlerImpl::new();
-
-    handler.push_event(mouse_move_event(4.0, 5.0));
-    handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MB::Left))));
-    handler.push_event(mouse_move_event(5.0, 5.0));
-    handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MB::Left))));
-
-    let events = handler.all_events();
-    assert_eq!(5, events.len());
-
-    match events[4].clone() {
-        ConrodEvent::MouseClick(MB::Left, point, _) => {
-            assert_eq!([4.0, 5.0], point);
-        },
-        wrong_event => panic!("Expected MouseClick, got: {:?}", wrong_event)
-    }
-
-}
-
-#[test]
-fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
-    use input::Button::Mouse;
-    use input::mouse::MouseButton as MB;
-
-    let mut handler = EventHandlerImpl::new();
-
-    let press = ConrodEvent::Raw(Input::Press(Mouse(MB::Left)));
-    let release = ConrodEvent::Raw(Input::Release(Mouse(MB::Left)));
-    handler.push_event(press.clone());
-    handler.push_event(release.clone());
-
-    let events = handler.all_events();
-    // Should have the two raw events, plus a new MouseClick event
-    assert_eq!(3, events.len());
-    assert_eq!(press, events[0]);
-    assert_eq!(release, events[1]);
-
-    match events[2].clone() {
-        ConrodEvent::MouseClick(MB::Left, _, _) => {},
-        wrong_event => panic!("Expected MouseClick, got: {:?}", wrong_event)
-    }
-}
-
-#[test]
-fn all_events_should_return_all_inputs_in_order() {
-    use input::Button::Keyboard;
-    use input::keyboard::Key;
-
-    let mut handler = EventHandlerImpl::new();
-
-    let evt1 = ConrodEvent::Raw(Input::Press(Keyboard(Key::Z)));
-    handler.push_event(evt1.clone());
-    let evt2 = ConrodEvent::Raw(Input::Press(Keyboard(Key::A)));
-    handler.push_event(evt2.clone());
-
-    let results = handler.all_events();
-    assert_eq!(2, results.len());
-    assert_eq!(evt1, results[0]);
-    assert_eq!(evt2, results[1]);
-}
-
-#[cfg(test)]
-fn mouse_move_event(x: Scalar, y: Scalar) -> ConrodEvent {
-    use input::Motion;
-    ConrodEvent::Raw(Input::Move(Motion::MouseCursor(x, y)))
 }
