@@ -12,13 +12,13 @@ use position::{Point, Scalar};
 #[allow(missing_docs)]
 pub enum ConrodEvent {
     Raw(Input),
-    MouseClick(MouseClickEvent),
-    MouseDrag(MouseDragEvent),
+    MouseClick(MouseClick),
+    MouseDrag(MouseDrag),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[allow(missing_docs)]
-pub struct MouseDragEvent {
+pub struct MouseDrag {
     button: MouseButton,
     start: Point,
     end: Point,
@@ -28,7 +28,7 @@ pub struct MouseDragEvent {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[allow(missing_docs)]
-pub struct MouseClickEvent {
+pub struct MouseClick {
     button: MouseButton,
     location: Point,
     modifier: ModifierKey,
@@ -36,14 +36,16 @@ pub struct MouseClickEvent {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[allow(missing_docs)]
-pub struct ScrollEvent {
+pub struct Scroll {
     x: f64,
-    y: f64
+    y: f64,
+    modifiers: ModifierKey,
 }
 
 #[allow(missing_docs)]
 pub trait ConrodEventHandler {
     fn push_event(&mut self, event: ConrodEvent);
+    fn reset(&mut self);
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent>;
     fn modifiers(&self) -> ModifierKey;
 
@@ -69,20 +71,25 @@ pub trait ConrodEventHandler {
         }).collect::<Vec<Key>>()
     }
 
-    fn scroll(&self) -> Option<ScrollEvent> {
+    fn scroll(&self) -> Option<Scroll> {
         self.all_events().iter().filter_map(|evt| {
             match *evt {
                 ConrodEvent::Raw(Input::Move(Motion::MouseScroll(x, y))) => {
-                    Some(ScrollEvent{x: x, y: y})
+                    Some(Scroll{
+                        x: x,
+                        y: y,
+                        modifiers: self.modifiers()
+                    })
                 },
                 _ => None
             }
         }).fold(None, |maybe_scroll, scroll| {
             if maybe_scroll.is_some() {
                 maybe_scroll.map(|acc| {
-                    ScrollEvent{
+                    Scroll{
                         x: acc.x + scroll.x,
-                        y: acc.y + scroll.y
+                        y: acc.y + scroll.y,
+                        modifiers: self.modifiers()
                     }
                 })
             } else {
@@ -91,11 +98,11 @@ pub trait ConrodEventHandler {
         })
     }
 
-    fn mouse_left_drag(&self) -> Option<MouseDragEvent> {
+    fn mouse_left_drag(&self) -> Option<MouseDrag> {
         self.mouse_drag(MouseButton::Left)
     }
 
-    fn mouse_drag(&self, button: MouseButton) -> Option<MouseDragEvent> {
+    fn mouse_drag(&self, button: MouseButton) -> Option<MouseDrag> {
         self.all_events().iter().filter_map(|evt| {
             match *evt {
                 ConrodEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
@@ -104,15 +111,15 @@ pub trait ConrodEventHandler {
         }).last()
     }
 
-    fn mouse_left_click(&self) -> Option<MouseClickEvent> {
+    fn mouse_left_click(&self) -> Option<MouseClick> {
         self.mouse_click(MouseButton::Left)
     }
 
-    fn mouse_right_click(&self) -> Option<MouseClickEvent> {
+    fn mouse_right_click(&self) -> Option<MouseClick> {
         self.mouse_click(MouseButton::Right)
     }
 
-    fn mouse_click(&self, button: MouseButton) -> Option<MouseClickEvent> {
+    fn mouse_click(&self, button: MouseButton) -> Option<MouseClick> {
         self.all_events().iter().filter_map(|evt| {
             match *evt {
                 ConrodEvent::MouseClick(click) if click.button == button => Some(click),
@@ -150,7 +157,7 @@ impl EventHandlerImpl {
         self.mouse_position = move_to;
         self.mouse_buttons.pressed_button().and_then(|btn_and_point| {
             if self.is_drag(btn_and_point.1, move_to) {
-                Some(ConrodEvent::MouseDrag(MouseDragEvent{
+                Some(ConrodEvent::MouseDrag(MouseDrag{
                     button: btn_and_point.0,
                     start: btn_and_point.1,
                     end: move_to,
@@ -166,7 +173,7 @@ impl EventHandlerImpl {
     fn handle_mouse_release(&mut self, button: MouseButton) -> Option<ConrodEvent> {
         self.mouse_buttons.take(button).map(|point| {
             if self.is_drag(point, self.mouse_position) {
-                ConrodEvent::MouseDrag(MouseDragEvent{
+                ConrodEvent::MouseDrag(MouseDrag{
                     button: button,
                     start: point,
                     end: self.mouse_position,
@@ -174,7 +181,7 @@ impl EventHandlerImpl {
                     in_progress: false
                 })
             } else {
-                ConrodEvent::MouseClick(MouseClickEvent {
+                ConrodEvent::MouseClick(MouseClick {
                     button: button,
                     location: point,
                     modifier: self.modifiers()
@@ -245,6 +252,10 @@ impl ConrodEventHandler for EventHandlerImpl {
         if let Some(new_event) = maybe_new_event {
             self.push_event(new_event);
         }
+    }
+
+    fn reset(&mut self) {
+        self.events.clear();
     }
 
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent> {

@@ -7,6 +7,56 @@ use position::{Point, Scalar};
 use super::*;
 
 #[test]
+fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
+    let mut handler = EventHandlerImpl::new();
+
+    handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
+    handler.push_event(mouse_move_event(50.0, 77.7));
+    handler.reset();
+    handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
+
+    assert!(handler.mouse_left_drag().is_some());
+}
+#[test]
+fn click_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
+    let mut handler = EventHandlerImpl::new();
+
+    handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
+    handler.reset();
+    handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
+
+    assert!(handler.mouse_left_click().is_some());
+}
+
+#[test]
+fn no_events_should_be_returned_after_reset_is_called() {
+    let mut handler = EventHandlerImpl::new();
+    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RShift))));
+    handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
+    handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
+    handler.push_event(mouse_move_event(60.0, 30.0));
+    handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
+
+    handler.reset();
+
+    let events = handler.all_events();
+    assert!(events.is_empty());
+}
+
+#[test]
+fn drag_with_modifer_key_should_include_modifiers_in_drag_event() {
+    use input::keyboard::SHIFT;
+
+    let mut handler = EventHandlerImpl::new();
+    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RShift))));
+    handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
+
+    let scroll = handler.scroll().expect("expected a scroll event");
+
+    assert_eq!(SHIFT, scroll.modifiers);
+}
+
+#[test]
 fn click_with_modifier_key_should_include_modifiers_in_click_event() {
     use input::keyboard::CTRL;
 
@@ -16,7 +66,7 @@ fn click_with_modifier_key_should_include_modifiers_in_click_event() {
     handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
 
     let click = handler.mouse_left_click().expect("expected mouse left click event");
-    let expected = MouseClickEvent {
+    let expected = MouseClick {
         button: MouseButton::Left,
         location: [0.0, 0.0],
         modifier: CTRL
@@ -91,9 +141,10 @@ fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
 
-    let expected_scroll = ScrollEvent {
+    let expected_scroll = Scroll {
         x: 30.0,
-        y: 99.0
+        y: 99.0,
+        modifiers: ModifierKey::default()
     };
 
     let actual = handler.scroll().expect("expected a scroll event");
@@ -107,9 +158,10 @@ fn handler_should_return_scroll_event_if_one_exists() {
 
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
 
-    let expected_scroll = ScrollEvent{
+    let expected_scroll = Scroll{
         x: 10.0,
-        y: 33.0
+        y: 33.0,
+        modifiers: ModifierKey::default()
     };
     let actual_scroll = handler.scroll().expect("expected a scroll event");
     assert_eq!(expected_scroll, actual_scroll);
@@ -122,7 +174,7 @@ fn mouse_button_pressed_moved_released_creates_final_drag_event() {
     handler.push_event(mouse_move_event(20.0, 10.0));
     handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
 
-    let expected_drag = MouseDragEvent{
+    let expected_drag = MouseDrag{
         button: MouseButton::Left,
         start: [0.0, 0.0],
         end: [20.0, 10.0],
@@ -142,7 +194,7 @@ fn mouse_button_pressed_then_moved_creates_drag_event() {
     handler.push_event(press.clone());
     handler.push_event(mouse_move.clone());
 
-    let expected_drag = MouseDragEvent{
+    let expected_drag = MouseDrag{
         button: MouseButton::Left,
         start: [0.0, 0.0],
         end: [20.0, 10.0],
@@ -162,7 +214,7 @@ fn mouse_click_position_should_be_mouse_position_when_pressed() {
     handler.push_event(mouse_move_event(5.0, 5.0));
     handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
 
-    let expected_click = MouseClickEvent {
+    let expected_click = MouseClick {
         button: MouseButton::Left,
         location: [4.0, 5.0],
         modifier: ModifierKey::default()
@@ -182,7 +234,7 @@ fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
     handler.push_event(press.clone());
     handler.push_event(release.clone());
 
-    let expected_click = MouseClickEvent {
+    let expected_click = MouseClick {
         button: MouseButton::Left,
         location: [0.0, 0.0],
         modifier: ModifierKey::default()
