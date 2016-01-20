@@ -8,7 +8,7 @@ use super::*;
 
 #[test]
 fn entered_text_should_be_aggregated_from_multiple_events() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Text("Phil ".to_string())));
     handler.push_event(ConrodEvent::Raw(Input::Text("is a".to_string())));
@@ -20,7 +20,7 @@ fn entered_text_should_be_aggregated_from_multiple_events() {
 
 #[test]
 fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     handler.push_event(mouse_move_event(50.0, 77.7));
@@ -31,7 +31,7 @@ fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_relea
 }
 #[test]
 fn click_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     handler.reset();
@@ -42,7 +42,7 @@ fn click_event_should_still_be_created_if_reset_is_called_between_press_and_rele
 
 #[test]
 fn no_events_should_be_returned_after_reset_is_called() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
     handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RShift))));
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
@@ -59,7 +59,7 @@ fn no_events_should_be_returned_after_reset_is_called() {
 fn drag_with_modifer_key_should_include_modifiers_in_drag_event() {
     use input::keyboard::SHIFT;
 
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
     handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RShift))));
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
 
@@ -72,7 +72,7 @@ fn drag_with_modifer_key_should_include_modifiers_in_drag_event() {
 fn click_with_modifier_key_should_include_modifiers_in_click_event() {
     use input::keyboard::CTRL;
 
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
     handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LCtrl))));
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     handler.push_event(ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
@@ -87,38 +87,8 @@ fn click_with_modifier_key_should_include_modifiers_in_click_event() {
 }
 
 #[test]
-fn modifers_should_not_return_modifier_keys_that_have_been_released() {
-    use input::keyboard::{CTRL, SHIFT, ALT, SHIFT_ALT};
-
-    let mut handler = EventHandlerImpl::new();
-    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LCtrl))));
-    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RShift))));
-    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::RAlt))));
-
-    handler.push_event(ConrodEvent::Raw(Input::Release(Keyboard(Key::LCtrl))));
-
-    let expected: ModifierKey = SHIFT_ALT;
-    let actual = handler.modifiers();
-
-    assert_eq!(expected, actual);
-}
-
-#[test]
-fn modifier_key_should_return_ctrl_modifer_when_lctrl_is_pressed() {
-    use input::keyboard::CTRL;
-
-    let mut handler = EventHandlerImpl::new();
-
-    handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LCtrl))));
-
-    let modifier = handler.modifiers();
-    assert_eq!(CTRL, modifier);
-
-}
-
-#[test]
 fn keys_just_released_should_return_vec_of_keys_just_released() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Release(Keyboard(Key::D))));
     handler.push_event(ConrodEvent::Raw(Input::Release(Keyboard(Key::O))));
@@ -133,7 +103,7 @@ fn keys_just_released_should_return_vec_of_keys_just_released() {
 
 #[test]
 fn keys_just_pressed_should_return_vec_of_keys_just_pressed() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::N))));
     handler.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::E))));
@@ -147,7 +117,7 @@ fn keys_just_pressed_should_return_vec_of_keys_just_pressed() {
 
 #[test]
 fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
@@ -166,7 +136,7 @@ fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
 
 #[test]
 fn handler_should_return_scroll_event_if_one_exists() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
 
@@ -180,7 +150,7 @@ fn handler_should_return_scroll_event_if_one_exists() {
 }
 #[test]
 fn mouse_button_pressed_moved_released_creates_final_drag_event() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     handler.push_event(mouse_move_event(20.0, 10.0));
@@ -199,7 +169,7 @@ fn mouse_button_pressed_moved_released_creates_final_drag_event() {
 
 #[test]
 fn mouse_button_pressed_then_moved_creates_drag_event() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     let press = ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left)));
     let mouse_move = mouse_move_event(20.0, 10.0);
@@ -219,7 +189,7 @@ fn mouse_button_pressed_then_moved_creates_drag_event() {
 
 #[test]
 fn mouse_click_position_should_be_mouse_position_when_pressed() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     handler.push_event(mouse_move_event(4.0, 5.0));
     handler.push_event(ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
@@ -239,7 +209,7 @@ fn mouse_click_position_should_be_mouse_position_when_pressed() {
 
 #[test]
 fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     let press = ConrodEvent::Raw(Input::Press(Mouse(MouseButton::Left)));
     let release = ConrodEvent::Raw(Input::Release(Mouse(MouseButton::Left)));
@@ -258,7 +228,7 @@ fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
 
 #[test]
 fn all_events_should_return_all_inputs_in_order() {
-    let mut handler = EventHandlerImpl::new();
+    let mut handler = WidgetEvents::new();
 
     let evt1 = ConrodEvent::Raw(Input::Press(Keyboard(Key::Z)));
     handler.push_event(evt1.clone());
