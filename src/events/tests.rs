@@ -7,6 +7,18 @@ use position::{Point, Scalar};
 use super::*;
 
 #[test]
+fn entered_text_should_be_aggregated_from_multiple_events() {
+    let mut handler = EventHandlerImpl::new();
+
+    handler.push_event(ConrodEvent::Raw(Input::Text("Phil ".to_string())));
+    handler.push_event(ConrodEvent::Raw(Input::Text("is a".to_string())));
+    handler.push_event(ConrodEvent::Raw(Input::Text("wesome".to_string())));
+
+    let actual_text = handler.text_just_entered().expect("expected to get a String, got None");
+    assert_eq!("Phil is awesome".to_string(), actual_text);
+}
+
+#[test]
 fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
     let mut handler = EventHandlerImpl::new();
 

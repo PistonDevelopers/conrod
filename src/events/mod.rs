@@ -49,6 +49,23 @@ pub trait ConrodEventHandler {
     fn all_events<'a>(&'a self) -> &'a Vec<ConrodEvent>;
     fn modifiers(&self) -> ModifierKey;
 
+    fn text_just_entered(&self) -> Option<String> {
+        let all_text: String = self.all_events().iter().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::Raw(Input::Text(ref text)) => Some(text),
+                _ => None
+            }
+        }).fold(String::new(), |acc, item| {
+            acc + item
+        });
+
+        if all_text.is_empty() {
+            None
+        } else {
+            Some(all_text)
+        }
+    }
+
     fn keys_just_released(&self) -> Vec<Key> {
         use input::Button::Keyboard;
 
