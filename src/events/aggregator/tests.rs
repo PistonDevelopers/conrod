@@ -4,6 +4,7 @@ use input::Button::Mouse;
 use input::mouse::MouseButton;
 use input::{Input, Motion};
 use position::{Point, Scalar};
+use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag};
 use super::*;
 
 #[test]

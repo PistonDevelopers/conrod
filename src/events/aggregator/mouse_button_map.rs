@@ -1,5 +1,4 @@
 use input::MouseButton;
-use std::slice::{IterMut, Iter};
 use position::Point;
 
 /// The max total number of buttons on a mouse.
