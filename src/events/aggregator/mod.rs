@@ -4,7 +4,7 @@ mod tests;
 mod mouse_button_map;
 
 use self::mouse_button_map::ButtonMap;
-use input::{self, Input, MouseButton, Motion, Button};
+use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
 use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag};
