@@ -2,6 +2,7 @@ use input::{Input, MouseButton, Motion};
 use input::keyboard::ModifierKey;
 use position::Point;
 use vecmath::vec2_sub;
+use widget::Index;
 
 #[derive(Clone, PartialEq, Debug)]
 #[allow(missing_docs)]
@@ -9,6 +10,10 @@ pub enum ConrodEvent {
     Raw(Input),
     MouseClick(MouseClick),
     MouseDrag(MouseDrag),
+    WidgetCapturesMouse(Index),
+    WidgetUncapturesMouse(Index),
+    WidgetCapturesKeyboard(Index),
+    WidgetUncapturesKeyboard(Index),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -62,6 +67,7 @@ impl RelativePosition for ConrodEvent {
             MouseClick(click) => MouseClick(click.relative_to(xy)),
             MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
             Raw(ref raw_input) => Raw(raw_input.relative_to(xy)),
+            ref other_event => other_event.clone()
         }
     }
 }
