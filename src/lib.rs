@@ -104,6 +104,8 @@ mod ui;
 pub mod utils;
 mod widget;
 
+mod ui_tests;
+
 
 
 

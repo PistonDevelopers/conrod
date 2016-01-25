@@ -7,6 +7,8 @@ use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use input;
 use input::{
+    Input,
+    Motion,
     GenericEvent,
     MouseCursorEvent,
     MouseScrollEvent,
@@ -21,6 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
+use ::events::{ConrodEvent, EventAggregator, EventProvider, ConrodEventAggregator};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -51,6 +54,8 @@ pub struct Ui<C> {
     pub win_w: f64,
     /// Window height.
     pub win_h: f64,
+    /// Handles aggregation of events and providing them to Widgets
+    pub event_aggregator: ConrodEventAggregator,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The latest received mouse state.
@@ -166,6 +171,7 @@ impl<C> Ui<C> {
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
+            event_aggregator: ConrodEventAggregator::new(),
         }
     }
 
@@ -243,8 +249,10 @@ impl<C> Ui<C> {
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
+        use input::{CursorEvent, FocusEvent};
 
         event.resize(|w, h| {
+            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Resize(w, h)));
             self.win_w = w as f64;
             self.win_h = h as f64;
             self.needs_redraw();
@@ -257,10 +265,19 @@ impl<C> Ui<C> {
 
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
-            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            let center_origin_point = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.mouse.xy = center_origin_point;
+            self.event_aggregator.push_event(ConrodEvent::Raw(
+                Input::Move(
+                    Motion::MouseRelative(center_origin_point[0], center_origin_point[1])
+                )
+            ));
         });
 
         event.mouse_scroll(|x, y| {
+            self.event_aggregator.push_event(ConrodEvent::Raw(
+                Input::Move(Motion::MouseScroll(x, y))
+            ));
             self.mouse.scroll.x += x;
             self.mouse.scroll.y += y;
         });
@@ -269,8 +286,13 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
+            self.event_aggregator.push_event(ConrodEvent::Raw(
+                Input::Press(button_type)
+            ));
+
             match button_type {
                 Button::Mouse(button) => {
+                    self.widget_under_mouse_captures();
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -288,6 +310,11 @@ impl<C> Ui<C> {
         event.release(|button_type| {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
+
+            self.event_aggregator.push_event(ConrodEvent::Raw(
+                Input::Release(button_type)
+            ));
+
             match button_type {
                 Button::Mouse(button) => {
                     let mouse_button = match button {
@@ -305,10 +332,47 @@ impl<C> Ui<C> {
         });
 
         event.text(|text| {
-            self.text_just_entered.push(text.to_string())
+            self.text_just_entered.push(text.to_string());
+            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Text(text.to_string())));
+        });
+
+        event.focus(|focus| {
+            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Focus(focus)));
+        });
+
+        event.cursor(|cursor| {
+            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Cursor(cursor)));
         });
     }
 
+    fn widget_under_mouse_captures(&mut self) {
+        use graph::algo::pick_widget;
+
+        let mouse_xy = self.event_aggregator.current_mouse_position();
+        let widget_under_mouse =
+            pick_widget(&self.widget_graph, &self.depth_order.indices, mouse_xy);
+        let currently_capturing_keyboard = self.event_aggregator.currently_capturing_keyboard();
+        let currently_capturing_mouse = self.event_aggregator.currently_capturing_mouse();
+
+        if currently_capturing_keyboard.is_some()
+                && currently_capturing_keyboard != widget_under_mouse {
+            self.event_aggregator.push_event(
+                ConrodEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
+            );
+        }
+
+        if currently_capturing_mouse.is_some()
+                && currently_capturing_mouse != widget_under_mouse {
+            self.event_aggregator.push_event(
+                ConrodEvent::WidgetUncapturesMouse(currently_capturing_mouse.unwrap())
+            );
+        }
+
+        if let Some(idx) = widget_under_mouse {
+            self.event_aggregator.push_event(ConrodEvent::WidgetCapturesMouse(idx));
+            self.event_aggregator.push_event(ConrodEvent::WidgetCapturesKeyboard(idx));
+        }
+    }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///

@@ -7,12 +7,15 @@ use self::mouse_button_map::ButtonMap;
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
-use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag};
+use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag, Scroll};
+use widget::Index;
 
 #[allow(missing_docs)]
 pub trait EventProvider {
     fn all_events(&self) -> &Vec<ConrodEvent>;
     fn modifiers(&self) -> ModifierKey;
+    fn currently_capturing_mouse(&self) -> Option<Index>;
+    fn currently_capturing_keyboard(&self) -> Option<Index>;
 
     fn text_just_entered(&self) -> Option<String> {
         let all_text: String = self.all_events().iter().filter_map(|evt| {
@@ -116,14 +119,7 @@ pub trait EventProvider {
 pub trait EventAggregator: EventProvider {
     fn push_event(&mut self, event: ConrodEvent);
     fn reset(&mut self);
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-#[allow(missing_docs)]
-pub struct Scroll {
-    x: f64,
-    y: f64,
-    modifiers: ModifierKey,
+    fn current_mouse_position(&self) -> Point;
 }
 
 #[allow(missing_docs)]
@@ -133,6 +129,8 @@ pub struct ConrodEventAggregator {
     mouse_position: Point,
     drag_threshold: Scalar,
     modifiers: ModifierKey,
+    maybe_capturing_keyboard: Option<Index>,
+    maybe_capturing_mouse: Option<Index>,
 }
 
 impl EventProvider for ConrodEventAggregator {
@@ -144,13 +142,21 @@ impl EventProvider for ConrodEventAggregator {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }
+
+    fn currently_capturing_mouse(&self) -> Option<Index> {
+        self.maybe_capturing_mouse
+    }
+
+    fn currently_capturing_keyboard(&self) -> Option<Index> {
+        self.maybe_capturing_keyboard
+    }
 }
 
 impl EventAggregator for ConrodEventAggregator {
 
     fn push_event(&mut self, event: ConrodEvent) {
         use input::Input::{Press, Release, Move};
-        use input::Motion::MouseCursor;
+        use input::Motion::MouseRelative;
         use input::Button::Mouse;
 
         let maybe_new_event = match event {
@@ -158,7 +164,11 @@ impl EventAggregator for ConrodEventAggregator {
             ConrodEvent::Raw(Release(Button::Keyboard(key))) => self.handle_key_release(key),
             ConrodEvent::Raw(Press(Mouse(button))) => self.handle_mouse_press(button),
             ConrodEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
-            ConrodEvent::Raw(Move(MouseCursor(x, y))) => self.handle_mouse_move([x, y]),
+            ConrodEvent::Raw(Move(MouseRelative(x, y))) => self.handle_mouse_move([x, y]),
+            ConrodEvent::WidgetCapturesKeyboard(idx) => self.handle_capture_keyboard(idx),
+            ConrodEvent::WidgetUncapturesKeyboard(idx) => self.handle_uncapture_keyboard(idx),
+            ConrodEvent::WidgetCapturesMouse(idx) => self.handle_capture_mouse(idx),
+            ConrodEvent::WidgetUncapturesMouse(idx) => self.handle_uncapture_mouse(idx),
             _ => None
         };
 
@@ -170,6 +180,10 @@ impl EventAggregator for ConrodEventAggregator {
 
     fn reset(&mut self) {
         self.events.clear();
+    }
+
+    fn current_mouse_position(&self) -> Point {
+        self.mouse_position
     }
 
 }
@@ -184,7 +198,29 @@ impl ConrodEventAggregator {
             mouse_position: [0.0, 0.0],
             drag_threshold: 4.0,
             modifiers: ModifierKey::default(),
+            maybe_capturing_keyboard: None,
+            maybe_capturing_mouse: None,
         }
+    }
+
+    fn handle_capture_keyboard(&mut self, capturing: Index) -> Option<ConrodEvent> {
+        self.maybe_capturing_keyboard = Some(capturing);
+        None
+    }
+
+    fn handle_uncapture_keyboard(&mut self, uncapturing: Index) -> Option<ConrodEvent> {
+        self.maybe_capturing_keyboard.take();
+        None
+    }
+
+    fn handle_capture_mouse(&mut self, capturing: Index) -> Option<ConrodEvent> {
+        self.maybe_capturing_mouse = Some(capturing);
+        None
+    }
+
+    fn handle_uncapture_mouse(&mut self, uncapturing: Index) -> Option<ConrodEvent> {
+        self.maybe_capturing_mouse.take();
+        None
     }
 
     fn handle_mouse_move(&mut self, move_to: Point) -> Option<ConrodEvent> {

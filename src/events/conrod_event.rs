@@ -34,6 +34,14 @@ pub struct MouseClick {
     pub modifier: ModifierKey,
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[allow(missing_docs)]
+pub struct Scroll {
+    pub x: f64,
+    pub y: f64,
+    pub modifiers: ModifierKey,
+}
+
 /// Marks something that can be made relative to another `Point`.
 pub trait RelativePosition {
     /// Returns a copy of `Self` that is relative to the given `Point`.

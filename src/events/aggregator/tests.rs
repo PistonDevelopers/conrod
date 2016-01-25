@@ -4,8 +4,51 @@ use input::Button::Mouse;
 use input::mouse::MouseButton;
 use input::{Input, Motion};
 use position::{Point, Scalar};
-use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag};
+use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag, Scroll};
+use widget::{Id, Index};
 use super::*;
+
+#[test]
+fn event_aggregator_should_track_widget_currently_capturing_keyboard() {
+    let mut aggregator = ConrodEventAggregator::new();
+
+    let idx: Index = Index::Public(Id(5));
+    aggregator.push_event(ConrodEvent::WidgetCapturesKeyboard(idx));
+
+    assert_eq!(Some(idx), aggregator.currently_capturing_keyboard());
+
+    aggregator.push_event(ConrodEvent::WidgetUncapturesKeyboard(idx));
+    assert!(aggregator.currently_capturing_keyboard().is_none());
+
+    let new_idx: Index = Index::Public(Id(5));
+    aggregator.push_event(ConrodEvent::WidgetCapturesKeyboard(new_idx));
+    assert_eq!(Some(new_idx), aggregator.currently_capturing_keyboard());
+}
+
+#[test]
+fn event_aggregator_should_track_widget_currently_capturing_mouse() {
+    let mut aggregator = ConrodEventAggregator::new();
+
+    let idx: Index = Index::Public(Id(5));
+    aggregator.push_event(ConrodEvent::WidgetCapturesMouse(idx));
+
+    assert_eq!(Some(idx), aggregator.currently_capturing_mouse());
+
+    aggregator.push_event(ConrodEvent::WidgetUncapturesMouse(idx));
+    assert!(aggregator.currently_capturing_mouse().is_none());
+
+    let new_idx: Index = Index::Public(Id(5));
+    aggregator.push_event(ConrodEvent::WidgetCapturesMouse(new_idx));
+    assert_eq!(Some(new_idx), aggregator.currently_capturing_mouse());
+}
+
+#[test]
+fn event_aggregator_should_track_current_mouse_position() {
+    let mut aggregator = ConrodEventAggregator::new();
+
+    aggregator.push_event(mouse_move_event(50.0, 77.7));
+    assert_eq!([50.0, 77.7], aggregator.current_mouse_position());
+}
 
 #[test]
 fn entered_text_should_be_aggregated_from_multiple_events() {
@@ -30,6 +73,7 @@ fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_relea
 
     assert!(aggregator.mouse_left_drag().is_some());
 }
+
 #[test]
 fn click_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
     let mut aggregator = ConrodEventAggregator::new();
@@ -243,5 +287,5 @@ fn all_events_should_return_all_inputs_in_order() {
 }
 
 fn mouse_move_event(x: Scalar, y: Scalar) -> ConrodEvent {
-    ConrodEvent::Raw(Input::Move(Motion::MouseCursor(x, y)))
+    ConrodEvent::Raw(Input::Move(Motion::MouseRelative(x, y)))
 }
