@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
-use ::events::{ConrodEvent, EventAggregator, EventProvider, ConrodEventAggregator};
+use ::events::{ConrodEvent, WidgetInput, GlobalInput};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -55,7 +55,7 @@ pub struct Ui<C> {
     /// Window height.
     pub win_h: f64,
     /// Handles aggregation of events and providing them to Widgets
-    pub event_aggregator: ConrodEventAggregator,
+    pub event_aggregator: GlobalInput,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The latest received mouse state.
@@ -171,7 +171,7 @@ impl<C> Ui<C> {
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
-            event_aggregator: ConrodEventAggregator::new(),
+            event_aggregator: GlobalInput::new(),
         }
     }
 

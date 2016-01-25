@@ -11,7 +11,7 @@ use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag, Scroll};
 use widget::Index;
 
 #[allow(missing_docs)]
-pub trait EventProvider {
+pub trait WidgetInput {
     fn all_events(&self) -> &Vec<ConrodEvent>;
     fn modifiers(&self) -> ModifierKey;
     fn currently_capturing_mouse(&self) -> Option<Index>;
@@ -112,18 +112,10 @@ pub trait EventProvider {
             }
         }).next()
     }
-
 }
 
 #[allow(missing_docs)]
-pub trait EventAggregator: EventProvider {
-    fn push_event(&mut self, event: ConrodEvent);
-    fn reset(&mut self);
-    fn current_mouse_position(&self) -> Point;
-}
-
-#[allow(missing_docs)]
-pub struct ConrodEventAggregator {
+pub struct GlobalInput {
     events: Vec<ConrodEvent>,
     mouse_buttons: ButtonMap,
     mouse_position: Point,
@@ -133,7 +125,7 @@ pub struct ConrodEventAggregator {
     maybe_capturing_mouse: Option<Index>,
 }
 
-impl EventProvider for ConrodEventAggregator {
+impl WidgetInput for GlobalInput {
 
     fn modifiers(&self) -> ModifierKey {
         self.modifiers
@@ -152,9 +144,21 @@ impl EventProvider for ConrodEventAggregator {
     }
 }
 
-impl EventAggregator for ConrodEventAggregator {
+impl GlobalInput {
 
-    fn push_event(&mut self, event: ConrodEvent) {
+    pub fn new() -> GlobalInput {
+        GlobalInput{
+            events: Vec::new(),
+            mouse_buttons: ButtonMap::new(),
+            mouse_position: [0.0, 0.0],
+            drag_threshold: 4.0,
+            modifiers: ModifierKey::default(),
+            maybe_capturing_keyboard: None,
+            maybe_capturing_mouse: None,
+        }
+    }
+
+    pub fn push_event(&mut self, event: ConrodEvent) {
         use input::Input::{Press, Release, Move};
         use input::Motion::MouseRelative;
         use input::Button::Mouse;
@@ -178,29 +182,12 @@ impl EventAggregator for ConrodEventAggregator {
         }
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.events.clear();
     }
 
-    fn current_mouse_position(&self) -> Point {
+    pub fn current_mouse_position(&self) -> Point {
         self.mouse_position
-    }
-
-}
-
-#[allow(missing_docs)]
-impl ConrodEventAggregator {
-
-    pub fn new() -> ConrodEventAggregator {
-        ConrodEventAggregator{
-            events: Vec::new(),
-            mouse_buttons: ButtonMap::new(),
-            mouse_position: [0.0, 0.0],
-            drag_threshold: 4.0,
-            modifiers: ModifierKey::default(),
-            maybe_capturing_keyboard: None,
-            maybe_capturing_mouse: None,
-        }
     }
 
     fn handle_capture_keyboard(&mut self, capturing: Index) -> Option<ConrodEvent> {
@@ -295,7 +282,7 @@ impl ConrodEventAggregator {
     }
 }
 
-impl IntoIterator for ConrodEventAggregator {
+impl IntoIterator for GlobalInput {
     type Item = ConrodEvent;
     type IntoIter = ::std::vec::IntoIter<ConrodEvent>;
 
