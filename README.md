@@ -75,13 +75,13 @@ License
 [The API Documentation]: http://docs.piston.rs/conrod/conrod/
 [The Guide]: http://docs.piston.rs/conrod/conrod/guide/index.html
 
-[1]: ./chapter_1/index.html
-[1.1]: ./chapter_1/index.html#a-brief-history
-[1.2]: ./chapter_1/index.html#screenshots-and-videos
-[1.3]: ./chapter_1/index.html#feature-overview
-[1.4]: ./chapter_1/index.html#available-widgets
-[1.4.1]: ./chapter_1/index.html#primitive-widgets
-[1.4.2]: ./chapter_1/index.html#common-use-widgets
+[1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
+[1.1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#a-brief-history
+[1.2]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#screenshots-and-videos
+[1.3]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#feature-overview
+[1.4]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#available-widgets
+[1.4.1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#primitive-widgets
+[1.4.2]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#common-use-widgets
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
