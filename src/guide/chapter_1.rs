@@ -136,6 +136,47 @@ label](https://github.com/PistonDevelopers/conrod/issues?q=is%3Aopen+is%3Aissue+
 first, as your desired widget may have already been requested.
 
 
+## "Immediate Mode"
+
+### What is it?
+
+The term "Immediate Mode" describes a style of user interface API.
+
+In an immediate mode GUI, widgets are instantiated using functions in an *update* or *draw* loop.
+This is quite different to the more traditional "retained mode", where widget *types* are
+constructed during the *setup* stage.
+
+Immediate mode encourages a less stateful, more data-driven design as the user interface is
+instantiated as a *result* of the application state every frame or update. On the other hand,
+retained user interfaces tend to work the other way around, driving the application by sending
+events or triggering callback functions upon user interaction.
+
+### Why use it?
+
+Immediate mode tends to be the easier style to use for highly dynamic interfaces and those that
+require frequent synchronisation with application state. This is because immediate widgets handle
+changes in application state at the same place in which they are instantiated (during the update
+or draw stage). While retained interface logic is often divided up between instantiation, updating,
+drawing and event handling, immediate interfaces aim to consolidate all UI related logic within one
+place.
+
+Historically, due to their statelessness and frequent re-instantiation, immediate mode interfaces
+have been known to pay the price of performance for their convenience. Although retained interfaces
+can be more tedious to maintain and synchronise with application state, they are often less CPU
+intensive as the majority of their state remains untouched following the application's setup stage.
+
+### Is Conrod Immediate or Retained?
+
+Conrod aims to adopt the best of both worlds by providing an immediate mode API over a hidden,
+retained widget state graph. From the user's perspective conrod widgets tend to feel stateless, as
+though they only exist for the lifetime of the scope in which they are instantiated. In actuality,
+each widget's state is cached (or "retained") within the `Ui`'s internal widget graph. This allows
+for efficient re-use of allocations and the ability to easily defer the drawing of widgets to a
+stage that is more suited to the user's application. As a result, Conrod should be able to provide
+the convenience of an immediate mode API alongside performance that approaches that of traditional,
+retained GUIs.
+
+
 
 [1]:  https://en.wikipedia.org/wiki/Graphical_user_interface        "Wikipedia - Graphical User Interface"
 [2]:  https://www.rust-lang.org/                                    "The Rust Programming Language"

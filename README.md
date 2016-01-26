@@ -13,6 +13,10 @@ An easy-to-use, 2D GUI library written entirely in Rust.
     - [Available Widgets][1.4]
         - [Primitive Widgets][1.4.1]
         - [Common Use Widgets][1.4.2]
+    - [Immediate Mode][1.5]
+        - [What is it?][1.5.1]
+        - [Why use it?][1.5.2]
+        - [Is Conrod Immediate or Retained?][1.5.3]
 
 
 Current State
@@ -75,13 +79,17 @@ License
 [The API Documentation]: http://docs.piston.rs/conrod/conrod/
 [The Guide]: http://docs.piston.rs/conrod/conrod/guide/index.html
 
-[1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
-[1.1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#a-brief-history
-[1.2]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#screenshots-and-videos
-[1.3]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#feature-overview
-[1.4]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#available-widgets
-[1.4.1]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#primitive-widgets
-[1.4.2]: http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#common-use-widgets
+[1]:        http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
+[1.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#a-brief-history
+[1.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#screenshots-and-videos
+[1.3]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#feature-overview
+[1.4]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#available-widgets
+[1.4.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#primitive-widgets
+[1.4.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#common-use-widgets
+[1.5]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#immediate-mode
+[1.5.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#what-is-it
+[1.5.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#why-use-it
+[1.5.3]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
