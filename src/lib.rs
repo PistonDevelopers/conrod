@@ -92,6 +92,7 @@ pub mod color;
 mod frame;
 pub mod glyph_cache;
 pub mod graph;
+pub mod guide;
 mod label;
 mod mouse;
 mod position;
