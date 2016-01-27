@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-mod mouse_button_map;
+mod input_state;
 
-use self::mouse_button_map::{InputState, ButtonMap};
+use self::input_state::{InputState, ButtonMap};
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
