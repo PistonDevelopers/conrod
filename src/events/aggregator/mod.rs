@@ -190,6 +190,7 @@ impl GlobalInput {
         self.mouse_position
     }
 
+
     fn handle_capture_keyboard(&mut self, capturing: Index) -> Option<ConrodEvent> {
         self.maybe_capturing_keyboard = Some(capturing);
         None
