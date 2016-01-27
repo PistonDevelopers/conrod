@@ -3,7 +3,7 @@ mod tests;
 
 mod mouse_button_map;
 
-use self::mouse_button_map::ButtonMap;
+use self::mouse_button_map::{InputState, ButtonMap};
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
@@ -117,18 +117,15 @@ pub trait WidgetInput {
 #[allow(missing_docs)]
 pub struct GlobalInput {
     events: Vec<ConrodEvent>,
-    mouse_buttons: ButtonMap,
-    mouse_position: Point,
     drag_threshold: Scalar,
-    modifiers: ModifierKey,
-    maybe_capturing_keyboard: Option<Index>,
-    maybe_capturing_mouse: Option<Index>,
+    start_state: InputState,
+    current_state: InputState,
 }
 
 impl WidgetInput for GlobalInput {
 
     fn modifiers(&self) -> ModifierKey {
-        self.modifiers
+        self.current_state.modifiers
     }
 
     fn all_events(&self) -> &Vec<ConrodEvent> {
@@ -136,11 +133,11 @@ impl WidgetInput for GlobalInput {
     }
 
     fn currently_capturing_mouse(&self) -> Option<Index> {
-        self.maybe_capturing_mouse
+        self.current_state.widget_capturing_mouse
     }
 
     fn currently_capturing_keyboard(&self) -> Option<Index> {
-        self.maybe_capturing_keyboard
+        self.current_state.widget_capturing_keyboard
     }
 }
 
@@ -149,12 +146,9 @@ impl GlobalInput {
     pub fn new() -> GlobalInput {
         GlobalInput{
             events: Vec::new(),
-            mouse_buttons: ButtonMap::new(),
-            mouse_position: [0.0, 0.0],
             drag_threshold: 4.0,
-            modifiers: ModifierKey::default(),
-            maybe_capturing_keyboard: None,
-            maybe_capturing_mouse: None,
+            start_state: InputState::new(),
+            current_state: InputState::new(),
         }
     }
 
@@ -187,40 +181,40 @@ impl GlobalInput {
     }
 
     pub fn current_mouse_position(&self) -> Point {
-        self.mouse_position
+        self.current_state.mouse_position
     }
 
 
     fn handle_capture_keyboard(&mut self, capturing: Index) -> Option<ConrodEvent> {
-        self.maybe_capturing_keyboard = Some(capturing);
+        self.current_state.widget_capturing_keyboard = Some(capturing);
         None
     }
 
     fn handle_uncapture_keyboard(&mut self, uncapturing: Index) -> Option<ConrodEvent> {
-        self.maybe_capturing_keyboard.take();
+        self.current_state.widget_capturing_keyboard.take();
         None
     }
 
     fn handle_capture_mouse(&mut self, capturing: Index) -> Option<ConrodEvent> {
-        self.maybe_capturing_mouse = Some(capturing);
+        self.current_state.widget_capturing_mouse = Some(capturing);
         None
     }
 
     fn handle_uncapture_mouse(&mut self, uncapturing: Index) -> Option<ConrodEvent> {
-        self.maybe_capturing_mouse.take();
+        self.current_state.widget_capturing_mouse.take();
         None
     }
 
     fn handle_mouse_move(&mut self, move_to: Point) -> Option<ConrodEvent> {
-        self.mouse_position = move_to;
-        self.mouse_buttons.pressed_button().and_then(|btn_and_point| {
+        self.current_state.mouse_position = move_to;
+        self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
             if self.is_drag(btn_and_point.1, move_to) {
                 Some(ConrodEvent::MouseDrag(MouseDrag{
                     button: btn_and_point.0,
                     start: btn_and_point.1,
                     end: move_to,
                     in_progress: true,
-                    modifier: self.modifiers
+                    modifier: self.current_state.modifiers
                 }))
             } else {
                 None
@@ -229,37 +223,37 @@ impl GlobalInput {
     }
 
     fn handle_mouse_release(&mut self, button: MouseButton) -> Option<ConrodEvent> {
-        self.mouse_buttons.take(button).map(|point| {
-            if self.is_drag(point, self.mouse_position) {
+        self.current_state.mouse_buttons.take(button).map(|point| {
+            if self.is_drag(point, self.current_state.mouse_position) {
                 ConrodEvent::MouseDrag(MouseDrag{
                     button: button,
                     start: point,
-                    end: self.mouse_position,
-                    modifier: self.modifiers,
+                    end: self.current_state.mouse_position,
+                    modifier: self.current_state.modifiers,
                     in_progress: false
                 })
             } else {
                 ConrodEvent::MouseClick(MouseClick {
                     button: button,
                     location: point,
-                    modifier: self.modifiers
+                    modifier: self.current_state.modifiers
                 })
             }
         })
     }
 
     fn handle_mouse_press(&mut self, button: MouseButton) -> Option<ConrodEvent> {
-        self.mouse_buttons.set(button, Some(self.mouse_position));
+        self.current_state.mouse_buttons.set(button, Some(self.current_state.mouse_position));
         None
     }
 
     fn handle_key_press(&mut self, key: Key) -> Option<ConrodEvent> {
         use input::keyboard::{CTRL, SHIFT, ALT, GUI};
         match key {
-            Key::LCtrl | Key::RCtrl => self.modifiers.insert(CTRL),
-            Key::LShift | Key::RShift => self.modifiers.insert(SHIFT),
-            Key::LAlt | Key::RAlt => self.modifiers.insert(ALT),
-            Key::LGui | Key::RGui => self.modifiers.insert(GUI),
+            Key::LCtrl | Key::RCtrl => self.current_state.modifiers.insert(CTRL),
+            Key::LShift | Key::RShift => self.current_state.modifiers.insert(SHIFT),
+            Key::LAlt | Key::RAlt => self.current_state.modifiers.insert(ALT),
+            Key::LGui | Key::RGui => self.current_state.modifiers.insert(GUI),
             _ => {}
         }
         None
@@ -268,10 +262,10 @@ impl GlobalInput {
     fn handle_key_release(&mut self, key: Key) -> Option<ConrodEvent> {
         use input::keyboard::{CTRL, SHIFT, ALT, GUI};
         match key {
-            Key::LCtrl | Key::RCtrl => self.modifiers.remove(CTRL),
-            Key::LShift | Key::RShift => self.modifiers.remove(SHIFT),
-            Key::LAlt | Key::RAlt => self.modifiers.remove(ALT),
-            Key::LGui | Key::RGui => self.modifiers.remove(GUI),
+            Key::LCtrl | Key::RCtrl => self.current_state.modifiers.remove(CTRL),
+            Key::LShift | Key::RShift => self.current_state.modifiers.remove(SHIFT),
+            Key::LAlt | Key::RAlt => self.current_state.modifiers.remove(ALT),
+            Key::LGui | Key::RGui => self.current_state.modifiers.remove(GUI),
             _ => {}
         }
         None

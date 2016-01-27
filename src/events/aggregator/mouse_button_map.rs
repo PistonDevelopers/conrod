@@ -1,10 +1,32 @@
 use input::MouseButton;
+use input::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
+use widget::Index;
 
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
 
 pub type ButtonDownPosition = Option<Point>;
+
+pub struct InputState {
+    pub mouse_buttons: ButtonMap,
+    pub mouse_position: Point,
+    pub widget_capturing_keyboard: Option<Index>,
+    pub widget_capturing_mouse: Option<Index>,
+    pub modifiers: ModifierKey,
+}
+
+impl InputState {
+    pub fn new() -> InputState {
+        InputState{
+            mouse_buttons: ButtonMap::new(),
+            mouse_position: [0.0, 0.0],
+            widget_capturing_keyboard: None,
+            widget_capturing_mouse: None,
+            modifiers: NO_MODIFIER,
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct ButtonMap {
