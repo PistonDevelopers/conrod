@@ -10,6 +10,7 @@ pub enum ConrodEvent {
     Raw(Input),
     MouseClick(MouseClick),
     MouseDrag(MouseDrag),
+    Scroll(Scroll),
     WidgetCapturesMouse(Index),
     WidgetUncapturesMouse(Index),
     WidgetCapturesKeyboard(Index),

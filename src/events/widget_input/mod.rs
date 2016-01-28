@@ -35,18 +35,6 @@ impl WidgetEvents for WidgetInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }
-
-    fn starting_state(&self) -> &InputState {
-        &self.start_state
-    }
-
-    fn currently_capturing_mouse(&self) -> Option<Index> {
-        self.start_state.widget_capturing_mouse
-    }
-
-    fn currently_capturing_keyboard(&self) -> Option<Index> {
-        self.start_state.widget_capturing_keyboard
-    }
 }
 
 fn should_provide_event(widget: Index,

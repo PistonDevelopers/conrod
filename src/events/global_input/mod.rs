@@ -10,9 +10,6 @@ use widget::Index;
 #[allow(missing_docs)]
 pub trait WidgetEvents {
     fn all_events(&self) -> &Vec<ConrodEvent>;
-    fn starting_state(&self) -> &InputState;
-    fn currently_capturing_mouse(&self) -> Option<Index>;
-    fn currently_capturing_keyboard(&self) -> Option<Index>;
 
     fn text_just_entered(&self) -> Option<String> {
         let all_text: String = self.all_events().iter().filter_map(|evt| {
@@ -54,16 +51,9 @@ pub trait WidgetEvents {
     }
 
     fn scroll(&self) -> Option<Scroll> {
-        let modifiers = self.modifiers();
         self.all_events().iter().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Move(Motion::MouseScroll(x, y))) => {
-                    Some(Scroll{
-                        x: x,
-                        y: y,
-                        modifiers: modifiers
-                    })
-                },
+                ConrodEvent::Scroll(scroll) => Some(scroll),
                 _ => None
             }
         }).fold(None, |maybe_scroll, scroll| {
@@ -72,29 +62,13 @@ pub trait WidgetEvents {
                     Scroll{
                         x: acc.x + scroll.x,
                         y: acc.y + scroll.y,
-                        modifiers: modifiers
+                        modifiers: scroll.modifiers
                     }
                 })
             } else {
                 Some(scroll)
             }
         })
-    }
-
-    fn modifiers(&self) -> ModifierKey {
-        let mut mods = self.starting_state().modifiers;
-        for event in self.all_events() {
-            match *event {
-                ConrodEvent::Raw(Input::Press(Button::Keyboard(key))) => {
-                    get_modifier(key).map(|mod_key| mods.insert(mod_key));
-                },
-                ConrodEvent::Raw(Input::Release(Button::Keyboard(key))) => {
-                    get_modifier(key).map(|mod_key| mods.remove(mod_key));
-                },
-                _ => {}
-            }
-        }
-        mods
     }
 
     fn mouse_left_drag(&self) -> Option<MouseDrag> {
@@ -154,18 +128,6 @@ impl WidgetEvents for GlobalInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }
-
-    fn starting_state(&self) -> &InputState {
-        &self.start_state
-    }
-
-    fn currently_capturing_mouse(&self) -> Option<Index> {
-        self.current_state.widget_capturing_mouse
-    }
-
-    fn currently_capturing_keyboard(&self) -> Option<Index> {
-        self.current_state.widget_capturing_keyboard
-    }
 }
 
 impl GlobalInput {
@@ -182,11 +144,13 @@ impl GlobalInput {
     pub fn push_event(&mut self, event: ConrodEvent) {
         use input::Input::{Press, Release, Move};
         use input::Motion::MouseRelative;
+        use input::Motion::MouseScroll;
         use input::Button::Mouse;
 
         let maybe_new_event = match event {
             ConrodEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
             ConrodEvent::Raw(Move(MouseRelative(x, y))) => self.handle_mouse_move([x, y]),
+            ConrodEvent::Raw(Move(MouseScroll(x, y))) => self.mouse_scroll(x, y),
             _ => None
         };
 
@@ -205,6 +169,26 @@ impl GlobalInput {
         self.current_state.mouse_position
     }
 
+    pub fn starting_state(&self) -> &InputState {
+        &self.start_state
+    }
+
+    pub fn currently_capturing_mouse(&self) -> Option<Index> {
+        self.current_state.widget_capturing_mouse
+    }
+
+    pub fn currently_capturing_keyboard(&self) -> Option<Index> {
+        self.current_state.widget_capturing_keyboard
+    }
+
+
+    fn mouse_scroll(&self, x: f64, y: f64) -> Option<ConrodEvent> {
+        Some(ConrodEvent::Scroll(Scroll{
+            x: x,
+            y: y,
+            modifiers: self.current_state.modifiers
+        }))
+    }
 
     fn handle_mouse_move(&self, move_to: Point) -> Option<ConrodEvent> {
         self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {

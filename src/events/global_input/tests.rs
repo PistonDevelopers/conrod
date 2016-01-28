@@ -1,5 +1,5 @@
 use input::Button::Keyboard;
-use input::keyboard::{ModifierKey, Key};
+use input::keyboard::{self, ModifierKey, Key};
 use input::Button::Mouse;
 use input::mouse::MouseButton;
 use input::{Input, Motion};
@@ -7,6 +7,17 @@ use position::{Point, Scalar};
 use events::conrod_event::{ConrodEvent, MouseClick, MouseDrag, Scroll};
 use widget::{Id, Index};
 use super::*;
+
+#[test]
+fn scroll_events_should_have_modifier_keys() {
+    let mut input = GlobalInput::new();
+
+    input.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LShift))));
+    input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
+
+    let scroll = input.scroll().expect("expected to get a scroll event");
+    assert_eq!(keyboard::SHIFT, scroll.modifiers);
+}
 
 #[test]
 fn event_aggregator_should_track_widget_currently_capturing_keyboard() {
