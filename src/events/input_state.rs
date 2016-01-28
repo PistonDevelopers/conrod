@@ -1,13 +1,15 @@
 use input::MouseButton;
-use input::keyboard::{NO_MODIFIER, ModifierKey};
+use input::keyboard::{NO_MODIFIER, ModifierKey, Key};
 use position::Point;
 use widget::Index;
+use events::ConrodEvent;
 
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
 
 pub type ButtonDownPosition = Option<Point>;
 
+#[derive(Copy, Clone, Debug)]
 pub struct InputState {
     pub mouse_buttons: ButtonMap,
     pub mouse_position: Point,
@@ -26,7 +28,56 @@ impl InputState {
             modifiers: NO_MODIFIER,
         }
     }
+
+    pub fn update(&mut self, event: &ConrodEvent) {
+        use input::{Button, Motion, Input};
+        use input::mouse::MouseButton;
+
+        match *event {
+            ConrodEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
+                self.mouse_buttons.set(mouse_button, Some(self.mouse_position));
+            },
+            ConrodEvent::Raw(Input::Release(Button::Mouse(mouse_button))) => {
+                self.mouse_buttons.set(mouse_button, None);
+            },
+            ConrodEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) => {
+                self.mouse_position = [x, y];
+            },
+            ConrodEvent::Raw(Input::Press(Button::Keyboard(key))) => {
+                get_modifier(key).map(|modifier| self.modifiers.insert(modifier));
+            },
+            ConrodEvent::Raw(Input::Release(Button::Keyboard(key))) => {
+                get_modifier(key).map(|modifier| self.modifiers.remove(modifier));
+            },
+            ConrodEvent::WidgetCapturesKeyboard(idx) => {
+                self.widget_capturing_keyboard = Some(idx);
+            },
+            ConrodEvent::WidgetUncapturesKeyboard(idx) => {
+                self.widget_capturing_keyboard = None;
+            },
+            ConrodEvent::WidgetCapturesMouse(idx) => {
+                self.widget_capturing_mouse = Some(idx);
+            },
+            ConrodEvent::WidgetUncapturesMouse(idx) =>  {
+                self.widget_capturing_mouse = None;
+            },
+            _ => {}
+        }
+    }
 }
+
+fn get_modifier(key: Key) -> Option<ModifierKey> {
+    use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+
+    match key {
+        Key::LCtrl | Key::RCtrl => Some(CTRL),
+        Key::LShift | Key::RShift => Some(SHIFT),
+        Key::LAlt | Key::RAlt => Some(ALT),
+        Key::LGui | Key::RGui => Some(GUI),
+        _ => None
+    }
+}
+
 
 #[derive(Copy, Clone, Debug)]
 pub struct ButtonMap {
@@ -69,6 +120,8 @@ impl ButtonMap {
     }
 
 }
+
+
 
 #[test]
 fn pressed_button_returns_none_if_no_buttons_are_pressed() {

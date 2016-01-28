@@ -93,7 +93,7 @@ impl RelativePosition for Input {
 }
 
 impl ConrodEvent {
-    fn is_mouse_event(&self) -> bool {
+    pub fn is_mouse_event(&self) -> bool {
         match *self {
             ConrodEvent::Raw(Input::Press(Button::Mouse(_))) => true,
             ConrodEvent::Raw(Input::Release(Button::Mouse(_))) => true,
@@ -106,7 +106,7 @@ impl ConrodEvent {
         }
     }
 
-    fn is_keyboard_event(&self) -> bool {
+    pub fn is_keyboard_event(&self) -> bool {
         match *self {
             ConrodEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
             ConrodEvent::Raw(Input::Release(Button::Keyboard(_))) => true,
