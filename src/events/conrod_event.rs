@@ -103,6 +103,7 @@ impl ConrodEvent {
             ConrodEvent::Raw(Input::Move(Motion::MouseScroll(_, _))) => true,
             ConrodEvent::MouseClick(_) => true,
             ConrodEvent::MouseDrag(_) => true,
+            ConrodEvent::Scroll(_) => true,
             _ => false
         }
     }
@@ -112,6 +113,7 @@ impl ConrodEvent {
             ConrodEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
             ConrodEvent::Raw(Input::Release(Button::Keyboard(_))) => true,
             ConrodEvent::Raw(Input::Text(_)) => true,
+            ConrodEvent::Scroll(_) => true,
             _ => false
         }
     }
@@ -124,6 +126,17 @@ mod test {
     use input::keyboard::{self, Key, ModifierKey, NO_MODIFIER};
     use position::Point;
 
+    // We'll see if this approach causes problems later on down the road...
+    #[test]
+    fn scroll_event_shoulbe_be_both_a_mouse_and_keyboard_event() {
+        let scroll_event = ConrodEvent::Scroll(Scroll{
+            x: 0.0,
+            y: 0.0,
+            modifiers: NO_MODIFIER
+        });
+        assert!(scroll_event.is_mouse_event());
+        assert!(scroll_event.is_keyboard_event());
+    }
 
     #[test]
     fn is_keyboard_event_should_be_true_for_all_keyboard_events() {
