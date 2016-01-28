@@ -1,4 +1,4 @@
-use events::{GlobalInput, WidgetEvents};
+use events::{GlobalInput, EventProvider};
 use events::conrod_event::ConrodEvent;
 use ::{Ui,
     Theme,

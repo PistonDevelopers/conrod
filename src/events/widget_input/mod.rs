@@ -1,7 +1,7 @@
 mod tests;
 
 use widget::{Index, Id};
-use events::{InputState, ConrodEvent, GlobalInput, WidgetEvents, RelativePosition};
+use events::{InputState, ConrodEvent, GlobalInput, EventProvider, RelativePosition};
 use position::{Point, Range, Rect};
 use input::keyboard::ModifierKey;
 
@@ -23,7 +23,7 @@ impl WidgetInput {
     }
 }
 
-impl WidgetEvents for WidgetInput {
+impl EventProvider for WidgetInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.0
     }

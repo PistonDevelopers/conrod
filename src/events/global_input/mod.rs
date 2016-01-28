@@ -1,107 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use events::{InputState, ButtonMap, ConrodEvent, MouseClick, MouseDrag, Scroll};
+use events::{InputState, ButtonMap, ConrodEvent, MouseClick, MouseDrag, Scroll, EventProvider};
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
 use widget::Index;
-
-#[allow(missing_docs)]
-pub trait WidgetEvents {
-    fn all_events(&self) -> &Vec<ConrodEvent>;
-
-    fn text_just_entered(&self) -> Option<String> {
-        let all_text: String = self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::Raw(Input::Text(ref text)) => Some(text),
-                _ => None
-            }
-        }).fold(String::new(), |acc, item| {
-            acc + item
-        });
-
-        if all_text.is_empty() {
-            None
-        } else {
-            Some(all_text)
-        }
-    }
-
-    fn keys_just_released(&self) -> Vec<Key> {
-        use input::Button::Keyboard;
-
-        self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::Raw(Input::Release(Keyboard(key))) => Some(key),
-                _ => None
-            }
-        }).collect::<Vec<Key>>()
-    }
-
-    fn keys_just_pressed(&self) -> Vec<Key> {
-        use input::Button::Keyboard;
-
-        self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::Raw(Input::Press(Keyboard(key))) => Some(key),
-                _ => None
-            }
-        }).collect::<Vec<Key>>()
-    }
-
-    fn scroll(&self) -> Option<Scroll> {
-        self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::Scroll(scroll) => Some(scroll),
-                _ => None
-            }
-        }).fold(None, |maybe_scroll, scroll| {
-            if maybe_scroll.is_some() {
-                maybe_scroll.map(|acc| {
-                    Scroll{
-                        x: acc.x + scroll.x,
-                        y: acc.y + scroll.y,
-                        modifiers: scroll.modifiers
-                    }
-                })
-            } else {
-                Some(scroll)
-            }
-        })
-    }
-
-    fn mouse_left_drag(&self) -> Option<MouseDrag> {
-        self.mouse_drag(MouseButton::Left)
-    }
-
-    fn mouse_drag(&self, button: MouseButton) -> Option<MouseDrag> {
-        self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
-                _ => None
-            }
-        }).last()
-    }
-
-    fn mouse_left_click(&self) -> Option<MouseClick> {
-        self.mouse_click(MouseButton::Left)
-    }
-
-    fn mouse_right_click(&self) -> Option<MouseClick> {
-        self.mouse_click(MouseButton::Right)
-    }
-
-    fn mouse_click(&self, button: MouseButton) -> Option<MouseClick> {
-        self.all_events().iter().filter_map(|evt| {
-            match *evt {
-                ConrodEvent::MouseClick(click) if click.button == button => Some(click),
-                _ => None
-            }
-        }).next()
-    }
-
-}
 
 fn get_modifier(key: Key) -> Option<ModifierKey> {
     use input::keyboard::{CTRL, SHIFT, ALT, GUI};
@@ -123,7 +27,7 @@ pub struct GlobalInput {
     pub current_state: InputState,
 }
 
-impl WidgetEvents for GlobalInput {
+impl EventProvider for GlobalInput {
 
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events

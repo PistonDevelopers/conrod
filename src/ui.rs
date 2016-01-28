@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
-use ::events::{ConrodEvent, WidgetEvents, GlobalInput};
+use ::events::{ConrodEvent, EventProvider, GlobalInput};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
