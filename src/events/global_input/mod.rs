@@ -1,3 +1,7 @@
+//! Handles all of the global input events and state.
+//! The core of this module is the `GlobalInput` struct. It is responsible for aggregating
+//! and interpreting raw input events into high-level semantic events.
+
 #[cfg(test)]
 mod tests;
 
@@ -65,18 +69,22 @@ impl GlobalInput {
         self.events.clear();
     }
 
+    /// Returns the most up to date position of the mouse
     pub fn current_mouse_position(&self) -> Point {
         self.current_state.mouse_position
     }
 
+    /// Returns the input state as it was after the last update
     pub fn starting_state(&self) -> &InputState {
         &self.start_state
     }
 
+    /// Returns the most up to date info on which widget is capturing the mouse
     pub fn currently_capturing_mouse(&self) -> Option<Index> {
         self.current_state.widget_capturing_mouse
     }
 
+    /// Returns the most up to date info on which widget is capturing the keyboard
     pub fn currently_capturing_keyboard(&self) -> Option<Index> {
         self.current_state.widget_capturing_keyboard
     }

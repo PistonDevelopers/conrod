@@ -1,3 +1,5 @@
+//! Contains the `EventProvider` trait, which is used to provide input events to widgets.
+
 #[cfg(test)]
 mod tests;
 

@@ -1,3 +1,7 @@
+//! Contains all the structs and enums to describe all of the input events that `Widget`s
+//! can handle. The core of this module is the `ConrodEvent` enum, which encapsulates all
+//! of those events.
+
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::ModifierKey;
 use position::Point;

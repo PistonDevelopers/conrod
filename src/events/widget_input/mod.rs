@@ -1,3 +1,8 @@
+//! Contains all the logic for filtering input events and making them relative to widgets.
+//! The core of this module is the `WidgetInput::for_widget` method, which creates an
+//! `EventProvider` that provides input events for a specific widget.
+
+#[cfg(test)]
 mod tests;
 
 use widget::{Index, Id};

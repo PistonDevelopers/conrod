@@ -7,8 +7,11 @@ use events::ConrodEvent;
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
 
+/// Describes the position of the mouse when the button was pressed. Will be
+/// `None` if the mouse button is currently in the up position.
 pub type ButtonDownPosition = Option<Point>;
 
+/// Stores the state of all input.
 #[derive(Copy, Clone, Debug)]
 pub struct InputState {
     pub mouse_buttons: ButtonMap,
@@ -19,6 +22,7 @@ pub struct InputState {
 }
 
 impl InputState {
+    /// Returns a fresh new input state
     pub fn new() -> InputState {
         InputState{
             mouse_buttons: ButtonMap::new(),
@@ -29,6 +33,7 @@ impl InputState {
         }
     }
 
+    /// Updates the input state based on an event.
     pub fn update(&mut self, event: &ConrodEvent) {
         use input::{Button, Motion, Input};
         use input::mouse::MouseButton;
@@ -78,33 +83,40 @@ fn get_modifier(key: Key) -> Option<ModifierKey> {
     }
 }
 
-
+/// Stores the state of all mouse buttons. If the mouse button is down,
+/// it stores the position of the mouse when the button was pressed
 #[derive(Copy, Clone, Debug)]
 pub struct ButtonMap {
     button_states: [ButtonDownPosition; NUM_MOUSE_BUTTONS]
 }
 
 impl ButtonMap {
-    /// Returns a new button map with all states set to defaults.
+    /// Returns a new button map with all states set to `None`
     pub fn new() -> ButtonMap {
         ButtonMap{
             button_states: [None; NUM_MOUSE_BUTTONS]
         }
     }
 
+    /// Sets the state of a specific `MouseButton`
     pub fn set(&mut self, button: MouseButton, point: ButtonDownPosition) {
         let idx = ButtonMap::button_idx(button);
         self.button_states[idx] = point;
     }
 
+    /// Returns the state of a mouse button
     pub fn get(&self, button: MouseButton) -> ButtonDownPosition {
         self.button_states[ButtonMap::button_idx(button)]
     }
 
+    /// Returns the current state of a mouse button, leaving `None` in its place
     pub fn take(&mut self, button: MouseButton) -> ButtonDownPosition {
         self.button_states[ButtonMap::button_idx(button)].take()
     }
 
+    /// If any mouse buttons are currently pressed, will return a tuple containing
+    /// both the `MouseButton` that is pressed and the `Point` describing the location of the
+    /// mouse when it was pressed.
     pub fn pressed_button(&self) -> Option<(MouseButton, Point)> {
         self.button_states.iter().enumerate().filter(|idx_and_state| idx_and_state.1.is_some())
                 .map(|idx_and_state|

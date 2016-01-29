@@ -104,6 +104,7 @@ mod ui;
 pub mod utils;
 mod widget;
 
+#[cfg(test)]
 mod ui_tests;
 
 
