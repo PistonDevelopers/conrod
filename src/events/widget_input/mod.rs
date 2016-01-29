@@ -5,9 +5,16 @@ use events::{InputState, ConrodEvent, GlobalInput, EventProvider, RelativePositi
 use position::{Point, Range, Rect};
 use input::keyboard::ModifierKey;
 
+/// Holds any events meant to be given to a `Widget`. This is what widgets will interface with
+/// when handling events in their `update` method. All events returned from methods on `WidgetInput`
+/// will be relative to the widget's own (0,0) origin. Additionally, `WidgetInput` will not provide
+/// mouse or keyboard events that do not directly pertain to the widget.
 pub struct WidgetInput(Vec<ConrodEvent>);
 
 impl WidgetInput {
+    /// Returns a `WidgetInput` with events specifically for the given widget.
+    /// Filters out only the events that directly pertain to the widget.
+    /// All events will also be made relative to the widget's own (0,0) origin.
     pub fn for_widget(widget: Index, widget_area: Rect, global_input: &GlobalInput) -> WidgetInput {
         let start_state = global_input.starting_state();
         let mut current_state = start_state.clone();

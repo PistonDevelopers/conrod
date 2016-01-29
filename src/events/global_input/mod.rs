@@ -7,28 +7,20 @@ use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
 use widget::Index;
 
-fn get_modifier(key: Key) -> Option<ModifierKey> {
-    use input::keyboard::{CTRL, SHIFT, ALT, GUI};
-
-    match key {
-        Key::LCtrl | Key::RCtrl => Some(CTRL),
-        Key::LShift | Key::RShift => Some(SHIFT),
-        Key::LAlt | Key::RAlt => Some(ALT),
-        Key::LGui | Key::RGui => Some(GUI),
-        _ => None
-    }
-}
-
-#[allow(missing_docs)]
+/// Global input event handler that also implements `EventProvider`. The `Ui` passes all events
+/// to it's `GlobalInput` instance, which aggregates and interprets the events to provide
+/// so-called 'high-level' events to widgets. This input gets reset after every update by the `Ui`.
 pub struct GlobalInput {
+    /// The `InputState` as it was at the end of the last update cycle.
+    pub start_state: InputState,
+    /// The most recent `InputState`, with updates from handling all the events
+    /// this update cycle
+    pub current_state: InputState,
     events: Vec<ConrodEvent>,
     drag_threshold: Scalar,
-    pub start_state: InputState,
-    pub current_state: InputState,
 }
 
 impl EventProvider for GlobalInput {
-
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }
@@ -36,6 +28,7 @@ impl EventProvider for GlobalInput {
 
 impl GlobalInput {
 
+    /// Returns a fresh new `GlobalInput`
     pub fn new() -> GlobalInput {
         GlobalInput{
             events: Vec::new(),
@@ -45,6 +38,7 @@ impl GlobalInput {
         }
     }
 
+    /// Adds a new event and updates the internal state.
     pub fn push_event(&mut self, event: ConrodEvent) {
         use input::Input::{Press, Release, Move};
         use input::Motion::MouseRelative;
@@ -65,6 +59,8 @@ impl GlobalInput {
         }
     }
 
+    /// Called at the end of every update cycle in order to prepare the `GlobalInput` to
+    /// handle events for the next one.
     pub fn reset(&mut self) {
         self.events.clear();
     }
@@ -148,4 +144,16 @@ fn distance_between(a: Point, b: Point) -> Scalar {
     let dx_2 = (a[0] - b[0]).powi(2);
     let dy_2 = (a[1] - b[1]).powi(2);
     (dx_2 + dy_2).abs().sqrt()
+}
+
+fn get_modifier(key: Key) -> Option<ModifierKey> {
+    use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+
+    match key {
+        Key::LCtrl | Key::RCtrl => Some(CTRL),
+        Key::LShift | Key::RShift => Some(SHIFT),
+        Key::LAlt | Key::RAlt => Some(ALT),
+        Key::LGui | Key::RGui => Some(GUI),
+        _ => None
+    }
 }

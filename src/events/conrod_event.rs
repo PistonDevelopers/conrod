@@ -4,42 +4,69 @@ use position::Point;
 use vecmath::vec2_sub;
 use widget::Index;
 
+/// Enum containing all the events that `Widget`s can listen for.
 #[derive(Clone, PartialEq, Debug)]
-#[allow(missing_docs)]
 pub enum ConrodEvent {
+    /// Represents a raw `input::Input` event
     Raw(Input),
+    /// Represents a mouse button being pressed and subsequently released while the
+    /// mouse stayed in roughly the same place.
     MouseClick(MouseClick),
+    /// Represents a mouse button being pressed and a subsequent movement of the mouse.
     MouseDrag(MouseDrag),
+    /// This is a generic scroll event. This is different from the `input::Movement::MouseScroll`
+    /// event in several aspects. For one, it does not necessarily have to get created by a
+    /// mouse wheel, it could be generated from a keypress, or as a response to handling some
+    /// other event. Secondly, it contains a field holding the `input::keyboard::ModifierKey`
+    /// that was held while the scroll occured.
     Scroll(Scroll),
+    /// Indicates that the given widget is starting to capture the mouse.
     WidgetCapturesMouse(Index),
+    /// Indicates that the given widget is losing mouse capture.
     WidgetUncapturesMouse(Index),
+    /// Indicates that the given widget is starting to capture the keyboard.
     WidgetCapturesKeyboard(Index),
+    /// Indicates that the given widget is losing keyboard capture.
     WidgetUncapturesKeyboard(Index),
 }
 
+/// Contains all the relevant information for a mouse drag.
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[allow(missing_docs)]
 pub struct MouseDrag {
+    /// Which mouse button was being held during the drag
     pub button: MouseButton,
+    /// The origin of the drag. This will always be the position of the mouse whenever the
+    /// button was first pressed
     pub start: Point,
+    /// The end position of the mouse. If `in_progress` is true, then subsequent `MouseDrag`
+    /// events may be created with a new `end` as the mouse continues to move.
     pub end: Point,
+    /// Which modifier keys are being held during the mouse drag.
     pub modifier: ModifierKey,
+    /// Indicates whether the mouse button is still being held down. If it is, then
+    /// `in_progress` will be `true` and more `MouseDrag` events can likely be expected.
     pub in_progress: bool,
 }
 
+/// Contains all the relevant information for a mouse click.
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[allow(missing_docs)]
 pub struct MouseClick {
+    /// Which mouse button was clicked
     pub button: MouseButton,
+    /// The location of the click
     pub location: Point,
+    /// Which modifier keys, if any, that were being held down when the user clicked
     pub modifier: ModifierKey,
 }
 
+/// Holds all the relevant information about a scroll event
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[allow(missing_docs)]
 pub struct Scroll {
+    /// The amount of scroll along the x axis.
     pub x: f64,
+    /// The amount of scroll along the y axis.
     pub y: f64,
+    /// Which modifier keys, if any, that were being held down while the scroll occured
     pub modifiers: ModifierKey,
 }
 
@@ -94,6 +121,9 @@ impl RelativePosition for Input {
 }
 
 impl ConrodEvent {
+    /// Returns `true` if this event is related to the mouse. Note that just because this method
+    /// returns true does not mean that the event necessarily came from the mouse.
+    /// A `ConrodEvent::Scroll` is considered to be both a mouse and a keyboard event.
     pub fn is_mouse_event(&self) -> bool {
         match *self {
             ConrodEvent::Raw(Input::Press(Button::Mouse(_))) => true,
@@ -108,6 +138,9 @@ impl ConrodEvent {
         }
     }
 
+    /// Returns `true` if this event is related to the keyboard. Note that just because this method
+    /// returns true does not mean that the event necessarily came from the keyboard.
+    /// A `ConrodEvent::Scroll` is considered to be both a mouse and a keyboard event.
     pub fn is_keyboard_event(&self) -> bool {
         match *self {
             ConrodEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
