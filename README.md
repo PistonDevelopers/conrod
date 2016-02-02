@@ -18,6 +18,29 @@ An easy-to-use, 2D GUI library written entirely in Rust.
         - [Why use it?][1.5.2]
         - [Is Conrod Immediate or Retained?][1.5.3]
     - [The Builder Pattern][1.6]
+2. **Let's Create a GUI**
+    - Install freetype
+    - Setup a Basic Window (using piston_window)
+    - Conrod Setup
+    - Instantiating Widgets
+    - Widget Positioning and Layout
+3. **Using and Customising Themes**
+    - What is a `Theme`?
+    - Custom Themes
+    - Serializing Themes
+4. **Designing Custom Widgets (using the Widget trait)**
+    - The `Widget` trait
+    - The `widget_style!` macro
+    - The `builder_methods!` macro
+    - Making a `Button` widget
+5. **Custom Graphics and Window Backends**
+    - Demonstration of Backend Implementation (using glium and glutin)
+6. Internals
+    - The `Ui`'s Widget `Graph`
+    - `Ui::set_widgets` - How does it work?
+7. FAQ
+
+*The Guide is a work-in-progress. If a section is not linked, it is likely not yet implemented.*
 
 
 Current State
