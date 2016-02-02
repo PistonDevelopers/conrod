@@ -17,6 +17,7 @@ An easy-to-use, 2D GUI library written entirely in Rust.
         - [What is it?][1.5.1]
         - [Why use it?][1.5.2]
         - [Is Conrod Immediate or Retained?][1.5.3]
+    - [The Builder Pattern][1.6]
 
 
 Current State
@@ -90,6 +91,8 @@ License
 [1.5.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#what-is-it
 [1.5.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#why-use-it
 [1.5.3]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
+[1.6]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#the-builder-pattern
+
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0

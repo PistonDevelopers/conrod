@@ -15,6 +15,7 @@
         - [What is it?][1.5.1]
         - [Why use it?][1.5.2]
         - [Is Conrod Immediate or Retained?][1.5.3]
+    - [The Builder Pattern][1.6]
 
 
 [1]:        ./chapter_1/index.html
@@ -28,6 +29,7 @@
 [1.5.1]:    ./chapter_1/index.html#what-is-it
 [1.5.2]:    ./chapter_1/index.html#why-use-it
 [1.5.3]:    ./chapter_1/index.html#is-conrod-immediate-or-retained
+[1.6]:      ./chapter_1/index.html#the-builder-pattern
 
 */
 

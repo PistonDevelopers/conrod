@@ -177,6 +177,109 @@ the convenience of an immediate mode API alongside performance that approaches t
 retained GUIs.
 
 
+## The Builder Pattern
+
+The "Builder Pattern" describes the process of "building" a type by chaining together method calls.
+Conrod uses this pattern within its API for widget instantiation. This pattern is perhaps easiest
+to grasp with an example.
+
+Let's say we have a `Button` widget. We want to make sure that a user may instantiate it with
+specific dimensions, position, color, label, label font size and label color. A naiive constructor
+might look like this:
+
+```ignore
+Button::new(dimensions,
+            position,
+            color::RED,
+            "DONT PRESS",
+            label_font_size,
+            label_color,
+            || do_stuff(),
+            BUTTON_ID,
+            &mut ui);
+```
+
+The problem is that most of the time users will just want the `Button` to choose defaults straight
+from the `Ui`'s `Theme`, rather than specifying every parameter for every instance of a `Button`
+themselves. We want parameters to be *optional*. Perhaps then, we should make optional parameters
+take an `Option`?
+
+```ignore
+Button::new(Some(dimensions),
+            Some(position),
+            None,
+            "DONT PRESS",
+            None,
+            None,
+            Some(|| do_stuff()),
+            BUTTON_ID,
+            &mut ui);
+```
+
+Although the user no longer has to think about the values for parameters they don't care about,
+this is still extremely verbose and the `None` parameters seem quite ambiguous.
+
+In some languages, this problem might be solved using a combination of features called "named
+parameters" and "default parameters". If rust had these features, the above might look like this:
+
+```ignore
+Button::new(dimensions=dimensions,
+            position=position,
+            label="DONT PRESS",
+            react=|| do_stuff(),
+            id=BUTTON_ID,
+            ui=&mut ui);
+```
+
+Certainly an improvement in conciseness and readability. Although these features are not available
+to us in Rust, there is a way in which we can emulate their behaviour - This is where the builder
+pattern comes in.
+
+By moving each parameter out of the `new` function args and into their own methods, we can treat
+methods almost as though they are named parameters as in the above example. Here is what the above
+might look like using the builder pattern:
+
+```ignore
+Button::new()
+    .dimensions(dimensions)
+    .position(position)
+    .label("DONT PRESS")
+    .react(|| do_stuff())
+    .id(BUTTON_ID)
+    .ui(&mut ui);
+```
+
+
+*This is in fact the method of widget instantiation used by conrod, though with some slight
+differences in method naming (best to check the examples directory for a proper demo).*
+
+Although this certainly certainly seems like the nicest solution from an API perspective, the
+attentive rustacean may notice that this requires extra work for the widget designer compared to
+the previous examples. Previously, all work for widget instantiation was done within the `new`
+function. The builder pattern implementation introduces a few differences worth noticing:
+
+1. A method must be implemented on `Button` for every optional parameter.
+2. The `Button::new` function must return some type that can be treated as a set of `Option`
+   arguments which can be set as it is passed from buidler method to builder method.
+3. There must be some method that indicates the end of building and the instantiation of the widget.
+
+In Conrod, we are of the opinion that, in the common case, the extra work on behalf of the widget
+designers is worth the benefits gained by the users. However, we also make a significant effort to
+address each of the above points best we can in order to reduce the workload of widget developers:
+
+1. We provide a [`builder_methods!`][builder_methods!] macro which reduces the boilerplate of builder method
+   implementation.
+2. In Conrod, widgets are treated as a set of arguments to their state, rather than containing
+   their own state themselves. This suits the immediate mode style of conrod, where widget state is
+   hidden and stored within the `Ui`.
+3. All Conrod widgets must take a unique identifier and a mutable reference to the `Ui`. We
+   consolidate this into a single `.set(ID, &mut ui)` method, which we also use as the indication
+   method to stop building and instantiate the widget wihtin the `Ui`.
+
+All of these points will be covered later in more detail within the widget implementation section
+of the guide.
+
+
 
 [1]:  https://en.wikipedia.org/wiki/Graphical_user_interface        "Wikipedia - Graphical User Interface"
 [2]:  https://www.rust-lang.org/                                    "The Rust Programming Language"
@@ -193,10 +296,11 @@ retained GUIs.
 [13]: https://github.com/PistonDevelopers/opengl_graphics           "opengl_graphics crate"
 [14]: http://docs.piston.rs/graphics/graphics/trait.Graphics.html   "piston Graphics trait"
 
-[Widget]:       ../../trait.Widget.html         "Widget trait"
-[Positionable]: ../../trait.Positionable.html   "Positionable trait"
-[Theme]:        ../../struct.Theme.html         "Theme struct"
-[widget_ids!]:  ../../macro.widget_ids!.html    "widget_ids! macro"
+[Widget]:               ../../trait.Widget.html             "Widget trait"
+[Positionable]:         ../../trait.Positionable.html       "Positionable trait"
+[Theme]:                ../../struct.Theme.html             "Theme struct"
+[builder_methods!]:     ../../macro.builder_methods!.html   "builder_methods! macro"
+[widget_ids!]:          ../../macro.widget_ids!.html        "widget_ids! macro"
 
 [Line]:             ../../struct.Line.html              "Line Widget"
 [PointPath]:        ../../struct.PointPath.html         "PointPath Widget"
