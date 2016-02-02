@@ -33,10 +33,10 @@
     - Making a `Button` widget
 5. **Custom Graphics and Window Backends**
     - Demonstration of Backend Implementation (using glium and glutin)
-6. Internals
+6. **Internals**
     - The `Ui`'s Widget `Graph`
     - `Ui::set_widgets` - How does it work?
-7. FAQ
+7. **FAQ**
 
 
 [1]:        ./chapter_1/index.html
