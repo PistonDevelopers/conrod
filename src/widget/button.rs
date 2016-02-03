@@ -8,7 +8,6 @@ use {
     FramedRectangle,
     IndexSlot,
     Labelable,
-    Mouse,
     Positionable,
     Scalar,
     Text,
