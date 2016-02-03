@@ -5,39 +5,48 @@
 #[cfg(test)]
 mod tests;
 
-use widget::{Index, Id};
+use widget::Index;
 use events::{InputState, ConrodEvent, GlobalInput, InputProvider, RelativePosition};
-use position::{Point, Range, Rect};
-use input::keyboard::ModifierKey;
+use position::Rect;
 
 /// Holds any events meant to be given to a `Widget`. This is what widgets will interface with
 /// when handling events in their `update` method. All events returned from methods on `WidgetInput`
 /// will be relative to the widget's own (0,0) origin. Additionally, `WidgetInput` will not provide
 /// mouse or keyboard events that do not directly pertain to the widget.
-pub struct WidgetInput(Vec<ConrodEvent>);
+pub struct WidgetInput {
+    events: Vec<ConrodEvent>,
+    current_state: InputState,
+}
 
 impl WidgetInput {
     /// Returns a `WidgetInput` with events specifically for the given widget.
     /// Filters out only the events that directly pertain to the widget.
     /// All events will also be made relative to the widget's own (0,0) origin.
     pub fn for_widget(widget: Index, widget_area: Rect, global_input: &GlobalInput) -> WidgetInput {
-        let start_state = global_input.starting_state();
-        let mut current_state = start_state.clone();
+        let widget_xy =  widget_area.xy();
+        let mut current_state = global_input.start_state.clone();
         let widget_events = global_input.all_events().iter()
             .filter(move |evt| {
                 current_state.update(evt);
                 should_provide_event(widget, widget_area, &evt, &current_state)
             })
-            .map(|evt| evt.relative_to(widget_area.xy()))
+            .map(|evt| evt.relative_to(widget_xy))
             .collect::<Vec<ConrodEvent>>();
 
-        WidgetInput(widget_events)
+        WidgetInput {
+            events: widget_events,
+            current_state: current_state.relative_to(widget_xy)
+        }
     }
 }
 
 impl InputProvider for WidgetInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
-        &self.0
+        &self.events
+    }
+
+    fn current_state(&self) -> &InputState {
+        &self.current_state
     }
 }
 

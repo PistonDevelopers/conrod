@@ -1,8 +1,13 @@
+//! Everything related to storing the state of user input. This includes the state of any
+//! buttons on either the keyboard or the mouse, as well as the position of the mouse.
+//! It also includes which widgets, if any, are capturing the keyboard and mouse.
+//! This module exists mostly to support the `events::InputProvider` trait.
+
 use input::MouseButton;
 use input::keyboard::{NO_MODIFIER, ModifierKey, Key};
 use position::Point;
 use widget::Index;
-use events::ConrodEvent;
+use events::{RelativePosition, ConrodEvent};
 
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
@@ -11,13 +16,21 @@ pub const NUM_MOUSE_BUTTONS: usize = 9;
 /// `None` if the mouse button is currently in the up position.
 pub type ButtonDownPosition = Option<Point>;
 
-/// Stores the state of all input.
+/// Holds the current state of user input. This includes the state of all buttons on
+/// the keyboard and mouse, as well as the position of the mouse. It also includes which
+/// widgets, if any, are capturing keyboard and mouse input.
 #[derive(Copy, Clone, Debug)]
 pub struct InputState {
+    /// A map that stores the up/down state of each button. If the button is down, then
+    /// it stores the position of the mouse when the button was first pressed.
     pub mouse_buttons: ButtonMap,
+    /// The current position of the mouse.
     pub mouse_position: Point,
+    /// Which widget, if any, is currently capturing the keyboard
     pub widget_capturing_keyboard: Option<Index>,
+    /// Which widget, if any, is currently capturing the mouse
     pub widget_capturing_mouse: Option<Index>,
+    /// Which modifier keys are being held down.
     pub modifiers: ModifierKey,
 }
 
@@ -36,7 +49,6 @@ impl InputState {
     /// Updates the input state based on an event.
     pub fn update(&mut self, event: &ConrodEvent) {
         use input::{Button, Motion, Input};
-        use input::mouse::MouseButton;
 
         match *event {
             ConrodEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
@@ -57,16 +69,25 @@ impl InputState {
             ConrodEvent::WidgetCapturesKeyboard(idx) => {
                 self.widget_capturing_keyboard = Some(idx);
             },
-            ConrodEvent::WidgetUncapturesKeyboard(idx) => {
+            ConrodEvent::WidgetUncapturesKeyboard(_) => {
                 self.widget_capturing_keyboard = None;
             },
             ConrodEvent::WidgetCapturesMouse(idx) => {
                 self.widget_capturing_mouse = Some(idx);
             },
-            ConrodEvent::WidgetUncapturesMouse(idx) =>  {
+            ConrodEvent::WidgetUncapturesMouse(_) =>  {
                 self.widget_capturing_mouse = None;
             },
             _ => {}
+        }
+    }
+}
+
+impl RelativePosition for InputState {
+    fn relative_to(&self, xy: Point) -> InputState {
+        InputState {
+            mouse_position: ::vecmath::vec2_sub(self.mouse_position, xy),
+            ..*self
         }
     }
 }
@@ -137,7 +158,7 @@ impl ButtonMap {
 
 #[test]
 fn pressed_button_returns_none_if_no_buttons_are_pressed() {
-    let mut map = ButtonMap::new();
+    let map = ButtonMap::new();
     let pressed = map.pressed_button();
     assert!(pressed.is_none());
 }

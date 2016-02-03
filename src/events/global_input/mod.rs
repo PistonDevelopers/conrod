@@ -5,9 +5,8 @@
 #[cfg(test)]
 mod tests;
 
-use events::{InputState, ButtonMap, ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
-use input::{Input, MouseButton, Motion, Button};
-use input::keyboard::{ModifierKey, Key};
+use events::{InputState, ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
+use input::MouseButton;
 use position::{Point, Scalar};
 use widget::Index;
 
@@ -28,6 +27,10 @@ impl InputProvider for GlobalInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }
+
+    fn current_state(&self) -> &InputState {
+        &self.current_state
+    }
 }
 
 impl GlobalInput {
@@ -44,7 +47,7 @@ impl GlobalInput {
 
     /// Adds a new event and updates the internal state.
     pub fn push_event(&mut self, event: ConrodEvent) {
-        use input::Input::{Press, Release, Move};
+        use input::Input::{Release, Move};
         use input::Motion::MouseRelative;
         use input::Motion::MouseScroll;
         use input::Button::Mouse;
@@ -152,16 +155,4 @@ fn distance_between(a: Point, b: Point) -> Scalar {
     let dx_2 = (a[0] - b[0]).powi(2);
     let dy_2 = (a[1] - b[1]).powi(2);
     (dx_2 + dy_2).abs().sqrt()
-}
-
-fn get_modifier(key: Key) -> Option<ModifierKey> {
-    use input::keyboard::{CTRL, SHIFT, ALT, GUI};
-
-    match key {
-        Key::LCtrl | Key::RCtrl => Some(CTRL),
-        Key::LShift | Key::RShift => Some(SHIFT),
-        Key::LAlt | Key::RAlt => Some(ALT),
-        Key::LGui | Key::RGui => Some(GUI),
-        _ => None
-    }
 }

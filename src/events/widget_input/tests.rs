@@ -1,10 +1,10 @@
 use super::WidgetInput;
-use input::{Input, Motion, Button};
-use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
+use input::{Input, Motion};
+use input::keyboard::NO_MODIFIER;
 use input::mouse::MouseButton;
 use events::{ConrodEvent, MouseClick, GlobalInput, InputProvider};
 use widget::{Index, Id};
-use position::{Rect, Point};
+use position::Rect;
 
 #[test]
 fn scroll_events_should_be_provided_if_widget_captures_mouse_but_not_keyboard() {

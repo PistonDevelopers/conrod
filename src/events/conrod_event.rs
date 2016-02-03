@@ -160,8 +160,7 @@ impl ConrodEvent {
 mod test {
     use super::*;
     use input::{Input, MouseButton, Motion, Button, JoystickAxisArgs};
-    use input::keyboard::{self, Key, ModifierKey, NO_MODIFIER};
-    use position::Point;
+    use input::keyboard::{self, Key, NO_MODIFIER};
 
     // We'll see if this approach causes problems later on down the road...
     #[test]

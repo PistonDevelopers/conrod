@@ -3,9 +3,9 @@
 #[cfg(test)]
 mod tests;
 
-use events::{ConrodEvent, Scroll, MouseClick, MouseDrag};
-use input::{Input, Motion, Button};
-use input::keyboard::{Key, ModifierKey};
+use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
+use input::{Input, Button};
+use input::keyboard::Key;
 use input::mouse::MouseButton;
 
 
@@ -16,6 +16,10 @@ pub trait InputProvider {
     /// Just provided a reference to a `Vec<ConrodEvent>` that contains
     /// all the events for this update cycle.
     fn all_events(&self) -> &Vec<ConrodEvent>;
+
+    /// Returns the current input state. The returned state is assumed to be up to
+    /// date with all of the events so far.
+    fn current_state(&self) -> &InputState;
 
     /// Returns a `String` containing _all_ the text that was entered since
     /// the last update cycle.

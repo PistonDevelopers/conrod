@@ -1,11 +1,8 @@
-use events::{GlobalInput, InputProvider};
+use events::InputProvider;
 use events::conrod_event::ConrodEvent;
 use ::{Ui,
     Theme,
-    GlyphCache,
     CharacterCache,
-    UpdateArgs,
-    UserInput,
     Labelable,
     Canvas,
     Color,
@@ -13,8 +10,8 @@ use ::{Ui,
     Colorable,
     Sizeable,
     Widget};
-use input::{Input, Motion, GenericEvent, Button, self};
-use input::keyboard::{self, Key, ModifierKey};
+use input::{Input, Motion, Button, self};
+use input::keyboard::Key;
 use input::mouse::MouseButton;
 use graphics::ImageSize;
 use graphics::character::Character;
@@ -167,7 +164,7 @@ impl MockCharacterCache {
 impl CharacterCache for MockCharacterCache {
     type Texture = MockImageSize;
 
-    fn character(&mut self, font_size: FontSize, ch: char) -> &Character<MockImageSize> {
+    fn character(&mut self, _font_size: FontSize, _ch: char) -> &Character<MockImageSize> {
         &self.my_char
     }
 

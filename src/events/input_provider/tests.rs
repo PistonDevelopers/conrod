@@ -1,21 +1,14 @@
 use super::InputProvider;
-use events::{ConrodEvent, Scroll, MouseClick, MouseDrag};
-use input::{Input, Motion, Button};
+use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
+use input::{Input, Button};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
 use input::mouse::MouseButton;
 use position::Point;
 
-struct ProviderImpl(Vec<ConrodEvent>);
-impl InputProvider for ProviderImpl {
-    fn all_events(&self) -> &Vec<ConrodEvent> {
-        &self.0
-    }
-}
-
 #[test]
 fn mouse_button_releases_should_be_collected_into_a_vec() {
     use input::mouse::MouseButton::{Left, Right, Middle};
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         ConrodEvent::Raw(Input::Release(Button::Mouse(Left))),
         ConrodEvent::Raw(Input::Release(Button::Mouse(Middle))),
         ConrodEvent::Raw(Input::Release(Button::Mouse(Right))),
@@ -28,7 +21,7 @@ fn mouse_button_releases_should_be_collected_into_a_vec() {
 #[test]
 fn mouse_button_presses_should_be_collected_into_a_vec() {
     use input::mouse::MouseButton::{Left, Right, Middle};
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         ConrodEvent::Raw(Input::Press(Button::Mouse(Left))),
         ConrodEvent::Raw(Input::Press(Button::Mouse(Middle))),
         ConrodEvent::Raw(Input::Press(Button::Mouse(Right))),
@@ -40,7 +33,7 @@ fn mouse_button_presses_should_be_collected_into_a_vec() {
 
 #[test]
 fn key_releases_should_be_collected_into_a_vec() {
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::LShift))),
         ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::H))),
         ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::I))),
@@ -53,7 +46,7 @@ fn key_releases_should_be_collected_into_a_vec() {
 
 #[test]
 fn key_presses_should_be_collected_into_a_vec() {
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::LShift))),
         ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::H))),
         ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::I))),
@@ -66,7 +59,7 @@ fn key_presses_should_be_collected_into_a_vec() {
 
 #[test]
 fn mouse_clicks_should_be_filtered_by_mouse_button() {
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         ConrodEvent::MouseClick(MouseClick{
             button: MouseButton::Left,
             location: [50.0, 40.0],
@@ -95,7 +88,7 @@ fn mouse_clicks_should_be_filtered_by_mouse_button() {
 
 #[test]
 fn only_the_last_drag_event_should_be_returned() {
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         drag_event(MouseButton::Left, [20.0, 10.0], [30.0, 20.0]),
         drag_event(MouseButton::Left, [20.0, 10.0], [40.0, 30.0]),
         drag_event(MouseButton::Left, [20.0, 10.0], [50.0, 40.0])
@@ -114,7 +107,7 @@ fn only_the_last_drag_event_should_be_returned() {
 
 #[test]
 fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
-    let input = ProviderImpl(vec![
+    let input = ProviderImpl::with_events(vec![
         scroll_event(10.0, 33.0),
         scroll_event(10.0, 33.0),
         scroll_event(10.0, 33.0)
@@ -146,4 +139,34 @@ fn scroll_event(x: f64, y: f64) -> ConrodEvent {
         y: y,
         modifiers: NO_MODIFIER
     })
+}
+
+/// This is just a basic struct that implements the `InputProvider` Trait so that
+/// the default trait methods are easy to test
+struct ProviderImpl{
+    events: Vec<ConrodEvent>,
+    current_state: InputState,
+}
+
+impl ProviderImpl {
+    fn new(events: Vec<ConrodEvent>, state: InputState) -> ProviderImpl {
+        ProviderImpl{
+            events: events,
+            current_state: state,
+        }
+    }
+
+    fn with_events(events: Vec<ConrodEvent>) -> ProviderImpl {
+        ProviderImpl::new(events, InputState::new())
+    }
+}
+
+impl InputProvider for ProviderImpl {
+    fn all_events(&self) -> &Vec<ConrodEvent> {
+        &self.events
+    }
+
+    fn current_state(&self) -> &InputState {
+        &self.current_state
+    }
 }
