@@ -6,6 +6,24 @@ use input::mouse::MouseButton;
 use position::Point;
 
 #[test]
+fn current_mouse_position_should_return_mouse_position_from_current_state() {
+    let position = [5.0, 7.0];
+    let mut input_state = InputState::new();
+    input_state.mouse_position = position;
+    let input = ProviderImpl::with_input_state(input_state);
+    assert_eq!(position, input.current_mouse_position());
+}
+
+#[test]
+fn mouse_button_currently_pressed_should_return_true_if_button_is_pressed() {
+    let mut input_state = InputState::new();
+    input_state.mouse_buttons.set(MouseButton::Right, Some([0.0, 0.0]));
+    let input = ProviderImpl::with_input_state(input_state);
+    assert!(input.mouse_button_currently_pressed(MouseButton::Right));
+    assert!(!input.mouse_left_button_currently_pressed());
+}
+
+#[test]
 fn mouse_button_releases_should_be_collected_into_a_vec() {
     use input::mouse::MouseButton::{Left, Right, Middle};
     let input = ProviderImpl::with_events(vec![
@@ -158,6 +176,10 @@ impl ProviderImpl {
 
     fn with_events(events: Vec<ConrodEvent>) -> ProviderImpl {
         ProviderImpl::new(events, InputState::new())
+    }
+
+    fn with_input_state(state: InputState) -> ProviderImpl {
+        ProviderImpl::new(vec!(), state)
     }
 }
 

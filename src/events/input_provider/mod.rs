@@ -7,6 +7,7 @@ use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
 use input::{Input, Button};
 use input::keyboard::Key;
 use input::mouse::MouseButton;
+use position::Point;
 
 
 /// Trait for something that provides events to be consumed by a widget.
@@ -20,6 +21,10 @@ pub trait InputProvider {
     /// Returns the current input state. The returned state is assumed to be up to
     /// date with all of the events so far.
     fn current_state(&self) -> &InputState;
+
+    //////////////////////////////////////////////////
+    // Methods that just check the stream of events //
+    //////////////////////////////////////////////////
 
     /// Returns a `String` containing _all_ the text that was entered since
     /// the last update cycle.
@@ -154,6 +159,35 @@ pub trait InputProvider {
                 _ => None
             }
         }).next()
+    }
+
+    /////////////////////////////////////////////////////
+    // Methods that just check the current input state //
+    /////////////////////////////////////////////////////
+
+    /// Returns true if the given mouse button is currently pressed, otherwise false
+    fn mouse_button_currently_pressed(&self, button: MouseButton) -> bool {
+        match self.current_state().mouse_buttons.get(button) {
+            Some(_) => true,
+            _ => false
+        }
+    }
+
+    /// Convenience method for checking if the Left mouse button is down.
+    /// Returns true if the Left mouse button is currently pressed, otherwise false.
+    fn mouse_left_button_currently_pressed(&self) -> bool {
+        self.mouse_button_currently_pressed(MouseButton::Left)
+    }
+
+    /// Convenience method for checking if the Right mouse button is down.
+    /// Returns true if the Right mouse button is currently pressed, otherwise false.
+    fn mouse_right_button_currently_pressed(&self) -> bool {
+        self.mouse_button_currently_pressed(MouseButton::Right)
+    }
+
+    /// Convenience method for returning the current mouse position.
+    fn current_mouse_position(&self) -> Point {
+        self.current_state().mouse_position
     }
 
 }
