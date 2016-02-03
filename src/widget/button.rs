@@ -15,6 +15,7 @@ use {
     Widget,
 };
 use widget;
+use events::{WidgetInput, InputProvider};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -77,21 +78,6 @@ impl Interaction {
     }
 }
 
-
-/// Check the current state of the button.
-fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _                      => Normal,
-    }
-}
-
-
 impl<'a, F> Button<'a, F> {
 
     /// Create a button context to be built upon.
@@ -110,6 +96,18 @@ impl<'a, F> Button<'a, F> {
         pub enabled { enabled = bool }
     }
 
+    fn get_new_interaction(&self, widget_input: &WidgetInput) -> Interaction {
+        match (self.enabled, widget_input.mouse_is_over_widget()) {
+            (false, _) | (_, false) => Interaction::Normal,
+            (true, true) => {
+                if widget_input.mouse_left_click().is_some() {
+                    Interaction::Clicked
+                } else {
+                    Interaction::Highlighted
+                }
+            },
+        }
+    }
 }
 
 
@@ -146,32 +144,11 @@ impl<'a, F> Widget for Button<'a, F>
     /// Update the state of the Button.
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
-        let Button { enabled, maybe_label, maybe_react, .. } = self;
-        let maybe_mouse = ui.input().maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
-        let new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Normal,
-            (true, Some(mouse)) => {
-                let is_over = rect.is_over(mouse.xy);
-                get_new_interaction(is_over, state.view().interaction, mouse)
-            },
-        };
-
-        // Capture the mouse if it was clicked, uncapture if it was released.
-        match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
-            (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
-            _ => (),
-        }
-
-        // If the mouse was released over button, react.
-        if let (Interaction::Clicked, Interaction::Highlighted) =
-            (state.view().interaction, new_interaction) {
-            if let Some(react) = maybe_react {
-                react()
-            }
+        let new_interaction = self.get_new_interaction(&ui.widget_input());
+        if new_interaction == Interaction::Clicked {
+            self.maybe_react.map(|react_function| react_function());
         }
 
         // FramedRectangle widget.
@@ -189,7 +166,7 @@ impl<'a, F> Widget for Button<'a, F>
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        if let Some(label) = maybe_label {
+        if let Some(label) = self.maybe_label {
             let label_idx = state.view().label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
