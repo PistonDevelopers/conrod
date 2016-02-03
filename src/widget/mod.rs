@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use theme::{self, Theme};
 use time::precise_time_ns;
 use ui::{self, Ui, UserInput};
-use events::WidgetInput;
+use events::{GlobalInput, WidgetInput};
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -1126,12 +1126,20 @@ impl<'a, C> UiCell<'a, C> {
         ui::user_input(self.ui, self.idx)
     }
 
+    /// Returns an immutable reference to the `GlobalInput` of the `Ui`. All coordinates
+    /// here will be relative to the center of the window.
+    pub fn global_input(&self) -> &GlobalInput {
+        &self.ui.global_input
+    }
+
     /// Returns a `WidgetInput` with input events for the widget.
+    /// All coordinates in the `WidgetInput` will be relative to the current widget.
     pub fn widget_input(&self) -> WidgetInput {
         self.widget_input_for(self.idx)
     }
 
     /// Returns a `WidgetInput` with input events for the widget.
+    /// All coordinates in the `WidgetInput` will be relative to the given widget.
     pub fn widget_input_for<I: Into<Index>>(&self, widget: I) -> WidgetInput {
         self.ui.widget_input(widget.into())
     }

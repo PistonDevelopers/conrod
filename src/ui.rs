@@ -588,6 +588,9 @@ impl<C> Ui<C> {
         self.mouse.middle.reset_pressed_and_released();
         self.mouse.right.reset_pressed_and_released();
         self.mouse.unknown.reset_pressed_and_released();
+
+        // reset the global input state
+        self.global_input.reset();
     }
 
 

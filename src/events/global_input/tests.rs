@@ -9,6 +9,26 @@ use widget::{Id, Index};
 use super::*;
 
 #[test]
+fn resetting_input_should_set_starting_state_to_current_state() {
+    let mut input = GlobalInput::new();
+    input.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LShift))));
+    input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
+
+    let expected_start_state = input.current_state.clone();
+    input.reset();
+    assert_eq!(expected_start_state, input.start_state);
+}
+
+#[test]
+fn resetting_input_should_clear_out_all_events() {
+    let mut input = GlobalInput::new();
+    input.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LShift))));
+    input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
+    input.reset();
+    assert!(input.all_events().is_empty());
+}
+
+#[test]
 fn scroll_events_should_have_modifier_keys() {
     let mut input = GlobalInput::new();
 

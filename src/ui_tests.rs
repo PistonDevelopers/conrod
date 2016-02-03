@@ -21,6 +21,35 @@ use widget::button::Button as ButtonWidget;
 use position::Point;
 
 #[test]
+fn ui_should_reset_global_input_after_widget_are_set() {
+    let mut ui = windowless_ui();
+    ui.win_w = 250.0;
+    ui.win_h = 300.0;
+
+    const CANVAS_ID: widget::Id = widget::Id(0);
+    const BUTTON_ID: widget::Id = widget::Id(1);
+
+    move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
+    left_click_mouse(&mut ui);
+
+    assert!(!ui.global_input.all_events().is_empty());
+    ui.set_widgets(|ui| {
+
+        Canvas::new()
+            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
+            .set(CANVAS_ID, ui);
+        ButtonWidget::new()
+            .w_h(100.0, 200.0)
+            .label("MyButton")
+            .react(|| {})
+            .bottom_right_of(CANVAS_ID)
+            .set(BUTTON_ID, ui);
+    });
+
+    assert!(ui.global_input.all_events().is_empty());
+}
+
+#[test]
 fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
     let mut ui = windowless_ui();
     ui.win_w = 250.0;
@@ -84,6 +113,11 @@ fn ui_should_push_input_events_to_aggregator() {
     test_handling_basic_input_event(&mut ui, Input::Resize(55, 99));
     test_handling_basic_input_event(&mut ui, Input::Focus(true));
     test_handling_basic_input_event(&mut ui, Input::Cursor(true));
+}
+
+fn left_click_mouse(ui: &mut Ui<MockCharacterCache>) {
+    press_mouse_button(MouseButton::Left, ui);
+    release_mouse_button(MouseButton::Left, ui);
 }
 
 fn release_mouse_button(button: MouseButton, ui: &mut Ui<MockCharacterCache>) {

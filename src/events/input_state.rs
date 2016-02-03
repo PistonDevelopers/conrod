@@ -19,7 +19,7 @@ pub type ButtonDownPosition = Option<Point>;
 /// Holds the current state of user input. This includes the state of all buttons on
 /// the keyboard and mouse, as well as the position of the mouse. It also includes which
 /// widgets, if any, are capturing keyboard and mouse input.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InputState {
     /// A map that stores the up/down state of each button. If the button is down, then
     /// it stores the position of the mouse when the button was first pressed.
@@ -106,7 +106,7 @@ fn get_modifier(key: Key) -> Option<ModifierKey> {
 
 /// Stores the state of all mouse buttons. If the mouse button is down,
 /// it stores the position of the mouse when the button was pressed
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ButtonMap {
     button_states: [ButtonDownPosition; NUM_MOUSE_BUTTONS]
 }
@@ -192,4 +192,13 @@ fn take_resets_and_returns_current_state() {
     let taken = map.take(MouseButton::Left);
     assert_eq!(point, taken);
     assert!(map.get(MouseButton::Left).is_none());
+}
+
+#[test]
+fn input_state_should_be_made_relative_to_a_given_point() {
+    let mut state = InputState::new();
+    state.mouse_position = [50.0, -10.0];
+
+    let relative_state = state.relative_to([20.0, 20.0]);
+    assert_eq!([30.0, -30.0], relative_state.mouse_position);
 }

@@ -70,6 +70,7 @@ impl GlobalInput {
     /// handle events for the next one.
     pub fn reset(&mut self) {
         self.events.clear();
+        self.start_state = self.current_state.clone();
     }
 
     /// Returns the most up to date position of the mouse
