@@ -1,4 +1,4 @@
-use events::{GlobalInput, EventProvider};
+use events::{GlobalInput, InputProvider};
 use events::conrod_event::ConrodEvent;
 use ::{Ui,
     Theme,
@@ -11,6 +11,7 @@ use ::{Ui,
     Color,
     Positionable,
     Colorable,
+    Sizeable,
     Widget};
 use input::{Input, Motion, GenericEvent, Button, self};
 use input::keyboard::{self, Key, ModifierKey};
@@ -25,8 +26,8 @@ use position::Point;
 #[test]
 fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
     let mut ui = windowless_ui();
-    ui.win_w = 150.0;
-    ui.win_h = 200.0;
+    ui.win_w = 250.0;
+    ui.win_h = 300.0;
 
     const CANVAS_ID: widget::Id = widget::Id(0);
     const BUTTON_ID: widget::Id = widget::Id(1);
@@ -36,9 +37,10 @@ fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
             .set(CANVAS_ID, ui);
         ButtonWidget::new()
+            .w_h(100.0, 200.0)
             .label("MyButton")
             .react(|| {})
-            .middle_of(CANVAS_ID)
+            .bottom_right_of(CANVAS_ID)
             .set(BUTTON_ID, ui);
     });
 
@@ -46,8 +48,16 @@ fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
     move_mouse_to_widget(button_idx, &mut ui);
     press_mouse_button(MouseButton::Left, &mut ui);
 
-    let expected_event = ConrodEvent::WidgetCapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_event);
+    let expected_capture_event = ConrodEvent::WidgetCapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_capture_event);
+
+    // Now click somewhere on the background and widget should uncapture
+    release_mouse_button(MouseButton::Left, &mut ui);
+    move_mouse_to_abs_coordinates(1.0, 1.0, &mut ui);
+    press_mouse_button(MouseButton::Left, &mut ui);
+
+    let expected_uncapture_event = ConrodEvent::WidgetUncapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_uncapture_event);
 }
 
 #[test]
@@ -92,9 +102,12 @@ fn press_mouse_button(button: MouseButton, ui: &mut Ui<MockCharacterCache>) {
 fn move_mouse_to_widget(widget_idx: Index, ui: &mut Ui<MockCharacterCache>) {
     ui.xy_of(widget_idx).map(|point| {
         let abs_xy = to_window_coordinates(point, ui);
-        let event = Input::Move(Motion::MouseCursor(abs_xy[0], abs_xy[1]));
-        ui.handle_event(&event);
+        move_mouse_to_abs_coordinates(abs_xy[0], abs_xy[1], ui);
     });
+}
+
+fn move_mouse_to_abs_coordinates(x: f64, y: f64, ui: &mut Ui<MockCharacterCache>) {
+    ui.handle_event(&Input::Move(Motion::MouseCursor(x, y)));
 }
 
 fn test_handling_basic_input_event(ui: &mut Ui<MockCharacterCache>, event: Input) {
@@ -103,8 +116,11 @@ fn test_handling_basic_input_event(ui: &mut Ui<MockCharacterCache>, event: Input
 }
 
 fn assert_event_was_pushed(ui: &Ui<MockCharacterCache>, event: ConrodEvent) {
-    let found = ui.event_aggregator.all_events().iter().find(|evt| **evt == event);
-    assert!(found.is_some(), format!("expected to find event: {:?}", event));
+    let found = ui.global_input.all_events().iter().find(|evt| **evt == event);
+    assert!(found.is_some(),
+            format!("expected to find event: {:?} in: \nall_events: {:?}",
+                    event,
+                    ui.global_input.all_events()));
 }
 
 fn to_window_coordinates(xy: Point, ui: &Ui<MockCharacterCache>) -> Point {

@@ -1,4 +1,4 @@
-use super::EventProvider;
+use super::InputProvider;
 use events::{ConrodEvent, Scroll, MouseClick, MouseDrag};
 use input::{Input, Motion, Button};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
@@ -6,7 +6,7 @@ use input::mouse::MouseButton;
 use position::Point;
 
 struct ProviderImpl(Vec<ConrodEvent>);
-impl EventProvider for ProviderImpl {
+impl InputProvider for ProviderImpl {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.0
     }

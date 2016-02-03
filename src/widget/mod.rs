@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use theme::{self, Theme};
 use time::precise_time_ns;
 use ui::{self, Ui, UserInput};
+use events::WidgetInput;
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -810,7 +811,7 @@ pub trait Widget: Sized {
 /// For all following occasions, the pre-existing cached state will be compared and updated.
 ///
 /// Note that this is a very imperative, mutation oriented segment of code. We try to move as much
-/// imperativeness and mutation out of the users hands and into this function as possible, so that 
+/// imperativeness and mutation out of the users hands and into this function as possible, so that
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
@@ -1125,6 +1126,16 @@ impl<'a, C> UiCell<'a, C> {
         ui::user_input(self.ui, self.idx)
     }
 
+    /// Returns a `WidgetInput` with input events for the widget.
+    pub fn widget_input(&self) -> WidgetInput {
+        self.widget_input_for(self.idx)
+    }
+
+    /// Returns a `WidgetInput` with input events for the widget.
+    pub fn widget_input_for<I: Into<Index>>(&self, widget: I) -> WidgetInput {
+        self.ui.widget_input(widget.into())
+    }
+
     /// A struct representing the user input that has occurred since the last update for the
     /// `Widget` with the given index..
     pub fn input_for<I: Into<Index>>(&self, idx: I) -> UserInput {
@@ -1372,7 +1383,7 @@ impl<W> Sizeable for W where W: Widget {
 //         }
 //     };
 // }
-// 
+//
 // style_retrieval! {
 //     fn_name: color,
 //     member: maybe_color,

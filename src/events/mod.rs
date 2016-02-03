@@ -8,8 +8,8 @@
 //! having to interpret these themselves, thus freeing them from also having to store input state.
 //!
 //! Whenever there's an update, all of the events that have occured since the last update will be
-//! available for widgets to process. This is where the `EventProvider` trait comes in. The
-//! `EventProvider` trait provides many methods for conveniently filtering events that a widget would
+//! available for widgets to process. This is where the `InputProvider` trait comes in. The
+//! `InputProvider` trait provides many methods for conveniently filtering events that a widget would
 //! like to handle. There are two things that implement this trait. The first is `GlobalInput`, and
 //! the second is `WidgetInput`. `WidgetInput` is used to provide input events to a specific widget.
 //! It filters events that don't apply to the widget, and all events provided by `WidgetIput` will
@@ -21,10 +21,10 @@ pub mod conrod_event;
 pub mod input_state;
 pub mod widget_input;
 pub mod global_input;
-pub mod event_provider;
+pub mod input_provider;
 
 pub use self::input_state::{InputState, ButtonMap};
 pub use self::global_input::GlobalInput;
 pub use self::widget_input::WidgetInput;
 pub use self::conrod_event::{ConrodEvent, MouseClick, MouseDrag, Scroll, RelativePosition};
-pub use self::event_provider::EventProvider;
+pub use self::input_provider::InputProvider;

@@ -1,12 +1,12 @@
 //! Contains all the logic for filtering input events and making them relative to widgets.
 //! The core of this module is the `WidgetInput::for_widget` method, which creates an
-//! `EventProvider` that provides input events for a specific widget.
+//! `InputProvider` that provides input events for a specific widget.
 
 #[cfg(test)]
 mod tests;
 
 use widget::{Index, Id};
-use events::{InputState, ConrodEvent, GlobalInput, EventProvider, RelativePosition};
+use events::{InputState, ConrodEvent, GlobalInput, InputProvider, RelativePosition};
 use position::{Point, Range, Rect};
 use input::keyboard::ModifierKey;
 
@@ -35,7 +35,7 @@ impl WidgetInput {
     }
 }
 
-impl EventProvider for WidgetInput {
+impl InputProvider for WidgetInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.0
     }

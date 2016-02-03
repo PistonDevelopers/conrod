@@ -2,7 +2,7 @@ use super::WidgetInput;
 use input::{Input, Motion, Button};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
 use input::mouse::MouseButton;
-use events::{ConrodEvent, MouseClick, GlobalInput, EventProvider};
+use events::{ConrodEvent, MouseClick, GlobalInput, InputProvider};
 use widget::{Index, Id};
 use position::{Rect, Point};
 

@@ -5,13 +5,13 @@
 #[cfg(test)]
 mod tests;
 
-use events::{InputState, ButtonMap, ConrodEvent, MouseClick, MouseDrag, Scroll, EventProvider};
+use events::{InputState, ButtonMap, ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
 use input::{Input, MouseButton, Motion, Button};
 use input::keyboard::{ModifierKey, Key};
 use position::{Point, Scalar};
 use widget::Index;
 
-/// Global input event handler that also implements `EventProvider`. The `Ui` passes all events
+/// Global input event handler that also implements `InputProvider`. The `Ui` passes all events
 /// to it's `GlobalInput` instance, which aggregates and interprets the events to provide
 /// so-called 'high-level' events to widgets. This input gets reset after every update by the `Ui`.
 pub struct GlobalInput {
@@ -24,7 +24,7 @@ pub struct GlobalInput {
     drag_threshold: Scalar,
 }
 
-impl EventProvider for GlobalInput {
+impl InputProvider for GlobalInput {
     fn all_events(&self) -> &Vec<ConrodEvent> {
         &self.events
     }

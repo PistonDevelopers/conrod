@@ -1,4 +1,4 @@
-//! Contains the `EventProvider` trait, which is used to provide input events to widgets.
+//! Contains the `InputProvider` trait, which is used to provide input events to widgets.
 
 #[cfg(test)]
 mod tests;
@@ -11,7 +11,7 @@ use input::mouse::MouseButton;
 
 /// Trait for something that provides events to be consumed by a widget.
 /// Provides a bunch of convenience methods for filtering out specific types of events.
-pub trait EventProvider {
+pub trait InputProvider {
     /// This is the only method that needs to be implemented.
     /// Just provided a reference to a `Vec<ConrodEvent>` that contains
     /// all the events for this update cycle.

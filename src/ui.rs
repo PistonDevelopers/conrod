@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
-use ::events::{ConrodEvent, EventProvider, GlobalInput};
+use ::events::{ConrodEvent, InputProvider, GlobalInput, WidgetInput};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -55,7 +55,7 @@ pub struct Ui<C> {
     /// Window height.
     pub win_h: f64,
     /// Handles aggregation of events and providing them to Widgets
-    pub event_aggregator: GlobalInput,
+    pub global_input: GlobalInput,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The latest received mouse state.
@@ -171,8 +171,23 @@ impl<C> Ui<C> {
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
-            event_aggregator: GlobalInput::new(),
+            global_input: GlobalInput::new(),
         }
+    }
+
+    /// Returns a `WidgetInput` for the given widget
+    pub fn widget_input<I: Into<widget::Index>>(&self, widget: I) -> WidgetInput {
+        let idx = widget.into();
+
+        // If there's no rectangle for a given widget, then we use one with zero area.
+        // This means that the resulting `WidgetInput` will not include any mouse events
+        // unless it has captured the mouse, since none will have occured over that area.
+        let rect = self.rect_of(idx).unwrap_or_else(|| {
+            let right_edge = self.win_w / 2.0;
+            let bottom_edge = self.win_h / 2.0;
+            Rect::from_xy_dim([right_edge, bottom_edge], [0.0, 0.0])
+        });
+        WidgetInput::for_widget(idx, rect, &self.global_input)
     }
 
     /// The **Rect** for the widget at the given index.
@@ -252,7 +267,7 @@ impl<C> Ui<C> {
         use input::{CursorEvent, FocusEvent};
 
         event.resize(|w, h| {
-            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Resize(w, h)));
+            self.global_input.push_event(ConrodEvent::Raw(Input::Resize(w, h)));
             self.win_w = w as f64;
             self.win_h = h as f64;
             self.needs_redraw();
@@ -267,7 +282,7 @@ impl<C> Ui<C> {
             // Convert mouse coords to (0, 0) origin.
             let center_origin_point = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
             self.mouse.xy = center_origin_point;
-            self.event_aggregator.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(ConrodEvent::Raw(
                 Input::Move(
                     Motion::MouseRelative(center_origin_point[0], center_origin_point[1])
                 )
@@ -275,7 +290,7 @@ impl<C> Ui<C> {
         });
 
         event.mouse_scroll(|x, y| {
-            self.event_aggregator.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(ConrodEvent::Raw(
                 Input::Move(Motion::MouseScroll(x, y))
             ));
             self.mouse.scroll.x += x;
@@ -286,13 +301,13 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.event_aggregator.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(ConrodEvent::Raw(
                 Input::Press(button_type)
             ));
 
             match button_type {
                 Button::Mouse(button) => {
-                    self.widget_under_mouse_captures();
+                    self.widget_under_mouse_captures_keyboard();
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -311,7 +326,7 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.event_aggregator.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(ConrodEvent::Raw(
                 Input::Release(button_type)
             ));
 
@@ -333,44 +348,35 @@ impl<C> Ui<C> {
 
         event.text(|text| {
             self.text_just_entered.push(text.to_string());
-            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Text(text.to_string())));
+            self.global_input.push_event(ConrodEvent::Raw(Input::Text(text.to_string())));
         });
 
         event.focus(|focus| {
-            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Focus(focus)));
+            self.global_input.push_event(ConrodEvent::Raw(Input::Focus(focus)));
         });
 
         event.cursor(|cursor| {
-            self.event_aggregator.push_event(ConrodEvent::Raw(Input::Cursor(cursor)));
+            self.global_input.push_event(ConrodEvent::Raw(Input::Cursor(cursor)));
         });
     }
 
-    fn widget_under_mouse_captures(&mut self) {
+    fn widget_under_mouse_captures_keyboard(&mut self) {
         use graph::algo::pick_widget;
 
-        let mouse_xy = self.event_aggregator.current_mouse_position();
+        let mouse_xy = self.global_input.current_mouse_position();
         let widget_under_mouse =
             pick_widget(&self.widget_graph, &self.depth_order.indices, mouse_xy);
-        let currently_capturing_keyboard = self.event_aggregator.currently_capturing_keyboard();
-        let currently_capturing_mouse = self.event_aggregator.currently_capturing_mouse();
+        let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
 
         if currently_capturing_keyboard.is_some()
                 && currently_capturing_keyboard != widget_under_mouse {
-            self.event_aggregator.push_event(
+            self.global_input.push_event(
                 ConrodEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
             );
         }
 
-        if currently_capturing_mouse.is_some()
-                && currently_capturing_mouse != widget_under_mouse {
-            self.event_aggregator.push_event(
-                ConrodEvent::WidgetUncapturesMouse(currently_capturing_mouse.unwrap())
-            );
-        }
-
         if let Some(idx) = widget_under_mouse {
-            self.event_aggregator.push_event(ConrodEvent::WidgetCapturesMouse(idx));
-            self.event_aggregator.push_event(ConrodEvent::WidgetCapturesKeyboard(idx));
+            self.global_input.push_event(ConrodEvent::WidgetCapturesKeyboard(idx));
         }
     }
 

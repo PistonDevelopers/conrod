@@ -4,7 +4,7 @@ use input::Button::Mouse;
 use input::mouse::MouseButton;
 use input::{Input, Motion};
 use position::{Point, Scalar};
-use events::{ConrodEvent, MouseClick, MouseDrag, Scroll, EventProvider};
+use events::{ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
 use widget::{Id, Index};
 use super::*;
 
