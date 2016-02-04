@@ -1121,6 +1121,11 @@ impl<'a, C> UiCell<'a, C> {
     /// A reference to the `Ui`'s `GlyphCache`.
     pub fn glyph_cache(&self) -> &GlyphCache<C> { &self.ui.glyph_cache }
 
+    /// Returns the dimensions of the window
+    pub fn window_dim(&self) -> Dimensions {
+        [self.ui.win_w, self.ui.win_h]
+    }
+
     /// A struct representing the user input that has occurred since the last update.
     pub fn input(&self) -> UserInput {
         ui::user_input(self.ui, self.idx)
