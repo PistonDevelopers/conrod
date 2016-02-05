@@ -45,25 +45,25 @@ First, open up the command line on your system and follow these steps:
 
 1. Clone the repo
 
-```
+```txt
 git clone https://github.com/PistonDevelopers/conrod.git
 ```
 
 2. Change to the `conrod` directory that we just cloned
 
-```
+```txt
 cd conrod
 ```
 
 3. Test that conrod builds without problems
 
-```
+```txt
 cargo build
 ```
 
 4. Build and run the examples (with --release optimisations turned on)!
 
-```
+```txt
 cargo run --release --example all_widgets
 cargo run --release --example canvas
 cargo run --release --example primitives
