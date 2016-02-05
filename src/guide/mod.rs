@@ -16,27 +16,30 @@
         - [Why use it?][1.5.2]
         - [Is Conrod Immediate or Retained?][1.5.3]
     - [The Builder Pattern][1.6]
-2. **Let's Create a GUI**
-    - Install freetype
+2. [**Getting Started**][2]
+    - [Installing Rust and Cargo][2.1]
+    - [Installing FreeType][2.2]
+    - [Running the Conrod Examples][2.3]
+3. **Let's Create a GUI**
     - Setup a Basic Window (using piston_window)
     - Conrod Setup
     - Instantiating Widgets
     - Widget Positioning and Layout
-3. **Using and Customising Themes**
+4. **Using and Customising Themes**
     - What is a `Theme`?
     - Custom Themes
     - Serializing Themes
-4. **Designing Custom Widgets (using the Widget trait)**
+5. **Designing Custom Widgets (using the Widget trait)**
     - The `Widget` trait
     - The `widget_style!` macro
     - The `builder_methods!` macro
     - Making a `Button` widget
-5. **Custom Graphics and Window Backends**
+6. **Custom Graphics and Window Backends**
     - Demonstration of Backend Implementation (using glium and glutin)
-6. **Internals**
+7. **Internals**
     - The `Ui`'s Widget `Graph`
     - `Ui::set_widgets` - How does it work?
-7. **FAQ**
+8. **FAQ**
 
 
 [1]:        ./chapter_1/index.html
@@ -51,7 +54,12 @@
 [1.5.2]:    ./chapter_1/index.html#why-use-it
 [1.5.3]:    ./chapter_1/index.html#is-conrod-immediate-or-retained
 [1.6]:      ./chapter_1/index.html#the-builder-pattern
+[2]:        ./chapter_2/index.html
+[2.1]:      ./chapter_2/index.html#installing-rust-and-cargo
+[2.2]:      ./chapter_2/index.html#installing-freetype
+[2.3]:      ./chapter_2/index.html#running-the-conrod-examples
 
 */
 
 pub mod chapter_1;
+pub mod chapter_2;
