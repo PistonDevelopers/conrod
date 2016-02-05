@@ -18,27 +18,30 @@ An easy-to-use, 2D GUI library written entirely in Rust.
         - [Why use it?][1.5.2]
         - [Is Conrod Immediate or Retained?][1.5.3]
     - [The Builder Pattern][1.6]
-2. **Let's Create a GUI**
-    - Install freetype
+2. [**Getting Started**][2]
+    - [Installing Rust and Cargo][2.1]
+    - [Installing FreeType][2.2]
+    - [Running the Conrod Examples][2.3]
+3. **Let's Create a GUI**
     - Setup a Basic Window (using piston_window)
     - Conrod Setup
     - Instantiating Widgets
     - Widget Positioning and Layout
-3. **Using and Customising Themes**
+4. **Using and Customising Themes**
     - What is a `Theme`?
     - Custom Themes
     - Serializing Themes
-4. **Designing Custom Widgets (using the Widget trait)**
+5. **Designing Custom Widgets (using the Widget trait)**
     - The `Widget` trait
     - The `widget_style!` macro
     - The `builder_methods!` macro
     - Making a `Button` widget
-5. **Custom Graphics and Window Backends**
+6. **Custom Graphics and Window Backends**
     - Demonstration of Backend Implementation (using glium and glutin)
-6. **Internals**
+7. **Internals**
     - The `Ui`'s Widget `Graph`
     - `Ui::set_widgets` - How does it work?
-7. **FAQ**
+8. **FAQ**
 
 *The Guide is a work-in-progress. If a section is not linked, it is likely not yet implemented.*
 
@@ -46,44 +49,12 @@ An easy-to-use, 2D GUI library written entirely in Rust.
 Current State
 -------------
 
-We're just starting to reach a stable-ish API pattern! There will still be some large changes however these are more likely to be new features than API overhauls.
+We're just starting to reach a stable-ish API pattern! There will still be some
+large changes, however these are more likely to be new features than API
+overhauls.
 
-To get a clearer idea of where we're at see the [issues] and in particular, the [1.0.0 milestone].
-
-
-Getting Started
----------------
-
-[Get freetype][freetype download] - at the moment, Conrod uses [freetype-rs] for its font rendering, which means you'll need to have the freetype library installed on your system. You can [download and install the freetype library here][freetype download].
-
-
-Build the conrod lib like this:
-
-```
-git clone https://github.com/PistonDevelopers/conrod.git
-cd conrod
-cargo build
-```
-
-And then build and run the examples like this:
-
-```
-cargo run --release --example all_widgets
-cargo run --release --example canvas
-```
-
-You can add it to your project by adding this to your Cargo.toml:
-
-```toml
-[dependencies]
-conrod = "X.Y.Z"
-```
-
-
-Dependency Graph
-----------------
-
-![dependencies](./Cargo.png)
+To get a clearer idea of where we're at see the [issues] and in particular, the
+[1.0.0 milestone].
 
 
 Contributing
@@ -115,7 +86,10 @@ License
 [1.5.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#why-use-it
 [1.5.3]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
 [1.6]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#the-builder-pattern
-
+[2]:        http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html
+[2.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
+[2.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-freetype
+[2.3]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#running-the-conrod-examples
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
