@@ -3,6 +3,7 @@
 //!
 //! An easy-to-use, immediate-mode, 2D GUI library featuring a range of useful widgets.
 //!
+//! If you are new to Conrod, we recommend checking out [The Guide](./guide/index.html).
 
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
