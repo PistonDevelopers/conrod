@@ -1,14 +1,14 @@
 [package]
 
 name = "conrod"
-version = "0.31.1"
+version = "0.31.2"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
 ]
 keywords = ["ui", "widgets", "immediate-mode", "piston"]
 description = "An easy-to-use, immediate-mode, 2D GUI library"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
