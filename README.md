@@ -57,12 +57,6 @@ To get a clearer idea of where we're at see the [issues] and in particular, the
 [1.0.0 milestone].
 
 
-Dependency Graph
-----------------
-
-![dependencies](./Cargo.png)
-
-
 Contributing
 ------------
 
