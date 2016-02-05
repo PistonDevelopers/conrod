@@ -1,5 +1,4 @@
-use super::InputProvider;
-use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
+use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState, InputProvider};
 use input::{Input, Button};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
 use input::mouse::MouseButton;

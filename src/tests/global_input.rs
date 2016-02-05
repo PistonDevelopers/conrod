@@ -4,9 +4,8 @@ use input::Button::Mouse;
 use input::mouse::MouseButton;
 use input::{Input, Motion};
 use position::Scalar;
-use events::{ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
+use events::{ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider, GlobalInput};
 use widget::{Id, Index};
-use super::*;
 
 #[test]
 fn resetting_input_should_set_starting_state_to_current_state() {

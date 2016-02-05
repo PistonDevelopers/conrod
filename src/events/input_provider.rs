@@ -1,8 +1,5 @@
 //! Contains the `InputProvider` trait, which is used to provide input events to widgets.
 
-#[cfg(test)]
-mod tests;
-
 use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
 use input::{Input, Button};
 use input::keyboard::Key;

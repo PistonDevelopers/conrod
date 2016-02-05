@@ -2,9 +2,6 @@
 //! The core of this module is the `WidgetInput::for_widget` method, which creates an
 //! `InputProvider` that provides input events for a specific widget.
 
-#[cfg(test)]
-mod tests;
-
 use widget::Index;
 use events::{InputState, ConrodEvent, GlobalInput, InputProvider, RelativePosition};
 use position::{Point, Rect};

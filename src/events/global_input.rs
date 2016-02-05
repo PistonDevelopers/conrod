@@ -2,9 +2,6 @@
 //! The core of this module is the `GlobalInput` struct. It is responsible for aggregating
 //! and interpreting raw input events into high-level semantic events.
 
-#[cfg(test)]
-mod tests;
-
 use events::{InputState, ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
 use input::MouseButton;
 use position::{Point, Scalar};
