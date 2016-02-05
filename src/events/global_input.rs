@@ -140,15 +140,6 @@ impl GlobalInput {
     }
 }
 
-impl IntoIterator for GlobalInput {
-    type Item = ConrodEvent;
-    type IntoIter = ::std::vec::IntoIter<ConrodEvent>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.all_events().clone().into_iter()
-    }
-}
-
 fn distance_between(a: Point, b: Point) -> Scalar {
     let dx_2 = (a[0] - b[0]).powi(2);
     let dy_2 = (a[1] - b[1]).powi(2);
