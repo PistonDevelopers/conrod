@@ -32,7 +32,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
     left_click_mouse(&mut ui);
 
-    assert!(!ui.global_input.all_events().is_empty());
+    assert!(ui.global_input.all_events().next().is_some());
     ui.set_widgets(|ui| {
 
         Canvas::new()
@@ -46,7 +46,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
             .set(BUTTON_ID, ui);
     });
 
-    assert!(ui.global_input.all_events().is_empty());
+    assert!(ui.global_input.all_events().next().is_none());
 }
 
 #[test]
@@ -147,11 +147,11 @@ fn test_handling_basic_input_event(ui: &mut Ui<MockCharacterCache>, event: Input
 }
 
 fn assert_event_was_pushed(ui: &Ui<MockCharacterCache>, event: ConrodEvent) {
-    let found = ui.global_input.all_events().iter().find(|evt| **evt == event);
+    let found = ui.global_input.all_events().find(|evt| **evt == event);
     assert!(found.is_some(),
             format!("expected to find event: {:?} in: \nall_events: {:?}",
                     event,
-                    ui.global_input.all_events()));
+                    ui.global_input.all_events().collect::<Vec<&ConrodEvent>>()));
 }
 
 fn to_window_coordinates(xy: Point, ui: &Ui<MockCharacterCache>) -> Point {

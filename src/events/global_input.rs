@@ -20,9 +20,11 @@ pub struct GlobalInput {
     drag_threshold: Scalar,
 }
 
-impl InputProvider for GlobalInput {
-    fn all_events(&self) -> &Vec<ConrodEvent> {
-        &self.events
+pub type GlobalInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+
+impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
+    fn all_events(&'a self) -> GlobalInputEventIterator {
+        self.events.iter()
     }
 
     fn current_state(&self) -> &InputState {

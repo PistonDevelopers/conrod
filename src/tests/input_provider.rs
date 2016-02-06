@@ -182,9 +182,12 @@ impl ProviderImpl {
     }
 }
 
-impl InputProvider for ProviderImpl {
-    fn all_events(&self) -> &Vec<ConrodEvent> {
-        &self.events
+pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+
+
+impl<'a> InputProvider<'a, TestInputEventIterator<'a>> for ProviderImpl {
+    fn all_events(&'a self) -> TestInputEventIterator<'a> {
+        self.events.iter()
     }
 
     fn current_state(&self) -> &InputState {

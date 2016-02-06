@@ -26,7 +26,7 @@ impl WidgetInput {
         // will be interpreted in the correct context. Otherwise, if a user clicked and then moved
         // the mouse very quickly, we would end up registering the click in the wrong location.
         let mut current_state = global_input.start_state.clone();
-        let widget_events = global_input.all_events().iter()
+        let widget_events = global_input.all_events()
             .filter(move |evt| {
                 // filtering is done using the window coordinate system
                 current_state.update(evt);
@@ -69,9 +69,11 @@ impl WidgetInput {
     }
 }
 
-impl InputProvider for WidgetInput {
-    fn all_events(&self) -> &Vec<ConrodEvent> {
-        &self.events
+pub type WidgetInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+
+impl<'a> InputProvider<'a, WidgetInputEventIterator<'a>> for WidgetInput {
+    fn all_events(&'a self) -> WidgetInputEventIterator<'a> {
+        self.events.iter()
     }
 
     fn current_state(&self) -> &InputState {

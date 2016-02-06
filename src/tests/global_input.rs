@@ -24,7 +24,7 @@ fn resetting_input_should_clear_out_all_events() {
     input.push_event(ConrodEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
     input.reset();
-    assert!(input.all_events().is_empty());
+    assert!(input.all_events().next().is_none());
 }
 
 #[test]
@@ -126,8 +126,7 @@ fn no_events_should_be_returned_after_reset_is_called() {
 
     input.reset();
 
-    let events = input.all_events();
-    assert!(events.is_empty());
+    assert!(input.all_events().next().is_none());
 }
 
 #[test]
@@ -292,10 +291,10 @@ fn all_events_should_return_all_inputs_in_order() {
     let evt2 = ConrodEvent::Raw(Input::Press(Keyboard(Key::A)));
     input.push_event(evt2.clone());
 
-    let results = input.all_events();
+    let results = input.all_events().collect::<Vec<&ConrodEvent>>();
     assert_eq!(2, results.len());
-    assert_eq!(evt1, results[0]);
-    assert_eq!(evt2, results[1]);
+    assert_eq!(evt1, *results[0]);
+    assert_eq!(evt2, *results[1]);
 }
 
 fn mouse_move_event(x: Scalar, y: Scalar) -> ConrodEvent {
