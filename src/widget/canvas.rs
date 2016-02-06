@@ -177,7 +177,7 @@ impl<'a> Canvas<'a> {
 
     /// Set the child Canvasses flowing to the left.
     pub fn flow_left(self, splits: ListOfSplits<'a>) -> Self {
-        self.flow(Direction::Y(Backwards), splits)
+        self.flow(Direction::X(Backwards), splits)
     }
 
     /// Set the child Canvasses flowing upwards.
