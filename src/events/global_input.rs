@@ -27,7 +27,7 @@ impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
         self.events.iter()
     }
 
-    fn current_state(&self) -> &InputState {
+    fn current_state(&'a self) -> &'a InputState {
         &self.current_state
     }
 }

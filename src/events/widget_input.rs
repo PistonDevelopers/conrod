@@ -3,24 +3,34 @@
 //! `InputProvider` that provides input events for a specific widget.
 
 use widget::Index;
-use events::{InputState, ConrodEvent, GlobalInput, InputProvider, RelativePosition};
+use events::{InputState,
+    ConrodEvent,
+    GlobalInput,
+    GlobalInputEventIterator,
+    InputProvider,
+    RelativePosition,
+    MouseClick,
+    MouseDrag,
+};
 use position::{Point, Rect};
+use input::mouse::MouseButton;
 
 /// Holds any events meant to be given to a `Widget`. This is what widgets will interface with
 /// when handling events in their `update` method. All events returned from methods on `WidgetInput`
 /// will be relative to the widget's own (0,0) origin. Additionally, `WidgetInput` will not provide
 /// mouse or keyboard events that do not directly pertain to the widget.
-pub struct WidgetInput {
-    events: Vec<ConrodEvent>,
+pub struct WidgetInput<'a> {
+    global_input: &'a GlobalInput,
     current_state: InputState,
     widget_area: Rect,
+    widget_idx: Index,
 }
 
-impl WidgetInput {
+impl<'a> WidgetInput<'a> {
     /// Returns a `WidgetInput` with events specifically for the given widget.
     /// Filters out only the events that directly pertain to the widget.
     /// All events will also be made relative to the widget's own (0,0) origin.
-    pub fn for_widget(widget: Index, widget_area: Rect, global_input: &GlobalInput) -> WidgetInput {
+    pub fn for_widget<'g>(widget: Index, widget_area: Rect, global_input: &'g GlobalInput) -> WidgetInput<'g> {
         let widget_xy =  widget_area.xy();
         // we start out using the start_state instead of current_state so that each event
         // will be interpreted in the correct context. Otherwise, if a user clicked and then moved
@@ -37,9 +47,10 @@ impl WidgetInput {
             .collect::<Vec<ConrodEvent>>();
 
         WidgetInput {
-            events: widget_events,
-            current_state: global_input.current_state.relative_to(widget_xy),
+            global_input: &global_input,
             widget_area: widget_area,
+            widget_idx: widget,
+            current_state: global_input.current_state.relative_to(widget_area.xy())
         }
     }
 
@@ -69,16 +80,67 @@ impl WidgetInput {
     }
 }
 
-pub type WidgetInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+pub struct WidgetInputEventIterator<'a> {
+    global_event_iter: GlobalInputEventIterator<'a>,
+    current_state: InputState,
+    widget_area: Rect,
+    widget_idx: Index,
+}
 
-impl<'a> InputProvider<'a, WidgetInputEventIterator<'a>> for WidgetInput {
-    fn all_events(&'a self) -> WidgetInputEventIterator<'a> {
-        self.events.iter()
+impl<'a> Iterator for WidgetInputEventIterator<'a> {
+    type Item = &'a ConrodEvent;
+
+    fn next(&mut self) -> Option<&'a ConrodEvent> {
+        self.global_event_iter.next().and_then(|event| {
+            self.current_state.update(event);
+            if should_provide_event(self.widget_idx, self.widget_area, event, &self.current_state) {
+                Some(event)
+            } else {
+                self.next()
+            }
+        })
     }
 
-    fn current_state(&self) -> &InputState {
+}
+
+
+impl<'a> InputProvider<'a, WidgetInputEventIterator<'a>> for WidgetInput<'a> {
+
+    fn all_events(&'a self) -> WidgetInputEventIterator<'a> {
+        WidgetInputEventIterator{
+            global_event_iter: self.global_input.all_events(),
+            current_state: self.global_input.start_state.relative_to(self.widget_area.xy()),
+            widget_area: self.widget_area,
+            widget_idx: self.widget_idx,
+        }
+    }
+
+    fn current_state(&'a self) -> &'a InputState {
         &self.current_state
     }
+
+    fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
+        self.all_events().filter_map(|event| {
+            match *event {
+                ConrodEvent::MouseClick(click) if click.button == button => {
+                    Some(click.relative_to(self.widget_area.xy()))
+                },
+                _ => None
+            }
+        }).next()
+    }
+
+    fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
+        self.all_events().filter_map(|evt| {
+            match *evt {
+                ConrodEvent::MouseDrag(drag_evt) if drag_evt.button == button => {
+                    Some(drag_evt.relative_to(self.widget_area.xy()))
+                },
+                _ => None
+            }
+        }).last()
+    }
+
 }
 
 fn should_provide_event(widget: Index,

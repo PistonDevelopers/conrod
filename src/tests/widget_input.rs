@@ -129,10 +129,9 @@ fn widget_input_should_only_provide_keyboard_input_to_widget_that_has_focus() {
 }
 
 #[test]
-fn widget_input_events_should_be_relative_to_widget_position() {
+fn mouse_clicks_should_be_relative_to_widget_position() {
     let idx = Index::Public(Id(5));
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::WidgetCapturesMouse(idx));
     global_input.push_event(ConrodEvent::MouseClick(MouseClick{
         button: MouseButton::Left,
         location: [10.0, 10.0],
@@ -143,4 +142,26 @@ fn widget_input_events_should_be_relative_to_widget_position() {
     let widget_input = WidgetInput::for_widget(idx, rect, &global_input);
     let widget_click = widget_input.mouse_left_click().expect("widget click should not be null");
     assert_eq!([0.0, 0.0], widget_click.location);
+}
+
+#[test]
+fn mouse_drags_should_be_relative_to_widget_position() {
+    use events::MouseDrag;
+
+    let idx = Index::Public(Id(5));
+    let mut global_input = GlobalInput::new();
+    global_input.push_event(ConrodEvent::MouseDrag(MouseDrag{
+        button: MouseButton::Left,
+        start: [5.0, 5.0],
+        end: [10.0, 10.0],
+        modifier: NO_MODIFIER,
+        in_progress: false
+    }));
+
+    let rect = Rect::from_corners([0.0, 0.0], [20.0, 20.0]);
+    let widget_input = WidgetInput::for_widget(idx, rect, &global_input);
+    let drag = widget_input.mouse_left_drag().expect("expected a mouse drag event");
+    assert_eq!([-5.0, -5.0], drag.start);
+    assert_eq!([0.0, 0.0], drag.end);
+
 }
