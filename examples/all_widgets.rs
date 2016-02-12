@@ -91,7 +91,7 @@ impl DemoApp {
             bg_color: rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
-            title_pad: 350.0,
+            title_pad: 320.0,
             v_slider_height: 230.0,
             frame_width: 1.0,
             bool_matrix: [ [true, true, true, true, true, true, true, true],
@@ -222,7 +222,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         };
 
         // Slider widget example slider(value, min, max).
-        Slider::new(pad as f32, 30.0, 700.0)
+        Slider::new(pad as f32, 0.0, 670.0)
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
