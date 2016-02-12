@@ -146,26 +146,27 @@ fn crop_context(context: Context, rect: Rect) -> Context {
     let h = h * h_scale;
 
     // If we ended up with negative coords for the crop area, we'll use 0 instead as we
-    // can't represent the negative coords with `u16` (the target DrawState dimension type).
+    // can't represent the negative coords with `u32` (the target DrawState dimension type).
     // We'll hold onto the lost negative values (x_neg and y_neg) so that we can compensate
     // with the width and height.
     let x_neg = if x < 0 { x } else { 0 };
     let y_neg = if y < 0 { y } else { 0 };
-    let mut x = ::std::cmp::max(0, x) as u16;
-    let mut y = ::std::cmp::max(0, y) as u16;
-    let mut w = ::std::cmp::max(0, (w as i32 + x_neg)) as u16;
-    let mut h = ::std::cmp::max(0, (h as i32 + y_neg)) as u16;
+    let mut x = ::std::cmp::max(0, x) as u32;
+    let mut y = ::std::cmp::max(0, y) as u32;
+    let mut w = ::std::cmp::max(0, (w as i32 + x_neg)) as u32;
+    let mut h = ::std::cmp::max(0, (h as i32 + y_neg)) as u32;
 
     // If there was already some scissor set, we must check for the intersection.
     if let Some(rect) = draw_state.scissor {
-        if x + w < rect.x || rect.x + rect.w < x || y + h < rect.y || rect.y + rect.h < y {
+        let (r_x, r_y, r_w, r_h) = (rect[0], rect[1], rect[2], rect[3]);
+        if x + w < r_x || r_x + r_w < x || y + h < r_y || r_y + r_h < y {
             // If there is no intersection, we have no scissor.
             w = 0;
             h = 0;
         } else {
             // If there is some intersection, calculate the overlapping rect.
             let (a_l, a_r, a_b, a_t) = (x, x+w, y, y+h);
-            let (b_l, b_r, b_b, b_t) = (rect.x, rect.x+rect.w, rect.y, rect.y+rect.h);
+            let (b_l, b_r, b_b, b_t) = (r_x, r_x+r_w, r_y, r_y+r_h);
             let l = if a_l > b_l { a_l } else { b_l };
             let r = if a_r < b_r { a_r } else { b_r };
             let b = if a_b > b_b { a_b } else { b_b };
@@ -177,7 +178,7 @@ fn crop_context(context: Context, rect: Rect) -> Context {
         }
     }
 
-    Context { draw_state: draw_state.scissor(x, y, w, h), ..context }
+    Context { draw_state: draw_state.scissor([x, y, w, h]), ..context }
 }
 
 
