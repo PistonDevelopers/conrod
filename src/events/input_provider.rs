@@ -1,6 +1,6 @@
 //! Contains the `InputProvider` trait, which is used to provide input events to widgets.
 
-use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState};
+use events::{UiEvent, Scroll, MouseClick, MouseDrag, InputState};
 use input::{Input, Button};
 use input::keyboard::Key;
 use input::mouse::MouseButton;
@@ -9,9 +9,9 @@ use position::Point;
 
 /// Trait for something that provides events to be consumed by a widget.
 /// Provides a bunch of convenience methods for filtering out specific types of events.
-pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
+pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     /// This is the only method that needs to be implemented.
-    /// Just provided a reference to a `Vec<ConrodEvent>` that contains
+    /// Just provided a reference to a `Vec<UiEvent>` that contains
     /// all the events for this update cycle.
     fn all_events(&'a self) -> T;
 
@@ -28,7 +28,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn text_just_entered(&'a self) -> Option<String> {
         let all_text: String = self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Text(ref text)) => Some(text),
+                UiEvent::Raw(Input::Text(ref text)) => Some(text),
                 _ => None
             }
         }).fold(String::new(), |acc, item| {
@@ -48,7 +48,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
 
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Release(Keyboard(key))) => Some(key),
+                UiEvent::Raw(Input::Release(Keyboard(key))) => Some(key),
                 _ => None
             }
         }).collect::<Vec<Key>>()
@@ -60,7 +60,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
 
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Press(Keyboard(key))) => Some(key),
+                UiEvent::Raw(Input::Press(Keyboard(key))) => Some(key),
                 _ => None
             }
         }).collect::<Vec<Key>>()
@@ -70,7 +70,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn mouse_buttons_just_pressed(&'a self) -> Vec<MouseButton> {
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Press(Button::Mouse(button))) => Some(button),
+                UiEvent::Raw(Input::Press(Button::Mouse(button))) => Some(button),
                 _ => None
             }
         }).collect::<Vec<MouseButton>>()
@@ -80,7 +80,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn mouse_buttons_just_released(&'a self) -> Vec<MouseButton> {
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Raw(Input::Release(Button::Mouse(button))) => Some(button),
+                UiEvent::Raw(Input::Release(Button::Mouse(button))) => Some(button),
                 _ => None
             }
         }).collect::<Vec<MouseButton>>()
@@ -93,7 +93,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn scroll(&'a self) -> Option<Scroll> {
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::Scroll(scroll) => Some(scroll),
+                UiEvent::Scroll(scroll) => Some(scroll),
                 _ => None
             }
         }).fold(None, |maybe_scroll, scroll| {
@@ -126,7 +126,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
+                UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
                 _ => None
             }
         }).last()
@@ -152,7 +152,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a ConrodEvent>> {
     fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
         self.all_events().filter_map(|evt| {
             match *evt {
-                ConrodEvent::MouseClick(click) if click.button == button => Some(click),
+                UiEvent::MouseClick(click) if click.button == button => Some(click),
                 _ => None
             }
         }).next()

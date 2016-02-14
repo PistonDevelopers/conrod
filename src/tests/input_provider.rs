@@ -1,4 +1,4 @@
-use events::{ConrodEvent, Scroll, MouseClick, MouseDrag, InputState, InputProvider};
+use events::{UiEvent, Scroll, MouseClick, MouseDrag, InputState, InputProvider};
 use input::{Input, Button};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
 use input::mouse::MouseButton;
@@ -26,9 +26,9 @@ fn mouse_button_currently_pressed_should_return_true_if_button_is_pressed() {
 fn mouse_button_releases_should_be_collected_into_a_vec() {
     use input::mouse::MouseButton::{Left, Right, Middle};
     let input = ProviderImpl::with_events(vec![
-        ConrodEvent::Raw(Input::Release(Button::Mouse(Left))),
-        ConrodEvent::Raw(Input::Release(Button::Mouse(Middle))),
-        ConrodEvent::Raw(Input::Release(Button::Mouse(Right))),
+        UiEvent::Raw(Input::Release(Button::Mouse(Left))),
+        UiEvent::Raw(Input::Release(Button::Mouse(Middle))),
+        UiEvent::Raw(Input::Release(Button::Mouse(Right))),
     ]);
 
     let expected = vec![Left, Middle, Right];
@@ -39,9 +39,9 @@ fn mouse_button_releases_should_be_collected_into_a_vec() {
 fn mouse_button_presses_should_be_collected_into_a_vec() {
     use input::mouse::MouseButton::{Left, Right, Middle};
     let input = ProviderImpl::with_events(vec![
-        ConrodEvent::Raw(Input::Press(Button::Mouse(Left))),
-        ConrodEvent::Raw(Input::Press(Button::Mouse(Middle))),
-        ConrodEvent::Raw(Input::Press(Button::Mouse(Right))),
+        UiEvent::Raw(Input::Press(Button::Mouse(Left))),
+        UiEvent::Raw(Input::Press(Button::Mouse(Middle))),
+        UiEvent::Raw(Input::Press(Button::Mouse(Right))),
     ]);
 
     let expected = vec![Left, Middle, Right];
@@ -51,10 +51,10 @@ fn mouse_button_presses_should_be_collected_into_a_vec() {
 #[test]
 fn key_releases_should_be_collected_into_a_vec() {
     let input = ProviderImpl::with_events(vec![
-        ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::LShift))),
-        ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::H))),
-        ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::I))),
-        ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::J))),
+        UiEvent::Raw(Input::Release(Button::Keyboard(Key::LShift))),
+        UiEvent::Raw(Input::Release(Button::Keyboard(Key::H))),
+        UiEvent::Raw(Input::Release(Button::Keyboard(Key::I))),
+        UiEvent::Raw(Input::Release(Button::Keyboard(Key::J))),
     ]);
 
     let expected = vec![Key::LShift, Key::H, Key::I, Key::J];
@@ -64,10 +64,10 @@ fn key_releases_should_be_collected_into_a_vec() {
 #[test]
 fn key_presses_should_be_collected_into_a_vec() {
     let input = ProviderImpl::with_events(vec![
-        ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::LShift))),
-        ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::H))),
-        ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::I))),
-        ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::J))),
+        UiEvent::Raw(Input::Press(Button::Keyboard(Key::LShift))),
+        UiEvent::Raw(Input::Press(Button::Keyboard(Key::H))),
+        UiEvent::Raw(Input::Press(Button::Keyboard(Key::I))),
+        UiEvent::Raw(Input::Press(Button::Keyboard(Key::J))),
     ]);
 
     let expected = vec![Key::LShift, Key::H, Key::I, Key::J];
@@ -77,17 +77,17 @@ fn key_presses_should_be_collected_into_a_vec() {
 #[test]
 fn mouse_clicks_should_be_filtered_by_mouse_button() {
     let input = ProviderImpl::with_events(vec![
-        ConrodEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(MouseClick{
             button: MouseButton::Left,
             location: [50.0, 40.0],
             modifier: NO_MODIFIER
         }),
-        ConrodEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(MouseClick{
             button: MouseButton::Right,
             location: [70.0, 30.0],
             modifier: NO_MODIFIER
         }),
-        ConrodEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(MouseClick{
             button: MouseButton::Middle,
             location: [90.0, 20.0],
             modifier: NO_MODIFIER
@@ -140,8 +140,8 @@ fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
     assert_eq!(expected_scroll, actual);
 }
 
-fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> ConrodEvent {
-    ConrodEvent::MouseDrag(MouseDrag{
+fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
+    UiEvent::MouseDrag(MouseDrag{
         button: mouse_button,
         start: start,
         end: end,
@@ -150,8 +150,8 @@ fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> ConrodEven
     })
 }
 
-fn scroll_event(x: f64, y: f64) -> ConrodEvent {
-    ConrodEvent::Scroll(Scroll{
+fn scroll_event(x: f64, y: f64) -> UiEvent {
+    UiEvent::Scroll(Scroll{
         x: x,
         y: y,
         modifiers: NO_MODIFIER
@@ -161,19 +161,19 @@ fn scroll_event(x: f64, y: f64) -> ConrodEvent {
 /// This is just a basic struct that implements the `InputProvider` Trait so that
 /// the default trait methods are easy to test
 struct ProviderImpl{
-    events: Vec<ConrodEvent>,
+    events: Vec<UiEvent>,
     current_state: InputState,
 }
 
 impl ProviderImpl {
-    fn new(events: Vec<ConrodEvent>, state: InputState) -> ProviderImpl {
+    fn new(events: Vec<UiEvent>, state: InputState) -> ProviderImpl {
         ProviderImpl{
             events: events,
             current_state: state,
         }
     }
 
-    fn with_events(events: Vec<ConrodEvent>) -> ProviderImpl {
+    fn with_events(events: Vec<UiEvent>) -> ProviderImpl {
         ProviderImpl::new(events, InputState::new())
     }
 
@@ -182,7 +182,7 @@ impl ProviderImpl {
     }
 }
 
-pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 
 
 impl<'a> InputProvider<'a, TestInputEventIterator<'a>> for ProviderImpl {

@@ -1,5 +1,5 @@
 //! Contains all the structs and enums to describe all of the input events that `Widget`s
-//! can handle. The core of this module is the `ConrodEvent` enum, which encapsulates all
+//! can handle. The core of this module is the `UiEvent` enum, which encapsulates all
 //! of those events.
 
 use input::{Input, MouseButton, Motion, Button};
@@ -10,7 +10,7 @@ use widget::Index;
 
 /// Enum containing all the events that `Widget`s can listen for.
 #[derive(Clone, PartialEq, Debug)]
-pub enum ConrodEvent {
+pub enum UiEvent {
     /// Represents a raw `input::Input` event
     Raw(Input),
     /// Represents a mouse button being pressed and subsequently released while the
@@ -100,9 +100,9 @@ impl RelativePosition for MouseDrag {
     }
 }
 
-impl RelativePosition for ConrodEvent {
+impl RelativePosition for UiEvent {
     fn relative_to(&self, xy: Point) -> Self {
-        use self::ConrodEvent::{MouseClick, MouseDrag, Raw};
+        use self::UiEvent::{MouseClick, MouseDrag, Raw};
         match *self {
             MouseClick(click) => MouseClick(click.relative_to(xy)),
             MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
@@ -124,33 +124,33 @@ impl RelativePosition for Input {
     }
 }
 
-impl ConrodEvent {
+impl UiEvent {
     /// Returns `true` if this event is related to the mouse. Note that just because this method
     /// returns true does not mean that the event necessarily came from the mouse.
-    /// A `ConrodEvent::Scroll` is considered to be both a mouse and a keyboard event.
+    /// A `UiEvent::Scroll` is considered to be both a mouse and a keyboard event.
     pub fn is_mouse_event(&self) -> bool {
         match *self {
-            ConrodEvent::Raw(Input::Press(Button::Mouse(_))) => true,
-            ConrodEvent::Raw(Input::Release(Button::Mouse(_))) => true,
-            ConrodEvent::Raw(Input::Move(Motion::MouseCursor(_, _))) => true,
-            ConrodEvent::Raw(Input::Move(Motion::MouseRelative(_, _))) => true,
-            ConrodEvent::Raw(Input::Move(Motion::MouseScroll(_, _))) => true,
-            ConrodEvent::MouseClick(_) => true,
-            ConrodEvent::MouseDrag(_) => true,
-            ConrodEvent::Scroll(_) => true,
+            UiEvent::Raw(Input::Press(Button::Mouse(_))) => true,
+            UiEvent::Raw(Input::Release(Button::Mouse(_))) => true,
+            UiEvent::Raw(Input::Move(Motion::MouseCursor(_, _))) => true,
+            UiEvent::Raw(Input::Move(Motion::MouseRelative(_, _))) => true,
+            UiEvent::Raw(Input::Move(Motion::MouseScroll(_, _))) => true,
+            UiEvent::MouseClick(_) => true,
+            UiEvent::MouseDrag(_) => true,
+            UiEvent::Scroll(_) => true,
             _ => false
         }
     }
 
     /// Returns `true` if this event is related to the keyboard. Note that just because this method
     /// returns true does not mean that the event necessarily came from the keyboard.
-    /// A `ConrodEvent::Scroll` is considered to be both a mouse and a keyboard event.
+    /// A `UiEvent::Scroll` is considered to be both a mouse and a keyboard event.
     pub fn is_keyboard_event(&self) -> bool {
         match *self {
-            ConrodEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
-            ConrodEvent::Raw(Input::Release(Button::Keyboard(_))) => true,
-            ConrodEvent::Raw(Input::Text(_)) => true,
-            ConrodEvent::Scroll(_) => true,
+            UiEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
+            UiEvent::Raw(Input::Release(Button::Keyboard(_))) => true,
+            UiEvent::Raw(Input::Text(_)) => true,
+            UiEvent::Scroll(_) => true,
             _ => false
         }
     }
@@ -165,7 +165,7 @@ mod test {
     // We'll see if this approach causes problems later on down the road...
     #[test]
     fn scroll_event_shoulbe_be_both_a_mouse_and_keyboard_event() {
-        let scroll_event = ConrodEvent::Scroll(Scroll{
+        let scroll_event = UiEvent::Scroll(Scroll{
             x: 0.0,
             y: 0.0,
             modifiers: NO_MODIFIER
@@ -177,32 +177,32 @@ mod test {
     #[test]
     fn is_keyboard_event_should_be_true_for_all_keyboard_events() {
         let keyboard_events = vec![
-            ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::L))),
-            ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::L))),
-            ConrodEvent::Raw(Input::Text("wha?".to_string())),
+            UiEvent::Raw(Input::Press(Button::Keyboard(Key::L))),
+            UiEvent::Raw(Input::Release(Button::Keyboard(Key::L))),
+            UiEvent::Raw(Input::Text("wha?".to_string())),
         ];
         for event in keyboard_events {
             assert!(event.is_keyboard_event(), format!("{:?} should be a keyboard event", event));
         }
 
         let non_keyboard_events = vec![
-            ConrodEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
-            ConrodEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            ConrodEvent::MouseClick(MouseClick{
+            UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
+            UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
+            UiEvent::MouseClick(MouseClick{
                 button: MouseButton::Left,
                 location: [0.0, 0.0],
                 modifier: NO_MODIFIER
             }),
-            ConrodEvent::MouseDrag(MouseDrag{
+            UiEvent::MouseDrag(MouseDrag{
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
                 modifier: NO_MODIFIER,
                 in_progress: true,
             }),
-            ConrodEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
-            ConrodEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
-            ConrodEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
+            UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
+            UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
+            UiEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
         ];
 
         for event in non_keyboard_events {
@@ -213,40 +213,40 @@ mod test {
     #[test]
     fn is_mouse_event_should_be_true_for_all_mouse_events() {
         let mouse_events = vec![
-            ConrodEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
-            ConrodEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            ConrodEvent::MouseClick(MouseClick{
+            UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
+            UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
+            UiEvent::MouseClick(MouseClick{
                 button: MouseButton::Left,
                 location: [0.0, 0.0],
                 modifier: NO_MODIFIER
             }),
-            ConrodEvent::MouseDrag(MouseDrag{
+            UiEvent::MouseDrag(MouseDrag{
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
                 modifier: NO_MODIFIER,
                 in_progress: true,
             }),
-            ConrodEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
-            ConrodEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
-            ConrodEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
+            UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
+            UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
+            UiEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
         ];
         for event in mouse_events {
             assert!(event.is_mouse_event(), format!("{:?}.is_mouse_event() == false", event));
         }
 
         let non_mouse_events = vec![
-            ConrodEvent::Raw(Input::Press(Button::Keyboard(Key::G))),
-            ConrodEvent::Raw(Input::Release(Button::Keyboard(Key::G))),
-            ConrodEvent::Raw(Input::Move(Motion::JoystickAxis(JoystickAxisArgs{
+            UiEvent::Raw(Input::Press(Button::Keyboard(Key::G))),
+            UiEvent::Raw(Input::Release(Button::Keyboard(Key::G))),
+            UiEvent::Raw(Input::Move(Motion::JoystickAxis(JoystickAxisArgs{
                 id: 0,
                 axis: 0,
                 position: 0f64
             }))),
-            ConrodEvent::Raw(Input::Text("rust is brown".to_string())),
-            ConrodEvent::Raw(Input::Resize(0, 0)),
-            ConrodEvent::Raw(Input::Focus(true)),
-            ConrodEvent::Raw(Input::Cursor(true)),
+            UiEvent::Raw(Input::Text("rust is brown".to_string())),
+            UiEvent::Raw(Input::Resize(0, 0)),
+            UiEvent::Raw(Input::Focus(true)),
+            UiEvent::Raw(Input::Cursor(true)),
         ];
         for event in non_mouse_events {
             assert!(!event.is_mouse_event(), format!("{:?}.is_mouse_event() == true", event));
@@ -255,14 +255,14 @@ mod test {
 
     #[test]
     fn mouse_click_should_be_made_relative() {
-        let original = ConrodEvent::MouseClick(MouseClick{
+        let original = UiEvent::MouseClick(MouseClick{
             button: MouseButton::Middle,
             location: [30.0, -80.0],
             modifier: keyboard::SHIFT
         });
         let relative = original.relative_to([10.0, 20.0]);
 
-        if let ConrodEvent::MouseClick(click) = relative {
+        if let UiEvent::MouseClick(click) = relative {
             assert_eq!([20.0, -100.0], click.location);
             assert_eq!(MouseButton::Middle, click.button);
             assert_eq!(keyboard::SHIFT, click.modifier);
@@ -273,7 +273,7 @@ mod test {
 
     #[test]
     fn mouse_drage_should_be_made_relative() {
-        let original = ConrodEvent::MouseDrag(MouseDrag{
+        let original = UiEvent::MouseDrag(MouseDrag{
             start: [20.0, 5.0],
             end: [50.0, 1.0],
             button: MouseButton::Left,
@@ -282,7 +282,7 @@ mod test {
         });
 
         let relative = original.relative_to([-5.0, 5.0]);
-        if let ConrodEvent::MouseDrag(drag) = relative {
+        if let UiEvent::MouseDrag(drag) = relative {
             assert_eq!([25.0, 0.0], drag.start);
             assert_eq!([55.0, -4.0], drag.end);
             assert_eq!(MouseButton::Left, drag.button);
@@ -295,9 +295,9 @@ mod test {
 
     #[test]
     fn mouse_cursor_should_be_made_relative() {
-        let original = ConrodEvent::Raw(Input::Move(Motion::MouseCursor(-44.0, 55.0)));
+        let original = UiEvent::Raw(Input::Move(Motion::MouseCursor(-44.0, 55.0)));
         let relative = original.relative_to([4.0, 5.0]);
-        if let ConrodEvent::Raw(Input::Move(Motion::MouseCursor(x, y))) = relative {
+        if let UiEvent::Raw(Input::Move(Motion::MouseCursor(x, y))) = relative {
             assert_eq!(-48.0, x);
             assert_eq!(50.0, y);
         } else {
@@ -307,9 +307,9 @@ mod test {
 
     #[test]
     fn mouse_relative_motion_should_be_made_relative() {
-        let original = ConrodEvent::Raw(Input::Move(Motion::MouseRelative(-2.0, -4.0)));
+        let original = UiEvent::Raw(Input::Move(Motion::MouseRelative(-2.0, -4.0)));
         let relative = original.relative_to([3.0, 3.0]);
-        if let ConrodEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) = relative {
+        if let UiEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) = relative {
             assert_eq!(-5.0, x);
             assert_eq!(-7.0, y);
         } else {

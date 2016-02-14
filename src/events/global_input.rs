@@ -2,7 +2,7 @@
 //! The core of this module is the `GlobalInput` struct. It is responsible for aggregating
 //! and interpreting raw input events into high-level semantic events.
 
-use events::{InputState, ConrodEvent, MouseClick, MouseDrag, Scroll, InputProvider};
+use events::{InputState, UiEvent, MouseClick, MouseDrag, Scroll, InputProvider};
 use input::MouseButton;
 use position::{Point, Scalar};
 use widget::Index;
@@ -16,11 +16,14 @@ pub struct GlobalInput {
     /// The most recent `InputState`, with updates from handling all the events
     /// this update cycle
     pub current_state: InputState,
-    events: Vec<ConrodEvent>,
+    events: Vec<UiEvent>,
     drag_threshold: Scalar,
 }
 
-pub type GlobalInputEventIterator<'a> = ::std::slice::Iter<'a, ConrodEvent>;
+/// Iterator over global `UiEvent`s. Unlike the `WidgetInputEventIterator`, this will
+/// never filter out any events, and all coordinates will be reative to the (0,0) origin
+/// of the window.
+pub type GlobalInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 
 impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
     fn all_events(&'a self) -> GlobalInputEventIterator {
@@ -45,16 +48,16 @@ impl GlobalInput {
     }
 
     /// Adds a new event and updates the internal state.
-    pub fn push_event(&mut self, event: ConrodEvent) {
+    pub fn push_event(&mut self, event: UiEvent) {
         use input::Input::{Release, Move};
         use input::Motion::MouseRelative;
         use input::Motion::MouseScroll;
         use input::Button::Mouse;
 
         let maybe_new_event = match event {
-            ConrodEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
-            ConrodEvent::Raw(Move(MouseRelative(x, y))) => self.handle_mouse_move([x, y]),
-            ConrodEvent::Raw(Move(MouseScroll(x, y))) => self.mouse_scroll(x, y),
+            UiEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
+            UiEvent::Raw(Move(MouseRelative(x, y))) => self.handle_mouse_move([x, y]),
+            UiEvent::Raw(Move(MouseScroll(x, y))) => self.mouse_scroll(x, y),
             _ => None
         };
 
@@ -93,18 +96,18 @@ impl GlobalInput {
     }
 
 
-    fn mouse_scroll(&self, x: f64, y: f64) -> Option<ConrodEvent> {
-        Some(ConrodEvent::Scroll(Scroll{
+    fn mouse_scroll(&self, x: f64, y: f64) -> Option<UiEvent> {
+        Some(UiEvent::Scroll(Scroll{
             x: x,
             y: y,
             modifiers: self.current_state.modifiers
         }))
     }
 
-    fn handle_mouse_move(&self, move_to: Point) -> Option<ConrodEvent> {
+    fn handle_mouse_move(&self, move_to: Point) -> Option<UiEvent> {
         self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
             if self.is_drag(btn_and_point.1, move_to) {
-                Some(ConrodEvent::MouseDrag(MouseDrag{
+                Some(UiEvent::MouseDrag(MouseDrag{
                     button: btn_and_point.0,
                     start: btn_and_point.1,
                     end: move_to,
@@ -117,10 +120,10 @@ impl GlobalInput {
         })
     }
 
-    fn handle_mouse_release(&self, button: MouseButton) -> Option<ConrodEvent> {
+    fn handle_mouse_release(&self, button: MouseButton) -> Option<UiEvent> {
         self.current_state.mouse_buttons.get(button).map(|point| {
             if self.is_drag(point, self.current_state.mouse_position) {
-                ConrodEvent::MouseDrag(MouseDrag{
+                UiEvent::MouseDrag(MouseDrag{
                     button: button,
                     start: point,
                     end: self.current_state.mouse_position,
@@ -128,7 +131,7 @@ impl GlobalInput {
                     in_progress: false
                 })
             } else {
-                ConrodEvent::MouseClick(MouseClick {
+                UiEvent::MouseClick(MouseClick {
                     button: button,
                     location: point,
                     modifier: self.current_state.modifiers

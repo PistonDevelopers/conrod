@@ -1,7 +1,7 @@
 use input::{Input, Motion};
 use input::keyboard::NO_MODIFIER;
 use input::mouse::MouseButton;
-use events::{ConrodEvent, MouseClick, GlobalInput, WidgetInput, InputProvider};
+use events::{UiEvent, MouseClick, GlobalInput, WidgetInput, InputProvider};
 use widget::{Index, Id};
 use position::Rect;
 
@@ -9,7 +9,7 @@ use position::Rect;
 fn maybe_mouse_position_should_return_position_if_mouse_is_over_the_widget() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
@@ -21,7 +21,7 @@ fn maybe_mouse_position_should_return_position_if_mouse_is_over_the_widget() {
 fn maybe_mouse_position_should_return_none_if_mouse_is_not_over_the_widget() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseRelative(-10.0, -10.0))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(-10.0, -10.0))));
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
@@ -33,7 +33,7 @@ fn maybe_mouse_position_should_return_none_if_mouse_is_not_over_the_widget() {
 fn mouse_is_over_widget_should_be_true_if_mouse_is_over_the_widget_area() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
@@ -44,7 +44,7 @@ fn mouse_is_over_widget_should_be_true_if_mouse_is_over_the_widget_area() {
 fn mouse_is_over_widget_should_be_false_if_mouse_is_not_over_widget() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseRelative(90.0, 90.0))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(90.0, 90.0))));
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
@@ -55,7 +55,7 @@ fn mouse_is_over_widget_should_be_false_if_mouse_is_not_over_widget() {
 fn input_state_should_be_provided_relative_to_the_widget_area() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
@@ -66,8 +66,8 @@ fn input_state_should_be_provided_relative_to_the_widget_area() {
 fn scroll_events_should_be_provided_if_widget_captures_mouse_but_not_keyboard() {
     let mut global_input = GlobalInput::new();
     let widget = Index::Public(Id(1));
-    global_input.push_event(ConrodEvent::WidgetCapturesMouse(widget));
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
+    global_input.push_event(UiEvent::WidgetCapturesMouse(widget));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
 
     let some_rect = Rect::from_corners([5.0, 5.0], [40.0, 40.0]);
     let widget_input = WidgetInput::for_widget(widget, some_rect, &global_input);
@@ -78,8 +78,8 @@ fn scroll_events_should_be_provided_if_widget_captures_mouse_but_not_keyboard() 
 fn scroll_events_should_be_provided_if_widget_captures_keyboard_but_not_mouse() {
     let mut global_input = GlobalInput::new();
     let widget = Index::Public(Id(1));
-    global_input.push_event(ConrodEvent::WidgetCapturesKeyboard(widget));
-    global_input.push_event(ConrodEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
+    global_input.push_event(UiEvent::WidgetCapturesKeyboard(widget));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
 
     let some_rect = Rect::from_corners([5.0, 5.0], [40.0, 40.0]);
     let widget_input = WidgetInput::for_widget(widget, some_rect, &global_input);
@@ -89,7 +89,7 @@ fn scroll_events_should_be_provided_if_widget_captures_keyboard_but_not_mouse() 
 #[test]
 fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing_is_capturing_mouse() {
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::MouseClick(MouseClick{
+    global_input.push_event(UiEvent::MouseClick(MouseClick{
         button: MouseButton::Left,
         location: [10.0, 10.0],
         modifier: NO_MODIFIER
@@ -115,8 +115,8 @@ fn widget_input_should_only_provide_keyboard_input_to_widget_that_has_focus() {
 
     let some_rect = Rect::from_corners([0.0, 0.0], [40.0, 40.0]);
     let widget_4 = Index::Public(Id(4));
-    global_input.push_event(ConrodEvent::WidgetCapturesKeyboard(widget_4));
-    global_input.push_event(ConrodEvent::Raw(Input::Text("some text".to_string())));
+    global_input.push_event(UiEvent::WidgetCapturesKeyboard(widget_4));
+    global_input.push_event(UiEvent::Raw(Input::Text("some text".to_string())));
 
     let widget_4_input = WidgetInput::for_widget(widget_4, some_rect, &global_input);
     let widget_4_text = widget_4_input.text_just_entered();
@@ -132,7 +132,7 @@ fn widget_input_should_only_provide_keyboard_input_to_widget_that_has_focus() {
 fn mouse_clicks_should_be_relative_to_widget_position() {
     let idx = Index::Public(Id(5));
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::MouseClick(MouseClick{
+    global_input.push_event(UiEvent::MouseClick(MouseClick{
         button: MouseButton::Left,
         location: [10.0, 10.0],
         modifier: NO_MODIFIER
@@ -150,7 +150,7 @@ fn mouse_drags_should_be_relative_to_widget_position() {
 
     let idx = Index::Public(Id(5));
     let mut global_input = GlobalInput::new();
-    global_input.push_event(ConrodEvent::MouseDrag(MouseDrag{
+    global_input.push_event(UiEvent::MouseDrag(MouseDrag{
         button: MouseButton::Left,
         start: [5.0, 5.0],
         end: [10.0, 10.0],

@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
-use ::events::{ConrodEvent, InputProvider, GlobalInput, WidgetInput};
+use ::events::{UiEvent, InputProvider, GlobalInput, WidgetInput};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -267,7 +267,7 @@ impl<C> Ui<C> {
         use input::{CursorEvent, FocusEvent};
 
         event.resize(|w, h| {
-            self.global_input.push_event(ConrodEvent::Raw(Input::Resize(w, h)));
+            self.global_input.push_event(UiEvent::Raw(Input::Resize(w, h)));
             self.win_w = w as f64;
             self.win_h = h as f64;
             self.needs_redraw();
@@ -282,7 +282,7 @@ impl<C> Ui<C> {
             // Convert mouse coords to (0, 0) origin.
             let center_origin_point = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
             self.mouse.xy = center_origin_point;
-            self.global_input.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(UiEvent::Raw(
                 Input::Move(
                     Motion::MouseRelative(center_origin_point[0], center_origin_point[1])
                 )
@@ -290,7 +290,7 @@ impl<C> Ui<C> {
         });
 
         event.mouse_scroll(|x, y| {
-            self.global_input.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(UiEvent::Raw(
                 Input::Move(Motion::MouseScroll(x, y))
             ));
             self.mouse.scroll.x += x;
@@ -301,7 +301,7 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.global_input.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(UiEvent::Raw(
                 Input::Press(button_type)
             ));
 
@@ -326,7 +326,7 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.global_input.push_event(ConrodEvent::Raw(
+            self.global_input.push_event(UiEvent::Raw(
                 Input::Release(button_type)
             ));
 
@@ -348,15 +348,15 @@ impl<C> Ui<C> {
 
         event.text(|text| {
             self.text_just_entered.push(text.to_string());
-            self.global_input.push_event(ConrodEvent::Raw(Input::Text(text.to_string())));
+            self.global_input.push_event(UiEvent::Raw(Input::Text(text.to_string())));
         });
 
         event.focus(|focus| {
-            self.global_input.push_event(ConrodEvent::Raw(Input::Focus(focus)));
+            self.global_input.push_event(UiEvent::Raw(Input::Focus(focus)));
         });
 
         event.cursor(|cursor| {
-            self.global_input.push_event(ConrodEvent::Raw(Input::Cursor(cursor)));
+            self.global_input.push_event(UiEvent::Raw(Input::Cursor(cursor)));
         });
     }
 
@@ -371,12 +371,12 @@ impl<C> Ui<C> {
         if currently_capturing_keyboard.is_some()
                 && currently_capturing_keyboard != widget_under_mouse {
             self.global_input.push_event(
-                ConrodEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
+                UiEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
             );
         }
 
         if let Some(idx) = widget_under_mouse {
-            self.global_input.push_event(ConrodEvent::WidgetCapturesKeyboard(idx));
+            self.global_input.push_event(UiEvent::WidgetCapturesKeyboard(idx));
         }
     }
 

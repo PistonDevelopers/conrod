@@ -7,7 +7,7 @@ use input::MouseButton;
 use input::keyboard::{NO_MODIFIER, ModifierKey, Key};
 use position::Point;
 use widget::Index;
-use events::{RelativePosition, ConrodEvent};
+use events::{RelativePosition, UiEvent};
 
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
@@ -47,35 +47,35 @@ impl InputState {
     }
 
     /// Updates the input state based on an event.
-    pub fn update(&mut self, event: &ConrodEvent) {
+    pub fn update(&mut self, event: &UiEvent) {
         use input::{Button, Motion, Input};
 
         match *event {
-            ConrodEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
+            UiEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
                 self.mouse_buttons.set(mouse_button, Some(self.mouse_position));
             },
-            ConrodEvent::Raw(Input::Release(Button::Mouse(mouse_button))) => {
+            UiEvent::Raw(Input::Release(Button::Mouse(mouse_button))) => {
                 self.mouse_buttons.set(mouse_button, None);
             },
-            ConrodEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) => {
+            UiEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) => {
                 self.mouse_position = [x, y];
             },
-            ConrodEvent::Raw(Input::Press(Button::Keyboard(key))) => {
+            UiEvent::Raw(Input::Press(Button::Keyboard(key))) => {
                 get_modifier(key).map(|modifier| self.modifiers.insert(modifier));
             },
-            ConrodEvent::Raw(Input::Release(Button::Keyboard(key))) => {
+            UiEvent::Raw(Input::Release(Button::Keyboard(key))) => {
                 get_modifier(key).map(|modifier| self.modifiers.remove(modifier));
             },
-            ConrodEvent::WidgetCapturesKeyboard(idx) => {
+            UiEvent::WidgetCapturesKeyboard(idx) => {
                 self.widget_capturing_keyboard = Some(idx);
             },
-            ConrodEvent::WidgetUncapturesKeyboard(_) => {
+            UiEvent::WidgetUncapturesKeyboard(_) => {
                 self.widget_capturing_keyboard = None;
             },
-            ConrodEvent::WidgetCapturesMouse(idx) => {
+            UiEvent::WidgetCapturesMouse(idx) => {
                 self.widget_capturing_mouse = Some(idx);
             },
-            ConrodEvent::WidgetUncapturesMouse(_) =>  {
+            UiEvent::WidgetUncapturesMouse(_) =>  {
                 self.widget_capturing_mouse = None;
             },
             _ => {}
