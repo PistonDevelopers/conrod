@@ -26,5 +26,5 @@ pub mod input_provider;
 pub use self::input_state::{InputState, ButtonMap};
 pub use self::global_input::{GlobalInputEventIterator, GlobalInput};
 pub use self::widget_input::{WidgetInputEventIterator, WidgetInput};
-pub use self::ui_event::{UiEvent, MouseClick, MouseDrag, Scroll, RelativePosition};
+pub use self::ui_event::{UiEvent, MouseClick, MouseDrag, Scroll};
 pub use self::input_provider::InputProvider;

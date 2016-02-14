@@ -74,15 +74,9 @@ pub struct Scroll {
     pub modifiers: ModifierKey,
 }
 
-/// Marks something that can be made relative to another `Point`.
-pub trait RelativePosition {
-    /// Returns a copy of `Self` that is relative to the given `Point`.
-    /// All `Point`s are assumed to be relative to center (0,0).
-    fn relative_to(&self, xy: Point) -> Self;
-}
-
-impl RelativePosition for MouseClick {
-    fn relative_to(&self, xy: Point) -> MouseClick {
+impl MouseClick {
+    /// Returns a copy of the MouseClick relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> MouseClick {
         MouseClick{
             location: vec2_sub(self.location, xy),
             ..*self
@@ -90,8 +84,9 @@ impl RelativePosition for MouseClick {
     }
 }
 
-impl RelativePosition for MouseDrag {
-    fn relative_to(&self, xy: Point) -> MouseDrag {
+impl MouseDrag {
+    /// Returns a copy of the MouseDrag relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> MouseDrag {
         MouseDrag{
             start: vec2_sub(self.start, xy),
             end: vec2_sub(self.end, xy),
@@ -100,31 +95,26 @@ impl RelativePosition for MouseDrag {
     }
 }
 
-impl RelativePosition for UiEvent {
-    fn relative_to(&self, xy: Point) -> Self {
+impl UiEvent {
+    /// Returns a copy of the UiEvent relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> Self {
         use self::UiEvent::{MouseClick, MouseDrag, Raw};
         match *self {
             MouseClick(click) => MouseClick(click.relative_to(xy)),
             MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
-            Raw(ref raw_input) => Raw(raw_input.relative_to(xy)),
+            Raw(ref raw_input) => {
+                Raw(match *raw_input {
+                    Input::Move(Motion::MouseRelative(x, y)) =>
+                        Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1])),
+                    Input::Move(Motion::MouseCursor(x, y)) =>
+                        Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1])),
+                    ref other_input => other_input.clone()
+                })
+            },
             ref other_event => other_event.clone()
         }
     }
-}
 
-impl RelativePosition for Input {
-    fn relative_to(&self, xy: Point) -> Input {
-        match *self {
-            Input::Move(Motion::MouseRelative(x, y)) =>
-                Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1])),
-            Input::Move(Motion::MouseCursor(x, y)) =>
-                Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1])),
-            ref other_input => other_input.clone()
-        }
-    }
-}
-
-impl UiEvent {
     /// Returns `true` if this event is related to the mouse. Note that just because this method
     /// returns true does not mean that the event necessarily came from the mouse.
     /// A `UiEvent::Scroll` is considered to be both a mouse and a keyboard event.

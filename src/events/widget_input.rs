@@ -8,7 +8,6 @@ use events::{InputState,
     GlobalInput,
     GlobalInputEventIterator,
     InputProvider,
-    RelativePosition,
     MouseClick,
     MouseDrag,
 };

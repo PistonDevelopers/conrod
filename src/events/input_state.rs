@@ -7,7 +7,7 @@ use input::MouseButton;
 use input::keyboard::{NO_MODIFIER, ModifierKey, Key};
 use position::Point;
 use widget::Index;
-use events::{RelativePosition, UiEvent};
+use events::UiEvent;
 
 /// The max total number of buttons on a mouse.
 pub const NUM_MOUSE_BUTTONS: usize = 9;
@@ -81,10 +81,9 @@ impl InputState {
             _ => {}
         }
     }
-}
 
-impl RelativePosition for InputState {
-    fn relative_to(&self, xy: Point) -> InputState {
+    /// Returns a copy of the InputState relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> InputState {
         InputState {
             mouse_position: ::vecmath::vec2_sub(self.mouse_position, xy),
             ..*self
