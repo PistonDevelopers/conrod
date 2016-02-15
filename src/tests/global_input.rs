@@ -9,7 +9,7 @@ use widget::{Id, Index};
 
 #[test]
 fn resetting_input_should_set_starting_state_to_current_state() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
 
@@ -20,7 +20,7 @@ fn resetting_input_should_set_starting_state_to_current_state() {
 
 #[test]
 fn resetting_input_should_clear_out_all_events() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
     input.reset();
@@ -29,7 +29,7 @@ fn resetting_input_should_clear_out_all_events() {
 
 #[test]
 fn scroll_events_should_have_modifier_keys() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
@@ -40,7 +40,7 @@ fn scroll_events_should_have_modifier_keys() {
 
 #[test]
 fn global_input_should_track_widget_currently_capturing_keyboard() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     let idx: Index = Index::Public(Id(5));
     input.push_event(UiEvent::WidgetCapturesKeyboard(idx));
@@ -57,7 +57,7 @@ fn global_input_should_track_widget_currently_capturing_keyboard() {
 
 #[test]
 fn global_input_should_track_widget_currently_capturing_mouse() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     let idx: Index = Index::Public(Id(5));
     input.push_event(UiEvent::WidgetCapturesMouse(idx));
@@ -74,7 +74,7 @@ fn global_input_should_track_widget_currently_capturing_mouse() {
 
 #[test]
 fn global_input_should_track_current_mouse_position() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     input.push_event(mouse_move_event(50.0, 77.7));
     assert_eq!([50.0, 77.7], input.mouse_position());
@@ -82,7 +82,7 @@ fn global_input_should_track_current_mouse_position() {
 
 #[test]
 fn entered_text_should_be_aggregated_from_multiple_events() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     input.push_event(UiEvent::Raw(Input::Text("Phil ".to_string())));
     input.push_event(UiEvent::Raw(Input::Text("is a".to_string())));
@@ -94,7 +94,7 @@ fn entered_text_should_be_aggregated_from_multiple_events() {
 
 #[test]
 fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     input.push_event(mouse_move_event(50.0, 77.7));
@@ -106,7 +106,7 @@ fn drag_event_should_still_be_created_if_reset_is_called_between_press_and_relea
 
 #[test]
 fn click_event_should_still_be_created_if_reset_is_called_between_press_and_release() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     input.reset();
@@ -117,7 +117,7 @@ fn click_event_should_still_be_created_if_reset_is_called_between_press_and_rele
 
 #[test]
 fn no_events_should_be_returned_after_reset_is_called() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::RShift))));
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
@@ -133,7 +133,7 @@ fn no_events_should_be_returned_after_reset_is_called() {
 fn drag_with_modifer_key_should_include_modifiers_in_drag_event() {
     use input::keyboard::SHIFT;
 
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::RShift))));
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
 
@@ -146,7 +146,7 @@ fn drag_with_modifer_key_should_include_modifiers_in_drag_event() {
 fn click_with_modifier_key_should_include_modifiers_in_click_event() {
     use input::keyboard::CTRL;
 
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
     input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::LCtrl))));
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     input.push_event(UiEvent::Raw(Input::Release(Mouse(MouseButton::Left))));
@@ -162,7 +162,7 @@ fn click_with_modifier_key_should_include_modifiers_in_click_event() {
 
 #[test]
 fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     input.push_event(UiEvent::Raw(Input::Move(Motion::MouseScroll(10.0, 33.0))));
 
@@ -177,7 +177,7 @@ fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
 
 #[test]
 fn mouse_button_pressed_moved_released_creates_final_drag_event() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
     input.push_event(mouse_move_event(20.0, 10.0));
@@ -196,7 +196,7 @@ fn mouse_button_pressed_moved_released_creates_final_drag_event() {
 
 #[test]
 fn mouse_button_pressed_then_moved_creates_drag_event() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     let press = UiEvent::Raw(Input::Press(Mouse(MouseButton::Left)));
     let mouse_move = mouse_move_event(20.0, 10.0);
@@ -216,7 +216,7 @@ fn mouse_button_pressed_then_moved_creates_drag_event() {
 
 #[test]
 fn mouse_click_position_should_be_mouse_position_when_pressed() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     input.push_event(mouse_move_event(4.0, 5.0));
     input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
@@ -236,7 +236,7 @@ fn mouse_click_position_should_be_mouse_position_when_pressed() {
 
 #[test]
 fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(4.0);
 
     let press = UiEvent::Raw(Input::Press(Mouse(MouseButton::Left)));
     let release = UiEvent::Raw(Input::Release(Mouse(MouseButton::Left)));
@@ -255,7 +255,7 @@ fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
 
 #[test]
 fn all_events_should_return_all_inputs_in_order() {
-    let mut input = GlobalInput::new();
+    let mut input = GlobalInput::new(0.0);
 
     let evt1 = UiEvent::Raw(Input::Press(Keyboard(Key::Z)));
     input.push_event(evt1.clone());

@@ -38,10 +38,10 @@ impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
 impl GlobalInput {
 
     /// Returns a fresh new `GlobalInput`
-    pub fn new() -> GlobalInput {
+    pub fn new(drag_threshold: Scalar) -> GlobalInput {
         GlobalInput{
             events: Vec::new(),
-            drag_threshold: 4.0,
+            drag_threshold: drag_threshold,
             start_state: InputState::new(),
             current_state: InputState::new(),
         }

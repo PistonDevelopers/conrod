@@ -148,6 +148,7 @@ impl<C> Ui<C> {
     {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
+        let mouse_drag_threshold = theme.mouse_drag_threshold;
         Ui {
             widget_graph: widget_graph,
             theme: theme,
@@ -171,7 +172,7 @@ impl<C> Ui<C> {
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
-            global_input: GlobalInput::new(),
+            global_input: GlobalInput::new(mouse_drag_threshold),
         }
     }
 
