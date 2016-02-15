@@ -59,7 +59,7 @@ fn input_state_should_be_provided_relative_to_the_widget_area() {
 
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
-    assert_eq!([0.0, 0.0], widget_input.current_mouse_position());
+    assert_eq!([0.0, 0.0], widget_input.mouse_position());
 }
 
 #[test]

@@ -363,7 +363,7 @@ impl<C> Ui<C> {
     fn widget_under_mouse_captures_keyboard(&mut self) {
         use graph::algo::pick_widget;
 
-        let mouse_xy = self.global_input.current_mouse_position();
+        let mouse_xy = self.global_input.mouse_position();
         let widget_under_mouse =
             pick_widget(&self.widget_graph, &self.depth_order.indices, mouse_xy);
         let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();

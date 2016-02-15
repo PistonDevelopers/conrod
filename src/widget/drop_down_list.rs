@@ -252,22 +252,24 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     button.set(button_node_idx, &mut ui);
                 }
 
-                // If one of the buttons was clicked, we want to close the menu.
+                let mouse_pressed_elsewhere = ui.global_input.mouse_buttons_just_pressed().next().is_some()
+                        && !canvas_rect.is_over(ui.global_input.mouse_position());
+
+                // Determine the new menu state
                 if let Some(i) = was_clicked {
-                    // If we were given some react function, we'll call it.
+                    // If one of the buttons was clicked, we want to close the menu.
                     if let Some(ref mut react) = self.maybe_react {
+                        // If we were given some react function, we'll call it.
                         *self.selected = selected;
-                        react(self.selected, i, &self.strings[i])
+                        react(self.selected, i, &self.strings[i]);
                     }
                     MenuState::Closed
-
-                // if a mouse button was pressed somewhere else, then close the menu
-                } else if !ui.global_input.mouse_buttons_just_pressed().is_empty()
-                            && !canvas_rect.is_over(ui.global_input.current_mouse_position()){
+                } else if mouse_pressed_elsewhere {
+                    // if a mouse button was pressed somewhere else, then close the menu
                     MenuState::Closed
 
-                // Otherwise, we just keep the menu open
                 } else {
+                    // Otherwise, we just keep the menu open
                     MenuState::Open
                 }
             }

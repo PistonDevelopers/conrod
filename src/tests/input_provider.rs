@@ -5,12 +5,12 @@ use input::mouse::MouseButton;
 use position::Point;
 
 #[test]
-fn current_mouse_position_should_return_mouse_position_from_current_state() {
+fn mouse_position_should_return_mouse_position_from_current_state() {
     let position = [5.0, 7.0];
     let mut input_state = InputState::new();
     input_state.mouse_position = position;
     let input = ProviderImpl::with_input_state(input_state);
-    assert_eq!(position, input.current_mouse_position());
+    assert_eq!(position, input.mouse_position());
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn mouse_button_releases_should_be_collected_into_a_vec() {
     ]);
 
     let expected = vec![Left, Middle, Right];
-    assert_eq!(expected, input.mouse_buttons_just_released());
+    assert_eq!(expected, input.mouse_buttons_just_released().collect::<Vec<MouseButton>>());
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn mouse_button_presses_should_be_collected_into_a_vec() {
     ]);
 
     let expected = vec![Left, Middle, Right];
-    assert_eq!(expected, input.mouse_buttons_just_pressed());
+    assert_eq!(expected, input.mouse_buttons_just_pressed().collect::<Vec<MouseButton>>());
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn key_releases_should_be_collected_into_a_vec() {
     ]);
 
     let expected = vec![Key::LShift, Key::H, Key::I, Key::J];
-    assert_eq!(expected, input.keys_just_released());
+    assert_eq!(expected, input.keys_just_released().collect::<Vec<Key>>());
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn key_presses_should_be_collected_into_a_vec() {
     ]);
 
     let expected = vec![Key::LShift, Key::H, Key::I, Key::J];
-    assert_eq!(expected, input.keys_just_pressed());
+    assert_eq!(expected, input.keys_just_pressed().collect::<Vec<Key>>());
 }
 
 #[test]

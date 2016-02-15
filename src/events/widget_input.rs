@@ -40,7 +40,7 @@ impl<'a> WidgetInput<'a> {
 
     /// Returns true if the mouse is currently over the widget, otherwise false
     pub fn mouse_is_over_widget(&self) -> bool {
-        self.point_is_over(self.current_mouse_position())
+        self.point_is_over(self.mouse_position())
     }
 
     /// If the mouse is over the widget and no other widget is capturing the mouse, then
@@ -48,7 +48,7 @@ impl<'a> WidgetInput<'a> {
     /// will return `None`
     pub fn maybe_mouse_position(&self) -> Option<Point> {
         if self.mouse_is_over_widget() {
-            Some(self.current_mouse_position())
+            Some(self.mouse_position())
         } else {
             None
         }

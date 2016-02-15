@@ -77,7 +77,7 @@ fn global_input_should_track_current_mouse_position() {
     let mut input = GlobalInput::new();
 
     input.push_event(mouse_move_event(50.0, 77.7));
-    assert_eq!([50.0, 77.7], input.current_mouse_position());
+    assert_eq!([50.0, 77.7], input.mouse_position());
 }
 
 #[test]
@@ -158,35 +158,6 @@ fn click_with_modifier_key_should_include_modifiers_in_click_event() {
         modifier: CTRL
     };
     assert_eq!(expected, click);
-}
-
-#[test]
-fn keys_just_released_should_return_vec_of_keys_just_released() {
-    let mut input = GlobalInput::new();
-
-    input.push_event(UiEvent::Raw(Input::Release(Keyboard(Key::D))));
-    input.push_event(UiEvent::Raw(Input::Release(Keyboard(Key::O))));
-    input.push_event(UiEvent::Raw(Input::Release(Keyboard(Key::R))));
-    input.push_event(UiEvent::Raw(Input::Release(Keyboard(Key::K))));
-
-    let expected = vec![Key::D, Key::O, Key::R, Key::K];
-    let actual = input.keys_just_released();
-    assert_eq!(expected, actual);
-
-}
-
-#[test]
-fn keys_just_pressed_should_return_vec_of_keys_just_pressed() {
-    let mut input = GlobalInput::new();
-
-    input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::N))));
-    input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::E))));
-    input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::R))));
-    input.push_event(UiEvent::Raw(Input::Press(Keyboard(Key::D))));
-
-    let expected = vec![Key::N, Key::E, Key::R, Key::D];
-    let actual = input.keys_just_pressed();
-    assert_eq!(expected, actual);
 }
 
 #[test]

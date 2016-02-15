@@ -43,47 +43,35 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Returns all of the `Key`s that were released since the last update.
-    fn keys_just_released(&'a self) -> Vec<Key> {
-        use input::Button::Keyboard;
-
-        self.all_events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Raw(Input::Release(Keyboard(key))) => Some(key),
-                _ => None
-            }
-        }).collect::<Vec<Key>>()
+    fn keys_just_released(&'a self) -> KeysJustReleased<'a, T> {
+        KeysJustReleased{
+            event_iter: self.all_events(),
+            lifetime: ::std::marker::PhantomData
+        }
     }
 
     /// Returns all of the keyboard `Key`s that were pressed since the last update.
-    fn keys_just_pressed(&'a self) -> Vec<Key> {
-        use input::Button::Keyboard;
-
-        self.all_events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Raw(Input::Press(Keyboard(key))) => Some(key),
-                _ => None
-            }
-        }).collect::<Vec<Key>>()
+    fn keys_just_pressed(&'a self) -> KeysJustPressed<'a, T> {
+        KeysJustPressed {
+            event_iter: self.all_events(),
+            lifetime: ::std::marker::PhantomData
+        }
     }
 
     /// Returns all of the `MouseButton`s that were pressed since the last update.
-    fn mouse_buttons_just_pressed(&'a self) -> Vec<MouseButton> {
-        self.all_events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Raw(Input::Press(Button::Mouse(button))) => Some(button),
-                _ => None
-            }
-        }).collect::<Vec<MouseButton>>()
+    fn mouse_buttons_just_pressed(&'a self) -> MouseButtonsJustPressed<'a, T> {
+        MouseButtonsJustPressed {
+            event_iter: self.all_events(),
+            lifetime: ::std::marker::PhantomData
+        }
     }
 
     /// Returns all of the `MouseButton`s that were released since the last update.
-    fn mouse_buttons_just_released(&'a self) -> Vec<MouseButton> {
-        self.all_events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Raw(Input::Release(Button::Mouse(button))) => Some(button),
-                _ => None
-            }
-        }).collect::<Vec<MouseButton>>()
+    fn mouse_buttons_just_released(&'a self) -> MouseButtonsJustReleased<'a, T> {
+        MouseButtonsJustReleased {
+            event_iter: self.all_events(),
+            lifetime: ::std::marker::PhantomData
+        }
     }
 
     /// Returns a `Scroll` struct if any scrolling was done since the last update.
@@ -183,8 +171,88 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Convenience method for returning the current mouse position.
-    fn current_mouse_position(&'a self) -> Point {
+    fn mouse_position(&'a self) -> Point {
         self.current_state().mouse_position
     }
 
+}
+
+/// An Iterator over `input::keyboard::Key`s that were just released.
+#[derive(Debug)]
+pub struct KeysJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
+    event_iter: T,
+    lifetime: ::std::marker::PhantomData<&'a ()>
+}
+
+impl<'a, T> Iterator for KeysJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+    type Item = Key;
+
+    fn next(&mut self) -> Option<Key> {
+        while let Some(event) = self.event_iter.next() {
+            if let UiEvent::Raw(Input::Release(Button::Keyboard(key))) = *event {
+                return Some(key);
+            }
+        }
+        None
+    }
+}
+
+/// An Iterator over `input::keyboard::Key`s that were just pressed.
+#[derive(Debug)]
+pub struct KeysJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
+    event_iter: T,
+    lifetime: ::std::marker::PhantomData<&'a ()>
+}
+
+impl<'a, T> Iterator for KeysJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+    type Item = Key;
+
+    fn next(&mut self) -> Option<Key> {
+        while let Some(event) = self.event_iter.next() {
+            if let UiEvent::Raw(Input::Press(Button::Keyboard(key))) = *event {
+                return Some(key);
+            }
+        }
+        None
+    }
+}
+
+/// An Iterator over `input::mouse::MouseButton`s that were just pressed.
+#[derive(Debug)]
+pub struct MouseButtonsJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
+    event_iter: T,
+    lifetime: ::std::marker::PhantomData<&'a ()>
+}
+
+impl<'a, T> Iterator for MouseButtonsJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+    type Item = MouseButton;
+
+    fn next(&mut self) -> Option<MouseButton> {
+        while let Some(event) = self.event_iter.next() {
+            if let UiEvent::Raw(Input::Press(Button::Mouse(mouse_button))) = *event {
+                return Some(mouse_button);
+            }
+        }
+        None
+    }
+}
+
+/// An Iterator over `input::mouse::MouseButton`s that were just released.
+#[derive(Debug)]
+pub struct MouseButtonsJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
+    event_iter: T,
+    lifetime: ::std::marker::PhantomData<&'a ()>
+}
+
+impl<'a, T> Iterator for MouseButtonsJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+    type Item = MouseButton;
+
+    fn next(&mut self) -> Option<MouseButton> {
+        while let Some(event) = self.event_iter.next() {
+            if let UiEvent::Raw(Input::Release(Button::Mouse(mouse_button))) = *event {
+                return Some(mouse_button);
+            }
+        }
+        None
+    }
 }
