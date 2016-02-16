@@ -153,24 +153,6 @@ macro_rules! impl_widget_style_retrieval_methods {
         impl_widget_style_retrieval_methods!($KIND, $($rest)*);
     };
 
-    // // The last retrieval method with no trailing comma.
-    // (
-    //     $KIND:ident,
-    //     $(#[$field_attr:meta])*
-    //     - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ } 
-    // ) => {
-    //     impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { theme.$($theme_field).+});
-    // };
-
-    // // The last retrieval method with no trailing comma.
-    // (
-    //     $KIND:ident,
-    //     $(#[$field_attr:meta])*
-    //     - $field_name:ident: $FieldType:ty { $default:expr }
-    // ) => {
-    //     impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { $default });
-    // };
-
     // All methods have been implemented.
     ($KIND:ident,) => {};
 }
