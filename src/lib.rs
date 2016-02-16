@@ -18,6 +18,7 @@ extern crate vecmath;
 
 
 pub use widget::primitive::line::Line;
+pub use widget::primitive::image::Image;
 pub use widget::primitive::point_path::PointPath;
 pub use widget::primitive::shape::circle::Circle;
 pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
@@ -42,6 +43,7 @@ pub use widget::xy_pad::XYPad;
 
 
 pub use widget::primitive::line::Style as LineStyle;
+pub use widget::primitive::image::Style as ImageStyle;
 pub use widget::primitive::shape::Style as ShapeStyle;
 pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
 pub use widget::primitive::text::Style as TextStyle;

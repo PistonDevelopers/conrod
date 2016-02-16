@@ -19,6 +19,7 @@ use input::{
     TextEvent,
 };
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
+use std::any::Any;
 use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
@@ -617,6 +618,7 @@ impl<C> Ui<C> {
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
         where G: Graphics,
               C: CharacterCache<Texture=G::Texture>,
+              G::Texture: Any,
     {
         use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::{Deref, DerefMut};
@@ -667,6 +669,7 @@ impl<C> Ui<C> {
     pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
         where G: Graphics,
               C: CharacterCache<Texture=G::Texture>,
+              G::Texture: Any,
     {
         if self.redraw_count > 0 {
             self.draw(context, graphics);

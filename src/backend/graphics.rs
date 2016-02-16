@@ -11,6 +11,7 @@
 use ::{Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
+use std::any::Any;
 use std::iter::once;
 use theme::Theme;
 use widget::{self, primitive};
@@ -30,6 +31,7 @@ pub fn draw_from_graph<G, C>(context: Context,
                              theme: &Theme)
     where G: Graphics,
           C: CharacterCache<Texture=G::Texture>,
+          G::Texture: Any,
 {
 
     // A stack of contexts, one for each scroll group.
@@ -191,6 +193,7 @@ pub fn draw_from_container<G, C>(context: &Context,
                                  theme: &Theme)
     where G: Graphics,
           C: CharacterCache<Texture=G::Texture>,
+          G::Texture: Any,
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
@@ -316,8 +319,34 @@ pub fn draw_from_container<G, C>(context: &Context,
             }
         },
 
+        primitive::image::KIND => {
+            use widget::primitive::image::{State, Style};
+            if let Some(image) = container.state_and_style::<State<G::Texture>, Style>() {
+                let ::graph::UniqueWidgetState { ref state, ref style } = *image;
+                if let Some(texture) = state.texture.as_ref() {
+                    let mut image = graphics::image::Image::new();
+                    image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
+                    image.source_rectangle = Some({
+                        let r = conrod_rect_to_graphics_rect(texture.src_rect);
+                        [r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32]
+                    });
+                    image.rectangle = Some(conrod_rect_to_graphics_rect(container.rect));
+                    let transform = context.transform;
+                    let draw_state = &context.draw_state;
+                    image.draw(texture.rc.as_ref(), draw_state, transform, graphics);
+                }
+            }
+        }
+
         _ => (),
     }
+}
+
+
+/// Converts a conrod `Rect` to a `graphics::types::Rectangle` expected by the Graphics backend.
+pub fn conrod_rect_to_graphics_rect(rect: Rect) -> graphics::types::Rectangle<Scalar> {
+    let (l, b, w, h) = rect.l_b_w_h();
+    [l, b, w, h]
 }
 
 
