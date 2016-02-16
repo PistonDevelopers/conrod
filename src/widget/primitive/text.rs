@@ -39,15 +39,15 @@ widget_style!{
     /// The styling for a **Text**'s graphics.
     style Style {
         /// The font size for the **Text**.
-        - font_size: FontSize { theme.font_size_medium },
+        - font_size: FontSize { theme.font_size_medium }
         /// The color of the **Text**.
-        - color: Color { theme.label_color },
+        - color: Color { theme.label_color }
         /// Whether or not the text should wrap around the width.
-        - maybe_wrap: Option<Wrap> { Some(Wrap::Whitespace) },
+        - maybe_wrap: Option<Wrap> { Some(Wrap::Whitespace) }
         /// The spacing between consecutive lines.
-        - line_spacing: Scalar { 1.0 },
+        - line_spacing: Scalar { 1.0 }
         /// Alignment of the text along the *x* axis.
-        - text_align: Align { Align::Start },
+        - text_align: Align { Align::Start }
         // /// The typeface with which the Text is rendered.
         // - typeface: Path,
         // /// The line styling for the text.

@@ -52,15 +52,15 @@ widget_style!{
     style Style {
         /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
         /// color with a zeroed alpha.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The frame around the rectangle behind the text.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The font size for the text.
-        - font_size: FontSize { 24 },
+        - font_size: FontSize { 24 }
         /// The color of the text.
-        - text_color: Color { theme.label_color },
+        - text_color: Color { theme.label_color }
     }
 }
 

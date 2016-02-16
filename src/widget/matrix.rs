@@ -41,9 +41,9 @@ widget_style!{
     /// Unique styling for the `Matrix`.
     style Style {
         /// The width of the padding for each matrix element's "cell".
-        - cell_pad_w: Scalar { 0.0 },
+        - cell_pad_w: Scalar { 0.0 }
         /// The height of the padding for each matrix element's "cell".
-        - cell_pad_h: Scalar { 0.0 },
+        - cell_pad_h: Scalar { 0.0 }
     }
 }
 

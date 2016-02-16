@@ -56,13 +56,13 @@ widget_style!{
     /// Unique graphical styling for the NumberDialer.
     style Style {
         /// Color of the NumberDialer's rectangle.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The color of the rectangle frame.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the rectangle frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The color of the NumberDialer's label.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font size for the NumberDialer's label.
         - label_font_size: FontSize { theme.font_size_medium }
     }

@@ -56,21 +56,21 @@ widget_style!{
     /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
     style Style {
         /// Coloring for the EnvelopeEditor's **FramedRectangle**.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// Thickness of the **FramedRectangle**'s frame.
-        - frame: f64 { theme.frame_width },
+        - frame: f64 { theme.frame_width }
         /// Color of the frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// Color of the label.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font size of the **EnvelopeEditor**'s label if one was given.
-        - label_font_size: FontSize { theme.font_size_medium },
+        - label_font_size: FontSize { theme.font_size_medium }
         /// The font size of the value label.
-        - value_font_size: FontSize { 14 },
+        - value_font_size: FontSize { 14 }
         /// The radius of the envelope points.
-        - point_radius: Scalar { 6.0 },
+        - point_radius: Scalar { 6.0 }
         /// The thickness of the envelope lines.
-        - line_thickness: Scalar { 2.0 },
+        - line_thickness: Scalar { 2.0 }
     }
 }
 

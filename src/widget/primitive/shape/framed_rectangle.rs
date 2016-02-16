@@ -28,11 +28,11 @@ widget_style!{
     /// Unique styling for the **FramedRectangle** widget.
     style Style {
         /// Shape styling for the inner rectangle.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The thickness of the frame.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
     }
 }
 
