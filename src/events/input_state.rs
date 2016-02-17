@@ -86,6 +86,7 @@ impl InputState {
     pub fn relative_to(&self, xy: Point) -> InputState {
         InputState {
             mouse_position: ::vecmath::vec2_sub(self.mouse_position, xy),
+            mouse_buttons: self.mouse_buttons.relative_to(xy),
             ..*self
         }
     }
@@ -144,6 +145,17 @@ impl ButtonMap {
                 .next()
     }
 
+    /// Returns a copy of the ButtonMap relative to the given `Point`
+    pub fn relative_to(&self, xy: Point) -> ButtonMap {
+        let mut relative_buttons = ButtonMap::new();
+        for (idx, state) in self.button_states.iter().enumerate() {
+            relative_buttons.button_states[idx] = state.map(|position| {
+                [position[0] - xy[0], position[1] - xy[1]]
+            });
+        }
+        relative_buttons
+    }
+
     fn idx_to_button(idx: usize) -> MouseButton {
         MouseButton::from(idx as u32)
     }
@@ -197,7 +209,9 @@ fn take_resets_and_returns_current_state() {
 fn input_state_should_be_made_relative_to_a_given_point() {
     let mut state = InputState::new();
     state.mouse_position = [50.0, -10.0];
+    state.mouse_buttons.set(MouseButton::Middle, Some([-20.0, -10.0]));
 
     let relative_state = state.relative_to([20.0, 20.0]);
     assert_eq!([30.0, -30.0], relative_state.mouse_position);
+    assert_eq!(Some([-40.0, -30.0]), relative_state.mouse_buttons.get(MouseButton::Middle));
 }

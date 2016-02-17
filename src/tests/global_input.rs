@@ -81,6 +81,27 @@ fn global_input_should_track_current_mouse_position() {
 }
 
 #[test]
+fn mouse_button_currently_pressed_should_return_current_mouse_position_if_button_is_pressed() {
+    let mut input = GlobalInput::new(0.0);
+
+    input.push_event(mouse_move_event(50.0, 77.7));
+    input.push_event(UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
+
+    assert_eq!(Some([50.0, 77.7]), input.mouse_button_currently_pressed(MouseButton::Left));
+}
+
+#[test]
+fn mouse_button_currently_pressed_should_return_none_if_button_is_not_pressed() {
+    let pressed_button = MouseButton::Middle;
+    let non_pressed_button = MouseButton::Right;
+
+    let mut input = GlobalInput::new(0.0);
+    input.push_event(UiEvent::Raw(Input::Press(Mouse(pressed_button))));
+
+    assert!(input.mouse_button_currently_pressed(non_pressed_button).is_none());
+}
+
+#[test]
 fn entered_text_should_be_aggregated_from_multiple_events() {
     let mut input = GlobalInput::new(0.0);
 

@@ -54,27 +54,6 @@ widget_style!{
 pub struct State {
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
-    interaction: Interaction,
-}
-
-/// Represents an interaction with the Button widget.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Interaction {
-    Normal,
-    Highlighted,
-    Clicked,
-}
-
-
-impl Interaction {
-    /// Alter the widget color depending on the state.
-    fn color(&self, color: Color) -> Color {
-        match *self {
-            Interaction::Normal => color,
-            Interaction::Highlighted => color.highlighted(),
-            Interaction::Clicked => color.clicked(),
-        }
-    }
 }
 
 impl<'a, F> Button<'a, F> {
@@ -93,19 +72,6 @@ impl<'a, F> Button<'a, F> {
     builder_methods!{
         pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
-    }
-
-    fn get_new_interaction(&self, widget_input: &WidgetInput) -> Interaction {
-        match (self.enabled, widget_input.mouse_is_over_widget()) {
-            (false, _) | (_, false) => Interaction::Normal,
-            (true, true) => {
-                if widget_input.mouse_left_click().is_some() {
-                    Interaction::Clicked
-                } else {
-                    Interaction::Highlighted
-                }
-            },
-        }
     }
 }
 
@@ -132,7 +98,6 @@ impl<'a, F> Widget for Button<'a, F>
         State {
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
-            interaction: Interaction::Normal,
         }
     }
 
@@ -144,22 +109,29 @@ impl<'a, F> Widget for Button<'a, F>
     fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
-        // Check whether or not a new interaction has occurred.
-        let new_interaction = self.get_new_interaction(&ui.widget_input());
-        if new_interaction == Interaction::Clicked {
-            self.maybe_react.map(|react_function| react_function());
-        }
+        let button_color = {
+            let input = ui.widget_input();
+            if input.mouse_left_click().is_some() {
+                self.maybe_react.map(|react_function| react_function());
+            }
+
+            let style_color = style.color(ui.theme());
+            input.mouse_left_button_currently_pressed().map(|_| {
+                style_color.clicked()
+            }).or_else(|| {
+                input.maybe_mouse_position().map(|_| style_color.highlighted())
+            }).unwrap_or(style_color)
+        };
 
         // FramedRectangle widget.
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
-        let color = new_interaction.color(style.color(ui.theme()));
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
-            .color(color)
+            .color(button_color)
             .frame(frame)
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
@@ -175,11 +147,6 @@ impl<'a, F> Widget for Button<'a, F>
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
-        }
-
-        // If there has been a change in interaction, set the new one.
-        if state.view().interaction != new_interaction {
-            state.update(|state| state.interaction = new_interaction);
         }
 
     }

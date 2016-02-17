@@ -33,6 +33,12 @@ impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
     fn current_state(&'a self) -> &'a InputState {
         &self.current_state
     }
+
+    fn mouse_button_currently_pressed(&self, button: MouseButton) -> Option<Point> {
+         self.current_state().mouse_buttons.get(button).map(|_| {
+             self.mouse_position()
+         })
+    }
 }
 
 impl GlobalInput {

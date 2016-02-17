@@ -1,9 +1,46 @@
-use input::{Input, Motion};
+use input::{Input, Motion, Button};
 use input::keyboard::NO_MODIFIER;
 use input::mouse::MouseButton;
 use events::{UiEvent, MouseClick, GlobalInput, WidgetInput, InputProvider};
 use widget::{Index, Id};
 use position::Rect;
+
+#[test]
+fn mouse_button_currently_pressed_should_return_none_if_mouse_is_not_over_widget() {
+    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
+    let mut global_input = GlobalInput::new(4.0);
+    // mouse position stays at (0,0)
+    global_input.push_event(UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))));
+
+    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
+
+    assert!(widget_input.mouse_left_button_currently_pressed().is_none());
+}
+
+#[test]
+fn mouse_button_currently_pressed_should_return_none_if_another_widget_is_capturing_mouse() {
+    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
+    let mut global_input = GlobalInput::new(4.0);
+    global_input.push_event(UiEvent::WidgetCapturesMouse(Index::Public(Id(999))));
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    global_input.push_event(UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))));
+
+    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
+
+    assert!(widget_input.mouse_left_button_currently_pressed().is_none());
+}
+
+#[test]
+fn mouse_button_currently_pressed_should_return_current_mouse_position_if_mouse_is_over_widget() {
+    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
+    let mut global_input = GlobalInput::new(4.0);
+    global_input.push_event(UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    global_input.push_event(UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))));
+
+    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
+
+    assert_eq!(Some([0.0, 0.0]), widget_input.mouse_left_button_currently_pressed());
+}
 
 #[test]
 fn maybe_mouse_position_should_return_position_if_mouse_is_over_the_widget() {

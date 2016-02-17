@@ -19,6 +19,10 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     /// date with all of the events so far.
     fn current_state(&'a self) -> &'a InputState;
 
+    /// If the given mouse button is currently pressed, returns the current position of the mouse.
+    /// Otherwise, returns `None`
+    fn mouse_button_currently_pressed(&'a self, button: MouseButton) -> Option<Point>;
+
     //////////////////////////////////////////////////
     // Methods that just check the stream of events //
     //////////////////////////////////////////////////
@@ -150,23 +154,15 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     // Methods that just check the current input state //
     /////////////////////////////////////////////////////
 
-    /// Returns true if the given mouse button is currently pressed, otherwise false
-    fn mouse_button_currently_pressed(&'a self, button: MouseButton) -> bool {
-        match self.current_state().mouse_buttons.get(button) {
-            Some(_) => true,
-            _ => false
-        }
-    }
-
     /// Convenience method for checking if the Left mouse button is down.
-    /// Returns true if the Left mouse button is currently pressed, otherwise false.
-    fn mouse_left_button_currently_pressed(&'a self) -> bool {
+    /// Returns mouse position if the Left mouse button is currently pressed, otherwise `None`.
+    fn mouse_left_button_currently_pressed(&'a self) -> Option<Point> {
         self.mouse_button_currently_pressed(MouseButton::Left)
     }
 
     /// Convenience method for checking if the Right mouse button is down.
-    /// Returns true if the Right mouse button is currently pressed, otherwise false.
-    fn mouse_right_button_currently_pressed(&'a self) -> bool {
+    /// Returns mouse position if the Right mouse button is currently pressed, otherwise `None`.
+    fn mouse_right_button_currently_pressed(&'a self) -> Option<Point> {
         self.mouse_button_currently_pressed(MouseButton::Right)
     }
 
