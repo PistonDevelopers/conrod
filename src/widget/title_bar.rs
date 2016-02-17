@@ -1,5 +1,6 @@
 use {
     Align,
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -143,8 +144,9 @@ pub fn calc_height(font_size: FontSize) -> Scalar {
 }
 
 
-impl<'a, F> Widget for TitleBar<'a, F>
-    where F: FnOnce(Interaction),
+impl<'a, B, F> Widget<B> for TitleBar<'a, F>
+    where B: Backend,
+          F: FnOnce(Interaction),
 {
     type State = State;
     type Style = Style;
@@ -173,13 +175,13 @@ impl<'a, F> Widget for TitleBar<'a, F>
         self.style.clone()
     }
 
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_y_dimension(&self, ui: &Ui<B>) -> Dimension {
         let font_size = self.style.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
 
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TitleBar { label, maybe_react, .. } = self;
 

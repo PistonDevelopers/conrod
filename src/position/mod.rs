@@ -1,14 +1,14 @@
 
-use {CharacterCache, Ui};
+use {Backend, CharacterCache, Ui};
 use widget;
 
 pub use self::range::{Edge, Range};
 pub use self::rect::{Corner, Rect};
 pub use self::rect::is_over as is_over_rect;
-pub use self::matrix::Matrix;
+//pub use self::matrix::Matrix;
 
 
-pub mod matrix;
+//pub mod matrix;
 pub mod range;
 pub mod rect;
 
@@ -129,7 +129,9 @@ pub enum Dimension {
 /// widgets to be positioned in a variety of different ways.
 ///
 /// Thus, **Positionable** can be implemented for *all* types that implement **Widget**.
-pub trait Positionable: Sized {
+pub trait Positionable<B>: Sized
+    where B: Backend,
+{
 
     /// Build with the given **Position** along the *x* axis.
     fn x_position(self, Position) -> Self;
@@ -138,10 +140,10 @@ pub trait Positionable: Sized {
     fn y_position(self, Position) -> Self;
 
     /// Get the **Position** along the *x* axis.
-    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position;
+    fn get_x_position(&self, ui: &Ui<B>) -> Position;
 
     /// Get the **Position** along the *y* axis.
-    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position;
+    fn get_y_position(&self, ui: &Ui<B>) -> Position;
 
     // Absolute positioning.
 
@@ -646,7 +648,9 @@ pub trait Positionable: Sized {
 }
 
 /// Widgets that support different dimensions.
-pub trait Sizeable: Sized {
+pub trait Sizeable<B>: Sized
+    where B: Backend,
+{
 
     // Required implementations.
 
@@ -657,10 +661,10 @@ pub trait Sizeable: Sized {
     fn y_dimension(self, x: Dimension) -> Self;
 
     /// The widget's length along the x axis as a Dimension.
-    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension;
+    fn get_x_dimension(&self, ui: &Ui<B>) -> Dimension;
 
     /// The widget's length along the y axis as a Dimension.
-    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension;
+    fn get_y_dimension(&self, ui: &Ui<B>) -> Dimension;
 
     // Provided defaults.
 
@@ -768,7 +772,7 @@ pub trait Sizeable: Sized {
 
     /// Get the absolute width of the widget as a Scalar value.
     #[inline]
-    fn get_w<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+    fn get_w(&self, ui: &Ui<B>) -> Option<Scalar> {
         match self.get_x_dimension(ui) {
             Dimension::Absolute(width) => Some(width),
             Dimension::Of(idx, None) => ui.w_of(idx),
@@ -780,7 +784,7 @@ pub trait Sizeable: Sized {
 
     /// Get the height of the widget.
     #[inline]
-    fn get_h<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Scalar> {
+    fn get_h(&self, ui: &Ui<B>) -> Option<Scalar> {
         match self.get_y_dimension(ui) {
             Dimension::Absolute(height) => Some(height),
             Dimension::Of(idx, None) => ui.h_of(idx),
@@ -792,7 +796,7 @@ pub trait Sizeable: Sized {
 
     /// The dimensions for the widget.
     #[inline]
-    fn get_wh<C: CharacterCache>(&self, ui: &Ui<C>) -> Option<Dimensions> {
+    fn get_wh(&self, ui: &Ui<B>) -> Option<Dimensions> {
         self.get_w(ui).and_then(|w| self.get_h(ui).map(|h| [w, h]))
     }
 

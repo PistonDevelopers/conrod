@@ -1,5 +1,6 @@
 
 use {CharacterCache, Scalar};
+use backend::Backend;
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
@@ -22,6 +23,7 @@ use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Ra
 use std::any::Any;
 use std::collections::HashSet;
 use std::io::Write;
+use std::marker::PhantomData;
 use theme::Theme;
 use widget::{self, Widget};
 use ::events::{UiEvent, InputProvider, GlobalInput, WidgetInput};
@@ -44,11 +46,15 @@ enum Capturing {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<C> {
+pub struct Ui<B>
+    where B: Backend,
+{
+    /// The backend used by the `Ui`, providing the `Graphics` and `CharacterCache` types.
+    backend: PhantomData<B>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// Cache for character textures, used for label width calculation and glyph rendering.
-    pub glyph_cache: GlyphCache<C>,
+    pub glyph_cache: GlyphCache<B::CharacterCache>,
     /// An index into the root widget of the graph, representing the entire window.
     pub window: NodeIndex,
     /// Window width.
@@ -121,11 +127,12 @@ pub struct UserInput<'a> {
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 
-impl<C> Ui<C> {
-
+impl<B> Ui<B>
+    where B: Backend,
+{
 
     /// A new, empty **Ui**.
-    pub fn new(character_cache: C, theme: Theme) -> Self {
+    pub fn new(character_cache: B::CharacterCache, theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
         let updated_widgets = HashSet::new();
@@ -133,7 +140,10 @@ impl<C> Ui<C> {
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
-    pub fn with_capacity(character_cache: C, theme: Theme, n_widgets: usize) -> Self {
+    pub fn with_capacity(character_cache: B::CharacterCache,
+                         theme: Theme,
+                         n_widgets: usize) -> Self
+    {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
         let updated_widgets = HashSet::with_capacity(n_widgets);
@@ -141,7 +151,7 @@ impl<C> Ui<C> {
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
-    fn new_internal(character_cache: C,
+    fn new_internal(character_cache: B::CharacterCache,
                     theme: Theme,
                     mut widget_graph: Graph,
                     depth_order: graph::DepthOrder,
@@ -151,6 +161,7 @@ impl<C> Ui<C> {
         let prev_updated_widgets = updated_widgets.clone();
         let mouse_drag_threshold = theme.mouse_drag_threshold;
         Ui {
+            backend: PhantomData,
             widget_graph: widget_graph,
             theme: theme,
             window: window,
@@ -402,13 +413,14 @@ impl<C> Ui<C> {
         //
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
-        fn abs_from_position<C, R, P>(ui: &Ui<C>,
+        fn abs_from_position<B, R, P>(ui: &Ui<B>,
                                       position: Position,
                                       dim: Scalar,
                                       place_on_kid_area: bool,
                                       range_from_rect: R,
                                       start_and_end_pad: P) -> Scalar
-            where R: FnOnce(Rect) -> Range,
+            where B: Backend,
+                  R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> Range,
         {
             match position {
@@ -497,8 +509,7 @@ impl<C> Ui<C> {
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where C: CharacterCache,
-              F: FnOnce(&mut Self),
+        where F: FnOnce(&mut Self),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -615,11 +626,7 @@ impl<C> Ui<C> {
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
-              G::Texture: Any,
-    {
+    pub fn draw(&mut self, context: Context, graphics: &mut B::Graphics) {
         use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::{Deref, DerefMut};
 
@@ -666,11 +673,7 @@ impl<C> Ui<C> {
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
-              G::Texture: Any,
-    {
+    pub fn draw_if_changed(&mut self, context: Context, graphics: &mut B::Graphics) {
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
@@ -697,7 +700,9 @@ impl<C> Ui<C> {
 
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
-pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
+pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
+    //where B: Backend,
+{
     &mut ui.widget_graph
 }
 
@@ -705,8 +710,9 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
+pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position)
     -> Option<widget::Index>
+    //where B: Backend,
 {
     use Position::{Place, Relative, Direction, Align};
     match (x_pos, y_pos) {
@@ -731,7 +737,7 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position) -> widget::Index {
+pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index {
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
@@ -739,14 +745,14 @@ pub fn infer_parent_unchecked<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position) -
 
 
 /// A function to allow the position matrix to set the current parent within the `Ui`.
-pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
+pub fn set_current_parent_idx<B>(ui: &mut Ui<B>, idx: widget::Index) {
     ui.maybe_current_parent_idx = Some(idx);
 }
 
 
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
-pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
+pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a> {
     let maybe_mouse = get_mouse_state(ui, idx);
     let global_mouse = ui.mouse;
     let without_keys = || UserInput {
@@ -778,7 +784,7 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
 /// Return the current mouse state.
 ///
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
-pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
+pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse> {
     match ui.maybe_captured_mouse {
         Some(Capturing::Captured(captured_idx)) =>
             if idx == captured_idx { Some(ui.mouse) } else { None },
@@ -804,7 +810,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 /// Returns true if the mouse was successfully captured.
 ///
 /// Returns false if the mouse was already captured.
-pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn mouse_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
     // If the mouse isn't already captured, set idx as the capturing widget.
     if let None = ui.maybe_captured_mouse {
         ui.maybe_captured_mouse = Some(Capturing::Captured(idx));
@@ -819,7 +825,7 @@ pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the mouse was sucessfully released.
 ///
 /// Returns false if the mouse wasn't captured by the widget in the first place.
-pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn mouse_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
     // Check that we are indeed the widget that is currently capturing the Mouse before releasing.
     if ui.maybe_captured_mouse == Some(Capturing::Captured(idx)) {
         ui.maybe_captured_mouse = Some(Capturing::JustReleased);
@@ -833,7 +839,7 @@ pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully captured.
 ///
 /// Returns false if the keyboard was already captured by another widget.
-pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn keyboard_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -859,7 +865,7 @@ pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully released.
 ///
 /// Returns false if the keyboard wasn't captured by the given widget in the first place.
-pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn keyboard_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -887,9 +893,7 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
-    C: CharacterCache,
-{
+pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache) {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     let widget_idx = widget.idx;
@@ -903,11 +907,11 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>) where
-    C: CharacterCache,
-    W: Widget,
-    W::State: 'static,
-    W::Style: 'static,
+pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<B, W>)
+    where B: Backend,
+          W: Widget<B>,
+          W::State: 'static,
+          W::Style: 'static,
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
@@ -916,6 +920,6 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 
 
 /// Clear the background with the given color.
-pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
+pub fn clear_with<B>(ui: &mut Ui<B>, color: Color) {
     ui.maybe_background_color = Some(color);
 }

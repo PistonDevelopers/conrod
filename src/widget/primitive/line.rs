@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Point,
@@ -261,7 +261,9 @@ impl Style {
 }
 
 
-impl Widget for Line {
+impl<B> Widget<B> for Line
+    where B: Backend,
+{
     type State = State;
     type Style = Style;
 
@@ -289,7 +291,7 @@ impl Widget for Line {
     }
 
     /// Update the state of the Line.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { rect, state, .. } = args;
         let Line { mut start, mut end, should_centre_points, .. } = self;
 

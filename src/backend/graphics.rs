@@ -8,7 +8,7 @@
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 
 
-use ::{Color, Point, Rect, Scalar};
+use {Backend, Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
 use std::any::Any;
@@ -23,15 +23,14 @@ pub use graphics::character::{Character, CharacterCache};
 
 
 /// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
-pub fn draw_from_graph<G, C>(context: Context,
-                             graphics: &mut G,
-                             character_cache: &mut C,
-                             graph: &Graph,
-                             depth_order: &[Visitable],
-                             theme: &Theme)
-    where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
-          G::Texture: Any,
+pub fn draw_from_graph<B>(context: Context,
+                          graphics: &mut B::Graphics,
+                          character_cache: &mut B::CharacterCache,
+                          graph: &Graph,
+                          depth_order: &[Visitable],
+                          theme: &Theme)
+    where B: Backend,
+          B::Texture: Any,
 {
 
     // A stack of contexts, one for each scroll group.
@@ -70,7 +69,7 @@ pub fn draw_from_graph<G, C>(context: Context,
 
                     // Draw the widget, but only if it would actually be visible on the window.
                     if is_visible(idx, container) {
-                        draw_from_container(&context, graphics, character_cache, container, theme);
+                        draw_from_container::<B>(&context, graphics, character_cache, container, theme);
                     }
 
                     // If the current widget is some scrollable widget, we need to add a context
@@ -186,21 +185,20 @@ fn crop_context(context: Context, rect: Rect) -> Context {
 
 
 /// Use the given **CharacterCache** and **Graphics** backends to draw the given widget.
-pub fn draw_from_container<G, C>(context: &Context,
-                                 graphics: &mut G,
-                                 character_cache: &mut C,
-                                 container: &Container,
-                                 theme: &Theme)
-    where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
-          G::Texture: Any,
+pub fn draw_from_container<B>(context: &Context,
+                              graphics: &mut B::Graphics,
+                              character_cache: &mut B::CharacterCache,
+                              container: &Container,
+                              theme: &Theme)
+    where B: Backend,
+          B::Texture: Any,
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
     match container.kind {
 
         primitive::shape::rectangle::KIND => {
-            if let Some(rectangle) = container.unique_widget_state::<::Rectangle>() {
+            if let Some(rectangle) = container.unique_widget_state::<B, ::Rectangle>() {
                 match rectangle.style {
                     ShapeStyle::Fill(_) => {
                         let color = rectangle.style.get_color(theme);
@@ -217,7 +215,7 @@ pub fn draw_from_container<G, C>(context: &Context,
         },
 
         primitive::shape::framed_rectangle::KIND => {
-            if let Some(framed_rectangle) = container.unique_widget_state::<::FramedRectangle>() {
+            if let Some(framed_rectangle) = container.unique_widget_state::<B, ::FramedRectangle>() {
                 let frame = framed_rectangle.style.frame(theme);
                 if frame > 0.0 {
                     let frame_color = framed_rectangle.style.frame_color(theme);
@@ -231,7 +229,7 @@ pub fn draw_from_container<G, C>(context: &Context,
         },
 
         primitive::shape::oval::KIND => {
-            if let Some(oval) = container.unique_widget_state::<::Oval>() {
+            if let Some(oval) = container.unique_widget_state::<B, ::Oval>() {
                 use std::f64::consts::PI;
                 const CIRCLE_RESOLUTION: usize = 50;
                 const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
@@ -282,7 +280,7 @@ pub fn draw_from_container<G, C>(context: &Context,
         },
 
         primitive::line::KIND => {
-            if let Some(line) = container.unique_widget_state::<::Line>() {
+            if let Some(line) = container.unique_widget_state::<B, ::Line>() {
                 let points = once(line.state.start).chain(once(line.state.end));
                 draw_lines(context, graphics, theme, points, line.style);
             }
@@ -297,7 +295,7 @@ pub fn draw_from_container<G, C>(context: &Context,
         },
 
         primitive::text::KIND => {
-            if let Some(text) = container.unique_widget_state::<::Text>() {
+            if let Some(text) = container.unique_widget_state::<B, ::Text>() {
                 let ::graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
@@ -321,7 +319,7 @@ pub fn draw_from_container<G, C>(context: &Context,
 
         primitive::image::KIND => {
             use widget::primitive::image::{State, Style};
-            if let Some(image) = container.state_and_style::<State<G::Texture>, Style>() {
+            if let Some(image) = container.state_and_style::<State<B::Texture>, Style>() {
                 let ::graph::UniqueWidgetState { ref state, ref style } = *image;
                 if let Some(texture) = state.texture.as_ref() {
                     let mut image = graphics::image::Image::new();

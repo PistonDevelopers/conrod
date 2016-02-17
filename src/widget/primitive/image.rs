@@ -1,5 +1,5 @@
 use {
-    CharacterCache,
+    Backend,
     Color,
     Dimension,
     Rect,
@@ -104,10 +104,11 @@ impl<T> Image<T> {
 }
 
 
-impl<T> Widget for Image<T>
-    where T: ImageSize + Any + PartialEq + Debug,
+impl<B> Widget<B> for Image<B::Texture>
+    where B: Backend,
+          B::Texture: Any + Debug + PartialEq,
 {
-    type State = State<T>;
+    type State = State<B::Texture>;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -132,7 +133,7 @@ impl<T> Widget for Image<T>
         self.style.clone()
     }
 
-    fn default_x_dimension<C: CharacterCache>(&self, _ui: &Ui<C>) -> Dimension {
+    fn default_x_dimension(&self, _ui: &Ui<B>) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.w()),
             None => match self.src {
@@ -144,7 +145,7 @@ impl<T> Widget for Image<T>
         }
     }
 
-    fn default_y_dimension<C: CharacterCache>(&self, _ui: &Ui<C>) -> Dimension {
+    fn default_y_dimension(&self, _ui: &Ui<B>) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.h()),
             None => match self.src {
@@ -156,7 +157,7 @@ impl<T> Widget for Image<T>
         }
     }
 
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, .. } = args;
         let Image { src_rect, src, .. } = self;
 

@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     FontSize,
@@ -141,9 +141,10 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F> where
-    F: FnOnce(T),
-    T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+impl<'a, B, T, F> Widget<B> for Slider<'a, T, F>
+    where B: Backend,
+          F: FnOnce(T),
+          T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
 {
     type State = State<T>;
     type Style = Style;
@@ -177,7 +178,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         self.style.clone()
     }
 
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self, B>) -> KidArea {
         const LABEL_PADDING: Scalar = 10.0;
         KidArea {
             rect: args.rect,
@@ -189,7 +190,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
     }
 
     /// Update the state of the Slider.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
         use utils::{clamp, map_range, percentage, value_from_perc};
 

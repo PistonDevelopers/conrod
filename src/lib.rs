@@ -74,7 +74,7 @@ pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
-pub use position::Matrix as PositionMatrix;
+//pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
 pub use ui::{Ui, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};

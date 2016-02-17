@@ -1,5 +1,5 @@
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -51,7 +51,9 @@ impl FramedRectangle {
 }
 
 
-impl Widget for FramedRectangle {
+impl<B> Widget<B> for FramedRectangle
+    where B: Backend,
+{
     type State = ();
     type Style = Style;
 
@@ -76,7 +78,7 @@ impl Widget for FramedRectangle {
     }
 
     /// Update the state of the Rectangle.
-    fn update<C: CharacterCache>(self, _args: widget::UpdateArgs<Self, C>) {
+    fn update(self, _args: widget::UpdateArgs<Self, B>) {
         // Nothing to update here!
     }
 

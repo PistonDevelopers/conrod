@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -240,9 +240,10 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
 }
 
-impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
-    F: FnOnce(T),
-    T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
+impl<'a, B, T, F> Widget<B> for NumberDialer<'a, T, F>
+    where B: Backend,
+          F: FnOnce(T),
+          T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
     type State = State<T>;
     type Style = Style;
@@ -277,7 +278,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F> where
     }
 
     /// Update the state of the NumberDialer.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;

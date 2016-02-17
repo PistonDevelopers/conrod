@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     FontSize,
@@ -122,8 +122,9 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
-impl<'a, F> Widget for Toggle<'a, F>
-    where F: FnOnce(bool),
+impl<'a, B, F> Widget<B> for Toggle<'a, F>
+    where B: Backend,
+          F: FnOnce(bool),
 {
     type State = State;
     type Style = Style;
@@ -154,7 +155,7 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Update the state of the Toggle.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let Toggle { value, enabled, maybe_label, maybe_react, .. } = self;
         let maybe_mouse = ui.input().maybe_mouse;

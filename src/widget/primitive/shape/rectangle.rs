@@ -1,5 +1,5 @@
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -72,7 +72,9 @@ impl Rectangle {
 }
 
 
-impl Widget for Rectangle {
+impl<B> Widget<B> for Rectangle
+    where B: Backend,
+{
     type State = State;
     type Style = Style;
 
@@ -99,7 +101,7 @@ impl Widget for Rectangle {
     }
 
     /// Update the state of the Rectangle.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, style, .. } = args;
 
         let kind = match *style {

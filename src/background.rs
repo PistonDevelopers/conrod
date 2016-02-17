@@ -1,5 +1,5 @@
 
-use CharacterCache;
+use {Backend, CharacterCache};
 use color::{Color, Colorable};
 use ui::{self, Ui};
 
@@ -19,7 +19,9 @@ impl Background {
     }
 
     /// Set the color used clear the background with before drawing widgets.
-    pub fn set<C>(&mut self, ui: &mut Ui<C>) where C: CharacterCache {
+    pub fn set<B>(&mut self, ui: &mut Ui<B>)
+        where B: Backend
+    {
         let color = self.maybe_color.unwrap_or(ui.theme.background_color);
         ui::clear_with(ui, color);
     }

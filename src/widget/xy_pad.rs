@@ -1,5 +1,6 @@
 
 use {
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -137,8 +138,9 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
 
 }
 
-impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
-    where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+impl<'a, B, X, Y, F> Widget<B> for XYPad<'a, X, Y, F>
+    where B: Backend,
+          X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           F: FnOnce(X, Y),
 {
@@ -157,7 +159,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         KIND
     }
 
-    fn init_state(&self) -> State<X, Y> {
+    fn init_state(&self) -> Self::State {
         State {
             interaction: Interaction::Normal,
             x: self.x, min_x: self.min_x, max_x: self.max_x,
@@ -175,7 +177,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         use position::{Direction, Edge};
         use self::Interaction::{Clicked, Highlighted, Normal};
 

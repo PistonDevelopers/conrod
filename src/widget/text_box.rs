@@ -1,4 +1,5 @@
 use {
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -332,7 +333,10 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
+impl<'a, B, F> Widget<B> for TextBox<'a, F>
+    where B: Backend,
+          F: FnMut(&mut String),
+{
     type State = State;
     type Style = Style;
 
@@ -363,7 +367,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         self.style.clone()
     }
 
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self, B>) -> widget::KidArea {
         KidArea {
             rect: args.rect,
             pad: Padding {
@@ -374,7 +378,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     }
 
     /// Update the state of the TextBox.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+    fn update(mut self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();

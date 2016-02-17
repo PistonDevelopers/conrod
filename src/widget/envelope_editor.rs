@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Circle,
     Color,
     Colorable,
@@ -244,8 +244,9 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 }
 
 
-impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
-    where E: EnvelopePoint,
+impl<'a, B, E, F> Widget<B> for EnvelopeEditor<'a, E, F>
+    where B: Backend,
+          E: EnvelopePoint,
           E::X: Any,
           E::Y: Any,
           F: FnMut(&mut Vec<E>, usize),
@@ -287,7 +288,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
