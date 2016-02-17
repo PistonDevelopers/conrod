@@ -14,12 +14,12 @@ fn mouse_position_should_return_mouse_position_from_current_state() {
 }
 
 #[test]
-fn mouse_button_currently_pressed_should_return_true_if_button_is_pressed() {
+fn mouse_button_down_should_return_true_if_button_is_pressed() {
     let mut input_state = InputState::new();
     input_state.mouse_buttons.set(MouseButton::Right, Some([0.0, 0.0]));
     let input = ProviderImpl::with_input_state(input_state);
-    assert_eq!(Some([0.0, 0.0]), input.mouse_button_currently_pressed(MouseButton::Right));
-    assert!(input.mouse_left_button_currently_pressed().is_none());
+    assert_eq!(Some([0.0, 0.0]), input.mouse_button_down(MouseButton::Right));
+    assert!(input.mouse_left_button_down().is_none());
 }
 
 #[test]
@@ -194,7 +194,7 @@ impl<'a> InputProvider<'a, TestInputEventIterator<'a>> for ProviderImpl {
         &self.current_state
     }
 
-    fn mouse_button_currently_pressed(&self, button: MouseButton) -> Option<Point> {
+    fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
         self.current_state().mouse_buttons.get(button).map(|_| {
             self.mouse_position()
         })

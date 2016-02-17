@@ -128,7 +128,7 @@ impl<'a> InputProvider<'a, WidgetInputEventIterator<'a>> for WidgetInput<'a> {
         }).last()
     }
 
-    fn mouse_button_currently_pressed(&self, button: MouseButton) -> Option<Point> {
+    fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
         self.current_state().mouse_buttons.get(button).iter().filter(|_| {
             self.current_state().widget_capturing_mouse.map(|capturing| {
                 capturing == self.widget_idx

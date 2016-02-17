@@ -14,7 +14,7 @@ use {
     Widget,
 };
 use widget;
-use events::{WidgetInput, InputProvider};
+use events::InputProvider;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -116,7 +116,7 @@ impl<'a, F> Widget for Button<'a, F>
             }
 
             let style_color = style.color(ui.theme());
-            input.mouse_left_button_currently_pressed().map(|_| {
+            input.mouse_left_button_down().map(|_| {
                 style_color.clicked()
             }).or_else(|| {
                 input.maybe_mouse_position().map(|_| style_color.highlighted())
