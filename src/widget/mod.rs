@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use theme::{self, Theme};
 use time::precise_time_ns;
 use ui::{self, Ui, UserInput};
+use events::{GlobalInput, WidgetInput};
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -810,7 +811,7 @@ pub trait Widget: Sized {
 /// For all following occasions, the pre-existing cached state will be compared and updated.
 ///
 /// Note that this is a very imperative, mutation oriented segment of code. We try to move as much
-/// imperativeness and mutation out of the users hands and into this function as possible, so that 
+/// imperativeness and mutation out of the users hands and into this function as possible, so that
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
@@ -1120,9 +1121,32 @@ impl<'a, C> UiCell<'a, C> {
     /// A reference to the `Ui`'s `GlyphCache`.
     pub fn glyph_cache(&self) -> &GlyphCache<C> { &self.ui.glyph_cache }
 
+    /// Returns the dimensions of the window
+    pub fn window_dim(&self) -> Dimensions {
+        [self.ui.win_w, self.ui.win_h]
+    }
+
     /// A struct representing the user input that has occurred since the last update.
     pub fn input(&self) -> UserInput {
         ui::user_input(self.ui, self.idx)
+    }
+
+    /// Returns an immutable reference to the `GlobalInput` of the `Ui`. All coordinates
+    /// here will be relative to the center of the window.
+    pub fn global_input(&self) -> &GlobalInput {
+        &self.ui.global_input
+    }
+
+    /// Returns a `WidgetInput` with input events for the widget.
+    /// All coordinates in the `WidgetInput` will be relative to the current widget.
+    pub fn widget_input(&self) -> WidgetInput {
+        self.widget_input_for(self.idx)
+    }
+
+    /// Returns a `WidgetInput` with input events for the widget.
+    /// All coordinates in the `WidgetInput` will be relative to the given widget.
+    pub fn widget_input_for<I: Into<Index>>(&self, widget: I) -> WidgetInput {
+        self.ui.widget_input(widget.into())
     }
 
     /// A struct representing the user input that has occurred since the last update for the
@@ -1372,7 +1396,7 @@ impl<W> Sizeable for W where W: Widget {
 //         }
 //     };
 // }
-// 
+//
 // style_retrieval! {
 //     fn_name: color,
 //     member: maybe_color,

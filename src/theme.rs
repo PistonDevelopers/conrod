@@ -40,6 +40,9 @@ pub struct Theme {
     pub maybe_scrollbar: Option<widget::scroll::Style>,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
     pub widget_styling: HashMap<&'static str, WidgetDefault>,
+    /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
+    /// that the mouse must move before starting a drag operation.
+    pub mouse_drag_threshold: Scalar,
 }
 
 /// The defaults for a specific widget.
@@ -69,6 +72,8 @@ impl WidgetDefault {
     }
 }
 
+/// This is the default value that is used for `Theme::mouse_drag_threshold`.
+pub const DEFAULT_MOUSE_DRAG_THRESHOLD: Scalar = 4.0;
 
 impl Theme {
 
@@ -89,6 +94,7 @@ impl Theme {
             font_size_small: 12,
             maybe_scrollbar: None,
             widget_styling: HashMap::new(),
+            mouse_drag_threshold: DEFAULT_MOUSE_DRAG_THRESHOLD,
         }
     }
 
@@ -110,4 +116,3 @@ impl Theme {
     }
 
 }
-

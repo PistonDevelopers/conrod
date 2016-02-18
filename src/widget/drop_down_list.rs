@@ -17,6 +17,7 @@ use ::{
     Sizeable,
 };
 use widget::{self, Widget};
+use events::InputProvider;
 
 
 /// The index of a selected item.
@@ -153,10 +154,6 @@ impl<'a, F> Widget for DropDownList<'a, F> where
     fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
-        let (global_mouse, window_dim) = {
-            let input = ui.input();
-            (input.global_mouse, input.window_dim)
-        };
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
@@ -184,43 +181,38 @@ impl<'a, F> Widget for DropDownList<'a, F> where
             state.update(|state| state.buttons = new_buttons);
         }
 
-        // Determine the new menu state by checking whether or not any of our Button's reactions
-        // are triggered.
+        // Act on the current menu state and determine what the next one will be.
+        // new_menu_state is what we will be getting passed next frame
         let new_menu_state = match state.view().menu_state {
-
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
-                let buttons = &state.view().buttons;
-
                 // Get the button index and the label for the closed menu's button.
+                let buttons = &state.view().buttons;
                 let (button_idx, label) = selected
                     .map(|i| (buttons[i].0, &self.strings[i][..]))
                     .unwrap_or_else(|| (buttons[0].0, self.maybe_label.unwrap_or("")));
 
-                // Use the pre-existing button widget to act as our button.
                 let mut was_clicked = false;
                 {
+                    // use the pre-existing Button widget
                     let mut button = Button::new()
-                        .xy(rect.xy())
-                        .wh(rect.dim())
-                        .label(label)
-                        .parent(idx)
-                        .react(|| was_clicked = true);
-                    let is_selected = false;
-                    button.style = style.button_style(is_selected);
+                    .xy(rect.xy())
+                    .wh(rect.dim())
+                    .label(label)
+                    .parent(idx)
+                    .react(|| {was_clicked = true});
+                    button.style = style.button_style(false);
                     button.set(button_idx, &mut ui);
                 }
 
-                // If the closed menu was clicked, we want to open it.
+                // If the button was clicked, then open, otherwise stay closed
                 if was_clicked { MenuState::Open } else { MenuState::Closed }
             },
-
-            // Otherwise if open, we want to set all the buttons that would be currently visible.
             MenuState::Open => {
-
+                // Otherwise if open, we want to set all the buttons that would be currently visible.
                 let (xy, dim) = rect.xy_dim();
                 let max_visible_height = {
-                    let bottom_win_y = (-window_dim[1]) / 2.0;
+                    let bottom_win_y = (-ui.window_dim()[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
                     let max = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
                     style.maybe_max_visible_height(ui.theme()).map(|max_height| {
@@ -260,25 +252,27 @@ impl<'a, F> Widget for DropDownList<'a, F> where
                     button.set(button_node_idx, &mut ui);
                 }
 
-                // If one of the buttons was clicked, we want to close the menu.
+                let mouse_pressed_elsewhere = ui.global_input.mouse_buttons_just_pressed().next().is_some()
+                        && !canvas_rect.is_over(ui.global_input.mouse_position());
+
+                // Determine the new menu state
                 if let Some(i) = was_clicked {
-
-                    // If we were given some react function, we'll call it.
+                    // If one of the buttons was clicked, we want to close the menu.
                     if let Some(ref mut react) = self.maybe_react {
+                        // If we were given some react function, we'll call it.
                         *self.selected = selected;
-                        react(self.selected, i, &self.strings[i])
+                        react(self.selected, i, &self.strings[i]);
                     }
+                    MenuState::Closed
+                } else if mouse_pressed_elsewhere {
+                    // if a mouse button was pressed somewhere else, then close the menu
+                    MenuState::Closed
 
-                    MenuState::Closed
-                // Otherwise if the mouse was released somewhere else we should close the menu.
-                } else if global_mouse.left.was_just_pressed
-                && !canvas_rect.is_over(global_mouse.xy) {
-                    MenuState::Closed
                 } else {
+                    // Otherwise, we just keep the menu open
                     MenuState::Open
                 }
-            },
-
+            }
         };
 
         if state.view().menu_state != new_menu_state {

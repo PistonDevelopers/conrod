@@ -7,6 +7,8 @@ use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use input;
 use input::{
+    Input,
+    Motion,
     GenericEvent,
     MouseCursorEvent,
     MouseScrollEvent,
@@ -21,6 +23,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use theme::Theme;
 use widget::{self, Widget};
+use ::events::{UiEvent, InputProvider, GlobalInput, WidgetInput};
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -51,6 +54,8 @@ pub struct Ui<C> {
     pub win_w: f64,
     /// Window height.
     pub win_h: f64,
+    /// Handles aggregation of events and providing them to Widgets
+    pub global_input: GlobalInput,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The latest received mouse state.
@@ -143,6 +148,7 @@ impl<C> Ui<C> {
     {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
+        let mouse_drag_threshold = theme.mouse_drag_threshold;
         Ui {
             widget_graph: widget_graph,
             theme: theme,
@@ -166,7 +172,23 @@ impl<C> Ui<C> {
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
+            global_input: GlobalInput::new(mouse_drag_threshold),
         }
+    }
+
+    /// Returns a `WidgetInput` for the given widget
+    pub fn widget_input<I: Into<widget::Index>>(&self, widget: I) -> WidgetInput {
+        let idx = widget.into();
+
+        // If there's no rectangle for a given widget, then we use one with zero area.
+        // This means that the resulting `WidgetInput` will not include any mouse events
+        // unless it has captured the mouse, since none will have occured over that area.
+        let rect = self.rect_of(idx).unwrap_or_else(|| {
+            let right_edge = self.win_w / 2.0;
+            let bottom_edge = self.win_h / 2.0;
+            Rect::from_xy_dim([right_edge, bottom_edge], [0.0, 0.0])
+        });
+        WidgetInput::for_widget(idx, rect, &self.global_input)
     }
 
     /// The **Rect** for the widget at the given index.
@@ -243,8 +265,10 @@ impl<C> Ui<C> {
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
+        use input::{CursorEvent, FocusEvent};
 
         event.resize(|w, h| {
+            self.global_input.push_event(UiEvent::Raw(Input::Resize(w, h)));
             self.win_w = w as f64;
             self.win_h = h as f64;
             self.needs_redraw();
@@ -257,10 +281,19 @@ impl<C> Ui<C> {
 
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
-            self.mouse.xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            let center_origin_point = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.mouse.xy = center_origin_point;
+            self.global_input.push_event(UiEvent::Raw(
+                Input::Move(
+                    Motion::MouseRelative(center_origin_point[0], center_origin_point[1])
+                )
+            ));
         });
 
         event.mouse_scroll(|x, y| {
+            self.global_input.push_event(UiEvent::Raw(
+                Input::Move(Motion::MouseScroll(x, y))
+            ));
             self.mouse.scroll.x += x;
             self.mouse.scroll.y += y;
         });
@@ -269,8 +302,13 @@ impl<C> Ui<C> {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
+            self.global_input.push_event(UiEvent::Raw(
+                Input::Press(button_type)
+            ));
+
             match button_type {
                 Button::Mouse(button) => {
+                    self.widget_under_mouse_captures_keyboard();
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -288,6 +326,11 @@ impl<C> Ui<C> {
         event.release(|button_type| {
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
+
+            self.global_input.push_event(UiEvent::Raw(
+                Input::Release(button_type)
+            ));
+
             match button_type {
                 Button::Mouse(button) => {
                     let mouse_button = match button {
@@ -305,10 +348,38 @@ impl<C> Ui<C> {
         });
 
         event.text(|text| {
-            self.text_just_entered.push(text.to_string())
+            self.text_just_entered.push(text.to_string());
+            self.global_input.push_event(UiEvent::Raw(Input::Text(text.to_string())));
+        });
+
+        event.focus(|focus| {
+            self.global_input.push_event(UiEvent::Raw(Input::Focus(focus)));
+        });
+
+        event.cursor(|cursor| {
+            self.global_input.push_event(UiEvent::Raw(Input::Cursor(cursor)));
         });
     }
 
+    fn widget_under_mouse_captures_keyboard(&mut self) {
+        use graph::algo::pick_widget;
+
+        let mouse_xy = self.global_input.mouse_position();
+        let widget_under_mouse =
+            pick_widget(&self.widget_graph, &self.depth_order.indices, mouse_xy);
+        let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
+
+        if currently_capturing_keyboard.is_some()
+                && currently_capturing_keyboard != widget_under_mouse {
+            self.global_input.push_event(
+                UiEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
+            );
+        }
+
+        if let Some(idx) = widget_under_mouse {
+            self.global_input.push_event(UiEvent::WidgetCapturesKeyboard(idx));
+        }
+    }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///
@@ -518,6 +589,9 @@ impl<C> Ui<C> {
         self.mouse.middle.reset_pressed_and_released();
         self.mouse.right.reset_pressed_and_released();
         self.mouse.unknown.reset_pressed_and_released();
+
+        // reset the global input state
+        self.global_input.reset();
     }
 
 
@@ -647,7 +721,7 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 
 /// Attempts to infer the parent of a widget from its *x*/*y* `Position`s and the current state of
 /// the `Ui`.
-/// 
+///
 /// If no parent can be inferred via the `Position`s, the `maybe_current_parent_idx` will be used.
 ///
 /// If `maybe_current_parent_idx` is `None`, the `Ui`'s `window` widget will be used.
@@ -711,7 +785,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
             Some(Capturing::Captured(captured_idx)) =>
                 if idx == captured_idx { Some(ui.mouse) } else { None },
             _ =>
-                if Some(idx) == ui.maybe_widget_under_mouse 
+                if Some(idx) == ui.maybe_widget_under_mouse
                 || Some(idx) == ui.maybe_top_scrollable_widget_under_mouse {
                     Some(ui.mouse)
                 } else {
@@ -725,7 +799,7 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 /// Indicate that the widget with the given widget::Index has captured the mouse.
 ///
 /// Returns true if the mouse was successfully captured.
-/// 
+///
 /// Returns false if the mouse was already captured.
 pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
     // If the mouse isn't already captured, set idx as the capturing widget.
@@ -842,4 +916,3 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
     ui.maybe_background_color = Some(color);
 }
-
