@@ -156,13 +156,14 @@ fn widget_input_should_only_provide_keyboard_input_to_widget_that_has_focus() {
     global_input.push_event(UiEvent::Raw(Input::Text("some text".to_string())));
 
     let widget_4_input = WidgetInput::for_widget(widget_4, some_rect, &global_input);
-    let widget_4_text = widget_4_input.text_just_entered();
-    assert_eq!(Some("some text".to_string()), widget_4_text);
+    let widget_4_text: String = widget_4_input.text_just_entered().collect();
+    assert_eq!("some text".to_string(), widget_4_text);
 
     let another_widget_input = WidgetInput::for_widget(Index::Public(Id(7)),
             some_rect,
             &global_input);
-    assert!(another_widget_input.text_just_entered().is_none());
+    let another_widget_text: String = another_widget_input.text_just_entered().collect();
+    assert_eq!("".to_string(), another_widget_text);
 }
 
 #[test]

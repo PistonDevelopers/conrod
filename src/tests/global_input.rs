@@ -109,7 +109,7 @@ fn entered_text_should_be_aggregated_from_multiple_events() {
     input.push_event(UiEvent::Raw(Input::Text("is a".to_string())));
     input.push_event(UiEvent::Raw(Input::Text("wesome".to_string())));
 
-    let actual_text = input.text_just_entered().expect("expected to get a String, got None");
+    let actual_text: String = input.text_just_entered().collect();
     assert_eq!("Phil is awesome".to_string(), actual_text);
 }
 

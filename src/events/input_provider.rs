@@ -5,6 +5,7 @@ use input::{Input, Button};
 use input::keyboard::Key;
 use input::mouse::MouseButton;
 use position::Point;
+use std::marker::PhantomData;
 
 
 /// Trait for something that provides events to be consumed by a widget.
@@ -31,22 +32,11 @@ pub trait InputProvider<'a> {
     // Methods that just check the stream of events //
     //////////////////////////////////////////////////
 
-    /// Returns a `String` containing _all_ the text that was entered since
-    /// the last update cycle.
-    fn text_just_entered(&'a self) -> Option<String> {
-        let all_text: String = self.all_events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Raw(Input::Text(ref text)) => Some(text),
-                _ => None
-            }
-        }).fold(String::new(), |acc, item| {
-            acc + item
-        });
-
-        if all_text.is_empty() {
-            None
-        } else {
-            Some(all_text)
+    /// Returns a reference to each slice of `Text` that was entered since the last update.
+    fn text_just_entered(&'a self) -> TextJustEntered<'a, Self::Events> {
+        TextJustEntered {
+            events: self.all_events(),
+            lifetime: PhantomData,
         }
     }
 
@@ -54,7 +44,7 @@ pub trait InputProvider<'a> {
     fn keys_just_released(&'a self) -> KeysJustReleased<'a, Self::Events> {
         KeysJustReleased{
             event_iter: self.all_events(),
-            lifetime: ::std::marker::PhantomData
+            lifetime: PhantomData
         }
     }
 
@@ -62,7 +52,7 @@ pub trait InputProvider<'a> {
     fn keys_just_pressed(&'a self) -> KeysJustPressed<'a, Self::Events> {
         KeysJustPressed {
             event_iter: self.all_events(),
-            lifetime: ::std::marker::PhantomData
+            lifetime: PhantomData
         }
     }
 
@@ -70,7 +60,7 @@ pub trait InputProvider<'a> {
     fn mouse_buttons_just_pressed(&'a self) -> MouseButtonsJustPressed<'a, Self::Events> {
         MouseButtonsJustPressed {
             event_iter: self.all_events(),
-            lifetime: ::std::marker::PhantomData
+            lifetime: PhantomData
         }
     }
 
@@ -78,7 +68,7 @@ pub trait InputProvider<'a> {
     fn mouse_buttons_just_released(&'a self) -> MouseButtonsJustReleased<'a, Self::Events> {
         MouseButtonsJustReleased {
             event_iter: self.all_events(),
-            lifetime: ::std::marker::PhantomData
+            lifetime: PhantomData
         }
     }
 
@@ -177,11 +167,34 @@ pub trait InputProvider<'a> {
 
 }
 
+/// An iterator yielding the `&str` of each `Text` event's `String` that was just entered.
+#[derive(Clone, Debug)]
+pub struct TextJustEntered<'a, I>
+    where I: Iterator<Item=&'a UiEvent>,
+{
+    events: I,
+    lifetime: PhantomData<&'a ()>,
+}
+
+impl<'a, I> Iterator for TextJustEntered<'a, I>
+    where I: Iterator<Item=&'a UiEvent>,
+{
+    type Item=&'a str;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let UiEvent::Raw(Input::Text(ref text)) = *event {
+                return Some(text);
+            }
+        }
+        None
+    }
+}
+
 /// An Iterator over `input::keyboard::Key`s that were just released.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeysJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
     event_iter: T,
-    lifetime: ::std::marker::PhantomData<&'a ()>
+    lifetime: PhantomData<&'a ()>
 }
 
 impl<'a, T> Iterator for KeysJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
@@ -198,10 +211,10 @@ impl<'a, T> Iterator for KeysJustReleased<'a, T> where T: Iterator<Item=&'a UiEv
 }
 
 /// An Iterator over `input::keyboard::Key`s that were just pressed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeysJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
     event_iter: T,
-    lifetime: ::std::marker::PhantomData<&'a ()>
+    lifetime: PhantomData<&'a ()>
 }
 
 impl<'a, T> Iterator for KeysJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
@@ -218,10 +231,10 @@ impl<'a, T> Iterator for KeysJustPressed<'a, T> where T: Iterator<Item=&'a UiEve
 }
 
 /// An Iterator over `input::mouse::MouseButton`s that were just pressed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MouseButtonsJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
     event_iter: T,
-    lifetime: ::std::marker::PhantomData<&'a ()>
+    lifetime: PhantomData<&'a ()>
 }
 
 impl<'a, T> Iterator for MouseButtonsJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
@@ -238,10 +251,10 @@ impl<'a, T> Iterator for MouseButtonsJustPressed<'a, T> where T: Iterator<Item=&
 }
 
 /// An Iterator over `input::mouse::MouseButton`s that were just released.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MouseButtonsJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
     event_iter: T,
-    lifetime: ::std::marker::PhantomData<&'a ()>
+    lifetime: PhantomData<&'a ()>
 }
 
 impl<'a, T> Iterator for MouseButtonsJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
