@@ -25,8 +25,10 @@ pub struct GlobalInput {
 /// of the window.
 pub type GlobalInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 
-impl <'a> InputProvider<'a, GlobalInputEventIterator<'a>> for GlobalInput {
-    fn all_events(&'a self) -> GlobalInputEventIterator {
+impl<'a> InputProvider<'a> for GlobalInput {
+    type Events = GlobalInputEventIterator<'a>;
+
+    fn all_events(&'a self) -> Self::Events {
         self.events.iter()
     }
 
