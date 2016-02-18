@@ -8,12 +8,16 @@ use position::Point;
 
 
 /// Trait for something that provides events to be consumed by a widget.
+///
 /// Provides a bunch of convenience methods for filtering out specific types of events.
-pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
+pub trait InputProvider<'a> {
+    /// An iterator yielding references to the `InputProvider`'s `UiEvent`s.
+    type Events: Iterator<Item=&'a UiEvent>;
+
     /// This is the only method that needs to be implemented.
     /// Just provided a reference to a `Vec<UiEvent>` that contains
     /// all the events for this update cycle.
-    fn all_events(&'a self) -> T;
+    fn all_events(&'a self) -> Self::Events;
 
     /// Returns the current input state. The returned state is assumed to be up to
     /// date with all of the events so far.
@@ -47,7 +51,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Returns all of the `Key`s that were released since the last update.
-    fn keys_just_released(&'a self) -> KeysJustReleased<'a, T> {
+    fn keys_just_released(&'a self) -> KeysJustReleased<'a, Self::Events> {
         KeysJustReleased{
             event_iter: self.all_events(),
             lifetime: ::std::marker::PhantomData
@@ -55,7 +59,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Returns all of the keyboard `Key`s that were pressed since the last update.
-    fn keys_just_pressed(&'a self) -> KeysJustPressed<'a, T> {
+    fn keys_just_pressed(&'a self) -> KeysJustPressed<'a, Self::Events> {
         KeysJustPressed {
             event_iter: self.all_events(),
             lifetime: ::std::marker::PhantomData
@@ -63,7 +67,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Returns all of the `MouseButton`s that were pressed since the last update.
-    fn mouse_buttons_just_pressed(&'a self) -> MouseButtonsJustPressed<'a, T> {
+    fn mouse_buttons_just_pressed(&'a self) -> MouseButtonsJustPressed<'a, Self::Events> {
         MouseButtonsJustPressed {
             event_iter: self.all_events(),
             lifetime: ::std::marker::PhantomData
@@ -71,7 +75,7 @@ pub trait InputProvider<'a, T: Iterator<Item=&'a UiEvent>> {
     }
 
     /// Returns all of the `MouseButton`s that were released since the last update.
-    fn mouse_buttons_just_released(&'a self) -> MouseButtonsJustReleased<'a, T> {
+    fn mouse_buttons_just_released(&'a self) -> MouseButtonsJustReleased<'a, Self::Events> {
         MouseButtonsJustReleased {
             event_iter: self.all_events(),
             lifetime: ::std::marker::PhantomData

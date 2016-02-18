@@ -87,13 +87,13 @@ impl<'a> Iterator for WidgetInputEventIterator<'a> {
             }
         })
     }
-
 }
 
 
-impl<'a> InputProvider<'a, WidgetInputEventIterator<'a>> for WidgetInput<'a> {
+impl<'a> InputProvider<'a> for WidgetInput<'a> {
+    type Events = WidgetInputEventIterator<'a>;
 
-    fn all_events(&'a self) -> WidgetInputEventIterator<'a> {
+    fn all_events(&'a self) -> Self::Events {
         WidgetInputEventIterator{
             global_event_iter: self.global_input.all_events(),
             current_state: self.global_input.start_state.relative_to(self.widget_area.xy()),

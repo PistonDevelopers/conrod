@@ -185,8 +185,10 @@ impl ProviderImpl {
 pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 
 
-impl<'a> InputProvider<'a, TestInputEventIterator<'a>> for ProviderImpl {
-    fn all_events(&'a self) -> TestInputEventIterator<'a> {
+impl<'a> InputProvider<'a> for ProviderImpl {
+    type Events = TestInputEventIterator<'a>;
+
+    fn all_events(&'a self) -> Self::Events {
         self.events.iter()
     }
 
