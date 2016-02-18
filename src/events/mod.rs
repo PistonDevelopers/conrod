@@ -1,6 +1,6 @@
 //! This module contains all the logic for handling input events and providing them to widgets.
 //! All user input is provided to the `Ui` in the form of `input::Input` events, which are continuously
-//! polled from the backend window implementation. These raw input events tent to be fairly low level.
+//! polled from the backend window implementation. These raw input events tend to be fairly low level.
 //! The `Ui` passes each of these events off to it's `GlobalInput`, which keeps track of the state of
 //! affairs for the entire `Ui`. `GlobalInput` will also aggregate the low level events into higher
 //! level ones. For instance, two events indicating that a mouse button was pressed then released
