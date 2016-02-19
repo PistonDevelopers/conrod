@@ -76,10 +76,10 @@ pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 //pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
-pub use ui::{Ui, UserInput};
+pub use ui::{Ui, UiCell, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent, UiCell,
+pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
                  UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;

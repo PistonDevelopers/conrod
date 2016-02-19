@@ -129,9 +129,8 @@ pub enum Dimension {
 /// widgets to be positioned in a variety of different ways.
 ///
 /// Thus, **Positionable** can be implemented for *all* types that implement **Widget**.
-pub trait Positionable<B>: Sized
-    where B: Backend,
-{
+pub trait Positionable: Sized {
+    type Backend: Backend;
 
     /// Build with the given **Position** along the *x* axis.
     fn x_position(self, Position) -> Self;
@@ -140,10 +139,10 @@ pub trait Positionable<B>: Sized
     fn y_position(self, Position) -> Self;
 
     /// Get the **Position** along the *x* axis.
-    fn get_x_position(&self, ui: &Ui<B>) -> Position;
+    fn get_x_position(&self, ui: &Ui<Self::Backend>) -> Position;
 
     /// Get the **Position** along the *y* axis.
-    fn get_y_position(&self, ui: &Ui<B>) -> Position;
+    fn get_y_position(&self, ui: &Ui<Self::Backend>) -> Position;
 
     // Absolute positioning.
 

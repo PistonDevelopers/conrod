@@ -103,7 +103,27 @@ pub struct Ui<B>
     prev_updated_widgets: HashSet<NodeIndex>,
 }
 
+/// A wrapper around the `Ui` that restricts the user from mutating the `Ui` in certain ways while
+/// in the scope of the `Ui::set_widgets` function and within `Widget`s' `update` methods. Using
+/// the `UiCell`, users may access the `Ui` immutably (via `Deref`) however they wish, however they
+/// may only mutate the `Ui` via the `&mut self` methods provided by the `UiCell`.
+///
+/// The name came from its likening to a "jail cell for the `Ui`", as it restricts a user's access
+/// to it. However, we realise that the name may also cause ambiguity with the std `Cell` and
+/// `RefCell` types (which `UiCell` has nothing to do with). Thus, if you have a better name for
+/// this type in mind, please let us know at the github repo via an issue or PR sometime before we
+/// hit 1.0.0!
+pub struct UiCell<'a, B: 'a>
+    where B: Backend,
+{
+    /// A mutable reference to a **Ui**.
+    ui: &'a mut Ui<B>,
+}
+
 /// A wrapper over the current user input state.
+///
+/// NOTE: This is deprecated in favour of the new `events` API introduced in PR #684 and will be
+/// removed once all internal widgets have been ported over to the new API.
 #[derive(Clone, Debug)]
 pub struct UserInput<'a> {
     /// Mouse state only if it is currently available to the widget after considering capturing.
@@ -509,7 +529,7 @@ impl<B> Ui<B>
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where F: FnOnce(&mut Self),
+        where F: FnOnce(&mut UiCell<B>),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -537,29 +557,37 @@ impl<B> Ui<B>
             updated_widgets.clear();
         }
 
-        // Instantiate the root `Window` `Widget`.
-        //
-        // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
-        // upon which all other widgets are placed.
         {
-            use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
-            type Window = FramedRectangle;
-            let window = Window::new([self.win_w, self.win_h]);
-            let window = Widget::<B>::no_parent(window);
-            let window = Positionable::<B>::x_y(window, 0.0, 0.0);
-            window
-                // .no_parent()
-                // .x_y(0.0, 0.0)
-                .frame(0.0)
-                .frame_color(color::BLACK.alpha(0.0))
-                .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
-                .set(self.window, self);
+            use color;
+            let win_w = self.win_w;
+            let win_h = self.win_h;
+            let win_idx = self.window;
+            let background_color = self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0));
+
+            // Wrap our `Ui` in a `UiCell`, ready for safe widget instantiation.
+            let mut ui_cell = UiCell { ui: self };
+
+            // Instantiate the root `Window` `Widget`.
+            //
+            // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
+            // upon which all other widgets are placed.
+            {
+                use {Colorable, Frameable, FramedRectangle, Positionable, Widget};
+                type Window = FramedRectangle;
+                Window::new([win_w, win_h])
+                    .no_parent()
+                    .x_y(0.0, 0.0)
+                    .frame(0.0)
+                    .frame_color(color::BLACK.alpha(0.0))
+                    .color(background_color)
+                    .set(win_idx, &mut ui_cell);
+            }
+
+            self.maybe_current_parent_idx = Some(win_idx.into());
+
+            // Call the given user function for instantiating Widgets.
+            user_widgets_fn(&mut ui_cell);
         }
-
-        self.maybe_current_parent_idx = Some(self.window.into());
-
-        // Call the given user function for instantiating Widgets.
-        user_widgets_fn(self);
 
         // We'll need to re-draw if we have gained or lost widgets.
         if self.updated_widgets != self.prev_updated_widgets {
@@ -699,6 +727,132 @@ impl<B> Ui<B>
         graph::algo::cropped_area_of_widget(&self.widget_graph, idx)
     }
 
+}
+
+
+impl<'a, B> UiCell<'a, B>
+    where B: Backend,
+{
+
+    /// A reference to the `Theme` that is currently active within the `Ui`.
+    pub fn theme(&self) -> &Theme { &self.ui.theme }
+
+    /// A reference to the `Ui`'s `GlyphCache`.
+    pub fn glyph_cache(&self) -> &GlyphCache<B::CharacterCache> { &self.ui.glyph_cache }
+
+    /// Returns the dimensions of the window
+    pub fn window_dim(&self) -> Dimensions {
+        [self.ui.win_w, self.ui.win_h]
+    }
+
+    /// A struct representing the user input that has occurred since the last update, relevant to
+    /// the widget with the given index.
+    ///
+    /// NOTE: This method is deprecated (following #684) and will be removed in favour of the
+    /// `widget_input` and `global_input` methods.
+    pub fn input<I: Into<widget::Index>>(&self, idx: I) -> UserInput {
+        user_input(self.ui, idx.into())
+    }
+
+    /// Returns an immutable reference to the `GlobalInput` of the `Ui`.
+    ///
+    /// All coordinates here will be relative to the center of the window.
+    pub fn global_input(&self) -> &GlobalInput {
+        &self.ui.global_input
+    }
+
+    /// Returns a `WidgetInput` with input events for the widget.
+    ///
+    /// All coordinates in the `WidgetInput` will be relative to the widget at the given index.
+    pub fn widget_input<I: Into<widget::Index>>(&self, idx: I) -> WidgetInput {
+        self.ui.widget_input(idx.into())
+    }
+
+    /// Have the widget capture the mouse input. The mouse state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the mouse was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_mouse<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        mouse_captured_by(self.ui, idx.into())
+    }
+
+    /// Uncapture the mouse input.
+    ///
+    /// Returns true if the mouse was successfully uncaptured.
+    ///
+    /// Returns false if the mouse wasn't captured by our widget in the first place.
+    pub fn uncapture_mouse<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        mouse_uncaptured_by(self.ui, idx.into())
+    }
+
+    /// Have the widget capture the keyboard input. The keyboard state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the keyboard was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_keyboard<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        keyboard_captured_by(self.ui, idx.into())
+    }
+
+    /// Uncapture the keyboard input.
+    ///
+    /// Returns true if the keyboard was successfully uncaptured.
+    ///
+    /// Returns false if the keyboard wasn't captured by our widget in the first place.
+    pub fn uncapture_keyboard<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        keyboard_uncaptured_by(self.ui, idx.into())
+    }
+
+    /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
+    /// This should only be called once for each unique widget needed to avoid unnecessary bloat
+    /// within the `Ui`'s widget graph.
+    ///
+    /// When using this method in your `Widget`'s `update` method, be sure to store the returned
+    /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
+    ///
+    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
+    pub fn new_unique_node_index(&mut self) -> NodeIndex {
+        widget_graph_mut(&mut self.ui).add_placeholder()
+    }
+
+    /// The **Rect** that bounds the kids of the widget with the given index.
+    ///
+    /// Returns `None` if the widget has no children or if there's is no widget for the given index.
+    pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        self.ui.kids_bounding_box(idx)
+    }
+
+}
+
+/// A function for retrieving the `&mut Ui<B>` from a `UiCell<B>`.
+///
+/// This function is only for internal use to allow for some `Ui` type acrobatics in order to
+/// provide a nice *safe* API for the user.
+fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
+    where 'b: 'a,
+          B: Backend
+{
+    ui_cell.ui
+}
+
+impl<'a, B> ::std::ops::Deref for UiCell<'a, B>
+    where B: Backend,
+{
+    type Target = Ui<B>;
+    fn deref(&self) -> &Ui<B> {
+        self.ui
+    }
+}
+
+impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
+    where B: Backend,
+{
+    fn as_ref(&self) -> &Ui<B> {
+        &self.ui
+    }
 }
 
 
