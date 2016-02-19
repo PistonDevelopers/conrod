@@ -30,7 +30,6 @@ pub fn draw_from_graph<B>(context: Context,
                           depth_order: &[Visitable],
                           theme: &Theme)
     where B: Backend,
-          B::Texture: Any,
 {
 
     // A stack of contexts, one for each scroll group.

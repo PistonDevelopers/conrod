@@ -154,7 +154,9 @@ impl MaybeParent {
     /// **Note:** This method does not check whether or not using the `window` widget as the parent
     /// would cause a cycle. If it is important that the inferred parent should not cause a cycle,
     /// use `get` instead.
-    pub fn get_unchecked<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Index {
+    pub fn get_unchecked<B>(&self, ui: &Ui<B>, x_pos: Position, y_pos: Position) -> Index
+        where B: Backend,
+    {
         match *self {
             MaybeParent::Some(idx) => idx,
             MaybeParent::None => ui.window.into(),
@@ -164,8 +166,8 @@ impl MaybeParent {
 
     /// The same as `get_unchecked`, but checks whether or not the widget that we're inferring the
     /// parent for is the `Ui`'s window (which cannot have a parent, without creating a cycle).
-    pub fn get<C>(&self, idx: Index, ui: &Ui<C>, x_pos: Position, y_pos: Position)
-        -> Option<Index>
+    pub fn get<B>(&self, idx: Index, ui: &Ui<B>, x_pos: Position, y_pos: Position) -> Option<Index>
+        where B: Backend,
     {
         if idx == ui.window.into() {
             None
@@ -840,7 +842,7 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let kind = widget.unique_kind();
 
     // Take the previous state of the widget from the cache if there is some to collect.
-    let maybe_widget_state: Option<Cached<W>> = {
+    let maybe_widget_state: Option<Cached<B, W>> = {
 
         // If the cache is already initialised for a widget of a different kind, warn the user.
         let check_container_kind = |container: &mut ::graph::Container| {
@@ -1265,7 +1267,9 @@ impl IndexSlot {
     ///
     /// If the **IndexSlot** does not yet hold a **NodeIndex**, the **UiCell** will be used to
     /// produce a `new_unique_node_index`.
-    pub fn get<B>(&self, ui: &mut UiCell<B>) -> NodeIndex {
+    pub fn get<B>(&self, ui: &mut UiCell<B>) -> NodeIndex
+        where B: Backend,
+    {
         if self.maybe_idx.get().is_none() {
             let new_idx = ui.new_unique_node_index();
             self.maybe_idx.set(Some(new_idx));

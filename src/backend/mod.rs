@@ -8,6 +8,7 @@
 //! favour of simplified conrod-specific backend trait.
 
 pub use self::graphics::{CharacterCache, Graphics};
+use std;
 
 pub mod graphics;
 
@@ -17,7 +18,7 @@ pub mod graphics;
 /// any window, graphics or font contexts.
 pub trait Backend {
     /// The `Texture` type used by the `Graphics` and `CharacterCache` backends.
-    type Texture: self::graphics::ImageSize;
+    type Texture: self::graphics::ImageSize + std::any::Any;
     /// The part of the backend used for handling graphics.
     ///
     /// `Graphics` backends must implement the [`Graphics` trait](./trait.Graphics.html).

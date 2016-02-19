@@ -2,6 +2,7 @@
 
 use {
     Align,
+    Backend,
     Color,
     MouseScroll,
     Point,
@@ -209,11 +210,12 @@ impl<A> State<A>
     ///          +              >    
     ///
     /// ```
-    pub fn update<C>(ui: &mut Ui<C>,
+    pub fn update<B>(ui: &mut Ui<B>,
                      idx: super::Index,
                      scroll_args: Scroll,
                      kid_area: &super::KidArea,
                      maybe_prev_scroll_state: Option<Self>) -> Self
+        where B: Backend,
     {
 
         // Retrieve the *current* scroll offset.

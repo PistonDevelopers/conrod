@@ -544,9 +544,12 @@ impl<B> Ui<B>
         {
             use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
             type Window = FramedRectangle;
-            Window::new([self.win_w, self.win_h])
-                .no_parent()
-                .x_y(0.0, 0.0)
+            let window = Window::new([self.win_w, self.win_h]);
+            let window = Widget::<B>::no_parent(window);
+            let window = Positionable::<B>::x_y(window, 0.0, 0.0);
+            window
+                // .no_parent()
+                // .x_y(0.0, 0.0)
                 .frame(0.0)
                 .frame_color(color::BLACK.alpha(0.0))
                 .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
@@ -650,7 +653,7 @@ impl<B> Ui<B>
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph(context, graphics, character_cache, widget_graph, indices, theme);
+        draw_from_graph::<B>(context, graphics, character_cache, widget_graph, indices, theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -712,7 +715,7 @@ pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
 pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position)
     -> Option<widget::Index>
-    //where B: Backend,
+    where B: Backend,
 {
     use Position::{Place, Relative, Direction, Align};
     match (x_pos, y_pos) {
@@ -737,7 +740,9 @@ pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Positio
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index {
+pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index
+    where B: Backend,
+{
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
@@ -752,7 +757,9 @@ pub fn set_current_parent_idx<B>(ui: &mut Ui<B>, idx: widget::Index) {
 
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
-pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a> {
+pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a>
+    where B: Backend,
+{
     let maybe_mouse = get_mouse_state(ui, idx);
     let global_mouse = ui.mouse;
     let without_keys = || UserInput {
