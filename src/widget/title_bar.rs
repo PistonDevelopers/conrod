@@ -45,22 +45,22 @@ widget_style!{
     /// Unique styling for the **TitleBar** widget.
     style Style {
         /// The color of the TitleBar's rectangle surface.
-        - color: Color { theme.background_color },
+        - color: Color { theme.background_color }
         /// The width of the frame surrounding the TitleBar's rectangle.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the TitleBar's frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
 
         /// The color of the title bar's text.
-        - text_color: Color { theme.label_color },
+        - text_color: Color { theme.label_color }
         /// The font size for the title bar's text.
-        - font_size: FontSize { theme.font_size_medium },
+        - font_size: FontSize { theme.font_size_medium }
         /// The way in which the title bar's text should wrap.
-        - maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) },
+        - maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) }
         /// The distance between lines for multi-line title bar text.
-        - line_spacing: Scalar { 1.0 },
+        - line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
-        - text_align: Align { Align::Middle },
+        - text_align: Align { Align::Middle }
     }
 }
 

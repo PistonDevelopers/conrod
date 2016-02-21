@@ -37,15 +37,15 @@ widget_style!{
     /// Unique styling for the Button.
     style Style {
         /// Color of the Button's pressable area.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// Width of the frame surrounding the button
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The color of the Button's label.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font size of the Button's label.
-        - label_font_size: FontSize { theme.font_size_medium },
+        - label_font_size: FontSize { theme.font_size_medium }
     }
 }
 

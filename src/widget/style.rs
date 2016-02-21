@@ -11,7 +11,7 @@ macro_rules! define_widget_style_struct {
     (
         $(#[$Style_attr:meta])*
         style $Style:ident {
-            $( $(#[$field_attr:meta])* - $field_name:ident: $FieldType:ty { $default:expr }),* $(,)*
+            $( $(#[$field_attr:meta])* - $field_name:ident: $FieldType:ty { $default:expr })*
         }
     ) => {
         $(#[$Style_attr])*
@@ -30,13 +30,13 @@ macro_rules! define_widget_style_struct {
             $(
                 $(#[$field_attr:meta])*
                 - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }
-             ),* $(,)*
+             )*
         }
     ) => {
         define_widget_style_struct!{
             $(#[$Style_attr])*
             style $Style {
-                $( $(#[$field_attr])* - $field_name: $FieldType {},)*
+                $( $(#[$field_attr])* - $field_name: $FieldType {})*
             }
         }
     };
@@ -54,7 +54,7 @@ macro_rules! default_widget_style_struct {
             $(
                 $(#[$field_attr:meta])*
                 - $field_name:ident: $FieldType:ty { $default:expr }
-             ),* $(,)*
+             )*
         }
     ) => {
         $Style {
@@ -69,14 +69,14 @@ macro_rules! default_widget_style_struct {
             $(
                 $(#[$field_attr:meta])*
                 - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }
-             ),* $(,)*
+             )*
         }
     ) => {
         default_widget_style_struct!{
             $Style {
                 $(
                     $(#[$field_attr])*
-                    - $field_name: $FieldType {},
+                    - $field_name: $FieldType {}
                 )*
             }
         };
@@ -136,38 +136,21 @@ macro_rules! impl_widget_style_retrieval_methods {
     (
         $KIND:ident,
         $(#[$field_attr:meta])*
-        - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }, $($rest:tt)*
+        - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ } $($rest:tt)*
     ) => {
         impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { theme.$($theme_field).+});
         impl_widget_style_retrieval_methods!($KIND, $($rest)*);
     };
+
 
     // Retrieval methods with an expression to use as the default.
     (
         $KIND:ident,
         $(#[$field_attr:meta])*
-        - $field_name:ident: $FieldType:ty { $default:expr }, $($rest:tt)*
+        - $field_name:ident: $FieldType:ty { $default:expr } $($rest:tt)*
     ) => {
         impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { $default });
         impl_widget_style_retrieval_methods!($KIND, $($rest)*);
-    };
-
-    // The last retrieval method with no trailing comma.
-    (
-        $KIND:ident,
-        $(#[$field_attr:meta])*
-        - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }
-    ) => {
-        impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { theme.$($theme_field).+});
-    };
-
-    // The last retrieval method with no trailing comma.
-    (
-        $KIND:ident,
-        $(#[$field_attr:meta])*
-        - $field_name:ident: $FieldType:ty { $default:expr }
-    ) => {
-        impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { $default });
     };
 
     // All methods have been implemented.
@@ -196,8 +179,8 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///         // Fields and their type T (which get converted to `Option<T>` in the struct definition)
 ///         // along with their default expression go here.
 ///         // You can also write doc comments or attr above each field.
-///         - color: conrod::Color { theme.shape_color },
-///         - label_color: conrod::Color { conrod::color::BLUE },
+///         - color: conrod::Color { theme.shape_color }
+///         - label_color: conrod::Color { conrod::color::BLUE }
 ///         // .. more fields.
 ///     }
 /// }
@@ -241,12 +224,12 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///         ///
 ///         /// If the `color` is unspecified and there is no default given via the `Theme`, the
 ///         /// `Theme`'s standard `shape_color` field will be used as a fallback.
-///         - color: conrod::Color { theme.shape_color },
+///         - color: conrod::Color { theme.shape_color }
 ///         /// The extremely pretty color to use for the `MyWidget`'s label.
 ///         ///
 ///         /// If the `label_color` is unspecified and there is no default given via the `Theme`,
 ///         /// the label will fallback to `conrod::color::PURPLE`.
-///         - label_color: conrod::Color { conrod::color::PURPLE },
+///         - label_color: conrod::Color { conrod::color::PURPLE }
 ///     }
 /// }
 ///

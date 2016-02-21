@@ -48,19 +48,19 @@ widget_style!{
     /// Unique graphical styling for the XYPad.
     style Style {
         /// The color of the XYPad's rectangle.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The width of the frame surrounding the rectangle.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the surrounding rectangle frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The color of the XYPad's label and value label text.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font size for the XYPad's label.
-        - label_font_size: FontSize { theme.font_size_medium },
+        - label_font_size: FontSize { theme.font_size_medium }
         /// The font size for the XYPad's *value* label.
-        - value_font_size: FontSize { 14 },
+        - value_font_size: FontSize { 14 }
         /// The thickness of the XYPad's crosshair lines.
-        - line_thickness: Scalar { 2.0 },
+        - line_thickness: Scalar { 2.0 }
     }
 }
 

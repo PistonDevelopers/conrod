@@ -67,33 +67,33 @@ widget_style!{
     /// Unique styling for the Canvas.
     style Style {
         /// The color of the Canvas' rectangle surface.
-        - color: Color { theme.background_color },
+        - color: Color { theme.background_color }
         /// The width of the frame surrounding the Canvas' rectangle.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the Canvas' frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// If this Canvas is a split of some parent Canvas, this is the length of the split.
-        - length: Length { Length::Weight(1.0) },
+        - length: Length { Length::Weight(1.0) }
 
         /// Padding for the left edge of the Canvas' kid area.
-        - pad_left: Scalar { theme.padding.x.start },
+        - pad_left: Scalar { theme.padding.x.start }
         /// Padding for the right edge of the Canvas' kid area.
-        - pad_right: Scalar { theme.padding.x.end },
+        - pad_right: Scalar { theme.padding.x.end }
         /// Padding for the bottom edge of the Canvas' kid area.
-        - pad_bottom: Scalar { theme.padding.y.start },
+        - pad_bottom: Scalar { theme.padding.y.start }
         /// Padding for the top edge of the Canvas' kid area.
-        - pad_top: Scalar { theme.padding.y.end },
+        - pad_top: Scalar { theme.padding.y.end }
 
         /// The color of the title bar's text.
-        - title_bar_text_color: Color { theme.label_color },
+        - title_bar_text_color: Color { theme.label_color }
         /// The font size for the title bar's text.
-        - title_bar_font_size: FontSize { theme.font_size_medium },
+        - title_bar_font_size: FontSize { theme.font_size_medium }
         /// The way in which the title bar's text should wrap.
-        - title_bar_maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) },
+        - title_bar_maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) }
         /// The distance between lines for multi-line title bar text.
-        - title_bar_line_spacing: Scalar { 1.0 },
+        - title_bar_line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
-        - title_bar_text_align: Align { Align::Middle },
+        - title_bar_text_align: Align { Align::Middle }
     }
 }
 

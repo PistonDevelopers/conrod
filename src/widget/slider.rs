@@ -55,13 +55,13 @@ widget_style!{
     /// Graphical styling unique to the Slider widget.
     style Style {
         /// The color of the slidable rectangle.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The length of the frame around the edges of the slidable rectangle.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the Slider's frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The color of the Slider's label.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font-size for the Slider's label.
         - label_font_size: FontSize { theme.font_size_medium }
     }

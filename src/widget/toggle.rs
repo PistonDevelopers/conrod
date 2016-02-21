@@ -43,15 +43,15 @@ widget_style!{
     /// Styling for the Toggle including coloring, framing and labelling.
     style Style {
         /// Color of the Toggle's pressable area.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// The width of the rectangular frame surrounding the Toggle.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// The color of the Toggle's frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// The color of the Toggle's Text label.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// The font size for the Toggle's Text label.
-        - label_font_size: FontSize { theme.font_size_medium },
+        - label_font_size: FontSize { theme.font_size_medium }
     }
 }
 

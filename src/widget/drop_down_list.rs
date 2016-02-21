@@ -45,17 +45,17 @@ widget_style!{
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
-        - color: Color { theme.shape_color },
+        - color: Color { theme.shape_color }
         /// Width of the widget's frame.
-        - frame: Scalar { theme.frame_width },
+        - frame: Scalar { theme.frame_width }
         /// Color of the widget's frame.
-        - frame_color: Color { theme.frame_color },
+        - frame_color: Color { theme.frame_color }
         /// Color of the item labels.
-        - label_color: Color { theme.label_color },
+        - label_color: Color { theme.label_color }
         /// Font size for the item labels.
-        - label_font_size: FontSize { theme.font_size_medium },
+        - label_font_size: FontSize { theme.font_size_medium }
         /// Maximum height of the Open menu before the scrollbar appears.
-        - maybe_max_visible_height: Option<MaxHeight> { None },
+        - maybe_max_visible_height: Option<MaxHeight> { None }
     }
 }
 
