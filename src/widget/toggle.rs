@@ -122,9 +122,8 @@ impl<'a, F> Toggle<'a, F> {
 
 }
 
-impl<'a, B, F> Widget<B> for Toggle<'a, F>
-    where B: Backend,
-          F: FnOnce(bool),
+impl<'a, F> Widget for Toggle<'a, F>
+    where F: FnOnce(bool),
 {
     type State = State;
     type Style = Style;
@@ -155,10 +154,10 @@ impl<'a, B, F> Widget<B> for Toggle<'a, F>
     }
 
     /// Update the state of the Toggle.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let Toggle { value, enabled, maybe_label, maybe_react, .. } = self;
-        let maybe_mouse = ui.input().maybe_mouse;
+        let maybe_mouse = ui.input(idx).maybe_mouse;
 
         // Check whether or not a new interaction has occurred.
         let new_interaction = match (enabled, maybe_mouse) {
@@ -171,9 +170,9 @@ impl<'a, B, F> Widget<B> for Toggle<'a, F>
 
         // Capture the mouse if clicked, uncapture if released.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(); },
+            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(idx); },
             (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(); },
+            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

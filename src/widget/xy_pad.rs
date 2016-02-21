@@ -138,9 +138,8 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
 
 }
 
-impl<'a, B, X, Y, F> Widget<B> for XYPad<'a, X, Y, F>
-    where B: Backend,
-          X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
+    where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           F: FnOnce(X, Y),
 {
@@ -177,7 +176,7 @@ impl<'a, B, X, Y, F> Widget<B> for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use position::{Direction, Edge};
         use self::Interaction::{Clicked, Highlighted, Normal};
 
@@ -191,7 +190,7 @@ impl<'a, B, X, Y, F> Widget<B> for XYPad<'a, X, Y, F>
             ..
         } = self;
 
-        let maybe_mouse = ui.input().maybe_mouse;
+        let maybe_mouse = ui.input(idx).maybe_mouse;
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let interaction = state.view().interaction;
@@ -205,8 +204,8 @@ impl<'a, B, X, Y, F> Widget<B> for XYPad<'a, X, Y, F>
 
         // Capture the mouse if clicked, uncapture if released.
         match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(); },
-            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(); },
+            (Highlighted, Clicked) => { ui.capture_mouse(idx); },
+            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

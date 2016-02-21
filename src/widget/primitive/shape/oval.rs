@@ -73,9 +73,7 @@ impl Oval {
 }
 
 
-impl<B> Widget<B> for Oval
-    where B: Backend,
-{
+impl Widget for Oval {
     type State = State;
     type Style = Style;
 
@@ -102,7 +100,7 @@ impl<B> Widget<B> for Oval
     }
 
     /// Update the state of the Oval.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, style, .. } = args;
 
         let kind = match *style {

@@ -188,9 +188,8 @@ impl<I> Polygon<I> {
 }
 
 
-impl<B, I> Widget<B> for Polygon<I>
-    where B: Backend,
-          I: IntoIterator<Item=Point>,
+impl<I> Widget for Polygon<I>
+    where I: IntoIterator<Item=Point>,
 {
     type State = State;
     type Style = Style;
@@ -219,7 +218,7 @@ impl<B, I> Widget<B> for Polygon<I>
     }
 
     /// Update the state of the Polygon.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, style, .. } = args;
         let Polygon { points, maybe_shift_to_centre_from, .. } = self;

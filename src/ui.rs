@@ -529,7 +529,7 @@ impl<B> Ui<B>
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where F: FnOnce(&mut UiCell<B>),
+        where F: FnOnce(UiCell<B>),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -557,37 +557,26 @@ impl<B> Ui<B>
             updated_widgets.clear();
         }
 
+        // Instantiate the root `Window` `Widget`.
+        //
+        // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
+        // upon which all other widgets are placed.
         {
-            use color;
-            let win_w = self.win_w;
-            let win_h = self.win_h;
-            let win_idx = self.window;
-            let background_color = self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0));
-
-            // Wrap our `Ui` in a `UiCell`, ready for safe widget instantiation.
-            let mut ui_cell = UiCell { ui: self };
-
-            // Instantiate the root `Window` `Widget`.
-            //
-            // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
-            // upon which all other widgets are placed.
-            {
-                use {Colorable, Frameable, FramedRectangle, Positionable, Widget};
-                type Window = FramedRectangle;
-                Window::new([win_w, win_h])
-                    .no_parent()
-                    .x_y(0.0, 0.0)
-                    .frame(0.0)
-                    .frame_color(color::BLACK.alpha(0.0))
-                    .color(background_color)
-                    .set(win_idx, &mut ui_cell);
-            }
-
-            self.maybe_current_parent_idx = Some(win_idx.into());
-
-            // Call the given user function for instantiating Widgets.
-            user_widgets_fn(&mut ui_cell);
+            use {color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
+            type Window = FramedRectangle;
+            Window::new([self.win_w, self.win_h])
+                .no_parent()
+                .x_y(0.0, 0.0)
+                .frame(0.0)
+                .frame_color(color::BLACK.alpha(0.0))
+                .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
+                .set(self.window, &mut UiCell { ui: self });
         }
+
+        self.maybe_current_parent_idx = Some(self.window.into());
+
+        // Call the given user function for instantiating Widgets.
+        user_widgets_fn(UiCell { ui: self });
 
         // We'll need to re-draw if we have gained or lost widgets.
         if self.updated_widgets != self.prev_updated_widgets {
@@ -657,7 +646,9 @@ impl<B> Ui<B>
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw(&mut self, context: Context, graphics: &mut B::Graphics) {
+    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
+        where G: Graphics<Texture=B::Texture>,
+    {
         use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::{Deref, DerefMut};
 
@@ -681,7 +672,7 @@ impl<B> Ui<B>
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph::<B>(context, graphics, character_cache, widget_graph, indices, theme);
+        draw_from_graph::<B, G>(context, graphics, character_cache, widget_graph, indices, theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -704,7 +695,9 @@ impl<B> Ui<B>
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed(&mut self, context: Context, graphics: &mut B::Graphics) {
+    pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
+        where G: Graphics<Texture=B::Texture>,
+    {
         if self.redraw_count > 0 {
             self.draw(context, graphics);
         }
@@ -827,17 +820,6 @@ impl<'a, B> UiCell<'a, B>
 
 }
 
-/// A function for retrieving the `&mut Ui<B>` from a `UiCell<B>`.
-///
-/// This function is only for internal use to allow for some `Ui` type acrobatics in order to
-/// provide a nice *safe* API for the user.
-fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
-    where 'b: 'a,
-          B: Backend
-{
-    ui_cell.ui
-}
-
 impl<'a, B> ::std::ops::Deref for UiCell<'a, B>
     where B: Backend,
 {
@@ -855,6 +837,23 @@ impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
     }
 }
 
+/// A private constructor for the `UiCell` for internal use.
+pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
+    where B: Backend,
+{
+    UiCell { ui: ui }
+}
+
+/// A function for retrieving the `&mut Ui<B>` from a `UiCell<B>`.
+///
+/// This function is only for internal use to allow for some `Ui` type acrobatics in order to
+/// provide a nice *safe* API for the user.
+pub fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
+    where 'b: 'a,
+          B: Backend
+{
+    ui_cell.ui
+}
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
 pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
@@ -1068,9 +1067,9 @@ pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache) {
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<B, W>)
+pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W>)
     where B: Backend,
-          W: Widget<B>,
+          W: Widget,
           W::State: 'static,
           W::Style: 'static,
 {

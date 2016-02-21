@@ -42,7 +42,7 @@ pub mod xy_pad;
 /// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
 /// simplify the method signature.
 pub struct UpdateArgs<'a, 'b: 'a, W, B: 'a>
-    where W: Widget<B>,
+    where W: Widget,
           B: Backend,
 {
     /// The **Widget**'s unique index.
@@ -87,9 +87,8 @@ pub struct IndexSlot {
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
 /// simplify the method signature.
-pub struct KidAreaArgs<'a, W, B: 'a>
-    where W: Widget<B>,
-          B: Backend,
+pub struct KidAreaArgs<'a, W, C: 'a>
+    where W: Widget,
 {
     /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
@@ -98,7 +97,7 @@ pub struct KidAreaArgs<'a, W, B: 'a>
     /// The active **Theme** within the **Ui**.
     pub theme: &'a Theme,
     /// The **Ui**'s **GlyphCache** (for determining text width).
-    pub glyph_cache: &'a GlyphCache<B::CharacterCache>,
+    pub glyph_cache: &'a GlyphCache<C>,
 }
 
 /// The area upon which a **Widget**'s child widgets will be placed.
@@ -251,9 +250,8 @@ pub struct CommonState {
 }
 
 /// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
-pub struct Cached<B, W>
-    where B: Backend,
-          W: Widget<B>,
+pub struct Cached<W>
+    where W: Widget,
 {
     /// State that is unique to the Widget.
     pub state: W::State,
@@ -325,9 +323,8 @@ pub struct PreUpdateCache {
 /// We do this so that if this **Widget** were to internally **Widget::set** some other
 /// **Widget**s, this **Widget**'s positioning and dimension data will already exist within the
 /// widget **Graph** for reference.
-pub struct PostUpdateCache<B, W>
-    where B: Backend,
-          W: Widget<B>,
+pub struct PostUpdateCache<W>
+    where W: Widget,
 {
     /// The **Widget**'s unique **Index**.
     pub idx: Index,
@@ -355,7 +352,7 @@ impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
 /// 4. If no parent widget can be inferred, the window dimensions are used.
 fn default_dimension<W, B, F>(widget: &W, ui: &Ui<B>, f: F) -> Dimension
-    where W: Widget<B>,
+    where W: Widget,
           B: Backend,
           F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
 {
@@ -383,7 +380,7 @@ fn default_dimension<W, B, F>(widget: &W, ui: &Ui<B>, f: F) -> Dimension
 /// If you wish to override **Widget::default_x_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
 pub fn default_x_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
-    where W: Widget<B>,
+    where W: Widget,
           B: Backend,
 {
     default_dimension(widget, ui, |default| default.common.maybe_x_dimension)
@@ -402,7 +399,7 @@ pub fn default_x_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
 /// If you wish to override **Widget::default_y_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
 pub fn default_y_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
-    where W: Widget<B>,
+    where W: Widget,
           B: Backend,
 {
     default_dimension(widget, ui, |default| default.common.maybe_y_dimension)
@@ -443,9 +440,7 @@ pub fn default_y_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
 /// - parent
 /// - no_parent
 /// - set
-pub trait Widget<B>: Sized
-    where B: Backend,
-{
+pub trait Widget: Sized {
     /// State to be stored within the `Ui`s widget cache.
     ///
     /// Take advantage of this type for any large allocations that you would like to avoid
@@ -565,12 +560,12 @@ pub trait Widget<B>: Sized
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
-    fn update(self, args: UpdateArgs<Self, B>);
+    fn update<B: Backend>(self, args: UpdateArgs<Self, B>);
 
     /// The default **Position** for the widget along the *x* axis.
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
-    fn default_x_position(&self, ui: &Ui<B>) -> Position {
+    fn default_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_x_position)
             .unwrap_or(ui.theme.x_position)
@@ -579,7 +574,7 @@ pub trait Widget<B>: Sized
     /// The default **Position** for the widget along the *y* axis.
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
-    fn default_y_position(&self, ui: &Ui<B>) -> Position {
+    fn default_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_y_position)
             .unwrap_or(ui.theme.y_position)
@@ -591,7 +586,7 @@ pub trait Widget<B>: Sized
     ///
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
-    fn default_x_dimension(&self, ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         default_x_dimension(self, ui)
     }
 
@@ -599,7 +594,7 @@ pub trait Widget<B>: Sized
     ///
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
-    fn default_y_dimension(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         default_y_dimension(self, ui)
     }
 
@@ -614,7 +609,7 @@ pub trait Widget<B>: Sized
     }
 
     /// The area on which child widgets will be placed when using the `Place` `Position` methods.
-    fn kid_area(&self, args: KidAreaArgs<Self, B>) -> KidArea {
+    fn kid_area<C: CharacterCache>(&self, args: KidAreaArgs<Self, C>) -> KidArea {
         KidArea {
             rect: args.rect,
             pad: Padding::none(),
@@ -772,7 +767,10 @@ pub trait Widget<B>: Sized
     /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
     /// needs to be re-drawn.
     /// - The new State and Style will be cached within the `Ui`.
-    fn set<'a, 'b: 'a, I: Into<Index>>(self, idx: I, ui_cell: &'a mut UiCell<'b, B>) {
+    fn set<'a, 'b, I, B>(self, idx: I, ui_cell: &'a mut UiCell<'b, B>)
+        where I: Into<Index>,
+              B: Backend,
+    {
         set_widget(self, idx.into(), ui::ref_mut_from_ui_cell(ui_cell));
     }
 
@@ -792,12 +790,12 @@ pub trait Widget<B>: Sized
 /// with concerns/improvements to the github repo.
 fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     where B: Backend,
-          W: Widget<B>,
+          W: Widget,
 {
     let kind = widget.unique_kind();
 
     // Take the previous state of the widget from the cache if there is some to collect.
-    let maybe_widget_state: Option<Cached<B, W>> = {
+    let maybe_widget_state: Option<Cached<W>> = {
 
         // If the cache is already initialised for a widget of a different kind, warn the user.
         let check_container_kind = |container: &mut ::graph::Container| {
@@ -954,7 +952,7 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
 
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = {
-        let args = KidAreaArgs {
+        let args: KidAreaArgs<W, B::CharacterCache> = KidAreaArgs {
             rect: rect,
             style: &new_style,
             theme: &ui.theme,
@@ -1047,7 +1045,7 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
                 prev: &prev_common,
                 rect: rect,
                 style: &new_style,
-                ui: UiCell { ui: ui },
+                ui: ui::new_ui_cell(ui),
             });
 
             state.has_updated
@@ -1167,9 +1165,8 @@ impl CommonStyle {
 }
 
 
-impl<B, W> Positionable<B> for W
-    where B: Backend,
-          W: Widget<B>,
+impl<W> Positionable for W
+    where W: Widget,
 {
     #[inline]
     fn x_position(mut self, x: Position) -> Self {
@@ -1182,8 +1179,7 @@ impl<B, W> Positionable<B> for W
         self
     }
     #[inline]
-    fn get_x_position(&self, ui: &Ui<B>) -> Position {
-
+    fn get_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_y_position = || self.common().style.maybe_y_position
             .and_then(|y_pos| infer_position_from_other_position(y_pos, Align::Start));
         self.common().style.maybe_x_position
@@ -1191,7 +1187,7 @@ impl<B, W> Positionable<B> for W
             .unwrap_or(self.default_x_position(ui))
     }
     #[inline]
-    fn get_y_position(&self, ui: &Ui<B>) -> Position {
+    fn get_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_x_position = || self.common().style.maybe_x_position
             .and_then(|x_pos| infer_position_from_other_position(x_pos, Align::End));
         self.common().style.maybe_y_position
@@ -1225,9 +1221,8 @@ fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> 
 }
 
 
-impl<B, W> Sizeable<B> for W
-    where B: Backend,
-          W: Widget<B>,
+impl<W> Sizeable for W
+    where W: Widget,
 {
     #[inline]
     fn x_dimension(mut self, w: Dimension) -> Self {
@@ -1243,14 +1238,14 @@ impl<B, W> Sizeable<B> for W
     /// We attempt to retrieve the `x` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_x_dimension`
     /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
-    fn get_x_dimension(&self, ui: &Ui<B>) -> Dimension {
+    fn get_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         self.common().style.maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
     #[inline]
     /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_y_dimension`
     /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
-    fn get_y_dimension(&self, ui: &Ui<B>) -> Dimension {
+    fn get_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }

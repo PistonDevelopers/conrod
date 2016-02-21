@@ -244,9 +244,8 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 }
 
 
-impl<'a, B, E, F> Widget<B> for EnvelopeEditor<'a, E, F>
-    where B: Backend,
-          E: EnvelopePoint,
+impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
+    where E: EnvelopePoint,
           E::X: Any,
           E::Y: Any,
           F: FnMut(&mut Vec<E>, usize),
@@ -288,7 +287,7 @@ impl<'a, B, E, F> Widget<B> for EnvelopeEditor<'a, E, F>
     }
 
     /// Update the state of the EnvelopeEditor's cached state.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -304,7 +303,7 @@ impl<'a, B, E, F> Widget<B> for EnvelopeEditor<'a, E, F>
         } = self;
 
 
-        let maybe_mouse = ui.input().maybe_mouse;
+        let maybe_mouse = ui.input(idx).maybe_mouse;
         let skew = skew_y_range;
 
         let point_radius = style.point_radius(ui.theme());
@@ -376,9 +375,9 @@ impl<'a, B, E, F> Widget<B> for EnvelopeEditor<'a, E, F>
 
         // Capture the mouse if clicked or uncapture the mouse if released.
         match (state.view().interaction, new_interaction) {
-            (Highlighted(_), Clicked(_, _)) => { ui.capture_mouse(); },
+            (Highlighted(_), Clicked(_, _)) => { ui.capture_mouse(idx); },
             (Clicked(_, _), Highlighted(_)) |
-            (Clicked(_, _), Normal)         => { ui.uncapture_mouse(); },
+            (Clicked(_, _), Normal)         => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

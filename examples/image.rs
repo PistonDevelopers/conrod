@@ -6,11 +6,21 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Image, Theme, Widget, color};
+use conrod::{backend, Canvas, Colorable, Image, Positionable, Theme, Widget, color};
 use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings, UpdateEvent, WindowSettings};
 use std::rc::Rc;
 
-type Ui = conrod::Ui<Glyphs>;
+
+#[allow(dead_code)]
+struct Backend<'a>(::std::marker::PhantomData<&'a ()>);
+
+impl<'a> conrod::Backend for Backend<'a> {
+    type Texture = <piston_window::G2d<'a> as backend::Graphics>::Texture;
+    type CharacterCache = piston_window::Glyphs;
+}
+
+type Ui = conrod::Ui<Backend<'static>>;
+type UiCell<'a> = conrod::UiCell<'a, Backend<'static>>;
 
 
 fn main() {
@@ -41,11 +51,14 @@ fn main() {
     // Poll events from the window.
     for event in window.ups(60) {
         ui.handle_event(&event);
-        event.update(|_| ui.set_widgets(|ui| {
-            widget_ids!(RUST_LOGO);
-            Image::from_texture(rust_logo).set(RUST_LOGO, &mut ui);
-        }));
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));
+        event.update(|_| ui.set_widgets(|mut ui| {
+            widget_ids!(CANVAS, RUST_LOGO);
+            Canvas::new().color(color::WHITE).set(CANVAS, &mut ui);
+            Image::from_texture(rust_logo.clone())
+                .middle_of(CANVAS)
+                .set(RUST_LOGO, &mut ui);
+        }));
     }
 
 }

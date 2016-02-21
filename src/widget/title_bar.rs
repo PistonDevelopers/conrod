@@ -144,9 +144,8 @@ pub fn calc_height(font_size: FontSize) -> Scalar {
 }
 
 
-impl<'a, B, F> Widget<B> for TitleBar<'a, F>
-    where B: Backend,
-          F: FnOnce(Interaction),
+impl<'a, F> Widget for TitleBar<'a, F>
+    where F: FnOnce(Interaction),
 {
     type State = State;
     type Style = Style;
@@ -175,18 +174,18 @@ impl<'a, B, F> Widget<B> for TitleBar<'a, F>
         self.style.clone()
     }
 
-    fn default_y_dimension(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         let font_size = self.style.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
 
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TitleBar { label, maybe_react, .. } = self;
 
         // Check whether or not a new interaction has occurred.
-        let new_interaction = match ui.input().maybe_mouse {
+        let new_interaction = match ui.input(idx).maybe_mouse {
             None => Interaction::Normal,
             Some(mouse) => {
                 let is_over = rect.is_over(mouse.xy);

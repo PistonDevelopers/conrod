@@ -76,9 +76,8 @@ impl<'a, F> Button<'a, F> {
 }
 
 
-impl<'a, B, F> Widget<B> for Button<'a, F>
-    where B: Backend,
-          F: FnOnce(),
+impl<'a, F> Widget for Button<'a, F>
+    where F: FnOnce(),
 {
     type State = State;
     type Style = Style;
@@ -107,11 +106,11 @@ impl<'a, B, F> Widget<B> for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
         let button_color = {
-            let input = ui.widget_input();
+            let input = ui.widget_input(idx);
             if input.mouse_left_click().is_some() {
                 self.maybe_react.map(|react_function| react_function());
             }

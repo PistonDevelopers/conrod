@@ -130,7 +130,6 @@ pub enum Dimension {
 ///
 /// Thus, **Positionable** can be implemented for *all* types that implement **Widget**.
 pub trait Positionable: Sized {
-    type Backend: Backend;
 
     /// Build with the given **Position** along the *x* axis.
     fn x_position(self, Position) -> Self;
@@ -139,10 +138,10 @@ pub trait Positionable: Sized {
     fn y_position(self, Position) -> Self;
 
     /// Get the **Position** along the *x* axis.
-    fn get_x_position(&self, ui: &Ui<Self::Backend>) -> Position;
+    fn get_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position;
 
     /// Get the **Position** along the *y* axis.
-    fn get_y_position(&self, ui: &Ui<Self::Backend>) -> Position;
+    fn get_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position;
 
     // Absolute positioning.
 
@@ -647,9 +646,7 @@ pub trait Positionable: Sized {
 }
 
 /// Widgets that support different dimensions.
-pub trait Sizeable<B>: Sized
-    where B: Backend,
-{
+pub trait Sizeable: Sized {
 
     // Required implementations.
 
@@ -660,10 +657,10 @@ pub trait Sizeable<B>: Sized
     fn y_dimension(self, x: Dimension) -> Self;
 
     /// The widget's length along the x axis as a Dimension.
-    fn get_x_dimension(&self, ui: &Ui<B>) -> Dimension;
+    fn get_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension;
 
     /// The widget's length along the y axis as a Dimension.
-    fn get_y_dimension(&self, ui: &Ui<B>) -> Dimension;
+    fn get_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension;
 
     // Provided defaults.
 
@@ -771,7 +768,7 @@ pub trait Sizeable<B>: Sized
 
     /// Get the absolute width of the widget as a Scalar value.
     #[inline]
-    fn get_w(&self, ui: &Ui<B>) -> Option<Scalar> {
+    fn get_w<B: Backend>(&self, ui: &Ui<B>) -> Option<Scalar> {
         match self.get_x_dimension(ui) {
             Dimension::Absolute(width) => Some(width),
             Dimension::Of(idx, None) => ui.w_of(idx),
@@ -783,7 +780,7 @@ pub trait Sizeable<B>: Sized
 
     /// Get the height of the widget.
     #[inline]
-    fn get_h(&self, ui: &Ui<B>) -> Option<Scalar> {
+    fn get_h<B: Backend>(&self, ui: &Ui<B>) -> Option<Scalar> {
         match self.get_y_dimension(ui) {
             Dimension::Absolute(height) => Some(height),
             Dimension::Of(idx, None) => ui.h_of(idx),
@@ -795,7 +792,7 @@ pub trait Sizeable<B>: Sized
 
     /// The dimensions for the widget.
     #[inline]
-    fn get_wh(&self, ui: &Ui<B>) -> Option<Dimensions> {
+    fn get_wh<B: Backend>(&self, ui: &Ui<B>) -> Option<Dimensions> {
         self.get_w(ui).and_then(|w| self.get_h(ui).map(|h| [w, h]))
     }
 

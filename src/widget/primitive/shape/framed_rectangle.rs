@@ -51,9 +51,7 @@ impl FramedRectangle {
 }
 
 
-impl<B> Widget<B> for FramedRectangle
-    where B: Backend,
-{
+impl Widget for FramedRectangle {
     type State = ();
     type Style = Style;
 
@@ -78,7 +76,7 @@ impl<B> Widget<B> for FramedRectangle
     }
 
     /// Update the state of the Rectangle.
-    fn update(self, _args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, _args: widget::UpdateArgs<Self, B>) {
         // Nothing to update here!
     }
 

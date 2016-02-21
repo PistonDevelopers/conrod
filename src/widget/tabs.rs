@@ -135,9 +135,7 @@ impl<'a> Tabs<'a> {
 }
 
 
-impl<'a, B> Widget<B> for Tabs<'a>
-    where B: Backend,
-{
+impl<'a> Widget for Tabs<'a> {
     type State = State;
     type Style = Style;
 
@@ -166,7 +164,7 @@ impl<'a, B> Widget<B> for Tabs<'a>
     }
 
     /// The area on which child widgets will be placed when using the `Place` Positionable methods.
-    fn kid_area(&self, args: widget::KidAreaArgs<Self, B>) -> widget::KidArea {
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, glyph_cache } = args;
         let font_size = style.font_size(theme);
         match style.layout(theme) {
@@ -189,7 +187,7 @@ impl<'a, B> Widget<B> for Tabs<'a>
     }
 
     /// Update the state of the Tabs.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Tabs { tabs, maybe_starting_tab_idx, .. } = self;
         let layout = style.layout(ui.theme());

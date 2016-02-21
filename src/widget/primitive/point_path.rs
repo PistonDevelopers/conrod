@@ -154,9 +154,8 @@ impl<I> PointPath<I> {
 }
 
 
-impl<B, I> Widget<B> for PointPath<I>
-    where B: Backend,
-          I: IntoIterator<Item=Point>,
+impl<I> Widget for PointPath<I>
+    where I: IntoIterator<Item=Point>,
 {
     type State = State;
     type Style = Style;
@@ -184,7 +183,7 @@ impl<B, I> Widget<B> for PointPath<I>
     }
 
     /// Update the state of the Line.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
         let PointPath { points, maybe_shift_to_centre_from, .. } = self;

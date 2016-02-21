@@ -240,9 +240,8 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
 }
 
-impl<'a, B, T, F> Widget<B> for NumberDialer<'a, T, F>
-    where B: Backend,
-          F: FnOnce(T),
+impl<'a, T, F> Widget for NumberDialer<'a, T, F>
+    where F: FnOnce(T),
           T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
     type State = State<T>;
@@ -278,7 +277,7 @@ impl<'a, B, T, F> Widget<B> for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -286,7 +285,7 @@ impl<'a, B, T, F> Widget<B> for NumberDialer<'a, T, F>
             value, min, max, precision, enabled, maybe_label, maybe_react, ..
         } = self;
 
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(rect.xy()));
+        let maybe_mouse = ui.input(idx).maybe_mouse.map(|mouse| mouse.relative_to(rect.xy()));
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let font_size = style.label_font_size(ui.theme());
@@ -309,9 +308,9 @@ impl<'a, B, T, F> Widget<B> for NumberDialer<'a, T, F>
 
         // Capture the mouse if clicked, uncapture if released.
         match (interaction, new_interaction) {
-            (Highlighted(_), Clicked(_)) => { ui.capture_mouse(); },
+            (Highlighted(_), Clicked(_)) => { ui.capture_mouse(idx); },
             (Clicked(_), Highlighted(_)) |
-            (Clicked(_), Normal)         => { ui.uncapture_mouse(); },
+            (Clicked(_), Normal)         => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

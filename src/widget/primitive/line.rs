@@ -261,9 +261,7 @@ impl Style {
 }
 
 
-impl<B> Widget<B> for Line
-    where B: Backend,
-{
+impl Widget for Line {
     type State = State;
     type Style = Style;
 
@@ -291,7 +289,7 @@ impl<B> Widget<B> for Line
     }
 
     /// Update the state of the Line.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { rect, state, .. } = args;
         let Line { mut start, mut end, should_centre_points, .. } = self;
 

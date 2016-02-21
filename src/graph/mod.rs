@@ -170,9 +170,8 @@ impl Container {
 
     /// Same as [**Container::state_and_style**](./struct.Container#method.state_and_style) but
     /// accessed using a **Widget** type parameter instead of the unique State and Style types.
-    pub fn unique_widget_state<B, W>(&self) -> Option<&UniqueWidgetState<W::State, W::Style>>
-        where B: Backend,
-              W: Widget<B>,
+    pub fn unique_widget_state<W>(&self) -> Option<&UniqueWidgetState<W::State, W::Style>>
+        where W: Widget,
               W::State: Any + 'static,
               W::Style: Any + 'static,
     {
@@ -180,10 +179,9 @@ impl Container {
     }
 
     /// A method for taking only the unique state from the container.
-    pub fn take_unique_widget_state<B, W>(&mut self)
+    pub fn take_unique_widget_state<W>(&mut self)
         -> Option<Box<UniqueWidgetState<W::State, W::Style>>>
-        where B: Backend,
-              W: Widget<B>,
+        where W: Widget,
               W::State: Any + 'static,
               W::Style: Any + 'static,
     {
@@ -194,14 +192,13 @@ impl Container {
     }
 
     /// Take the widget state from the container and cast it to type W.
-    pub fn take_widget_state<B, W>(&mut self) -> Option<widget::Cached<B, W>>
-        where B: Backend,
-              W: Widget<B>,
+    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>>
+        where W: Widget,
               W::State: Any + 'static,
               W::Style: Any + 'static,
     {
         if self.maybe_state.is_some() {
-            let boxed_unique_state = self.take_unique_widget_state::<B, W>().unwrap();
+            let boxed_unique_state = self.take_unique_widget_state::<W>().unwrap();
             let unique_state: UniqueWidgetState<W::State, W::Style> = *boxed_unique_state;
             let UniqueWidgetState { state, style } = unique_state;
             Some(widget::Cached {
@@ -838,9 +835,8 @@ impl Graph {
     ///
     /// This is called (via the `ui` module) from within the `widget::set_widget` function after
     /// the `Widget::update` method is called and some new state is returned.
-    pub fn post_update_cache<B, W>(&mut self, widget: widget::PostUpdateCache<B, W>)
-        where B: Backend,
-              W: Widget<B>,
+    pub fn post_update_cache<W>(&mut self, widget: widget::PostUpdateCache<W>)
+        where W: Widget,
               W::State: 'static,
               W::Style: 'static,
     {

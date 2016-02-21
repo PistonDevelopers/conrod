@@ -31,7 +31,7 @@ pub enum Source<T> {
 }
 
 /// Unique `State` to be stored between updates for the `Image`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct State<T>
     where T: ImageSize
 {
@@ -46,6 +46,22 @@ pub struct Texture<T> {
     pub rc: Rc<T>,
     /// The rectangular area of the texture to use as the image.
     pub src_rect: Rect,
+}
+
+impl<T> PartialEq for State<T>
+    where T: ImageSize,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.texture == other.texture
+    }
+}
+
+impl<T> Debug for State<T>
+    where T: ImageSize,
+{
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{:?}", &self.texture)
+    }
 }
 
 impl<T> PartialEq for Texture<T>
@@ -104,11 +120,10 @@ impl<T> Image<T> {
 }
 
 
-impl<B> Widget<B> for Image<B::Texture>
-    where B: Backend,
-          B::Texture: Any + Debug + PartialEq,
+impl<T> Widget for Image<T>
+    where T: Any + ImageSize,
 {
-    type State = State<B::Texture>;
+    type State = State<T>;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -133,7 +148,7 @@ impl<B> Widget<B> for Image<B::Texture>
         self.style.clone()
     }
 
-    fn default_x_dimension(&self, _ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension<B: Backend>(&self, _ui: &Ui<B>) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.w()),
             None => match self.src {
@@ -145,7 +160,7 @@ impl<B> Widget<B> for Image<B::Texture>
         }
     }
 
-    fn default_y_dimension(&self, _ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, _ui: &Ui<B>) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.h()),
             None => match self.src {
@@ -157,7 +172,7 @@ impl<B> Widget<B> for Image<B::Texture>
         }
     }
 
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, .. } = args;
         let Image { src_rect, src, .. } = self;
 
@@ -167,8 +182,13 @@ impl<B> Widget<B> for Image<B::Texture>
                     let (w, h) = texture.get_size();
                     Rect::from_xy_dim([0.0, 0.0], [w as Scalar, h as Scalar])
                 });
-                if state.view().texture.as_ref().map(|t| &t.src_rect) != Some(&src_rect)
-                || state.view().texture.as_ref().map(|t| &t.rc) != Some(&texture) {
+
+                let src_rect_has_changed = 
+                    state.view().texture.as_ref().map(|t| &t.src_rect) != Some(&src_rect);
+                let texture_size_changed =
+                    state.view().texture.as_ref().map(|t| t.rc.get_size())
+                    != Some(texture.get_size());
+                if src_rect_has_changed || texture_size_changed {
                     state.update(|state| state.texture = Some(Texture {
                         rc: texture,
                         src_rect: src_rect,

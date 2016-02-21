@@ -1,6 +1,7 @@
 use {
     Align,
     Backend,
+    CharacterCache,
     Color,
     Colorable,
     Dimensions,
@@ -208,9 +209,7 @@ impl<'a> Canvas<'a> {
 }
 
 
-impl<'a, B> Widget<B> for Canvas<'a>
-    where B: Backend,
-{
+impl<'a> Widget for Canvas<'a> {
     type State = State;
     type Style = Style;
 
@@ -237,11 +236,11 @@ impl<'a, B> Widget<B> for Canvas<'a>
         self.style.clone()
     }
 
-    fn default_x_position(&self, _ui: &Ui<B>) -> Position {
+    fn default_x_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
         Position::Place(Place::Middle, None)
     }
 
-    fn default_y_position(&self, _ui: &Ui<B>) -> Position {
+    fn default_y_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
         Position::Place(Place::Middle, None)
     }
 
@@ -259,7 +258,7 @@ impl<'a, B> Widget<B> for Canvas<'a>
     }
 
     /// The area of the widget below the title bar, upon which child widgets will be placed.
-    fn kid_area(&self, args: widget::KidAreaArgs<Self, B>) -> widget::KidArea {
+    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, .. } = args;
         if self.maybe_title_bar_label.is_some() {
             let font_size = style.title_bar_font_size(theme);
@@ -277,7 +276,7 @@ impl<'a, B> Widget<B> for Canvas<'a>
     }
 
     /// Update the state of the Canvas.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 

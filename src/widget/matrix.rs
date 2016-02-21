@@ -80,9 +80,8 @@ impl<F> Matrix<F> {
 }
 
 
-impl<'a, B, F, W> Widget<B> for Matrix<F>
-    where B: Backend,
-          W: Widget<B>,
+impl<'a, F, W> Widget for Matrix<F>
+    where W: Widget,
           F: FnMut(WidgetNum, ColNum, RowNum) -> W
 {
     type State = State;
@@ -109,7 +108,7 @@ impl<'a, B, F, W> Widget<B> for Matrix<F>
     }
 
     /// Update the state of the Matrix.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 

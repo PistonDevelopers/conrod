@@ -23,13 +23,14 @@ pub use graphics::character::{Character, CharacterCache};
 
 
 /// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
-pub fn draw_from_graph<B>(context: Context,
-                          graphics: &mut B::Graphics,
-                          character_cache: &mut B::CharacterCache,
-                          graph: &Graph,
-                          depth_order: &[Visitable],
-                          theme: &Theme)
+pub fn draw_from_graph<B, G>(context: Context,
+                             graphics: &mut G,
+                             character_cache: &mut B::CharacterCache,
+                             graph: &Graph,
+                             depth_order: &[Visitable],
+                             theme: &Theme)
     where B: Backend,
+          G: Graphics<Texture=B::Texture>,
 {
 
     // A stack of contexts, one for each scroll group.
@@ -68,7 +69,7 @@ pub fn draw_from_graph<B>(context: Context,
 
                     // Draw the widget, but only if it would actually be visible on the window.
                     if is_visible(idx, container) {
-                        draw_from_container::<B>(&context, graphics, character_cache, container, theme);
+                        draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
                     }
 
                     // If the current widget is some scrollable widget, we need to add a context
@@ -184,20 +185,21 @@ fn crop_context(context: Context, rect: Rect) -> Context {
 
 
 /// Use the given **CharacterCache** and **Graphics** backends to draw the given widget.
-pub fn draw_from_container<B>(context: &Context,
-                              graphics: &mut B::Graphics,
-                              character_cache: &mut B::CharacterCache,
-                              container: &Container,
-                              theme: &Theme)
+pub fn draw_from_container<B, G>(context: &Context,
+                                 graphics: &mut G,
+                                 character_cache: &mut B::CharacterCache,
+                                 container: &Container,
+                                 theme: &Theme)
     where B: Backend,
           B::Texture: Any,
+          G: Graphics<Texture=B::Texture>,
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
     match container.kind {
 
         primitive::shape::rectangle::KIND => {
-            if let Some(rectangle) = container.unique_widget_state::<B, ::Rectangle>() {
+            if let Some(rectangle) = container.unique_widget_state::<::Rectangle>() {
                 match rectangle.style {
                     ShapeStyle::Fill(_) => {
                         let color = rectangle.style.get_color(theme);
@@ -214,7 +216,7 @@ pub fn draw_from_container<B>(context: &Context,
         },
 
         primitive::shape::framed_rectangle::KIND => {
-            if let Some(framed_rectangle) = container.unique_widget_state::<B, ::FramedRectangle>() {
+            if let Some(framed_rectangle) = container.unique_widget_state::<::FramedRectangle>() {
                 let frame = framed_rectangle.style.frame(theme);
                 if frame > 0.0 {
                     let frame_color = framed_rectangle.style.frame_color(theme);
@@ -228,7 +230,7 @@ pub fn draw_from_container<B>(context: &Context,
         },
 
         primitive::shape::oval::KIND => {
-            if let Some(oval) = container.unique_widget_state::<B, ::Oval>() {
+            if let Some(oval) = container.unique_widget_state::<::Oval>() {
                 use std::f64::consts::PI;
                 const CIRCLE_RESOLUTION: usize = 50;
                 const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
@@ -279,7 +281,7 @@ pub fn draw_from_container<B>(context: &Context,
         },
 
         primitive::line::KIND => {
-            if let Some(line) = container.unique_widget_state::<B, ::Line>() {
+            if let Some(line) = container.unique_widget_state::<::Line>() {
                 let points = once(line.state.start).chain(once(line.state.end));
                 draw_lines(context, graphics, theme, points, line.style);
             }
@@ -294,7 +296,7 @@ pub fn draw_from_container<B>(context: &Context,
         },
 
         primitive::text::KIND => {
-            if let Some(text) = container.unique_widget_state::<B, ::Text>() {
+            if let Some(text) = container.unique_widget_state::<::Text>() {
                 let ::graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);

@@ -72,9 +72,7 @@ impl Rectangle {
 }
 
 
-impl<B> Widget<B> for Rectangle
-    where B: Backend,
-{
+impl Widget for Rectangle {
     type State = State;
     type Style = Style;
 
@@ -101,7 +99,7 @@ impl<B> Widget<B> for Rectangle
     }
 
     /// Update the state of the Rectangle.
-    fn update(self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, style, .. } = args;
 
         let kind = match *style {
