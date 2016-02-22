@@ -7,20 +7,9 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{backend, Canvas, Colorable, Image, Positionable, Theme, Widget, color};
+use conrod::backend::piston_window::{Ui, UiCell};
 use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings, UpdateEvent, WindowSettings};
 use std::rc::Rc;
-
-
-#[allow(dead_code)]
-struct Backend<'a>(::std::marker::PhantomData<&'a ()>);
-
-impl<'a> conrod::Backend for Backend<'a> {
-    type Texture = <piston_window::G2d<'a> as backend::Graphics>::Texture;
-    type CharacterCache = piston_window::Glyphs;
-}
-
-type Ui = conrod::Ui<Backend<'static>>;
-type UiCell<'a> = conrod::UiCell<'a, Backend<'static>>;
 
 
 fn main() {
