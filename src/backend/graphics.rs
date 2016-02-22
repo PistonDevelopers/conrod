@@ -326,10 +326,12 @@ pub fn draw_from_container<B, G>(context: &Context,
                     let mut image = graphics::image::Image::new();
                     image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
                     image.source_rectangle = Some({
-                        let r = conrod_rect_to_graphics_rect(texture.src_rect);
-                        [r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32]
+                        let (x, y, w, h) = texture.src_rect.x_y_w_h();
+                        [x as i32, y as i32, w as i32, h as i32]
                     });
-                    image.rectangle = Some(conrod_rect_to_graphics_rect(container.rect));
+                    let (left, top, w, h) = container.rect.l_t_w_h();
+                    image.rectangle = Some([0.0, 0.0, w, h]);
+                    let context = context.trans(left, top).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
                     image.draw(texture.rc.as_ref(), draw_state, transform, graphics);
