@@ -6,13 +6,13 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{backend, Canvas, Colorable, Image, Positionable, Theme, Widget, color};
-use conrod::backend::piston_window::{Ui, UiCell};
-use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings, UpdateEvent, WindowSettings};
-use std::rc::Rc;
 
-
+#[cfg(feature = "backend-piston_window")]
 fn main() {
+    use conrod::{Canvas, Colorable, Image, Positionable, Theme, Widget, color};
+    use conrod::backend::piston_window::Ui;
+    use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings, UpdateEvent, WindowSettings};
+    use std::rc::Rc;
 
     // Construct the window.
     let window: PistonWindow =
@@ -49,5 +49,11 @@ fn main() {
                 .set(RUST_LOGO, &mut ui);
         }));
     }
+}
 
+
+#[cfg(not(feature = "backend-piston_window"))]
+fn main() {
+    println!("This example requires the \"backend-piston_window\" feature. Use the feature like so \
+              `cargo run --release --feature \"backend-piston_window\" --example <example_name>`");
 }

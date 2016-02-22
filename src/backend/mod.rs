@@ -12,6 +12,9 @@ use std;
 
 pub mod graphics;
 
+#[cfg(feature = "backend-piston_window")]
+pub mod piston_window;
+
 /// A trait to be implemented by all backends to conrod.
 ///
 /// This trait allows conrod to remain entirely backend agnostic so that users may use conrod with

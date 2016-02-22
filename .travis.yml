@@ -19,6 +19,7 @@ addons:
 script:
     - cargo build --verbose
     - cargo test --verbose
+    - cargo test --features "backend-piston_window"
     - cargo doc --verbose
 
 after_success:
