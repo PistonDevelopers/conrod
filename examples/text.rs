@@ -1,13 +1,11 @@
-
-
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Theme, Widget};
+use conrod::backend::piston_window::{Ui, UiCell};
+use find_folder;
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
-
-type Ui = conrod::Ui<Glyphs>;
 
 
 fn main() {
@@ -31,20 +29,20 @@ fn main() {
     for event in window.ups(60) {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(set_ui));
-        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
+        event.draw_2d(|c, g| ui.draw(c, g));
     }
 
 }
 
 
-fn set_ui(ui: &mut Ui) {
+fn set_ui(ref mut ui: UiCell) {
     use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{
         MASTER,
         LEFT_COL,
-        MIDDLE_COL, 
+        MIDDLE_COL,
         RIGHT_COL,
         LEFT_TEXT,
         MIDDLE_TEXT,
@@ -92,4 +90,3 @@ fn set_ui(ui: &mut Ui) {
         .line_spacing(5.0)
         .set(RIGHT_TEXT, ui);
 }
-

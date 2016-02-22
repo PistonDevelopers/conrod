@@ -2,10 +2,12 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Labelable, Positionable, Sizeable, Theme, Ui, Widget};
-use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
+#[cfg(feature = "backend-piston_window")]
 fn main() {
+    use conrod::{Labelable, Positionable, Sizeable, Theme, Widget};
+    use conrod::backend::piston_window::Ui;
+    use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
     // Construct the window.
     let window: PistonWindow = WindowSettings::new("Click me!", [200, 200])
@@ -26,7 +28,7 @@ fn main() {
     // Poll events from the window.
     for event in window.ups(60) {
         ui.handle_event(&event);
-        event.update(|_| ui.set_widgets(|ui| {
+        event.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Generate the ID for the Button COUNTER.
             widget_ids!(CANVAS, COUNTER);
@@ -45,4 +47,11 @@ fn main() {
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 
+}
+
+
+#[cfg(not(feature = "backend-piston_window"))]
+pub fn main() {
+    println!("This example requires the \"backend-piston_window\" feature. Use the feature like so \
+              `cargo run --release --features \"backend-piston_window\" --example <example_name>`");
 }

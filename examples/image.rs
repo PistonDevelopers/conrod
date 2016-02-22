@@ -11,8 +11,9 @@ extern crate piston_window;
 fn main() {
     use conrod::{Canvas, Colorable, Image, Positionable, Theme, Widget, color};
     use conrod::backend::piston_window::Ui;
-    use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings, UpdateEvent, WindowSettings};
-    use std::rc::Rc;
+    use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings,
+                        UpdateEvent, WindowSettings};
+    use std::sync::Arc;
 
     // Construct the window.
     let window: PistonWindow =
@@ -34,7 +35,7 @@ fn main() {
     let rust_logo = {
         let path = assets.join("images/rust.png");
         let factory = &mut *window.factory.borrow_mut();
-        Rc::new(Texture::from_path(factory, &path, Flip::None, &TextureSettings::new()).unwrap())
+        Arc::new(Texture::from_path(factory, &path, Flip::None, &TextureSettings::new()).unwrap())
     };
 
     // Poll events from the window.
@@ -43,7 +44,7 @@ fn main() {
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));
         event.update(|_| ui.set_widgets(|mut ui| {
             widget_ids!(CANVAS, RUST_LOGO);
-            Canvas::new().color(color::WHITE).set(CANVAS, &mut ui);
+            Canvas::new().color(color::LIGHT_BLUE).set(CANVAS, &mut ui);
             Image::from_texture(rust_logo.clone())
                 .middle_of(CANVAS)
                 .set(RUST_LOGO, &mut ui);
@@ -55,5 +56,5 @@ fn main() {
 #[cfg(not(feature = "backend-piston_window"))]
 fn main() {
     println!("This example requires the \"backend-piston_window\" feature. Use the feature like so \
-              `cargo run --release --feature \"backend-piston_window\" --example <example_name>`");
+              `cargo run --release --features \"backend-piston_window\" --example <example_name>`");
 }
