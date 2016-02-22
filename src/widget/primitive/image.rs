@@ -90,7 +90,7 @@ widget_style!{
     /// Unique styling for the `Image` widget.
     style Style {
         /// Optionally specify a single colour to use for the image.
-        - maybe_color: Option<Color> { None },
+        - maybe_color: Option<Color> { None }
     }
 }
 
