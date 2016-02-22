@@ -334,7 +334,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                     let context = context.trans(left, top).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
-                    image.draw(texture.rc.as_ref(), draw_state, transform, graphics);
+                    image.draw(texture.arc.as_ref(), draw_state, transform, graphics);
                 }
             }
         }

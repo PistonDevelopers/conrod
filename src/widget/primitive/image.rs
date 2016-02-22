@@ -10,7 +10,7 @@ use {
 use backend::graphics::ImageSize;
 use std::any::Any;
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 use widget;
 
 /// A primitive and basic widget for drawing an `Image`.
@@ -27,7 +27,7 @@ pub struct Image<T> {
 
 /// Where the `Image` data is stored.
 pub enum Source<T> {
-    Texture(Rc<T>),
+    Texture(Arc<T>),
 }
 
 /// Unique `State` to be stored between updates for the `Image`.
@@ -43,7 +43,7 @@ pub struct State<T>
 #[derive(Clone)]
 pub struct Texture<T> {
     /// A pointer to the backend texture type.
-    pub rc: Rc<T>,
+    pub arc: Arc<T>,
     /// The rectangular area of the texture to use as the image.
     pub src_rect: Rect,
 }
@@ -68,7 +68,7 @@ impl<T> PartialEq for Texture<T>
     where T: ImageSize,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.rc.get_size() == other.rc.get_size() && self.src_rect == other.src_rect
+        self.arc.get_size() == other.arc.get_size() && self.src_rect == other.src_rect
     }
 }
 
@@ -76,7 +76,7 @@ impl<T> Debug for Texture<T>
     where T: ImageSize,
 {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        let (w, h) = self.rc.get_size();
+        let (w, h) = self.arc.get_size();
         write!(f, "size: [{:?}, {:?}], src_rect: {:?}", w, h, self.src_rect)
     }
 }
@@ -108,7 +108,7 @@ impl<T> Image<T> {
     }
 
     /// Construct a new `Image` from a texture.
-    pub fn from_texture(texture: Rc<T>) -> Self {
+    pub fn from_texture(texture: Arc<T>) -> Self {
         Self::new(Source::Texture(texture))
     }
 
@@ -186,11 +186,11 @@ impl<T> Widget for Image<T>
                 let src_rect_has_changed = 
                     state.view().texture.as_ref().map(|t| &t.src_rect) != Some(&src_rect);
                 let texture_size_changed =
-                    state.view().texture.as_ref().map(|t| t.rc.get_size())
+                    state.view().texture.as_ref().map(|t| t.arc.get_size())
                     != Some(texture.get_size());
                 if src_rect_has_changed || texture_size_changed {
                     state.update(|state| state.texture = Some(Texture {
-                        rc: texture,
+                        arc: texture,
                         src_rect: src_rect,
                     }));
                 }
