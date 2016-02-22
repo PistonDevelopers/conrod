@@ -3,7 +3,6 @@
 //!
 //! The primary type of interest in this module is the [**Graph**](./struct.Graph) type.
 
-use Backend;
 use daggy;
 use position::{Axis, Depth, Rect};
 use self::index_map::IndexMap;

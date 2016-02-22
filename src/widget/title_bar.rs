@@ -1,7 +1,6 @@
 use {
     Align,
     Backend,
-    CharacterCache,
     Color,
     Colorable,
     Dimension,

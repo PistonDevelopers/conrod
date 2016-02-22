@@ -1,7 +1,6 @@
 
 use {
     Backend,
-    CharacterCache,
     Color,
     Colorable,
     Frameable,

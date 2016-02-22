@@ -1,5 +1,5 @@
 
-use {Backend, CharacterCache, Ui};
+use {Backend, Ui};
 use widget;
 
 pub use self::range::{Edge, Range};

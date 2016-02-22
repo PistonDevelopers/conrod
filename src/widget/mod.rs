@@ -5,8 +5,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
 use time::precise_time_ns;
-use ui::{self, Ui, UiCell, UserInput};
-use events::{GlobalInput, WidgetInput};
+use ui::{self, Ui, UiCell};
 
 pub use self::id::Id;
 pub use self::index::Index;

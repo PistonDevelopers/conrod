@@ -20,7 +20,6 @@ use input::{
     TextEvent,
 };
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
-use std::any::Any;
 use std::collections::HashSet;
 use std::io::Write;
 use std::marker::PhantomData;
@@ -857,7 +856,7 @@ pub fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mu
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
 pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
-    //where B: Backend,
+    where B: Backend,
 {
     &mut ui.widget_graph
 }
@@ -902,12 +901,6 @@ pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -
 }
 
 
-/// A function to allow the position matrix to set the current parent within the `Ui`.
-pub fn set_current_parent_idx<B>(ui: &mut Ui<B>, idx: widget::Index) {
-    ui.maybe_current_parent_idx = Some(idx);
-}
-
-
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
 pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a>
@@ -944,7 +937,9 @@ pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a>
 /// Return the current mouse state.
 ///
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
-pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse> {
+pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse>
+    where B: Backend,
+{
     match ui.maybe_captured_mouse {
         Some(Capturing::Captured(captured_idx)) =>
             if idx == captured_idx { Some(ui.mouse) } else { None },
@@ -970,7 +965,9 @@ pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse> {
 /// Returns true if the mouse was successfully captured.
 ///
 /// Returns false if the mouse was already captured.
-pub fn mouse_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
+pub fn mouse_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     // If the mouse isn't already captured, set idx as the capturing widget.
     if let None = ui.maybe_captured_mouse {
         ui.maybe_captured_mouse = Some(Capturing::Captured(idx));
@@ -985,7 +982,9 @@ pub fn mouse_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
 /// Returns true if the mouse was sucessfully released.
 ///
 /// Returns false if the mouse wasn't captured by the widget in the first place.
-pub fn mouse_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
+pub fn mouse_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     // Check that we are indeed the widget that is currently capturing the Mouse before releasing.
     if ui.maybe_captured_mouse == Some(Capturing::Captured(idx)) {
         ui.maybe_captured_mouse = Some(Capturing::JustReleased);
@@ -999,7 +998,9 @@ pub fn mouse_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully captured.
 ///
 /// Returns false if the keyboard was already captured by another widget.
-pub fn keyboard_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
+pub fn keyboard_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -1025,7 +1026,9 @@ pub fn keyboard_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully released.
 ///
 /// Returns false if the keyboard wasn't captured by the given widget in the first place.
-pub fn keyboard_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
+pub fn keyboard_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -1053,7 +1056,9 @@ pub fn keyboard_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool {
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache) {
+pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
+    where B: Backend,
+{
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     let widget_idx = widget.idx;
@@ -1080,6 +1085,8 @@ pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W
 
 
 /// Clear the background with the given color.
-pub fn clear_with<B>(ui: &mut Ui<B>, color: Color) {
+pub fn clear_with<B>(ui: &mut Ui<B>, color: Color)
+    where B: Backend,
+{
     ui.maybe_background_color = Some(color);
 }
