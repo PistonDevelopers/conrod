@@ -3,9 +3,13 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Theme, Widget};
-use conrod::backend::piston_window::{Ui, UiCell};
-use find_folder;
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+
+
+/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Ui = conrod::Ui<Backend>;
+type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 
 fn main() {
@@ -33,7 +37,6 @@ fn main() {
     }
 
 }
-
 
 fn set_ui(ref mut ui: UiCell) {
     use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text};

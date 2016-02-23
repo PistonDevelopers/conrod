@@ -7,12 +7,12 @@
 //! check the current `Theme` within the `Ui` and retrieve defaults from there.
 //!
 
-
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{
+    color,
     Button,
     Canvas,
     Circle,
@@ -35,12 +35,14 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::color::{self, rgb};
-use conrod::backend::piston_window::{Ui, UiCell};
-use find_folder;
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
+
+/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Ui = conrod::Ui<Backend>;
+type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 /// This struct holds all of the variables used to demonstrate application data being passed
 /// through the widgets. If some of these seem strange, that's because they are! Most of these
@@ -167,7 +169,6 @@ fn main() {
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
 }
-
 
 /// Set all `Widget`s within the User Interface.
 ///

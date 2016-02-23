@@ -6,14 +6,15 @@
 extern crate find_folder;
 extern crate piston_window;
 
-
-#[cfg(feature = "backend-piston_window")]
 fn main() {
     use conrod::{Canvas, Colorable, Image, Positionable, Theme, Widget, color};
-    use conrod::backend::piston_window::Ui;
-    use piston_window::{EventLoop, Flip, Glyphs, PistonWindow, Texture, TextureSettings,
+    use piston_window::{EventLoop, Flip, G2d, Glyphs, PistonWindow, Texture, TextureSettings,
                         UpdateEvent, WindowSettings};
     use std::sync::Arc;
+
+    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+    type Backend = (<G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+    type Ui = conrod::Ui<Backend>;
 
     // Construct the window.
     let window: PistonWindow =
@@ -50,11 +51,4 @@ fn main() {
                 .set(RUST_LOGO, &mut ui);
         }));
     }
-}
-
-
-#[cfg(not(feature = "backend-piston_window"))]
-fn main() {
-    println!("This example requires the \"backend-piston_window\" feature. Use the feature like so \
-              `cargo run --release --features \"backend-piston_window\" --example <example_name>`");
 }
