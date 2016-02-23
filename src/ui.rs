@@ -730,7 +730,7 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 /// cycle.
 pub fn infer_parent_unchecked<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position) -> widget::Index {
     infer_parent_from_position(ui, x_pos, y_pos)
-        .or(ui.maybe_prev_widget_idx)
+        .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
 }
 
