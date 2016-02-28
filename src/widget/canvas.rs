@@ -123,7 +123,7 @@ pub enum Length {
 
 /// The direction in which a sequence of canvas splits will be laid out.
 #[derive(Copy, Clone, Debug)]
-enum Direction {
+pub enum Direction {
     X(position::Direction),
     Y(position::Direction),
 }

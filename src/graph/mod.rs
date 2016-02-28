@@ -469,7 +469,7 @@ impl Graph {
     }
 
     /// Return the index of the parent along the given widget's **Depth** **Edge**.
-    pub fn depth_parent<I, J=NodeIndex>(&self, idx: I) -> Option<J>
+    pub fn depth_parent<I, J>(&self, idx: I) -> Option<J>
         where I: GraphIndex,
               J: GraphIndex,
     {
@@ -477,7 +477,7 @@ impl Graph {
     }
 
     /// Return the index of the parent along the given widget's **Position** **Edge**.
-    pub fn x_position_parent<I, J=NodeIndex>(&self, idx: I) -> Option<J>
+    pub fn x_position_parent<I, J>(&self, idx: I) -> Option<J>
         where I: GraphIndex,
               J: GraphIndex,
     {
@@ -485,7 +485,7 @@ impl Graph {
     }
 
     /// Return the index of the parent along the given widget's **Position** **Edge**.
-    pub fn y_position_parent<I, J=NodeIndex>(&self, idx: I) -> Option<J>
+    pub fn y_position_parent<I, J>(&self, idx: I) -> Option<J>
         where I: GraphIndex,
               J: GraphIndex,
     {
@@ -494,7 +494,7 @@ impl Graph {
 
     /// Produces an iterator yielding the parents along both the **X** and **Y** **Position**
     /// **Edge**s respectively.
-    pub fn position_parents<I, J=NodeIndex>(&self, idx: I) -> PositionParents<J>
+    pub fn position_parents<I, J>(&self, idx: I) -> PositionParents<J>
         where I: GraphIndex,
               J: GraphIndex,
     {
@@ -502,7 +502,7 @@ impl Graph {
     }
 
     /// Return the index of the parent along the given widget's **Graphic** **Edge**.
-    pub fn graphic_parent<I, J=NodeIndex>(&self, idx: I) -> Option<J>
+    pub fn graphic_parent<I, J>(&self, idx: I) -> Option<J>
         where I: GraphIndex,
               J: GraphIndex,
     {

@@ -296,6 +296,7 @@ pub type Kind = &'static str;
 /// We do this so that if this **Widget** were to internally `set` some other **Widget**s, this
 /// **Widget**'s positioning and dimension data already exists within the widget **Graph** for
 /// reference.
+#[allow(missing_copy_implementations)]
 pub struct PreUpdateCache {
     /// The **Widget**'s unique kind.
     pub kind: Kind,
