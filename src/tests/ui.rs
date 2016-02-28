@@ -21,8 +21,6 @@ use widget::{Index, self};
 use widget::button::Button as ButtonWidget;
 use position::Point;
 
-type Ui = ::Ui<MockCharacterCache>;
-
 #[test]
 fn ui_should_reset_global_input_after_widget_are_set() {
     let mut ui = windowless_ui();
@@ -179,6 +177,7 @@ impl ::Backend for MockBackend {
     type CharacterCache = MockCharacterCache;
 }
 
+#[derive(Clone)]
 struct MockImageSize {
     w: u32,
     h: u32,

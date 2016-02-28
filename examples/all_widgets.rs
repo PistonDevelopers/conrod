@@ -89,7 +89,7 @@ impl DemoApp {
     fn new() -> DemoApp {
         let (elem_sender, elem_receiver) = mpsc::channel();
         DemoApp {
-            bg_color: rgb(0.2, 0.35, 0.45),
+            bg_color: color::rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
             title_pad: 350.0,
@@ -263,9 +263,9 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
-            0 => rgb(0.75, 0.3, 0.3),
-            1 => rgb(0.3, 0.75, 0.3),
-            _ => rgb(0.3, 0.3, 0.75),
+            0 => color::rgb(0.75, 0.3, 0.3),
+            1 => color::rgb(0.3, 0.75, 0.3),
+            _ => color::rgb(0.3, 0.3, 0.75),
         };
 
         // Grab the value of the color element.
