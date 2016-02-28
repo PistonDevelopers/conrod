@@ -1,12 +1,11 @@
-use {CharacterCache, Dimension, GlyphCache};
+use {Backend, CharacterCache, Dimension, GlyphCache};
 use graph::NodeIndex;
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std::any::Any;
 use std::fmt::Debug;
 use theme::{self, Theme};
 use time::precise_time_ns;
-use ui::{self, Ui, UserInput};
-use events::{GlobalInput, WidgetInput};
+use ui::{self, Ui, UiCell};
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -41,7 +40,10 @@ pub mod xy_pad;
 
 /// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
 /// simplify the method signature.
-pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
+pub struct UpdateArgs<'a, 'b: 'a, W, B: 'a>
+    where W: Widget,
+          B: Backend,
+{
     /// The **Widget**'s unique index.
     pub idx: Index,
     /// The **Widget**'s parent unique index, if there is one.
@@ -67,28 +69,7 @@ pub struct UpdateArgs<'a, 'b: 'a, W, C: 'a> where W: Widget {
     ///
     /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.  Also allows
     /// calling `Widget::set` within the `Widget::update` method.
-    pub ui: UiCell<'a, C>,
-}
-
-/// A wrapper around a `Ui` that only exposes the functionality necessary for the
-/// **Widget::update** method.
-///
-/// Its primary role is to allow for widget designers to compose their own unique **Widget**s from
-/// other **Widget**s by calling the **Widget::set** method within their own **Widget**'s
-/// update method.
-///
-/// It also provides methods for accessing the **Ui**'s **Theme**, **GlyphCache** and **UserInput**
-/// via immutable reference.
-///
-/// BTW - if you have a better name for this type, please post an issue or PR! "Cell" was the best
-/// I could come up with as it's kind of like a jail cell for the **Ui** - restricting a user's
-/// access to it.
-pub struct UiCell<'a, C: 'a> {
-    /// A mutable reference to a **Ui**.
-    ui: &'a mut Ui<C>,
-    /// The index of the Widget that "owns" the **UiCell**. The index is needed so that we can
-    /// correctly retrieve user input information for the specific widget.
-    idx: Index,
+    pub ui: UiCell<'a, B>,
 }
 
 /// A small cache for a single unique **NodeIndex**.
@@ -105,7 +86,9 @@ pub struct IndexSlot {
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
 /// simplify the method signature.
-pub struct KidAreaArgs<'a, W, C: 'a> where W: Widget {
+pub struct KidAreaArgs<'a, W, C: 'a>
+    where W: Widget,
+{
     /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
     /// Current **Widget::Style** of the **Widget**.
@@ -146,7 +129,9 @@ impl MaybeParent {
     /// **Note:** This method does not check whether or not using the `window` widget as the parent
     /// would cause a cycle. If it is important that the inferred parent should not cause a cycle,
     /// use `get` instead.
-    pub fn get_unchecked<C>(&self, ui: &Ui<C>, x_pos: Position, y_pos: Position) -> Index {
+    pub fn get_unchecked<B>(&self, ui: &Ui<B>, x_pos: Position, y_pos: Position) -> Index
+        where B: Backend,
+    {
         match *self {
             MaybeParent::Some(idx) => idx,
             MaybeParent::None => ui.window.into(),
@@ -156,8 +141,8 @@ impl MaybeParent {
 
     /// The same as `get_unchecked`, but checks whether or not the widget that we're inferring the
     /// parent for is the `Ui`'s window (which cannot have a parent, without creating a cycle).
-    pub fn get<C>(&self, idx: Index, ui: &Ui<C>, x_pos: Position, y_pos: Position)
-        -> Option<Index>
+    pub fn get<B>(&self, idx: Index, ui: &Ui<B>, x_pos: Position, y_pos: Position) -> Option<Index>
+        where B: Backend,
     {
         if idx == ui.window.into() {
             None
@@ -264,7 +249,9 @@ pub struct CommonState {
 }
 
 /// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
-pub struct Cached<W> where W: Widget {
+pub struct Cached<W>
+    where W: Widget,
+{
     /// State that is unique to the Widget.
     pub state: W::State,
     /// Unique styling state for the Widget.
@@ -335,7 +322,9 @@ pub struct PreUpdateCache {
 /// We do this so that if this **Widget** were to internally **Widget::set** some other
 /// **Widget**s, this **Widget**'s positioning and dimension data will already exist within the
 /// widget **Graph** for reference.
-pub struct PostUpdateCache<W> where W: Widget {
+pub struct PostUpdateCache<W>
+    where W: Widget,
+{
     /// The **Widget**'s unique **Index**.
     pub idx: Index,
     /// The **Widget**'s parent's unique **Index** (if it has a parent).
@@ -344,24 +333,6 @@ pub struct PostUpdateCache<W> where W: Widget {
     pub state: W::State,
     /// The newly produced unique **Widget::Style** associated with the **Widget**.
     pub style: W::Style,
-}
-
-
-/// A trait that allows us to be generic over both Ui and UiCell in the `Widget::set` arguments.
-trait UiRefMut {
-    type CharacterCache: CharacterCache;
-    /// A mutable reference to the `Ui`.
-    fn ui_ref_mut(&mut self) -> &mut Ui<Self::CharacterCache>;
-}
-
-impl<C> UiRefMut for Ui<C> where C: CharacterCache {
-    type CharacterCache = C;
-    fn ui_ref_mut(&mut self) -> &mut Ui<C> { self }
-}
-
-impl<'a, C> UiRefMut for UiCell<'a, C> where C: CharacterCache {
-    type CharacterCache = C;
-    fn ui_ref_mut(&mut self) -> &mut Ui<C> { self.ui }
 }
 
 
@@ -379,9 +350,9 @@ impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
 /// 2. Otherwise attempts to copy the dimension of the previously set widget if there is one.
 /// 3. Otherwise attempts to copy the dimension of our parent widget.
 /// 4. If no parent widget can be inferred, the window dimensions are used.
-fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Dimension
+fn default_dimension<W, B, F>(widget: &W, ui: &Ui<B>, f: F) -> Dimension
     where W: Widget,
-          C: CharacterCache,
+          B: Backend,
           F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
 {
     ui.theme.widget_style::<W::Style>(widget.unique_kind())
@@ -407,9 +378,9 @@ fn default_dimension<W, C, F>(widget: &W, ui: &Ui<C>, f: F) -> Dimension
 ///
 /// If you wish to override **Widget::default_x_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
-pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
+pub fn default_x_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
     where W: Widget,
-          C: CharacterCache,
+          B: Backend,
 {
     default_dimension(widget, ui, |default| default.common.maybe_x_dimension)
 }
@@ -426,9 +397,9 @@ pub fn default_x_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
 ///
 /// If you wish to override **Widget::default_y_dimension**, feel free to call this function
 /// internally if you partly require the bahaviour of the default implementations.
-pub fn default_y_dimension<W, C>(widget: &W, ui: &Ui<C>) -> Dimension
+pub fn default_y_dimension<W, B>(widget: &W, ui: &Ui<B>) -> Dimension
     where W: Widget,
-          C: CharacterCache,
+          B: Backend,
 {
     default_dimension(widget, ui, |default| default.common.maybe_y_dimension)
 }
@@ -588,12 +559,12 @@ pub trait Widget: Sized {
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
-    fn update<C: CharacterCache>(self, args: UpdateArgs<Self, C>);
+    fn update<B: Backend>(self, args: UpdateArgs<Self, B>);
 
     /// The default **Position** for the widget along the *x* axis.
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
-    fn default_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn default_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_x_position)
             .unwrap_or(ui.theme.x_position)
@@ -602,7 +573,7 @@ pub trait Widget: Sized {
     /// The default **Position** for the widget along the *y* axis.
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
-    fn default_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn default_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         ui.theme.widget_style::<Self::Style>(self.unique_kind())
             .and_then(|style| style.common.maybe_y_position)
             .unwrap_or(ui.theme.y_position)
@@ -614,7 +585,7 @@ pub trait Widget: Sized {
     ///
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
-    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         default_x_dimension(self, ui)
     }
 
@@ -622,7 +593,7 @@ pub trait Widget: Sized {
     ///
     /// By default, this simply calls [**default_dimension**](./fn.default_dimension) with a
     /// fallback absolute dimension of 0.0.
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         default_y_dimension(self, ui)
     }
 
@@ -795,11 +766,11 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
     /// needs to be re-drawn.
     /// - The new State and Style will be cached within the `Ui`.
-    fn set<I, U>(self, idx: I, ui: &mut U) where
-        I: Into<Index>,
-        U: UiRefMut,
+    fn set<'a, 'b, I, B>(self, idx: I, ui_cell: &'a mut UiCell<'b, B>)
+        where I: Into<Index>,
+              B: Backend,
     {
-        set_widget(self, idx.into(), ui.ui_ref_mut());
+        set_widget(self, idx.into(), ui::ref_mut_from_ui_cell(ui_cell));
     }
 
 }
@@ -816,9 +787,9 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
-    C: CharacterCache,
-    W: Widget,
+fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
+    where B: Backend,
+          W: Widget,
 {
     let kind = widget.unique_kind();
 
@@ -980,7 +951,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = {
-        let args = KidAreaArgs {
+        let args: KidAreaArgs<W, B::CharacterCache> = KidAreaArgs {
             rect: rect,
             style: &new_style,
             theme: &ui.theme,
@@ -1073,7 +1044,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
                 prev: &prev_common,
                 rect: rect,
                 style: &new_style,
-                ui: UiCell { ui: ui, idx: idx },
+                ui: ui::new_ui_cell(ui),
             });
 
             state.has_updated
@@ -1105,7 +1076,7 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 
     // Finally, cache the `Widget`'s newly updated `State` and `Style` within the `ui`'s
     // `widget_graph`.
-    ui::post_update_cache::<C, W>(ui, PostUpdateCache {
+    ui::post_update_cache::<B, W>(ui, PostUpdateCache {
         idx: idx,
         maybe_parent_idx: maybe_parent_idx,
         state: unique_state,
@@ -1114,119 +1085,6 @@ fn set_widget<'a, C, W>(widget: W, idx: Index, ui: &mut Ui<C>) where
 }
 
 
-impl<'a, C> UiCell<'a, C> {
-
-    /// A reference to the `Theme` that is currently active within the `Ui`.
-    pub fn theme(&self) -> &Theme { &self.ui.theme }
-
-    /// A reference to the `Ui`'s `GlyphCache`.
-    pub fn glyph_cache(&self) -> &GlyphCache<C> { &self.ui.glyph_cache }
-
-    /// Returns the dimensions of the window
-    pub fn window_dim(&self) -> Dimensions {
-        [self.ui.win_w, self.ui.win_h]
-    }
-
-    /// A struct representing the user input that has occurred since the last update.
-    pub fn input(&self) -> UserInput {
-        ui::user_input(self.ui, self.idx)
-    }
-
-    /// Returns an immutable reference to the `GlobalInput` of the `Ui`. All coordinates
-    /// here will be relative to the center of the window.
-    pub fn global_input(&self) -> &GlobalInput {
-        &self.ui.global_input
-    }
-
-    /// Returns a `WidgetInput` with input events for the widget.
-    /// All coordinates in the `WidgetInput` will be relative to the current widget.
-    pub fn widget_input(&self) -> WidgetInput {
-        self.widget_input_for(self.idx)
-    }
-
-    /// Returns a `WidgetInput` with input events for the widget.
-    /// All coordinates in the `WidgetInput` will be relative to the given widget.
-    pub fn widget_input_for<I: Into<Index>>(&self, widget: I) -> WidgetInput {
-        self.ui.widget_input(widget.into())
-    }
-
-    /// A struct representing the user input that has occurred since the last update for the
-    /// `Widget` with the given index..
-    pub fn input_for<I: Into<Index>>(&self, idx: I) -> UserInput {
-        ui::user_input(self.ui, idx.into())
-    }
-
-    /// Have the widget capture the mouse input. The mouse state will be hidden from other
-    /// widgets while captured.
-    ///
-    /// Returns true if the mouse was successfully captured.
-    ///
-    /// Returns false if it was already captured by some other widget.
-    pub fn capture_mouse(&mut self) -> bool {
-        ui::mouse_captured_by(self.ui, self.idx)
-    }
-
-    /// Uncapture the mouse input.
-    ///
-    /// Returns true if the mouse was successfully uncaptured.
-    ///
-    /// Returns false if the mouse wasn't captured by our widget in the first place.
-    pub fn uncapture_mouse(&mut self) -> bool {
-        ui::mouse_uncaptured_by(self.ui, self.idx)
-    }
-
-    /// Have the widget capture the keyboard input. The keyboard state will be hidden from other
-    /// widgets while captured.
-    ///
-    /// Returns true if the keyboard was successfully captured.
-    ///
-    /// Returns false if it was already captured by some other widget.
-    pub fn capture_keyboard(&mut self) -> bool {
-        ui::keyboard_captured_by(self.ui, self.idx)
-    }
-
-    /// Uncapture the keyboard input.
-    ///
-    /// Returns true if the keyboard was successfully uncaptured.
-    ///
-    /// Returns false if the keyboard wasn't captured by our widget in the first place.
-    pub fn uncapture_keyboard(&mut self) -> bool {
-        ui::keyboard_uncaptured_by(self.ui, self.idx)
-    }
-
-    /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
-    /// This should only be called once for each unique widget needed to avoid unnecessary bloat
-    /// within the `Ui`'s widget graph.
-    ///
-    /// When using this method in your `Widget`'s `update` method, be sure to store the returned
-    /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
-    ///
-    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
-    pub fn new_unique_node_index(&mut self) -> NodeIndex {
-        ui::widget_graph_mut(&mut self.ui).add_placeholder()
-    }
-
-    /// The **Rect** that bounds the kids of the widget with the given index.
-    ///
-    /// Returns `None` if the widget has no children or if there's is no widget for the given index.
-    pub fn kids_bounding_box<I: Into<Index>>(&self, idx: I) -> Option<Rect> {
-        self.ui.kids_bounding_box(idx)
-    }
-
-}
-
-impl<'a, C> ::std::ops::Deref for UiCell<'a, C> {
-    type Target = Ui<C>;
-    fn deref(&self) -> &Ui<C> {
-        self.ui
-    }
-}
-
-impl<'a, C> AsRef<Ui<C>> for UiCell<'a, C> {
-    fn as_ref(&self) -> &Ui<C> {
-        &self.ui
-    }
-}
 
 
 impl IndexSlot {
@@ -1242,7 +1100,9 @@ impl IndexSlot {
     ///
     /// If the **IndexSlot** does not yet hold a **NodeIndex**, the **UiCell** will be used to
     /// produce a `new_unique_node_index`.
-    pub fn get<C>(&self, ui: &mut UiCell<C>) -> NodeIndex {
+    pub fn get<B>(&self, ui: &mut UiCell<B>) -> NodeIndex
+        where B: Backend,
+    {
         if self.maybe_idx.get().is_none() {
             let new_idx = ui.new_unique_node_index();
             self.maybe_idx.set(Some(new_idx));
@@ -1304,7 +1164,9 @@ impl CommonStyle {
 }
 
 
-impl<W> Positionable for W where W: Widget {
+impl<W> Positionable for W
+    where W: Widget,
+{
     #[inline]
     fn x_position(mut self, x: Position) -> Self {
         self.common_mut().style.maybe_x_position = Some(x);
@@ -1316,8 +1178,7 @@ impl<W> Positionable for W where W: Widget {
         self
     }
     #[inline]
-    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
-
+    fn get_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_y_position = || self.common().style.maybe_y_position
             .and_then(|y_pos| infer_position_from_other_position(y_pos, Align::Start));
         self.common().style.maybe_x_position
@@ -1325,7 +1186,7 @@ impl<W> Positionable for W where W: Widget {
             .unwrap_or(self.default_x_position(ui))
     }
     #[inline]
-    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn get_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_x_position = || self.common().style.maybe_x_position
             .and_then(|x_pos| infer_position_from_other_position(x_pos, Align::End));
         self.common().style.maybe_y_position
@@ -1359,7 +1220,9 @@ fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> 
 }
 
 
-impl<W> Sizeable for W where W: Widget {
+impl<W> Sizeable for W
+    where W: Widget,
+{
     #[inline]
     fn x_dimension(mut self, w: Dimension) -> Self {
         self.common_mut().style.maybe_x_dimension = Some(w);
@@ -1374,33 +1237,14 @@ impl<W> Sizeable for W where W: Widget {
     /// We attempt to retrieve the `x` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_x_dimension`
     /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
-    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn get_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         self.common().style.maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
     #[inline]
     /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_y_dimension`
     /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
-    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn get_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
 }
-
-
-// /// A macro to simplify implementation of style retrieval functions.
-// macro_rules! style_retrieval {
-//     ($fn_name:ident, $maybe:ident, $return_type:ty, $default:expr) => {
-//         pub fn $fn_name(&self, theme: &Theme) -> $return_type {
-//             self.$maybe.or_else(|| theme.widget_styling::<Self>(KIND).map(|default| {
-//                 default.style.$maybe.unwrap_or($default)
-//             })).unwrap_or($default)
-//         }
-//     };
-// }
-//
-// style_retrieval! {
-//     fn_name: color,
-//     member: maybe_color,
-//     type: Color,
-//     default: theme.shape_color
-// };

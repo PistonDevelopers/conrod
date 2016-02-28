@@ -2,10 +2,14 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Labelable, Positionable, Sizeable, Theme, Ui, Widget};
-use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 
 fn main() {
+    use conrod::{Labelable, Positionable, Sizeable, Theme, Widget};
+    use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+
+    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+    type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+    type Ui = conrod::Ui<Backend>;
 
     // Construct the window.
     let window: PistonWindow = WindowSettings::new("Click me!", [200, 200])
@@ -26,7 +30,7 @@ fn main() {
     // Poll events from the window.
     for event in window.ups(60) {
         ui.handle_event(&event);
-        event.update(|_| ui.set_widgets(|ui| {
+        event.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Generate the ID for the Button COUNTER.
             widget_ids!(CANVAS, COUNTER);
@@ -44,5 +48,4 @@ fn main() {
         }));
         event.draw_2d(|c, g| ui.draw_if_changed(c, g));
     }
-
 }

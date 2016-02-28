@@ -1,4 +1,5 @@
 use {
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -332,7 +333,9 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
+impl<'a, F> Widget for TextBox<'a, F>
+    where F: FnMut(&mut String),
+{
     type State = State;
     type Style = Style;
 
@@ -374,11 +377,11 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
     }
 
     /// Update the state of the TextBox.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let (xy, dim) = rect.xy_dim();
-        let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+        let maybe_mouse = ui.input(idx).maybe_mouse.map(|mouse| mouse.relative_to(xy));
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let font_size = style.font_size(ui.theme());
@@ -430,7 +433,7 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
         // If TextBox is captured, check for recent input and update the text accordingly.
         if let Interaction::Captured(captured) = new_interaction {
             let mut cursor = captured.cursor;
-            let input = ui.input();
+            let input = ui.input(idx);
 
             // Check for entered text.
             for text in input.entered_text {
@@ -518,8 +521,8 @@ impl<'a, F> Widget for TextBox<'a, F> where F: FnMut(&mut String) {
 
         // Check the interactions to determine whether we need to capture or uncapture the keyboard.
         match (state.view().interaction, new_interaction) {
-            (Interaction::Uncaptured(_), Interaction::Captured(_)) => { ui.capture_keyboard(); },
-            (Interaction::Captured(_), Interaction::Uncaptured(_)) => { ui.uncapture_keyboard(); },
+            (Interaction::Uncaptured(_), Interaction::Captured(_)) => { ui.capture_keyboard(idx); },
+            (Interaction::Captured(_), Interaction::Uncaptured(_)) => { ui.uncapture_keyboard(idx); },
             _ => (),
         }
 

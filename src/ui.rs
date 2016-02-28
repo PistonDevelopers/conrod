@@ -1,5 +1,6 @@
 
 use {CharacterCache, Scalar};
+use backend::Backend;
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
@@ -21,6 +22,7 @@ use input::{
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std::collections::HashSet;
 use std::io::Write;
+use std::marker::PhantomData;
 use theme::Theme;
 use widget::{self, Widget};
 use ::events::{UiEvent, InputProvider, GlobalInput, WidgetInput};
@@ -43,11 +45,15 @@ enum Capturing {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<C> {
+pub struct Ui<B>
+    where B: Backend,
+{
+    /// The backend used by the `Ui`, providing the `Graphics` and `CharacterCache` types.
+    backend: PhantomData<B>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// Cache for character textures, used for label width calculation and glyph rendering.
-    pub glyph_cache: GlyphCache<C>,
+    pub glyph_cache: GlyphCache<B::CharacterCache>,
     /// An index into the root widget of the graph, representing the entire window.
     pub window: NodeIndex,
     /// Window width.
@@ -96,7 +102,27 @@ pub struct Ui<C> {
     prev_updated_widgets: HashSet<NodeIndex>,
 }
 
+/// A wrapper around the `Ui` that restricts the user from mutating the `Ui` in certain ways while
+/// in the scope of the `Ui::set_widgets` function and within `Widget`s' `update` methods. Using
+/// the `UiCell`, users may access the `Ui` immutably (via `Deref`) however they wish, however they
+/// may only mutate the `Ui` via the `&mut self` methods provided by the `UiCell`.
+///
+/// The name came from its likening to a "jail cell for the `Ui`", as it restricts a user's access
+/// to it. However, we realise that the name may also cause ambiguity with the std `Cell` and
+/// `RefCell` types (which `UiCell` has nothing to do with). Thus, if you have a better name for
+/// this type in mind, please let us know at the github repo via an issue or PR sometime before we
+/// hit 1.0.0!
+pub struct UiCell<'a, B: 'a>
+    where B: Backend,
+{
+    /// A mutable reference to a **Ui**.
+    ui: &'a mut Ui<B>,
+}
+
 /// A wrapper over the current user input state.
+///
+/// NOTE: This is deprecated in favour of the new `events` API introduced in PR #684 and will be
+/// removed once all internal widgets have been ported over to the new API.
 #[derive(Clone, Debug)]
 pub struct UserInput<'a> {
     /// Mouse state only if it is currently available to the widget after considering capturing.
@@ -120,11 +146,12 @@ pub struct UserInput<'a> {
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 
-impl<C> Ui<C> {
-
+impl<B> Ui<B>
+    where B: Backend,
+{
 
     /// A new, empty **Ui**.
-    pub fn new(character_cache: C, theme: Theme) -> Self {
+    pub fn new(character_cache: B::CharacterCache, theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
         let updated_widgets = HashSet::new();
@@ -132,7 +159,10 @@ impl<C> Ui<C> {
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
-    pub fn with_capacity(character_cache: C, theme: Theme, n_widgets: usize) -> Self {
+    pub fn with_capacity(character_cache: B::CharacterCache,
+                         theme: Theme,
+                         n_widgets: usize) -> Self
+    {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
         let updated_widgets = HashSet::with_capacity(n_widgets);
@@ -140,7 +170,7 @@ impl<C> Ui<C> {
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
-    fn new_internal(character_cache: C,
+    fn new_internal(character_cache: B::CharacterCache,
                     theme: Theme,
                     mut widget_graph: Graph,
                     depth_order: graph::DepthOrder,
@@ -150,6 +180,7 @@ impl<C> Ui<C> {
         let prev_updated_widgets = updated_widgets.clone();
         let mouse_drag_threshold = theme.mouse_drag_threshold;
         Ui {
+            backend: PhantomData,
             widget_graph: widget_graph,
             theme: theme,
             window: window,
@@ -401,13 +432,14 @@ impl<C> Ui<C> {
         //
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
-        fn abs_from_position<C, R, P>(ui: &Ui<C>,
+        fn abs_from_position<B, R, P>(ui: &Ui<B>,
                                       position: Position,
                                       dim: Scalar,
                                       place_on_kid_area: bool,
                                       range_from_rect: R,
                                       start_and_end_pad: P) -> Scalar
-            where R: FnOnce(Rect) -> Range,
+            where B: Backend,
+                  R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> Range,
         {
             match position {
@@ -496,8 +528,7 @@ impl<C> Ui<C> {
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where C: CharacterCache,
-              F: FnOnce(&mut Self),
+        where F: FnOnce(UiCell<B>),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -530,7 +561,7 @@ impl<C> Ui<C> {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use ::{color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
+            use {color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
             type Window = FramedRectangle;
             Window::new([self.win_w, self.win_h])
                 .no_parent()
@@ -538,13 +569,13 @@ impl<C> Ui<C> {
                 .frame(0.0)
                 .frame_color(color::BLACK.alpha(0.0))
                 .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
-                .set(self.window, self);
+                .set(self.window, &mut UiCell { ui: self });
         }
 
         self.maybe_current_parent_idx = Some(self.window.into());
 
         // Call the given user function for instantiating Widgets.
-        user_widgets_fn(self);
+        user_widgets_fn(UiCell { ui: self });
 
         // We'll need to re-draw if we have gained or lost widgets.
         if self.updated_widgets != self.prev_updated_widgets {
@@ -615,8 +646,7 @@ impl<C> Ui<C> {
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
     pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
+        where G: Graphics<Texture=B::Texture>,
     {
         use backend::graphics::{draw_from_graph, Transformed};
         use std::ops::{Deref, DerefMut};
@@ -641,7 +671,7 @@ impl<C> Ui<C> {
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph(context, graphics, character_cache, widget_graph, indices, theme);
+        draw_from_graph::<B, G>(context, graphics, character_cache, widget_graph, indices, theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -665,8 +695,7 @@ impl<C> Ui<C> {
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
     pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics,
-              C: CharacterCache<Texture=G::Texture>,
+        where G: Graphics<Texture=B::Texture>,
     {
         if self.redraw_count > 0 {
             self.draw(context, graphics);
@@ -693,8 +722,142 @@ impl<C> Ui<C> {
 }
 
 
+impl<'a, B> UiCell<'a, B>
+    where B: Backend,
+{
+
+    /// A reference to the `Theme` that is currently active within the `Ui`.
+    pub fn theme(&self) -> &Theme { &self.ui.theme }
+
+    /// A reference to the `Ui`'s `GlyphCache`.
+    pub fn glyph_cache(&self) -> &GlyphCache<B::CharacterCache> { &self.ui.glyph_cache }
+
+    /// Returns the dimensions of the window
+    pub fn window_dim(&self) -> Dimensions {
+        [self.ui.win_w, self.ui.win_h]
+    }
+
+    /// A struct representing the user input that has occurred since the last update, relevant to
+    /// the widget with the given index.
+    ///
+    /// NOTE: This method is deprecated (following #684) and will be removed in favour of the
+    /// `widget_input` and `global_input` methods.
+    pub fn input<I: Into<widget::Index>>(&self, idx: I) -> UserInput {
+        user_input(self.ui, idx.into())
+    }
+
+    /// Returns an immutable reference to the `GlobalInput` of the `Ui`.
+    ///
+    /// All coordinates here will be relative to the center of the window.
+    pub fn global_input(&self) -> &GlobalInput {
+        &self.ui.global_input
+    }
+
+    /// Returns a `WidgetInput` with input events for the widget.
+    ///
+    /// All coordinates in the `WidgetInput` will be relative to the widget at the given index.
+    pub fn widget_input<I: Into<widget::Index>>(&self, idx: I) -> WidgetInput {
+        self.ui.widget_input(idx.into())
+    }
+
+    /// Have the widget capture the mouse input. The mouse state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the mouse was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_mouse<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        mouse_captured_by(self.ui, idx.into())
+    }
+
+    /// Uncapture the mouse input.
+    ///
+    /// Returns true if the mouse was successfully uncaptured.
+    ///
+    /// Returns false if the mouse wasn't captured by our widget in the first place.
+    pub fn uncapture_mouse<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        mouse_uncaptured_by(self.ui, idx.into())
+    }
+
+    /// Have the widget capture the keyboard input. The keyboard state will be hidden from other
+    /// widgets while captured.
+    ///
+    /// Returns true if the keyboard was successfully captured.
+    ///
+    /// Returns false if it was already captured by some other widget.
+    pub fn capture_keyboard<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        keyboard_captured_by(self.ui, idx.into())
+    }
+
+    /// Uncapture the keyboard input.
+    ///
+    /// Returns true if the keyboard was successfully uncaptured.
+    ///
+    /// Returns false if the keyboard wasn't captured by our widget in the first place.
+    pub fn uncapture_keyboard<I: Into<widget::Index>>(&mut self, idx: I) -> bool {
+        keyboard_uncaptured_by(self.ui, idx.into())
+    }
+
+    /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
+    /// This should only be called once for each unique widget needed to avoid unnecessary bloat
+    /// within the `Ui`'s widget graph.
+    ///
+    /// When using this method in your `Widget`'s `update` method, be sure to store the returned
+    /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
+    ///
+    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
+    pub fn new_unique_node_index(&mut self) -> NodeIndex {
+        widget_graph_mut(&mut self.ui).add_placeholder()
+    }
+
+    /// The **Rect** that bounds the kids of the widget with the given index.
+    ///
+    /// Returns `None` if the widget has no children or if there's is no widget for the given index.
+    pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
+        self.ui.kids_bounding_box(idx)
+    }
+
+}
+
+impl<'a, B> ::std::ops::Deref for UiCell<'a, B>
+    where B: Backend,
+{
+    type Target = Ui<B>;
+    fn deref(&self) -> &Ui<B> {
+        self.ui
+    }
+}
+
+impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
+    where B: Backend,
+{
+    fn as_ref(&self) -> &Ui<B> {
+        &self.ui
+    }
+}
+
+/// A private constructor for the `UiCell` for internal use.
+pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
+    where B: Backend,
+{
+    UiCell { ui: ui }
+}
+
+/// A function for retrieving the `&mut Ui<B>` from a `UiCell<B>`.
+///
+/// This function is only for internal use to allow for some `Ui` type acrobatics in order to
+/// provide a nice *safe* API for the user.
+pub fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
+    where 'b: 'a,
+          B: Backend
+{
+    ui_cell.ui
+}
+
 /// A mutable reference to the given `Ui`'s widget `Graph`.
-pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
+pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
+    where B: Backend,
+{
     &mut ui.widget_graph
 }
 
@@ -702,8 +865,9 @@ pub fn widget_graph_mut<C>(ui: &mut Ui<C>) -> &mut Graph {
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position)
+pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position)
     -> Option<widget::Index>
+    where B: Backend,
 {
     use Position::{Place, Relative, Direction, Align};
     match (x_pos, y_pos) {
@@ -728,22 +892,20 @@ pub fn infer_parent_from_position<C>(ui: &Ui<C>, x_pos: Position, y_pos: Positio
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked<C>(ui: &Ui<C>, x_pos: Position, y_pos: Position) -> widget::Index {
+pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index
+    where B: Backend,
+{
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
 }
 
 
-/// A function to allow the position matrix to set the current parent within the `Ui`.
-pub fn set_current_parent_idx<C>(ui: &mut Ui<C>, idx: widget::Index) {
-    ui.maybe_current_parent_idx = Some(idx);
-}
-
-
 /// Return the user input state available for the widget with the given ID.
 /// Take into consideration whether or not each input type is captured.
-pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
+pub fn user_input<'a, B>(ui: &'a Ui<B>, idx: widget::Index) -> UserInput<'a>
+    where B: Backend,
+{
     let maybe_mouse = get_mouse_state(ui, idx);
     let global_mouse = ui.mouse;
     let without_keys = || UserInput {
@@ -775,7 +937,9 @@ pub fn user_input<'a, C>(ui: &'a Ui<C>, idx: widget::Index) -> UserInput<'a> {
 /// Return the current mouse state.
 ///
 /// If the Ui has been captured and the given id doesn't match the captured id, return None.
-pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
+pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse>
+    where B: Backend,
+{
     match ui.maybe_captured_mouse {
         Some(Capturing::Captured(captured_idx)) =>
             if idx == captured_idx { Some(ui.mouse) } else { None },
@@ -801,7 +965,9 @@ pub fn get_mouse_state<C>(ui: &Ui<C>, idx: widget::Index) -> Option<Mouse> {
 /// Returns true if the mouse was successfully captured.
 ///
 /// Returns false if the mouse was already captured.
-pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn mouse_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     // If the mouse isn't already captured, set idx as the capturing widget.
     if let None = ui.maybe_captured_mouse {
         ui.maybe_captured_mouse = Some(Capturing::Captured(idx));
@@ -816,7 +982,9 @@ pub fn mouse_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the mouse was sucessfully released.
 ///
 /// Returns false if the mouse wasn't captured by the widget in the first place.
-pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn mouse_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     // Check that we are indeed the widget that is currently capturing the Mouse before releasing.
     if ui.maybe_captured_mouse == Some(Capturing::Captured(idx)) {
         ui.maybe_captured_mouse = Some(Capturing::JustReleased);
@@ -830,7 +998,9 @@ pub fn mouse_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully captured.
 ///
 /// Returns false if the keyboard was already captured by another widget.
-pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn keyboard_captured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -856,7 +1026,9 @@ pub fn keyboard_captured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Returns true if the keyboard was successfully released.
 ///
 /// Returns false if the keyboard wasn't captured by the given widget in the first place.
-pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
+pub fn keyboard_uncaptured_by<B>(ui: &mut Ui<B>, idx: widget::Index) -> bool
+    where B: Backend,
+{
     match ui.maybe_captured_keyboard {
         Some(Capturing::Captured(captured_idx)) => if idx != captured_idx {
             writeln!(::std::io::stderr(),
@@ -884,8 +1056,8 @@ pub fn keyboard_uncaptured_by<C>(ui: &mut Ui<C>, idx: widget::Index) -> bool {
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
-    C: CharacterCache,
+pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
+    where B: Backend,
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
@@ -900,11 +1072,11 @@ pub fn pre_update_cache<C>(ui: &mut Ui<C>, widget: widget::PreUpdateCache) where
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W>) where
-    C: CharacterCache,
-    W: Widget,
-    W::State: 'static,
-    W::Style: 'static,
+pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W>)
+    where B: Backend,
+          W: Widget,
+          W::State: 'static,
+          W::Style: 'static,
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
@@ -913,6 +1085,8 @@ pub fn post_update_cache<C, W>(ui: &mut Ui<C>, widget: widget::PostUpdateCache<W
 
 
 /// Clear the background with the given color.
-pub fn clear_with<C>(ui: &mut Ui<C>, color: Color) {
+pub fn clear_with<B>(ui: &mut Ui<B>, color: Color)
+    where B: Backend,
+{
     ui.maybe_background_color = Some(color);
 }

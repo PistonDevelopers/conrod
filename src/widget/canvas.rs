@@ -1,5 +1,6 @@
 use {
     Align,
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -235,11 +236,11 @@ impl<'a> Widget for Canvas<'a> {
         self.style.clone()
     }
 
-    fn default_x_position<C: CharacterCache>(&self, _ui: &Ui<C>) -> Position {
+    fn default_x_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
         Position::Place(Place::Middle, None)
     }
 
-    fn default_y_position<C: CharacterCache>(&self, _ui: &Ui<C>) -> Position {
+    fn default_y_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
         Position::Place(Place::Middle, None)
     }
 
@@ -275,7 +276,7 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Update the state of the Canvas.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
@@ -341,14 +342,14 @@ impl<'a> Widget for Canvas<'a> {
             let non_abs_length = (total_length - total_abs).max(0.0);
             let weight_normaliser = 1.0 / total_weight;
 
-            let length = |split: &Self, ui: &UiCell<C>| -> Scalar {
+            let length = |split: &Self, ui: &UiCell<B>| -> Scalar {
                 match split.style.length(ui.theme()) {
                     Length::Absolute(length) => length,
                     Length::Weight(weight) => weight * weight_normaliser * non_abs_length,
                 }
             };
 
-            let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell<C>| {
+            let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell<B>| {
                 split.parent(idx).set(split_id, ui);
             };
 

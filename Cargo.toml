@@ -1,7 +1,6 @@
 [package]
-
 name = "conrod"
-version = "0.31.3"
+version = "0.32.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -14,12 +13,9 @@ repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
 documentation = "http://docs.piston.rs/conrod/conrod/"
 
-
 [lib]
-
 name = "conrod"
 path = "./src/lib.rs"
-
 
 [dependencies]
 daggy = "0.4.0"

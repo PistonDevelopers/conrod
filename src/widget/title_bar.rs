@@ -1,6 +1,6 @@
 use {
     Align,
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Dimension,
@@ -173,18 +173,18 @@ impl<'a, F> Widget for TitleBar<'a, F>
         self.style.clone()
     }
 
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         let font_size = self.style.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
 
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TitleBar { label, maybe_react, .. } = self;
 
         // Check whether or not a new interaction has occurred.
-        let new_interaction = match ui.input().maybe_mouse {
+        let new_interaction = match ui.input(idx).maybe_mouse {
             None => Interaction::Normal,
             Some(mouse) => {
                 let is_over = rect.is_over(mouse.xy);

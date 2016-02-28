@@ -6,7 +6,11 @@ extern crate piston_window;
 use conrod::{Theme, Widget};
 use piston_window::*;
 
-type Ui = conrod::Ui<Glyphs>;
+
+/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Ui = conrod::Ui<Backend>;
+type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 
 fn main() {
@@ -36,7 +40,7 @@ fn main() {
 }
 
 
-fn set_ui(ui: &mut Ui) {
+fn set_ui(ref mut ui: UiCell) {
     use conrod::{Canvas, Circle, Line, Oval, PointPath, Polygon, Positionable, Rectangle};
     use std::iter::once;
 
@@ -81,4 +85,3 @@ fn set_ui(ui: &mut Ui) {
 
     Circle::fill(40.0).down(100.0).align_middle_x().set(CIRCLE, ui);
 }
-

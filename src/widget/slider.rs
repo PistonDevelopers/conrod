@@ -1,5 +1,6 @@
 
 use {
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -141,9 +142,9 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F> where
-    F: FnOnce(T),
-    T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+impl<'a, T, F> Widget for Slider<'a, T, F>
+    where F: FnOnce(T),
+          T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
 {
     type State = State<T>;
     type Style = Style;
@@ -189,14 +190,14 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
     }
 
     /// Update the state of the Slider.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use self::Interaction::{Clicked, Highlighted, Normal};
         use utils::{clamp, map_range, percentage, value_from_perc};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Slider { value, min, max, skew, enabled, maybe_label, maybe_react, .. } = self;
 
-        let maybe_mouse = ui.input().maybe_mouse;
+        let maybe_mouse = ui.input(idx).maybe_mouse;
         let interaction = state.view().interaction;
         let new_interaction = match (enabled, maybe_mouse) {
             (false, _) | (true, None) => Normal,
@@ -207,9 +208,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F> where
         };
 
         match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(); },
+            (Highlighted, Clicked) => { ui.capture_mouse(idx); },
             (Clicked, Highlighted) |
-            (Clicked, Normal)      => { ui.uncapture_mouse(); },
+            (Clicked, Normal)      => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

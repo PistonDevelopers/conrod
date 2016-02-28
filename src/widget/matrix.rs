@@ -1,5 +1,5 @@
 
-use {CharacterCache, NodeIndex, Scalar, Widget};
+use {Backend, NodeIndex, Scalar, Widget};
 use widget;
 
 
@@ -80,9 +80,9 @@ impl<F> Matrix<F> {
 }
 
 
-impl<'a, F, W> Widget for Matrix<F> where
-    W: Widget,
-    F: FnMut(WidgetNum, ColNum, RowNum) -> W
+impl<'a, F, W> Widget for Matrix<F>
+    where W: Widget,
+          F: FnMut(WidgetNum, ColNum, RowNum) -> W
 {
     type State = State;
     type Style = Style;
@@ -108,7 +108,7 @@ impl<'a, F, W> Widget for Matrix<F> where
     }
 
     /// Update the state of the Matrix.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 

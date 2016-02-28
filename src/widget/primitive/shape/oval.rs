@@ -1,5 +1,5 @@
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -100,7 +100,7 @@ impl Widget for Oval {
     }
 
     /// Update the state of the Oval.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { state, style, .. } = args;
 
         let kind = match *style {

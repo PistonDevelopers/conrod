@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     Frameable,
@@ -157,7 +157,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         KIND
     }
 
-    fn init_state(&self) -> State<X, Y> {
+    fn init_state(&self) -> Self::State {
         State {
             interaction: Interaction::Normal,
             x: self.x, min_x: self.min_x, max_x: self.max_x,
@@ -175,7 +175,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use position::{Direction, Edge};
         use self::Interaction::{Clicked, Highlighted, Normal};
 
@@ -189,7 +189,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             ..
         } = self;
 
-        let maybe_mouse = ui.input().maybe_mouse;
+        let maybe_mouse = ui.input(idx).maybe_mouse;
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
         let interaction = state.view().interaction;
@@ -203,8 +203,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         // Capture the mouse if clicked, uncapture if released.
         match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(); },
-            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(); },
+            (Highlighted, Clicked) => { ui.capture_mouse(idx); },
+            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(idx); },
             _ => (),
         }
 

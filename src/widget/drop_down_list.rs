@@ -1,8 +1,8 @@
 
 use ::{
+    Backend,
     Button,
     ButtonStyle,
-    CharacterCache,
     Color,
     Colorable,
     FontSize,
@@ -119,8 +119,8 @@ impl<'a, F> DropDownList<'a, F> {
 }
 
 
-impl<'a, F> Widget for DropDownList<'a, F> where
-    F: FnMut(&mut Option<Idx>, Idx, &str),
+impl<'a, F> Widget for DropDownList<'a, F>
+    where F: FnMut(&mut Option<Idx>, Idx, &str),
 {
     type State = State;
     type Style = Style;
@@ -151,7 +151,7 @@ impl<'a, F> Widget for DropDownList<'a, F> where
     }
 
     /// Update the state of the DropDownList.
-    fn update<C: CharacterCache>(mut self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let frame = style.frame(ui.theme());

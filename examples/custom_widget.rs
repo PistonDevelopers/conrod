@@ -1,5 +1,3 @@
-//!
-//!
 //! A demonstration of designing a custom, third-party widget.
 //!
 //! In this case, we'll design a simple circular button.
@@ -12,8 +10,6 @@
 //! use any backend you wish.
 //!
 //! For more information, please see the `Widget` trait documentation.
-//!
-
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
@@ -24,7 +20,7 @@ extern crate vecmath;
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
     use conrod::{
-        CharacterCache,
+        Backend,
         Circle,
         Color,
         Colorable,
@@ -228,10 +224,10 @@ mod circular_button {
         /// Update the state of the button. The state may or may not have changed since
         /// the last update. (E.g. it may have changed because the user moused over the
         /// button.) If the state has changed, return the new state. Else, return None.
-        fn update<C: CharacterCache>(mut self, args: UpdateArgs<Self, C>) {
+        fn update<B: Backend>(mut self, args: UpdateArgs<Self, B>) {
             let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
             let (xy, dim) = rect.xy_dim();
-            let maybe_mouse = ui.input().maybe_mouse.map(|mouse| mouse.relative_to(xy));
+            let maybe_mouse = ui.input(idx).maybe_mouse.map(|mouse| mouse.relative_to(xy));
 
             // Check whether or not a new interaction has occurred.
             let new_interaction = match (self.enabled, maybe_mouse) {
@@ -273,12 +269,12 @@ mod circular_button {
             match (state.view().interaction, new_interaction) {
                 // If the user has pressed the button we capture the mouse.
                 (Interaction::Highlighted, Interaction::Clicked) => {
-                    ui.capture_mouse();
+                    ui.capture_mouse(idx);
                 },
                 // If the user releases the button, we uncapture the mouse.
                 (Interaction::Clicked, Interaction::Highlighted) |
                 (Interaction::Clicked, Interaction::Normal)      => {
-                    ui.uncapture_mouse();
+                    ui.uncapture_mouse(idx);
                 },
                 _ => (),
             }
@@ -395,10 +391,14 @@ mod circular_button {
     }
 }
 
-fn main() {
+pub fn main() {
+    use conrod::{self, Colorable, Labelable, Positionable, Sizeable, Widget};
     use piston_window::{EventLoop, Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
-    use conrod::{Colorable, Labelable, Positionable, Sizeable, Widget};
-    use circular_button::CircularButton;
+    use self::circular_button::CircularButton;
+
+    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+    type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+    type Ui = conrod::Ui<Backend>;
 
     // PistonWindow has two type parameters, but the default type is
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
@@ -417,17 +417,25 @@ fn main() {
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone()).unwrap();
-        conrod::Ui::new(glyph_cache, conrod::Theme::default())
+        Ui::new(glyph_cache, conrod::Theme::default())
     };
 
     for e in window.ups(60) {
         // Pass each `Event` to the `Ui`.
         ui.handle_event(e.event.as_ref().unwrap());
 
-        e.update(|_| ui.set_widgets(|ui| {
+        e.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
             conrod::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
+
+            // The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
+            widget_ids! {
+                // An ID for the background widget, upon which we'll place our custom button.
+                BACKGROUND,
+                // The WidgetId we'll use to plug our widget into the `Ui`.
+                CIRCLE_BUTTON,
+            }
 
             // Create an instance of our custom widget.
             CircularButton::new()
@@ -446,13 +454,4 @@ fn main() {
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
         e.draw_2d(|c, g| ui.draw_if_changed(c, g))
     }
-}
-
-
-// The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
-widget_ids! {
-    // An ID for the background widget, upon which we'll place our custom button.
-    BACKGROUND,
-    // The WidgetId we'll use to plug our widget into the `Ui`.
-    CIRCLE_BUTTON,
 }

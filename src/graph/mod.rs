@@ -7,7 +7,6 @@ use daggy;
 use position::{Axis, Depth, Rect};
 use self::index_map::IndexMap;
 use std::any::Any;
-use std::fmt::Debug;
 use std::iter;
 use std::ops::{Index, IndexMut};
 use std::option;
@@ -62,8 +61,8 @@ pub type WouldCycle = daggy::WouldCycle<Edge>;
 /// The state type that we'll dynamically cast to and from `Any` for storage within the cache.
 #[derive(Debug)]
 pub struct UniqueWidgetState<State, Style> where
-    State: Any + Debug,
-    Style: Any + Debug,
+    State: Any,
+    Style: Any,
 {
     /// A **Widget**'s unique "State".
     pub state: State,
@@ -162,8 +161,8 @@ impl Container {
 
     /// Borrow the **Container**'s unique widget State and Style if there is any.
     pub fn state_and_style<State, Style>(&self) -> Option<&UniqueWidgetState<State, Style>>
-        where State: Any + Debug + 'static,
-              Style: Any + Debug + 'static,
+        where State: Any + 'static,
+              Style: Any + 'static,
     {
         self.maybe_state.as_ref().and_then(|boxed_state| boxed_state.downcast_ref())
     }
@@ -835,10 +834,10 @@ impl Graph {
     ///
     /// This is called (via the `ui` module) from within the `widget::set_widget` function after
     /// the `Widget::update` method is called and some new state is returned.
-    pub fn post_update_cache<W>(&mut self, widget: widget::PostUpdateCache<W>) where
-        W: Widget,
-        W::State: 'static,
-        W::Style: 'static,
+    pub fn post_update_cache<W>(&mut self, widget: widget::PostUpdateCache<W>)
+        where W: Widget,
+              W::State: 'static,
+              W::Style: 'static,
     {
         let widget::PostUpdateCache { idx, state, style, .. } = widget;
 

@@ -18,6 +18,7 @@ extern crate vecmath;
 
 
 pub use widget::primitive::line::Line;
+pub use widget::primitive::image::Image;
 pub use widget::primitive::point_path::PointPath;
 pub use widget::primitive::shape::circle::Circle;
 pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
@@ -42,6 +43,7 @@ pub use widget::xy_pad::XYPad;
 
 
 pub use widget::primitive::line::Style as LineStyle;
+pub use widget::primitive::image::Style as ImageStyle;
 pub use widget::primitive::shape::Style as ShapeStyle;
 pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
 pub use widget::primitive::text::Style as TextStyle;
@@ -59,7 +61,7 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use backend::{CharacterCache, Graphics};
+pub use backend::{Backend, CharacterCache, Graphics};
 pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
@@ -72,12 +74,12 @@ pub use mouse::ButtonPosition as MouseButtonPosition;
 pub use mouse::Scroll as MouseScroll;
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
-pub use position::Matrix as PositionMatrix;
+//pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
-pub use ui::{Ui, UserInput};
+pub use ui::{Ui, UiCell, UserInput};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::{drag, scroll};
-pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent, UiCell,
+pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
                  UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;

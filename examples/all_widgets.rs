@@ -7,12 +7,12 @@
 //! check the current `Theme` within the `Ui` and retrieve defaults from there.
 //!
 
-
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{
+    color,
     Button,
     Canvas,
     Circle,
@@ -35,13 +35,14 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use conrod::color::{self, rgb};
 use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
 
-type Ui = conrod::Ui<Glyphs>;
-
+/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
+type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Ui = conrod::Ui<Backend>;
+type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 /// This struct holds all of the variables used to demonstrate application data being passed
 /// through the widgets. If some of these seem strange, that's because they are! Most of these
@@ -88,10 +89,10 @@ impl DemoApp {
     fn new() -> DemoApp {
         let (elem_sender, elem_receiver) = mpsc::channel();
         DemoApp {
-            bg_color: rgb(0.2, 0.35, 0.45),
+            bg_color: color::rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
-            title_pad: 320.0,
+            title_pad: 350.0,
             v_slider_height: 230.0,
             frame_width: 1.0,
             bool_matrix: [ [true, true, true, true, true, true, true, true],
@@ -155,7 +156,7 @@ fn main() {
         // At the moment conrod requires that we set our widgets in the Render loop,
         // however soon we'll add support so that you can set your Widgets at any arbitrary
         // update rate.
-        event.update(|_| ui.set_widgets(|ui| set_widgets(ui, &mut app)));
+        event.update(|_| ui.set_widgets(|mut ui| set_widgets(&mut ui, &mut app)));
 
         // Draw our Ui!
         //
@@ -169,15 +170,13 @@ fn main() {
     }
 }
 
-
-
 /// Set all `Widget`s within the User Interface.
 ///
 /// The first time this gets called, each `Widget`'s `State` will be initialised and cached within
 /// the `Ui` at their given indices. Every other time this get called, the `Widget`s will avoid any
 /// allocations by updating the pre-existing cached state. A new graphical `Element` is only
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
-fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
+fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
     Canvas::new()
@@ -222,7 +221,7 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
         };
 
         // Slider widget example slider(value, min, max).
-        Slider::new(pad as f32, 0.0, 670.0)
+        Slider::new(pad as f32, 30.0, 700.0)
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
@@ -264,9 +263,9 @@ fn set_widgets(ui: &mut Ui, app: &mut DemoApp) {
 
         // We'll color the slider similarly to the color element which it will control.
         let color = match i {
-            0 => rgb(0.75, 0.3, 0.3),
-            1 => rgb(0.3, 0.75, 0.3),
-            _ => rgb(0.3, 0.3, 0.75),
+            0 => color::rgb(0.75, 0.3, 0.3),
+            1 => color::rgb(0.3, 0.75, 0.3),
+            _ => color::rgb(0.3, 0.3, 0.75),
         };
 
         // Grab the value of the color element.
@@ -462,3 +461,4 @@ widget_ids! {
     CIRCLE,
     ENVELOPE_EDITOR with 4
 }
+

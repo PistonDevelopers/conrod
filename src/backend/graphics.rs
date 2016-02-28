@@ -8,9 +8,10 @@
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 
 
-use ::{Color, Point, Rect, Scalar};
+use {Backend, Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
 use graphics;
+use std::any::Any;
 use std::iter::once;
 use theme::Theme;
 use widget::{self, primitive};
@@ -22,14 +23,14 @@ pub use graphics::character::{Character, CharacterCache};
 
 
 /// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
-pub fn draw_from_graph<G, C>(context: Context,
+pub fn draw_from_graph<B, G>(context: Context,
                              graphics: &mut G,
-                             character_cache: &mut C,
+                             character_cache: &mut B::CharacterCache,
                              graph: &Graph,
                              depth_order: &[Visitable],
                              theme: &Theme)
-    where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
+    where B: Backend,
+          G: Graphics<Texture=B::Texture>,
 {
 
     // A stack of contexts, one for each scroll group.
@@ -68,7 +69,7 @@ pub fn draw_from_graph<G, C>(context: Context,
 
                     // Draw the widget, but only if it would actually be visible on the window.
                     if is_visible(idx, container) {
-                        draw_from_container(&context, graphics, character_cache, container, theme);
+                        draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
                     }
 
                     // If the current widget is some scrollable widget, we need to add a context
@@ -184,13 +185,14 @@ fn crop_context(context: Context, rect: Rect) -> Context {
 
 
 /// Use the given **CharacterCache** and **Graphics** backends to draw the given widget.
-pub fn draw_from_container<G, C>(context: &Context,
+pub fn draw_from_container<B, G>(context: &Context,
                                  graphics: &mut G,
-                                 character_cache: &mut C,
+                                 character_cache: &mut B::CharacterCache,
                                  container: &Container,
                                  theme: &Theme)
-    where G: Graphics,
-          C: CharacterCache<Texture=G::Texture>,
+    where B: Backend,
+          B::Texture: Any,
+          G: Graphics<Texture=B::Texture>,
 {
     use widget::primitive::shape::Style as ShapeStyle;
 
@@ -316,8 +318,36 @@ pub fn draw_from_container<G, C>(context: &Context,
             }
         },
 
+        primitive::image::KIND => {
+            use widget::primitive::image::{State, Style};
+            if let Some(image) = container.state_and_style::<State<B::Texture>, Style>() {
+                let ::graph::UniqueWidgetState { ref state, ref style } = *image;
+                if let Some(texture) = state.texture.as_ref() {
+                    let mut image = graphics::image::Image::new();
+                    image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
+                    image.source_rectangle = Some({
+                        let (x, y, w, h) = texture.src_rect.x_y_w_h();
+                        [x as i32, y as i32, w as i32, h as i32]
+                    });
+                    let (left, top, w, h) = container.rect.l_t_w_h();
+                    image.rectangle = Some([0.0, 0.0, w, h]);
+                    let context = context.trans(left, top).scale(1.0, -1.0);
+                    let transform = context.transform;
+                    let draw_state = &context.draw_state;
+                    image.draw(texture.arc.as_ref(), draw_state, transform, graphics);
+                }
+            }
+        }
+
         _ => (),
     }
+}
+
+
+/// Converts a conrod `Rect` to a `graphics::types::Rectangle` expected by the Graphics backend.
+pub fn conrod_rect_to_graphics_rect(rect: Rect) -> graphics::types::Rectangle<Scalar> {
+    let (l, b, w, h) = rect.l_b_w_h();
+    [l, b, w, h]
 }
 
 

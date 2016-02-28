@@ -1,4 +1,4 @@
-use {CharacterCache, Ui};
+use {Backend, CharacterCache, Ui};
 use super::{Depth, Dimension, Dimensions, Point, Position, Positionable, Scalar, Sizeable};
 use ui;
 use widget;
@@ -86,7 +86,9 @@ impl Matrix {
 
 }
 
-impl Positionable for Matrix {
+impl<B> Positionable<B> for Matrix
+    where B: Backend,
+{
     #[inline]
     fn x_position(mut self, pos: Position) -> Self {
         self.maybe_x_position = Some(pos);
@@ -98,11 +100,11 @@ impl Positionable for Matrix {
         self
     }
     #[inline]
-    fn get_x_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn get_x_position(&self, ui: &Ui<B>) -> Position {
         self.maybe_x_position.unwrap_or(ui.theme.x_position)
     }
     #[inline]
-    fn get_y_position<C: CharacterCache>(&self, ui: &Ui<C>) -> Position {
+    fn get_y_position(&self, ui: &Ui<B>) -> Position {
         self.maybe_y_position.unwrap_or(ui.theme.y_position)
     }
     #[inline]
@@ -115,7 +117,9 @@ impl Positionable for Matrix {
     }
 }
 
-impl Sizeable for Matrix {
+impl<B> Sizeable<B> for Matrix
+    where B: Backend,
+{
     #[inline]
     fn x_dimension(mut self, w: Dimension) -> Self {
         self.maybe_x_dimension = Some(w);
@@ -127,7 +131,7 @@ impl Sizeable for Matrix {
         self
     }
     #[inline]
-    fn get_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn get_x_dimension(&self, ui: &Ui<B>) -> Dimension {
         const DEFAULT_WIDTH: Dimension = Dimension::Absolute(256.0);
         self.maybe_x_dimension.or_else(|| {
             ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
@@ -135,7 +139,7 @@ impl Sizeable for Matrix {
         }).unwrap_or(DEFAULT_WIDTH)
     }
     #[inline]
-    fn get_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn get_y_dimension(&self, ui: &Ui<B>) -> Dimension {
         const DEFAULT_HEIGHT: Dimension = Dimension::Absolute(256.0);
         self.maybe_y_dimension.or_else(|| {
             ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
@@ -143,4 +147,3 @@ impl Sizeable for Matrix {
         }).unwrap_or(DEFAULT_HEIGHT)
     }
 }
-

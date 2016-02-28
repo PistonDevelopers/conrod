@@ -1,6 +1,7 @@
 use std::cmp;
 use {
     Align,
+    Backend,
     CharacterCache,
     Color,
     Colorable,
@@ -180,7 +181,7 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// If no specific width was given, we'll use the width of the widest line as a default.
-    fn default_x_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         let font_size = self.style.font_size(&ui.theme);
         let mut max_width = 0.0;
         for line in self.text.lines() {
@@ -191,7 +192,7 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// If no specific height was given, we'll use the total height of the text as a default.
-    fn default_y_dimension<C: CharacterCache>(&self, ui: &Ui<C>) -> Dimension {
+    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         use position::Sizeable;
         let text = &self.text;
         let font_size = self.style.font_size(&ui.theme);
@@ -213,7 +214,7 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// Update the state of the Text.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { rect, state, style, ui, .. } = args;
         let Text { text, .. } = self;
 

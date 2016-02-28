@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     LineStyle,
@@ -218,7 +218,7 @@ impl<I> Widget for Polygon<I>
     }
 
     /// Update the state of the Polygon.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, style, .. } = args;
         let Polygon { points, maybe_shift_to_centre_from, .. } = self;

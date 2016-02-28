@@ -21,8 +21,6 @@ use widget::{Index, self};
 use widget::button::Button as ButtonWidget;
 use position::Point;
 
-type Ui = ::Ui<MockCharacterCache>;
-
 #[test]
 fn ui_should_reset_global_input_after_widget_are_set() {
     let mut ui = windowless_ui();
@@ -36,7 +34,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     left_click_mouse(&mut ui);
 
     assert!(ui.global_input.all_events().next().is_some());
-    ui.set_widgets(|ui| {
+    ui.set_widgets(|ref mut ui| {
 
         Canvas::new()
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
@@ -60,7 +58,7 @@ fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
 
     const CANVAS_ID: widget::Id = widget::Id(0);
     const BUTTON_ID: widget::Id = widget::Id(1);
-    ui.set_widgets(|ui| {
+    ui.set_widgets(|ref mut ui| {
 
         Canvas::new()
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
@@ -118,6 +116,8 @@ fn ui_should_push_input_events_to_aggregator() {
     test_handling_basic_input_event(&mut ui, Input::Cursor(true));
 }
 
+type Ui = ::Ui<MockBackend>;
+
 fn left_click_mouse(ui: &mut Ui) {
     press_mouse_button(MouseButton::Left, ui);
     release_mouse_button(MouseButton::Left, ui);
@@ -170,6 +170,14 @@ fn windowless_ui() -> Ui {
 }
 
 #[derive(Copy, Clone)]
+struct MockBackend;
+
+impl ::Backend for MockBackend {
+    type Texture = MockImageSize;
+    type CharacterCache = MockCharacterCache;
+}
+
+#[derive(Clone)]
 struct MockImageSize {
     w: u32,
     h: u32,

@@ -1,6 +1,6 @@
 
 use {
-    CharacterCache,
+    Backend,
     Color,
     Colorable,
     FontSize,
@@ -106,11 +106,11 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<C: CharacterCache>(self, args: widget::UpdateArgs<Self, C>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
         let button_color = {
-            let input = ui.widget_input();
+            let input = ui.widget_input(idx);
             if input.mouse_left_click().is_some() {
                 self.maybe_react.map(|react_function| react_function());
             }
