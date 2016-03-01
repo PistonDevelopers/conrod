@@ -16,8 +16,8 @@ pub struct GlobalInput {
     /// The most recent `InputState`, with updates from handling all the events
     /// this update cycle
     pub current_state: InputState,
+    /// The events that have occurred between two consecutive updates.
     events: Vec<UiEvent>,
-    drag_threshold: Scalar,
 }
 
 /// Iterator over global `UiEvent`s. Unlike the `WidgetInputEventIterator`, this will
@@ -46,39 +46,134 @@ impl<'a> InputProvider<'a> for GlobalInput {
 impl GlobalInput {
 
     /// Returns a fresh new `GlobalInput`
-    pub fn new(drag_threshold: Scalar) -> GlobalInput {
+    pub fn new() -> GlobalInput {
         GlobalInput{
             events: Vec::new(),
-            drag_threshold: drag_threshold,
             start_state: InputState::new(),
             current_state: InputState::new(),
         }
     }
 
     /// Adds a new event and updates the internal state.
-    pub fn push_event(&mut self, event: UiEvent) {
+    pub fn push_event(&mut self, event: UiEvent, drag_threshold: Scalar) {
         use input::Input::{Release, Move};
-        use input::Motion::MouseRelative;
-        use input::Motion::MouseScroll;
+        use input::Motion::{MouseRelative, MouseScroll};
         use input::Button::Mouse;
 
-        let maybe_new_event = match event {
-            UiEvent::Raw(Release(Mouse(button))) => self.handle_mouse_release(button),
-            UiEvent::Raw(Move(MouseRelative(x, y))) => self.handle_mouse_move([x, y]),
-            UiEvent::Raw(Move(MouseScroll(x, y))) => self.mouse_scroll(x, y),
-            _ => None
+        let is_drag = |a, b| distance_between(a, b) > drag_threshold;
+
+        // Check for a new drag event.
+        let maybe_drag_event = match event {
+            UiEvent::Raw(Move(MouseRelative(x, y))) => {
+                let xy = [x, y];
+                self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
+                    if is_drag(btn_and_point.1, xy) {
+                        Some(UiEvent::MouseDrag(MouseDrag{
+                            button: btn_and_point.0,
+                            start: btn_and_point.1,
+                            end: xy,
+                            in_progress: true,
+                            modifier: self.current_state.modifiers
+                        }))
+                    } else {
+                        None
+                    }
+                })
+            },
+            _ => None,
         };
 
-        self.current_state.update(&event);
-        self.events.push(event);
-        if let Some(new_event) = maybe_new_event {
-            self.push_event(new_event);
+        // Check for a new click event.
+        let maybe_click_event = if let UiEvent::Raw(Release(Mouse(button))) = event {
+            self.current_state.mouse_buttons.get(button).map(|point| {
+                let click = MouseClick {
+                    button: button,
+                    location: point,
+                    modifier: self.current_state.modifiers
+                };
+                UiEvent::MouseClick(click)
+            })
+        } else {
+            None
+        };
+
+        // Check for a new scroll event.
+        let maybe_scroll_event = if let UiEvent::Raw(Move(MouseScroll(x, y))) = event {
+            let scroll = Scroll{
+                x: x,
+                y: y,
+                modifiers: self.current_state.modifiers
+            };
+            Some(UiEvent::Scroll(scroll))
+        } else {
+            None
+        };
+
+        // // Check to see if we need to generate any higher level events from this raw event.
+        // let maybe_new_event = match event {
+
+        //     UiEvent::Raw(Release(Mouse(button))) => {
+        //         self.current_state.mouse_buttons.get(button).map(|point| {
+        //             if is_drag(point, self.current_state.mouse_position) {
+        //                 UiEvent::MouseDrag(MouseDrag{
+        //                     button: button,
+        //                     start: point,
+        //                     end: self.current_state.mouse_position,
+        //                     modifier: self.current_state.modifiers,
+        //                     in_progress: false
+        //                 })
+        //             } else {
+        //                 UiEvent::MouseClick(MouseClick {
+        //                     button: button,
+        //                     location: point,
+        //                     modifier: self.current_state.modifiers
+        //                 })
+        //             }
+        //         })
+        //     },
+
+        //     UiEvent::Raw(Move(MouseRelative(x, y))) => {
+        //         let xy = [x, y];
+        //         self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
+        //             if is_drag(btn_and_point.1, xy) {
+        //                 Some(UiEvent::MouseDrag(MouseDrag{
+        //                     button: btn_and_point.0,
+        //                     start: btn_and_point.1,
+        //                     end: xy,
+        //                     in_progress: true,
+        //                     modifier: self.current_state.modifiers
+        //                 }))
+        //             } else {
+        //                 None
+        //             }
+        //         })
+        //     },
+
+        //     UiEvent::Raw(Move(MouseScroll(x, y))) => {
+        //         Some(UiEvent::Scroll(Scroll{
+        //             x: x,
+        //             y: y,
+        //             modifiers: self.current_state.modifiers
+        //         }))
+        //     },
+
+        //     _ => None
+        // };
+
+        let events = ::std::iter::once(event)
+            .chain(maybe_drag_event)
+            .chain(maybe_click_event)
+            .chain(maybe_scroll_event);
+
+        for event in events {
+            self.current_state.update(&event);
+            self.events.push(event);
         }
     }
 
     /// Called at the end of every update cycle in order to prepare the `GlobalInput` to
     /// handle events for the next one.
-    pub fn reset(&mut self) {
+    pub fn clear_events_and_update_start_state(&mut self) {
         self.events.clear();
         self.start_state = self.current_state.clone();
     }
@@ -103,54 +198,6 @@ impl GlobalInput {
         self.current_state.widget_capturing_keyboard
     }
 
-
-    fn mouse_scroll(&self, x: f64, y: f64) -> Option<UiEvent> {
-        Some(UiEvent::Scroll(Scroll{
-            x: x,
-            y: y,
-            modifiers: self.current_state.modifiers
-        }))
-    }
-
-    fn handle_mouse_move(&self, move_to: Point) -> Option<UiEvent> {
-        self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
-            if self.is_drag(btn_and_point.1, move_to) {
-                Some(UiEvent::MouseDrag(MouseDrag{
-                    button: btn_and_point.0,
-                    start: btn_and_point.1,
-                    end: move_to,
-                    in_progress: true,
-                    modifier: self.current_state.modifiers
-                }))
-            } else {
-                None
-            }
-        })
-    }
-
-    fn handle_mouse_release(&self, button: MouseButton) -> Option<UiEvent> {
-        self.current_state.mouse_buttons.get(button).map(|point| {
-            if self.is_drag(point, self.current_state.mouse_position) {
-                UiEvent::MouseDrag(MouseDrag{
-                    button: button,
-                    start: point,
-                    end: self.current_state.mouse_position,
-                    modifier: self.current_state.modifiers,
-                    in_progress: false
-                })
-            } else {
-                UiEvent::MouseClick(MouseClick {
-                    button: button,
-                    location: point,
-                    modifier: self.current_state.modifiers
-                })
-            }
-        })
-    }
-
-    fn is_drag(&self, a: Point, b: Point) -> bool {
-        distance_between(a, b) > self.drag_threshold
-    }
 }
 
 fn distance_between(a: Point, b: Point) -> Scalar {

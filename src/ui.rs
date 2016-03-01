@@ -178,7 +178,6 @@ impl<B> Ui<B>
     {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
-        let mouse_drag_threshold = theme.mouse_drag_threshold;
         Ui {
             backend: PhantomData,
             widget_graph: widget_graph,
@@ -203,7 +202,7 @@ impl<B> Ui<B>
             depth_order: depth_order,
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
-            global_input: GlobalInput::new(mouse_drag_threshold),
+            global_input: GlobalInput::new(),
         }
     }
 
@@ -298,8 +297,15 @@ impl<B> Ui<B>
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
         use input::{CursorEvent, FocusEvent};
 
+        // Push the new event onto the `Ui`'s global_input along with the latest drag_threshold.
+        fn push_event<B: Backend>(ui: &mut Ui<B>, event: UiEvent) {
+            let drag_threshold = ui.theme.mouse_drag_threshold;
+            ui.global_input.push_event(event, drag_threshold);
+        }
+
         event.resize(|w, h| {
-            self.global_input.push_event(UiEvent::Raw(Input::Resize(w, h)));
+            let event = UiEvent::Raw(Input::Resize(w, h));
+            push_event(self, event);
             self.win_w = w as f64;
             self.win_h = h as f64;
             self.needs_redraw();
@@ -312,19 +318,15 @@ impl<B> Ui<B>
 
         event.mouse_cursor(|x, y| {
             // Convert mouse coords to (0, 0) origin.
-            let center_origin_point = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
-            self.mouse.xy = center_origin_point;
-            self.global_input.push_event(UiEvent::Raw(
-                Input::Move(
-                    Motion::MouseRelative(center_origin_point[0], center_origin_point[1])
-                )
-            ));
+            let mouse_xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
+            self.mouse.xy = mouse_xy;
+            let event = UiEvent::Raw(Input::Move(Motion::MouseRelative(mouse_xy[0], mouse_xy[1])));
+            push_event(self, event);
         });
 
         event.mouse_scroll(|x, y| {
-            self.global_input.push_event(UiEvent::Raw(
-                Input::Move(Motion::MouseScroll(x, y))
-            ));
+            let event = UiEvent::Raw(Input::Move(Motion::MouseScroll(x, y)));
+            push_event(self, event);
             self.mouse.scroll.x += x;
             self.mouse.scroll.y += y;
         });
@@ -333,13 +335,35 @@ impl<B> Ui<B>
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.global_input.push_event(UiEvent::Raw(
-                Input::Press(button_type)
-            ));
+            let event = UiEvent::Raw(Input::Press(button_type));
+            push_event(self, event);
 
             match button_type {
                 Button::Mouse(button) => {
-                    self.widget_under_mouse_captures_keyboard();
+
+                    // If there is a widget under the mouse just pressed, ensure it is set to
+                    // capture input.
+                    {
+                        let mouse_xy = self.global_input.mouse_position();
+                        let widget_under_mouse =
+                            graph::algo::pick_widget(&self.widget_graph,
+                                                     &self.depth_order.indices,
+                                                     mouse_xy);
+                        let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
+
+                        if let Some(idx) = currently_capturing_keyboard {
+                            if Some(idx) != widget_under_mouse {
+                                let event = UiEvent::WidgetUncapturesKeyboard(idx);
+                                push_event(self, event);
+                            }
+                        }
+
+                        if let Some(idx) = widget_under_mouse {
+                            let event = UiEvent::WidgetCapturesKeyboard(idx);
+                            push_event(self, event);
+                        }
+                    }
+             
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
@@ -358,9 +382,8 @@ impl<B> Ui<B>
             use input::Button;
             use input::MouseButton::{Left, Middle, Right};
 
-            self.global_input.push_event(UiEvent::Raw(
-                Input::Release(button_type)
-            ));
+            let event = UiEvent::Raw(Input::Release(button_type));
+            push_event(self, event);
 
             match button_type {
                 Button::Mouse(button) => {
@@ -380,36 +403,19 @@ impl<B> Ui<B>
 
         event.text(|text| {
             self.text_just_entered.push(text.to_string());
-            self.global_input.push_event(UiEvent::Raw(Input::Text(text.to_string())));
+            let event = UiEvent::Raw(Input::Text(text.to_string()));
+            push_event(self, event);
         });
 
         event.focus(|focus| {
-            self.global_input.push_event(UiEvent::Raw(Input::Focus(focus)));
+            let event = UiEvent::Raw(Input::Focus(focus));
+            push_event(self, event);
         });
 
         event.cursor(|cursor| {
-            self.global_input.push_event(UiEvent::Raw(Input::Cursor(cursor)));
+            let event = UiEvent::Raw(Input::Cursor(cursor));
+            push_event(self, event);
         });
-    }
-
-    fn widget_under_mouse_captures_keyboard(&mut self) {
-        use graph::algo::pick_widget;
-
-        let mouse_xy = self.global_input.mouse_position();
-        let widget_under_mouse =
-            pick_widget(&self.widget_graph, &self.depth_order.indices, mouse_xy);
-        let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
-
-        if currently_capturing_keyboard.is_some()
-                && currently_capturing_keyboard != widget_under_mouse {
-            self.global_input.push_event(
-                UiEvent::WidgetUncapturesKeyboard(currently_capturing_keyboard.unwrap())
-            );
-        }
-
-        if let Some(idx) = widget_under_mouse {
-            self.global_input.push_event(UiEvent::WidgetCapturesKeyboard(idx));
-        }
     }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
@@ -621,8 +627,8 @@ impl<B> Ui<B>
         self.mouse.right.reset_pressed_and_released();
         self.mouse.unknown.reset_pressed_and_released();
 
-        // reset the global input state
-        self.global_input.reset();
+        // Reset the global input state. Note that this is the **only** time this should be called.
+        self.global_input.clear_events_and_update_start_state();
     }
 
 

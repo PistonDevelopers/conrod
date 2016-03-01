@@ -14,10 +14,13 @@ use events::{InputState,
 use position::{Point, Rect};
 use input::mouse::MouseButton;
 
-/// Holds any events meant to be given to a `Widget`. This is what widgets will interface with
-/// when handling events in their `update` method. All events returned from methods on `WidgetInput`
-/// will be relative to the widget's own (0,0) origin. Additionally, `WidgetInput` will not provide
-/// mouse or keyboard events that do not directly pertain to the widget.
+/// Holds any events meant to be given to a `Widget`.
+///
+/// This is what widgets will interface with when handling events in their `update` method.
+///
+/// All events returned from methods on `WidgetInput` will be relative to the widget's own (0,0)
+/// origin. Additionally, `WidgetInput` will not provide mouse or keyboard events that do not
+/// directly pertain to the widget.
 pub struct WidgetInput<'a> {
     global_input: &'a GlobalInput,
     current_state: InputState,
@@ -26,10 +29,13 @@ pub struct WidgetInput<'a> {
 }
 
 impl<'a> WidgetInput<'a> {
+
     /// Returns a `WidgetInput` with events specifically for the given widget.
+    ///
     /// Filters out only the events that directly pertain to the widget.
+    ///
     /// All events will also be made relative to the widget's own (0,0) origin.
-    pub fn for_widget<'g>(widget: Index, widget_area: Rect, global_input: &'g GlobalInput) -> WidgetInput<'g> {
+    pub fn for_widget(widget: Index, widget_area: Rect, global_input: &'a GlobalInput) -> Self {
         WidgetInput {
             global_input: &global_input,
             widget_area: widget_area,
