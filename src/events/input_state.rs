@@ -35,6 +35,7 @@ pub struct InputState {
 }
 
 impl InputState {
+
     /// Returns a fresh new input state
     pub fn new() -> InputState {
         InputState{
@@ -83,13 +84,12 @@ impl InputState {
     }
 
     /// Returns a copy of the InputState relative to the given `position::Point`
-    pub fn relative_to(&self, xy: Point) -> InputState {
-        InputState {
-            mouse_position: ::vecmath::vec2_sub(self.mouse_position, xy),
-            mouse_buttons: self.mouse_buttons.relative_to(xy),
-            ..*self
-        }
+    pub fn relative_to(mut self, xy: Point) -> InputState {
+        self.mouse_position = ::vecmath::vec2_sub(self.mouse_position, xy);
+        self.mouse_buttons = self.mouse_buttons.relative_to(xy);
+        self
     }
+
 }
 
 fn get_modifier(key: Key) -> Option<ModifierKey> {

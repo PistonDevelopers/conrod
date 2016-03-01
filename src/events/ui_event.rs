@@ -96,22 +96,21 @@ impl MouseDrag {
 }
 
 impl UiEvent {
+
     /// Returns a copy of the UiEvent relative to the given `position::Point`
-    pub fn relative_to(&self, xy: Point) -> Self {
+    pub fn relative_to(self, xy: Point) -> Self {
         use self::UiEvent::{MouseClick, MouseDrag, Raw};
-        match *self {
+        match self {
             MouseClick(click) => MouseClick(click.relative_to(xy)),
             MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
-            Raw(ref raw_input) => {
-                Raw(match *raw_input {
-                    Input::Move(Motion::MouseRelative(x, y)) =>
-                        Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1])),
-                    Input::Move(Motion::MouseCursor(x, y)) =>
-                        Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1])),
-                    ref other_input => other_input.clone()
-                })
-            },
-            ref other_event => other_event.clone()
+            Raw(raw_input) => Raw(match raw_input {
+                Input::Move(Motion::MouseRelative(x, y)) =>
+                    Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1])),
+                Input::Move(Motion::MouseCursor(x, y)) =>
+                    Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1])),
+                other_input => other_input,
+            }),
+            other_event => other_event
         }
     }
 
@@ -144,6 +143,7 @@ impl UiEvent {
             _ => false
         }
     }
+
 }
 
 #[cfg(test)]

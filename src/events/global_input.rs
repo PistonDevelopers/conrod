@@ -109,57 +109,6 @@ impl GlobalInput {
             None
         };
 
-        // // Check to see if we need to generate any higher level events from this raw event.
-        // let maybe_new_event = match event {
-
-        //     UiEvent::Raw(Release(Mouse(button))) => {
-        //         self.current_state.mouse_buttons.get(button).map(|point| {
-        //             if is_drag(point, self.current_state.mouse_position) {
-        //                 UiEvent::MouseDrag(MouseDrag{
-        //                     button: button,
-        //                     start: point,
-        //                     end: self.current_state.mouse_position,
-        //                     modifier: self.current_state.modifiers,
-        //                     in_progress: false
-        //                 })
-        //             } else {
-        //                 UiEvent::MouseClick(MouseClick {
-        //                     button: button,
-        //                     location: point,
-        //                     modifier: self.current_state.modifiers
-        //                 })
-        //             }
-        //         })
-        //     },
-
-        //     UiEvent::Raw(Move(MouseRelative(x, y))) => {
-        //         let xy = [x, y];
-        //         self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
-        //             if is_drag(btn_and_point.1, xy) {
-        //                 Some(UiEvent::MouseDrag(MouseDrag{
-        //                     button: btn_and_point.0,
-        //                     start: btn_and_point.1,
-        //                     end: xy,
-        //                     in_progress: true,
-        //                     modifier: self.current_state.modifiers
-        //                 }))
-        //             } else {
-        //                 None
-        //             }
-        //         })
-        //     },
-
-        //     UiEvent::Raw(Move(MouseScroll(x, y))) => {
-        //         Some(UiEvent::Scroll(Scroll{
-        //             x: x,
-        //             y: y,
-        //             modifiers: self.current_state.modifiers
-        //         }))
-        //     },
-
-        //     _ => None
-        // };
-
         let events = ::std::iter::once(event)
             .chain(maybe_drag_event)
             .chain(maybe_click_event)
