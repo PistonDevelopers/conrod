@@ -245,7 +245,7 @@ mod test {
 
     #[test]
     fn mouse_click_should_be_made_relative() {
-        let original = UiEvent::MouseClick(MouseClick{
+        let original = UiEvent::MouseClick(MouseClick {
             button: MouseButton::Middle,
             location: [30.0, -80.0],
             modifier: keyboard::SHIFT

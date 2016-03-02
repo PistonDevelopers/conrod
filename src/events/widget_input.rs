@@ -136,12 +136,12 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     }
 
     fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-        self.current_state().mouse_buttons.get(button).iter().filter(|_| {
-            self.current_state().widget_capturing_mouse.map(|capturing| {
-                capturing == self.widget_idx
-            }).unwrap_or_else(|| self.mouse_is_over_widget())
-        }).map(|pt| *pt).next()
+        let current = self.current_state();
+        let self_is_capturing = || Some(self.widget_idx) == current.widget_capturing_mouse;
+        current.mouse.buttons[button].xy_if_down()
+            .and_then(|xy| if self_is_capturing() { Some(xy) } else { None })
     }
+
 }
 
 fn should_provide_event(widget: Index,
@@ -174,6 +174,6 @@ fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current_state:
         UiEvent::MouseDrag(drag) => {
             widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
         },
-        _ => widget_area.is_over(current_state.mouse_xy)
+        _ => widget_area.is_over(current_state.mouse.xy)
     }
 }

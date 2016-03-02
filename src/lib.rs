@@ -88,12 +88,11 @@ pub use widget::Index as WidgetIndex;
 pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
-pub mod events;
-
 
 pub mod backend;
 mod background;
 pub mod color;
+pub mod events;
 mod frame;
 pub mod glyph_cache;
 pub mod graph;

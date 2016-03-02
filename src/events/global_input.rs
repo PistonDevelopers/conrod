@@ -37,9 +37,11 @@ impl<'a> InputProvider<'a> for GlobalInput {
     }
 
     fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-         self.current_state().mouse_buttons.get(button).map(|_| {
-             self.mouse_position()
-         })
+        // TODO: Review this as it changes behaviour...
+        self.current_state().mouse.buttons[button].xy_if_down()
+        //  self.current_state().mouse.buttons.get(button).map(|_| {
+        //      self.mouse_position()
+        //  })
     }
 }
 
@@ -66,11 +68,11 @@ impl GlobalInput {
         let maybe_drag_event = match event {
             UiEvent::Raw(Move(MouseRelative(x, y))) => {
                 let xy = [x, y];
-                self.current_state.mouse_buttons.pressed_button().and_then(|btn_and_point| {
-                    if is_drag(btn_and_point.1, xy) {
+                self.current_state.mouse.buttons.pressed().next().and_then(|(btn, btn_xy)| {
+                    if is_drag(btn_xy, xy) {
                         Some(UiEvent::MouseDrag(MouseDrag{
-                            button: btn_and_point.0,
-                            start: btn_and_point.1,
+                            button: btn,
+                            start: btn_xy,
                             end: xy,
                             in_progress: true,
                             modifier: self.current_state.modifiers
@@ -85,7 +87,7 @@ impl GlobalInput {
 
         // Check for a new click event.
         let maybe_click_event = if let UiEvent::Raw(Release(Mouse(button))) = event {
-            self.current_state.mouse_buttons.get(button).map(|point| {
+            self.current_state.mouse.buttons[button].xy_if_down().map(|point| {
                 let click = MouseClick {
                     button: button,
                     location: point,
@@ -129,7 +131,7 @@ impl GlobalInput {
 
     /// Returns the most up to date position of the mouse
     pub fn mouse_position(&self) -> Point {
-        self.current_state.mouse_xy
+        self.current_state.mouse.xy
     }
 
     /// Returns the input state as it was after the last update
