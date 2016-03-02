@@ -19,10 +19,13 @@ pub enum UiEvent {
     /// Represents a mouse button being pressed and a subsequent movement of the mouse.
     MouseDrag(MouseDrag),
     /// This is a generic scroll event. This is different from the `input::Movement::MouseScroll`
-    /// event in several aspects. For one, it does not necessarily have to get created by a
-    /// mouse wheel, it could be generated from a keypress, or as a response to handling some
-    /// other event. Secondly, it contains a field holding the `input::keyboard::ModifierKey`
-    /// that was held while the scroll occured.
+    /// event in several aspects.
+    ///
+    /// For one, it does not necessarily have to get created by a mouse wheel, it could be
+    /// generated from a keypress, or as a response to handling some other event.
+    ///
+    /// Secondly, it contains a field holding the `input::keyboard::ModifierKey` that was held
+    /// while the scroll occured.
     Scroll(Scroll),
     /// Indicates that the given widget is starting to capture the mouse.
     WidgetCapturesMouse(Index),
@@ -103,13 +106,10 @@ impl UiEvent {
         match self {
             MouseClick(click) => MouseClick(click.relative_to(xy)),
             MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
-            Raw(raw_input) => Raw(match raw_input {
-                Input::Move(Motion::MouseRelative(x, y)) =>
-                    Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1])),
-                Input::Move(Motion::MouseCursor(x, y)) =>
-                    Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1])),
-                other_input => other_input,
-            }),
+            Raw(Input::Move(Motion::MouseRelative(x, y))) =>
+                Raw(Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1]))),
+            Raw(Input::Move(Motion::MouseCursor(x, y))) =>
+                Raw(Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1]))),
             other_event => other_event
         }
     }

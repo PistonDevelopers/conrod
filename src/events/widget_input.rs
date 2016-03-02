@@ -68,6 +68,7 @@ impl<'a> WidgetInput<'a> {
         let widget_dim = self.widget_area.dim();
         Rect::from_xy_dim([0.0, 0.0], widget_dim)
     }
+
 }
 
 /// Alows iterating over events for a specific widget. All events provided by this Iterator
@@ -173,6 +174,6 @@ fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current_state:
         UiEvent::MouseDrag(drag) => {
             widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
         },
-        _ => widget_area.is_over(current_state.mouse_position)
+        _ => widget_area.is_over(current_state.mouse_xy)
     }
 }

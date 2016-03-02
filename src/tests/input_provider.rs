@@ -8,7 +8,7 @@ use position::Point;
 fn mouse_position_should_return_mouse_position_from_current_state() {
     let position = [5.0, 7.0];
     let mut input_state = InputState::new();
-    input_state.mouse_position = position;
+    input_state.mouse_xy = position;
     let input = ProviderImpl::with_input_state(input_state);
     assert_eq!(position, input.mouse_position());
 }

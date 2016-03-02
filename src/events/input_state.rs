@@ -16,20 +16,30 @@ pub const NUM_MOUSE_BUTTONS: usize = 9;
 /// `None` if the mouse button is currently in the up position.
 pub type ButtonDownPosition = Option<Point>;
 
-/// Holds the current state of user input. This includes the state of all buttons on
-/// the keyboard and mouse, as well as the position of the mouse. It also includes which
-/// widgets, if any, are capturing keyboard and mouse input.
+/// Holds the current state of user input.
+///
+/// This includes the state of all buttons on the keyboard and mouse, as well as the position of
+/// the mouse.
+///
+/// It also includes which widgets, if any, are capturing keyboard and mouse input.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InputState {
-    /// A map that stores the up/down state of each button. If the button is down, then
-    /// it stores the position of the mouse when the button was first pressed.
+    /// A map that stores the up/down state of each button.
+    ///
+    /// If the button is down, then it stores the position of the mouse when the button was first
+    /// pressed.
     pub mouse_buttons: ButtonMap,
     /// The current position of the mouse.
-    pub mouse_position: Point,
+    pub mouse_xy: Point,
     /// Which widget, if any, is currently capturing the keyboard
     pub widget_capturing_keyboard: Option<Index>,
     /// Which widget, if any, is currently capturing the mouse
     pub widget_capturing_mouse: Option<Index>,
+    /// The widget that is currently under the mouse cursor.
+    ///
+    /// If the mouse is currently over multiple widgets, this index will represent the top-most,
+    /// non-graphic-child widget.
+    pub widget_under_mouse: Option<Index>,
     /// Which modifier keys are being held down.
     pub modifiers: ModifierKey,
 }
@@ -40,9 +50,10 @@ impl InputState {
     pub fn new() -> InputState {
         InputState{
             mouse_buttons: ButtonMap::new(),
-            mouse_position: [0.0, 0.0],
+            mouse_xy: [0.0, 0.0],
             widget_capturing_keyboard: None,
             widget_capturing_mouse: None,
+            widget_under_mouse: None,
             modifiers: NO_MODIFIER,
         }
     }
@@ -53,13 +64,13 @@ impl InputState {
 
         match *event {
             UiEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
-                self.mouse_buttons.set(mouse_button, Some(self.mouse_position));
+                self.mouse_buttons.set(mouse_button, Some(self.mouse_xy));
             },
             UiEvent::Raw(Input::Release(Button::Mouse(mouse_button))) => {
                 self.mouse_buttons.set(mouse_button, None);
             },
             UiEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) => {
-                self.mouse_position = [x, y];
+                self.mouse_xy = [x, y];
             },
             UiEvent::Raw(Input::Press(Button::Keyboard(key))) => {
                 get_modifier(key).map(|modifier| self.modifiers.insert(modifier));
@@ -85,7 +96,7 @@ impl InputState {
 
     /// Returns a copy of the InputState relative to the given `position::Point`
     pub fn relative_to(mut self, xy: Point) -> InputState {
-        self.mouse_position = ::vecmath::vec2_sub(self.mouse_position, xy);
+        self.mouse_xy = ::vecmath::vec2_sub(self.mouse_xy, xy);
         self.mouse_buttons = self.mouse_buttons.relative_to(xy);
         self
     }
@@ -208,10 +219,10 @@ fn take_resets_and_returns_current_state() {
 #[test]
 fn input_state_should_be_made_relative_to_a_given_point() {
     let mut state = InputState::new();
-    state.mouse_position = [50.0, -10.0];
+    state.mouse_xy = [50.0, -10.0];
     state.mouse_buttons.set(MouseButton::Middle, Some([-20.0, -10.0]));
 
     let relative_state = state.relative_to([20.0, 20.0]);
-    assert_eq!([30.0, -30.0], relative_state.mouse_position);
+    assert_eq!([30.0, -30.0], relative_state.mouse_xy);
     assert_eq!(Some([-40.0, -30.0]), relative_state.mouse_buttons.get(MouseButton::Middle));
 }

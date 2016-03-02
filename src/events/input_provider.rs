@@ -162,7 +162,7 @@ pub trait InputProvider<'a> {
 
     /// Convenience method for returning the current mouse position.
     fn mouse_position(&'a self) -> Point {
-        self.current_state().mouse_position
+        self.current_state().mouse_xy
     }
 
 }

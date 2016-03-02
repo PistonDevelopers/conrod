@@ -11,13 +11,6 @@ use input::{
     Input,
     Motion,
     GenericEvent,
-    MouseCursorEvent,
-    MouseScrollEvent,
-    PressEvent,
-    ReleaseEvent,
-    RenderEvent,
-    ResizeEvent,
-    TextEvent,
 };
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std::collections::HashSet;
@@ -295,7 +288,17 @@ impl<B> Ui<B>
 
     /// Handle game events and update the state.
     pub fn handle_event<E: GenericEvent>(&mut self, event: &E) {
-        use input::{CursorEvent, FocusEvent};
+        use input::{
+            CursorEvent,
+            FocusEvent,
+            MouseCursorEvent,
+            MouseScrollEvent,
+            PressEvent,
+            ReleaseEvent,
+            RenderEvent,
+            ResizeEvent,
+            TextEvent,
+        };
 
         // Push the new event onto the `Ui`'s global_input along with the latest drag_threshold.
         fn push_event<B: Backend>(ui: &mut Ui<B>, event: UiEvent) {
@@ -303,11 +306,23 @@ impl<B> Ui<B>
             ui.global_input.push_event(event, drag_threshold);
         }
 
+        // Determines which widget is currently under the mouse and sets it within the `Ui`'s
+        // `GlobalInput`'s `InputState`.
+        //
+        // This function expects that `ui.global_input.current_state.mouse_xy` is up-to-date.
+        fn track_widget_under_mouse<B: Backend>(ui: &mut Ui<B>) {
+            ui.global_input.current_state.widget_under_mouse =
+                graph::algo::pick_widget(&ui.widget_graph,
+                                         &ui.depth_order.indices,
+                                         ui.global_input.current_state.mouse_xy);
+        }
+
         event.resize(|w, h| {
             let event = UiEvent::Raw(Input::Resize(w, h));
             push_event(self, event);
             self.win_w = w as f64;
             self.win_h = h as f64;
+            track_widget_under_mouse(self);
             self.needs_redraw();
         });
 
@@ -320,6 +335,13 @@ impl<B> Ui<B>
             // Convert mouse coords to (0, 0) origin.
             let mouse_xy = [x - self.win_w / 2.0, -(y - self.win_h / 2.0)];
             self.mouse.xy = mouse_xy;
+
+            // TODO: This also happens in InputState::update, however I think we need it updated
+            // prior to processing the rest of the events.
+            self.global_input.current_state.mouse_xy = mouse_xy;
+
+            track_widget_under_mouse(self);
+
             let event = UiEvent::Raw(Input::Move(Motion::MouseRelative(mouse_xy[0], mouse_xy[1])));
             push_event(self, event);
         });
@@ -329,6 +351,7 @@ impl<B> Ui<B>
             push_event(self, event);
             self.mouse.scroll.x += x;
             self.mouse.scroll.y += y;
+            track_widget_under_mouse(self);
         });
 
         event.press(|button_type| {

@@ -129,7 +129,7 @@ impl GlobalInput {
 
     /// Returns the most up to date position of the mouse
     pub fn mouse_position(&self) -> Point {
-        self.current_state.mouse_position
+        self.current_state.mouse_xy
     }
 
     /// Returns the input state as it was after the last update
