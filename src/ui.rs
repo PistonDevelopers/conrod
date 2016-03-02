@@ -49,34 +49,14 @@ pub struct Ui<B>
     pub glyph_cache: GlyphCache<B::CharacterCache>,
     /// An index into the root widget of the graph, representing the entire window.
     pub window: NodeIndex,
-    /// Window width.
-    pub win_w: f64,
-    /// Window height.
-    pub win_h: f64,
     /// Handles aggregation of events and providing them to Widgets
     pub global_input: GlobalInput,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
-    /// The latest received mouse state.
-    mouse: Mouse,
-    /// Keys that have been pressed since the end of the last render cycle.
-    keys_just_pressed: Vec<input::keyboard::Key>,
-    /// Keys that have been released since the end of the last render cycle.
-    keys_just_released: Vec<input::keyboard::Key>,
-    /// Text that has been entered since the end of the last render cycle.
-    text_just_entered: Vec<String>,
     /// The widget::Index of the widget that was last updated/set.
     maybe_prev_widget_idx: Option<widget::Index>,
     /// The widget::Index of the last widget used as a parent for another widget.
     maybe_current_parent_idx: Option<widget::Index>,
-    /// If the mouse is currently over a widget, its ID will be here.
-    maybe_widget_under_mouse: Option<widget::Index>,
-    /// The ID of the top-most scrollable widget under the cursor (if there is one).
-    maybe_top_scrollable_widget_under_mouse: Option<widget::Index>,
-    /// The widget::Index of the widget currently capturing mouse input if there is one.
-    maybe_captured_mouse: Option<Capturing>,
-    /// The widget::Index of the widget currently capturing keyboard input if there is one.
-    maybe_captured_keyboard: Option<Capturing>,
     /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
     num_redraw_frames: u8,
@@ -93,6 +73,29 @@ pub struct Ui<B>
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
     prev_updated_widgets: HashSet<NodeIndex>,
+
+    // TODO: Remove the following fields as they should now be handled by `GlobalInput`.
+
+    /// The latest received mouse state.
+    mouse: Mouse,
+    /// Keys that have been pressed since the end of the last render cycle.
+    keys_just_pressed: Vec<input::keyboard::Key>,
+    /// Keys that have been released since the end of the last render cycle.
+    keys_just_released: Vec<input::keyboard::Key>,
+    /// Text that has been entered since the end of the last render cycle.
+    text_just_entered: Vec<String>,
+    /// If the mouse is currently over a widget, its ID will be here.
+    maybe_widget_under_mouse: Option<widget::Index>,
+    /// The ID of the top-most scrollable widget under the cursor (if there is one).
+    maybe_top_scrollable_widget_under_mouse: Option<widget::Index>,
+    /// The widget::Index of the widget currently capturing mouse input if there is one.
+    maybe_captured_mouse: Option<Capturing>,
+    /// The widget::Index of the widget currently capturing keyboard input if there is one.
+    maybe_captured_keyboard: Option<Capturing>,
+    /// Window width.
+    pub win_w: f64,
+    /// Window height.
+    pub win_h: f64,
 }
 
 /// A wrapper around the `Ui` that restricts the user from mutating the `Ui` in certain ways while
@@ -314,7 +317,7 @@ impl<B> Ui<B>
             ui.global_input.current_state.widget_under_mouse =
                 graph::algo::pick_widget(&ui.widget_graph,
                                          &ui.depth_order.indices,
-                                         ui.global_input.current_state.mouse_xy);
+                                         ui.global_input.current_state.mouse.xy);
         }
 
         event.resize(|w, h| {
@@ -327,8 +330,12 @@ impl<B> Ui<B>
         });
 
         event.render(|args| {
-            self.win_w = args.width as f64;
-            self.win_h = args.height as f64;
+            let (w, h) = (args.width as f64, args.height as f64);
+            if self.win_w != w || self.win_h != h {
+                self.win_w = args.width as f64;
+                self.win_h = args.height as f64;
+                track_widget_under_mouse(self);
+            }
         });
 
         event.mouse_cursor(|x, y| {
@@ -337,8 +344,8 @@ impl<B> Ui<B>
             self.mouse.xy = mouse_xy;
 
             // TODO: This also happens in InputState::update, however I think we need it updated
-            // prior to processing the rest of the events.
-            self.global_input.current_state.mouse_xy = mouse_xy;
+            // prior to tracking the widget under the mouse.
+            self.global_input.current_state.mouse.xy = mouse_xy;
 
             track_widget_under_mouse(self);
 
@@ -364,29 +371,22 @@ impl<B> Ui<B>
             match button_type {
                 Button::Mouse(button) => {
 
-                    // If there is a widget under the mouse just pressed, ensure it is set to
-                    // capture input.
-                    {
-                        let mouse_xy = self.global_input.mouse_position();
-                        let widget_under_mouse =
-                            graph::algo::pick_widget(&self.widget_graph,
-                                                     &self.depth_order.indices,
-                                                     mouse_xy);
-                        let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
-
-                        if let Some(idx) = currently_capturing_keyboard {
-                            if Some(idx) != widget_under_mouse {
-                                let event = UiEvent::WidgetUncapturesKeyboard(idx);
-                                push_event(self, event);
-                            }
-                        }
-
-                        if let Some(idx) = widget_under_mouse {
-                            let event = UiEvent::WidgetCapturesKeyboard(idx);
+                    // Check to see if we need to uncapture the keyboard.
+                    let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
+                    if let Some(idx) = currently_capturing_keyboard {
+                        if Some(idx) != self.global_input.current_state.widget_under_mouse {
+                            let event = UiEvent::WidgetUncapturesKeyboard(idx);
                             push_event(self, event);
                         }
                     }
-             
+
+                    // Check to see if we need to capture the keyboard.
+                    if let Some(idx) = self.global_input.current_state.widget_under_mouse {
+                        let event = UiEvent::WidgetCapturesKeyboard(idx);
+                        push_event(self, event);
+                    }
+
+                    // TODO: Remove this.
                     let mouse_button = match button {
                         Left => &mut self.mouse.left,
                         Right => &mut self.mouse.right,
