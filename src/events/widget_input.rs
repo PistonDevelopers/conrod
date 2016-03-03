@@ -23,7 +23,7 @@ use input::mouse::MouseButton;
 /// directly pertain to the widget.
 pub struct WidgetInput<'a> {
     global_input: &'a GlobalInput,
-    current_state: InputState,
+    current: InputState,
     widget_area: Rect,
     widget_idx: Index,
 }
@@ -40,7 +40,7 @@ impl<'a> WidgetInput<'a> {
             global_input: &global_input,
             widget_area: widget_area,
             widget_idx: widget,
-            current_state: global_input.current_state.relative_to(widget_area.xy())
+            current: global_input.current.relative_to(widget_area.xy())
         }
     }
 
@@ -76,7 +76,7 @@ impl<'a> WidgetInput<'a> {
 /// all mouse events will have their coordinates relative to the widget's own (0,0) origin.
 pub struct WidgetInputEventIterator<'a> {
     global_event_iter: GlobalInputEventIterator<'a>,
-    current_state: InputState,
+    current: InputState,
     widget_area: Rect,
     widget_idx: Index,
 }
@@ -86,8 +86,8 @@ impl<'a> Iterator for WidgetInputEventIterator<'a> {
 
     fn next(&mut self) -> Option<&'a UiEvent> {
         self.global_event_iter.next().and_then(|event| {
-            self.current_state.update(event);
-            if should_provide_event(self.widget_idx, self.widget_area, event, &self.current_state) {
+            self.current.update(event);
+            if should_provide_event(self.widget_idx, self.widget_area, event, &self.current) {
                 Some(event)
             } else {
                 self.next()
@@ -103,14 +103,14 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     fn all_events(&'a self) -> Self::Events {
         WidgetInputEventIterator{
             global_event_iter: self.global_input.all_events(),
-            current_state: self.global_input.start_state.relative_to(self.widget_area.xy()),
+            current: self.global_input.start_state.relative_to(self.widget_area.xy()),
             widget_area: self.widget_area,
             widget_idx: self.widget_idx,
         }
     }
 
-    fn current_state(&'a self) -> &'a InputState {
-        &self.current_state
+    fn current(&'a self) -> &'a InputState {
+        &self.current
     }
 
     fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
@@ -136,7 +136,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     }
 
     fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-        let current = self.current_state();
+        let current = self.current();
         let self_is_capturing = || Some(self.widget_idx) == current.widget_capturing_mouse;
         current.mouse.buttons[button].xy_if_down()
             .and_then(|xy| if self_is_capturing() { Some(xy) } else { None })
@@ -147,33 +147,33 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
 fn should_provide_event(widget: Index,
                         widget_area: Rect,
                         event: &UiEvent,
-                        current_state: &InputState) -> bool {
+                        current: &InputState) -> bool {
     let is_keyboard = event.is_keyboard_event();
     let is_mouse = event.is_mouse_event();
 
-    (is_keyboard && current_state.widget_capturing_keyboard == Some(widget))
-            || (is_mouse && should_provide_mouse_event(widget, widget_area, event, current_state))
+    (is_keyboard && current.widget_capturing_keyboard == Some(widget))
+            || (is_mouse && should_provide_mouse_event(widget, widget_area, event, current))
             || (!is_keyboard && !is_mouse)
 }
 
 fn should_provide_mouse_event(widget: Index,
                             widget_area: Rect,
                             event: &UiEvent,
-                            current_state: &InputState) -> bool {
-    let capturing_mouse = current_state.widget_capturing_mouse;
+                            current: &InputState) -> bool {
+    let capturing_mouse = current.widget_capturing_mouse;
     match capturing_mouse {
         Some(idx) if idx == widget => true,
-        None => mouse_event_is_over_widget(widget_area, event, current_state),
+        None => mouse_event_is_over_widget(widget_area, event, current),
         _ => false
     }
 }
 
-fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current_state: &InputState) -> bool {
+fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &InputState) -> bool {
     match *event {
         UiEvent::MouseClick(click) => widget_area.is_over(click.location),
         UiEvent::MouseDrag(drag) => {
             widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
         },
-        _ => widget_area.is_over(current_state.mouse.xy)
+        _ => widget_area.is_over(current.mouse.xy)
     }
 }

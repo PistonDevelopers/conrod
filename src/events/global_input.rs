@@ -15,7 +15,7 @@ pub struct GlobalInput {
     pub start_state: InputState,
     /// The most recent `InputState`, with updates from handling all the events
     /// this update cycle
-    pub current_state: InputState,
+    pub current: InputState,
     /// The events that have occurred between two consecutive updates.
     events: Vec<UiEvent>,
 }
@@ -32,14 +32,14 @@ impl<'a> InputProvider<'a> for GlobalInput {
         self.events.iter()
     }
 
-    fn current_state(&'a self) -> &'a InputState {
-        &self.current_state
+    fn current(&'a self) -> &'a InputState {
+        &self.current
     }
 
     fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
         // TODO: Review this as it changes behaviour...
-        self.current_state().mouse.buttons[button].xy_if_down()
-        //  self.current_state().mouse.buttons.get(button).map(|_| {
+        self.current().mouse.buttons[button].xy_if_down()
+        //  self.current().mouse.buttons.get(button).map(|_| {
         //      self.mouse_position()
         //  })
     }
@@ -52,7 +52,7 @@ impl GlobalInput {
         GlobalInput{
             events: Vec::new(),
             start_state: InputState::new(),
-            current_state: InputState::new(),
+            current: InputState::new(),
         }
     }
 
@@ -68,14 +68,14 @@ impl GlobalInput {
         let maybe_drag_event = match event {
             UiEvent::Raw(Move(MouseRelative(x, y))) => {
                 let xy = [x, y];
-                self.current_state.mouse.buttons.pressed().next().and_then(|(btn, btn_xy)| {
+                self.current.mouse.buttons.pressed().next().and_then(|(btn, btn_xy)| {
                     if is_drag(btn_xy, xy) {
                         Some(UiEvent::MouseDrag(MouseDrag{
                             button: btn,
                             start: btn_xy,
                             end: xy,
                             in_progress: true,
-                            modifier: self.current_state.modifiers
+                            modifier: self.current.modifiers
                         }))
                     } else {
                         None
@@ -87,11 +87,11 @@ impl GlobalInput {
 
         // Check for a new click event.
         let maybe_click_event = if let UiEvent::Raw(Release(Mouse(button))) = event {
-            self.current_state.mouse.buttons[button].xy_if_down().map(|point| {
+            self.current.mouse.buttons[button].xy_if_down().map(|point| {
                 let click = MouseClick {
                     button: button,
                     location: point,
-                    modifier: self.current_state.modifiers
+                    modifier: self.current.modifiers
                 };
                 UiEvent::MouseClick(click)
             })
@@ -104,7 +104,7 @@ impl GlobalInput {
             let scroll = Scroll{
                 x: x,
                 y: y,
-                modifiers: self.current_state.modifiers
+                modifiers: self.current.modifiers
             };
             Some(UiEvent::Scroll(scroll))
         } else {
@@ -117,7 +117,7 @@ impl GlobalInput {
             .chain(maybe_scroll_event);
 
         for event in events {
-            self.current_state.update(&event);
+            self.current.update(&event);
             self.events.push(event);
         }
     }
@@ -126,12 +126,12 @@ impl GlobalInput {
     /// handle events for the next one.
     pub fn clear_events_and_update_start_state(&mut self) {
         self.events.clear();
-        self.start_state = self.current_state.clone();
+        self.start_state = self.current.clone();
     }
 
     /// Returns the most up to date position of the mouse
     pub fn mouse_position(&self) -> Point {
-        self.current_state.mouse.xy
+        self.current.mouse.xy
     }
 
     /// Returns the input state as it was after the last update
@@ -141,12 +141,12 @@ impl GlobalInput {
 
     /// Returns the most up to date info on which widget is capturing the mouse
     pub fn currently_capturing_mouse(&self) -> Option<Index> {
-        self.current_state.widget_capturing_mouse
+        self.current.widget_capturing_mouse
     }
 
     /// Returns the most up to date info on which widget is capturing the keyboard
     pub fn currently_capturing_keyboard(&self) -> Option<Index> {
-        self.current_state.widget_capturing_keyboard
+        self.current.widget_capturing_keyboard
     }
 
 }

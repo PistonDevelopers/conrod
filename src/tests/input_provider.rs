@@ -162,14 +162,14 @@ fn scroll_event(x: f64, y: f64) -> UiEvent {
 /// the default trait methods are easy to test
 struct ProviderImpl{
     events: Vec<UiEvent>,
-    current_state: InputState,
+    current: InputState,
 }
 
 impl ProviderImpl {
     fn new(events: Vec<UiEvent>, state: InputState) -> ProviderImpl {
         ProviderImpl{
             events: events,
-            current_state: state,
+            current: state,
         }
     }
 
@@ -192,12 +192,12 @@ impl<'a> InputProvider<'a> for ProviderImpl {
         self.events.iter()
     }
 
-    fn current_state(&self) -> &InputState {
-        &self.current_state
+    fn current(&self) -> &InputState {
+        &self.current
     }
 
     fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-        self.current_state().mouse.buttons[button].xy_if_down().map(|_| {
+        self.current().mouse.buttons[button].xy_if_down().map(|_| {
             self.mouse_position()
         })
     }

@@ -19,7 +19,7 @@ fn resetting_input_should_set_starting_state_to_current_state() {
     push_event(&mut input, UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     push_event(&mut input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
 
-    let expected_start_state = input.current_state.clone();
+    let expected_start_state = input.current.clone();
     input.clear_events_and_update_start_state();
     assert_eq!(expected_start_state, input.start_state);
 }

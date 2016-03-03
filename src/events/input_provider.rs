@@ -22,7 +22,7 @@ pub trait InputProvider<'a> {
 
     /// Returns the current input state. The returned state is assumed to be up to
     /// date with all of the events so far.
-    fn current_state(&'a self) -> &'a InputState;
+    fn current(&'a self) -> &'a InputState;
 
     /// If the given mouse button is currently pressed, returns the position at which the mouse was
     /// pressed.
@@ -164,7 +164,7 @@ pub trait InputProvider<'a> {
 
     /// Convenience method for returning the current mouse position.
     fn mouse_position(&'a self) -> Point {
-        self.current_state().mouse.xy
+        self.current().mouse.xy
     }
 
 }

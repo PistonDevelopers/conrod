@@ -312,12 +312,12 @@ impl<B> Ui<B>
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
         // `GlobalInput`'s `InputState`.
         //
-        // This function expects that `ui.global_input.current_state.mouse_xy` is up-to-date.
+        // This function expects that `ui.global_input.current.mouse_xy` is up-to-date.
         fn track_widget_under_mouse<B: Backend>(ui: &mut Ui<B>) {
-            ui.global_input.current_state.widget_under_mouse =
+            ui.global_input.current.widget_under_mouse =
                 graph::algo::pick_widget(&ui.widget_graph,
                                          &ui.depth_order.indices,
-                                         ui.global_input.current_state.mouse.xy);
+                                         ui.global_input.current.mouse.xy);
         }
 
         event.resize(|w, h| {
@@ -345,7 +345,7 @@ impl<B> Ui<B>
 
             // TODO: This also happens in InputState::update, however I think we need it updated
             // prior to tracking the widget under the mouse.
-            self.global_input.current_state.mouse.xy = mouse_xy;
+            self.global_input.current.mouse.xy = mouse_xy;
 
             track_widget_under_mouse(self);
 
@@ -374,14 +374,14 @@ impl<B> Ui<B>
                     // Check to see if we need to uncapture the keyboard.
                     let currently_capturing_keyboard = self.global_input.currently_capturing_keyboard();
                     if let Some(idx) = currently_capturing_keyboard {
-                        if Some(idx) != self.global_input.current_state.widget_under_mouse {
+                        if Some(idx) != self.global_input.current.widget_under_mouse {
                             let event = UiEvent::WidgetUncapturesKeyboard(idx);
                             push_event(self, event);
                         }
                     }
 
                     // Check to see if we need to capture the keyboard.
-                    if let Some(idx) = self.global_input.current_state.widget_under_mouse {
+                    if let Some(idx) = self.global_input.current.widget_under_mouse {
                         let event = UiEvent::WidgetCapturesKeyboard(idx);
                         push_event(self, event);
                     }
