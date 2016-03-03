@@ -3,7 +3,8 @@
 //! `InputProvider` that provides input events for a specific widget.
 
 use widget::Index;
-use events::{InputState,
+use events::{
+    InputState,
     UiEvent,
     GlobalInput,
     GlobalInputEventIterator,
@@ -74,6 +75,7 @@ impl<'a> WidgetInput<'a> {
 /// Alows iterating over events for a specific widget. All events provided by this Iterator
 /// will be filtered, so that input intended for other widgets is excluded. In addition,
 /// all mouse events will have their coordinates relative to the widget's own (0,0) origin.
+#[derive(Clone)]
 pub struct WidgetInputEventIterator<'a> {
     global_event_iter: GlobalInputEventIterator<'a>,
     current: InputState,
@@ -83,7 +85,6 @@ pub struct WidgetInputEventIterator<'a> {
 
 impl<'a> Iterator for WidgetInputEventIterator<'a> {
     type Item = &'a UiEvent;
-
     fn next(&mut self) -> Option<&'a UiEvent> {
         self.global_event_iter.next().and_then(|event| {
             self.current.update(event);

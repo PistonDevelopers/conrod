@@ -194,14 +194,17 @@ impl<'a, I> Iterator for TextJustEntered<'a, I>
 
 /// An Iterator over `input::keyboard::Key`s that were just released.
 #[derive(Clone, Debug)]
-pub struct KeysJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
-    event_iter: T,
+pub struct KeysJustReleased<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
+    event_iter: I,
     lifetime: PhantomData<&'a ()>
 }
 
-impl<'a, T> Iterator for KeysJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+impl<'a, I> Iterator for KeysJustReleased<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
     type Item = Key;
-
     fn next(&mut self) -> Option<Key> {
         while let Some(event) = self.event_iter.next() {
             if let UiEvent::Raw(Input::Release(Button::Keyboard(key))) = *event {
@@ -214,14 +217,17 @@ impl<'a, T> Iterator for KeysJustReleased<'a, T> where T: Iterator<Item=&'a UiEv
 
 /// An Iterator over `input::keyboard::Key`s that were just pressed.
 #[derive(Clone, Debug)]
-pub struct KeysJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
-    event_iter: T,
+pub struct KeysJustPressed<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
+    event_iter: I,
     lifetime: PhantomData<&'a ()>
 }
 
-impl<'a, T> Iterator for KeysJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+impl<'a, I> Iterator for KeysJustPressed<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
     type Item = Key;
-
     fn next(&mut self) -> Option<Key> {
         while let Some(event) = self.event_iter.next() {
             if let UiEvent::Raw(Input::Press(Button::Keyboard(key))) = *event {
@@ -234,14 +240,17 @@ impl<'a, T> Iterator for KeysJustPressed<'a, T> where T: Iterator<Item=&'a UiEve
 
 /// An Iterator over `input::mouse::MouseButton`s that were just pressed.
 #[derive(Clone, Debug)]
-pub struct MouseButtonsJustPressed<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
-    event_iter: T,
+pub struct MouseButtonsJustPressed<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
+    event_iter: I,
     lifetime: PhantomData<&'a ()>
 }
 
-impl<'a, T> Iterator for MouseButtonsJustPressed<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+impl<'a, I> Iterator for MouseButtonsJustPressed<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
     type Item = MouseButton;
-
     fn next(&mut self) -> Option<MouseButton> {
         while let Some(event) = self.event_iter.next() {
             if let UiEvent::Raw(Input::Press(Button::Mouse(mouse_button))) = *event {
@@ -254,14 +263,17 @@ impl<'a, T> Iterator for MouseButtonsJustPressed<'a, T> where T: Iterator<Item=&
 
 /// An Iterator over `input::mouse::MouseButton`s that were just released.
 #[derive(Clone, Debug)]
-pub struct MouseButtonsJustReleased<'a, T: Iterator<Item=&'a UiEvent> + Sized> {
-    event_iter: T,
+pub struct MouseButtonsJustReleased<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized,
+{
+    event_iter: I,
     lifetime: PhantomData<&'a ()>
 }
 
-impl<'a, T> Iterator for MouseButtonsJustReleased<'a, T> where T: Iterator<Item=&'a UiEvent> + Sized {
+impl<'a, I> Iterator for MouseButtonsJustReleased<'a, I>
+    where I: Iterator<Item=&'a UiEvent> + Sized
+{
     type Item = MouseButton;
-
     fn next(&mut self) -> Option<MouseButton> {
         while let Some(event) = self.event_iter.next() {
             if let UiEvent::Raw(Input::Release(Button::Mouse(mouse_button))) = *event {
