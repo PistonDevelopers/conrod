@@ -12,7 +12,7 @@ use widget::Index;
 /// so-called 'high-level' events to widgets. This input gets reset after every update by the `Ui`.
 pub struct GlobalInput {
     /// The `InputState` as it was at the end of the last update cycle.
-    pub start_state: InputState,
+    pub start: InputState,
     /// The most recent `InputState`, with updates from handling all the events
     /// this update cycle
     pub current: InputState,
@@ -51,7 +51,7 @@ impl GlobalInput {
     pub fn new() -> GlobalInput {
         GlobalInput{
             events: Vec::new(),
-            start_state: InputState::new(),
+            start: InputState::new(),
             current: InputState::new(),
         }
     }
@@ -126,7 +126,7 @@ impl GlobalInput {
     /// handle events for the next one.
     pub fn clear_events_and_update_start_state(&mut self) {
         self.events.clear();
-        self.start_state = self.current.clone();
+        self.start = self.current.clone();
     }
 
     /// Returns the most up to date position of the mouse
@@ -136,7 +136,7 @@ impl GlobalInput {
 
     /// Returns the input state as it was after the last update
     pub fn starting_state(&self) -> &InputState {
-        &self.start_state
+        &self.start
     }
 
     /// Returns the most up to date info on which widget is capturing the mouse

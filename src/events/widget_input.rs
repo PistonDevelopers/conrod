@@ -103,7 +103,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     fn all_events(&'a self) -> Self::Events {
         WidgetInputEventIterator{
             global_event_iter: self.global_input.all_events(),
-            current: self.global_input.start_state.relative_to(self.widget_area.xy()),
+            current: self.global_input.start.relative_to(self.widget_area.xy()),
             widget_area: self.widget_area,
             widget_idx: self.widget_idx,
         }
