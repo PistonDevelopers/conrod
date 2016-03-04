@@ -45,14 +45,10 @@ pub struct MouseDrag {
     /// The origin of the drag. This will always be the position of the mouse whenever the
     /// button was first pressed
     pub start: Point,
-    /// The end position of the mouse. If `in_progress` is true, then subsequent `MouseDrag`
-    /// events may be created with a new `end` as the mouse continues to move.
+    /// The end position of the mouse.
     pub end: Point,
     /// Which modifier keys are being held during the mouse drag.
-    pub modifier: ModifierKey,
-    /// Indicates whether the mouse button is still being held down. If it is, then
-    /// `in_progress` will be `true` and more `MouseDrag` events can likely be expected.
-    pub in_progress: bool,
+    pub modifiers: ModifierKey,
 }
 
 /// Contains all the relevant information for a mouse click.
@@ -60,10 +56,10 @@ pub struct MouseDrag {
 pub struct MouseClick {
     /// Which mouse button was clicked
     pub button: MouseButton,
-    /// The location of the click
-    pub location: Point,
+    /// The position at which the mouse was released.
+    pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
-    pub modifier: ModifierKey,
+    pub modifiers: ModifierKey,
 }
 
 /// Holds all the relevant information about a scroll event
@@ -80,8 +76,8 @@ pub struct Scroll {
 impl MouseClick {
     /// Returns a copy of the MouseClick relative to the given `position::Point`
     pub fn relative_to(&self, xy: Point) -> MouseClick {
-        MouseClick{
-            location: vec2_sub(self.location, xy),
+        MouseClick {
+            xy: vec2_sub(self.xy, xy),
             ..*self
         }
     }
@@ -146,6 +142,12 @@ impl UiEvent {
 
 }
 
+impl From<Input> for UiEvent {
+    fn from(input: Input) -> Self {
+        UiEvent::Raw(input)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -178,17 +180,16 @@ mod test {
         let non_keyboard_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(MouseClick{
+            UiEvent::MouseClick(MouseClick {
                 button: MouseButton::Left,
-                location: [0.0, 0.0],
-                modifier: NO_MODIFIER
+                xy: [0.0, 0.0],
+                modifiers: NO_MODIFIER
             }),
             UiEvent::MouseDrag(MouseDrag{
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
-                modifier: NO_MODIFIER,
-                in_progress: true,
+                modifiers: NO_MODIFIER,
             }),
             UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
             UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
@@ -205,17 +206,16 @@ mod test {
         let mouse_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(MouseClick{
+            UiEvent::MouseClick(MouseClick {
                 button: MouseButton::Left,
-                location: [0.0, 0.0],
-                modifier: NO_MODIFIER
+                xy: [0.0, 0.0],
+                modifiers: NO_MODIFIER
             }),
             UiEvent::MouseDrag(MouseDrag{
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
-                modifier: NO_MODIFIER,
-                in_progress: true,
+                modifiers: NO_MODIFIER,
             }),
             UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
             UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
@@ -247,15 +247,15 @@ mod test {
     fn mouse_click_should_be_made_relative() {
         let original = UiEvent::MouseClick(MouseClick {
             button: MouseButton::Middle,
-            location: [30.0, -80.0],
-            modifier: keyboard::SHIFT
+            xy: [30.0, -80.0],
+            modifiers: keyboard::SHIFT
         });
         let relative = original.relative_to([10.0, 20.0]);
 
         if let UiEvent::MouseClick(click) = relative {
-            assert_eq!([20.0, -100.0], click.location);
+            assert_eq!([20.0, -100.0], click.xy);
             assert_eq!(MouseButton::Middle, click.button);
-            assert_eq!(keyboard::SHIFT, click.modifier);
+            assert_eq!(keyboard::SHIFT, click.modifiers);
         } else {
             panic!("expected a mouse click");
         }
@@ -267,8 +267,7 @@ mod test {
             start: [20.0, 5.0],
             end: [50.0, 1.0],
             button: MouseButton::Left,
-            modifier: keyboard::CTRL,
-            in_progress: false
+            modifiers: keyboard::CTRL,
         });
 
         let relative = original.relative_to([-5.0, 5.0]);
@@ -276,8 +275,7 @@ mod test {
             assert_eq!([25.0, 0.0], drag.start);
             assert_eq!([55.0, -4.0], drag.end);
             assert_eq!(MouseButton::Left, drag.button);
-            assert_eq!(keyboard::CTRL, drag.modifier);
-            assert!(!drag.in_progress);
+            assert_eq!(keyboard::CTRL, drag.modifiers);
         } else {
             panic!("expected to get a drag event");
         }

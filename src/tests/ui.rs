@@ -11,7 +11,7 @@ use {
     Sizeable,
     Widget
 };
-use input::{Input, Motion, Button, self};
+use input::{Event, Input, Motion, Button, self};
 use input::keyboard::Key;
 use input::mouse::MouseButton;
 use graphics::ImageSize;
@@ -33,7 +33,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
     left_click_mouse(&mut ui);
 
-    assert!(ui.global_input.all_events().next().is_some());
+    assert!(ui.global_input.events().next().is_some());
     ui.set_widgets(|ref mut ui| {
 
         Canvas::new()
@@ -47,7 +47,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
             .set(BUTTON_ID, ui);
     });
 
-    assert!(ui.global_input.all_events().next().is_none());
+    assert!(ui.global_input.events().next().is_none());
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn ui_should_convert_mouse_cursor_event_into_mouse_relative_event() {
 
     // MouseCursor event contains location in window coordinates, which
     // use the upper left corner as the origin.
-    ui.handle_event(&Input::Move(Motion::MouseCursor(5.0, 140.0)));
+    ui.handle_event(Event::Input(Input::Move(Motion::MouseCursor(5.0, 140.0))));
 
     // MouseRelative events contain location coordinates where the center of the window is the origin.
     let expected_relative_event = UiEvent::Raw(
@@ -124,13 +124,13 @@ fn left_click_mouse(ui: &mut Ui) {
 }
 
 fn release_mouse_button(button: MouseButton, ui: &mut Ui) {
-    let event = Input::Release(Button::Mouse(button));
-    ui.handle_event(&event);
+    let event = Event::Input(Input::Release(Button::Mouse(button)));
+    ui.handle_event(event);
 }
 
 fn press_mouse_button(button: MouseButton, ui: &mut Ui) {
-    let event = Input::Press(Button::Mouse(button));
-    ui.handle_event(&event);
+    let event = Event::Input(Input::Press(Button::Mouse(button)));
+    ui.handle_event(event);
 }
 
 fn move_mouse_to_widget(widget_idx: Index, ui: &mut Ui) {
@@ -141,20 +141,20 @@ fn move_mouse_to_widget(widget_idx: Index, ui: &mut Ui) {
 }
 
 fn move_mouse_to_abs_coordinates(x: f64, y: f64, ui: &mut Ui) {
-    ui.handle_event(&Input::Move(Motion::MouseCursor(x, y)));
+    ui.handle_event(Event::Input(Input::Move(Motion::MouseCursor(x, y))));
 }
 
 fn test_handling_basic_input_event(ui: &mut Ui, event: Input) {
-    ui.handle_event(&event);
+    ui.handle_event(Event::Input(event.clone()));
     assert_event_was_pushed(ui, UiEvent::Raw(event));
 }
 
 fn assert_event_was_pushed(ui: &Ui, event: UiEvent) {
-    let found = ui.global_input.all_events().find(|evt| **evt == event);
+    let found = ui.global_input.events().find(|evt| **evt == event);
     assert!(found.is_some(),
-            format!("expected to find event: {:?} in: \nall_events: {:?}",
+            format!("expected to find event: {:?} in: \nevents: {:?}",
                     event,
-                    ui.global_input.all_events().collect::<Vec<&UiEvent>>()));
+                    ui.global_input.events().collect::<Vec<&UiEvent>>()));
 }
 
 fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {

@@ -9,8 +9,7 @@ use widget::{Id, Index};
 
 // Pushes an event onto the given global input with a default drag threshold.
 fn push_event(input: &mut GlobalInput, event: UiEvent) {
-    const DRAG_THRESHOLD: Scalar = 4.0;
-    input.push_event(event, DRAG_THRESHOLD);
+    input.push_event(event);
 }
 
 #[test]
@@ -25,12 +24,12 @@ fn resetting_input_should_set_starting_state_to_current_state() {
 }
 
 #[test]
-fn resetting_input_should_clear_out_all_events() {
+fn resetting_input_should_clear_out_events() {
     let mut input = GlobalInput::new();
     push_event(&mut input, UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     push_event(&mut input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
     input.clear_events_and_update_start_state();
-    assert!(input.all_events().next().is_none());
+    assert!(input.events().next().is_none());
 }
 
 #[test]
@@ -153,7 +152,7 @@ fn no_events_should_be_returned_after_reset_is_called() {
 
     input.clear_events_and_update_start_state();
 
-    assert!(input.all_events().next().is_none());
+    assert!(input.events().next().is_none());
 }
 
 #[test]
@@ -181,8 +180,8 @@ fn click_with_modifier_key_should_include_modifiers_in_click_event() {
     let click = input.mouse_left_click().expect("expected mouse left click event");
     let expected = MouseClick {
         button: MouseButton::Left,
-        location: [0.0, 0.0],
-        modifier: CTRL
+        xy: [0.0, 0.0],
+        modifiers: CTRL
     };
     assert_eq!(expected, click);
 }
@@ -214,8 +213,7 @@ fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
 //         button: MouseButton::Left,
 //         start: [0.0, 0.0],
 //         end: [20.0, 10.0],
-//         modifier: ModifierKey::default(),
-//         in_progress: false
+//         modifiers: ModifierKey::default(),
 //     };
 //     let mouse_drag = input.mouse_drag(MouseButton::Left).expect("Expected to get a mouse drag event");
 //     assert_eq!(expected_drag, mouse_drag);
@@ -234,8 +232,7 @@ fn mouse_button_pressed_then_moved_creates_drag_event() {
         button: MouseButton::Left,
         start: [0.0, 0.0],
         end: [20.0, 10.0],
-        modifier: ModifierKey::default(),
-        in_progress: true
+        modifiers: ModifierKey::default(),
     };
     let mouse_drag = input.mouse_drag(MouseButton::Left).expect("Expected to get a mouse drag event");
     assert_eq!(expected_drag, mouse_drag);
@@ -252,8 +249,8 @@ fn mouse_click_position_should_be_mouse_position_when_pressed() {
 
     let expected_click = MouseClick {
         button: MouseButton::Left,
-        location: [4.0, 5.0],
-        modifier: ModifierKey::default()
+        xy: [4.0, 5.0],
+        modifiers: ModifierKey::default()
     };
     let actual_click = input.mouse_click(MouseButton::Left).expect("expected a mouse click event");
 
@@ -272,8 +269,8 @@ fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
 
     let expected_click = MouseClick {
         button: MouseButton::Left,
-        location: [0.0, 0.0],
-        modifier: ModifierKey::default()
+        xy: [0.0, 0.0],
+        modifiers: ModifierKey::default()
     };
     let actual_click = input.mouse_click(MouseButton::Left).expect("expected a mouse click event");
 
@@ -281,7 +278,7 @@ fn mouse_button_pressed_then_released_should_create_mouse_click_event() {
 }
 
 #[test]
-fn all_events_should_return_all_inputs_in_order() {
+fn events_should_return_all_inputs_in_order() {
     let mut input = GlobalInput::new();
 
     let evt1 = UiEvent::Raw(Input::Press(Keyboard(Key::Z)));
@@ -289,7 +286,7 @@ fn all_events_should_return_all_inputs_in_order() {
     let evt2 = UiEvent::Raw(Input::Press(Keyboard(Key::A)));
     push_event(&mut input, evt2.clone());
 
-    let results = input.all_events().collect::<Vec<&UiEvent>>();
+    let results = input.events().collect::<Vec<&UiEvent>>();
     assert_eq!(2, results.len());
     assert_eq!(evt1, *results[0]);
     assert_eq!(evt2, *results[1]);

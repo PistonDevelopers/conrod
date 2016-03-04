@@ -3,8 +3,7 @@
 //! It also includes which widgets, if any, are capturing the keyboard and mouse.
 //! This module exists mostly to support the `events::InputProvider` trait.
 
-use events::UiEvent;
-use input::keyboard::{NO_MODIFIER, ModifierKey, Key};
+use input::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
 use widget::Index;
 
@@ -47,42 +46,6 @@ impl InputState {
         }
     }
 
-    /// Updates the input state based on an event.
-    pub fn update(&mut self, event: &UiEvent) {
-        use input::{Button, Motion, Input};
-
-        match *event {
-            UiEvent::Raw(Input::Press(Button::Mouse(mouse_button))) => {
-                self.mouse.buttons.press(mouse_button, self.mouse.xy);
-            },
-            UiEvent::Raw(Input::Release(Button::Mouse(mouse_button))) => {
-                self.mouse.buttons.release(mouse_button);
-            },
-            UiEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) => {
-                self.mouse.xy = [x, y];
-            },
-            UiEvent::Raw(Input::Press(Button::Keyboard(key))) => {
-                get_modifier(key).map(|modifier| self.modifiers.insert(modifier));
-            },
-            UiEvent::Raw(Input::Release(Button::Keyboard(key))) => {
-                get_modifier(key).map(|modifier| self.modifiers.remove(modifier));
-            },
-            UiEvent::WidgetCapturesKeyboard(idx) => {
-                self.widget_capturing_keyboard = Some(idx);
-            },
-            UiEvent::WidgetUncapturesKeyboard(_) => {
-                self.widget_capturing_keyboard = None;
-            },
-            UiEvent::WidgetCapturesMouse(idx) => {
-                self.widget_capturing_mouse = Some(idx);
-            },
-            UiEvent::WidgetUncapturesMouse(_) =>  {
-                self.widget_capturing_mouse = None;
-            },
-            _ => {}
-        }
-    }
-
     /// Returns a copy of the InputState relative to the given `position::Point`
     pub fn relative_to(mut self, xy: Point) -> InputState {
         self.mouse.xy = ::vecmath::vec2_sub(self.mouse.xy, xy);
@@ -91,18 +54,6 @@ impl InputState {
     }
 
 }
-
-fn get_modifier(key: Key) -> Option<ModifierKey> {
-    use input::keyboard::{CTRL, SHIFT, ALT, GUI};
-    match key {
-        Key::LCtrl | Key::RCtrl => Some(CTRL),
-        Key::LShift | Key::RShift => Some(SHIFT),
-        Key::LAlt | Key::RAlt => Some(ALT),
-        Key::LGui | Key::RGui => Some(GUI),
-        _ => None
-    }
-}
-
 
 /// Mouse specific state.
 pub mod mouse {

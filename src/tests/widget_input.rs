@@ -3,12 +3,11 @@ use input::keyboard::NO_MODIFIER;
 use input::mouse::MouseButton;
 use events::{UiEvent, MouseClick, GlobalInput, WidgetInput, InputProvider};
 use widget::{Index, Id};
-use position::{Rect, Scalar};
+use position::Rect;
 
 // Pushes an event onto the given global input with a default drag threshold.
 fn push_event(input: &mut GlobalInput, event: UiEvent) {
-    const DRAG_THRESHOLD: Scalar = 4.0;
-    input.push_event(event, DRAG_THRESHOLD);
+    input.push_event(event);
 }
 
 #[test]
@@ -135,8 +134,8 @@ fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing
     let mut global_input = GlobalInput::new();
     push_event(&mut global_input, UiEvent::MouseClick(MouseClick{
         button: MouseButton::Left,
-        location: [10.0, 10.0],
-        modifier: NO_MODIFIER
+        xy: [10.0, 10.0],
+        modifiers: NO_MODIFIER
     }));
     assert!(global_input.currently_capturing_mouse().is_none());
 
@@ -179,14 +178,14 @@ fn mouse_clicks_should_be_relative_to_widget_position() {
     let mut global_input = GlobalInput::new();
     push_event(&mut global_input, UiEvent::MouseClick(MouseClick{
         button: MouseButton::Left,
-        location: [10.0, 10.0],
-        modifier: NO_MODIFIER
+        xy: [10.0, 10.0],
+        modifiers: NO_MODIFIER
     }));
 
     let rect = Rect::from_corners([0.0, 0.0], [20.0, 20.0]);
     let widget_input = WidgetInput::for_widget(idx, rect, &global_input);
     let widget_click = widget_input.mouse_left_click().expect("widget click should not be null");
-    assert_eq!([0.0, 0.0], widget_click.location);
+    assert_eq!([0.0, 0.0], widget_click.xy);
 }
 
 #[test]
@@ -199,8 +198,7 @@ fn mouse_drags_should_be_relative_to_widget_position() {
         button: MouseButton::Left,
         start: [5.0, 5.0],
         end: [10.0, 10.0],
-        modifier: NO_MODIFIER,
-        in_progress: false
+        modifiers: NO_MODIFIER,
     }));
 
     let rect = Rect::from_corners([0.0, 0.0], [20.0, 20.0]);

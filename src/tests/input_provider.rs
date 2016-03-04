@@ -79,18 +79,18 @@ fn mouse_clicks_should_be_filtered_by_mouse_button() {
     let input = ProviderImpl::with_events(vec![
         UiEvent::MouseClick(MouseClick{
             button: MouseButton::Left,
-            location: [50.0, 40.0],
-            modifier: NO_MODIFIER
+            xy: [50.0, 40.0],
+            modifiers: NO_MODIFIER
         }),
         UiEvent::MouseClick(MouseClick{
             button: MouseButton::Right,
-            location: [70.0, 30.0],
-            modifier: NO_MODIFIER
+            xy: [70.0, 30.0],
+            modifiers: NO_MODIFIER
         }),
         UiEvent::MouseClick(MouseClick{
             button: MouseButton::Middle,
-            location: [90.0, 20.0],
-            modifier: NO_MODIFIER
+            xy: [90.0, 20.0],
+            modifiers: NO_MODIFIER
         }),
     ]);
 
@@ -115,8 +115,7 @@ fn only_the_last_drag_event_should_be_returned() {
         button: MouseButton::Left,
         start: [20.0, 10.0],
         end: [50.0, 40.0],
-        modifier: NO_MODIFIER,
-        in_progress: true
+        modifiers: NO_MODIFIER,
     };
     let actual_drag = input.mouse_left_drag().expect("expected a mouse drag event");
     assert_eq!(expected_drag, actual_drag);
@@ -145,8 +144,7 @@ fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
         button: mouse_button,
         start: start,
         end: end,
-        modifier: NO_MODIFIER,
-        in_progress: true
+        modifiers: NO_MODIFIER,
     })
 }
 
@@ -188,7 +186,7 @@ pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 impl<'a> InputProvider<'a> for ProviderImpl {
     type Events = TestInputEventIterator<'a>;
 
-    fn all_events(&'a self) -> Self::Events {
+    fn events(&'a self) -> Self::Events {
         self.events.iter()
     }
 

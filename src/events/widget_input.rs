@@ -87,7 +87,6 @@ impl<'a> Iterator for WidgetInputEventIterator<'a> {
     type Item = &'a UiEvent;
     fn next(&mut self) -> Option<&'a UiEvent> {
         self.global_event_iter.next().and_then(|event| {
-            self.current.update(event);
             if should_provide_event(self.widget_idx, self.widget_area, event, &self.current) {
                 Some(event)
             } else {
@@ -101,9 +100,9 @@ impl<'a> Iterator for WidgetInputEventIterator<'a> {
 impl<'a> InputProvider<'a> for WidgetInput<'a> {
     type Events = WidgetInputEventIterator<'a>;
 
-    fn all_events(&'a self) -> Self::Events {
+    fn events(&'a self) -> Self::Events {
         WidgetInputEventIterator{
-            global_event_iter: self.global_input.all_events(),
+            global_event_iter: self.global_input.events(),
             current: self.global_input.start.relative_to(self.widget_area.xy()),
             widget_area: self.widget_area,
             widget_idx: self.widget_idx,
@@ -115,7 +114,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     }
 
     fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
-        self.all_events().filter_map(|event| {
+        self.events().filter_map(|event| {
             match *event {
                 UiEvent::MouseClick(click) if click.button == button => {
                     Some(click.relative_to(self.widget_area.xy()))
@@ -126,7 +125,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
     }
 
     fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
-        self.all_events().filter_map(|evt| {
+        self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => {
                     Some(drag_evt.relative_to(self.widget_area.xy()))
@@ -171,7 +170,7 @@ fn should_provide_mouse_event(widget: Index,
 
 fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &InputState) -> bool {
     match *event {
-        UiEvent::MouseClick(click) => widget_area.is_over(click.location),
+        UiEvent::MouseClick(click) => widget_area.is_over(click.xy),
         UiEvent::MouseDrag(drag) => {
             widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
         },
