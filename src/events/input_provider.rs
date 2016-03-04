@@ -18,7 +18,7 @@ pub trait InputProvider<'a> {
     /// This is the only method that needs to be implemented.
     /// Just provided a reference to a `Vec<UiEvent>` that contains
     /// all the events for this update cycle.
-    fn all_events(&'a self) -> Self::Events;
+    fn events(&'a self) -> Self::Events;
 
     /// Returns the current input state. The returned state is assumed to be up to
     /// date with all of the events so far.
@@ -37,7 +37,7 @@ pub trait InputProvider<'a> {
     /// Returns a reference to each slice of `Text` that was entered since the last update.
     fn text_just_entered(&'a self) -> TextJustEntered<'a, Self::Events> {
         TextJustEntered {
-            events: self.all_events(),
+            events: self.events(),
             lifetime: PhantomData,
         }
     }
@@ -45,7 +45,7 @@ pub trait InputProvider<'a> {
     /// Returns all of the `Key`s that were released since the last update.
     fn keys_just_released(&'a self) -> KeysJustReleased<'a, Self::Events> {
         KeysJustReleased{
-            event_iter: self.all_events(),
+            event_iter: self.events(),
             lifetime: PhantomData
         }
     }
@@ -53,7 +53,7 @@ pub trait InputProvider<'a> {
     /// Returns all of the keyboard `Key`s that were pressed since the last update.
     fn keys_just_pressed(&'a self) -> KeysJustPressed<'a, Self::Events> {
         KeysJustPressed {
-            event_iter: self.all_events(),
+            event_iter: self.events(),
             lifetime: PhantomData
         }
     }
@@ -61,7 +61,7 @@ pub trait InputProvider<'a> {
     /// Returns all of the `MouseButton`s that were pressed since the last update.
     fn mouse_buttons_just_pressed(&'a self) -> MouseButtonsJustPressed<'a, Self::Events> {
         MouseButtonsJustPressed {
-            event_iter: self.all_events(),
+            event_iter: self.events(),
             lifetime: PhantomData
         }
     }
@@ -69,7 +69,7 @@ pub trait InputProvider<'a> {
     /// Returns all of the `MouseButton`s that were released since the last update.
     fn mouse_buttons_just_released(&'a self) -> MouseButtonsJustReleased<'a, Self::Events> {
         MouseButtonsJustReleased {
-            event_iter: self.all_events(),
+            event_iter: self.events(),
             lifetime: PhantomData
         }
     }
@@ -79,7 +79,7 @@ pub trait InputProvider<'a> {
     /// happen if the user is scrolling quickly), then the `Scroll` returned will represent an
     /// aggregate total of all the scrolling.
     fn scroll(&'a self) -> Option<Scroll> {
-        self.all_events().filter_map(|evt| {
+        self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::Scroll(scroll) => Some(scroll),
                 _ => None
@@ -112,7 +112,7 @@ pub trait InputProvider<'a> {
     /// then the returned `MouseDrag` will be only the _most recent_ one, which will contain
     /// the most recent mouse position.
     fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
-        self.all_events().filter_map(|evt| {
+        self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
                 _ => None
@@ -138,7 +138,7 @@ pub trait InputProvider<'a> {
     /// A _click_ is determined to have occured if a mouse button was pressed and subsequently
     /// released while the mouse was in roughly the same place.
     fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
-        self.all_events().filter_map(|evt| {
+        self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseClick(click) if click.button == button => Some(click),
                 _ => None
