@@ -155,7 +155,7 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
 
         // We'll set all our widgets in a single function called `set_widgets`.
         // At the moment conrod requires that we set our widgets in the Render loop,

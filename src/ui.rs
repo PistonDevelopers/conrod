@@ -1,12 +1,12 @@
 
 use {CharacterCache, Scalar};
-use backend::Backend;
+use backend::{Backend, ToEvent};
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
-use input::{self, Input};
+use input;
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std::collections::HashSet;
 use std::io::Write;
@@ -290,7 +290,9 @@ impl<B> Ui<B>
     ///
     /// 1. 
     /// 2. Interpret the event for higher-level `UiEvent`s.
-    pub fn handle_event<E: Into<input::Event<Input>>>(&mut self, event: E) {
+    pub fn handle_event<E>(&mut self, event: E)
+        where E: ToEvent,
+    {
         use input::{Event, Input, Motion};
         use input::keyboard::{Key, ModifierKey};
 
@@ -351,20 +353,25 @@ impl<B> Ui<B>
             }
         }
 
-        // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
-        let (win_w, win_h) = (self.win_w, self.win_h);
-        let translate_coords = |xy: Point| [xy[0] - win_w / 2.0, -(xy[1] - win_h / 2.0)];
-        let translate_input_event_coords = |input_event: Input| match input_event {
-            Input::Move(Motion::MouseCursor(x, y)) => {
-                let xy = translate_coords([x, y]);
-                Input::Move(Motion::MouseCursor(xy[0], xy[1]))
-            },
-            Input::Move(Motion::MouseRelative(x, y)) =>
-                Input::Move(Motion::MouseRelative(x, -y)),
-            event => event,
+        // // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
+        // let (win_w, win_h) = (self.win_w, self.win_h);
+        // let translate_coords = |xy: Point| [xy[0] - win_w / 2.0, -(xy[1] - win_h / 2.0)];
+        // let translate_input_event_coords = |input_event: Input| match input_event {
+        //     Input::Move(Motion::MouseCursor(x, y)) => {
+        //         let xy = translate_coords([x, y]);
+        //         Input::Move(Motion::MouseCursor(xy[0], xy[1]))
+        //     },
+        //     Input::Move(Motion::MouseRelative(x, y)) =>
+        //         Input::Move(Motion::MouseRelative(x, -y)),
+        //     event => event,
+        // };
+
+        // Convert the user given event to an `Event` or return early if we cannot.
+        let event = match event.to_event(self.win_w, self.win_h) {
+            Some(event) => event,
+            None => return,
         };
 
-        let event : Event<Input> = event.into();
         match event {
 
             // On each `Render` we should check that our window dimensions are up to date.
@@ -391,8 +398,8 @@ impl<B> Ui<B>
                 use events::{UiEvent, MouseClick, MouseDrag, Scroll};
                 use events::input_state::mouse::Button as MouseButton;
 
-                // Before matching on the event, make sure it's in our co-ordinate system.
-                let input_event = translate_input_event_coords(input_event);
+                // // Before matching on the event, make sure it's in our co-ordinate system.
+                // let input_event = translate_input_event_coords(input_event);
 
                 // Update our global_input with the raw input event.
                 self.global_input.push_event(input_event.clone().into());
