@@ -34,7 +34,7 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
         event.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Generate the ID for the Button COUNTER.

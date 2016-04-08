@@ -427,7 +427,7 @@ pub fn main() {
 
     while let Some(e) = window.next() {
         // Pass each `Event` to the `Ui`.
-        ui.handle_event(&e);
+        ui.handle_event(e.clone());
 
         e.update(|_| ui.set_widgets(|ref mut ui| {
 

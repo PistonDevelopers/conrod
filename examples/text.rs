@@ -36,7 +36,7 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
         event.update(|_| ui.set_widgets(set_ui));
         window.draw_2d(&event, |c, g| ui.draw(c, g));
     }

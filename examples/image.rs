@@ -46,7 +46,7 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
         window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
         event.update(|_| ui.set_widgets(|mut ui| {
             widget_ids!(CANVAS, RUST_LOGO);
