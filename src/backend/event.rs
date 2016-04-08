@@ -48,54 +48,44 @@ impl<E> ToEvent for E
         let translate_coords = |xy: Point| (xy[0] - win_w / 2.0, -(xy[1] - win_h / 2.0));
 
         if let Some(args) = self.render_args() {
-            println!("render: {:?}", args);
             return Some(input::Event::Render(args));
         }
 
         if let Some(xy) = self.mouse_cursor_args() {
             let (x, y) = translate_coords(xy);
-            println!("mouse_cursor: {:?}", (x, y));
             return Some(input::Input::Move(input::Motion::MouseCursor(x, y)).into());
         }
 
         if let Some(rel_xy) = self.mouse_relative_args() {
             let (rel_x, rel_y) = translate_coords(rel_xy);
-            println!("mouse_relative: {:?}", (rel_x, rel_y));
             return Some(input::Input::Move(input::Motion::MouseRelative(rel_x, rel_y)).into());
         }
 
         if let Some(xy) = self.mouse_scroll_args() {
-            println!("mouse_scroll: {:?}", xy);
             return Some(input::Input::Move(input::Motion::MouseScroll(xy[0], xy[1])).into());
         }
 
         if let Some(button) = self.press_args() {
-            println!("press: {:?}", button);
             return Some(input::Input::Press(button).into());
         }
 
         if let Some(button) = self.release_args() {
-            println!("release: {:?}", button);
             return Some(input::Input::Release(button).into());
         }
 
         if let Some(text) = self.text_args() {
-            println!("text: {:?}", &text);
             return Some(input::Input::Text(text).into());
         }
 
         if let Some(dim) = self.resize_args() {
-            println!("resize: {:?}", dim);
             return Some(input::Input::Resize(dim[0], dim[1]).into());
         }
 
         if let Some(b) = self.focus_args() {
-            println!("focus: {:?}", b);
             return Some(input::Input::Focus(b).into());
         }
 
         if let Some(b) = self.cursor_args() {
-            println!("cursor: {:?}", b);
             return Some(input::Input::Cursor(b).into());
         }
 
