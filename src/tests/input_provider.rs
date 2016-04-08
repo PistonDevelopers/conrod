@@ -4,6 +4,75 @@ use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
 use input::mouse::MouseButton;
 use position::Point;
 
+
+///// Test assist code.
+
+
+/// This is just a basic struct that implements the `InputProvider` Trait so that
+/// the default trait methods are easy to test
+struct ProviderImpl{
+    events: Vec<UiEvent>,
+    current: InputState,
+}
+
+pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
+
+impl ProviderImpl {
+    fn new(events: Vec<UiEvent>, state: InputState) -> ProviderImpl {
+        ProviderImpl{
+            events: events,
+            current: state,
+        }
+    }
+
+    fn with_events(events: Vec<UiEvent>) -> ProviderImpl {
+        ProviderImpl::new(events, InputState::new())
+    }
+
+    fn with_input_state(state: InputState) -> ProviderImpl {
+        ProviderImpl::new(vec!(), state)
+    }
+}
+
+impl<'a> InputProvider<'a> for ProviderImpl {
+    type Events = TestInputEventIterator<'a>;
+
+    fn events(&'a self) -> Self::Events {
+        self.events.iter()
+    }
+
+    fn current(&self) -> &InputState {
+        &self.current
+    }
+
+    fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
+        self.current().mouse.buttons[button].xy_if_down().map(|_| {
+            self.mouse_position()
+        })
+    }
+}
+
+fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
+    UiEvent::MouseDrag(MouseDrag{
+        button: mouse_button,
+        start: start,
+        end: end,
+        modifiers: NO_MODIFIER,
+    })
+}
+
+fn scroll_event(x: f64, y: f64) -> UiEvent {
+    UiEvent::Scroll(Scroll{
+        x: x,
+        y: y,
+        modifiers: NO_MODIFIER
+    })
+}
+
+
+///// Tests
+
+
 #[test]
 fn mouse_position_should_return_mouse_position_from_current_state() {
     let position = [5.0, 7.0];
@@ -137,66 +206,4 @@ fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
 
     let actual = input.scroll().expect("expected a scroll event");
     assert_eq!(expected_scroll, actual);
-}
-
-fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
-    UiEvent::MouseDrag(MouseDrag{
-        button: mouse_button,
-        start: start,
-        end: end,
-        modifiers: NO_MODIFIER,
-    })
-}
-
-fn scroll_event(x: f64, y: f64) -> UiEvent {
-    UiEvent::Scroll(Scroll{
-        x: x,
-        y: y,
-        modifiers: NO_MODIFIER
-    })
-}
-
-/// This is just a basic struct that implements the `InputProvider` Trait so that
-/// the default trait methods are easy to test
-struct ProviderImpl{
-    events: Vec<UiEvent>,
-    current: InputState,
-}
-
-impl ProviderImpl {
-    fn new(events: Vec<UiEvent>, state: InputState) -> ProviderImpl {
-        ProviderImpl{
-            events: events,
-            current: state,
-        }
-    }
-
-    fn with_events(events: Vec<UiEvent>) -> ProviderImpl {
-        ProviderImpl::new(events, InputState::new())
-    }
-
-    fn with_input_state(state: InputState) -> ProviderImpl {
-        ProviderImpl::new(vec!(), state)
-    }
-}
-
-pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
-
-
-impl<'a> InputProvider<'a> for ProviderImpl {
-    type Events = TestInputEventIterator<'a>;
-
-    fn events(&'a self) -> Self::Events {
-        self.events.iter()
-    }
-
-    fn current(&self) -> &InputState {
-        &self.current
-    }
-
-    fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-        self.current().mouse.buttons[button].xy_if_down().map(|_| {
-            self.mouse_position()
-        })
-    }
 }

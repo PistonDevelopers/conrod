@@ -1,5 +1,4 @@
-use events::InputProvider;
-use events::ui_event::UiEvent;
+use events::{UiEvent, Scroll, InputProvider};
 use {
     Theme,
     CharacterCache,
@@ -12,7 +11,7 @@ use {
     Widget
 };
 use input::{Event, Input, Motion, Button, self};
-use input::keyboard::Key;
+use input::keyboard::{ModifierKey, Key};
 use input::mouse::MouseButton;
 use graphics::ImageSize;
 use graphics::character::Character;
@@ -21,100 +20,9 @@ use widget::{Index, self};
 use widget::button::Button as ButtonWidget;
 use position::Point;
 
-#[test]
-fn ui_should_reset_global_input_after_widget_are_set() {
-    let mut ui = windowless_ui();
-    ui.win_w = 250.0;
-    ui.win_h = 300.0;
 
-    const CANVAS_ID: widget::Id = widget::Id(0);
-    const BUTTON_ID: widget::Id = widget::Id(1);
+///// Test assist code.
 
-    move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
-    left_click_mouse(&mut ui);
-
-    assert!(ui.global_input.events().next().is_some());
-    ui.set_widgets(|ref mut ui| {
-
-        Canvas::new()
-            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
-            .set(CANVAS_ID, ui);
-        ButtonWidget::new()
-            .w_h(100.0, 200.0)
-            .label("MyButton")
-            .react(|| {})
-            .bottom_right_of(CANVAS_ID)
-            .set(BUTTON_ID, ui);
-    });
-
-    assert!(ui.global_input.events().next().is_none());
-}
-
-#[test]
-fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
-    let mut ui = windowless_ui();
-    ui.win_w = 250.0;
-    ui.win_h = 300.0;
-
-    const CANVAS_ID: widget::Id = widget::Id(0);
-    const BUTTON_ID: widget::Id = widget::Id(1);
-    ui.set_widgets(|ref mut ui| {
-
-        Canvas::new()
-            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
-            .set(CANVAS_ID, ui);
-        ButtonWidget::new()
-            .w_h(100.0, 200.0)
-            .label("MyButton")
-            .react(|| {})
-            .bottom_right_of(CANVAS_ID)
-            .set(BUTTON_ID, ui);
-    });
-
-    let button_idx = Index::Public(BUTTON_ID);
-    move_mouse_to_widget(button_idx, &mut ui);
-    press_mouse_button(MouseButton::Left, &mut ui);
-
-    let expected_capture_event = UiEvent::WidgetCapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_capture_event);
-
-    // Now click somewhere on the background and widget should uncapture
-    release_mouse_button(MouseButton::Left, &mut ui);
-    move_mouse_to_abs_coordinates(1.0, 1.0, &mut ui);
-    press_mouse_button(MouseButton::Left, &mut ui);
-
-    let expected_uncapture_event = UiEvent::WidgetUncapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_uncapture_event);
-}
-
-#[test]
-fn ui_should_convert_mouse_cursor_event_into_mouse_relative_event() {
-    let mut ui = windowless_ui();
-    ui.win_w = 150.0;
-    ui.win_h = 200.0;
-
-    // MouseCursor event contains location in window coordinates, which
-    // use the upper left corner as the origin.
-    ui.handle_event(Event::Input(Input::Move(Motion::MouseCursor(5.0, 140.0))));
-
-    // MouseRelative events contain location coordinates where the center of the window is the origin.
-    let expected_relative_event = UiEvent::Raw(
-        Input::Move(Motion::MouseRelative(-70.0, -40.0))
-    );
-    assert_event_was_pushed(&ui, expected_relative_event);
-}
-
-#[test]
-fn ui_should_push_input_events_to_aggregator() {
-    let mut ui = windowless_ui();
-
-    test_handling_basic_input_event(&mut ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
-    test_handling_basic_input_event(&mut ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));
-    test_handling_basic_input_event(&mut ui, Input::Text("my string".to_string()));
-    test_handling_basic_input_event(&mut ui, Input::Resize(55, 99));
-    test_handling_basic_input_event(&mut ui, Input::Focus(true));
-    test_handling_basic_input_event(&mut ui, Input::Cursor(true));
-}
 
 type Ui = ::Ui<MockBackend>;
 
@@ -214,4 +122,100 @@ impl CharacterCache for MockCharacterCache {
         self.my_char.clone()
     }
 
+}
+
+
+///// Actual tests.
+
+
+#[test]
+fn ui_should_reset_global_input_after_widget_are_set() {
+    let mut ui = windowless_ui();
+    ui.win_w = 250.0;
+    ui.win_h = 300.0;
+
+    const CANVAS_ID: widget::Id = widget::Id(0);
+    const BUTTON_ID: widget::Id = widget::Id(1);
+
+    move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
+    left_click_mouse(&mut ui);
+
+    assert!(ui.global_input.events().next().is_some());
+    ui.set_widgets(|ref mut ui| {
+
+        Canvas::new()
+            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
+            .set(CANVAS_ID, ui);
+        ButtonWidget::new()
+            .w_h(100.0, 200.0)
+            .label("MyButton")
+            .react(|| {})
+            .bottom_right_of(CANVAS_ID)
+            .set(BUTTON_ID, ui);
+    });
+
+    assert!(ui.global_input.events().next().is_none());
+}
+
+#[test]
+fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
+    let mut ui = windowless_ui();
+    ui.win_w = 250.0;
+    ui.win_h = 300.0;
+
+    const CANVAS_ID: widget::Id = widget::Id(0);
+    const BUTTON_ID: widget::Id = widget::Id(1);
+    ui.set_widgets(|ref mut ui| {
+
+        Canvas::new()
+            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
+            .set(CANVAS_ID, ui);
+        ButtonWidget::new()
+            .w_h(100.0, 200.0)
+            .label("MyButton")
+            .react(|| {})
+            .bottom_right_of(CANVAS_ID)
+            .set(BUTTON_ID, ui);
+    });
+
+    let button_idx = Index::Public(BUTTON_ID);
+    move_mouse_to_widget(button_idx, &mut ui);
+    press_mouse_button(MouseButton::Left, &mut ui);
+
+    let expected_capture_event = UiEvent::WidgetCapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_capture_event);
+
+    // Now click somewhere on the background and widget should uncapture
+    release_mouse_button(MouseButton::Left, &mut ui);
+    move_mouse_to_abs_coordinates(1.0, 1.0, &mut ui);
+    press_mouse_button(MouseButton::Left, &mut ui);
+
+    let expected_uncapture_event = UiEvent::WidgetUncapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_uncapture_event);
+}
+
+#[test]
+fn ui_should_push_input_events_to_aggregator() {
+    let mut ui = windowless_ui();
+
+    test_handling_basic_input_event(&mut ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
+    test_handling_basic_input_event(&mut ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));
+    test_handling_basic_input_event(&mut ui, Input::Text("my string".to_string()));
+    test_handling_basic_input_event(&mut ui, Input::Resize(55, 99));
+    test_handling_basic_input_event(&mut ui, Input::Focus(true));
+    test_handling_basic_input_event(&mut ui, Input::Cursor(true));
+}
+
+#[test]
+fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
+    let mut ui = windowless_ui();
+    ui.handle_event(Input::Move(Motion::MouseScroll(10.0, 33.0)));
+
+    let expected_scroll = Scroll{
+        x: 10.0,
+        y: 33.0,
+        modifiers: ModifierKey::default()
+    };
+    let actual_scroll = ui.global_input.scroll().expect("expected a scroll event");
+    assert_eq!(expected_scroll, actual_scroll);
 }

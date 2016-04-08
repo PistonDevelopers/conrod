@@ -35,31 +35,6 @@ fn mouse_button_down_should_return_none_if_another_widget_is_capturing_mouse() {
     assert!(widget_input.mouse_left_button_down().is_none());
 }
 
-// TODO: Review - don't think this should be expected behaviour
-// #[test]
-// fn mouse_button_down_should_return_current_mouse_position_if_mouse_is_over_widget() {
-//     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
-//     let mut global_input = GlobalInput::new();
-//     push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
-//     push_event(&mut global_input, UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))));
-// 
-//     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
-// 
-//     assert_eq!(Some([0.0, 0.0]), widget_input.mouse_left_button_down());
-// }
-
-#[test]
-fn maybe_mouse_position_should_return_position_if_mouse_is_over_the_widget() {
-    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
-    let mut global_input = GlobalInput::new();
-    push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
-
-    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
-
-    let maybe_mouse_position = widget_input.maybe_mouse_position();
-    assert_eq!(Some([0.0, 0.0]), maybe_mouse_position);
-}
-
 #[test]
 fn maybe_mouse_position_should_return_none_if_mouse_is_not_over_the_widget() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
@@ -73,17 +48,6 @@ fn maybe_mouse_position_should_return_none_if_mouse_is_not_over_the_widget() {
 }
 
 #[test]
-fn mouse_is_over_widget_should_be_true_if_mouse_is_over_the_widget_area() {
-    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
-    let mut global_input = GlobalInput::new();
-    push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
-
-    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
-
-    assert!(widget_input.mouse_is_over_widget());
-}
-
-#[test]
 fn mouse_is_over_widget_should_be_false_if_mouse_is_not_over_widget() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = GlobalInput::new();
@@ -92,41 +56,6 @@ fn mouse_is_over_widget_should_be_false_if_mouse_is_not_over_widget() {
     let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
 
     assert!(!widget_input.mouse_is_over_widget());
-}
-
-#[test]
-fn input_state_should_be_provided_relative_to_the_widget_area() {
-    let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
-    let mut global_input = GlobalInput::new();
-    push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
-
-    let widget_input = WidgetInput::for_widget(Index::Public(Id(2)), widget_area, &global_input);
-
-    assert_eq!([0.0, 0.0], widget_input.mouse_position());
-}
-
-#[test]
-fn scroll_events_should_be_provided_if_widget_captures_mouse_but_not_keyboard() {
-    let mut global_input = GlobalInput::new();
-    let widget = Index::Public(Id(1));
-    push_event(&mut global_input, UiEvent::WidgetCapturesMouse(widget));
-    push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
-
-    let some_rect = Rect::from_corners([5.0, 5.0], [40.0, 40.0]);
-    let widget_input = WidgetInput::for_widget(widget, some_rect, &global_input);
-    assert!(widget_input.scroll().is_some());
-}
-
-#[test]
-fn scroll_events_should_be_provided_if_widget_captures_keyboard_but_not_mouse() {
-    let mut global_input = GlobalInput::new();
-    let widget = Index::Public(Id(1));
-    push_event(&mut global_input, UiEvent::WidgetCapturesKeyboard(widget));
-    push_event(&mut global_input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, -76.0))));
-
-    let some_rect = Rect::from_corners([5.0, 5.0], [40.0, 40.0]);
-    let widget_input = WidgetInput::for_widget(widget, some_rect, &global_input);
-    assert!(widget_input.scroll().is_some());
 }
 
 #[test]
@@ -150,26 +79,6 @@ fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing
     let another_widget_input = WidgetInput::for_widget(another_widget, another_area, &global_input);
 
     assert!(another_widget_input.mouse_left_click().is_none());
-}
-
-#[test]
-fn widget_input_should_only_provide_keyboard_input_to_widget_that_has_focus() {
-    let mut global_input = GlobalInput::new();
-
-    let some_rect = Rect::from_corners([0.0, 0.0], [40.0, 40.0]);
-    let widget_4 = Index::Public(Id(4));
-    push_event(&mut global_input, UiEvent::WidgetCapturesKeyboard(widget_4));
-    push_event(&mut global_input, UiEvent::Raw(Input::Text("some text".to_string())));
-
-    let widget_4_input = WidgetInput::for_widget(widget_4, some_rect, &global_input);
-    let widget_4_text: String = widget_4_input.text_just_entered().collect();
-    assert_eq!("some text".to_string(), widget_4_text);
-
-    let another_widget_input = WidgetInput::for_widget(Index::Public(Id(7)),
-            some_rect,
-            &global_input);
-    let another_widget_text: String = another_widget_input.text_just_entered().collect();
-    assert_eq!("".to_string(), another_widget_text);
 }
 
 #[test]
