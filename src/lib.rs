@@ -10,9 +10,9 @@
 
 extern crate time;
 extern crate daggy;
-extern crate graphics;
+extern crate graphics as piston_graphics;
 extern crate num;
-extern crate input;
+extern crate input as piston_input;
 extern crate rand;
 extern crate vecmath;
 
@@ -92,11 +92,12 @@ pub use widget::State as WidgetState;
 pub mod backend;
 mod background;
 pub mod color;
-pub mod events;
+pub mod event;
 mod frame;
 pub mod glyph_cache;
 pub mod graph;
 pub mod guide;
+pub mod input;
 mod label;
 mod mouse;
 mod position;

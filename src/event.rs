@@ -1,12 +1,15 @@
 //! Contains all the structs and enums to describe all of the input events that `Widget`s
-//! can handle. The core of this module is the `UiEvent` enum, which encapsulates all
-//! of those events.
+//! can handle.
+//!
+//! The core of this module is the `UiEvent` enum, which encapsulates all of those events.
 
-use input::{Input, MouseButton, Motion, Button};
-use input::keyboard::ModifierKey;
+use input::{keyboard, Button, MouseButton};
 use position::Point;
 use vecmath::vec2_sub;
 use widget::Index;
+
+#[doc(inline)]
+pub use backend::event::{Input, Motion};
 
 /// Enum containing all the events that `Widget`s can listen for.
 #[derive(Clone, PartialEq, Debug)]
@@ -48,7 +51,7 @@ pub struct MouseDrag {
     /// The end position of the mouse.
     pub end: Point,
     /// Which modifier keys are being held during the mouse drag.
-    pub modifiers: ModifierKey,
+    pub modifiers: keyboard::ModifierKey,
 }
 
 /// Contains all the relevant information for a mouse click.
@@ -59,7 +62,7 @@ pub struct MouseClick {
     /// The position at which the mouse was released.
     pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
-    pub modifiers: ModifierKey,
+    pub modifiers: keyboard::ModifierKey,
 }
 
 /// Holds all the relevant information about a scroll event
@@ -70,7 +73,7 @@ pub struct Scroll {
     /// The amount of scroll along the y axis.
     pub y: f64,
     /// Which modifier keys, if any, that were being held down while the scroll occured
-    pub modifiers: ModifierKey,
+    pub modifiers: keyboard::ModifierKey,
 }
 
 impl MouseClick {
@@ -150,14 +153,14 @@ impl From<Input> for UiEvent {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use input::{Input, MouseButton, Motion, Button, ControllerAxisArgs};
+    use event::{self, Input, Motion, UiEvent};
+    use input::{Button, MouseButton};
     use input::keyboard::{self, Key, NO_MODIFIER};
 
     // We'll see if this approach causes problems later on down the road...
     #[test]
     fn scroll_event_shoulbe_be_both_a_mouse_and_keyboard_event() {
-        let scroll_event = UiEvent::Scroll(Scroll{
+        let scroll_event = UiEvent::Scroll(event::Scroll{
             x: 0.0,
             y: 0.0,
             modifiers: NO_MODIFIER
@@ -180,12 +183,12 @@ mod test {
         let non_keyboard_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(MouseClick {
+            UiEvent::MouseClick(event::MouseClick {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
                 modifiers: NO_MODIFIER
             }),
-            UiEvent::MouseDrag(MouseDrag{
+            UiEvent::MouseDrag(event::MouseDrag{
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
@@ -206,12 +209,12 @@ mod test {
         let mouse_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(MouseClick {
+            UiEvent::MouseClick(event::MouseClick {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
                 modifiers: NO_MODIFIER
             }),
-            UiEvent::MouseDrag(MouseDrag{
+            UiEvent::MouseDrag(event::MouseDrag {
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
@@ -228,11 +231,6 @@ mod test {
         let non_mouse_events = vec![
             UiEvent::Raw(Input::Press(Button::Keyboard(Key::G))),
             UiEvent::Raw(Input::Release(Button::Keyboard(Key::G))),
-            UiEvent::Raw(Input::Move(Motion::ControllerAxis(ControllerAxisArgs{
-                id: 0,
-                axis: 0,
-                position: 0f64
-            }))),
             UiEvent::Raw(Input::Text("rust is brown".to_string())),
             UiEvent::Raw(Input::Resize(0, 0)),
             UiEvent::Raw(Input::Focus(true)),
@@ -245,7 +243,7 @@ mod test {
 
     #[test]
     fn mouse_click_should_be_made_relative() {
-        let original = UiEvent::MouseClick(MouseClick {
+        let original = UiEvent::MouseClick(event::MouseClick {
             button: MouseButton::Middle,
             xy: [30.0, -80.0],
             modifiers: keyboard::SHIFT
@@ -263,7 +261,7 @@ mod test {
 
     #[test]
     fn mouse_drage_should_be_made_relative() {
-        let original = UiEvent::MouseDrag(MouseDrag{
+        let original = UiEvent::MouseDrag(event::MouseDrag {
             start: [20.0, 5.0],
             end: [50.0, 1.0],
             button: MouseButton::Left,

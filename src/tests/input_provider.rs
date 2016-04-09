@@ -1,24 +1,23 @@
-use events::{UiEvent, Scroll, MouseClick, MouseDrag, InputState, InputProvider};
-use input::{Input, Button};
+use event::{self, Input, UiEvent};
+use input::{self, Provider, Button, MouseButton};
 use input::keyboard::{Key, ModifierKey, NO_MODIFIER};
-use input::mouse::MouseButton;
 use position::Point;
 
 
 ///// Test assist code.
 
 
-/// This is just a basic struct that implements the `InputProvider` Trait so that
+/// This is just a basic struct that implements the `input::Provider` Trait so that
 /// the default trait methods are easy to test
 struct ProviderImpl{
     events: Vec<UiEvent>,
-    current: InputState,
+    current: input::State,
 }
 
 pub type TestInputEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
 
 impl ProviderImpl {
-    fn new(events: Vec<UiEvent>, state: InputState) -> ProviderImpl {
+    fn new(events: Vec<UiEvent>, state: input::State) -> ProviderImpl {
         ProviderImpl{
             events: events,
             current: state,
@@ -26,22 +25,22 @@ impl ProviderImpl {
     }
 
     fn with_events(events: Vec<UiEvent>) -> ProviderImpl {
-        ProviderImpl::new(events, InputState::new())
+        ProviderImpl::new(events, input::State::new())
     }
 
-    fn with_input_state(state: InputState) -> ProviderImpl {
+    fn with_input_state(state: input::State) -> ProviderImpl {
         ProviderImpl::new(vec!(), state)
     }
 }
 
-impl<'a> InputProvider<'a> for ProviderImpl {
+impl<'a> input::Provider<'a> for ProviderImpl {
     type Events = TestInputEventIterator<'a>;
 
     fn events(&'a self) -> Self::Events {
         self.events.iter()
     }
 
-    fn current(&self) -> &InputState {
+    fn current(&self) -> &input::State {
         &self.current
     }
 
@@ -53,7 +52,7 @@ impl<'a> InputProvider<'a> for ProviderImpl {
 }
 
 fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
-    UiEvent::MouseDrag(MouseDrag{
+    UiEvent::MouseDrag(event::MouseDrag{
         button: mouse_button,
         start: start,
         end: end,
@@ -62,7 +61,7 @@ fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
 }
 
 fn scroll_event(x: f64, y: f64) -> UiEvent {
-    UiEvent::Scroll(Scroll{
+    UiEvent::Scroll(event::Scroll{
         x: x,
         y: y,
         modifiers: NO_MODIFIER
@@ -76,7 +75,7 @@ fn scroll_event(x: f64, y: f64) -> UiEvent {
 #[test]
 fn mouse_position_should_return_mouse_position_from_current_state() {
     let position = [5.0, 7.0];
-    let mut input_state = InputState::new();
+    let mut input_state = input::State::new();
     input_state.mouse.xy = position;
     let input = ProviderImpl::with_input_state(input_state);
     assert_eq!(position, input.mouse_position());
@@ -84,7 +83,7 @@ fn mouse_position_should_return_mouse_position_from_current_state() {
 
 #[test]
 fn mouse_button_down_should_return_true_if_button_is_pressed() {
-    let mut input_state = InputState::new();
+    let mut input_state = input::State::new();
     input_state.mouse.buttons.press(MouseButton::Right, [0.0, 0.0]);
     let input = ProviderImpl::with_input_state(input_state);
     assert_eq!(Some([0.0, 0.0]), input.mouse_button_down(MouseButton::Right));
@@ -93,7 +92,7 @@ fn mouse_button_down_should_return_true_if_button_is_pressed() {
 
 #[test]
 fn mouse_button_releases_should_be_collected_into_a_vec() {
-    use input::mouse::MouseButton::{Left, Right, Middle};
+    use input::MouseButton::{Left, Right, Middle};
     let input = ProviderImpl::with_events(vec![
         UiEvent::Raw(Input::Release(Button::Mouse(Left))),
         UiEvent::Raw(Input::Release(Button::Mouse(Middle))),
@@ -106,7 +105,7 @@ fn mouse_button_releases_should_be_collected_into_a_vec() {
 
 #[test]
 fn mouse_button_presses_should_be_collected_into_a_vec() {
-    use input::mouse::MouseButton::{Left, Right, Middle};
+    use input::MouseButton::{Left, Right, Middle};
     let input = ProviderImpl::with_events(vec![
         UiEvent::Raw(Input::Press(Button::Mouse(Left))),
         UiEvent::Raw(Input::Press(Button::Mouse(Middle))),
@@ -146,17 +145,17 @@ fn key_presses_should_be_collected_into_a_vec() {
 #[test]
 fn mouse_clicks_should_be_filtered_by_mouse_button() {
     let input = ProviderImpl::with_events(vec![
-        UiEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Left,
             xy: [50.0, 40.0],
             modifiers: NO_MODIFIER
         }),
-        UiEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Right,
             xy: [70.0, 30.0],
             modifiers: NO_MODIFIER
         }),
-        UiEvent::MouseClick(MouseClick{
+        UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Middle,
             xy: [90.0, 20.0],
             modifiers: NO_MODIFIER
@@ -180,7 +179,7 @@ fn only_the_last_drag_event_should_be_returned() {
         drag_event(MouseButton::Left, [20.0, 10.0], [50.0, 40.0])
     ]);
 
-    let expected_drag = MouseDrag{
+    let expected_drag = event::MouseDrag{
         button: MouseButton::Left,
         start: [20.0, 10.0],
         end: [50.0, 40.0],
@@ -198,7 +197,7 @@ fn scroll_events_should_be_aggregated_into_one_when_scroll_is_called() {
         scroll_event(10.0, 33.0)
     ]);
 
-    let expected_scroll = Scroll {
+    let expected_scroll = event::Scroll {
         x: 30.0,
         y: 99.0,
         modifiers: ModifierKey::default()

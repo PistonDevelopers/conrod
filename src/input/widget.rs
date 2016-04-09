@@ -1,43 +1,36 @@
 //! Contains all the logic for filtering input events and making them relative to widgets.
-//! The core of this module is the `WidgetInput::for_widget` method, which creates an
+//!
+//! The core of this module is the `Widget::for_widget` method, which creates an
 //! `InputProvider` that provides input events for a specific widget.
 
 use widget::Index;
-use events::{
-    InputState,
-    UiEvent,
-    GlobalInput,
-    GlobalInputEventIterator,
-    InputProvider,
-    MouseClick,
-    MouseDrag,
-};
+use event::{self, UiEvent};
 use position::{Point, Rect};
-use input::mouse::MouseButton;
+use input::{self, MouseButton, Provider};
 
 /// Holds any events meant to be given to a `Widget`.
 ///
 /// This is what widgets will interface with when handling events in their `update` method.
 ///
-/// All events returned from methods on `WidgetInput` will be relative to the widget's own (0,0)
-/// origin. Additionally, `WidgetInput` will not provide mouse or keyboard events that do not
+/// All events returned from methods on `Widget` will be relative to the widget's own (0,0)
+/// origin. Additionally, `Widget` will not provide mouse or keyboard events that do not
 /// directly pertain to the widget.
-pub struct WidgetInput<'a> {
-    global_input: &'a GlobalInput,
-    current: InputState,
+pub struct Widget<'a> {
+    global_input: &'a input::Global,
+    current: input::State,
     widget_area: Rect,
     widget_idx: Index,
 }
 
-impl<'a> WidgetInput<'a> {
+impl<'a> Widget<'a> {
 
-    /// Returns a `WidgetInput` with events specifically for the given widget.
+    /// Returns a `Widget` with events specifically for the given widget.
     ///
     /// Filters out only the events that directly pertain to the widget.
     ///
     /// All events will also be made relative to the widget's own (0,0) origin.
-    pub fn for_widget(widget: Index, widget_area: Rect, global_input: &'a GlobalInput) -> Self {
-        WidgetInput {
+    pub fn for_widget(widget: Index, widget_area: Rect, global_input: &'a input::Global) -> Self {
+        Widget {
             global_input: &global_input,
             widget_area: widget_area,
             widget_idx: widget,
@@ -76,14 +69,14 @@ impl<'a> WidgetInput<'a> {
 /// will be filtered, so that input intended for other widgets is excluded. In addition,
 /// all mouse events will have their coordinates relative to the widget's own (0,0) origin.
 #[derive(Clone)]
-pub struct WidgetInputEventIterator<'a> {
-    global_event_iter: GlobalInputEventIterator<'a>,
-    current: InputState,
+pub struct WidgetEventIterator<'a> {
+    global_event_iter: input::GlobalEventIterator<'a>,
+    current: input::State,
     widget_area: Rect,
     widget_idx: Index,
 }
 
-impl<'a> Iterator for WidgetInputEventIterator<'a> {
+impl<'a> Iterator for WidgetEventIterator<'a> {
     type Item = &'a UiEvent;
     fn next(&mut self) -> Option<&'a UiEvent> {
         self.global_event_iter.next().and_then(|event| {
@@ -97,11 +90,11 @@ impl<'a> Iterator for WidgetInputEventIterator<'a> {
 }
 
 
-impl<'a> InputProvider<'a> for WidgetInput<'a> {
-    type Events = WidgetInputEventIterator<'a>;
+impl<'a> input::Provider<'a> for Widget<'a> {
+    type Events = WidgetEventIterator<'a>;
 
     fn events(&'a self) -> Self::Events {
-        WidgetInputEventIterator{
+        WidgetEventIterator{
             global_event_iter: self.global_input.events(),
             current: self.global_input.start.relative_to(self.widget_area.xy()),
             widget_area: self.widget_area,
@@ -109,11 +102,11 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
         }
     }
 
-    fn current(&'a self) -> &'a InputState {
+    fn current(&'a self) -> &'a input::State {
         &self.current
     }
 
-    fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
+    fn mouse_click(&'a self, button: MouseButton) -> Option<event::MouseClick> {
         self.events().filter_map(|event| {
             match *event {
                 UiEvent::MouseClick(click) if click.button == button => {
@@ -124,7 +117,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
         }).next()
     }
 
-    fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
+    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::MouseDrag> {
         self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => {
@@ -147,7 +140,7 @@ impl<'a> InputProvider<'a> for WidgetInput<'a> {
 fn should_provide_event(widget: Index,
                         widget_area: Rect,
                         event: &UiEvent,
-                        current: &InputState) -> bool {
+                        current: &input::State) -> bool {
     let is_keyboard = event.is_keyboard_event();
     let is_mouse = event.is_mouse_event();
 
@@ -159,7 +152,7 @@ fn should_provide_event(widget: Index,
 fn should_provide_mouse_event(widget: Index,
                             widget_area: Rect,
                             event: &UiEvent,
-                            current: &InputState) -> bool {
+                            current: &input::State) -> bool {
     let capturing_mouse = current.widget_capturing_mouse;
     match capturing_mouse {
         Some(idx) if idx == widget => true,
@@ -168,7 +161,7 @@ fn should_provide_mouse_event(widget: Index,
     }
 }
 
-fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &InputState) -> bool {
+fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &input::State) -> bool {
     match *event {
         UiEvent::MouseClick(click) => widget_area.is_over(click.xy),
         UiEvent::MouseDrag(drag) => {

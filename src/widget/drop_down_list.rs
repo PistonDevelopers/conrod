@@ -16,8 +16,8 @@ use ::{
     Scalar,
     Sizeable,
 };
+use input::Provider;
 use widget::{self, Widget};
-use events::InputProvider;
 
 
 /// The index of a selected item.

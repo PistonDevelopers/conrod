@@ -1,9 +1,13 @@
-//! Everything related to storing the state of user input. This includes the state of any
-//! buttons on either the keyboard or the mouse, as well as the position of the mouse.
+//! Everything related to storing the state of user input.
+//!
+//! This includes the state of any buttons on either the keyboard or the mouse, as well as the
+//! position of the mouse.
+//!
 //! It also includes which widgets, if any, are capturing the keyboard and mouse.
-//! This module exists mostly to support the `events::InputProvider` trait.
+//!
+//! This module exists mostly to support the `input::Provider` trait.
 
-use input::keyboard::{NO_MODIFIER, ModifierKey};
+use backend::event::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
 use widget::Index;
 
@@ -17,7 +21,7 @@ use self::mouse::Mouse;
 ///
 /// It also includes which widgets, if any, are capturing keyboard and mouse input.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct InputState {
+pub struct State {
     /// Mouse position and button state.
     pub mouse: Mouse,
     /// Which widget, if any, is currently capturing the keyboard
@@ -33,11 +37,11 @@ pub struct InputState {
     pub modifiers: ModifierKey,
 }
 
-impl InputState {
+impl State {
 
     /// Returns a fresh new input state
-    pub fn new() -> InputState {
-        InputState{
+    pub fn new() -> State {
+        State{
             mouse: Mouse::new(),
             widget_capturing_keyboard: None,
             widget_capturing_mouse: None,
@@ -46,8 +50,8 @@ impl InputState {
         }
     }
 
-    /// Returns a copy of the InputState relative to the given `position::Point`
-    pub fn relative_to(mut self, xy: Point) -> InputState {
+    /// Returns a copy of the input::State relative to the given `position::Point`
+    pub fn relative_to(mut self, xy: Point) -> State {
         self.mouse.xy = ::vecmath::vec2_sub(self.mouse.xy, xy);
         self.mouse.buttons = self.mouse.buttons.relative_to(xy);
         self
@@ -258,7 +262,7 @@ fn button_down_should_store_the_point() {
 
 #[test]
 fn input_state_should_be_made_relative_to_a_given_point() {
-    let mut state = InputState::new();
+    let mut state = State::new();
     state.mouse.xy = [50.0, -10.0];
     state.mouse.buttons.press(mouse::Button::Middle, [-20.0, -10.0]);
 

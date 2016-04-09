@@ -1,9 +1,7 @@
-//! Contains the `InputProvider` trait, which is used to provide input events to widgets.
+//! Contains the `Provider` trait, which is used to provide input events to widgets.
 
-use events::{UiEvent, Scroll, MouseClick, MouseDrag, InputState};
-use input::{Input, Button};
-use input::keyboard::Key;
-use input::mouse::MouseButton;
+use event::{self, Input, UiEvent};
+use input::{self, Button, Key, MouseButton};
 use position::Point;
 use std::marker::PhantomData;
 
@@ -11,8 +9,8 @@ use std::marker::PhantomData;
 /// Trait for something that provides events to be consumed by a widget.
 ///
 /// Provides a bunch of convenience methods for filtering out specific types of events.
-pub trait InputProvider<'a> {
-    /// An iterator yielding references to the `InputProvider`'s `UiEvent`s.
+pub trait Provider<'a> {
+    /// An iterator yielding references to the `Provider`'s `UiEvent`s.
     type Events: Iterator<Item=&'a UiEvent>;
 
     /// This is the only method that needs to be implemented.
@@ -22,7 +20,7 @@ pub trait InputProvider<'a> {
 
     /// Returns the current input state. The returned state is assumed to be up to
     /// date with all of the events so far.
-    fn current(&'a self) -> &'a InputState;
+    fn current(&'a self) -> &'a input::State;
 
     /// If the given mouse button is currently pressed, returns the position at which the mouse was
     /// pressed.
@@ -78,7 +76,7 @@ pub trait InputProvider<'a> {
     /// If multiple raw scroll events occured since the last update (which could very well
     /// happen if the user is scrolling quickly), then the `Scroll` returned will represent an
     /// aggregate total of all the scrolling.
-    fn scroll(&'a self) -> Option<Scroll> {
+    fn scroll(&'a self) -> Option<event::Scroll> {
         self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::Scroll(scroll) => Some(scroll),
@@ -87,7 +85,7 @@ pub trait InputProvider<'a> {
         }).fold(None, |maybe_scroll, scroll| {
             if maybe_scroll.is_some() {
                 maybe_scroll.map(|acc| {
-                    Scroll{
+                    event::Scroll{
                         x: acc.x + scroll.x,
                         y: acc.y + scroll.y,
                         modifiers: scroll.modifiers
@@ -102,16 +100,16 @@ pub trait InputProvider<'a> {
     /// Convenience method to call `mouse_drag`, passing in `MouseButton::Left`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_left_drag(&'a self) -> Option<MouseDrag> {
+    fn mouse_left_drag(&'a self) -> Option<event::MouseDrag> {
         self.mouse_drag(MouseButton::Left)
     }
 
-    /// Returns a `MouseDrag` if one has occured involving the given mouse button.
+    /// Returns a `event::MouseDrag` if one has occured involving the given mouse button.
     /// If multiple raw mouse movement events have
     /// occured since the last update (which will happen if the user moves the mouse quickly),
-    /// then the returned `MouseDrag` will be only the _most recent_ one, which will contain
-    /// the most recent mouse position.
-    fn mouse_drag(&'a self, button: MouseButton) -> Option<MouseDrag> {
+    /// then the returned `event::MouseDrag` will be only the _most recent_ one, which will
+    /// contain the most recent mouse position.
+    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::MouseDrag> {
         self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
@@ -123,21 +121,21 @@ pub trait InputProvider<'a> {
     /// Convenience method to call `mouse_click`, passing in passing in `MouseButton::Left`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_left_click(&'a self) -> Option<MouseClick> {
+    fn mouse_left_click(&'a self) -> Option<event::MouseClick> {
         self.mouse_click(MouseButton::Left)
     }
 
     /// Convenience method to call `mouse_click`, passing in passing in `MouseButton::Right`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_right_click(&'a self) -> Option<MouseClick> {
+    fn mouse_right_click(&'a self) -> Option<event::MouseClick> {
         self.mouse_click(MouseButton::Right)
     }
 
-    /// Returns a `MouseClick` if one has occured with the given mouse button.
+    /// Returns a `event::MouseClick` if one has occured with the given mouse button.
     /// A _click_ is determined to have occured if a mouse button was pressed and subsequently
     /// released while the mouse was in roughly the same place.
-    fn mouse_click(&'a self, button: MouseButton) -> Option<MouseClick> {
+    fn mouse_click(&'a self, button: MouseButton) -> Option<event::MouseClick> {
         self.events().filter_map(|evt| {
             match *evt {
                 UiEvent::MouseClick(click) if click.button == button => Some(click),

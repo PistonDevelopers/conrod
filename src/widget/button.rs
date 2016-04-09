@@ -13,8 +13,8 @@ use {
     Text,
     Widget,
 };
+use input::Provider;
 use widget;
-use events::InputProvider;
 
 
 /// A pressable button widget whose reaction is triggered upon release.

@@ -6,20 +6,22 @@
 //! [**CharacterCache**](http://docs.piston.rs/graphics/graphics/character/trait.CharacterCache.html)
 //! traits to enable genericity over custom user backends. This dependency may change in the near
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
+//!
+//! This is the only module in which the piston graphics crate will be used directly.
 
 
 use {Backend, Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex, Visitable};
-use graphics;
+use piston_graphics;
 use std::any::Any;
 use std::iter::once;
 use theme::Theme;
 use widget::{self, primitive};
 
 #[doc(inline)]
-pub use graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
+pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 #[doc(inline)]
-pub use graphics::character::{Character, CharacterCache};
+pub use piston_graphics::character::{Character, CharacterCache};
 
 
 /// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
@@ -247,7 +249,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                 match oval.style {
                     ShapeStyle::Fill(_) => {
                         let color = oval.style.get_color(theme).to_fsa();
-                        let polygon = graphics::Polygon::new(color);
+                        let polygon = piston_graphics::Polygon::new(color);
                         polygon.draw(&points, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
@@ -267,7 +269,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                     ShapeStyle::Fill(_) => {
                         let color = polygon.style.get_color(theme).to_fsa();
                         let points = &polygon.state.points[..];
-                        let polygon = graphics::Polygon::new(color);
+                        let polygon = piston_graphics::Polygon::new(color);
                         polygon.draw(points, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
@@ -311,7 +313,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
-                    graphics::text::Text::new_color(color, font_size)
+                    piston_graphics::text::Text::new_color(color, font_size)
                         .round()
                         .draw(line, character_cache, draw_state, transform, graphics);
                 }
@@ -323,7 +325,7 @@ pub fn draw_from_container<B, G>(context: &Context,
             if let Some(image) = container.state_and_style::<State<B::Texture>, Style>() {
                 let ::graph::UniqueWidgetState { ref state, ref style } = *image;
                 if let Some(texture) = state.texture.as_ref() {
-                    let mut image = graphics::image::Image::new();
+                    let mut image = piston_graphics::image::Image::new();
                     image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
                     image.source_rectangle = Some({
                         let (x, y, w, h) = texture.src_rect.x_y_w_h();
@@ -344,8 +346,9 @@ pub fn draw_from_container<B, G>(context: &Context,
 }
 
 
-/// Converts a conrod `Rect` to a `graphics::types::Rectangle` expected by the Graphics backend.
-pub fn conrod_rect_to_graphics_rect(rect: Rect) -> graphics::types::Rectangle<Scalar> {
+/// Converts a conrod `Rect` to a `piston_graphics::types::Rectangle` expected by the Graphics
+/// backend.
+pub fn conrod_rect_to_graphics_rect(rect: Rect) -> piston_graphics::types::Rectangle<Scalar> {
     let (l, b, w, h) = rect.l_b_w_h();
     [l, b, w, h]
 }
@@ -360,7 +363,7 @@ pub fn draw_rectangle<G>(context: &Context,
 {
     let (l, b, w, h) = rect.l_b_w_h();
     let lbwh = [l, b, w, h];
-    let rectangle = graphics::Rectangle::new(color.to_fsa());
+    let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
     rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
 }
 
@@ -384,8 +387,8 @@ pub fn draw_lines<G, I>(context: &Context,
         match pattern {
             Pattern::Solid => {
                 let line = match cap {
-                    Cap::Flat => graphics::Line::new(color, thickness / 2.0),
-                    Cap::Round => graphics::Line::new_round(color, thickness / 2.0),
+                    Cap::Flat => piston_graphics::Line::new(color, thickness / 2.0),
+                    Cap::Round => piston_graphics::Line::new_round(color, thickness / 2.0),
                 };
                 let mut start = first;
                 for end in points {

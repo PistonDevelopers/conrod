@@ -1,21 +1,20 @@
-use events::{UiEvent, Scroll, InputProvider};
 use {
     Theme,
-    CharacterCache,
-    Labelable,
     Canvas,
+    CharacterCache,
     Color,
+    FontSize,
+    Labelable,
     Positionable,
     Colorable,
     Sizeable,
     Widget
 };
-use input::{Event, Input, Motion, Button, self};
-use input::keyboard::{ModifierKey, Key};
-use input::mouse::MouseButton;
-use graphics::ImageSize;
-use graphics::character::Character;
-use graphics::types::FontSize;
+use backend::event::Event;
+use backend::graphics::{Character, ImageSize};
+use event::{self, Input, Motion, UiEvent};
+use input::{self, Button, Key, MouseButton, Provider};
+use input::keyboard::ModifierKey;
 use widget::{Index, self};
 use widget::button::Button as ButtonWidget;
 use position::Point;
@@ -211,7 +210,7 @@ fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
     let mut ui = windowless_ui();
     ui.handle_event(Input::Move(Motion::MouseScroll(10.0, 33.0)));
 
-    let expected_scroll = Scroll{
+    let expected_scroll = event::Scroll{
         x: 10.0,
         y: 33.0,
         modifiers: ModifierKey::default()

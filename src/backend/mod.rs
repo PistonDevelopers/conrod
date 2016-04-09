@@ -10,7 +10,7 @@
 use std;
 
 pub use self::graphics::{CharacterCache, Graphics};
-pub use self::event::{Event, ToEvent};
+pub use self::event::{RawEvent, ToRawEvent};
 
 pub mod event;
 pub mod graphics;

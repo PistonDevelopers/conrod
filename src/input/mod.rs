@@ -1,4 +1,5 @@
 //! This module contains all the logic for handling input events and providing them to widgets.
+//!
 //! All user input is provided to the `Ui` in the form of `input::Input` events, which are continuously
 //! polled from the backend window implementation. These raw input events tend to be fairly low level.
 //! The `Ui` passes each of these events off to it's `GlobalInput`, which keeps track of the state of
@@ -17,14 +18,14 @@
 //! will never filter out any events, and will always provide them with coordinates relative to the
 //! window.
 
-pub mod ui_event;
-pub mod input_state;
-pub mod widget_input;
-pub mod global_input;
-pub mod input_provider;
+pub mod state;
+pub mod widget;
+pub mod global;
+pub mod provider;
 
-pub use self::input_state::InputState;
-pub use self::global_input::{GlobalInputEventIterator, GlobalInput};
-pub use self::widget_input::{WidgetInputEventIterator, WidgetInput};
-pub use self::ui_event::{UiEvent, MouseClick, MouseDrag, Scroll};
-pub use self::input_provider::InputProvider;
+pub use self::state::State;
+pub use self::global::{GlobalEventIterator, Global};
+pub use self::widget::{WidgetEventIterator, Widget};
+pub use self::provider::Provider;
+
+pub use backend::event::{Button, keyboard, Key, MouseButton};

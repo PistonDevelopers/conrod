@@ -1,14 +1,12 @@
+use event::{UiEvent, Input, Motion};
+use input::{self, Key, MouseButton, Provider};
 use input::Button::Keyboard;
-use input::keyboard::Key;
 use input::Button::Mouse;
-use input::mouse::MouseButton;
-use input::{Input, Motion};
 use position::Scalar;
-use events::{UiEvent, InputProvider, GlobalInput};
 
 
 // Pushes an event onto the given global input with a default drag threshold.
-fn push_event(input: &mut GlobalInput, event: UiEvent) {
+fn push_event(input: &mut input::Global, event: UiEvent) {
     input.push_event(event);
 }
 
@@ -19,7 +17,7 @@ fn mouse_move_event(x: Scalar, y: Scalar) -> UiEvent {
 
 #[test]
 fn resetting_input_should_set_starting_state_to_current_state() {
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
     push_event(&mut input, UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     push_event(&mut input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
 
@@ -30,7 +28,7 @@ fn resetting_input_should_set_starting_state_to_current_state() {
 
 #[test]
 fn resetting_input_should_clear_out_events() {
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
     push_event(&mut input, UiEvent::Raw(Input::Press(Keyboard(Key::LShift))));
     push_event(&mut input, UiEvent::Raw(Input::Move(Motion::MouseScroll(0.0, 50.0))));
     input.clear_events_and_update_start_state();
@@ -42,7 +40,7 @@ fn mouse_button_down_should_return_none_if_button_is_not_pressed() {
     let pressed_button = MouseButton::Middle;
     let non_pressed_button = MouseButton::Right;
 
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
     push_event(&mut input, UiEvent::Raw(Input::Press(Mouse(pressed_button))));
 
     assert!(input.mouse_button_down(non_pressed_button).is_none());
@@ -50,7 +48,7 @@ fn mouse_button_down_should_return_none_if_button_is_not_pressed() {
 
 #[test]
 fn entered_text_should_be_aggregated_from_multiple_events() {
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
 
     push_event(&mut input, UiEvent::Raw(Input::Text("Phil ".to_string())));
     push_event(&mut input, UiEvent::Raw(Input::Text("is a".to_string())));
@@ -62,7 +60,7 @@ fn entered_text_should_be_aggregated_from_multiple_events() {
 
 #[test]
 fn no_events_should_be_returned_after_reset_is_called() {
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
     push_event(&mut input, UiEvent::Raw(Input::Press(Keyboard(Key::RShift))));
     push_event(&mut input, UiEvent::Raw(Input::Move(Motion::MouseScroll(7.0, 88.5))));
     push_event(&mut input, UiEvent::Raw(Input::Press(Mouse(MouseButton::Left))));
@@ -76,7 +74,7 @@ fn no_events_should_be_returned_after_reset_is_called() {
 
 #[test]
 fn events_should_return_all_inputs_in_order() {
-    let mut input = GlobalInput::new();
+    let mut input = input::Global::new();
 
     let evt1 = UiEvent::Raw(Input::Press(Keyboard(Key::Z)));
     push_event(&mut input, evt1.clone());
