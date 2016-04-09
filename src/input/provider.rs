@@ -100,19 +100,19 @@ pub trait Provider<'a> {
     /// Convenience method to call `mouse_drag`, passing in `MouseButton::Left`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_left_drag(&'a self) -> Option<event::MouseDrag> {
+    fn mouse_left_drag(&'a self) -> Option<event::Drag> {
         self.mouse_drag(MouseButton::Left)
     }
 
-    /// Returns a `event::MouseDrag` if one has occured involving the given mouse button.
+    /// Returns a `event::Drag` if one has occured involving the given mouse button.
     /// If multiple raw mouse movement events have
     /// occured since the last update (which will happen if the user moves the mouse quickly),
-    /// then the returned `event::MouseDrag` will be only the _most recent_ one, which will
+    /// then the returned `event::Drag` will be only the _most recent_ one, which will
     /// contain the most recent mouse position.
-    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::MouseDrag> {
+    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::Drag> {
         self.events().filter_map(|evt| {
             match *evt {
-                UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => Some(drag_evt),
+                UiEvent::Drag(drag_evt) if drag_evt.button == button => Some(drag_evt),
                 _ => None
             }
         }).last()
@@ -121,24 +121,24 @@ pub trait Provider<'a> {
     /// Convenience method to call `mouse_click`, passing in passing in `MouseButton::Left`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_left_click(&'a self) -> Option<event::MouseClick> {
+    fn mouse_left_click(&'a self) -> Option<event::Click> {
         self.mouse_click(MouseButton::Left)
     }
 
     /// Convenience method to call `mouse_click`, passing in passing in `MouseButton::Right`.
     /// Saves widgets from having to `use input::mouse::MouseButton` if all they care
     /// about is the left mouse button.
-    fn mouse_right_click(&'a self) -> Option<event::MouseClick> {
+    fn mouse_right_click(&'a self) -> Option<event::Click> {
         self.mouse_click(MouseButton::Right)
     }
 
-    /// Returns a `event::MouseClick` if one has occured with the given mouse button.
+    /// Returns a `event::Click` if one has occured with the given mouse button.
     /// A _click_ is determined to have occured if a mouse button was pressed and subsequently
     /// released while the mouse was in roughly the same place.
-    fn mouse_click(&'a self, button: MouseButton) -> Option<event::MouseClick> {
+    fn mouse_click(&'a self, button: MouseButton) -> Option<event::Click> {
         self.events().filter_map(|evt| {
             match *evt {
-                UiEvent::MouseClick(click) if click.button == button => Some(click),
+                UiEvent::Click(click) if click.button == button => Some(click),
                 _ => None
             }
         }).next()

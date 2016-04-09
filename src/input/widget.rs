@@ -106,10 +106,10 @@ impl<'a> input::Provider<'a> for Widget<'a> {
         &self.current
     }
 
-    fn mouse_click(&'a self, button: MouseButton) -> Option<event::MouseClick> {
+    fn mouse_click(&'a self, button: MouseButton) -> Option<event::Click> {
         self.events().filter_map(|event| {
             match *event {
-                UiEvent::MouseClick(click) if click.button == button => {
+                UiEvent::Click(click) if click.button == button => {
                     Some(click.relative_to(self.widget_area.xy()))
                 },
                 _ => None
@@ -117,10 +117,10 @@ impl<'a> input::Provider<'a> for Widget<'a> {
         }).next()
     }
 
-    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::MouseDrag> {
+    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::Drag> {
         self.events().filter_map(|evt| {
             match *evt {
-                UiEvent::MouseDrag(drag_evt) if drag_evt.button == button => {
+                UiEvent::Drag(drag_evt) if drag_evt.button == button => {
                     Some(drag_evt.relative_to(self.widget_area.xy()))
                 },
                 _ => None
@@ -163,8 +163,8 @@ fn should_provide_mouse_event(widget: Index,
 
 fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &input::State) -> bool {
     match *event {
-        UiEvent::MouseClick(click) => widget_area.is_over(click.xy),
-        UiEvent::MouseDrag(drag) => {
+        UiEvent::Click(click) => widget_area.is_over(click.xy),
+        UiEvent::Drag(drag) => {
             widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
         },
         _ => widget_area.is_over(current.mouse.xy)

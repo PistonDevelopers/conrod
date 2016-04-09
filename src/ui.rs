@@ -450,19 +450,19 @@ impl<B> Ui<B>
                     // Some button was released.
                     //
                     // Checks for events in the following order:
-                    // 1. MouseClick
+                    // 1. Click
                     // 2. WidgetUncapturesMouse
                     Input::Release(button_type) => match button_type {
                         Button::Mouse(mouse_button) => {
 
-                            // Check for a `MouseClick` event.
+                            // Check for a `Click` event.
                             let down = self.global_input.current.mouse.buttons[mouse_button].if_down();
                             if let Some((_, widget)) = down {
                                 let clicked_widget = self.global_input.current.widget_under_mouse
                                     .and_then(|released| widget.and_then(|pressed| {
                                         if pressed == released { Some(released) } else { None }
                                     }));
-                                let event = UiEvent::MouseClick(event::MouseClick {
+                                let event = UiEvent::Click(event::Click {
                                     button: mouse_button,
                                     xy: self.global_input.current.mouse.xy,
                                     modifiers: self.global_input.current.modifiers,
@@ -518,7 +518,7 @@ impl<B> Ui<B>
                             // For each button that is down, trigger a drag event.
                             let buttons = self.global_input.current.mouse.buttons.clone();
                             for (btn, btn_xy, widget) in buttons.pressed() {
-                                let event = UiEvent::MouseDrag(event::MouseDrag {
+                                let event = UiEvent::Drag(event::Drag {
                                     button: btn,
                                     start: btn_xy,
                                     end: [x, y],

@@ -16,11 +16,11 @@ pub use backend::event::{Input, Motion};
 pub enum UiEvent {
     /// Represents a raw `input::Input` event
     Raw(Input),
-    /// Represents a mouse button being pressed and subsequently released while the
-    /// mouse stayed in roughly the same place.
-    MouseClick(MouseClick),
-    /// Represents a mouse button being pressed and a subsequent movement of the mouse.
-    MouseDrag(MouseDrag),
+    /// Represents a pointing device being pressed and subsequently released while over the same
+    /// location.
+    Click(Click),
+    /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
+    Drag(Drag),
     /// This is a generic scroll event. This is different from the `input::Movement::MouseScroll`
     /// event in several aspects.
     ///
@@ -42,7 +42,7 @@ pub enum UiEvent {
 
 /// Contains all the relevant information for a mouse drag.
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct MouseDrag {
+pub struct Drag {
     /// Which mouse button was being held during the drag
     pub button: MouseButton,
     /// The origin of the drag. This will always be the position of the mouse whenever the
@@ -58,7 +58,7 @@ pub struct MouseDrag {
 
 /// Contains all the relevant information for a mouse click.
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct MouseClick {
+pub struct Click {
     /// Which mouse button was clicked
     pub button: MouseButton,
     /// The position at which the mouse was released.
@@ -83,20 +83,20 @@ pub struct Scroll {
     pub modifiers: keyboard::ModifierKey,
 }
 
-impl MouseClick {
-    /// Returns a copy of the MouseClick relative to the given `position::Point`
-    pub fn relative_to(&self, xy: Point) -> MouseClick {
-        MouseClick {
+impl Click {
+    /// Returns a copy of the Click relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> Click {
+        Click {
             xy: vec2_sub(self.xy, xy),
             ..*self
         }
     }
 }
 
-impl MouseDrag {
-    /// Returns a copy of the MouseDrag relative to the given `position::Point`
-    pub fn relative_to(&self, xy: Point) -> MouseDrag {
-        MouseDrag{
+impl Drag {
+    /// Returns a copy of the Drag relative to the given `position::Point`
+    pub fn relative_to(&self, xy: Point) -> Drag {
+        Drag{
             start: vec2_sub(self.start, xy),
             end: vec2_sub(self.end, xy),
             ..*self
@@ -108,10 +108,10 @@ impl UiEvent {
 
     /// Returns a copy of the UiEvent relative to the given `position::Point`
     pub fn relative_to(self, xy: Point) -> Self {
-        use self::UiEvent::{MouseClick, MouseDrag, Raw};
+        use self::UiEvent::{Click, Drag, Raw};
         match self {
-            MouseClick(click) => MouseClick(click.relative_to(xy)),
-            MouseDrag(drag) => MouseDrag(drag.relative_to(xy)),
+            Click(click) => Click(click.relative_to(xy)),
+            Drag(drag) => Drag(drag.relative_to(xy)),
             Raw(Input::Move(Motion::MouseRelative(x, y))) =>
                 Raw(Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1]))),
             Raw(Input::Move(Motion::MouseCursor(x, y))) =>
@@ -130,8 +130,8 @@ impl UiEvent {
             UiEvent::Raw(Input::Move(Motion::MouseCursor(_, _))) => true,
             UiEvent::Raw(Input::Move(Motion::MouseRelative(_, _))) => true,
             UiEvent::Raw(Input::Move(Motion::MouseScroll(_, _))) => true,
-            UiEvent::MouseClick(_) => true,
-            UiEvent::MouseDrag(_) => true,
+            UiEvent::Click(_) => true,
+            UiEvent::Drag(_) => true,
             UiEvent::Scroll(_) => true,
             _ => false
         }
@@ -190,13 +190,13 @@ mod test {
         let non_keyboard_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(event::MouseClick {
+            UiEvent::Click(event::Click {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
                 modifiers: NO_MODIFIER,
                 widget: None,
             }),
-            UiEvent::MouseDrag(event::MouseDrag {
+            UiEvent::Drag(event::Drag {
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
@@ -218,13 +218,13 @@ mod test {
         let mouse_events = vec![
             UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
             UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::MouseClick(event::MouseClick {
+            UiEvent::Click(event::Click {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
                 modifiers: NO_MODIFIER,
                 widget: None,
             }),
-            UiEvent::MouseDrag(event::MouseDrag {
+            UiEvent::Drag(event::Drag {
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
@@ -254,7 +254,7 @@ mod test {
 
     #[test]
     fn mouse_click_should_be_made_relative() {
-        let original = UiEvent::MouseClick(event::MouseClick {
+        let original = UiEvent::Click(event::Click {
             button: MouseButton::Middle,
             xy: [30.0, -80.0],
             modifiers: keyboard::SHIFT,
@@ -262,7 +262,7 @@ mod test {
         });
         let relative = original.relative_to([10.0, 20.0]);
 
-        if let UiEvent::MouseClick(click) = relative {
+        if let UiEvent::Click(click) = relative {
             assert_eq!([20.0, -100.0], click.xy);
             assert_eq!(MouseButton::Middle, click.button);
             assert_eq!(keyboard::SHIFT, click.modifiers);
@@ -273,7 +273,7 @@ mod test {
 
     #[test]
     fn mouse_drage_should_be_made_relative() {
-        let original = UiEvent::MouseDrag(event::MouseDrag {
+        let original = UiEvent::Drag(event::Drag {
             start: [20.0, 5.0],
             end: [50.0, 1.0],
             button: MouseButton::Left,
@@ -282,7 +282,7 @@ mod test {
         });
 
         let relative = original.relative_to([-5.0, 5.0]);
-        if let UiEvent::MouseDrag(drag) = relative {
+        if let UiEvent::Drag(drag) = relative {
             assert_eq!([25.0, 0.0], drag.start);
             assert_eq!([55.0, -4.0], drag.end);
             assert_eq!(MouseButton::Left, drag.button);

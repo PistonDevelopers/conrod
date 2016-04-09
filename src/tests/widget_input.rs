@@ -60,7 +60,7 @@ fn mouse_is_over_widget_should_be_false_if_mouse_is_not_over_widget() {
 #[test]
 fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing_is_capturing_mouse() {
     let mut global_input = input::Global::new();
-    push_event(&mut global_input, UiEvent::MouseClick(event::MouseClick{
+    push_event(&mut global_input, UiEvent::Click(event::Click{
         button: MouseButton::Left,
         xy: [10.0, 10.0],
         modifiers: NO_MODIFIER,
@@ -85,7 +85,7 @@ fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing
 fn mouse_clicks_should_be_relative_to_widget_position() {
     let idx = Index::Public(Id(5));
     let mut global_input = input::Global::new();
-    push_event(&mut global_input, UiEvent::MouseClick(event::MouseClick{
+    push_event(&mut global_input, UiEvent::Click(event::Click{
         button: MouseButton::Left,
         xy: [10.0, 10.0],
         modifiers: NO_MODIFIER,
@@ -102,7 +102,7 @@ fn mouse_clicks_should_be_relative_to_widget_position() {
 fn mouse_drags_should_be_relative_to_widget_position() {
     let idx = Index::Public(Id(5));
     let mut global_input = input::Global::new();
-    push_event(&mut global_input, UiEvent::MouseDrag(event::MouseDrag{
+    push_event(&mut global_input, UiEvent::Drag(event::Drag {
         button: MouseButton::Left,
         start: [5.0, 5.0],
         end: [10.0, 10.0],

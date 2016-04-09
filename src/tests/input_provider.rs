@@ -52,7 +52,7 @@ impl<'a> input::Provider<'a> for ProviderImpl {
 }
 
 fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
-    UiEvent::MouseDrag(event::MouseDrag{
+    UiEvent::Drag(event::Drag{
         button: mouse_button,
         start: start,
         end: end,
@@ -146,19 +146,19 @@ fn key_presses_should_be_collected_into_a_vec() {
 #[test]
 fn mouse_clicks_should_be_filtered_by_mouse_button() {
     let input = ProviderImpl::with_events(vec![
-        UiEvent::MouseClick(event::MouseClick{
+        UiEvent::Click(event::Click{
             button: MouseButton::Left,
             xy: [50.0, 40.0],
             modifiers: NO_MODIFIER,
             widget: None,
         }),
-        UiEvent::MouseClick(event::MouseClick{
+        UiEvent::Click(event::Click{
             button: MouseButton::Right,
             xy: [70.0, 30.0],
             modifiers: NO_MODIFIER,
             widget: None,
         }),
-        UiEvent::MouseClick(event::MouseClick{
+        UiEvent::Click(event::Click{
             button: MouseButton::Middle,
             xy: [90.0, 20.0],
             modifiers: NO_MODIFIER,
@@ -183,7 +183,7 @@ fn only_the_last_drag_event_should_be_returned() {
         drag_event(MouseButton::Left, [20.0, 10.0], [50.0, 40.0])
     ]);
 
-    let expected_drag = event::MouseDrag {
+    let expected_drag = event::Drag {
         button: MouseButton::Left,
         start: [20.0, 10.0],
         end: [50.0, 40.0],
