@@ -424,7 +424,8 @@ impl<B> Ui<B>
 
                             // Keep track of pressed buttons in the current input::State.
                             let xy = self.global_input.current.mouse.xy;
-                            self.global_input.current.mouse.buttons.press(mouse_button, xy);
+                            let widget = self.global_input.current.widget_under_mouse;
+                            self.global_input.current.mouse.buttons.press(mouse_button, xy, widget);
                         },
 
                         Button::Keyboard(key) => {
@@ -455,11 +456,17 @@ impl<B> Ui<B>
                         Button::Mouse(mouse_button) => {
 
                             // Check for a `MouseClick` event.
-                            if self.global_input.current.mouse.buttons[mouse_button].is_down() {
+                            let down = self.global_input.current.mouse.buttons[mouse_button].if_down();
+                            if let Some((_, widget)) = down {
+                                let clicked_widget = self.global_input.current.widget_under_mouse
+                                    .and_then(|released| widget.and_then(|pressed| {
+                                        if pressed == released { Some(released) } else { None }
+                                    }));
                                 let event = UiEvent::MouseClick(event::MouseClick {
                                     button: mouse_button,
                                     xy: self.global_input.current.mouse.xy,
                                     modifiers: self.global_input.current.modifiers,
+                                    widget: clicked_widget,
                                 });
                                 self.global_input.push_event(event);
                             }
@@ -510,12 +517,13 @@ impl<B> Ui<B>
                         if distance > self.theme.mouse_drag_threshold {
                             // For each button that is down, trigger a drag event.
                             let buttons = self.global_input.current.mouse.buttons.clone();
-                            for (btn, btn_xy) in buttons.pressed() {
+                            for (btn, btn_xy, widget) in buttons.pressed() {
                                 let event = UiEvent::MouseDrag(event::MouseDrag {
                                     button: btn,
                                     start: btn_xy,
                                     end: [x, y],
                                     modifiers: self.global_input.current.modifiers,
+                                    widget: widget,
                                 });
                                 self.global_input.push_event(event);
                             }

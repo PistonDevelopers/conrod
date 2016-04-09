@@ -63,7 +63,8 @@ fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing
     push_event(&mut global_input, UiEvent::MouseClick(event::MouseClick{
         button: MouseButton::Left,
         xy: [10.0, 10.0],
-        modifiers: NO_MODIFIER
+        modifiers: NO_MODIFIER,
+        widget: None,
     }));
     assert!(global_input.currently_capturing_mouse().is_none());
 
@@ -87,7 +88,8 @@ fn mouse_clicks_should_be_relative_to_widget_position() {
     push_event(&mut global_input, UiEvent::MouseClick(event::MouseClick{
         button: MouseButton::Left,
         xy: [10.0, 10.0],
-        modifiers: NO_MODIFIER
+        modifiers: NO_MODIFIER,
+        widget: None,
     }));
 
     let rect = Rect::from_corners([0.0, 0.0], [20.0, 20.0]);
@@ -105,6 +107,7 @@ fn mouse_drags_should_be_relative_to_widget_position() {
         start: [5.0, 5.0],
         end: [10.0, 10.0],
         modifiers: NO_MODIFIER,
+        widget: None,
     }));
 
     let rect = Rect::from_corners([0.0, 0.0], [20.0, 20.0]);

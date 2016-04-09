@@ -57,6 +57,7 @@ fn drag_event(mouse_button: MouseButton, start: Point, end: Point) -> UiEvent {
         start: start,
         end: end,
         modifiers: NO_MODIFIER,
+        widget: None,
     })
 }
 
@@ -84,7 +85,7 @@ fn mouse_position_should_return_mouse_position_from_current_state() {
 #[test]
 fn mouse_button_down_should_return_true_if_button_is_pressed() {
     let mut input_state = input::State::new();
-    input_state.mouse.buttons.press(MouseButton::Right, [0.0, 0.0]);
+    input_state.mouse.buttons.press(MouseButton::Right, [0.0, 0.0], None);
     let input = ProviderImpl::with_input_state(input_state);
     assert_eq!(Some([0.0, 0.0]), input.mouse_button_down(MouseButton::Right));
     assert!(input.mouse_left_button_down().is_none());
@@ -148,17 +149,20 @@ fn mouse_clicks_should_be_filtered_by_mouse_button() {
         UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Left,
             xy: [50.0, 40.0],
-            modifiers: NO_MODIFIER
+            modifiers: NO_MODIFIER,
+            widget: None,
         }),
         UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Right,
             xy: [70.0, 30.0],
-            modifiers: NO_MODIFIER
+            modifiers: NO_MODIFIER,
+            widget: None,
         }),
         UiEvent::MouseClick(event::MouseClick{
             button: MouseButton::Middle,
             xy: [90.0, 20.0],
-            modifiers: NO_MODIFIER
+            modifiers: NO_MODIFIER,
+            widget: None,
         }),
     ]);
 
@@ -179,11 +183,12 @@ fn only_the_last_drag_event_should_be_returned() {
         drag_event(MouseButton::Left, [20.0, 10.0], [50.0, 40.0])
     ]);
 
-    let expected_drag = event::MouseDrag{
+    let expected_drag = event::MouseDrag {
         button: MouseButton::Left,
         start: [20.0, 10.0],
         end: [50.0, 40.0],
         modifiers: NO_MODIFIER,
+        widget: None,
     };
     let actual_drag = input.mouse_left_drag().expect("expected a mouse drag event");
     assert_eq!(expected_drag, actual_drag);

@@ -9,8 +9,7 @@
 
 use backend::event::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
-use widget::Index;
-
+use widget;
 use self::mouse::Mouse;
 
 
@@ -25,14 +24,14 @@ pub struct State {
     /// Mouse position and button state.
     pub mouse: Mouse,
     /// Which widget, if any, is currently capturing the keyboard
-    pub widget_capturing_keyboard: Option<Index>,
+    pub widget_capturing_keyboard: Option<widget::Index>,
     /// Which widget, if any, is currently capturing the mouse
-    pub widget_capturing_mouse: Option<Index>,
+    pub widget_capturing_mouse: Option<widget::Index>,
     /// The widget that is currently under the mouse cursor.
     ///
     /// If the mouse is currently over multiple widgets, this index will represent the top-most,
     /// non-graphic-child widget.
-    pub widget_under_mouse: Option<Index>,
+    pub widget_under_mouse: Option<widget::Index>,
     /// Which modifier keys are being held down.
     pub modifiers: ModifierKey,
 }
@@ -62,6 +61,9 @@ impl State {
 /// Mouse specific state.
 pub mod mouse {
     use position::Point;
+    use std;
+    use widget;
+
     #[doc(inline)]
     pub use input::MouseButton as Button;
 
@@ -85,8 +87,9 @@ pub mod mouse {
     pub enum ButtonPosition {
         /// The button is up (i.e. pressed).
         Up,
-        /// The button is down and was originally pressed down at the given `Point`.
-        Down(Point),
+        /// The button is down and was originally pressed down at the given `Point` over the widget
+        /// at the given widget::Index.
+        Down(Point, Option<widget::Index>),
     }
 
     /// Stores the state of all mouse buttons.
@@ -118,7 +121,8 @@ pub mod mouse {
         /// If the mouse button is down, return a new one with position relative to the given `xy`.
         pub fn relative_to(self, xy: Point) -> Self {
             match self {
-                ButtonPosition::Down(pos) => ButtonPosition::Down([pos[0] - xy[0], pos[1] - xy[1]]),
+                ButtonPosition::Down(pos, widget) =>
+                    ButtonPosition::Down([pos[0] - xy[0], pos[1] - xy[1]], widget),
                 button_pos => button_pos,
             }
         }
@@ -126,7 +130,7 @@ pub mod mouse {
         /// Is the `ButtonPosition` down.
         pub fn is_down(&self) -> bool {
             match *self {
-                ButtonPosition::Down(_) => true,
+                ButtonPosition::Down(_, _) => true,
                 _ => false,
             }
         }
@@ -139,10 +143,19 @@ pub mod mouse {
             }
         }
 
+        /// Returns the position at which the button was pressed along with the widget that was
+        /// under the mouse at the time of pressing if the position is `Down`.
+        pub fn if_down(&self) -> Option<(Point, Option<widget::Index>)> {
+            match *self {
+                ButtonPosition::Down(xy, widget) => Some((xy, widget)),
+                _ => None,
+            }
+        }
+
         /// Returns the position at which the button was pressed if it's down.
         pub fn xy_if_down(&self) -> Option<Point> {
             match *self {
-                ButtonPosition::Down(xy) => Some(xy),
+                ButtonPosition::Down(xy, _) => Some(xy),
                 _ => None,
             }
         }
@@ -182,8 +195,8 @@ pub mod mouse {
         }
 
         /// Sets the `Button` in the `Down` position.
-        pub fn press(&mut self, button: Button, xy: Point) {
-            self.buttons[button_to_idx(button)] = ButtonPosition::Down(xy);
+        pub fn press(&mut self, button: Button, xy: Point, widget: Option<widget::Index>) {
+            self.buttons[button_to_idx(button)] = ButtonPosition::Down(xy, widget);
         }
 
         /// Set's the `Button` in the `Up` position.
@@ -210,7 +223,7 @@ pub mod mouse {
         (idx as u32).into()
     }
 
-    impl ::std::ops::Index<Button> for ButtonMap {
+    impl std::ops::Index<Button> for ButtonMap {
         type Output = ButtonPosition;
         fn index(&self, button: Button) -> &Self::Output {
             &self.buttons[button_to_idx(button)]
@@ -218,11 +231,11 @@ pub mod mouse {
     }
 
     impl<'a> Iterator for PressedButtons<'a> {
-        type Item = (Button, Point);
+        type Item = (Button, Point, Option<widget::Index>);
         fn next(&mut self) -> Option<Self::Item> {
             while let Some((idx, button_pos)) = self.buttons.next() {
-                if let ButtonPosition::Down(xy) = *button_pos {
-                    return Some((idx_to_button(idx), xy));
+                if let ButtonPosition::Down(xy, widget) = *button_pos {
+                    return Some((idx_to_button(idx), xy, widget));
                 }
             }
             None
@@ -244,27 +257,27 @@ fn pressed_next_returns_none_if_no_buttons_are_pressed() {
 fn pressed_next_should_return_first_pressed_button() {
     let mut map = mouse::ButtonMap::new();
 
-    map.press(mouse::Button::Right, [3.0, 3.0]);
-    map.press(mouse::Button::X1, [5.4, 4.5]);
+    map.press(mouse::Button::Right, [3.0, 3.0], None);
+    map.press(mouse::Button::X1, [5.4, 4.5], None);
 
     let pressed = map.pressed().next();
-    assert_eq!(Some((mouse::Button::Right, [3.0, 3.0])), pressed);
+    assert_eq!(Some((mouse::Button::Right, [3.0, 3.0], None)), pressed);
 }
 
 #[test]
 fn button_down_should_store_the_point() {
     let mut map = mouse::ButtonMap::new();
     let xy = [2.0, 5.0];
-    map.press(mouse::Button::Left, xy);
+    map.press(mouse::Button::Left, xy, None);
 
-    assert_eq!(mouse::ButtonPosition::Down(xy), map[mouse::Button::Left]);
+    assert_eq!(mouse::ButtonPosition::Down(xy, None), map[mouse::Button::Left]);
 }
 
 #[test]
 fn input_state_should_be_made_relative_to_a_given_point() {
     let mut state = State::new();
     state.mouse.xy = [50.0, -10.0];
-    state.mouse.buttons.press(mouse::Button::Middle, [-20.0, -10.0]);
+    state.mouse.buttons.press(mouse::Button::Middle, [-20.0, -10.0], None);
 
     let relative_state = state.relative_to([20.0, 20.0]);
     assert_eq!([30.0, -30.0], relative_state.mouse.xy);

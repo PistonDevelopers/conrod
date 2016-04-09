@@ -6,7 +6,7 @@
 use input::{keyboard, Button, MouseButton};
 use position::Point;
 use vecmath::vec2_sub;
-use widget::Index;
+use widget;
 
 #[doc(inline)]
 pub use backend::event::{Input, Motion};
@@ -31,13 +31,13 @@ pub enum UiEvent {
     /// while the scroll occured.
     Scroll(Scroll),
     /// Indicates that the given widget is starting to capture the mouse.
-    WidgetCapturesMouse(Index),
+    WidgetCapturesMouse(widget::Index),
     /// Indicates that the given widget is losing mouse capture.
-    WidgetUncapturesMouse(Index),
+    WidgetUncapturesMouse(widget::Index),
     /// Indicates that the given widget is starting to capture the keyboard.
-    WidgetCapturesKeyboard(Index),
+    WidgetCapturesKeyboard(widget::Index),
     /// Indicates that the given widget is losing keyboard capture.
-    WidgetUncapturesKeyboard(Index),
+    WidgetUncapturesKeyboard(widget::Index),
 }
 
 /// Contains all the relevant information for a mouse drag.
@@ -52,6 +52,8 @@ pub struct MouseDrag {
     pub end: Point,
     /// Which modifier keys are being held during the mouse drag.
     pub modifiers: keyboard::ModifierKey,
+    /// The widget that was under the mouse when `button` was first pressed.
+    pub widget: Option<widget::Index>,
 }
 
 /// Contains all the relevant information for a mouse click.
@@ -63,6 +65,11 @@ pub struct MouseClick {
     pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
     pub modifiers: keyboard::ModifierKey,
+    /// The widget that was clicked if any.
+    ///
+    /// Note that this is only be `Some` if the widget was under the mouse during both the press
+    /// *and* release of `button`.
+    pub widget: Option<widget::Index>,
 }
 
 /// Holds all the relevant information about a scroll event
@@ -186,13 +193,15 @@ mod test {
             UiEvent::MouseClick(event::MouseClick {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
-                modifiers: NO_MODIFIER
+                modifiers: NO_MODIFIER,
+                widget: None,
             }),
-            UiEvent::MouseDrag(event::MouseDrag{
+            UiEvent::MouseDrag(event::MouseDrag {
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
                 modifiers: NO_MODIFIER,
+                widget: None,
             }),
             UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
             UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
@@ -212,13 +221,15 @@ mod test {
             UiEvent::MouseClick(event::MouseClick {
                 button: MouseButton::Left,
                 xy: [0.0, 0.0],
-                modifiers: NO_MODIFIER
+                modifiers: NO_MODIFIER,
+                widget: None,
             }),
             UiEvent::MouseDrag(event::MouseDrag {
                 button: MouseButton::Left,
                 start: [0.0, 0.0],
                 end: [0.0, 0.0],
                 modifiers: NO_MODIFIER,
+                widget: None,
             }),
             UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
             UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
@@ -246,7 +257,8 @@ mod test {
         let original = UiEvent::MouseClick(event::MouseClick {
             button: MouseButton::Middle,
             xy: [30.0, -80.0],
-            modifiers: keyboard::SHIFT
+            modifiers: keyboard::SHIFT,
+            widget: None,
         });
         let relative = original.relative_to([10.0, 20.0]);
 
@@ -266,6 +278,7 @@ mod test {
             end: [50.0, 1.0],
             button: MouseButton::Left,
             modifiers: keyboard::CTRL,
+            widget: None,
         });
 
         let relative = original.relative_to([-5.0, 5.0]);
