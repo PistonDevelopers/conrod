@@ -21,11 +21,9 @@
 pub mod state;
 pub mod widget;
 pub mod global;
-pub mod provider;
 
 pub use self::state::State;
-pub use self::global::{GlobalEventIterator, Global};
-pub use self::widget::{WidgetEventIterator, Widget};
-pub use self::provider::Provider;
+pub use self::global::Global;
+pub use self::widget::Widget;
 
 pub use backend::event::{Button, keyboard, Key, MouseButton};

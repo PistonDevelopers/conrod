@@ -10,10 +10,9 @@ use {
     Sizeable,
     Widget
 };
-use backend::event::Event;
 use backend::graphics::{Character, ImageSize};
-use event::{self, Input, Motion, UiEvent};
-use input::{self, Button, Key, MouseButton, Provider};
+use event::{self, Input, Motion};
+use input::{self, Button, Key, MouseButton};
 use input::keyboard::ModifierKey;
 use widget::{Index, self};
 use widget::button::Button as ButtonWidget;
@@ -31,12 +30,12 @@ fn left_click_mouse(ui: &mut Ui) {
 }
 
 fn release_mouse_button(button: MouseButton, ui: &mut Ui) {
-    let event = Event::Input(Input::Release(Button::Mouse(button)));
+    let event = Input::Release(Button::Mouse(button));
     ui.handle_event(event);
 }
 
 fn press_mouse_button(button: MouseButton, ui: &mut Ui) {
-    let event = Event::Input(Input::Press(Button::Mouse(button)));
+    let event = Input::Press(Button::Mouse(button));
     ui.handle_event(event);
 }
 
@@ -48,20 +47,20 @@ fn move_mouse_to_widget(widget_idx: Index, ui: &mut Ui) {
 }
 
 fn move_mouse_to_abs_coordinates(x: f64, y: f64, ui: &mut Ui) {
-    ui.handle_event(Event::Input(Input::Move(Motion::MouseCursor(x, y))));
+    ui.handle_event(Input::Move(Motion::MouseCursor(x, y)));
 }
 
 fn test_handling_basic_input_event(ui: &mut Ui, event: Input) {
-    ui.handle_event(Event::Input(event.clone()));
-    assert_event_was_pushed(ui, UiEvent::Raw(event));
+    ui.handle_event(event.clone());
+    assert_event_was_pushed(ui, event::Event::Raw(event));
 }
 
-fn assert_event_was_pushed(ui: &Ui, event: UiEvent) {
+fn assert_event_was_pushed(ui: &Ui, event: event::Event) {
     let found = ui.global_input.events().find(|evt| **evt == event);
     assert!(found.is_some(),
             format!("expected to find event: {:?} in: \nevents: {:?}",
                     event,
-                    ui.global_input.events().collect::<Vec<&UiEvent>>()));
+                    ui.global_input.events().collect::<Vec<&event::Event>>()));
 }
 
 fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
@@ -181,16 +180,16 @@ fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
     move_mouse_to_widget(button_idx, &mut ui);
     press_mouse_button(MouseButton::Left, &mut ui);
 
-    let expected_capture_event = UiEvent::WidgetCapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_capture_event);
+    let expected_capture_event = event::Ui::WidgetCapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_capture_event.into());
 
     // Now click somewhere on the background and widget should uncapture
     release_mouse_button(MouseButton::Left, &mut ui);
     move_mouse_to_abs_coordinates(1.0, 1.0, &mut ui);
     press_mouse_button(MouseButton::Left, &mut ui);
 
-    let expected_uncapture_event = UiEvent::WidgetUncapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_uncapture_event);
+    let expected_uncapture_event = event::Ui::WidgetUncapturesKeyboard(button_idx);
+    assert_event_was_pushed(&ui, expected_uncapture_event.into());
 }
 
 #[test]
@@ -215,6 +214,8 @@ fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
         y: 33.0,
         modifiers: ModifierKey::default()
     };
-    let actual_scroll = ui.global_input.scroll().expect("expected a scroll event");
-    assert_eq!(expected_scroll, actual_scroll);
+    let event = ui.global_input.events().next().expect("expected a scroll event");
+    if let event::Event::Ui(event::Ui::Scroll(_, scroll)) = *event {
+        assert_eq!(expected_scroll, scroll);
+    }
 }

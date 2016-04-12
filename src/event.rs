@@ -1,9 +1,9 @@
 //! Contains all the structs and enums to describe all of the input events that `Widget`s
 //! can handle.
 //!
-//! The core of this module is the `UiEvent` enum, which encapsulates all of those events.
+//! The core of this module is the `Event` enum, which encapsulates all of those events.
 
-use input::{keyboard, Button, MouseButton};
+use input::{keyboard, MouseButton};
 use position::Point;
 use vecmath::vec2_sub;
 use widget;
@@ -11,17 +11,27 @@ use widget;
 #[doc(inline)]
 pub use backend::event::{Input, Motion};
 
-/// Enum containing all the events that `Widget`s can listen for.
+
+/// Enum containing all the events that the `Ui` may provide.
 #[derive(Clone, PartialEq, Debug)]
-pub enum UiEvent {
-    /// Represents a raw `input::Input` event
+pub enum Event {
+    /// Represents a raw `input::Input` event.
     Raw(Input),
+    /// Events that have been interpreted from `backend::RawEvent`s by the `Ui`.
+    ///
+    /// Most events usually 
+    Ui(Ui)
+}
+
+/// Represents all events interpreted by the `Ui`.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Ui {
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
-    Click(Click),
+    Click(Option<widget::Index>, Click),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
-    Drag(Drag),
-    /// This is a generic scroll event. This is different from the `input::Movement::MouseScroll`
+    Drag(Option<widget::Index>, Drag),
+    /// This is a generic scroll event. This is different from the `input::Motion::MouseScroll`
     /// event in several aspects.
     ///
     /// For one, it does not necessarily have to get created by a mouse wheel, it could be
@@ -29,15 +39,47 @@ pub enum UiEvent {
     ///
     /// Secondly, it contains a field holding the `input::keyboard::ModifierKey` that was held
     /// while the scroll occured.
-    Scroll(Scroll),
-    /// Indicates that the given widget is starting to capture the mouse.
+    Scroll(Option<widget::Index>, Scroll),
+    /// Indicates that the given widget has captured the mouse.
     WidgetCapturesMouse(widget::Index),
-    /// Indicates that the given widget is losing mouse capture.
+    /// Indicates that the given widget has released the mouse from capturing.
     WidgetUncapturesMouse(widget::Index),
-    /// Indicates that the given widget is starting to capture the keyboard.
+    /// Indicates that the given widget has captured the keyboard.
     WidgetCapturesKeyboard(widget::Index),
-    /// Indicates that the given widget is losing keyboard capture.
+    /// Indicates that the given widget has released the keyboard from capturing.
     WidgetUncapturesKeyboard(widget::Index),
+}
+
+/// Events that apply to a specific widget.
+///
+/// Rather than delivering entire `event::Event`s to the widget (with a lot of redundant
+/// information), this `event::Widget` is used as a refined, widget-specific event.
+///
+/// All `Widget` event co-ordinates will be relative to the centre of the `Widget` to which they
+/// are delivered.
+#[derive(Clone, PartialEq, Debug)]
+pub enum Widget {
+    /// Raw `Input` events that occurred while the `Widget` was capturing the associated `Input`
+    /// source device.
+    ///
+    /// For example, if the widget was capturing the `Keyboard` while an `Input::Text` event
+    /// occurs, the widget will receive that event.
+    Raw(Input),
+    /// Represents a pointing device being pressed and subsequently released while over the same
+    /// location.
+    Click(Click),
+    /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
+    Drag(Drag),
+    /// Represents the amount of scroll that has been applied to this widget.
+    Scroll(Scroll),
+    /// The widget has captured the mouse.
+    CapturesMouse,
+    /// The widget has released the mouse from capturing.
+    UncapturesMouse,
+    /// The widget has captured the keyboard.
+    CapturesKeyboard,
+    /// Indicates that the given widget has released the keyboard from capturing.
+    UncapturesKeyboard,
 }
 
 /// Contains all the relevant information for a mouse drag.
@@ -45,15 +87,20 @@ pub enum UiEvent {
 pub struct Drag {
     /// Which mouse button was being held during the drag
     pub button: MouseButton,
-    /// The origin of the drag. This will always be the position of the mouse whenever the
-    /// button was first pressed
-    pub start: Point,
-    /// The end position of the mouse.
-    pub end: Point,
+    /// The point from which the current series of drag events began.
+    ///
+    /// This will be the position of the pointing device whenever the dragging press began.
+    pub origin: Point,
+    /// The point from which this drag event began.
+    pub from: Point,
+    /// The point at which this drag event ended.
+    pub to: Point,
+    /// The magnitude of the vector between `from` and `to`.
+    pub delta_xy: Point,
+    /// The magnitude of the vector between `origin` and `to`.
+    pub total_delta_xy: Point,
     /// Which modifier keys are being held during the mouse drag.
     pub modifiers: keyboard::ModifierKey,
-    /// The widget that was under the mouse when `button` was first pressed.
-    pub widget: Option<widget::Index>,
 }
 
 /// Contains all the relevant information for a mouse click.
@@ -65,11 +112,6 @@ pub struct Click {
     pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
     pub modifiers: keyboard::ModifierKey,
-    /// The widget that was clicked if any.
-    ///
-    /// Note that this is only be `Some` if the widget was under the mouse during both the press
-    /// *and* release of `button`.
-    pub widget: Option<widget::Index>,
 }
 
 /// Holds all the relevant information about a scroll event
@@ -93,226 +135,52 @@ impl Click {
     }
 }
 
+
 impl Drag {
     /// Returns a copy of the Drag relative to the given `position::Point`
     pub fn relative_to(&self, xy: Point) -> Drag {
         Drag{
-            start: vec2_sub(self.start, xy),
-            end: vec2_sub(self.end, xy),
+            origin: vec2_sub(self.origin, xy),
+            from: vec2_sub(self.from, xy),
+            to: vec2_sub(self.to, xy),
             ..*self
         }
     }
 }
 
-impl UiEvent {
 
-    /// Returns a copy of the UiEvent relative to the given `position::Point`
-    pub fn relative_to(self, xy: Point) -> Self {
-        use self::UiEvent::{Click, Drag, Raw};
-        match self {
-            Click(click) => Click(click.relative_to(xy)),
-            Drag(drag) => Drag(drag.relative_to(xy)),
-            Raw(Input::Move(Motion::MouseRelative(x, y))) =>
-                Raw(Input::Move(Motion::MouseRelative(x - xy[0], y - xy[1]))),
-            Raw(Input::Move(Motion::MouseCursor(x, y))) =>
-                Raw(Input::Move(Motion::MouseCursor(x - xy[0], y - xy[1]))),
-            other_event => other_event
-        }
+impl From<Ui> for Event {
+    fn from(ui: Ui) -> Self {
+        Event::Ui(ui)
     }
-
-    /// Returns `true` if this event is related to the mouse. Note that just because this method
-    /// returns true does not mean that the event necessarily came from the mouse.
-    /// A `UiEvent::Scroll` is considered to be both a mouse and a keyboard event.
-    pub fn is_mouse_event(&self) -> bool {
-        match *self {
-            UiEvent::Raw(Input::Press(Button::Mouse(_))) => true,
-            UiEvent::Raw(Input::Release(Button::Mouse(_))) => true,
-            UiEvent::Raw(Input::Move(Motion::MouseCursor(_, _))) => true,
-            UiEvent::Raw(Input::Move(Motion::MouseRelative(_, _))) => true,
-            UiEvent::Raw(Input::Move(Motion::MouseScroll(_, _))) => true,
-            UiEvent::Click(_) => true,
-            UiEvent::Drag(_) => true,
-            UiEvent::Scroll(_) => true,
-            _ => false
-        }
-    }
-
-    /// Returns `true` if this event is related to the keyboard. Note that just because this method
-    /// returns true does not mean that the event necessarily came from the keyboard.
-    /// A `UiEvent::Scroll` is considered to be both a mouse and a keyboard event.
-    pub fn is_keyboard_event(&self) -> bool {
-        match *self {
-            UiEvent::Raw(Input::Press(Button::Keyboard(_))) => true,
-            UiEvent::Raw(Input::Release(Button::Keyboard(_))) => true,
-            UiEvent::Raw(Input::Text(_)) => true,
-            UiEvent::Scroll(_) => true,
-            _ => false
-        }
-    }
-
 }
 
-impl From<Input> for UiEvent {
+impl From<Input> for Event {
     fn from(input: Input) -> Self {
-        UiEvent::Raw(input)
+        Event::Raw(input)
     }
 }
 
-#[cfg(test)]
-mod test {
-    use event::{self, Input, Motion, UiEvent};
-    use input::{Button, MouseButton};
-    use input::keyboard::{self, Key, NO_MODIFIER};
-
-    // We'll see if this approach causes problems later on down the road...
-    #[test]
-    fn scroll_event_shoulbe_be_both_a_mouse_and_keyboard_event() {
-        let scroll_event = UiEvent::Scroll(event::Scroll{
-            x: 0.0,
-            y: 0.0,
-            modifiers: NO_MODIFIER
-        });
-        assert!(scroll_event.is_mouse_event());
-        assert!(scroll_event.is_keyboard_event());
+impl From<Input> for Widget {
+    fn from(input: Input) -> Self {
+        Widget::Raw(input)
     }
+}
 
-    #[test]
-    fn is_keyboard_event_should_be_true_for_all_keyboard_events() {
-        let keyboard_events = vec![
-            UiEvent::Raw(Input::Press(Button::Keyboard(Key::L))),
-            UiEvent::Raw(Input::Release(Button::Keyboard(Key::L))),
-            UiEvent::Raw(Input::Text("wha?".to_string())),
-        ];
-        for event in keyboard_events {
-            assert!(event.is_keyboard_event(), format!("{:?} should be a keyboard event", event));
-        }
-
-        let non_keyboard_events = vec![
-            UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
-            UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::Click(event::Click {
-                button: MouseButton::Left,
-                xy: [0.0, 0.0],
-                modifiers: NO_MODIFIER,
-                widget: None,
-            }),
-            UiEvent::Drag(event::Drag {
-                button: MouseButton::Left,
-                start: [0.0, 0.0],
-                end: [0.0, 0.0],
-                modifiers: NO_MODIFIER,
-                widget: None,
-            }),
-            UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
-            UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
-            UiEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
-        ];
-
-        for event in non_keyboard_events {
-            assert!(!event.is_keyboard_event(), format!("{:?} should not be a keyboard event", event));
-        }
+impl From<Click> for Widget {
+    fn from(click: Click) -> Self {
+        Widget::Click(click)
     }
+}
 
-    #[test]
-    fn is_mouse_event_should_be_true_for_all_mouse_events() {
-        let mouse_events = vec![
-            UiEvent::Raw(Input::Press(Button::Mouse(MouseButton::Left))),
-            UiEvent::Raw(Input::Release(Button::Mouse(MouseButton::Left))),
-            UiEvent::Click(event::Click {
-                button: MouseButton::Left,
-                xy: [0.0, 0.0],
-                modifiers: NO_MODIFIER,
-                widget: None,
-            }),
-            UiEvent::Drag(event::Drag {
-                button: MouseButton::Left,
-                start: [0.0, 0.0],
-                end: [0.0, 0.0],
-                modifiers: NO_MODIFIER,
-                widget: None,
-            }),
-            UiEvent::Raw(Input::Move(Motion::MouseCursor(2.0, 3.0))),
-            UiEvent::Raw(Input::Move(Motion::MouseRelative(2.0, 3.0))),
-            UiEvent::Raw(Input::Move(Motion::MouseScroll(3.5, 6.5))),
-        ];
-        for event in mouse_events {
-            assert!(event.is_mouse_event(), format!("{:?}.is_mouse_event() == false", event));
-        }
-
-        let non_mouse_events = vec![
-            UiEvent::Raw(Input::Press(Button::Keyboard(Key::G))),
-            UiEvent::Raw(Input::Release(Button::Keyboard(Key::G))),
-            UiEvent::Raw(Input::Text("rust is brown".to_string())),
-            UiEvent::Raw(Input::Resize(0, 0)),
-            UiEvent::Raw(Input::Focus(true)),
-            UiEvent::Raw(Input::Cursor(true)),
-        ];
-        for event in non_mouse_events {
-            assert!(!event.is_mouse_event(), format!("{:?}.is_mouse_event() == true", event));
-        }
+impl From<Scroll> for Widget {
+    fn from(scroll: Scroll) -> Self {
+        Widget::Scroll(scroll)
     }
+}
 
-    #[test]
-    fn mouse_click_should_be_made_relative() {
-        let original = UiEvent::Click(event::Click {
-            button: MouseButton::Middle,
-            xy: [30.0, -80.0],
-            modifiers: keyboard::SHIFT,
-            widget: None,
-        });
-        let relative = original.relative_to([10.0, 20.0]);
-
-        if let UiEvent::Click(click) = relative {
-            assert_eq!([20.0, -100.0], click.xy);
-            assert_eq!(MouseButton::Middle, click.button);
-            assert_eq!(keyboard::SHIFT, click.modifiers);
-        } else {
-            panic!("expected a mouse click");
-        }
-    }
-
-    #[test]
-    fn mouse_drage_should_be_made_relative() {
-        let original = UiEvent::Drag(event::Drag {
-            start: [20.0, 5.0],
-            end: [50.0, 1.0],
-            button: MouseButton::Left,
-            modifiers: keyboard::CTRL,
-            widget: None,
-        });
-
-        let relative = original.relative_to([-5.0, 5.0]);
-        if let UiEvent::Drag(drag) = relative {
-            assert_eq!([25.0, 0.0], drag.start);
-            assert_eq!([55.0, -4.0], drag.end);
-            assert_eq!(MouseButton::Left, drag.button);
-            assert_eq!(keyboard::CTRL, drag.modifiers);
-        } else {
-            panic!("expected to get a drag event");
-        }
-    }
-
-    #[test]
-    fn mouse_cursor_should_be_made_relative() {
-        let original = UiEvent::Raw(Input::Move(Motion::MouseCursor(-44.0, 55.0)));
-        let relative = original.relative_to([4.0, 5.0]);
-        if let UiEvent::Raw(Input::Move(Motion::MouseCursor(x, y))) = relative {
-            assert_eq!(-48.0, x);
-            assert_eq!(50.0, y);
-        } else {
-            panic!("expected a mouse move event");
-        }
-    }
-
-    #[test]
-    fn mouse_relative_motion_should_be_made_relative() {
-        let original = UiEvent::Raw(Input::Move(Motion::MouseRelative(-2.0, -4.0)));
-        let relative = original.relative_to([3.0, 3.0]);
-        if let UiEvent::Raw(Input::Move(Motion::MouseRelative(x, y))) = relative {
-            assert_eq!(-5.0, x);
-            assert_eq!(-7.0, y);
-        } else {
-            panic!("expected a mouse relative motion event");
-        }
+impl From<Drag> for Widget {
+    fn from(drag: Drag) -> Self {
+        Widget::Drag(drag)
     }
 }

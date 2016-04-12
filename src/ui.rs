@@ -13,7 +13,6 @@ use std::marker::PhantomData;
 use theme::Theme;
 use widget::{self, Widget};
 use input;
-use event::UiEvent;
 
 
 /// Indicates whether or not the Mouse has been captured by a widget.
@@ -289,10 +288,10 @@ impl<B> Ui<B>
     /// This occurs within several stages:
     ///
     /// 1. Convert the given `event` to a `RawEvent` so that the `Ui` may use it.
-    /// 2. Interpret the `RawEvent` for higher-level `UiEvent`s such as `DoubleClick`,
+    /// 2. Interpret the `RawEvent` for higher-level `event::Ui`s such as `DoubleClick`,
     ///    `WidgetCapturesKeyboard`, etc.
     /// 3. Update the `Ui`'s `global_input` `State` accordingly, depending on the `RawEvent`.
-    /// 4. Store newly produced `UiEvent`s within the `global_input` so that they may be filtered
+    /// 4. Store newly produced `event::Ui`s within the `global_input` so that they may be filtered
     ///    and fed to `Widget`s next time `Ui::set_widget` is called.
     ///
     /// This method *drives* the `Ui` forward, and is what allows for using conrod's `Ui` with any
@@ -303,6 +302,7 @@ impl<B> Ui<B>
     pub fn handle_event<E>(&mut self, event: E)
         where E: ToRawEvent,
     {
+        use event;
         use backend::event::{Input, Motion, Key, ModifierKey, RawEvent};
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
@@ -333,7 +333,7 @@ impl<B> Ui<B>
                 // Check to see if we need to uncapture a widget.
                 if let Some(idx) = ui.global_input.current.widget_capturing_mouse {
                     if widget_under_mouse != Some(idx) {
-                        let event = UiEvent::WidgetUncapturesMouse(idx);
+                        let event = event::Ui::WidgetUncapturesMouse(idx).into();
                         ui.global_input.push_event(event);
                         ui.global_input.current.widget_capturing_mouse = None;
                     }
@@ -342,7 +342,7 @@ impl<B> Ui<B>
                 // Check to see if there is a new widget capturing the mouse.
                 if ui.global_input.current.widget_capturing_mouse.is_none() {
                     if let Some(idx) = widget_under_mouse {
-                        let event = UiEvent::WidgetCapturesMouse(idx);
+                        let event = event::Ui::WidgetCapturesMouse(idx).into();
                         ui.global_input.push_event(event);
                         ui.global_input.current.widget_capturing_mouse = Some(idx);
                     }
@@ -385,12 +385,12 @@ impl<B> Ui<B>
 
             // Here we handle all user input given to conrod.
             //
-            // Not only do we store the `Input` event as a `UiEvent::Raw`, we also use them to
+            // Not only do we store the `Input` event as a `Event::Raw`, we also use them to
             // interpret higher level events such as `Click` or `Drag`.
             //
             // Finally, we also ensure that the `current_state` is up-to-date.
             backend::event::Event::Input(input_event) => {
-                use event::{self, UiEvent};
+                use event;
                 use input::Button;
                 use input::state::mouse::Button as MouseButton;
 
@@ -408,7 +408,7 @@ impl<B> Ui<B>
                                 // Check to see if we need to uncapture the keyboard.
                                 if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
                                     if Some(idx) != self.global_input.current.widget_under_mouse {
-                                        let event = UiEvent::WidgetUncapturesKeyboard(idx);
+                                        let event = event::Ui::WidgetUncapturesKeyboard(idx).into();
                                         self.global_input.push_event(event);
                                         self.global_input.current.widget_capturing_keyboard = None;
                                     }
@@ -416,7 +416,7 @@ impl<B> Ui<B>
 
                                 // Check to see if we need to capture the keyboard.
                                 if let Some(idx) = self.global_input.current.widget_under_mouse {
-                                    let event = UiEvent::WidgetCapturesKeyboard(idx);
+                                    let event = event::Ui::WidgetCapturesKeyboard(idx).into();
                                     self.global_input.push_event(event);
                                     self.global_input.current.widget_capturing_keyboard = Some(idx);
                                 }
@@ -462,12 +462,11 @@ impl<B> Ui<B>
                                     .and_then(|released| widget.and_then(|pressed| {
                                         if pressed == released { Some(released) } else { None }
                                     }));
-                                let event = UiEvent::Click(event::Click {
+                                let event = event::Ui::Click(clicked_widget, event::Click {
                                     button: mouse_button,
                                     xy: self.global_input.current.mouse.xy,
                                     modifiers: self.global_input.current.modifiers,
-                                    widget: clicked_widget,
-                                });
+                                }).into();
                                 self.global_input.push_event(event);
                             }
 
@@ -476,7 +475,7 @@ impl<B> Ui<B>
                             if let MouseButton::Left = mouse_button {
                                 if let Some(idx) = self.global_input.current.widget_capturing_mouse {
                                     if Some(idx) != self.global_input.current.widget_under_mouse {
-                                        let event = UiEvent::WidgetUncapturesMouse(idx);
+                                        let event = event::Ui::WidgetUncapturesMouse(idx).into();
                                         self.global_input.push_event(event);
                                         self.global_input.current.widget_capturing_mouse = None;
                                     }
@@ -511,39 +510,50 @@ impl<B> Ui<B>
                     Input::Move(Motion::MouseCursor(x, y)) => {
 
                         // Check for drag events.
-                        let last_xy = self.global_input.current.mouse.xy;
-                        let delta_xy = [x - last_xy[0], y - last_xy[1]];
+                        let last_mouse_xy = self.global_input.current.mouse.xy;
+                        let mouse_xy = [x, y];
+                        let delta_xy = ::vecmath::vec2_sub(mouse_xy, last_mouse_xy);
                         let distance = (delta_xy[0] + delta_xy[1]).abs().sqrt();
                         if distance > self.theme.mouse_drag_threshold {
                             // For each button that is down, trigger a drag event.
                             let buttons = self.global_input.current.mouse.buttons.clone();
                             for (btn, btn_xy, widget) in buttons.pressed() {
-                                let event = UiEvent::Drag(event::Drag {
+                                let total_delta_xy = ::vecmath::vec2_sub(mouse_xy, btn_xy);
+                                let event = event::Ui::Drag(widget, event::Drag {
                                     button: btn,
-                                    start: btn_xy,
-                                    end: [x, y],
+                                    origin: btn_xy,
+                                    from: last_mouse_xy,
+                                    to: mouse_xy,
+                                    delta_xy: delta_xy,
+                                    total_delta_xy: total_delta_xy,
                                     modifiers: self.global_input.current.modifiers,
-                                    widget: widget,
-                                });
+                                }).into();
                                 self.global_input.push_event(event);
                             }
                         }
 
                         // Update the position of the mouse within the global_input's input::State.
-                        self.global_input.current.mouse.xy = [x, y];
+                        self.global_input.current.mouse.xy = mouse_xy;
 
                         track_widget_under_mouse_and_update_capturing(self);
                     },
 
                     // The mouse was scrolled.
-                    Input::Move(Motion::MouseScroll(x, y)) => {
+                    Input::Move(Motion::MouseScroll(mut x, mut y)) => {
 
-                        let event = UiEvent::Scroll(event::Scroll {
-                            x: x,
-                            y: y,
-                            modifiers: self.global_input.current.modifiers,
-                        });
-                        self.global_input.push_event(event);
+                        // TODO: Scroll each widget here:
+                        //
+                        // 1. Loop through scrollable widgets that are under the mouse from the top
+                        //    down.
+                        // 2. Drain the `x` and `y` scroll until both are `0.0` or there are no
+                        //    more wigets.
+
+                        // let event = event::Ui::Scroll(event::Scroll {
+                        //     x: x,
+                        //     y: y,
+                        //     modifiers: self.global_input.current.modifiers,
+                        // }).into();
+                        // self.global_input.push_event(event);
 
                         track_widget_under_mouse_and_update_capturing(self);
                     },

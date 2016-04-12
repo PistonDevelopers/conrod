@@ -2,10 +2,8 @@
 //! The core of this module is the `Global` struct. It is responsible for aggregating
 //! and interpreting raw input events into high-level semantic events.
 
-use event::UiEvent;
+use event;
 use input;
-use position::Point;
-use widget::Index;
 
 /// Global input event handler that also implements `input::Provider`. The `Ui` passes all events
 /// to it's `Global` instance, which aggregates and interprets the events to provide so-called
@@ -17,33 +15,14 @@ pub struct Global {
     /// this update cycle
     pub current: input::State,
     /// The events that have occurred between two consecutive updates.
-    events: Vec<UiEvent>,
+    events: Vec<event::Event>,
 }
 
-/// Iterator over global `UiEvent`s. Unlike the `WidgetInputEventIterator`, this will
-/// never filter out any events, and all coordinates will be reative to the (0,0) origin
-/// of the window.
-pub type GlobalEventIterator<'a> = ::std::slice::Iter<'a, UiEvent>;
-
-impl<'a> input::Provider<'a> for Global {
-    type Events = GlobalEventIterator<'a>;
-
-    fn events(&'a self) -> Self::Events {
-        self.events.iter()
-    }
-
-    fn current(&'a self) -> &'a input::State {
-        &self.current
-    }
-
-    fn mouse_button_down(&self, button: input::MouseButton) -> Option<Point> {
-        // TODO: Review this as it changes behaviour...
-        self.current().mouse.buttons[button].xy_if_down()
-        //  self.current().mouse.buttons.get(button).map(|_| {
-        //      self.mouse_position()
-        //  })
-    }
-}
+/// Iterator over global `event::Event`s.
+///
+/// Unlike the `input::widget::Events`, this will never filter out any events, and all coordinates
+/// will be relative to the middle of the window.
+pub type Events<'a> = ::std::slice::Iter<'a, event::Event>;
 
 impl Global {
 
@@ -56,8 +35,14 @@ impl Global {
         }
     }
 
+    /// Returns an iterator yielding all events that have occurred since the last time
+    /// `Ui::set_widgets` was called.
+    pub fn events(&self) -> Events {
+        self.events.iter()
+    }
+
     /// Add the new event to the stack.
-    pub fn push_event(&mut self, event: UiEvent) {
+    pub fn push_event(&mut self, event: event::Event) {
         self.events.push(event);
     }
 
@@ -66,26 +51,6 @@ impl Global {
     pub fn clear_events_and_update_start_state(&mut self) {
         self.events.clear();
         self.start = self.current.clone();
-    }
-
-    /// Returns the most up to date position of the mouse
-    pub fn mouse_position(&self) -> Point {
-        self.current.mouse.xy
-    }
-
-    /// Returns the input state as it was after the last update
-    pub fn starting_state(&self) -> &input::State {
-        &self.start
-    }
-
-    /// Returns the most up to date info on which widget is capturing the mouse
-    pub fn currently_capturing_mouse(&self) -> Option<Index> {
-        self.current.widget_capturing_mouse
-    }
-
-    /// Returns the most up to date info on which widget is capturing the keyboard
-    pub fn currently_capturing_keyboard(&self) -> Option<Index> {
-        self.current.widget_capturing_keyboard
     }
 
 }

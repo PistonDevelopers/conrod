@@ -3,24 +3,90 @@
 //! The core of this module is the `Widget::for_widget` method, which creates an
 //! `InputProvider` that provides input events for a specific widget.
 
-use widget::Index;
-use event::{self, UiEvent};
-use position::{Point, Rect};
-use input::{self, MouseButton, Provider};
+use {Point, Rect};
+use widget;
+use event;
+use input;
 
-/// Holds any events meant to be given to a `Widget`.
+
+/// Provides only events and input state that are relevant to a specific widget.
 ///
-/// This is what widgets will interface with when handling events in their `update` method.
+/// This type can be produced by calling the `UiCell::input` method with the target widget's
+/// `widget::Index`. This is particularly useful
 ///
-/// All events returned from methods on `Widget` will be relative to the widget's own (0,0)
-/// origin. Additionally, `Widget` will not provide mouse or keyboard events that do not
-/// directly pertain to the widget.
+/// Unlike `input::Global`, `input::Widget` methods are tailored to the widget for which they are
+/// produced.
+#[derive(Clone)]
 pub struct Widget<'a> {
-    global_input: &'a input::Global,
-    current: input::State,
-    widget_area: Rect,
-    widget_idx: Index,
+    global: &'a input::Global,
+    rect: Rect,
+    idx: widget::Index,
 }
+
+/// A view of the `input::state::Mouse` that is specific to a single widget.
+#[derive(Copy, Clone, Debug)]
+pub struct Mouse<'a> {
+    rect: Rect,
+    mouse_abs_xy: Point,
+    /// The state of each `MouseButton`.
+    pub buttons: &'a input::state::mouse::ButtonMap,
+}
+
+/// An iterator yielding all events that are relevant to a specific widget.
+///
+/// All events provided by this Iterator will be filtered in accordance with input capturing. For
+/// example: If the widget does not capture the mouse, it *will not* receive any mouse-related
+/// events. If the widget captures the keyboard it *will* receive all keyboard events.
+///
+/// All mouse events will have their coordinates relative to the middle of the widget's `Rect`.
+#[derive(Clone)]
+pub struct Events<'a> {
+    global_events: input::global::Events<'a>,
+    capturing_keyboard: Option<widget::Index>,
+    capturing_mouse: Option<widget::Index>,
+    rect: Rect,
+    idx: widget::Index,
+}
+
+/// An `Iterator` yielding all mouse clicks occuring within the given sequence of `widget::Event`s.
+#[derive(Clone)]
+pub struct Clicks<'a> {
+    events: Events<'a>,
+}
+
+/// An `Iterator` yielding all mouse `button` clicks occuring within the given sequence of
+/// `widget::Click`s.
+#[derive(Clone)]
+pub struct ButtonClicks<'a> {
+    clicks: Clicks<'a>,
+    button: input::MouseButton,
+}
+
+/// An iterator that yields all `event::Drag` events yielded by the `Events` iterator.
+///
+/// Only events that occurred while the widget was capturing the device that did the dragging will
+/// be yielded.
+#[derive(Clone)]
+pub struct Drags<'a> {
+    events: Events<'a>,
+}
+
+/// An `Iterator` yielding all mouse `button` drags occuring within the given sequence of
+/// `widget::Drag`s.
+#[derive(Clone)]
+pub struct ButtonDrags<'a> {
+    drags: Drags<'a>,
+    button: input::MouseButton,
+}
+
+/// An iterator that yields all `Input::Text` events yielded by the `Events` iterator.
+///
+/// Only events that occurred while the widget was capturing the keyboard will be yielded.
+#[derive(Clone)]
+pub struct Texts<'a> {
+    events: Events<'a>,
+}
+
 
 impl<'a> Widget<'a> {
 
@@ -28,145 +94,305 @@ impl<'a> Widget<'a> {
     ///
     /// Filters out only the events that directly pertain to the widget.
     ///
-    /// All events will also be made relative to the widget's own (0,0) origin.
-    pub fn for_widget(widget: Index, widget_area: Rect, global_input: &'a input::Global) -> Self {
+    /// All events will also be made relative to the widget's own (0, 0) origin.
+    pub fn for_widget(idx: widget::Index, rect: Rect, global: &'a input::Global) -> Self {
         Widget {
-            global_input: &global_input,
-            widget_area: widget_area,
-            widget_idx: widget,
-            current: global_input.current.relative_to(widget_area.xy())
+            global: global,
+            rect: rect,
+            idx: idx,
         }
     }
 
-    /// Returns true if the mouse is currently over the widget, otherwise false
-    pub fn mouse_is_over_widget(&self) -> bool {
-        self.point_is_over(self.mouse_position())
+    /// If the widget is currently capturing the mouse, this returns the state of the mouse.
+    ///
+    /// Returns `None` if the widget is not capturing the mouse.
+    pub fn mouse(&self) -> Option<Mouse> {
+        if self.global.current.widget_capturing_mouse == Some(self.idx) {
+            let mouse = Mouse {
+                buttons: &self.global.current.mouse.buttons,
+                mouse_abs_xy: self.global.current.mouse.xy,
+                rect: self.rect,
+            };
+            return Some(mouse);
+        }
+        None
     }
 
-    /// If the mouse is over the widget and no other widget is capturing the mouse, then
-    /// this will return the position of the mouse relative to the widget. Otherwise, it
-    /// will return `None`
-    pub fn maybe_mouse_position(&self) -> Option<Point> {
-        if self.mouse_is_over_widget() {
-            Some(self.mouse_position())
-        } else {
-            None
+    /// Produces an iterator yielding all events that are relevant to a specific widget.
+    ///
+    /// All events provided by this Iterator will be filtered in accordance with input capturing. For
+    /// example: If the widget does not capture the mouse, it *will not* receive any mouse-related
+    /// events. If the widget captures the keyboard it *will* receive all keyboard events.
+    ///
+    /// All mouse events will have their coordinates relative to the middle of the widget's `Rect`.
+    pub fn events(&self) -> Events {
+        Events {
+            global_events: self.global.events(),
+            capturing_keyboard: self.global.start.widget_capturing_keyboard,
+            capturing_mouse: self.global.start.widget_capturing_mouse,
+            rect: self.rect,
+            idx: self.idx,
         }
     }
 
-    fn point_is_over(&self, point: Point) -> bool {
-        self.widget_relative_rect().is_over(point)
+    /// Filters all events yielded by `Self::events` for all `event::Click`s.
+    ///
+    /// A _click_ is determined to have occured if a pointing device button was both pressed and
+    /// released over the widget.
+    pub fn clicks(&self) -> Clicks {
+        Clicks { events: self.events() }
     }
 
-    fn widget_relative_rect(&self) -> Rect {
-        let widget_dim = self.widget_area.dim();
-        Rect::from_xy_dim([0.0, 0.0], widget_dim)
+    /// Produces an iterator that yields all `event::Drag` events yielded by the `Events` iterator.
+    ///
+    /// Only events that occurred while the widget was capturing the device that did the dragging
+    /// will be yielded.
+    pub fn drags(&self) -> Drags {
+        Drags { events: self.events() }
+    }
+
+    /// Produces an iterator that yields all `Input::Text` events that have occurred as `&str`s
+    /// since the last time `Ui::set_widgets` was called.
+    ///
+    /// Only events that occurred while the widget was capturing the keyboard will be yielded.
+    pub fn text(&self) -> Texts {
+        Texts { events: self.events() }
     }
 
 }
 
-/// Alows iterating over events for a specific widget. All events provided by this Iterator
-/// will be filtered, so that input intended for other widgets is excluded. In addition,
-/// all mouse events will have their coordinates relative to the widget's own (0,0) origin.
-#[derive(Clone)]
-pub struct WidgetEventIterator<'a> {
-    global_event_iter: input::GlobalEventIterator<'a>,
-    current: input::State,
-    widget_area: Rect,
-    widget_idx: Index,
-}
+impl<'a> Mouse<'a> {
+    /// The absolute position of the mouse within the window.
+    pub fn abs_xy(&self) -> Point {
+        self.mouse_abs_xy
+    }
 
-impl<'a> Iterator for WidgetEventIterator<'a> {
-    type Item = &'a UiEvent;
-    fn next(&mut self) -> Option<&'a UiEvent> {
-        self.global_event_iter.next().and_then(|event| {
-            if should_provide_event(self.widget_idx, self.widget_area, event, &self.current) {
-                Some(event)
-            } else {
-                self.next()
-            }
-        })
+    /// The position of the mouse relative to the middle of the widget's `Rect`.
+    pub fn rel_xy(&self) -> Point {
+        ::vecmath::vec2_sub(self.mouse_abs_xy, self.rect.xy())
+    }
+
+    /// Is the mouse currently over the widget.
+    pub fn is_over(&self) -> bool {
+        self.rect.is_over(self.mouse_abs_xy)
     }
 }
 
+impl<'a> Clicks<'a> {
 
-impl<'a> input::Provider<'a> for Widget<'a> {
-    type Events = WidgetEventIterator<'a>;
-
-    fn events(&'a self) -> Self::Events {
-        WidgetEventIterator{
-            global_event_iter: self.global_input.events(),
-            current: self.global_input.start.relative_to(self.widget_area.xy()),
-            widget_area: self.widget_area,
-            widget_idx: self.widget_idx,
+    /// Yield only the `Click`s that occurred from the given button.
+    pub fn button(self, button: input::MouseButton) -> ButtonClicks<'a> {
+        ButtonClicks {
+            clicks: self,
+            button: button,
         }
     }
 
-    fn current(&'a self) -> &'a input::State {
-        &self.current
+    /// Yield only left mouse button `Click`s.
+    pub fn left(self) -> ButtonClicks<'a> {
+        self.button(input::MouseButton::Left)
     }
 
-    fn mouse_click(&'a self, button: MouseButton) -> Option<event::Click> {
-        self.events().filter_map(|event| {
+    /// Yields only middle mouse button `Click`s.
+    pub fn middle(self) -> ButtonClicks<'a> {
+        self.button(input::MouseButton::Middle)
+    }
+
+    /// Yield only right mouse button `Click`s.
+    pub fn right(self) -> ButtonClicks<'a> {
+        self.button(input::MouseButton::Right)
+    }
+
+}
+
+impl<'a> Drags<'a> {
+
+    /// Yield only the `Drag`s that occurred from the given button.
+    pub fn button(self, button: input::MouseButton) -> ButtonDrags<'a> {
+        ButtonDrags {
+            drags: self,
+            button: button,
+        }
+    }
+
+    /// Yield only left mouse button `Drag`s.
+    pub fn left(self) -> ButtonDrags<'a> {
+        self.button(input::MouseButton::Left)
+    }
+    
+    /// Yields only middle mouse button `Drag`s.
+    pub fn middle(self) -> ButtonDrags<'a> {
+        self.button(input::MouseButton::Middle)
+    }
+
+    /// Yield only right mouse button `Drag`s.
+    pub fn right(self) -> ButtonDrags<'a> {
+        self.button(input::MouseButton::Right)
+    }
+
+}
+
+
+impl<'a> Iterator for Events<'a> {
+    type Item = event::Widget;
+
+    fn next(&mut self) -> Option<event::Widget> {
+        use event::{Input, Motion};
+        use input::Button;
+        let widget_xy = self.rect.xy();
+
+        // Loop through all events in the `global_events` until we find one associated with our
+        // widget that we can return.
+        while let Some(event) = self.global_events.next() {
+            let is_capturing_mouse = self.capturing_mouse == Some(self.idx);
+            let is_capturing_keyboard = self.capturing_keyboard == Some(self.idx);
+
             match *event {
-                UiEvent::Click(click) if click.button == button => {
-                    Some(click.relative_to(self.widget_area.xy()))
+
+                // Raw input events.
+                event::Event::Raw(ref input) => match *input {
+
+                    Input::Move(ref motion) => match *motion {
+                        Motion::MouseCursor(x, y) if is_capturing_mouse => {
+                            let rel = ::vecmath::vec2_sub([x, y], widget_xy);
+                            return Some(Input::Move(Motion::MouseCursor(rel[0], rel[1])).into())
+                        },
+                        Motion::MouseRelative(_, _) |
+                        Motion::MouseScroll(_, _) if is_capturing_mouse =>
+                            return Some(input.clone().into()),
+                        _ => (),
+                    },
+
+                    Input::Text(_) if is_capturing_keyboard =>
+                        return Some(input.clone().into()),
+
+                    Input::Press(Button::Keyboard(_)) |
+                    Input::Release(Button::Keyboard(_)) if is_capturing_keyboard =>
+                        return Some(input.clone().into()),
+
+                    Input::Press(Button::Mouse(_)) |
+                    Input::Release(Button::Mouse(_)) if is_capturing_mouse =>
+                        return Some(input.clone().into()),
+
+                    Input::Cursor(_) if is_capturing_mouse =>
+                        return Some(input.clone().into()),
+
+                    Input::Resize(_, _) | Input::Focus(_) =>
+                        return Some(input.clone().into()),
+
+                    _ => (),
                 },
-                _ => None
-            }
-        }).next()
-    }
 
-    fn mouse_drag(&'a self, button: MouseButton) -> Option<event::Drag> {
-        self.events().filter_map(|evt| {
-            match *evt {
-                UiEvent::Drag(drag_evt) if drag_evt.button == button => {
-                    Some(drag_evt.relative_to(self.widget_area.xy()))
+                // Interpreted events.
+                event::Event::Ui(ref ui_event) => match *ui_event {
+
+                    // Mouse capturing.
+                    event::Ui::WidgetCapturesMouse(idx) => {
+                        self.capturing_mouse = Some(idx);
+                        if idx == self.idx {
+                            return Some(event::Widget::CapturesMouse);
+                        }
+                    },
+                    event::Ui::WidgetUncapturesMouse(idx) => {
+                        if Some(idx) == self.capturing_mouse {
+                            self.capturing_mouse = None;
+                        }
+                        if idx == self.idx {
+                            return Some(event::Widget::UncapturesMouse);
+                        }
+                    },
+
+                    // Keyboard capturing.
+                    event::Ui::WidgetCapturesKeyboard(idx) => {
+                        self.capturing_keyboard = Some(idx);
+                        if idx == self.idx {
+                            return Some(event::Widget::CapturesKeyboard);
+                        }
+                    },
+                    event::Ui::WidgetUncapturesKeyboard(idx) => {
+                        if Some(idx) == self.capturing_keyboard {
+                            self.capturing_keyboard = None;
+                        }
+                        if idx == self.idx {
+                            return Some(event::Widget::UncapturesKeyboard);
+                        }
+                    },
+
+                    event::Ui::Click(idx, ref click) if idx == Some(self.idx) =>
+                        return Some(click.clone().into()),
+
+                    event::Ui::Drag(idx, ref drag) if idx == Some(self.idx) =>
+                        return Some(drag.clone().into()),
+
+                    event::Ui::Scroll(idx, ref scroll) if idx == Some(self.idx) =>
+                        return Some(scroll.clone().into()),
+
+                    _ => (),
                 },
-                _ => None
             }
-        }).last()
-    }
+        }
 
-    fn mouse_button_down(&self, button: MouseButton) -> Option<Point> {
-        let current = self.current();
-        let self_is_capturing = || Some(self.widget_idx) == current.widget_capturing_mouse;
-        current.mouse.buttons[button].xy_if_down()
-            .and_then(|xy| if self_is_capturing() { Some(xy) } else { None })
-    }
-
-}
-
-fn should_provide_event(widget: Index,
-                        widget_area: Rect,
-                        event: &UiEvent,
-                        current: &input::State) -> bool {
-    let is_keyboard = event.is_keyboard_event();
-    let is_mouse = event.is_mouse_event();
-
-    (is_keyboard && current.widget_capturing_keyboard == Some(widget))
-            || (is_mouse && should_provide_mouse_event(widget, widget_area, event, current))
-            || (!is_keyboard && !is_mouse)
-}
-
-fn should_provide_mouse_event(widget: Index,
-                            widget_area: Rect,
-                            event: &UiEvent,
-                            current: &input::State) -> bool {
-    let capturing_mouse = current.widget_capturing_mouse;
-    match capturing_mouse {
-        Some(idx) if idx == widget => true,
-        None => mouse_event_is_over_widget(widget_area, event, current),
-        _ => false
+        None
     }
 }
 
-fn mouse_event_is_over_widget(widget_area: Rect, event: &UiEvent, current: &input::State) -> bool {
-    match *event {
-        UiEvent::Click(click) => widget_area.is_over(click.xy),
-        UiEvent::Drag(drag) => {
-            widget_area.is_over(drag.start) || widget_area.is_over(drag.end)
-        },
-        _ => widget_area.is_over(current.mouse.xy)
+
+impl<'a> Iterator for Clicks<'a> {
+    type Item = event::Click;
+    fn next(&mut self) -> Option<event::Click> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Click(click) = event {
+                return Some(click);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for ButtonClicks<'a> {
+    type Item = event::Click;
+    fn next(&mut self) -> Option<event::Click> {
+        while let Some(click) = self.clicks.next() {
+            if self.button == click.button {
+                return Some(click);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Drags<'a> {
+    type Item = event::Drag;
+    fn next(&mut self) -> Option<event::Drag> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Drag(drag) = event {
+                return Some(drag);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for ButtonDrags<'a> {
+    type Item = event::Drag;
+    fn next(&mut self) -> Option<event::Drag> {
+        while let Some(drag) = self.drags.next() {
+            if self.button == drag.button {
+                return Some(drag);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Texts<'a> {
+    type Item = String;
+    fn next(&mut self) -> Option<String> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Raw(event::Input::Text(string)) = event {
+                return Some(string);
+            }
+        }
+        None
     }
 }
