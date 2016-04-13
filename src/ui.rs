@@ -321,9 +321,9 @@ impl<B> Ui<B>
         // Note: This function expects that `ui.global_input.current.mouse.xy` is up-to-date.
         fn track_widget_under_mouse_and_update_capturing<B: Backend>(ui: &mut Ui<B>) {
             ui.global_input.current.widget_under_mouse =
-                graph::algo::pick_widget(&ui.widget_graph,
-                                         &ui.depth_order.indices,
-                                         ui.global_input.current.mouse.xy);
+                graph::algo::pick_widgets(&ui.depth_order.indices,
+                                          ui.global_input.current.mouse.xy)
+                                          .next(&ui.widget_graph);
 
             // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
             // under mouse.
@@ -532,6 +532,9 @@ impl<B> Ui<B>
                             }
                         }
 
+                        // TODO: Check for dragging of the scrollbar, and whether or not a
+                        // `event::Scroll` needs to be created.
+
                         // Update the position of the mouse within the global_input's input::State.
                         self.global_input.current.mouse.xy = mouse_xy;
 
@@ -547,6 +550,27 @@ impl<B> Ui<B>
                         //    down.
                         // 2. Drain the `x` and `y` scroll until both are `0.0` or there are no
                         //    more wigets.
+
+                        // let mut scrollable_widgets = {
+                        //     let depth_order = &self.depth_order.indices;
+                        //     let mouse_xy = self.global_input.current.mouse.xy;
+                        //     graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
+                        // };
+
+                        // while let Some(idx) = scrollable_widgets.next(&self.widget_graph) {
+                        //     if let Some(widget) = self.widget_graph.widget_mut(idx) {
+
+                        //         if let Some(ref mut scroll) = widget.maybe_x_scroll_state {
+                        //             let target_offset = scroll.offset + x;
+                        //             let new_offset = scroll.offset_bounds.clamp_value(target_scroll_x);
+                        //             x = target_offset - new_offset;
+                        //             scroll.offset = new_offset;
+                        //         }
+
+                        //         if let Some(ref mut scroll) = widget.maybe_y_scroll_state {
+                        //             let target_offset = scroll.offset + y;
+                        //             let new_offset = scroll.offset_bounds.clamp_value(tar
+                        //         }
 
                         // let event = event::Ui::Scroll(event::Scroll {
                         //     x: x,
@@ -698,10 +722,11 @@ impl<B> Ui<B>
         }
 
         self.maybe_widget_under_mouse =
-            graph::algo::pick_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
+            graph::algo::pick_widgets(&self.depth_order.indices, self.mouse.xy)
+                .next(&self.widget_graph);
         self.maybe_top_scrollable_widget_under_mouse =
-            graph::algo::pick_scrollable_widget(&self.widget_graph, &self.depth_order.indices, self.mouse.xy);
-
+            graph::algo::pick_scrollable_widgets(&self.depth_order.indices, self.mouse.xy)
+                .next(&self.widget_graph);
 
         // Move the previous `updated_widgets` to `prev_updated_widgets` and clear
         // `updated_widgets` so that we're ready to store the newly updated widgets.
