@@ -149,7 +149,7 @@ impl UiEvent {
 #[cfg(test)]
 mod test {
     use super::*;
-    use input::{Input, MouseButton, Motion, Button, JoystickAxisArgs};
+    use input::{Input, MouseButton, Motion, Button, ControllerAxisArgs};
     use input::keyboard::{self, Key, NO_MODIFIER};
 
     // We'll see if this approach causes problems later on down the road...
@@ -228,7 +228,7 @@ mod test {
         let non_mouse_events = vec![
             UiEvent::Raw(Input::Press(Button::Keyboard(Key::G))),
             UiEvent::Raw(Input::Release(Button::Keyboard(Key::G))),
-            UiEvent::Raw(Input::Move(Motion::JoystickAxis(JoystickAxisArgs{
+            UiEvent::Raw(Input::Move(Motion::ControllerAxis(ControllerAxisArgs{
                 id: 0,
                 axis: 0,
                 position: 0f64
