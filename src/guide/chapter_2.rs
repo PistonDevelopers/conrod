@@ -66,7 +66,7 @@ encountered your problem.
 Otherwise, you're now ready to use conrod!
 
 
-
+[rust-lang]:                https://www.rust-lang.org/                          "The Rust Homepage"
 [The Official Rust Book]:   https://doc.rust-lang.org/book/                     "The Official Rust Book"
 [rust getting started]:     https://doc.rust-lang.org/book/getting-started.html "Getting Started with Rust"
 [issue tracker]:            https://github.com/PistonDevelopers/conrod/issues   "Conrod issue tracker"
