@@ -18,8 +18,7 @@
     - [The Builder Pattern][1.6]
 2. [**Getting Started**][2]
     - [Installing Rust and Cargo][2.1]
-    - [Installing FreeType][2.2]
-    - [Running the Conrod Examples][2.3]
+    - [Running the Conrod Examples][2.2]
 3. **Let's Create a GUI**
     - Setup a Basic Window (using piston_window)
     - Conrod Setup
@@ -56,8 +55,7 @@
 [1.6]:      ./chapter_1/index.html#the-builder-pattern
 [2]:        ./chapter_2/index.html
 [2.1]:      ./chapter_2/index.html#installing-rust-and-cargo
-[2.2]:      ./chapter_2/index.html#installing-freetype
-[2.3]:      ./chapter_2/index.html#running-the-conrod-examples
+[2.2]:      ./chapter_2/index.html#running-the-conrod-examples
 
 */
 

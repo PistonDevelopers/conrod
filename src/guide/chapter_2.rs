@@ -27,17 +27,6 @@ with more details on installing Rust, which may be useful in the case that you r
 with the above steps.
 
 
-## Installing Freetype
-
-Unfortunately there aren't many mature options for pure-Rust font rendering at the moment (*if you
-know of any, please let us know with a github issue or PR!*), so Conrod uses a set of bindings to
-the FreeType library for now (called [freetype-rs]).
-
-This means that you'll need to have the FreeType2 development libraries installed on your system.
-Here is the [FreeType download page], and [here are some extra tips for Windows
-users][freetype-sys].
-
-
 ## Running the Conrod Examples
 
 We can test that everything is working by cloning the github repository and running the examples.
@@ -78,10 +67,6 @@ Otherwise, you're now ready to use conrod!
 
 
 
-[freetype-rs]:              https://github.com/PistonDevelopers/freetype-rs     "freetype-rs"
-[freetype-sys]:             https://github.com/PistonDevelopers/freetype-sys    "freetype-sys"
-[FreeType download page]:   http://www.freetype.org/download.html               "FreeType download"
-[rust-lang]:                https://www.rust-lang.org/                          "The Rust Homepage"
 [The Official Rust Book]:   https://doc.rust-lang.org/book/                     "The Official Rust Book"
 [rust getting started]:     https://doc.rust-lang.org/book/getting-started.html "Getting Started with Rust"
 [issue tracker]:            https://github.com/PistonDevelopers/conrod/issues   "Conrod issue tracker"
