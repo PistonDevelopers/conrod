@@ -81,8 +81,6 @@ pub struct Container {
     pub rect: Rect,
     /// The depth at which the widget will be rendered comparatively to its siblings.
     pub depth: Depth,
-    /// The drag state of the Widget.
-    pub drag_state: widget::drag::State,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
     /// Whether or not the widget is a "Floating" widget.
@@ -205,7 +203,6 @@ impl Container {
                 style: style,
                 rect: self.rect,
                 depth: self.depth,
-                drag_state: self.drag_state,
                 kid_area: self.kid_area,
                 maybe_floating: self.maybe_floating,
                 maybe_x_scroll_state: self.maybe_x_scroll_state,
@@ -701,7 +698,7 @@ impl Graph {
     {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_x_positioned_relatively_idx,
-            maybe_y_positioned_relatively_idx, rect, depth, kid_area, drag_state, maybe_floating,
+            maybe_y_positioned_relatively_idx, rect, depth, kid_area, maybe_floating,
             maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
         } = widget;
 
@@ -711,7 +708,6 @@ impl Graph {
             kind: kind,
             rect: rect,
             depth: depth,
-            drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_x_scroll_state: maybe_x_scroll_state,
@@ -777,7 +773,6 @@ impl Graph {
                     container.kind = kind;
                     container.rect = rect;
                     container.depth = depth;
-                    container.drag_state = drag_state;
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
                     container.maybe_x_scroll_state = maybe_x_scroll_state;

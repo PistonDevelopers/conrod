@@ -15,7 +15,6 @@ pub use self::index::Index;
 #[macro_use] mod style;
 
 // Widget functionality modules.
-pub mod drag;
 mod id;
 mod index;
 pub mod scroll;
@@ -240,8 +239,6 @@ pub struct CommonState {
     pub rect: Rect,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
-    /// The current state of the dragged widget, if it is draggable.
-    pub drag_state: drag::State,
     /// Floating state for the widget if it is floating.
     pub maybe_floating: Option<Floating>,
     /// The area of the widget upon which kid widgets are placed.
@@ -260,8 +257,6 @@ pub struct Cached<W>
     pub rect: Rect,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
-    /// The current state of the dragged widget, if it is draggable.
-    pub drag_state: drag::State,
     /// The area in which child widgets are placed.
     pub kid_area: KidArea,
     /// Whether or not the Widget is a "floating" Widget.
@@ -303,8 +298,6 @@ pub struct PreUpdateCache {
     pub depth: Depth,
     /// The area upon which the **Widget**'s children widgets will be placed.
     pub kid_area: KidArea,
-    /// The current state of the dragged **Widget**, if it is draggable.
-    pub drag_state: drag::State,
     /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
     /// Scrolling data for the **Widget**'s *x* axis if there is some.
@@ -828,7 +821,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
                 style,
                 rect,
                 depth,
-                drag_state,
                 maybe_floating,
                 maybe_x_scroll_state,
                 maybe_y_scroll_state,
@@ -840,7 +832,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
             let prev_common = CommonState {
                 rect: rect,
                 depth: depth,
-                drag_state: drag_state,
                 maybe_floating: maybe_floating,
                 kid_area: kid_area,
             };
@@ -868,110 +859,35 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     // check the positioning to retrieve the Id from there.
     let maybe_parent_idx = widget.common().maybe_parent_idx.get(idx, ui, x_pos, y_pos);
 
-    let xy = {
-        // A function for generating the xy coords from the given alignment and Position.
-        let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
-
-        // Check to see if the widget is currently being dragged and return the new xy / drag.
-        maybe_prev_common
-            .as_ref()
-            .and_then(|prev| {
-                let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-                maybe_drag_area.and_then(|drag_area| {
-                    let mut left_mouse_drags = ui.widget_input(idx).drags().left();
-                    let maybe_first_drag = left_mouse_drags.next();
-                    maybe_first_drag.and_then(|first_drag| {
-                        if drag_area.is_over(first_drag.from) {
-                            let total_drag_xy = left_mouse_drags
-                                .fold(first_drag.delta_xy, |total, drag| {
-                                    [total[0] + drag[0], total[1] + drag[1]]
-                                });
-                            let prev_xy = prev.rect.xy();
-                            Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
-                        } else {
-                            None
-                        }
-                    })
+    // Calculate the `xy` location of the widget, considering drag.
+    let xy = maybe_prev_common
+        .as_ref()
+        .and_then(|prev| {
+            let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
+            maybe_drag_area.and_then(|drag_area| {
+                let mut left_mouse_drags = ui.widget_input(idx).drags().left();
+                let maybe_first_drag = left_mouse_drags.next();
+                maybe_first_drag.and_then(|first_drag| {
+                    if drag_area.is_over(first_drag.from) {
+                        let total_drag_xy = left_mouse_drags
+                            .fold(first_drag.delta_xy, |total, drag| {
+                                [total[0] + drag.delta_xy[0], total[1] + drag.delta_xy[1]]
+                            });
+                        let prev_xy = prev.rect.xy();
+                        Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
+                    } else {
+                        None
+                    }
                 })
             })
-            // If there is no previous state to compare for dragging, return an initial state.
-            .unwrap_or_else(calc_xy)
-
-        // // Check to see if the widget is currently being dragged and return the new xy / drag.
-        // match maybe_prev_common {
-        //     // If there is no previous state to compare for dragging, return an initial state.
-        //     None => calc_xy(),
-        //     Some(ref prev) => {
-        //         let input = ui.widget_input(idx);
-        //         let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-        //         match maybe_drag_area {
-        //             None => calc_xy(),
-        //             Some(drag_area) => {
-        //                 let mut left_mouse_drags = input.drags().left();
-        //                 match left_mouse_drags.next() {
-        //                     None => calc_xy(),
-        //                     Some(first_drag) => {
-        //                         if drag_area.is_over(first_drag.from) {
-        //                             let total_drag_xy = left_mouse_drags
-        //                                 .fold(first_drag.delta_xy, |total, drag| {
-        //                                     [total[0] + drag[0], total[1] + drag[1]]
-        //                                 });
-        //                             let prev_xy = prev.rect.xy();
-        //                             [prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]]
-        //                         } else {
-        //                             calc_xy()
-        //                         }
-        //                     },
-        //                 }
-        //             },
-        //         }
-        //     },
-        // }
-
-        // NOTE: Old drag logic that shouldn't be necessary now we have event::Drag.
+        })
+        // If there is no previous state to compare for dragging, return an initial state.
         //
-        //         let maybe_mouse = ui::get_mouse_state(ui, idx);
-        //         let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-        //         match maybe_drag_area {
-        //             // If the widget isn't draggable, generate its position the normal way.
-        //             // FIXME: This may cause issues in the case that a widget's draggable area
-        //             // is dynamic (i.e. sometimes its Some, other times its None).
-        //             // Specifically, if a widget is dragged somewhere and then it returns None,
-        //             // it will snap back to the position produced by calc_xy. We should keep
-        //             // track of whether or not a widget `has_been_dragged` to see if we should
-        //             // leave it at its previous xy or use calc_xy.
-        //             None => (calc_xy(), drag::State::Normal),
-        //             Some(drag_area) => match maybe_mouse {
-        //                 // If there is some draggable area and mouse, drag the xy.
-        //                 Some(mouse) => {
-        //                     let drag_state = prev.drag_state;
-
-        //                     // Drag the xy of the widget and return the new xy.
-        //                     drag::drag_widget(prev.rect.xy(), drag_area, drag_state, mouse)
-        //                 },
-        //                 // Otherwise just return the regular xy and drag state.
-        //                 None => (prev.rect.xy(), drag::State::Normal),
-        //             },
-        //         }
-        //     },
-        // }
-    };
+        // A function for generating the xy coords from the given alignment and Position.
+        .unwrap_or_else(|| ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area));
 
     // Construct the rectangle describing our Widget's area.
     let rect = Rect::from_xy_dim(xy, dim);
-
-    // Check whether we have stopped / started dragging the widget and in turn whether or not
-    // we need to capture the mouse.
-    match (maybe_prev_common.as_ref().map(|prev| prev.drag_state), drag_state) {
-        (Some(drag::State::Highlighted), drag::State::Clicked(_)) => {
-            ui::mouse_captured_by(ui, idx);
-        },
-        (Some(drag::State::Clicked(_)), drag::State::Highlighted) |
-        (Some(drag::State::Clicked(_)), drag::State::Normal)      => {
-            ui::mouse_uncaptured_by(ui, idx);
-        },
-        _ => (),
-    }
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
@@ -1056,7 +972,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
             maybe_y_positioned_relatively_idx: maybe_y_positioned_relatively_idx,
             rect: rect,
             depth: depth,
-            drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
             maybe_y_scroll_state: maybe_y_scroll_state,
@@ -1070,7 +985,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let prev_common = maybe_prev_common.unwrap_or_else(|| CommonState {
         rect: rect,
         depth: depth,
-        drag_state: drag_state,
         maybe_floating: maybe_floating,
         kid_area: kid_area,
     });

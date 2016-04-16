@@ -125,7 +125,7 @@ impl<'a> Widget<'a> {
     /// events. If the widget captures the keyboard it *will* receive all keyboard events.
     ///
     /// All mouse events will have their coordinates relative to the middle of the widget's `Rect`.
-    pub fn events(&self) -> Events {
+    pub fn events(&self) -> Events<'a> {
         Events {
             global_events: self.global.events(),
             capturing_keyboard: self.global.start.widget_capturing_keyboard,
@@ -139,7 +139,7 @@ impl<'a> Widget<'a> {
     ///
     /// A _click_ is determined to have occured if a pointing device button was both pressed and
     /// released over the widget.
-    pub fn clicks(&self) -> Clicks {
+    pub fn clicks(&self) -> Clicks<'a> {
         Clicks { events: self.events() }
     }
 
@@ -147,7 +147,7 @@ impl<'a> Widget<'a> {
     ///
     /// Only events that occurred while the widget was capturing the device that did the dragging
     /// will be yielded.
-    pub fn drags(&self) -> Drags {
+    pub fn drags(&self) -> Drags<'a> {
         Drags { events: self.events() }
     }
 
@@ -155,7 +155,7 @@ impl<'a> Widget<'a> {
     /// since the last time `Ui::set_widgets` was called.
     ///
     /// Only events that occurred while the widget was capturing the keyboard will be yielded.
-    pub fn text(&self) -> Texts {
+    pub fn text(&self) -> Texts<'a> {
         Texts { events: self.events() }
     }
 
