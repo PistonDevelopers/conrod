@@ -10,6 +10,7 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
+extern crate rand; // for making a random color.
 
 use conrod::{
     color,
@@ -208,7 +209,7 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
             .label("PRESS")
-            .react(|| app.bg_color = color::random())
+            .react(|| app.bg_color = color::rgb(rand::random(), rand::random(), rand::random()))
             .set(BUTTON, ui)
 
     }

@@ -22,8 +22,8 @@ daggy = "0.4.0"
 pistoncore-input = "0.12.0"
 piston2d-graphics = "0.16.0"
 num = "0.1.30"
-rand = "0.3.13"
 
 [dev-dependencies]
 find_folder = "0.3.0"
+rand = "0.3.13"
 piston_window = "0.45.0"
