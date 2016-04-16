@@ -11,11 +11,11 @@ use {
     FontSize,
     IndexSlot,
     Labelable,
-    Mouse,
     NodeIndex,
     Point,
     PointPath,
     Positionable,
+    Rect,
     Scalar,
     Sizeable,
     Text,
@@ -23,7 +23,6 @@ use {
 };
 use num::Float;
 use std::any::Any;
-use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt::Debug;
 use utils::{clamp, map_range, percentage, val_to_string};
@@ -34,7 +33,9 @@ use widget;
 ///
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
-pub struct EnvelopeEditor<'a, E:'a, F> where E: EnvelopePoint {
+pub struct EnvelopeEditor<'a, E:'a, F>
+    where E: EnvelopePoint,
+{
     common: widget::CommonBuilder,
     env: &'a mut Vec<E>,
     /// The value skewing for the envelope's y-axis. This is useful for displaying exponential
@@ -76,48 +77,13 @@ widget_style!{
 
 /// Represents the state of the EnvelopeEditor widget.
 #[derive(Clone, Debug, PartialEq)]
-pub struct State<E> where E: EnvelopePoint {
-    interaction: Interaction,
-    env: Vec<E>,
-    min_x: E::X,
-    max_x: E::X,
-    min_y: E::Y,
-    max_y: E::Y,
-    skew_y_range: f32,
+pub struct State {
+    pressed_point: Option<usize>,
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
     value_label_idx: IndexSlot,
     point_path_idx: IndexSlot,
     point_indices: Vec<NodeIndex>,
-}
-
-/// Describes an interaction with the EnvelopeEditor.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Interaction {
-    Normal,
-    Highlighted(Elem),
-    Clicked(Elem, MouseButton),
-}
-
-/// Represents the specific elements that the EnvelopeEditor is made up of. This is used to
-/// specify which element is Highlighted or Clicked when storing State.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Elem {
-    Rect,
-    Pad,
-    /// Represents an EnvelopePoint at `usize` index
-    /// as well as the last mouse pos for comparison
-    /// in determining new value.
-    EnvPoint(usize, (f64, f64)),
-    // /// Represents an EnvelopePoint's `curve` value.
-    // CurvePoint(usize, (f64, f64)),
-}
-
-/// An enum to define which button is clicked.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum MouseButton {
-    Left,
-    Right,
 }
 
 
@@ -160,60 +126,6 @@ impl EnvelopePoint for Point {
 }
 
 
-impl Interaction {
-    /// Alter the widget color depending on the state.
-    fn color(&self, color: Color) -> Color {
-        match *self {
-            Interaction::Normal => color,
-            Interaction::Highlighted(_) => color.highlighted(),
-            Interaction::Clicked(_, _) => color.clicked(),
-        }
-    }
-}
-
-
-/// Determine and return the new state from the previous state and the mouse position.
-fn get_new_interaction(is_over_elem: Option<Elem>,
-                       prev: Interaction,
-                       mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Elem::{EnvPoint};//, CurvePoint};
-    use self::MouseButton::{Left, Right};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left.position, mouse.right.position) {
-        (Some(_), Normal, Down, Up) => Normal,
-        (Some(elem), _, Up, Up) => Highlighted(elem),
-        (Some(elem), Highlighted(_), Down, Up) => Clicked(elem, Left),
-        (Some(_), Clicked(p_elem, m_button), Down, Up) |
-        (Some(_), Clicked(p_elem, m_button), Up, Down) => {
-            match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
-                // CurvePoint(idx, _) =>
-                //     Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), m_button),
-                _ => Clicked(p_elem, m_button),
-            }
-        },
-        (None, Clicked(p_elem, m_button), Down, Up) => {
-            match (p_elem, m_button) {
-                (EnvPoint(idx, _), Left) =>
-                    Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
-                // (CurvePoint(idx, _), Left) =>
-                //     Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Left),
-                _ => Clicked(p_elem, Left),
-            }
-        },
-        (Some(_), Highlighted(p_elem), Up, Down) => {
-            match p_elem {
-                EnvPoint(idx, _) => Clicked(EnvPoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
-                // CurvePoint(idx, _) => Clicked(CurvePoint(idx, (mouse.xy[0], mouse.xy[1])), Right),
-                _ => Clicked(p_elem, Right),
-            }
-        },
-        _ => Normal,
-    }
-}
-
-
 impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
 
     /// Construct an EnvelopeEditor widget.
@@ -250,7 +162,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
           E::Y: Any,
           F: FnMut(&mut Vec<E>, usize),
 {
-    type State = State<E>;
+    type State = State;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -265,15 +177,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         KIND
     }
 
-    fn init_state(&self) -> State<E> {
+    fn init_state(&self) -> Self::State {
         State {
-            interaction: Interaction::Normal,
-            env: Vec::new(),
-            min_x: self.min_x,
-            max_x: self.max_x,
-            min_y: self.min_y,
-            max_y: self.max_y,
-            skew_y_range: self.skew_y_range,
+            pressed_point: None,
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
             value_label_idx: IndexSlot::new(),
@@ -286,10 +192,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         self.style.clone()
     }
 
-    /// Update the state of the EnvelopeEditor's cached state.
+    /// Update the `EnvelopeEditor` in accordance to the latest input and call the given `react`
+    /// function if necessary.
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
-        use self::Interaction::{Clicked, Highlighted, Normal};
-
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let EnvelopeEditor {
             env,
@@ -302,13 +207,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             ..
         } = self;
 
-
-        let maybe_mouse = ui.input(idx).maybe_mouse;
-        let skew = skew_y_range;
-
         let point_radius = style.point_radius(ui.theme());
         let frame = style.frame(ui.theme());
-        let inner_rect = rect.pad(frame);
+        let rel_rect = Rect::from_xy_dim([0.0, 0.0], rect.dim());
+        let inner_rel_rect = rel_rect.pad(frame);
 
         // Converts some envelope point's `x` value to a value in the given `Scalar` range.
         let map_x_to = |x: E::X, start: Scalar, end: Scalar| -> Scalar {
@@ -338,234 +240,159 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             (left_bound, right_bound)
         };
 
-        // Check for a new interaction.
+        // The index of the point that is under the given relative xy position.
+        let point_under_rel_xy = |env: &[E], xy: Point| -> Option<usize> {
+            for i in 0..env.len() {
+                let px = env[i].get_x();
+                let py = env[i].get_y();
+                let x = map_x_to(px, inner_rel_rect.left(), inner_rel_rect.right());
+                let y = map_y_to(py, inner_rel_rect.bottom(), inner_rel_rect.top());
+                let distance = (xy[0] - x).powf(2.0)
+                             + (xy[1] - y).powf(2.0);
+                if distance <= point_radius.powf(2.0) {
+                    return Some(i);
+                }
+            }
+            None
+        };
+
+        // Handle all events that have occurred to the EnvelopeEditor since the last update.
         //
-        // The reason we create the new interaction as mutable is because we may need to shift back
-        // an index in the event that a point is removed.
-        let mut new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Normal,
-            (true, Some(mouse)) => {
+        // Check for:
+        // - New points via left `Click`.
+        // - Remove points via right `Click`.
+        // - Dragging points via left `Drag`.
+        'events: for widget_event in ui.widget_input(idx).events() {
+            use event;
+            use input::{self, Button, MouseButton};
 
-                // Determine whether or not the cursor is over the EnvelopeEditor. If it is, return
-                // the element under the cursor and the closest EnvPoint to the cursor.
-                let is_over_elem = |env: &[E]| if rect.is_over(mouse.xy) {
-                    if inner_rect.is_over(mouse.xy) {
-                        for (i, p) in env.iter().enumerate() {
-                            let px = p.get_x();
-                            let py = p.get_y();
-                            let x = map_x_to(px, inner_rect.left(), inner_rect.right());
-                            let y = map_y_to(py, inner_rect.bottom(), inner_rect.top());
-                            let distance = (mouse.xy[0] - x).powf(2.0)
-                                         + (mouse.xy[1] - y).powf(2.0);
-                            if distance <= point_radius.powf(2.0) {
-                                return Some(Elem::EnvPoint(i, (x, y)));
-                            }
-                        }
-                        Some(Elem::Pad)
-                    } else {
-                        Some(Elem::Rect)
+            match widget_event {
+
+                // A left `Click` creates a new point, unless already over an existing point.
+                event::Widget::Click(click) if click.button == input::MouseButton::Left => {
+                    if !inner_rel_rect.is_over(click.xy) {
+                        continue 'events;
                     }
-                } else {
-                    None
-                };
 
-                get_new_interaction(is_over_elem(&env), state.view().interaction, mouse)
-            },
-        };
+                    // Find the points on either side of the click, while checking that the `Click`
+                    // is not over a point.
+                    let mut maybe_left = None;
+                    let mut maybe_right = None;
+                    for (i, p) in env.iter().enumerate() {
+                        let px = p.get_x();
+                        let py = p.get_y();
+                        let x = map_x_to(px, inner_rel_rect.left(), inner_rel_rect.right());
+                        let y = map_y_to(py, inner_rel_rect.bottom(), inner_rel_rect.top());
+                        let distance = (click.xy[0] - x).powf(2.0)
+                                     + (click.xy[1] - y).powf(2.0);
 
-        // Capture the mouse if clicked or uncapture the mouse if released.
-        match (state.view().interaction, new_interaction) {
-            (Highlighted(_), Clicked(_, _)) => { ui.capture_mouse(idx); },
-            (Clicked(_, _), Highlighted(_)) |
-            (Clicked(_, _), Normal)         => { ui.uncapture_mouse(idx); },
-            _ => (),
-        }
-
-        // Draw the closest envelope point and it's label. Return the idx if it is currently clicked.
-        let is_clicked_env_point = match new_interaction {
-            Clicked(elem, _) | Highlighted(elem) => {
-                if let Elem::EnvPoint(idx, _) = elem { Some(idx) } else { None }
-            },
-            _ => None,
-        };
-
-        // If some new mouse state was given...
-        if let Some(mouse) = maybe_mouse {
-
-            // Determine new values.
-            let get_new_value = |env: &[E], idx: usize| -> (E::X, E::Y) {
-                let mouse_x_clamped = inner_rect.x.clamp_value(mouse.xy[0]);
-                let mouse_y_clamped = inner_rect.y.clamp_value(mouse.xy[1]);
-                let unbounded_x = map_to_x(mouse_x_clamped, inner_rect.left(), inner_rect.right());
-                let (left_bound, right_bound) = get_x_bounds(&env, idx);
-                let new_x = clamp(unbounded_x, left_bound, right_bound);
-                let new_y = map_to_y(mouse_y_clamped, inner_rect.bottom(), inner_rect.top());
-                (new_x, new_y)
-            };
-
-            // If a point is currently clicked, check for react and value setting conditions.
-            if let Some(idx) = is_clicked_env_point {
-
-                // Call the `react` closure if mouse was released on one of the DropDownMenu items.
-                match (state.view().interaction, new_interaction) {
-                    (Clicked(_, m_button), Highlighted(_)) |
-                    (Clicked(_, m_button), Normal) => {
-                        match m_button {
-                            MouseButton::Left => {
-                                // Adjust the point and trigger the reaction.
-                                let (new_x, new_y) = get_new_value(&env, idx);
-                                env[idx].set_x(new_x);
-                                env[idx].set_y(new_y);
-                                if let Some(ref mut react) = maybe_react {
-                                    react(env, idx);
-                                }
-                            },
-                            MouseButton::Right => {
-                                // Delete the point and trigger the reaction.
-                                env.remove(idx);
-                                // Check for whether or not the highlighted index is out of range
-                                // now that a point has been removed from the envelope.
-                                if let Highlighted(ref mut elem) = new_interaction {
-                                    if env.is_empty() {
-                                        *elem = Elem::Pad;
-                                    } else if let Elem::EnvPoint(p_idx, p) = *elem {
-                                        if p_idx >= env.len() {
-                                            *elem = Elem::EnvPoint(env.len() - 1, p);
-                                        }
-                                    }
-                                }
-                                if let Some(ref mut react) = maybe_react {
-                                    react(env, idx);
-                                }
-                            },
+                        // If the click was over a point, we're done.
+                        if distance <= point_radius.powf(2.0) {
+                            continue 'events;
                         }
-                    },
-                    (Clicked(_, prev_m_button), Clicked(_, m_button)) => {
-                        if let (MouseButton::Left, MouseButton::Left) = (prev_m_button, m_button) {
-                            let (new_x, new_y) = get_new_value(&env, idx);
-                            let current_x = env[idx].get_x();
-                            let current_y = env[idx].get_y();
-                            if new_x != current_x || new_y != current_y {
-                                // Adjust the point and trigger the reaction.
-                                env[idx].set_x(new_x);
-                                env[idx].set_y(new_y);
-                                if let Some(ref mut react) = maybe_react {
-                                    react(env, idx);
-                                }
-                            }
+
+                        if x <= click.xy[0] {
+                            maybe_left = Some(i);
+                        } else if maybe_right.is_none() {
+                            maybe_right = Some(i);
                         }
-                    },
-                    _ => (),
+                    }
 
-                }
+                    let new_x = map_to_x(click.xy[0], inner_rel_rect.left(), inner_rel_rect.right());
+                    let new_y = map_to_y(click.xy[1], inner_rel_rect.bottom(), inner_rel_rect.top());
+                    let new_point = EnvelopePoint::new(new_x, new_y);
 
-            } else {
+                    let mut maybe_react = |env: &mut Vec<E>, idx: usize| {
+                        if let Some(ref mut react) = maybe_react {
+                            react(env, idx);
+                        }
+                    };
 
-                // Check if a there are no points. If so and the mouse was clicked, add a point.
-                if env.len() == 0 {
-                    if let (Clicked(elem, m_button), Highlighted(_)) =
-                        (state.view().interaction, new_interaction) {
-                        if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
-                            let (new_x, new_y) = get_new_value(&env, 0);
-                            let new_point = EnvelopePoint::new(new_x, new_y);
+                    // Insert the point and call the reaction function if one was given.
+                    match (maybe_left, maybe_right) {
+                        (Some(_), None) | (None, None) => {
+                            let idx = env.len();
                             env.push(new_point);
-                            if let Some(ref mut react) = maybe_react {
-                                react(env, 0);
-                            }
+                            maybe_react(env, idx);
+                        },
+                        (None, Some(_)) => {
+                            env.insert(0, new_point);
+                            maybe_react(env, 0);
+                        },
+                        (Some(_), Some(idx)) => {
+                            env.insert(idx, new_point);
+                            maybe_react(env, idx);
+                        },
+                    }
+                },
+
+                // A right `Click` removes the point under the cursor.
+                event::Widget::Click(click) if click.button == input::MouseButton::Right => {
+                    if !inner_rel_rect.is_over(click.xy) {
+                        continue 'events;
+                    }
+
+                    if let Some(idx) = point_under_rel_xy(env, click.xy) {
+                        env.remove(idx);
+                        if let Some(ref mut react) = maybe_react {
+                            react(env, idx);
                         }
                     }
-                }
+                },
 
-                else {
-                    // Check if a new point should be created.
-                    if let (Clicked(elem, m_button), Highlighted(_)) =
-                        (state.view().interaction, new_interaction) {
-                        if let (Elem::Pad, MouseButton::Left) = (elem, m_button) {
-                            let clamped_mouse_x = inner_rect.x.clamp_value(mouse.xy[0]);
-                            let clamped_mouse_y = inner_rect.y.clamp_value(mouse.xy[1]);
-                            let (left, right, bottom, top) = inner_rect.l_r_b_t();
-                            let new_x = map_to_x(clamped_mouse_x, left, right);
-                            let new_y = map_to_y(clamped_mouse_y, bottom, top);
-                            let new_point = EnvelopePoint::new(new_x, new_y);
-                            env.push(new_point);
-                            env.sort_by(|a, b| if a.get_x() > b.get_x() { Ordering::Greater }
-                                               else if a.get_x() < b.get_x() { Ordering::Less }
-                                               else { Ordering::Equal });
-                            if let Some(ref mut react) = maybe_react {
-                                let idx = env.iter().enumerate().find(|&(_, point)| {
-                                    point.get_x() == new_x && point.get_y() == new_y
-                                }).map(|(idx, _)| idx).unwrap();
-                                react(env, idx)
-                            }
+                // Check to see if a point was pressed in case it is later dragged.
+                event::Widget::Raw(event::Input::Press(Button::Mouse(MouseButton::Left))) => {
+                    if let Some(mouse) = ui.widget_input(idx).mouse() {
+                        // Check for a point under the cursor.
+                        if let Some(idx) = point_under_rel_xy(env, mouse.rel_xy()) {
+                            state.update(|state| state.pressed_point = Some(idx));
+                        } else if state.view().pressed_point.is_some() {
+                            state.update(|state| state.pressed_point = None);
                         }
                     }
-                }
+                },
 
+                // Check to see if a point was released in case it is later dragged.
+                event::Widget::Raw(event::Input::Release(Button::Mouse(MouseButton::Left))) => {
+                    if state.view().pressed_point.is_some() {
+                        state.update(|state| state.pressed_point = None);
+                    }
+                },
+
+                // A left `Drag` moves the `pressed_point` if there is one.
+                event::Widget::Drag(drag) if drag.button == input::MouseButton::Left => {
+                    if let Some(idx) = state.view().pressed_point {
+                        let drag_to_x_clamped = inner_rel_rect.x.clamp_value(drag.to[0]);
+                        let drag_to_y_clamped = inner_rel_rect.y.clamp_value(drag.to[1]);
+                        let unbounded_x = map_to_x(drag_to_x_clamped,
+                                                   inner_rel_rect.left(),
+                                                   inner_rel_rect.right());
+                        let (left_bound, right_bound) = get_x_bounds(env, idx);
+                        let new_x = clamp(unbounded_x, left_bound, right_bound);
+                        let new_y = map_to_y(drag_to_y_clamped,
+                                             inner_rel_rect.bottom(),
+                                             inner_rel_rect.top());
+                        env[idx].set_x(new_x);
+                        env[idx].set_y(new_y);
+                        if let Some(ref mut react) = maybe_react {
+                            react(env, idx);
+                        }
+                    }
+                },
+
+                _ => ()
             }
-
         }
 
-        // A function for finding the closest element to the cursor.
-        let closest_elem = |env: &[E], target: Point| {
-            let mut closest_distance = ::std::f64::MAX;
-            let mut closest_elem = Elem::Pad;
-            for (i, p) in env.iter().enumerate() {
-                let px = p.get_x();
-                let py = p.get_y();
-                let x = map_x_to(px, inner_rect.left(), inner_rect.right());
-                let y = map_y_to(py, inner_rect.bottom(), inner_rect.top());
-                let distance = (target[0] - x).powf(2.0)
-                             + (target[1] - y).powf(2.0);
-                if distance < closest_distance {
-                    closest_distance = distance;
-                    closest_elem = Elem::EnvPoint(i, (x, y));
-                }
-            }
-            closest_elem
-        };
-
-        // Determine the closest point to the cursor.
-        let maybe_closest_point = match new_interaction {
-            Clicked(Elem::EnvPoint(idx, p), _)  |
-            Highlighted(Elem::EnvPoint(idx, p)) => Some((idx, p)),
-            Clicked(_, _) | Highlighted(_) =>
-                maybe_mouse.and_then(|mouse| match closest_elem(&env, mouse.xy) {
-                    Elem::EnvPoint(idx, p) => Some((idx, p)),
-                    _ => None,
-                }),
-            _ => None,
-        };
-
-        if state.view().interaction != new_interaction {
-            state.update(|state| state.interaction = new_interaction);
-        }
-
-        if &state.view().env[..] != &env[..] {
-            state.update(|state| state.env = env.clone());
-        }
-
-        let bounds_have_changed = {
-            let view = state.view();
-            view.min_x != min_x || view.max_x != max_x || view.min_y != min_y || view.max_y != max_y
-        };
-
-        if bounds_have_changed {
-            state.update(|state| {
-                state.min_x = min_x;
-                state.max_x = max_x;
-                state.min_y = min_y;
-                state.max_y = max_y;
-            });
-        }
-
-        if state.view().skew_y_range != skew {
-            state.update(|state| state.skew_y_range = skew);
-        }
-
+        let inner_rect = rect.pad(frame);
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
-        let color = new_interaction.color(style.color(ui.theme()));
+        let color = style.color(ui.theme());
+        let color = ui.widget_input(idx).mouse()
+            .and_then(|m| if inner_rect.is_over(m.abs_xy()) { Some(color.highlighted()) }
+                          else { None })
+            .unwrap_or(color);
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
             .middle_of(idx)
@@ -617,12 +444,21 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         for (i, (&point_idx, point)) in iter {
             let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
             let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
-            let point_color = match new_interaction {
-                Clicked(Elem::EnvPoint(idx, _), MouseButton::Left) if idx == i =>
-                    line_color.clicked(),
-                Highlighted(Elem::EnvPoint(idx, _)) if idx == i =>
-                    line_color.highlighted(),
-                _ => line_color,
+            let point_color = if state.view().pressed_point == Some(i) {
+                line_color.clicked()
+            } else {
+                ui.widget_input(idx).mouse()
+                    .and_then(|mouse| {
+                        let mouse_abs_xy = mouse.abs_xy();
+                        let distance = (mouse_abs_xy[0] - x).powf(2.0)
+                                     + (mouse_abs_xy[1] - y).powf(2.0);
+                        if distance <= point_radius.powf(2.0) {
+                            Some(line_color.highlighted())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(line_color)
             };
             Circle::fill(point_radius)
                 .color(point_color)
@@ -631,6 +467,26 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .parent(idx)
                 .set(point_idx, &mut ui);
         }
+
+        // Find the closest point to the mouse.
+        let maybe_closest_point = ui.widget_input(idx).mouse().and_then(|mouse| {
+            let mut closest_distance = ::std::f64::MAX;
+            let mut closest_point = None;
+            for (i, p) in env.iter().enumerate() {
+                let px = p.get_x();
+                let py = p.get_y();
+                let x = map_x_to(px, inner_rect.left(), inner_rect.right());
+                let y = map_y_to(py, inner_rect.bottom(), inner_rect.top());
+                let mouse_abs_xy = mouse.abs_xy();
+                let distance = (mouse_abs_xy[0] - x).powf(2.0)
+                             + (mouse_abs_xy[1] - y).powf(2.0);
+                if distance < closest_distance {
+                    closest_distance = distance;
+                    closest_point = Some((i, (x, y)));
+                }
+            }
+            closest_point
+        });
 
         if let Some((closest_idx, (x, y))) = maybe_closest_point {
             let x_range = max_x - min_x;
