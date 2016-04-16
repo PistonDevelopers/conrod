@@ -4,9 +4,10 @@
 //! `InputProvider` that provides input events for a specific widget.
 
 use {Point, Rect};
-use widget;
 use event;
 use input;
+use utils;
+use widget;
 
 
 /// Provides only events and input state that are relevant to a specific widget.
@@ -169,7 +170,7 @@ impl<'a> Mouse<'a> {
 
     /// The position of the mouse relative to the middle of the widget's `Rect`.
     pub fn rel_xy(&self) -> Point {
-        ::vecmath::vec2_sub(self.mouse_abs_xy, self.rect.xy())
+        utils::vec2_sub(self.mouse_abs_xy, self.rect.xy())
     }
 
     /// Is the mouse currently over the widget.
@@ -254,7 +255,7 @@ impl<'a> Iterator for Events<'a> {
 
                     Input::Move(ref motion) => match *motion {
                         Motion::MouseCursor(x, y) if is_capturing_mouse => {
-                            let rel = ::vecmath::vec2_sub([x, y], widget_xy);
+                            let rel = utils::vec2_sub([x, y], widget_xy);
                             return Some(Input::Move(Motion::MouseCursor(rel[0], rel[1])).into())
                         },
                         Motion::MouseRelative(_, _) |

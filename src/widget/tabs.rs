@@ -16,6 +16,7 @@ use {
     Widget,
 };
 use super::canvas;
+use utils;
 use widget;
 
 
@@ -435,7 +436,7 @@ impl<'a> TabRects<'a> {
         let TabRects { ref mut tabs, tab_dim, ref mut next_xy, xy_step } = *self;
         tabs.next().map(|&(id, label)| {
             let xy = *next_xy;
-            *next_xy = ::vecmath::vec2_add(*next_xy, xy_step);
+            *next_xy = utils::vec2_add(*next_xy, xy_step);
             let rect = Rect::from_xy_dim(xy, tab_dim);
             (rect, id, label)
         })

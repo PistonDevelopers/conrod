@@ -9,8 +9,9 @@
 
 use backend::event::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
-use widget;
 use self::mouse::Mouse;
+use utils;
+use widget;
 
 
 /// Holds the current state of user input.
@@ -51,7 +52,7 @@ impl State {
 
     /// Returns a copy of the input::State relative to the given `position::Point`
     pub fn relative_to(mut self, xy: Point) -> State {
-        self.mouse.xy = ::vecmath::vec2_sub(self.mouse.xy, xy);
+        self.mouse.xy = utils::vec2_sub(self.mouse.xy, xy);
         self.mouse.buttons = self.mouse.buttons.relative_to(xy);
         self
     }

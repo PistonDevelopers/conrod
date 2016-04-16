@@ -14,12 +14,12 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
-extern crate vecmath;
 
 
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
     use conrod::{
+        self,
         Backend,
         Circle,
         Color,
@@ -39,7 +39,6 @@ mod circular_button {
         Widget,
         WidgetKind,
     };
-
 
     /// The type upon which we'll implement the `Widget` trait.
     pub struct CircularButton<'a, F> {
@@ -149,12 +148,14 @@ mod circular_button {
     /// Cartesian plane. We use this to determine whether the mouse is over the button.
     pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
         // Offset vector from the center of the circle to the mouse.
-        let offset = ::vecmath::vec2_sub(mouse_point, circ_center);
+        let offset = conrod::utils::vec2_sub(mouse_point, circ_center);
 
         // If the length of the offset vector is less than or equal to the circle's
         // radius, then the mouse is inside the circle. We assume that dim is a square
         // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
-        ::vecmath::vec2_len(offset) <= dim[0] / 2.0
+        let distance = (offset[0].powf(2.0) + offset[1].powf(2.0)).sqrt();
+        let radius = dim[0] / 2.0;
+        distance <= radius
     }
 
     impl<'a, F> CircularButton<'a, F> {

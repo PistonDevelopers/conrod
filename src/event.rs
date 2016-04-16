@@ -5,7 +5,7 @@
 
 use input::{keyboard, MouseButton};
 use position::Point;
-use vecmath::vec2_sub;
+use utils::vec2_sub;
 use widget;
 
 #[doc(inline)]

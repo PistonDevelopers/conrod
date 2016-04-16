@@ -21,7 +21,7 @@ use {
     Widget,
 };
 use input::keyboard::Key::{Backspace, Left, Right, Return, A, E, LCtrl, RCtrl};
-use vecmath::vec2_sub;
+use utils::vec2_sub;
 use widget::{self, KidArea};
 
 

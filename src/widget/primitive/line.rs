@@ -11,7 +11,7 @@ use {
     Theme,
     Widget,
 };
-use vecmath::{vec2_add, vec2_sub};
+use utils::{vec2_add, vec2_sub};
 use widget;
 
 

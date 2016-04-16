@@ -5,6 +5,7 @@
 //!
 
 use position::Point;
+use utils;
 
 /// The current state of a Mouse button.
 #[derive(Copy, Clone, Debug)]
@@ -89,7 +90,7 @@ impl Mouse {
 
     /// Return the mouse state with its position relative to the given position.
     pub fn relative_to(self, xy: Point) -> Mouse {
-        Mouse { xy: ::vecmath::vec2_sub(self.xy, xy), ..self }
+        Mouse { xy: utils::vec2_sub(self.xy, xy), ..self }
     }
 
 }

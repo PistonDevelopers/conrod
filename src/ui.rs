@@ -11,6 +11,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use std::marker::PhantomData;
 use theme::Theme;
+use utils;
 use widget::{self, Widget};
 use input;
 
@@ -512,13 +513,13 @@ impl<B> Ui<B>
                         // Check for drag events.
                         let last_mouse_xy = self.global_input.current.mouse.xy;
                         let mouse_xy = [x, y];
-                        let delta_xy = ::vecmath::vec2_sub(mouse_xy, last_mouse_xy);
+                        let delta_xy = utils::vec2_sub(mouse_xy, last_mouse_xy);
                         let distance = (delta_xy[0] + delta_xy[1]).abs().sqrt();
                         if distance > self.theme.mouse_drag_threshold {
                             // For each button that is down, trigger a drag event.
                             let buttons = self.global_input.current.mouse.buttons.clone();
                             for (btn, btn_xy, widget) in buttons.pressed() {
-                                let total_delta_xy = ::vecmath::vec2_sub(mouse_xy, btn_xy);
+                                let total_delta_xy = utils::vec2_sub(mouse_xy, btn_xy);
                                 let event = event::Ui::Drag(widget, event::Drag {
                                     button: btn,
                                     origin: btn_xy,
@@ -605,7 +606,7 @@ impl<B> Ui<B>
                    dim: Dimensions,
                    place_on_kid_area: bool) -> Point
     {
-        use vecmath::vec2_add;
+        use utils::vec2_add;
 
         // Retrieves the absolute **Scalar** position from the given position for a single axis.
         //

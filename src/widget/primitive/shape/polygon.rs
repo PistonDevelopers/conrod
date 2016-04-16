@@ -11,8 +11,7 @@ use {
 };
 use super::Style;
 use widget;
-use utils::bounding_box_for_points;
-use vecmath::{vec2_add, vec2_sub};
+use utils::{bounding_box_for_points, vec2_add, vec2_sub};
 
 
 /// A basic, non-interactive, arbitarry **Polygon** widget.
