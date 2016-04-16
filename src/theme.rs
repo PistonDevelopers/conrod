@@ -72,9 +72,6 @@ impl WidgetDefault {
     }
 }
 
-/// This is the default value that is used for `Theme::mouse_drag_threshold`.
-pub const DEFAULT_MOUSE_DRAG_THRESHOLD: Scalar = 4.0;
-
 impl Theme {
 
     /// The default theme if not loading from file.
@@ -94,7 +91,7 @@ impl Theme {
             font_size_small: 12,
             maybe_scrollbar: None,
             widget_styling: HashMap::new(),
-            mouse_drag_threshold: DEFAULT_MOUSE_DRAG_THRESHOLD,
+            mouse_drag_threshold: 0.0,
         }
     }
 
