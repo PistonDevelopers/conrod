@@ -5,8 +5,8 @@ authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
 ]
-keywords = ["ui", "widgets", "immediate-mode", "piston"]
-description = "An easy-to-use, immediate-mode, 2D GUI library"
+keywords = ["ui", "widgets", "gui", "piston", "graphics"]
+description = "An easy-to-use, extensible 2D GUI library"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
