@@ -20,8 +20,7 @@ An easy-to-use, 2D GUI library written entirely in Rust.
     - [The Builder Pattern][1.6]
 2. [**Getting Started**][2]
     - [Installing Rust and Cargo][2.1]
-    - [Installing FreeType][2.2]
-    - [Running the Conrod Examples][2.3]
+    - [Running the Conrod Examples][2.2]
 3. **Let's Create a GUI**
     - Setup a Basic Window (using piston_window)
     - Conrod Setup
@@ -102,13 +101,9 @@ dual licensed as above, without any additional terms or conditions.
 [1.6]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#the-builder-pattern
 [2]:        http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html
 [2.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
-[2.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-freetype
-[2.3]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#running-the-conrod-examples
+[2.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#running-the-conrod-examples
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
-
-[freetype download]: http://www.freetype.org/download.html
-[freetype-rs]: https://github.com/PistonDevelopers/freetype-rs
 
 [Contributing]: https://github.com/PistonDevelopers/piston/blob/master/CONTRIBUTING.md
