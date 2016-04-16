@@ -106,7 +106,7 @@ impl<'a> Widget<'a> {
     /// If the widget is currently capturing the mouse, this returns the state of the mouse.
     ///
     /// Returns `None` if the widget is not capturing the mouse.
-    pub fn mouse(&self) -> Option<Mouse> {
+    pub fn mouse(&self) -> Option<Mouse<'a>> {
         if self.global.current.widget_capturing_mouse == Some(self.idx) {
             let mouse = Mouse {
                 buttons: &self.global.current.mouse.buttons,
@@ -319,10 +319,10 @@ impl<'a> Iterator for Events<'a> {
                     },
 
                     event::Ui::Click(idx, ref click) if idx == Some(self.idx) =>
-                        return Some(click.clone().into()),
+                        return Some(click.clone().relative_to(self.rect.xy()).into()),
 
                     event::Ui::Drag(idx, ref drag) if idx == Some(self.idx) =>
-                        return Some(drag.clone().into()),
+                        return Some(drag.clone().relative_to(self.rect.xy()).into()),
 
                     event::Ui::Scroll(idx, ref scroll) if idx == Some(self.idx) =>
                         return Some(scroll.clone().into()),
