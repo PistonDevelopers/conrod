@@ -4,6 +4,7 @@
 
 use event;
 use input;
+use std;
 
 /// Global input event handler that also implements `input::Provider`. The `Ui` passes all events
 /// to it's `Global` instance, which aggregates and interprets the events to provide so-called
@@ -16,6 +17,9 @@ pub struct Global {
     pub current: input::State,
     /// The events that have occurred between two consecutive updates.
     events: Vec<event::Event>,
+    /// Tracks the last click that occurred and the time at which it occurred in order to create
+    /// double-click events.
+    pub last_click: Option<(std::time::Instant, event::Click)>,
 }
 
 /// Iterator over global `event::Event`s.
@@ -32,6 +36,7 @@ impl Global {
             events: Vec::new(),
             start: input::State::new(),
             current: input::State::new(),
+            last_click: None,
         }
     }
 

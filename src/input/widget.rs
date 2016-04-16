@@ -322,6 +322,9 @@ impl<'a> Iterator for Events<'a> {
                     event::Ui::Click(idx, ref click) if idx == Some(self.idx) =>
                         return Some(click.clone().relative_to(self.rect.xy()).into()),
 
+                    event::Ui::DoubleClick(idx, ref double_click) if idx == Some(self.idx) =>
+                        return Some(double_click.clone().relative_to(self.rect.xy()).into()),
+
                     event::Ui::Drag(idx, ref drag) if idx == Some(self.idx) =>
                         return Some(drag.clone().relative_to(self.rect.xy()).into()),
 

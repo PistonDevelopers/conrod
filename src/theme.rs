@@ -5,6 +5,7 @@
 use Scalar;
 use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position};
+use std;
 use std::any::Any;
 use std::collections::HashMap;
 use widget;
@@ -43,6 +44,9 @@ pub struct Theme {
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
+    /// Once the `Duration` that separates two consecutive `Click`s is greater than this value, a
+    /// `DoubleClick` event will no longer be generated.
+    pub double_click_threshold: std::time::Duration,
 }
 
 /// The defaults for a specific widget.
@@ -92,6 +96,7 @@ impl Theme {
             maybe_scrollbar: None,
             widget_styling: HashMap::new(),
             mouse_drag_threshold: 0.0,
+            double_click_threshold: std::time::Duration::from_millis(500),
         }
     }
 

@@ -7,6 +7,7 @@ use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
 use mouse::{self, Mouse};
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
+use std;
 use std::collections::HashSet;
 use std::io::Write;
 use std::marker::PhantomData;
@@ -456,19 +457,70 @@ impl<B> Ui<B>
                     Input::Release(button_type) => match button_type {
                         Button::Mouse(mouse_button) => {
 
-                            // Check for a `Click` event.
+                            // Check for `Click` and `DoubleClick` events.
                             let down = self.global_input.current.mouse.buttons[mouse_button].if_down();
                             if let Some((_, widget)) = down {
+
+                                // The widget that's being clicked.
                                 let clicked_widget = self.global_input.current.widget_under_mouse
                                     .and_then(|released| widget.and_then(|pressed| {
                                         if pressed == released { Some(released) } else { None }
                                     }));
-                                let event = event::Ui::Click(clicked_widget, event::Click {
+
+                                let click = event::Click {
                                     button: mouse_button,
                                     xy: self.global_input.current.mouse.xy,
                                     modifiers: self.global_input.current.modifiers,
-                                }).into();
-                                self.global_input.push_event(event);
+                                };
+
+                                let click_event = event::Ui::Click(clicked_widget, click).into();
+                                self.global_input.push_event(click_event);
+
+                                let now = std::time::Instant::now();
+                                let double_click = self.global_input.last_click
+                                    .and_then(|(last_time, last_click)| {
+
+                                        // If the button of this click is different to the button
+                                        // of last click, don't create a `DoubleClick`.
+                                        if click.button != last_click.button {
+                                            return None;
+                                        }
+
+                                        // If the mouse has moved since the last click, don't
+                                        // create a `DoubleClick`.
+                                        if click.xy != last_click.xy {
+                                            return None;
+                                        }
+
+                                        // If the duration since the last click is longer than the
+                                        // double_click_threshold, don't create a `DoubleClick`.
+                                        let duration = now.duration_since(last_time);
+                                        // TODO: Work out how to get this threshold from the user's
+                                        // system preferences.
+                                        let threshold = self.theme.double_click_threshold;
+                                        if duration >= threshold {
+                                            return None;
+                                        }
+
+                                        Some(event::DoubleClick {
+                                            button: click.button,
+                                            xy: click.xy,
+                                            modifiers: click.modifiers,
+                                        })
+                                    });
+
+                                if let Some(double_click) = double_click {
+                                    // Reset the `last_click` to `None`, as to not register another
+                                    // `DoubleClick` on the next consecutive `Click`.
+                                    self.global_input.last_click = None;
+                                    let double_click_event =
+                                        event::Ui::DoubleClick(clicked_widget, double_click).into();
+                                    self.global_input.push_event(double_click_event);
+
+                                } else {
+                                    // Set the `Click` that we just stored as the `last_click`.
+                                    self.global_input.last_click = Some((now, click));
+                                }
                             }
 
                             // Uncapture widget capturing mouse if MouseButton::Left is down and

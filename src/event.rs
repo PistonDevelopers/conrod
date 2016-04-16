@@ -29,6 +29,9 @@ pub enum Ui {
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
     Click(Option<widget::Index>, Click),
+    /// Two `Click` events with the same `button` and `xy` occurring within a duration that is less
+    /// that the `theme.double_click_threshold`.
+    DoubleClick(Option<widget::Index>, DoubleClick),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
     Drag(Option<widget::Index>, Drag),
     /// This is a generic scroll event. This is different from the `input::Motion::MouseScroll`
@@ -68,6 +71,9 @@ pub enum Widget {
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
     Click(Click),
+    /// Two `Click` events with the same `button` and `xy` occurring within a duration that is less
+    /// that the `theme.double_click_threshold`.
+    DoubleClick(DoubleClick),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
     Drag(Drag),
     /// Represents the amount of scroll that has been applied to this widget.
@@ -114,6 +120,19 @@ pub struct Click {
     pub modifiers: keyboard::ModifierKey,
 }
 
+/// Contains all the relevant information for a double click.
+///
+/// When handling this event, be sure to check that you are handling the intended `button` too.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct DoubleClick {
+    /// Which mouse button was clicked
+    pub button: MouseButton,
+    /// The position at which the mouse was released.
+    pub xy: Point,
+    /// Which modifier keys, if any, that were being held down when the user clicked
+    pub modifiers: keyboard::ModifierKey,
+}
+
 /// Holds all the relevant information about a scroll event
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Scroll {
@@ -126,7 +145,7 @@ pub struct Scroll {
 }
 
 impl Click {
-    /// Returns a copy of the Click relative to the given `position::Point`
+    /// Returns a copy of the Click relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Click {
         Click {
             xy: vec2_sub(self.xy, xy),
@@ -135,9 +154,18 @@ impl Click {
     }
 }
 
+impl DoubleClick {
+    /// Returns a copy of the DoubleClick relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> DoubleClick {
+        DoubleClick {
+            xy: vec2_sub(self.xy, xy),
+            ..*self
+        }
+    }
+}
 
 impl Drag {
-    /// Returns a copy of the Drag relative to the given `position::Point`
+    /// Returns a copy of the Drag relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Drag {
         Drag{
             origin: vec2_sub(self.origin, xy),
@@ -170,6 +198,12 @@ impl From<Input> for Widget {
 impl From<Click> for Widget {
     fn from(click: Click) -> Self {
         Widget::Click(click)
+    }
+}
+
+impl From<DoubleClick> for Widget {
+    fn from(double_click: DoubleClick) -> Self {
+        Widget::DoubleClick(double_click)
     }
 }
 
