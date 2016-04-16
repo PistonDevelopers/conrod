@@ -8,7 +8,6 @@ use {
     FramedRectangle,
     IndexSlot,
     Labelable,
-    Mouse,
     Positionable,
     Scalar,
     Text,
@@ -55,49 +54,12 @@ widget_style!{
     }
 }
 
-/// The way in which the Toggle is being interacted with.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Interaction {
-    Normal,
-    Highlighted,
-    Clicked,
-}
-
 /// The state of the Toggle.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     value: bool,
-    interaction: Interaction,
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
-}
-
-
-impl Interaction {
-    /// Alter the widget color depending on the state.
-    fn color(&self, color: Color) -> Color {
-        match *self {
-            Interaction::Normal => color,
-            Interaction::Highlighted => color.highlighted(),
-            Interaction::Clicked => color.clicked(),
-        }
-    }
-}
-
-
-/// Check the current state of the button.
-fn get_new_interaction(is_over: bool,
-                       prev: Interaction,
-                       mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _                      => Normal,
-    }
 }
 
 
@@ -143,7 +105,6 @@ impl<'a, F> Widget for Toggle<'a, F>
     fn init_state(&self) -> State {
         State {
             value: self.value,
-            interaction: Interaction::Normal,
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
         }
@@ -157,36 +118,21 @@ impl<'a, F> Widget for Toggle<'a, F>
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let Toggle { value, enabled, maybe_label, maybe_react, .. } = self;
-        let maybe_mouse = ui.input(idx).maybe_mouse;
 
-        // Check whether or not a new interaction has occurred.
-        let new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Interaction::Normal,
-            (true, Some(mouse)) => {
-                let is_over = rect.is_over(mouse.xy);
-                get_new_interaction(is_over, state.view().interaction, mouse)
-            },
+        let new_value = if ui.widget_input(idx).clicks().left().next().is_some() && enabled {
+            let new_value = !value;
+            if let Some(react) = maybe_react {
+                react(new_value)
+            }
+            new_value
+        } else {
+            value
         };
 
-        // Capture the mouse if clicked, uncapture if released.
-        match (state.view().interaction, new_interaction) {
-            (Interaction::Highlighted, Interaction::Clicked) => { ui.capture_mouse(idx); },
-            (Interaction::Clicked, Interaction::Highlighted) |
-            (Interaction::Clicked, Interaction::Normal)      => { ui.uncapture_mouse(idx); },
-            _ => (),
+        // If the value has changed, update our state.
+        if state.view().value != new_value {
+            state.update(|state| state.value = new_value);
         }
-
-        // React and determine the new value.
-        let new_value = match (state.view().interaction, new_interaction) {
-            (Interaction::Clicked, Interaction::Highlighted) => {
-                let new_value = !value;
-                if let Some(react) = maybe_react {
-                    react(new_value)
-                }
-                new_value
-            },
-            _ => value,
-        };
 
         // FramedRectangle widget.
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
@@ -195,7 +141,12 @@ impl<'a, F> Widget for Toggle<'a, F>
         let color = {
             let color = style.color(ui.theme());
             let color = if new_value { color } else { color.with_luminance(0.1) };
-            new_interaction.color(color)
+            match ui.widget_input(idx).mouse() {
+                Some(mouse) =>
+                    if mouse.buttons.left().is_down() { color.clicked() }
+                    else { color.highlighted() },
+                None => color,
+            }
         };
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
@@ -217,16 +168,6 @@ impl<'a, F> Widget for Toggle<'a, F>
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
-        }
-
-        // If there has been a change in interaction, set the new one.
-        if state.view().interaction != new_interaction {
-            state.update(|state| state.interaction = new_interaction);
-        }
-
-        // If the value has changed, update our state.
-        if state.view().value != new_value {
-            state.update(|state| state.value = new_value);
         }
     }
 }
