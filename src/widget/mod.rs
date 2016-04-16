@@ -1,10 +1,8 @@
 use {Backend, CharacterCache, Dimension, GlyphCache};
 use graph::NodeIndex;
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
-use std::any::Any;
-use std::fmt::Debug;
+use std;
 use theme::{self, Theme};
-use time::precise_time_ns;
 use ui::{self, Ui, UiCell};
 
 pub use self::id::Id;
@@ -155,7 +153,7 @@ impl MaybeParent {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floating {
     /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
-    pub time_last_clicked: u64,
+    pub time_last_clicked: std::time::Instant,
 }
 
 /// A struct containing builder data common to all **Widget** types.
@@ -330,10 +328,10 @@ pub struct PostUpdateCache<W>
 
 
 /// The necessary bounds for a **Widget**'s associated **Style** type.
-pub trait Style: Any + Debug + PartialEq + Sized {}
+pub trait Style: std::any::Any + std::fmt::Debug + PartialEq + Sized {}
 
 /// Auto-implement the **Style** trait for all applicable types.
-impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
+impl<T> Style for T where T: std::any::Any + std::fmt::Debug + PartialEq + Sized {}
 
 
 /// Determines the default **Dimension** for a **Widget**.
@@ -440,7 +438,7 @@ pub trait Widget: Sized {
     /// calls to `update`.
     ///
     /// Conrod will never clone the state, it will only ever be moved.
-    type State: Any + PartialEq + ::std::fmt::Debug;
+    type State: std::any::Any + PartialEq + std::fmt::Debug;
     /// Every widget is required to have its own associated `Style` type. This type is intended to
     /// contain high-level styling information for the widget that can be *optionally specified* by
     /// a user of the widget.
@@ -893,7 +891,7 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let maybe_floating = if widget.common().is_floating {
 
         fn new_floating() -> Floating {
-            Floating { time_last_clicked: precise_time_ns() }
+            Floating { time_last_clicked: std::time::Instant::now() }
         }
 
         // If it is floating, check to see if we need to update the last time it was clicked.

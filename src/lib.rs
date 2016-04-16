@@ -8,7 +8,6 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
-extern crate time;
 extern crate daggy;
 extern crate num;
 extern crate rand;
