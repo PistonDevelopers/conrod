@@ -597,8 +597,8 @@ pub trait Widget: Sized {
         default_y_dimension(self, ui)
     }
 
-    /// If the widget is draggable, implement this method and return the position an dimensions
-    /// of the draggable space. The position should be relative to the center of the widget.
+    /// If the widget is draggable, implement this method and return the position and dimensions of
+    /// the draggable space. The position should be relative to the center of the widget.
     fn drag_area(&self,
                  _dim: Dimensions,
                  _style: &Self::Style,
@@ -868,40 +868,93 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     // check the positioning to retrieve the Id from there.
     let maybe_parent_idx = widget.common().maybe_parent_idx.get(idx, ui, x_pos, y_pos);
 
-    let (xy, drag_state) = {
+    let xy = {
         // A function for generating the xy coords from the given alignment and Position.
         let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
 
         // Check to see if the widget is currently being dragged and return the new xy / drag.
-        match maybe_prev_common {
-            // If there is no previous state to compare for dragging, return an initial state.
-            None => (calc_xy(), drag::State::Normal),
-            Some(ref prev) => {
-                let maybe_mouse = ui::get_mouse_state(ui, idx);
+        maybe_prev_common
+            .as_ref()
+            .and_then(|prev| {
                 let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-                match maybe_drag_area {
-                    // If the widget isn't draggable, generate its position the normal way.
-                    // FIXME: This may cause issues in the case that a widget's draggable area
-                    // is dynamic (i.e. sometimes its Some, other times its None).
-                    // Specifically, if a widget is dragged somewhere and then it returns None,
-                    // it will snap back to the position produced by calc_xy. We should keep
-                    // track of whether or not a widget `has_been_dragged` to see if we should
-                    // leave it at its previous xy or use calc_xy.
-                    None => (calc_xy(), drag::State::Normal),
-                    Some(drag_area) => match maybe_mouse {
-                        // If there is some draggable area and mouse, drag the xy.
-                        Some(mouse) => {
-                            let drag_state = prev.drag_state;
+                maybe_drag_area.and_then(|drag_area| {
+                    let mut left_mouse_drags = ui.widget_input(idx).drags().left();
+                    let maybe_first_drag = left_mouse_drags.next();
+                    maybe_first_drag.and_then(|first_drag| {
+                        if drag_area.is_over(first_drag.from) {
+                            let total_drag_xy = left_mouse_drags
+                                .fold(first_drag.delta_xy, |total, drag| {
+                                    [total[0] + drag[0], total[1] + drag[1]]
+                                });
+                            let prev_xy = prev.rect.xy();
+                            Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
+                        } else {
+                            None
+                        }
+                    })
+                })
+            })
+            // If there is no previous state to compare for dragging, return an initial state.
+            .unwrap_or_else(calc_xy)
 
-                            // Drag the xy of the widget and return the new xy.
-                            drag::drag_widget(prev.rect.xy(), drag_area, drag_state, mouse)
-                        },
-                        // Otherwise just return the regular xy and drag state.
-                        None => (prev.rect.xy(), drag::State::Normal),
-                    },
-                }
-            },
-        }
+        // // Check to see if the widget is currently being dragged and return the new xy / drag.
+        // match maybe_prev_common {
+        //     // If there is no previous state to compare for dragging, return an initial state.
+        //     None => calc_xy(),
+        //     Some(ref prev) => {
+        //         let input = ui.widget_input(idx);
+        //         let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
+        //         match maybe_drag_area {
+        //             None => calc_xy(),
+        //             Some(drag_area) => {
+        //                 let mut left_mouse_drags = input.drags().left();
+        //                 match left_mouse_drags.next() {
+        //                     None => calc_xy(),
+        //                     Some(first_drag) => {
+        //                         if drag_area.is_over(first_drag.from) {
+        //                             let total_drag_xy = left_mouse_drags
+        //                                 .fold(first_drag.delta_xy, |total, drag| {
+        //                                     [total[0] + drag[0], total[1] + drag[1]]
+        //                                 });
+        //                             let prev_xy = prev.rect.xy();
+        //                             [prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]]
+        //                         } else {
+        //                             calc_xy()
+        //                         }
+        //                     },
+        //                 }
+        //             },
+        //         }
+        //     },
+        // }
+
+        // NOTE: Old drag logic that shouldn't be necessary now we have event::Drag.
+        //
+        //         let maybe_mouse = ui::get_mouse_state(ui, idx);
+        //         let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
+        //         match maybe_drag_area {
+        //             // If the widget isn't draggable, generate its position the normal way.
+        //             // FIXME: This may cause issues in the case that a widget's draggable area
+        //             // is dynamic (i.e. sometimes its Some, other times its None).
+        //             // Specifically, if a widget is dragged somewhere and then it returns None,
+        //             // it will snap back to the position produced by calc_xy. We should keep
+        //             // track of whether or not a widget `has_been_dragged` to see if we should
+        //             // leave it at its previous xy or use calc_xy.
+        //             None => (calc_xy(), drag::State::Normal),
+        //             Some(drag_area) => match maybe_mouse {
+        //                 // If there is some draggable area and mouse, drag the xy.
+        //                 Some(mouse) => {
+        //                     let drag_state = prev.drag_state;
+
+        //                     // Drag the xy of the widget and return the new xy.
+        //                     drag::drag_widget(prev.rect.xy(), drag_area, drag_state, mouse)
+        //                 },
+        //                 // Otherwise just return the regular xy and drag state.
+        //                 None => (prev.rect.xy(), drag::State::Normal),
+        //             },
+        //         }
+        //     },
+        // }
     };
 
     // Construct the rectangle describing our Widget's area.
