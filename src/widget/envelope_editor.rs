@@ -203,7 +203,6 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             min_y, max_y,
             mut maybe_react,
             maybe_label,
-            enabled,
             ..
         } = self;
 
