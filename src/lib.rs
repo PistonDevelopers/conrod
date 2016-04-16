@@ -10,11 +10,12 @@
 
 extern crate time;
 extern crate daggy;
-extern crate graphics as piston_graphics;
 extern crate num;
-extern crate input as piston_input;
 extern crate rand;
 extern crate vecmath;
+
+extern crate graphics as piston_graphics;
+extern crate input as piston_input;
 
 
 pub use widget::primitive::line::Line;
