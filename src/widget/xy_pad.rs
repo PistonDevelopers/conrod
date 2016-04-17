@@ -9,7 +9,6 @@ use {
     IndexSlot,
     Labelable,
     Line,
-    Mouse,
     Positionable,
     Scalar,
     Sizeable,
@@ -66,50 +65,12 @@ widget_style!{
 
 /// The state of the XYPad.
 #[derive(Clone, Debug, PartialEq)]
-pub struct State<X, Y> {
-    x: X, min_x: X, max_x: X,
-    y: Y, min_y: Y, max_y: Y,
-    interaction: Interaction,
+pub struct State {
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
     h_line_idx: IndexSlot,
     v_line_idx: IndexSlot,
     value_label_idx: IndexSlot,
-}
-
-/// The interaction state of the XYPad.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Interaction {
-    Normal,
-    Highlighted,
-    Clicked,
-}
-
-impl Interaction {
-    /// The color associated with the current state.
-    fn color(&self, color: Color) -> Color {
-        match *self {
-            Interaction::Normal => color,
-            Interaction::Highlighted => color.highlighted(),
-            Interaction::Clicked => color.clicked(),
-        }
-    }
-}
-
-
-/// Check the current state of the button.
-fn get_new_interaction(is_over: bool,
-                       prev: Interaction,
-                       mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _                      => Normal,
-    }
 }
 
 
@@ -142,7 +103,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
           Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           F: FnOnce(X, Y),
 {
-    type State = State<X, Y>;
+    type State = State;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -159,9 +120,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
     fn init_state(&self) -> Self::State {
         State {
-            interaction: Interaction::Normal,
-            x: self.x, min_x: self.min_x, max_x: self.max_x,
-            y: self.y, min_y: self.min_y, max_y: self.max_y,
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
             h_line_idx: IndexSlot::new(),
@@ -177,11 +135,9 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     /// Update the XYPad's cached state.
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         use position::{Direction, Edge};
-        use self::Interaction::{Clicked, Highlighted, Normal};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let XYPad {
-            enabled,
             x, min_x, max_x,
             y, min_y, max_y,
             maybe_label,
@@ -189,73 +145,43 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             ..
         } = self;
 
-        let maybe_mouse = ui.input(idx).maybe_mouse;
         let frame = style.frame(ui.theme());
         let inner_rect = rect.pad(frame);
-        let interaction = state.view().interaction;
-        let new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Normal,
-            (true, Some(mouse)) => {
-                let is_over_inner = inner_rect.is_over(mouse.xy);
-                get_new_interaction(is_over_inner, interaction, mouse)
-            },
-        };
 
-        // Capture the mouse if clicked, uncapture if released.
-        match (interaction, new_interaction) {
-            (Highlighted, Clicked) => { ui.capture_mouse(idx); },
-            (Clicked, Highlighted) | (Clicked, Normal) => { ui.uncapture_mouse(idx); },
-            _ => (),
+        let mut new_x = x;
+        let mut new_y = y;
+        if let Some(mouse) = ui.widget_input(idx).mouse() {
+            if mouse.buttons.left().is_down() {
+                let mouse_abs_xy = mouse.abs_xy();
+                if inner_rect.is_over(mouse_abs_xy) {
+                    let clamped_x = inner_rect.x.clamp_value(mouse_abs_xy[0]);
+                    let clamped_y = inner_rect.y.clamp_value(mouse_abs_xy[1]);
+                    let (l, r, b, t) = inner_rect.l_r_b_t();
+                    new_x = map_range(clamped_x, l, r, min_x, max_x);
+                    new_y = map_range(clamped_y, b, t, min_y, max_y);
+                }
+            }
         }
-
-        // Determine new values from the mouse position over the pad.
-        let (new_x, new_y) = match (maybe_mouse, new_interaction) {
-            (None, _) | (_, Normal) | (_, Highlighted) => (x, y),
-            (Some(mouse), Clicked) => {
-                let clamped_x = inner_rect.x.clamp_value(mouse.xy[0]);
-                let clamped_y = inner_rect.y.clamp_value(mouse.xy[1]);
-                let (l, r, b, t) = inner_rect.l_r_b_t();
-                let new_x = map_range(clamped_x, l, r, min_x, max_x);
-                let new_y = map_range(clamped_y, b, t, min_y, max_y);
-                (new_x, new_y)
-            },
-        };
 
         // React if value is changed or the pad is clicked/released.
         if let Some(react) = maybe_react {
-            let should_react = x != new_x || y != new_y
-                || (interaction == Highlighted && new_interaction == Clicked)
-                || (interaction == Clicked && new_interaction == Highlighted);
-            if should_react {
+            if x != new_x || y != new_y {
                 react(new_x, new_y);
             }
         }
 
-        if interaction != new_interaction {
-            state.update(|state| state.interaction = new_interaction);
-        }
-
-        let value_or_bounds_have_changed = {
-            let v = state.view();
-            v.x != x || v.y != y
-                || v.min_x != min_x || v.max_x != max_x
-                || v.min_y != min_y || v.max_y != max_y
-        };
-
-        if value_or_bounds_have_changed {
-            state.update(|state| {
-                state.x = x;
-                state.y = y;
-                state.min_x = min_x;
-                state.max_x = max_x;
-                state.min_y = min_y;
-                state.max_y = max_y;
-            })
-        }
+        let interaction_color = |ui: &::ui::UiCell<B>, color: Color|
+            ui.widget_input(idx).mouse()
+                .map(|mouse| if mouse.buttons.left().is_down() {
+                    color.clicked()
+                } else {
+                    color.highlighted()
+                })
+                .unwrap_or(color);
 
         // The backdrop **FramedRectangle** widget.
         let dim = rect.dim();
-        let color = new_interaction.color(style.color(ui.theme()));
+        let color = interaction_color(&ui, style.color(ui.theme()));
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
         let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
