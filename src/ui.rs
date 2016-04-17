@@ -289,8 +289,8 @@ impl<B> Ui<B>
     ///
     /// This occurs within several stages:
     ///
-    /// 1. Convert the given `event` to a `RawEvent` so that the `Ui` may use it.
-    /// 2. Interpret the `RawEvent` for higher-level `event::Ui`s such as `DoubleClick`,
+    /// 1. Convert the user's given `event` to a `RawEvent` so that the `Ui` may use it.
+    /// 2. Interpret the `RawEvent` for higher-level `Event`s such as `DoubleClick`,
     ///    `WidgetCapturesKeyboard`, etc.
     /// 3. Update the `Ui`'s `global_input` `State` accordingly, depending on the `RawEvent`.
     /// 4. Store newly produced `event::Ui`s within the `global_input` so that they may be filtered
@@ -453,6 +453,7 @@ impl<B> Ui<B>
                     //
                     // Checks for events in the following order:
                     // 1. Click
+                    // 2. DoubleClick
                     // 2. WidgetUncapturesMouse
                     Input::Release(button_type) => match button_type {
                         Button::Mouse(mouse_button) => {
