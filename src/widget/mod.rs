@@ -862,21 +862,23 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
         .as_ref()
         .and_then(|prev| {
             let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-            maybe_drag_area.and_then(|drag_area| {
+            maybe_drag_area.map(|drag_area| {
                 let mut left_mouse_drags = ui.widget_input(idx).drags().left();
                 let maybe_first_drag = left_mouse_drags.next();
-                maybe_first_drag.and_then(|first_drag| {
-                    if drag_area.is_over(first_drag.from) {
-                        let total_drag_xy = left_mouse_drags
-                            .fold(first_drag.delta_xy, |total, drag| {
-                                [total[0] + drag.delta_xy[0], total[1] + drag.delta_xy[1]]
-                            });
-                        let prev_xy = prev.rect.xy();
-                        Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
-                    } else {
-                        None
-                    }
-                })
+                let prev_xy = prev.rect.xy();
+                maybe_first_drag
+                    .and_then(|first_drag| {
+                        if drag_area.is_over(first_drag.from) {
+                            let total_drag_xy = left_mouse_drags
+                                .fold(first_drag.delta_xy, |total, drag| {
+                                    [total[0] + drag.delta_xy[0], total[1] + drag.delta_xy[1]]
+                                });
+                            Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(prev_xy)
             })
         })
         // If there is no previous state to compare for dragging, return an initial state.
