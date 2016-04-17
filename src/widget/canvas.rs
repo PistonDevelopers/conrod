@@ -316,7 +316,6 @@ impl<'a> Widget for Canvas<'a> {
                 .line_spacing(line_spacing)
                 .graphics_for(idx)
                 .place_on_kid_area(false)
-                .react(|_interaction| ())
                 .set(title_bar_idx, &mut ui);
         }
 
