@@ -1,15 +1,12 @@
-
 use {
     Backend,
     Color,
     Colorable,
-    Dimensions,
     FontSize,
     Frameable,
     FramedRectangle,
     IndexSlot,
     Labelable,
-    Mouse,
     NodeIndex,
     Point,
     Positionable,
@@ -68,33 +65,11 @@ widget_style!{
     }
 }
 
-/// Represents the specific elements that the NumberDialer is made up of. This is used to specify
-/// which element is Highlighted or Clicked when storing State.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Elem {
-    Rect,
-    LabelGlyphs,
-    /// Represents a value glyph slot at `usize` index as well as the last mouse.xy.y for
-    /// comparison in determining new value.
-    ValueGlyph(usize, f64)
-}
-
-/// The current interaction with the NumberDialer.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Interaction {
-    Normal,
-    Highlighted(Elem),
-    Clicked(Elem),
-}
-
 /// The state of the NumberDialer.
 #[derive(Clone, Debug, PartialEq)]
-pub struct State<T> {
-    value: T,
-    min: T,
-    max: T,
-    precision: u8,
-    interaction: Interaction,
+pub struct State {
+    /// The index of the value that is currently pressed.
+    pressed_value_idx: Option<usize>,
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
     glyph_slot_indices: Vec<GlyphSlot>,
@@ -155,66 +130,6 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
     val_string_w
 }
 
-/// Determine if the cursor is over the number_dialer and if so, which element.
-fn is_over(mouse_xy: Point,
-           dim: Dimensions,
-           pad_dim: Dimensions,
-           label_x: f64,
-           label_dim: Dimensions,
-           val_string_dim: Point,
-           val_string_len: usize) -> Option<Elem>
-{
-    use position::is_over_rect;
-    if is_over_rect([0.0, 0.0], dim, mouse_xy) {
-        if is_over_rect([label_x, 0.0], label_dim, mouse_xy) {
-            Some(Elem::LabelGlyphs)
-        } else {
-            let slot_w = value_glyph_slot_width(val_string_dim[1] as u32);
-            let slot_rect_xy = [label_x + label_dim[0] / 2.0 + slot_w / 2.0, 0.0];
-            let val_string_xy = [slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0, 0.0];
-            if is_over_rect(val_string_xy, [val_string_dim[0], pad_dim[1]], mouse_xy) {
-                let mut slot_xy = slot_rect_xy;
-                for i in 0..val_string_len {
-                    if is_over_rect(slot_xy, [slot_w, pad_dim[1]], mouse_xy) {
-                        return Some(Elem::ValueGlyph(i, mouse_xy[1]))
-                    }
-                    slot_xy[0] += slot_w;
-                }
-                Some(Elem::Rect)
-            } else {
-                Some(Elem::Rect)
-            }
-        }
-    } else {
-        None
-    }
-}
-
-/// Check and return the current state of the NumberDialer.
-fn get_new_interaction(is_over_elem: Option<Elem>, prev: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Elem::ValueGlyph;
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over_elem, prev, mouse.left.position) {
-        (Some(_),    Normal,          Down) => Normal,
-        (Some(elem), _,               Up)   => Highlighted(elem),
-        (Some(elem), Highlighted(_),  Down) => Clicked(elem),
-        (Some(_),    Clicked(p_elem), Down) => {
-            match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
-                _                  => Clicked(p_elem),
-            }
-        },
-        (None,       Clicked(p_elem), Down) => {
-            match p_elem {
-                ValueGlyph(idx, _) => Clicked(ValueGlyph(idx, mouse.xy[1])),
-                _                  => Clicked(p_elem),
-            }
-        },
-        _                                   => Normal,
-    }
-}
-
 
 impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
 
@@ -244,7 +159,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     where F: FnOnce(T),
           T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
 {
-    type State = State<T>;
+    type State = State;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -259,13 +174,9 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         KIND
     }
 
-    fn init_state(&self) -> State<T> {
+    fn init_state(&self) -> Self::State {
         State {
-            value: self.value,
-            min: self.min,
-            max: self.max,
-            precision: self.precision,
-            interaction: Interaction::Normal,
+            pressed_value_idx: None,
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
             glyph_slot_indices: Vec::new(),
@@ -278,16 +189,14 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
     /// Update the state of the NumberDialer.
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
-        use self::Interaction::{Clicked, Highlighted, Normal};
-
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let NumberDialer {
-            value, min, max, precision, enabled, maybe_label, maybe_react, ..
+            value, min, max, precision, maybe_label, maybe_react, ..
         } = self;
 
-        let maybe_mouse = ui.input(idx).maybe_mouse.map(|mouse| mouse.relative_to(rect.xy()));
+        let rel_rect = rect.relative_to(rect.xy());
         let frame = style.frame(ui.theme());
-        let inner_rect = rect.pad(frame);
+        let inner_rel_rect = rel_rect.pad(frame);
         let font_size = style.label_font_size(ui.theme());
         let label_string = maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
         let label_dim = [ui.glyph_cache().width(font_size, &label_string), font_size as f64];
@@ -296,97 +205,111 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let val_string = create_val_string(value, val_string_len, precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
         let label_rel_x = -val_string_dim[0] / 2.0;
-        let interaction = state.view().interaction;
-        let new_interaction = match (enabled, maybe_mouse) {
-            (false, _) | (true, None) => Normal,
-            (true, Some(mouse)) => {
-                let is_over_elem = is_over(mouse.xy, rect.dim(), inner_rect.dim(), label_rel_x,
-                                           label_dim, val_string_dim, val_string_len);
-                get_new_interaction(is_over_elem, interaction, mouse)
-            },
+        let slot_w = value_glyph_slot_width(val_string_dim[1] as u32);
+        let slot_h = inner_rel_rect.h();
+
+        // Determine if the cursor is over one of the NumberDialer's values.
+        //
+        // Returns the index into the `val_string` for retrieving the value.
+        let value_under_rel_xy = |rel_xy: Point| -> Option<usize> {
+            if rel_rect.is_over(rel_xy) {
+                use position::Rect;
+                let slot_rect_xy = [label_rel_x + label_dim[0] / 2.0 + slot_w / 2.0, 0.0];
+                let val_string_xy = [slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0, 0.0];
+                let val_string_dim = [val_string_dim[0], slot_h];
+                let val_string_rect = Rect::from_xy_dim(val_string_xy, val_string_dim);
+                if val_string_rect.is_over(rel_xy) {
+                    let mut slot_xy = slot_rect_xy;
+                    for i in 0..val_string_len {
+                        let slot_rect = Rect::from_xy_dim(slot_xy, [slot_w, slot_h]);
+                        if slot_rect.is_over(rel_xy) {
+                            return Some(i);
+                        }
+                        slot_xy[0] += slot_w;
+                    }
+                }
+            }
+            None
         };
 
-        // Capture the mouse if clicked, uncapture if released.
-        match (interaction, new_interaction) {
-            (Highlighted(_), Clicked(_)) => { ui.capture_mouse(idx); },
-            (Clicked(_), Highlighted(_)) |
-            (Clicked(_), Normal)         => { ui.uncapture_mouse(idx); },
-            _ => (),
+        let value_under_mouse = ui.widget_input(idx).mouse()
+            .and_then(|m| value_under_rel_xy(m.rel_xy()));
+        let mut pressed_value_idx = state.view().pressed_value_idx;
+        let mut new_value = value;
+
+        // Check for the following events:
+        // - If a value has been `Press`ed and is being dragged.
+        // - `Drag`ging of the mouse while a button is pressed.
+        // - `Scroll`ing of the mouse over a value.
+        'events: for widget_event in ui.widget_input(idx).events() {
+            use event;
+            use input::{self, Button, MouseButton};
+
+            match widget_event {
+
+                // Check to see if a value was pressed in case it is later dragged.
+                event::Widget::Raw(event::Input::Press(Button::Mouse(MouseButton::Left))) => {
+                    // Check for a value under the cursor.
+                    pressed_value_idx = value_under_mouse;
+                },
+
+                // Check to see if a value was released in case it is later dragged.
+                event::Widget::Raw(event::Input::Release(Button::Mouse(MouseButton::Left))) => {
+                    pressed_value_idx = None;
+                },
+
+                // A left `Drag` moves the `pressed_point` if there is one.
+                event::Widget::Drag(drag) if drag.button == input::MouseButton::Left => {
+                    if let Some(idx) = pressed_value_idx {
+                        let decimal_pos = val_string.chars().position(|ch| ch == '.');
+                        let val_f: f64 = NumCast::from(value).unwrap();
+                        let min_f: f64 = NumCast::from(min).unwrap();
+                        let max_f: f64 = NumCast::from(max).unwrap();
+                        let ord = drag.delta_xy[1].partial_cmp(&0.0).unwrap_or(Ordering::Equal);
+                        let new_val_f = match decimal_pos {
+                            None => {
+                                let power = val_string.len() - idx - 1;
+                                match ord {
+                                    Ordering::Greater => {
+                                        clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
+                                    },
+                                    Ordering::Less => {
+                                        clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
+                                    },
+                                    _ => val_f,
+                                }
+                            },
+                            Some(dec_idx) => {
+                                let mut power = dec_idx as isize - idx as isize - 1;
+                                if power < -1 { power += 1; }
+                                match ord {
+                                    Ordering::Greater => {
+                                        clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
+                                    },
+                                    Ordering::Less => {
+                                        clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
+                                    },
+                                    _ => val_f,
+                                }
+                            },
+                        };
+                        new_value = NumCast::from(new_val_f).unwrap();
+                    }
+                },
+
+                _ => (),
+            }
         }
 
-        // Determine new value from the initial state and the new state.
-        let mut new_val = value;
-        if let (Clicked(elem), Clicked(new_elem)) = (interaction, new_interaction) {
-            if let (Elem::ValueGlyph(idx, y), Elem::ValueGlyph(_, new_y)) = (elem, new_elem) {
-                let ord = new_y.partial_cmp(&y).unwrap_or(Ordering::Equal);
-                if ord != Ordering::Equal {
-                    let decimal_pos = val_string.chars().position(|ch| ch == '.');
-                    let val_f: f64 = NumCast::from(value).unwrap();
-                    let min_f: f64 = NumCast::from(min).unwrap();
-                    let max_f: f64 = NumCast::from(max).unwrap();
-                    let new_val_f = match decimal_pos {
-                        None => {
-                            let power = val_string.len() - idx - 1;
-                            match ord {
-                                Ordering::Greater => {
-                                    clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
-                                Ordering::Less => {
-                                    clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
-                                _ => val_f,
-                            }
-                        },
-                        Some(dec_idx) => {
-                            let mut power = dec_idx as isize - idx as isize - 1;
-                            if power < -1 { power += 1; }
-                            match ord {
-                                Ordering::Greater => {
-                                    clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
-                                Ordering::Less => {
-                                    clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                },
-                                _ => val_f,
-                            }
-                        },
-                    };
-                    new_val = NumCast::from(new_val_f).unwrap()
-                };
-            }
-        };
-
-        // Call the `react` with the new value if the mouse is pressed/released on the widget or if
-        // the value has changed.
+        // If the value has changed and some reaction function was given, call it.
         if let Some(react) = maybe_react {
-            let should_react = value != new_val
-                || match (interaction, new_interaction) {
-                    (Highlighted(_), Clicked(_)) | (Clicked(_), Highlighted(_)) => true,
-                    _ => false,
-                };
-            if should_react {
-                react(new_val);
+            if value != new_value {
+                react(new_value);
             }
         }
 
-        if state.view().interaction != new_interaction {
-            state.update(|state| state.interaction = new_interaction);
-        }
-
-        if state.view().value != new_val {
-            state.update(|state| state.value = new_val);
-        }
-
-        if state.view().min != min {
-            state.update(|state| state.min = min);
-        }
-
-        if state.view().max != max {
-            state.update(|state| state.max = max);
-        }
-
-        if state.view().precision != precision {
-            state.update(|state| state.precision = precision);
+        if state.view().pressed_value_idx != pressed_value_idx {
+            state.update(|state| state.pressed_value_idx = pressed_value_idx);
         }
 
         // The **Rectangle** backdrop widget.
@@ -429,32 +352,21 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         }
 
         // Instantiate the widgets necessary for each value glyph.
-        let slot_w = value_glyph_slot_width(font_size);
-        let slot_h = inner_rect.h();
         let val_string_pos = [label_rel_x + label_dim[0] / 2.0, 0.0];
         let mut rel_slot_x = slot_w / 2.0 + val_string_pos[0];
         for (i, _) in val_string.char_indices() {
             let glyph_string = &val_string[i..i+1];
             let slot = state.view().glyph_slot_indices[i];
 
-            // We only want to draw the slot if **Rectangle** if its highlighted or selected.
-            let maybe_slot_color = match new_interaction {
-                Interaction::Highlighted(elem) => match elem {
-                    Elem::ValueGlyph(idx, _) =>
-                        if idx == i { Some(color.highlighted()) }
-                        else { None },
-                        //else { Some(color) },
-                    _ => None
-                },
-                Interaction::Clicked(elem) => match elem {
-                    Elem::ValueGlyph(idx, _) =>
-                        if idx == i { Some(color.clicked()) }
-                        else { None },
-                        //else { Some(color) },
-                    _ => None,
-                },
-                _ => None,
+            // We only want to draw the slot **Rectangle** if it is highlighted or selected.
+            let maybe_slot_color = if Some(i) == pressed_value_idx {
+                Some(color.clicked())
+            } else if Some(i) == value_under_mouse {
+                Some(color.highlighted())
+            } else {
+                None
             };
+
             if let Some(slot_color) = maybe_slot_color {
                 Rectangle::fill([slot_w, slot_h])
                     .depth(1.0)
@@ -500,4 +412,3 @@ impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F> {
         label_font_size { style.label_font_size = Some(FontSize) }
     }
 }
-
