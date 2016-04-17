@@ -255,6 +255,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             None
         };
 
+        // Track the currently pressed point if any.
+        let mut pressed_point = state.view().pressed_point;
+
         // Handle all events that have occurred to the EnvelopeEditor since the last update.
         //
         // Check for:
@@ -344,23 +347,21 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     if let Some(mouse) = ui.widget_input(idx).mouse() {
                         // Check for a point under the cursor.
                         if let Some(idx) = point_under_rel_xy(env, mouse.rel_xy()) {
-                            state.update(|state| state.pressed_point = Some(idx));
-                        } else if state.view().pressed_point.is_some() {
-                            state.update(|state| state.pressed_point = None);
+                            pressed_point = Some(idx);
+                        } else if pressed_point.is_some() {
+                            pressed_point = None;
                         }
                     }
                 },
 
                 // Check to see if a point was released in case it is later dragged.
                 event::Widget::Raw(event::Input::Release(Button::Mouse(MouseButton::Left))) => {
-                    if state.view().pressed_point.is_some() {
-                        state.update(|state| state.pressed_point = None);
-                    }
+                    pressed_point = None;
                 },
 
                 // A left `Drag` moves the `pressed_point` if there is one.
                 event::Widget::Drag(drag) if drag.button == input::MouseButton::Left => {
-                    if let Some(idx) = state.view().pressed_point {
+                    if let Some(idx) = pressed_point {
                         let drag_to_x_clamped = inner_rel_rect.x.clamp_value(drag.to[0]);
                         let drag_to_y_clamped = inner_rel_rect.y.clamp_value(drag.to[1]);
                         let unbounded_x = map_to_x(drag_to_x_clamped,
@@ -379,8 +380,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     }
                 },
 
-                _ => ()
+                _ => (),
             }
+        }
+
+        if state.view().pressed_point != pressed_point {
+            state.update(|state| state.pressed_point = pressed_point);
         }
 
         let inner_rect = rect.pad(frame);
