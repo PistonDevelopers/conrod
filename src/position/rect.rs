@@ -188,6 +188,21 @@ impl Rect {
         self.shift_x(xy[0]).shift_y(xy[1])
     }
 
+    /// Returns a `Rect` with a position relative to the given position on the *x* axis.
+    pub fn relative_to_x(self, x: Scalar) -> Self {
+        Rect { x: self.x.shift(-x), ..self }
+    }
+
+    /// Returns a `Rect` with a position relative to the given position on the *y* axis.
+    pub fn relative_to_y(self, y: Scalar) -> Self {
+        Rect { y: self.y.shift(-y), ..self }
+    }
+
+    /// Returns a `Rect` with a position relative to the given position.
+    pub fn relative_to(self, xy: Point) -> Self {
+        self.relative_to_x(xy[0]).relative_to_y(xy[1])
+    }
+
     /// Does the given point touch the Rectangle.
     pub fn is_over(&self, xy: Point) -> bool {
         self.x.is_over(xy[0]) && self.y.is_over(xy[1])
