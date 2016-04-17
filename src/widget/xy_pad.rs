@@ -153,13 +153,11 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         if let Some(mouse) = ui.widget_input(idx).mouse() {
             if mouse.buttons.left().is_down() {
                 let mouse_abs_xy = mouse.abs_xy();
-                if inner_rect.is_over(mouse_abs_xy) {
-                    let clamped_x = inner_rect.x.clamp_value(mouse_abs_xy[0]);
-                    let clamped_y = inner_rect.y.clamp_value(mouse_abs_xy[1]);
-                    let (l, r, b, t) = inner_rect.l_r_b_t();
-                    new_x = map_range(clamped_x, l, r, min_x, max_x);
-                    new_y = map_range(clamped_y, b, t, min_y, max_y);
-                }
+                let clamped_x = inner_rect.x.clamp_value(mouse_abs_xy[0]);
+                let clamped_y = inner_rect.y.clamp_value(mouse_abs_xy[1]);
+                let (l, r, b, t) = inner_rect.l_r_b_t();
+                new_x = map_range(clamped_x, l, r, min_x, max_x);
+                new_y = map_range(clamped_y, b, t, min_y, max_y);
             }
         }
 
