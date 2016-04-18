@@ -36,6 +36,8 @@ use {Point, Scalar};
 pub use piston_input::{
     self,
     Button,
+    ControllerAxisArgs,
+    ControllerButton,
     Key,
     keyboard,
     Motion,
@@ -82,6 +84,7 @@ impl<E> ToRawEvent for E
             MouseCursorEvent,
             MouseRelativeEvent,
             MouseScrollEvent,
+            ControllerAxisEvent,
             PressEvent,
             ReleaseEvent,
             ResizeEvent,
@@ -109,6 +112,10 @@ impl<E> ToRawEvent for E
 
         if let Some(xy) = self.mouse_scroll_args() {
             return Some(Input::Move(Motion::MouseScroll(xy[0], xy[1])).into());
+        }
+
+        if let Some(args) = self.controller_axis_args() {
+            return Some(Input::Move(Motion::ControllerAxis(args)).into());
         }
 
         if let Some(button) = self.press_args() {
