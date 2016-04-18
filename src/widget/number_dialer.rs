@@ -248,14 +248,17 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             match widget_event {
 
                 // Check to see if a value was pressed in case it is later dragged.
-                event::Widget::Raw(event::Input::Press(Button::Mouse(MouseButton::Left))) => {
-                    // Check for a value under the cursor.
-                    pressed_value_idx = value_under_mouse;
+                event::Widget::Press(press) => {
+                    if let event::Button::Mouse(MouseButton::Left, _) = press.button {
+                        pressed_value_idx = value_under_mouse;
+                    }
                 },
 
                 // Check to see if a value was released in case it is later dragged.
-                event::Widget::Raw(event::Input::Release(Button::Mouse(MouseButton::Left))) => {
-                    pressed_value_idx = None;
+                event::Widget::Release(release) => {
+                    if let event::Button::Mouse(MouseButton::Left, _) = release.button {
+                        pressed_value_idx = None;
+                    }
                 },
 
                 // A left `Drag` moves the `pressed_point` if there is one.

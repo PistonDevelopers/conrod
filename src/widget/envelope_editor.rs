@@ -343,10 +343,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 },
 
                 // Check to see if a point was pressed in case it is later dragged.
-                event::Widget::Raw(event::Input::Press(Button::Mouse(MouseButton::Left))) => {
-                    if let Some(mouse) = ui.widget_input(idx).mouse() {
+                event::Widget::Press(press) => {
+                    if let event::Button::Mouse(MouseButton::Left, xy) = press.button {
                         // Check for a point under the cursor.
-                        if let Some(idx) = point_under_rel_xy(env, mouse.rel_xy()) {
+                        if let Some(idx) = point_under_rel_xy(env, xy) {
                             pressed_point = Some(idx);
                         } else if pressed_point.is_some() {
                             pressed_point = None;
@@ -355,8 +355,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 },
 
                 // Check to see if a point was released in case it is later dragged.
-                event::Widget::Raw(event::Input::Release(Button::Mouse(MouseButton::Left))) => {
-                    pressed_point = None;
+                event::Widget::Release(release) => {
+                    if let event::Button::Mouse(MouseButton::Left, _) = release.button {
+                        pressed_point = None;
+                    }
                 },
 
                 // A left `Drag` moves the `pressed_point` if there is one.

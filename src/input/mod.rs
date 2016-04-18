@@ -26,4 +26,11 @@ pub use self::state::State;
 pub use self::global::Global;
 pub use self::widget::Widget;
 
-pub use backend::event::{Button, keyboard, Key, MouseButton};
+pub use backend::event::{
+    Button,
+    ControllerButton,
+    ControllerAxisArgs,
+    keyboard,
+    Key,
+    MouseButton,
+};

@@ -3,8 +3,8 @@
 //!
 //! The core of this module is the `Event` enum, which encapsulates all of those events.
 
-use input::{keyboard, MouseButton};
-use position::Point;
+use input;
+use position::{Dimensions, Point};
 use utils::vec2_sub;
 use widget;
 
@@ -24,8 +24,21 @@ pub enum Event {
 }
 
 /// Represents all events interpreted by the `Ui`.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Ui {
+    /// Entered text, along with the widget that was capturing the keyboard at the time.
+    Text(Option<widget::Index>, Text),
+    /// Some button was pressed, along with the widget that was capturing the device whose button
+    /// which was pressed.
+    Press(Option<widget::Index>, Press),
+    /// Some button was released, along with the widget that was capturing the device whose button
+    /// which was released.
+    Release(Option<widget::Index>, Release),
+    /// Represents all forms of motion input, alongside with the widget that was capturing the
+    /// mouse at the time.
+    Move(Option<widget::Index>, Move),
+    /// The window's dimensions were resized.
+    WindowResized(Dimensions),
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
     Click(Option<widget::Index>, Click),
@@ -62,12 +75,14 @@ pub enum Ui {
 /// are delivered.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Widget {
-    /// Raw `Input` events that occurred while the `Widget` was capturing the associated `Input`
-    /// source device.
-    ///
-    /// For example, if the widget was capturing the `Keyboard` while an `Input::Text` event
-    /// occurs, the widget will receive that event.
-    Raw(Input),
+    /// Entered text.
+    Text(Text),
+    /// Represents all forms of motion input.
+    Move(Move),
+    /// Some button was pressed.
+    Press(Press),
+    /// Some button was released.
+    Release(Release),
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
     Click(Click),
@@ -78,6 +93,8 @@ pub enum Widget {
     Drag(Drag),
     /// Represents the amount of scroll that has been applied to this widget.
     Scroll(Scroll),
+    /// The window's dimensions were resized.
+    WindowResized(Dimensions),
     /// The widget has captured the mouse.
     CapturesMouse,
     /// The widget has released the mouse from capturing.
@@ -88,11 +105,58 @@ pub enum Widget {
     UncapturesKeyboard,
 }
 
+/// Contains all relevant information for a Text event.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Text {
+    /// All text that was entered as a part of the event.
+    pub string: String,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Contains all relevant information for a Motion event.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Move {
+    /// The type of `Motion` that occurred.
+    pub motion: Motion,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// The different kinds of `Button`s that may be `Press`ed or `Release`d.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Button {
+    /// A keyboard button.
+    Keyboard(input::Key),
+    /// A mouse button along with the location at which it was `Press`ed/`Release`d.
+    Mouse(input::MouseButton, Point),
+    /// A controller button.
+    Controller(input::ControllerButton),
+}
+
+/// Contains all relevant information for a Press event.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Press {
+    /// The `Button` that was pressed.
+    pub button: Button,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Contains all relevant information for a Release event.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Release {
+    /// The `Button` that was released.
+    pub button: Button,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
 /// Contains all the relevant information for a mouse drag.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Drag {
     /// Which mouse button was being held during the drag
-    pub button: MouseButton,
+    pub button: input::MouseButton,
     /// The point from which the current series of drag events began.
     ///
     /// This will be the position of the pointing device whenever the dragging press began.
@@ -106,18 +170,18 @@ pub struct Drag {
     /// The magnitude of the vector between `origin` and `to`.
     pub total_delta_xy: Point,
     /// Which modifier keys are being held during the mouse drag.
-    pub modifiers: keyboard::ModifierKey,
+    pub modifiers: input::keyboard::ModifierKey,
 }
 
 /// Contains all the relevant information for a mouse click.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Click {
     /// Which mouse button was clicked
-    pub button: MouseButton,
+    pub button: input::MouseButton,
     /// The position at which the mouse was released.
     pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
-    pub modifiers: keyboard::ModifierKey,
+    pub modifiers: input::keyboard::ModifierKey,
 }
 
 /// Contains all the relevant information for a double click.
@@ -126,11 +190,11 @@ pub struct Click {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct DoubleClick {
     /// Which mouse button was clicked
-    pub button: MouseButton,
+    pub button: input::MouseButton,
     /// The position at which the mouse was released.
     pub xy: Point,
     /// Which modifier keys, if any, that were being held down when the user clicked
-    pub modifiers: keyboard::ModifierKey,
+    pub modifiers: input::keyboard::ModifierKey,
 }
 
 /// Holds all the relevant information about a scroll event
@@ -141,7 +205,51 @@ pub struct Scroll {
     /// The amount of scroll along the y axis.
     pub y: f64,
     /// Which modifier keys, if any, that were being held down while the scroll occured
-    pub modifiers: keyboard::ModifierKey,
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+impl Move {
+    /// Returns a copy of the `Move` relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Move {
+        let motion = match self.motion {
+            Motion::MouseCursor(x, y) => Motion::MouseCursor(x - xy[0], y - xy[1]),
+            motion => motion,
+        };
+        Move {
+            motion: motion,
+            ..*self
+        }
+    }
+}
+
+impl Button {
+    /// Returns a copy of the Button relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Button {
+        match *self {
+            Button::Mouse(m_button, self_xy) => Button::Mouse(m_button, vec2_sub(self_xy, xy)),
+            button => button,
+        }
+    }
+}
+
+impl Press {
+    /// Returns a copy of the Press relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Press {
+        Press {
+            button: self.button.relative_to(xy),
+            ..*self
+        }
+    }
+}
+
+impl Release {
+    /// Returns a copy of the Release relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Release {
+        Release {
+            button: self.button.relative_to(xy),
+            ..*self
+        }
+    }
 }
 
 impl Click {
@@ -189,9 +297,27 @@ impl From<Input> for Event {
     }
 }
 
-impl From<Input> for Widget {
-    fn from(input: Input) -> Self {
-        Widget::Raw(input)
+impl From<Text> for Widget {
+    fn from(text: Text) -> Self {
+        Widget::Text(text)
+    }
+}
+
+impl From<Move> for Widget {
+    fn from(move_: Move) -> Self {
+        Widget::Move(move_)
+    }
+}
+
+impl From<Press> for Widget {
+    fn from(press: Press) -> Self {
+        Widget::Press(press)
+    }
+}
+
+impl From<Release> for Widget {
+    fn from(release: Release) -> Self {
+        Widget::Release(release)
     }
 }
 

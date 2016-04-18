@@ -22,11 +22,19 @@ pub struct Global {
     pub last_click: Option<(std::time::Instant, event::Click)>,
 }
 
-/// Iterator over global `event::Event`s.
-///
-/// Unlike the `input::widget::Events`, this will never filter out any events, and all coordinates
-/// will be relative to the middle of the window.
-pub type Events<'a> = ::std::slice::Iter<'a, event::Event>;
+/// Iterator over all global `event::Event`s that have occurred since the last time
+/// `Ui::set_widgets` was called.
+#[derive(Clone)]
+pub struct Events<'a> {
+    iter: std::slice::Iter<'a, event::Event>,
+}
+
+/// An iterator yielding all `event::Ui`s that have occurred since the last time `Ui::set_widgets`
+/// was called.
+#[derive(Clone)]
+pub struct UiEvents<'a> {
+    events: Events<'a>,
+}
 
 impl Global {
 
@@ -43,7 +51,7 @@ impl Global {
     /// Returns an iterator yielding all events that have occurred since the last time
     /// `Ui::set_widgets` was called.
     pub fn events(&self) -> Events {
-        self.events.iter()
+        Events { iter: self.events.iter() }
     }
 
     /// Add the new event to the stack.
@@ -58,4 +66,31 @@ impl Global {
         self.start = self.current.clone();
     }
 
+}
+
+impl<'a> Events<'a> {
+    /// Converts the `Events` into a `UiEvents`, yielding only the `event::Ui`s that have occurred
+    /// since the last time `Ui::set_widgets` was called.
+    pub fn ui(self) -> UiEvents<'a> {
+        UiEvents { events: self }
+    }
+}
+
+impl<'a> Iterator for Events<'a> {
+    type Item = &'a event::Event;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<'a> Iterator for UiEvents<'a> {
+    type Item = &'a event::Ui;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Event::Ui(ref ui_event) = *event {
+                return Some(ui_event);
+            }
+        }
+        None
+    }
 }
