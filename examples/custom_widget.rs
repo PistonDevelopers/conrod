@@ -404,7 +404,7 @@ pub fn main() {
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
+    let mut window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
         .opengl(OpenGL::V3_2)
         .exit_on_esc(true)
         .build().unwrap();
@@ -416,13 +416,15 @@ pub fn main() {
         let assets = find_folder::Search::ParentsThenKids(3, 3)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone()).unwrap();
+        let glyph_cache = Glyphs::new(&font_path, window.factory.clone()).unwrap();
         Ui::new(glyph_cache, conrod::Theme::default())
     };
 
-    for e in window.ups(60) {
+    window.set_ups(60);
+
+    while let Some(e) = window.next() {
         // Pass each `Event` to the `Ui`.
-        ui.handle_event(e.event.as_ref().unwrap());
+        ui.handle_event(&e);
 
         e.update(|_| ui.set_widgets(|ref mut ui| {
 
@@ -452,6 +454,6 @@ pub fn main() {
         }));
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-        e.draw_2d(|c, g| ui.draw_if_changed(c, g))
+        window.draw_2d(&e, |c, g| ui.draw_if_changed(c, g))
     }
 }

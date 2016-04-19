@@ -15,7 +15,7 @@ type UiCell<'a> = conrod::UiCell<'a, Backend>;
 fn main() {
 
     // Construct the window.
-    let window: PistonWindow =
+    let mut window: PistonWindow =
         WindowSettings::new("Text Demo", [1080, 720])
             .exit_on_esc(true).build().unwrap();
 
@@ -25,15 +25,17 @@ fn main() {
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
+    window.set_ups(60);
+
     // Poll events from the window.
-    for event in window.ups(60) {
+    while let Some(event) = window.next() {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(set_ui));
-        event.draw_2d(|c, g| ui.draw(c, g));
+        window.draw_2d(&event, |c, g| ui.draw(c, g));
     }
 
 }

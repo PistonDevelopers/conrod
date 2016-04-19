@@ -17,7 +17,7 @@ fn main() {
     type Ui = conrod::Ui<Backend>;
 
     // Construct the window.
-    let window: PistonWindow =
+    let mut window: PistonWindow =
         WindowSettings::new("Image Widget Demonstration", [800, 600])
             .exit_on_esc(true).vsync(true).samples(4).build().unwrap();
 
@@ -28,21 +28,23 @@ fn main() {
     let mut ui = {
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
     // The texture to use for the `Image`.
     let rust_logo = {
         let path = assets.join("images/rust.png");
-        let factory = &mut *window.factory.borrow_mut();
+        let factory = &mut window.factory;
         Arc::new(Texture::from_path(factory, &path, Flip::None, &TextureSettings::new()).unwrap())
     };
 
+    window.set_ups(60);
+
     // Poll events from the window.
-    for event in window.ups(60) {
+    while let Some(event) = window.next() {
         ui.handle_event(&event);
-        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
+        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
         event.update(|_| ui.set_widgets(|mut ui| {
             widget_ids!(CANVAS, RUST_LOGO);
             Canvas::new().color(color::LIGHT_BLUE).set(CANVAS, &mut ui);

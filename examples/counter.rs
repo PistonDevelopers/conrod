@@ -12,7 +12,7 @@ fn main() {
     type Ui = conrod::Ui<Backend>;
 
     // Construct the window.
-    let window: PistonWindow = WindowSettings::new("Click me!", [200, 200])
+    let mut window: PistonWindow = WindowSettings::new("Click me!", [200, 200])
         .exit_on_esc(true).build().unwrap();
 
     // construct our `Ui`.
@@ -21,14 +21,16 @@ fn main() {
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
         Ui::new(glyph_cache.unwrap(), theme)
     };
 
     let mut count = 0;
 
+    window.set_ups(60);
+
     // Poll events from the window.
-    for event in window.ups(60) {
+    while let Some(event) = window.next() {
         ui.handle_event(&event);
         event.update(|_| ui.set_widgets(|ref mut ui| {
 
@@ -46,6 +48,6 @@ fn main() {
                 .react(|| count += 1)
                 .set(COUNTER, ui);
         }));
-        event.draw_2d(|c, g| ui.draw_if_changed(c, g));
+        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
     }
 }
