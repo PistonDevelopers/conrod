@@ -1,4 +1,3 @@
-use std::cmp;
 use {
     Align,
     Backend,
@@ -7,13 +6,14 @@ use {
     Colorable,
     Dimension,
     FontSize,
-    LineBreak,
     Range,
     Rect,
     Scalar,
     Ui,
     Widget,
 };
+use std;
+use text;
 use widget;
 
 
@@ -81,7 +81,7 @@ pub struct State {
     /// An owned version of the string.
     string: String,
     /// An index range for each line in the string.
-    line_breaks: Vec<(usize, Option<LineBreak>)>,
+    line_breaks: Vec<(usize, Option<text::str::line::Break>)>,
 }
 
 
@@ -209,7 +209,7 @@ impl<'a> Widget for Text<'a> {
             },
         };
         let line_spacing = self.style.line_spacing(&ui.theme);
-        let height = total_height(cmp::max(num_lines, 1), font_size, line_spacing);
+        let height = total_height(std::cmp::max(num_lines, 1), font_size, line_spacing);
         Dimension::Absolute(height)
     }
 
@@ -274,14 +274,8 @@ impl State {
 
     /// Iterator that yields a new line at both "newline"s (i.e. `\n`) and `line_wrap_indices`.
     pub fn lines(&self) -> Lines {
-        ::glyph_cache::Lines::new(&self.string, self.line_breaks.iter().cloned())
+        text::str::Lines::new(&self.string, self.line_breaks.iter().cloned())
     }
-
-    // /// The total height from the top of the first line to the bottom of the last line.
-    // pub fn total_height(&self, font_size: FontSize, line_spacing: Scalar) -> Scalar {
-    //     let num_lines = self.lines().count();
-    //     total_height(num_lines, font_size, line_spacing)
-    // }
 
     /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
     /// every **line** in the `string`
@@ -295,32 +289,6 @@ impl State {
         LineRects::new(lines, container, h_align, font_size, line_spacing)
     }
 
-    // /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
-    // /// every **character** in the `string`
-    // pub fn char_rects<'a, C>(&'a self,
-    //                          cache: &'a GlyphCache<C>,
-    //                          container: Rect,
-    //                          h_align: Align,
-    //                          font_size: FontSize,
-    //                          line_spacing: Scalar) -> CharRects<'a, C>
-    //     where C: CharacterCache,
-    // {
-    //     let lines = self.lines();
-    //     let line_rects = self.line_rects(cache, container, h_align, font_size, line_spacing);
-    //     let mut lines_with_rects = lines.zip(line_rects);
-    //     let maybe_first_line = lines_with_rects.next().and_then(|(line, line_rect)| {
-    //         char_widths_and_xs_for_line(cache, font_size, line, line_rect)
-    //             .map(|char_widths_and_xs| (char_widths_and_xs, line_rect.y()))
-    //     });
-    //     let char_height = font_size as Scalar;
-    //     CharRects {
-    //         cache: cache,
-    //         font_size: font_size,
-    //         lines_with_rects: lines_with_rects,
-    //         maybe_current_line: maybe_first_line,
-    //     }
-    // }
-
 }
 
 
@@ -333,7 +301,7 @@ pub fn total_height(num_lines: usize, font_size: FontSize, line_spacing: Scalar)
 
 /// Shorthand for the **Lines** iterator yielded by **State::lines**.
 pub type Lines<'a> =
-    ::glyph_cache::Lines<'a, ::std::iter::Cloned<::std::slice::Iter<'a, (usize, Option<LineBreak>)>>>;
+    text::str::Lines<'a, std::iter::Cloned<std::slice::Iter<'a, (usize, Option<text::str::line::Break>)>>>;
 
 
 /// An walker yielding a **Rect** (representing the absolute position and dimensions) for
@@ -371,22 +339,6 @@ impl<'a, I> LineRects<'a, I> {
         }
     }
 
-    // /// Returns the next line **Rect**.
-    // ///
-    // /// Returns **None** if there are no more lines in the **Lines** iter.
-    // ///
-    // /// This can be used similarly to an **Iterator**, i.e:
-    // ///
-    // /// `while let Some(rect) = line_rects.next() { ... }`
-    // ///
-    // /// The difference being that this method does not require borrowing the **CharacterCache**.
-    // pub fn next<C>(&mut self, cache: &mut C) -> Option<Rect>
-    //     where I: Iterator<Item=&'a str>,
-    //           C: CharacterCache,
-    // {
-    //     self.next_with_line(cache).map(|(rect, _)| rect)
-    // }
-
     /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
     /// line's `&'a str` alongside the **Rect**.
     pub fn next_with_line<C>(&mut self, cache: &mut C) -> Option<(Rect, &'a str)>
@@ -412,89 +364,3 @@ impl<'a, I> LineRects<'a, I> {
     }
 
 }
-
-
-// /// Shorthand for the `CharWidths` iterator used within the `CharRects` iterator.
-// pub type CharWidths<'a, C> = ::glyph_cache::CharWidths<'a, C, ::std::str::Chars<'a>>;
-// 
-// /// Shorthand for the `CharXs` iterator used within the `CharRects` iterator.
-// pub type CharXs<'a, C> = ::glyph_cache::CharXs<'a, C, ::std::str::Chars<'a>>;
-// 
-// /// Shorthand for the `Zip`ped `CharWidths` and `CharXs` iterators used within the `CharRects`
-// /// iterator.
-// pub type CharWidthsAndXs<'a, C> = ::std::iter::Zip<CharWidths<'a, C>, CharXs<'a, C>>;
-// 
-// /// Shorthand for the `Zip`ped `Lines` and `LineRects` iterators used within the `CharRects`
-// /// iterator.
-// pub type LinesWithRects<'a, C> = ::std::iter::Zip<Lines<'a>, LineRects<'a, C>>;
-// 
-// type Y = Scalar;
-// type CurrentLine<'a, C> = (CharWidthsAndXs<'a, C>, Y);
-
-
-// /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
-// /// every **character** in the `string`
-// pub struct CharRects<'a, C: 'a> {
-//     font_size: FontSize,
-//     cache: &'a GlyphCache<C>,
-//     lines_with_rects: LinesWithRects<'a, C>,
-//     maybe_current_line: Option<CurrentLine<'a, C>>,
-// }
-// 
-// 
-// impl<'a, C> Iterator for CharRects<'a, C>
-//     where C: CharacterCache,
-// {
-//     type Item = Rect;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let CharRects {
-//             font_size,
-//             cache,
-//             ref mut lines_with_rects,
-//             ref mut maybe_current_line,
-//         } = *self;
-// 
-//         // Continue trying each line until we find one with characters.
-//         loop {
-//             match *maybe_current_line {
-//                 // If the current line has some characters, return the next `Rect`.
-//                 Some((ref mut char_widths_and_xs, y)) => match char_widths_and_xs.next() {
-//                     Some((w, x)) => {
-//                         let xy = [x, y];
-//                         let dim = [w, font_size as Scalar];
-//                         return Some(Rect::from_xy_dim(xy, dim));
-//                     },
-//                     None => (),
-//                 },
-//                 // If we have no more lines, we're done.
-//                 None => return None,
-//             }
-// 
-//             // If our line had no more characters, make the next line the current line.
-//             *maybe_current_line = lines_with_rects.next().and_then(|(line, line_rect)| {
-//                 char_widths_and_xs_for_line(cache, font_size, line, line_rect)
-//                     .map(|char_widths_and_xs| (char_widths_and_xs, line_rect.y()))
-//             });
-//         }
-//     }
-// }
-// 
-// 
-// /// Returns a `CharWidthsAndXs` iterator for the given `line`.
-// ///
-// /// Rturns `None` if there are no characters within the `line`.
-// fn char_widths_and_xs_for_line<'a, C>(cache: &'a GlyphCache<C>,
-//                                       font_size: FontSize,
-//                                       line: &'a str,
-//                                       line_rect: Rect) -> Option<CharWidthsAndXs<'a, C>>
-//     where C: CharacterCache,
-// {
-//     line.chars().next().map(|ch| {
-//         let ch_w = cache.char_width(font_size, ch);
-//         let ch_w_range = Range::new(0.0..ch_w);
-//         let start_x = ch_w_range.align_start_of(line_rect.x).middle();
-//         let char_widths = cache.char_widths(font_size, line.chars());
-//         let char_xs = cache.char_xs(font_size, start_x, line.chars());
-//         char_widths.zip(char_xs)
-//     })
-// }
