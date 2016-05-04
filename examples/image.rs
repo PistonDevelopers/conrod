@@ -8,7 +8,7 @@ extern crate piston_window;
 
 fn main() {
     use conrod::{Canvas, Colorable, Image, Positionable, Theme, Widget, color};
-    use piston_window::{EventLoop, Flip, G2d, Glyphs, PistonWindow, Texture, TextureSettings,
+    use piston_window::{EventLoop, Flip, G2d, Glyphs, OpenGL, PistonWindow, Texture, TextureSettings,
                         UpdateEvent, WindowSettings};
     use std::sync::Arc;
 
@@ -16,10 +16,13 @@ fn main() {
     type Backend = (<G2d<'static> as conrod::Graphics>::Texture, Glyphs);
     type Ui = conrod::Ui<Backend>;
 
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
     // Construct the window.
     let mut window: PistonWindow =
         WindowSettings::new("Image Widget Demonstration", [800, 600])
-            .exit_on_esc(true).vsync(true).samples(4).build().unwrap();
+            .opengl(opengl).exit_on_esc(true).vsync(true).samples(4).build().unwrap();
 
     // Get the path to our `assets` directory (where the fonts and images are).
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
