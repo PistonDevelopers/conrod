@@ -400,12 +400,15 @@ pub fn main() {
     type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
     type Ui = conrod::Ui<Backend>;
 
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
     // PistonWindow has two type parameters, but the default type is
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
     let mut window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
-        .opengl(OpenGL::V3_2)
+        .opengl(opengl)
         .exit_on_esc(true)
         .build().unwrap();
 
