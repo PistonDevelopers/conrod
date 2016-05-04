@@ -15,10 +15,13 @@ type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 fn main() {
 
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
     // Construct the window.
     let mut window: PistonWindow =
         WindowSettings::new("Primitives Demo", [400, 720])
-            .exit_on_esc(true).build().unwrap();
+            .opengl(opengl).exit_on_esc(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
