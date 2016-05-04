@@ -3,7 +3,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::{Theme, Widget};
-use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
@@ -14,10 +14,13 @@ type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 fn main() {
 
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+
     // Construct the window.
     let mut window: PistonWindow =
         WindowSettings::new("Text Demo", [1080, 720])
-            .exit_on_esc(true).build().unwrap();
+            .opengl(opengl).exit_on_esc(true).build().unwrap();
 
     // Construct our `Ui`.
     let mut ui = {
