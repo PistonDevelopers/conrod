@@ -35,7 +35,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use piston_window::{EventLoop, Glyphs, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
 
@@ -130,10 +130,13 @@ impl DemoApp {
 
 fn main() {
 
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
+    
     // Construct the window.
     let mut window: PistonWindow =
         WindowSettings::new("All The Widgets!", [1100, 560])
-            .exit_on_esc(true).vsync(true).build().unwrap();
+            .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
     let mut ui = {
