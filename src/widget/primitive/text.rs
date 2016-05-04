@@ -79,9 +79,9 @@ pub enum Wrap {
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// An owned version of the string.
-    string: String,
-    /// An index range for each line in the string.
-    line_breaks: Vec<(usize, Option<text::str::line::Break>)>,
+    pub string: String,
+    /// The indices and width for each line of text within the `string`.
+    pub line_infos: Vec<text::line::Info>,
 }
 
 
@@ -172,7 +172,7 @@ impl<'a> Widget for Text<'a> {
     fn init_state(&self) -> State {
         State {
             string: String::new(),
-            line_breaks: Vec::new(),
+            line_infos: Vec::new(),
         }
     }
 
@@ -202,9 +202,13 @@ impl<'a> Widget for Text<'a> {
                 None => text.lines().count(),
                 Some(max_w) => match wrap {
                     Wrap::Character =>
-                        ui.glyph_cache.line_breaks_by_character(font_size, text, max_w).count(),
+                        text::line::infos(text, &ui.glyph_cache, font_size)
+                            .wrap_by_character(max_w)
+                            .count(),
                     Wrap::Whitespace =>
-                        ui.glyph_cache.line_breaks_by_whitespace(font_size, text, max_w).count(),
+                        text::line::infos(text, &ui.glyph_cache, font_size)
+                            .wrap_by_whitespace(max_w)
+                            .count(),
                 },
             },
         };
@@ -221,22 +225,21 @@ impl<'a> Widget for Text<'a> {
         let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_size = style.font_size(ui.theme());
 
-        // Produces an iterator yielding the line breaks for the `text`.
-        let new_line_breaks = || match maybe_wrap {
+        // Produces an iterator yielding info for each line within the `text`.
+        let new_line_infos = || match maybe_wrap {
             None =>
-                // This branch could be faster if we just used `.lines()` somehow.
-                ui.glyph_cache().line_breaks_by_character(font_size, text, ::std::f64::MAX),
+                text::line::infos(text, ui.glyph_cache(), font_size),
             Some(Wrap::Character) =>
-                ui.glyph_cache().line_breaks_by_character(font_size, text, rect.w()),
+                text::line::infos(text, ui.glyph_cache(), font_size).wrap_by_character(rect.w()),
             Some(Wrap::Whitespace) =>
-                ui.glyph_cache().line_breaks_by_whitespace(font_size, text, rect.w()),
+                text::line::infos(text, ui.glyph_cache(), font_size).wrap_by_whitespace(rect.w()),
         };
 
         // If the string is different, we must update both the string and the line breaks.
         if &state.view().string[..] != text {
             state.update(|state| {
                 state.string = text.to_owned();
-                state.line_breaks = new_line_breaks().collect();
+                state.line_infos = new_line_infos().collect();
             });
 
         // Otherwise, we'll check to see if we have to update the line breaks.
@@ -244,17 +247,17 @@ impl<'a> Widget for Text<'a> {
             use utils::write_if_different;
             use std::borrow::Cow;
 
-            // Compare the line_breaks and only collect the new ones if they are different.
-            let maybe_new_line_breaks = {
-                let line_breaks = &state.view().line_breaks[..];
-                match write_if_different(line_breaks, new_line_breaks()) {
+            // Compare the line_infos and only collect the new ones if they are different.
+            let maybe_new_line_infos = {
+                let line_infos = &state.view().line_infos[..];
+                match write_if_different(line_infos, new_line_infos()) {
                     Cow::Owned(new) => Some(new),
                     _ => None,
                 }
             };
 
-            if let Some(new_line_breaks) = maybe_new_line_breaks {
-                state.update(|state| state.line_breaks = new_line_breaks);
+            if let Some(new_line_infos) = maybe_new_line_infos {
+                state.update(|state| state.line_infos = new_line_infos);
             }
         }
     }
@@ -270,28 +273,6 @@ impl<'a> Colorable for Text<'a> {
 }
 
 
-impl State {
-
-    /// Iterator that yields a new line at both "newline"s (i.e. `\n`) and `line_wrap_indices`.
-    pub fn lines(&self) -> Lines {
-        text::str::Lines::new(&self.string, self.line_breaks.iter().cloned())
-    }
-
-    /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
-    /// every **line** in the `string`
-    pub fn line_rects<'a>(&'a self,
-                          container: Rect,
-                          h_align: Align,
-                          font_size: FontSize,
-                          line_spacing: Scalar) -> LineRects<'a, Lines<'a>>
-    {
-        let lines = self.lines();
-        LineRects::new(lines, container, h_align, font_size, line_spacing)
-    }
-
-}
-
-
 /// Calculate the total height of the text from the given number of lines, font_size and
 /// line_spacing.
 pub fn total_height(num_lines: usize, font_size: FontSize, line_spacing: Scalar) -> Scalar {
@@ -299,68 +280,85 @@ pub fn total_height(num_lines: usize, font_size: FontSize, line_spacing: Scalar)
 }
 
 
-/// Shorthand for the **Lines** iterator yielded by **State::lines**.
-pub type Lines<'a> =
-    text::str::Lines<'a, std::iter::Cloned<std::slice::Iter<'a, (usize, Option<text::str::line::Break>)>>>;
+// impl State {
+// 
+//     /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
+//     /// every **line** in the `string`
+//     pub fn line_rects<'a>(&'a self,
+//                           container: Rect,
+//                           h_align: Align,
+//                           font_size: FontSize,
+//                           line_spacing: Scalar) -> LineRects<'a, Lines<'a>>
+//     {
+//         let lines = self.lines();
+//         LineRects::new(lines, container, h_align, font_size, line_spacing)
+//     }
+// 
+// }
 
 
-/// An walker yielding a **Rect** (representing the absolute position and dimensions) for
-/// every **line** in its given line iterator.
-pub struct LineRects<'a, I: 'a> {
-    lines: I,
-    font_size: FontSize,
-    y_step: Scalar,
-    h_align: Align,
-    container_x: Range,
-    y: Scalar,
-    strs: ::std::marker::PhantomData<&'a ()>,
-}
+// /// Shorthand for the **Lines** iterator yielded by **State::lines**.
+// pub type Lines<'a> =
+//     text::str::Lines<'a, std::iter::Cloned<std::slice::Iter<'a, (usize, Option<text::str::line::Break>)>>>;
 
 
-impl<'a, I> LineRects<'a, I> {
-
-    /// Construct a new **LineRects**.
-    pub fn new(lines: I,
-               container: Rect,
-               h_align: Align,
-               font_size: FontSize,
-               line_spacing: Scalar) -> LineRects<'a, I>
-        where I: Iterator<Item=&'a str>,
-    {
-        let height = font_size as Scalar;
-        LineRects {
-            lines: lines,
-            font_size: font_size,
-            y_step: -(line_spacing + height),
-            h_align: h_align,
-            container_x: container.x,
-            y: Range::new(0.0, height).align_end_of(container.y).middle(),
-            strs: ::std::marker::PhantomData,
-        }
-    }
-
-    /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
-    /// line's `&'a str` alongside the **Rect**.
-    pub fn next_with_line<C>(&mut self, cache: &mut C) -> Option<(Rect, &'a str)>
-        where I: Iterator<Item=&'a str>,
-              C: CharacterCache,
-    {
-        let LineRects { ref mut lines, font_size, y_step, h_align, container_x, ref mut y, .. } = *self;
-        lines.next().map(|line| {
-            let w = cache.width(font_size, line);
-            let h = font_size as Scalar;
-            let w_range = Range::new(0.0, w);
-            let x = match h_align {
-                Align::Start => w_range.align_start_of(container_x),
-                Align::Middle => w_range.align_middle_of(container_x),
-                Align::End => w_range.align_end_of(container_x),
-            }.middle();
-            let xy = [x, *y];
-            let wh = [w, h];
-            let rect = Rect::from_xy_dim(xy, wh);
-            *y += y_step;
-            (rect, line)
-        })
-    }
-
-}
+// /// A walker yielding a **Rect** (representing the absolute position and dimensions) for
+// /// every **line** in its given line iterator.
+// pub struct LineRects<'a, I: 'a> {
+//     lines: I,
+//     font_size: FontSize,
+//     y_step: Scalar,
+//     h_align: Align,
+//     container_x: Range,
+//     y: Scalar,
+//     strs: ::std::marker::PhantomData<&'a ()>,
+// }
+// 
+// 
+// impl<'a, I> LineRects<'a, I> {
+// 
+//     /// Construct a new **LineRects**.
+//     pub fn new(lines: I,
+//                container: Rect,
+//                h_align: Align,
+//                font_size: FontSize,
+//                line_spacing: Scalar) -> LineRects<'a, I>
+//         where I: Iterator<Item=&'a str>,
+//     {
+//         let height = font_size as Scalar;
+//         LineRects {
+//             lines: lines,
+//             font_size: font_size,
+//             y_step: -(line_spacing + height),
+//             h_align: h_align,
+//             container_x: container.x,
+//             y: Range::new(0.0, height).align_end_of(container.y).middle(),
+//             strs: ::std::marker::PhantomData,
+//         }
+//     }
+// 
+//     /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
+//     /// line's `&'a str` alongside the **Rect**.
+//     pub fn next_with_line<C>(&mut self, cache: &mut C) -> Option<(Rect, &'a str)>
+//         where I: Iterator<Item=&'a str>,
+//               C: CharacterCache,
+//     {
+//         let LineRects { ref mut lines, font_size, y_step, h_align, container_x, ref mut y, .. } = *self;
+//         lines.next().map(|line| {
+//             let w = cache.width(font_size, line);
+//             let h = font_size as Scalar;
+//             let w_range = Range::new(0.0, w);
+//             let x = match h_align {
+//                 Align::Start => w_range.align_start_of(container_x),
+//                 Align::Middle => w_range.align_middle_of(container_x),
+//                 Align::End => w_range.align_end_of(container_x),
+//             }.middle();
+//             let xy = [x, *y];
+//             let wh = [w, h];
+//             let rect = Rect::from_xy_dim(xy, wh);
+//             *y += y_step;
+//             (rect, line)
+//         })
+//     }
+// 
+// }

@@ -32,9 +32,9 @@
 
 use {Point, Scalar};
 
+use piston_input;
 #[doc(inline)]
 pub use piston_input::{
-    self,
     Button,
     ControllerAxisArgs,
     ControllerButton,

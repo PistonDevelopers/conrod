@@ -299,16 +299,25 @@ pub fn draw_from_container<B, G>(context: &Context,
 
         primitive::text::KIND => {
             if let Some(text) = container.unique_widget_state::<::Text>() {
-                let ::graph::UniqueWidgetState { ref state, ref style } = *text;
+                use {Align, graph, text};
+
+                let graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
                 let line_spacing = style.line_spacing(theme);
                 let color = style.color(theme).to_fsa();
-                let text_align = style.text_align(theme);
+                let x_align = style.text_align(theme);
+                let y_align = Align::End; // Always align text to top of Text's Rect.
                 let rect = container.rect;
+                let line_infos = state.line_infos.iter().cloned();
+                let string = &state.string;
 
-                let mut line_rects = state.line_rects(rect, text_align, font_size, line_spacing);
-                while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
+                let lines =
+                    text::lines(string, line_infos.clone().map(|info| (info.start, info.end())));
+                let line_rects =
+                    text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
+
+                for (line, line_rect) in lines.zip(line_rects) {
                     let offset = [line_rect.left().round(), line_rect.bottom().round()];
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
