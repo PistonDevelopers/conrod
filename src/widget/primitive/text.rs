@@ -6,8 +6,6 @@ use {
     Colorable,
     Dimension,
     FontSize,
-    Range,
-    Rect,
     Scalar,
     Ui,
     Widget,
