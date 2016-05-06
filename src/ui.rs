@@ -699,6 +699,8 @@ impl<B> Ui<B>
                                 track_widget_under_mouse_and_update_capturing(self);
                             },
 
+                            _ => (),
+
                         }
                     },
 
