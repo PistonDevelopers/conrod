@@ -243,7 +243,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         // - `Scroll`ing of the mouse over a value.
         'events: for widget_event in ui.widget_input(idx).events() {
             use event;
-            use input::{self, Button, MouseButton};
+            use input::{self, MouseButton};
 
             match widget_event {
 

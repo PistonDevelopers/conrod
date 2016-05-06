@@ -266,7 +266,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         // - Dragging points via left `Drag`.
         'events: for widget_event in ui.widget_input(idx).events() {
             use event;
-            use input::{self, Button, MouseButton};
+            use input::{self, MouseButton};
 
             match widget_event {
 
