@@ -1,13 +1,14 @@
 //! Text layout logic.
 
 use {FontSize, Scalar};
+use std;
 
 /// An iterator yielding each line within the given `text` as a new `&str`, where the start and end
 /// indices into each line are provided by the given iterator.
 #[derive(Clone)]
 pub struct Lines<'a, I> {
     text: &'a str,
-    index_pairs: I,
+    ranges: I,
 }
 
 
@@ -23,26 +24,23 @@ pub fn height(num_lines: usize, font_size: FontSize, line_spacing: Scalar) -> Sc
 
 /// Produce an iterator yielding each line within the given `text` as a new `&str`, where the
 /// start and end indices into each line are provided by the given iterator.
-pub fn lines<I>(text: &str, index_pairs: I) -> Lines<I>
-    where I: Iterator<Item=(usize, Option<usize>)>,
+pub fn lines<I>(text: &str, ranges: I) -> Lines<I>
+    where I: Iterator<Item=std::ops::Range<usize>>,
 {
     Lines {
         text: text,
-        index_pairs: index_pairs,
+        ranges: ranges,
     }
 }
 
 
 impl<'a, I> Iterator for Lines<'a, I>
-    where I: Iterator<Item=(usize, Option<usize>)>,
+    where I: Iterator<Item=std::ops::Range<usize>>,
 {
     type Item = &'a str;
     fn next(&mut self) -> Option<Self::Item> {
-        let Lines { text, ref mut index_pairs } = *self;
-        index_pairs.next().map(|(start, maybe_end)| match maybe_end {
-            Some(end) => &text[start..end],
-            None => &text[start..],
-        })
+        let Lines { text, ref mut ranges } = *self;
+        ranges.next().map(|range| &text[range])
     }
 }
 
@@ -87,6 +85,7 @@ pub mod char {
         font_size: FontSize,
     }
 
+
     /// Converts the given sequence of `char`s into their Scalar widths.
     pub fn widths<I, C>(chars: I,
                         cache: &GlyphCache<C>,
@@ -106,7 +105,7 @@ pub mod char {
     ///
     /// This is useful when information about character positioning is needed when reasoning about
     /// text layout.
-    pub fn rects_per_line<'a, I, C>(mut lines_with_rects: I,
+    pub fn rects_per_line<'a, I, C>(lines_with_rects: I,
                                     cache: &'a GlyphCache<C>,
                                     font_size: FontSize) -> RectsPerLine<'a, I, C>
     {
@@ -115,6 +114,21 @@ pub mod char {
             cache: cache,
             font_size: font_size,
         }
+    }
+
+    /// Find the index of the character that directly follows the cursor at the given `cursor_idx`.
+    ///
+    /// Returns `None` if either the given `cursor::Index` `line` or `idx` fields are out of bounds
+    /// of the `line_infos` iterator.
+    pub fn index_after_cursor<I>(mut line_infos: I, cursor: super::cursor::Index) -> Option<usize>
+        where I: Iterator<Item=super::line::Info>,
+    {
+        line_infos.nth(cursor.line).and_then(|line_info| {
+            let start = line_info.start;
+            let end = line_info.end();
+            let char_index = start + cursor.idx;
+            if start <= char_index && char_index <= end { Some(char_index) } else { None }
+        })
     }
 
 
@@ -190,6 +204,16 @@ pub mod cursor {
         widths: super::char::Widths<'a, std::str::Chars<'a>, C>,
     }
 
+    /// An index representing the position of a cursor within some text.
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct Index {
+        /// The index of the line upon which the cursor is situated.
+        pub line: usize,
+        /// The index within all possible cursor positions for the line.
+        pub idx: usize,
+    }
+
+
     /// Every possible cursor position within each line of text yielded by the given iterator.
     ///
     /// Yields `(xs, y_range)`, where `y_range` is the `Range` occupied by the line across the *y*
@@ -204,6 +228,38 @@ pub mod cursor {
             font_size: font_size,
         }
     }
+
+    /// Convert the given character index into a cursor `Index`.
+    pub fn index_before_char<I>(line_infos: I, char_index: usize) -> Option<Index>
+        where I: Iterator<Item=super::line::Info>,
+    {
+        for (i, line_info) in line_infos.enumerate() {
+            let start = line_info.start;
+            let end = line_info.end();
+            if start <= char_index && char_index <= end+1 {
+                return Some(Index { line: i, idx: char_index - start });
+            }
+        }
+        None
+    }
+
+    /// Determine the *xy* location of the cursor at the given cursor `Index`.
+    pub fn xy_at<'a, I, C: 'a>(xys_per_line: I, idx: Index) -> Option<(Scalar, Range)>
+        where I: Iterator<Item=(Xs<'a, C>, Range)>,
+              C: CharacterCache,
+    {
+        for (i, (xs, y)) in xys_per_line.enumerate() {
+            if i == idx.line {
+                for (j, x) in xs.enumerate() {
+                    if j == idx.idx {
+                        return Some((x, y));
+                    }
+                }
+            }
+        }
+        None
+    }
+
 
     impl<'a, I, C> Iterator for XysPerLine<'a, I, C>
         where I: Iterator<Item=(&'a str, Rect)>,
@@ -257,6 +313,8 @@ pub mod line {
         /// An index at which the string breaks due to a newline character, along with the
         /// width of the "newline" token in bytes.
         Newline(usize, usize),
+        /// The end of the string has been reached, with the given length.
+        End(usize),
     }
 
     /// Information about a single line of text within a `&str`.
@@ -271,7 +329,7 @@ pub mod line {
         /// The index within the `&str` at which this line breaks into a new line, along with the
         /// index at which the following line begins. The variant describes whether the break is
         /// caused by a `Newline` character or a `Wrap` by the given wrap function.
-        pub end_break: Option<Break>,
+        pub end_break: Break,
         /// The total width of all characters within the line.
         pub width: Scalar,
     }
@@ -284,7 +342,6 @@ pub mod line {
     /// Construct an `Infos` iterator via the [infos function](./fn.infos.html) and its two builder
     /// methods, [wrap_by_character](./struct.Infos.html#method.wrap_by_character) and
     /// [wrap_by_whitespace](./struct.Infos.html#method.wrap_by_whitespace).
-    #[derive(Clone)]
     pub struct Infos<'a, C: 'a, F> {
         text: &'a str,
         cache: &'a GlyphCache<C>,
@@ -306,8 +363,7 @@ pub mod line {
 
     /// An alias for function pointers that are compatible with the `Block`'s required text
     /// wrapping function.
-    pub type NextBreakFnPtr<C> =
-        fn(&str, &GlyphCache<C>, FontSize, Scalar) -> (Option<Break>, Scalar);
+    pub type NextBreakFnPtr<C> = fn(&str, &GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar);
 
 
     impl Break {
@@ -315,17 +371,39 @@ pub mod line {
         /// Return the index at which the break occurs.
         pub fn index(self) -> usize {
             match self {
-                Break::Wrap(idx, _) | Break::Newline(idx, _) => idx,
+                Break::Wrap(idx, _) | Break::Newline(idx, _) | Break::End(idx) => idx,
             }
         }
 
     }
 
-    impl Info {
-        /// The end of the index range for indexing into the slice if it is known.
-        pub fn end(&self) -> Option<usize> {
-            self.end_break.map(|b| b.index())
+    impl<'a, C, F> Clone for Infos<'a, C, F>
+        where F: Clone,
+    {
+        fn clone(&self) -> Self {
+            Infos {
+                text: self.text,
+                cache: self.cache,
+                font_size: self.font_size,
+                max_width: self.max_width,
+                next_break_fn: self.next_break_fn.clone(),
+                start: self.start,
+            }
         }
+    }
+
+    impl Info {
+
+        /// The end of the index range for indexing into the slice.
+        pub fn end(&self) -> usize {
+            self.end_break.index()
+        }
+
+        /// The index range for indexing into the original str slice.
+        pub fn range(self) -> std::ops::Range<usize> {
+            self.start..self.end()
+        }
+
     }
 
     impl<'a, C> Infos<'a, C, NextBreakFnPtr<C>>
@@ -355,7 +433,7 @@ pub mod line {
     /// along with the width of the line.
     fn next_break<C>(text: &str,
                      cache: &GlyphCache<C>,
-                     font_size: FontSize) -> (Option<Break>, Scalar)
+                     font_size: FontSize) -> (Break, Scalar)
         where C: CharacterCache,
     {
         let mut width = 0.0;
@@ -364,16 +442,16 @@ pub mod line {
             // Check for a newline.
             if ch == '\r' {
                 if let Some(&(_, '\n')) = char_indices.peek() {
-                    return (Some(Break::Newline(i, 2)), width)
+                    return (Break::Newline(i, 2), width)
                 }
             } else if ch == '\n' {
-                return (Some(Break::Newline(i, 1)), width);
+                return (Break::Newline(i, 1), width);
             }
 
             // Update the width.
             width += cache.char_width(font_size, ch);
         }
-        (None, width)
+        (Break::End(text.len()), width)
     }
 
     /// Returns the next index at which the text will break by either:
@@ -384,7 +462,7 @@ pub mod line {
     fn next_break_by_character<C>(text: &str,
                                   cache: &GlyphCache<C>,
                                   font_size: FontSize,
-                                  max_width: Scalar) -> (Option<Break>, Scalar)
+                                  max_width: Scalar) -> (Break, Scalar)
         where C: CharacterCache,
     {
         let mut width = 0.0;
@@ -394,10 +472,10 @@ pub mod line {
             // Check for a newline.
             if ch == '\r' {
                 if let Some(&(_, '\n')) = char_indices.peek() {
-                    return (Some(Break::Newline(i, 2)), width)
+                    return (Break::Newline(i, 2), width)
                 }
             } else if ch == '\n' {
-                return (Some(Break::Newline(i, 1)), width);
+                return (Break::Newline(i, 1), width);
             }
 
             // Add the character's width to the width so far.
@@ -405,13 +483,13 @@ pub mod line {
 
             // Check for a line wrap.
             if new_width > max_width {
-                return (Some(Break::Wrap(i, 0)), width);
+                return (Break::Wrap(i, 0), width);
             }
 
             width = new_width;
         }
 
-        (None, width)
+        (Break::End(text.len()), width)
     }
 
     /// Returns the next index at which the text will break by either:
@@ -423,7 +501,7 @@ pub mod line {
     fn next_break_by_whitespace<C>(text: &str,
                                    cache: &GlyphCache<C>,
                                    font_size: FontSize,
-                                   max_width: Scalar) -> (Option<Break>, Scalar)
+                                   max_width: Scalar) -> (Break, Scalar)
         where C: CharacterCache,
     {
         let mut width = 0.0;
@@ -434,10 +512,10 @@ pub mod line {
             // Check for a newline.
             if ch == '\r' {
                 if let Some(&(_, '\n')) = char_indices.peek() {
-                    return (Some(Break::Newline(i, 2)), width)
+                    return (Break::Newline(i, 2), width)
                 }
             } else if ch == '\n' {
-                return (Some(Break::Newline(i, 1)), width);
+                return (Break::Newline(i, 1), width);
             }
 
             // Check for a new whitespace.
@@ -451,13 +529,13 @@ pub mod line {
             // Check for a line wrap.
             if width > max_width {
                 let (start_idx, width_before_whitespace) = last_whitespace_start;
-                return (Some(Break::Wrap(start_idx, 1)), width_before_whitespace);
+                return (Break::Wrap(start_idx, 1), width_before_whitespace);
             }
 
             width = new_width;
         }
 
-        (None, width)
+        (Break::End(text.len()), width)
     }
 
 
@@ -467,8 +545,7 @@ pub mod line {
                                       font_size: FontSize,
                                       max_width: Scalar,
                                       next_break_fn: F) -> Infos<'a, C, F>
-        where F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar)
-            -> (Option<Break>, Scalar)
+        where F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar)
     {
         Infos {
             text: text,
@@ -492,7 +569,7 @@ pub mod line {
         fn no_wrap<C>(text: &str,
                       cache: &GlyphCache<C>,
                       font_size: FontSize,
-                      _max_width: Scalar) -> (Option<Break>, Scalar)
+                      _max_width: Scalar) -> (Break, Scalar)
             where C: CharacterCache,
         {
             next_break(text, cache, font_size)
@@ -549,8 +626,7 @@ pub mod line {
 
     impl<'a, C, F> Iterator for Infos<'a, C, F>
         where C: CharacterCache,
-              F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar)
-                    -> (Option<Break>, Scalar)
+              F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar)
     {
         type Item = Info;
         fn next(&mut self) -> Option<Self::Item> {
@@ -564,33 +640,36 @@ pub mod line {
             } = *self;
 
             match next_break_fn(&text[*start..], cache, font_size, max_width) {
-                (Some(next), width) => {
+                (next @ Break::Newline(_, _), width) | (next @ Break::Wrap(_, _), width) => {
                     let next = match next {
                         Break::Newline(idx, width) => Break::Newline(*start + idx, width),
                         Break::Wrap(idx, width) => Break::Wrap(*start + idx, width),
+                        _ => unreachable!(),
                     };
                     let info = Info {
                         start: *start,
-                        end_break: Some(next),
+                        end_break: next,
                         width: width,
                     };
                     *start = match next {
                         Break::Newline(idx, width) => idx + width,
                         Break::Wrap(idx, width) => idx + width,
+                        _ => unreachable!(),
                     };
                     Some(info)
                 },
-                (None, width) => if *start < text.len() {
-                    let info = Info {
-                        start: *start,
-                        end_break: None,
-                        width: width,
-                    };
-                    *start = text.len();
-                    Some(info)
-                } else {
-                    None
-                },
+                (Break::End(_), width) =>
+                    if *start < text.len() {
+                        let info = Info {
+                            start: *start,
+                            end_break: Break::End(text.len()),
+                            width: width,
+                        };
+                        *start = text.len();
+                        Some(info)
+                    } else {
+                        None
+                    },
             }
         }
     }
