@@ -390,10 +390,3 @@ impl Rect {
     }
 
 }
-
-/// A function to simplify determining whether or not a point `xy` is over a rectangle.
-/// `rect_xy` is the centered coordinatees of the rectangle.
-pub fn is_over(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
-    Rect::from_xy_dim(rect_xy, rect_dim).is_over(xy)
-}
-
