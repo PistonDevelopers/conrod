@@ -240,16 +240,9 @@ impl<'a> Iterator for Events<'a> {
     type Item = event::Widget;
 
     fn next(&mut self) -> Option<event::Widget> {
-        use event::{Input, Motion};
-        use input::Button;
-        let widget_xy = self.rect.xy();
-
         // Loop through all events in the `ui_events` until we find one associated with our widget
         // that we can return.
         while let Some(ui_event) = self.ui_events.next() {
-            let is_capturing_mouse = self.capturing_mouse == Some(self.idx);
-            let is_capturing_keyboard = self.capturing_keyboard == Some(self.idx);
-
             match *ui_event {
 
                 // Mouse capturing.
