@@ -312,8 +312,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                 let line_infos = state.line_infos.iter().cloned();
                 let string = &state.string;
 
-                let lines =
-                    text::lines(string, line_infos.clone().map(|info| (info.start, info.end())));
+                let lines = line_infos.clone().map(|info| &string[info.range()]);
                 let line_rects =
                     text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
 
