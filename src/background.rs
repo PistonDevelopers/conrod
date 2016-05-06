@@ -34,4 +34,3 @@ impl Colorable for Background {
         self
     }
 }
-
