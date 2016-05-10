@@ -20,8 +20,10 @@ use {
     Text,
     Widget,
 };
+use std;
 use text;
 use utils;
+use widget::primitive::text::Wrap;
 use widget::{self, KidArea};
 
 
@@ -62,6 +64,14 @@ widget_style!{
         - font_size: FontSize { 24 }
         /// The color of the text.
         - text_color: Color { theme.label_color }
+        /// The horizontal alignment of the text.
+        - x_align: Align { Align::Start }
+        /// The vertical alignment of the text.
+        - y_align: Align { Align::End }
+        /// The vertical space between each line of text.
+        - line_spacing: Scalar { 1.0 }
+        /// The way in which text is wrapped at the end of a line.
+        - line_wrap: Wrap { Wrap::Whitespace }
     }
 }
 
@@ -170,17 +180,32 @@ impl<'a, F> Widget for TextBox<'a, F>
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextBox { text, maybe_react, .. } = self;
 
-        let frame = style.frame(ui.theme());
-        let inner_rect = rect.pad(frame);
-        let max_text_rect = inner_rect.pad_left(TEXT_PADDING).pad_right(TEXT_PADDING);
+        // let frame = style.frame(ui.theme());
+        // let inner_rect = rect.pad(frame);
+        // let max_text_rect = inner_rect.pad_left(TEXT_PADDING).pad_right(TEXT_PADDING);
+        let rect = rect;
         let font_size = style.font_size(ui.theme());
+        let line_wrap = style.line_wrap(ui.theme());
+        let x_align = style.x_align(ui.theme());
+        let y_align = style.y_align(ui.theme());
+        let line_spacing = style.line_spacing(ui.theme());
 
-        // Align top left by default.
-        //
-        // TODO: These values should be a part of the `widget_style!`.
-        let x_align = Align::Start;
-        let y_align = Align::End;
-        let line_spacing = 1.0;
+        /// Returns an iterator yielding the `text::line::Info` for each line in the given text
+        /// with the given styling.
+        type LineInfos<'a, C> = text::line::Infos<'a, C, text::line::NextBreakFnPtr<C>>;
+        fn line_infos<'a, C>(text: &'a str,
+                             glyph_cache: &'a GlyphCache<C>,
+                             font_size: FontSize,
+                             line_wrap: Wrap,
+                             max_width: Scalar) -> LineInfos<'a, C>
+            where C: CharacterCache,
+        {
+            let infos = text::line::infos(text, glyph_cache, font_size);
+            match line_wrap {
+                Wrap::Whitespace => infos.wrap_by_whitespace(max_width),
+                Wrap::Character => infos.wrap_by_character(max_width),
+            }
+        }
 
         // Find the closest cursor index to the given `xy` position.
         //
@@ -190,12 +215,12 @@ impl<'a, F> Widget for TextBox<'a, F>
                                            glyph_cache: &GlyphCache<B::CharacterCache>|
             -> Option<(text::cursor::Index, Point)>
         {
-            let line_infos_vec: Vec<_> = text::line::infos(text, glyph_cache, font_size)
-                .wrap_by_whitespace(max_text_rect.w())
-                .collect();
+            let line_infos_vec: Vec<_> =
+                line_infos(text, glyph_cache, font_size, line_wrap, rect.w())
+                    .collect();
             let line_infos = line_infos_vec.iter().cloned();
             let lines = line_infos.clone().map(|info| &text[info.range()]);
-            let line_rects = text::line::rects(line_infos.clone(), font_size, max_text_rect,
+            let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
             let lines_with_rects = lines.zip(line_rects.clone());
 
@@ -250,8 +275,6 @@ impl<'a, F> Widget for TextBox<'a, F>
         let mut cursor = state.view().cursor;
         let mut drag = state.view().drag;
 
-        println!("{:?} | {:?}", drag, cursor);
-
         // Check for the following events:
         // - `Text` events for receiving new text.
         // - Left mouse `Press` events for either:
@@ -285,8 +308,8 @@ impl<'a, F> Widget for TextBox<'a, F>
                         // If `Cursor::Selection`, remove the selected text.
                         input::Key::Backspace => {
                             let line_infos: Vec<_> =
-                                text::line::infos(text, ui.glyph_cache(), font_size)
-                                    .wrap_by_whitespace(max_text_rect.w())
+                                line_infos(text, ui.glyph_cache(), font_size,
+                                           line_wrap, rect.w())
                                     .collect();
                             let line_infos = line_infos.iter().cloned();
                             match cursor {
@@ -344,8 +367,8 @@ impl<'a, F> Widget for TextBox<'a, F>
                                 let start = text::cursor::Index { line: 0, idx: 0 };
                                 let end = {
                                     let line_infos =
-                                        text::line::infos(text, ui.glyph_cache(), font_size)
-                                            .wrap_by_whitespace(max_text_rect.w());
+                                        line_infos(text, ui.glyph_cache(), font_size,
+                                                   line_wrap, rect.w());
                                     text::cursor::index_before_char(line_infos, text.len())
                                         .expect("char index was out of range")
                                 };
@@ -374,68 +397,52 @@ impl<'a, F> Widget for TextBox<'a, F>
                 },
 
                 event::Widget::Text(event::Text { string, modifiers }) => {
-                    if modifiers.contains(input::keyboard::CTRL) {
+                    if modifiers.contains(input::keyboard::CTRL)
+                    || string.chars().count() == 0
+                    || string.chars().next().is_none() {
                         continue 'events;
                     }
 
-                    let (new_text, new_cursor): (String, Cursor) = match cursor {
+                    println!("{:?}", string);
 
-                        // Insert the new string after the cursor.
-                        Cursor::Idx(cursor_idx) => {
-                            let line_infos: Vec<_> =
-                                text::line::infos(text, ui.glyph_cache(), font_size)
-                                    .wrap_by_whitespace(max_text_rect.w())
-                                    .collect();
-                            let line_infos = line_infos.iter().cloned();
-                            let idx = text::char::index_after_cursor(line_infos.clone(), cursor_idx)
-                                .expect("text::cursor::Index was out of range");
-                            let new_cursor_idx =
-                                text::cursor::index_before_char(line_infos, idx + string.len())
-                                    .expect("char index was out of range");
-                            let new_cursor = Cursor::Idx(new_cursor_idx);
-                            let new_text = text[0..idx].chars()
-                                .chain(string.chars())
-                                .chain(text[idx..].chars())
+                    let (new_text, new_cursor): (String, Cursor) = {
+                        let (cursor_start, cursor_end) = match cursor {
+                            Cursor::Idx(idx) => (idx, idx),
+                            Cursor::Selection { start, end } =>
+                                (std::cmp::min(start, end), std::cmp::max(start, end)),
+                        };
+
+                        let line_infos_vec: Vec<_> =
+                            line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
                                 .collect();
-                            (new_text, new_cursor)
-                        },
+                        let line_infos = line_infos_vec.iter().cloned();
 
-                        // Replace the selected text with the new string.
-                        Cursor::Selection { start, end } => {
-                            let line_infos: Vec<_> =
-                                text::line::infos(text, ui.glyph_cache(), font_size)
-                                    .wrap_by_whitespace(max_text_rect.w())
-                                    .collect();
-                            let line_infos = line_infos.iter().cloned();
-                            let (start_idx, end_idx) =
-                                (text::char::index_after_cursor(line_infos.clone(), start)
-                                    .expect("text::cursor::Index was out of range"),
-                                 text::char::index_after_cursor(line_infos.clone(), end)
-                                    .expect("text::cursor::Index was out of range"));
-                            let (start_idx, end_idx) = if start_idx <= end_idx {
-                                (start_idx, end_idx)
-                            } else {
-                                (end_idx, start_idx)
-                            };
-                            let new_cursor_idx =
-                                text::cursor::index_before_char(line_infos, end_idx + string.len())
-                                    .expect("char index was out of range");
-                            let new_cursor = Cursor::Idx(new_cursor_idx);
-                            let new_text = text[0..start_idx].chars()
-                                .chain(string.chars())
-                                .chain(text[end_idx..].chars())
-                                .collect();
-                            (new_text, new_cursor)
-                        },
+                        let (start_idx, end_idx) =
+                            (text::char::index_after_cursor(line_infos.clone(), cursor_start)
+                                .expect("text::cursor::Index was out of range"),
+                             text::char::index_after_cursor(line_infos.clone(), cursor_end)
+                                .expect("text::cursor::Index was out of range"));
 
+                        let new_cursor_idx = {
+                            let new_cursor_char_idx = start_idx + string.chars().count();
+                            text::cursor::index_before_char(line_infos, new_cursor_char_idx)
+                                .expect("char index was out of range")
+                        };
+
+                        let new_cursor = Cursor::Idx(new_cursor_idx);
+                        let new_text = text.chars().take(start_idx)
+                            .chain(string.chars())
+                            .chain(text.chars().skip(end_idx))
+                            .collect();
+                        (new_text, new_cursor)
                     };
 
                     // Check that the new text would not exceed the `inner_rect` bounds.
-                    let num_lines = text::line::infos(&new_text, ui.glyph_cache(), font_size)
-                        .wrap_by_whitespace(max_text_rect.w())
-                        .count();
+                    let num_lines =
+                        line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
+                            .count();
                     let height = text::height(num_lines, font_size, line_spacing);
-                    if height < max_text_rect.h() {
+                    if height < rect.h() {
                         *text = new_text;
                         cursor = new_cursor;
                     }
@@ -482,29 +489,18 @@ impl<'a, F> Widget for TextBox<'a, F>
             state.update(|state| state.drag = drag);
         }
 
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
-        let frame = style.frame(ui.theme());
-        let color = style.color(ui.theme());
-        //let color = new_interaction.color(style.color(ui.theme()));
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(rect.dim())
-            .middle_of(idx)
-            .graphics_for(idx)
-            .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
-            .set(rectangle_idx, &mut ui);
-
         let text_color = style.text_color(ui.theme());
         let font_size = style.font_size(ui.theme());
         let text_idx = state.view().text_idx.get(&mut ui);
-        Text::new(&self.text)
-            .mid_left_of(idx)
+        match line_wrap {
+            Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
+            Wrap::Character => Text::new(&self.text).wrap_by_character(),
+        }
+            .x_align_to(idx, x_align)
+            .y_align_to(idx, y_align)
             .graphics_for(idx)
             .color(text_color)
             .font_size(font_size)
-            .wrap_by_word()
-            //.no_line_wrap()
             .set(text_idx, &mut ui);
 
         // Draw the line for the cursor.
@@ -513,14 +509,19 @@ impl<'a, F> Widget for TextBox<'a, F>
             Cursor::Selection { start, end } => end,
         };
 
-        // TODO: Simply this block!
+        // If this widget is not capturing the keyboard, no need to draw cursor or selection.
+        if ui.global_input().current.widget_capturing_keyboard != Some(idx) {
+            return;
+        }
+
+        // TODO: Simplify this block!
         let (cursor_x, cursor_y_range) = {
-            let line_infos_vec: Vec<_> = text::line::infos(text, ui.glyph_cache(), font_size)
-                .wrap_by_whitespace(max_text_rect.w())
-                .collect();
+            let line_infos_vec: Vec<_> =
+                line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
+                    .collect();
             let line_infos = line_infos_vec.iter().cloned();
             let lines = line_infos.clone().map(|info| &text[info.range()]);
-            let line_rects = text::line::rects(line_infos.clone(), font_size, max_text_rect,
+            let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
             let lines_with_rects = lines.zip(line_rects.clone());
             let xys_per_line = text::cursor::xys_per_line(lines_with_rects, ui.glyph_cache(), font_size);
