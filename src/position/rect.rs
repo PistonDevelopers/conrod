@@ -283,6 +283,22 @@ impl Rect {
         }
     }
 
+    /// Align `self` to `other` along the *x* axis in accordance with the given `Align` variant.
+    pub fn align_x_of(self, align: super::Align, other: Self) -> Self {
+        Rect {
+            x: self.x.align_to(align, other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self` to `other` along the *y* axis in accordance with the given `Align` variant.
+    pub fn align_y_of(self, align: super::Align, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_to(align, other.y),
+        }
+    }
+
     /// Align `self`'s left edge with the left edge of the `other` **Rect**.
     pub fn align_left_of(self, other: Self) -> Self {
         Rect {
