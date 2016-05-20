@@ -5,8 +5,6 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
-    FramedRectangle,
     GlyphCache,
     IndexSlot,
     Line,
@@ -35,36 +33,30 @@ const TEXT_PADDING: Scalar = 5.0;
 
 /// A widget for displaying and mutating a given one-line text `String`. It's reaction is
 /// triggered upon pressing of the `Enter`/`Return` key.
-pub struct TextBox<'a, F> {
+pub struct TextEdit<'a, F> {
     common: widget::CommonBuilder,
     text: &'a mut String,
-    /// The reaction for the TextBox.
+    /// The reaction for the TextEdit.
     ///
     /// If `Some`, this will be triggered upon pressing of the `Enter`/`Return` key.
     pub maybe_react: Option<F>,
     style: Style,
-    /// Whether or not user input is enabled for the TextBox.
+    /// Whether or not user input is enabled for the TextEdit.
     pub enabled: bool,
 }
 
 /// Unique kind for the widget type.
-pub const KIND: widget::Kind = "TextBox";
+pub const KIND: widget::Kind = "TextEdit";
 
 widget_style!{
     KIND;
-    /// Unique graphical styling for the TextBox.
+    /// Unique graphical styling for the TextEdit.
     style Style {
         /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
         /// color with a zeroed alpha.
         - color: Color { theme.shape_color }
-        /// The frame around the rectangle behind the text.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the frame.
-        - frame_color: Color { theme.frame_color }
         /// The font size for the text.
         - font_size: FontSize { 24 }
-        /// The color of the text.
-        - text_color: Color { theme.label_color }
         /// The horizontal alignment of the text.
         - x_align: Align { Align::Start }
         /// The vertical alignment of the text.
@@ -76,7 +68,7 @@ widget_style!{
     }
 }
 
-/// The State of the TextBox widget that will be cached within the Ui.
+/// The State of the TextEdit widget that will be cached within the Ui.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     cursor: Cursor,
@@ -115,11 +107,11 @@ pub enum Cursor {
 }
 
 
-impl<'a, F> TextBox<'a, F> {
+impl<'a, F> TextEdit<'a, F> {
 
-    /// Construct a TextBox widget.
-    pub fn new(text: &'a mut String) -> TextBox<'a, F> {
-        TextBox {
+    /// Construct a TextEdit widget.
+    pub fn new(text: &'a mut String) -> TextEdit<'a, F> {
+        TextEdit {
             common: widget::CommonBuilder::new(),
             text: text,
             maybe_react: None,
@@ -136,7 +128,7 @@ impl<'a, F> TextBox<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F>
+impl<'a, F> Widget for TextEdit<'a, F>
     where F: FnMut(&mut String),
 {
     type State = State;
@@ -181,10 +173,10 @@ impl<'a, F> Widget for TextBox<'a, F>
         }
     }
 
-    /// Update the state of the TextBox.
+    /// Update the state of the TextEdit.
     fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let TextBox { text, maybe_react, .. } = self;
+        let TextEdit { text, maybe_react, .. } = self;
 
         let font_size = style.font_size(ui.theme());
         let line_wrap = style.line_wrap(ui.theme());
@@ -497,10 +489,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                                 (std::cmp::min(start, end), std::cmp::max(start, end)),
                         };
 
-                        let line_infos_vec: Vec<_> =
-                            line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
-                                .collect();
-                        let line_infos = line_infos_vec.iter().cloned();
+                        let line_infos = state.view().line_infos.iter().cloned();
 
                         let (start_idx, end_idx) =
                             (text::char::index_after_cursor(line_infos.clone(), cursor_start)
@@ -580,7 +569,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             state.update(|state| state.drag = drag);
         }
 
-        let text_color = style.text_color(ui.theme());
+        let color = style.color(ui.theme());
         let font_size = style.font_size(ui.theme());
         match line_wrap {
             Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
@@ -589,7 +578,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             .x_align_to(idx, x_align)
             .y_align_to(idx, y_align)
             .graphics_for(idx)
-            .color(text_color)
+            .color(color)
             .font_size(font_size)
             .set(text_idx, &mut ui);
 
@@ -627,7 +616,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             .x_y(cursor_x, cursor_y_range.middle())
             .graphics_for(idx)
             .parent(idx)
-            .color(text_color)
+            .color(color)
             .set(cursor_line_idx, &mut ui);
 
         if let Cursor::Selection { start, end } = cursor {
@@ -645,7 +634,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             };
 
             // Draw a semi-transparent `Rectangle` for the selected range across each line.
-            let selected_rect_color = text_color.highlighted().alpha(0.25);
+            let selected_rect_color = color.highlighted().alpha(0.25);
             for (i, selected_rect) in selected_rects.iter().enumerate() {
                 if i == state.view().selected_rectangle_indices.len() {
                     state.update(|state| {
@@ -667,13 +656,6 @@ impl<'a, F> Widget for TextBox<'a, F>
 }
 
 
-impl<'a, F> Colorable for TextBox<'a, F> {
+impl<'a, F> Colorable for TextEdit<'a, F> {
     builder_method!(color { style.color = Some(Color) });
-}
-
-impl<'a, F> Frameable for TextBox<'a, F> {
-    builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
-    }
 }

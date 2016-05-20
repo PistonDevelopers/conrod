@@ -29,7 +29,7 @@ pub mod matrix;
 pub mod number_dialer;
 pub mod slider;
 pub mod tabs;
-pub mod text_box;
+pub mod text_edit;
 pub mod title_bar;
 pub mod toggle;
 pub mod xy_pad;
