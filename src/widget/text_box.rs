@@ -10,6 +10,7 @@ use {
     GlyphCache,
     IndexSlot,
     Line,
+    NodeIndex,
     Padding,
     Point,
     Positionable,
@@ -81,6 +82,9 @@ pub struct State {
     cursor: Cursor,
     /// Track whether some sort of dragging is currently occurring.
     drag: Option<Drag>,
+    /// Information about each line of text.
+    line_infos: Vec<text::line::Info>,
+    selected_rectangle_indices: Vec<NodeIndex>,
     rectangle_idx: IndexSlot,
     text_idx: IndexSlot,
     cursor_idx: IndexSlot,
@@ -152,8 +156,10 @@ impl<'a, F> Widget for TextBox<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            cursor: Cursor::Idx(text::cursor::Index { line: 0, idx: 0 }),
+            cursor: Cursor::Idx(text::cursor::Index { line: 0, char: 0 }),
             drag: None,
+            line_infos: Vec::new(),
+            selected_rectangle_indices: Vec::new(),
             rectangle_idx: IndexSlot::new(),
             text_idx: IndexSlot::new(),
             cursor_idx: IndexSlot::new(),
@@ -180,15 +186,12 @@ impl<'a, F> Widget for TextBox<'a, F>
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextBox { text, maybe_react, .. } = self;
 
-        // let frame = style.frame(ui.theme());
-        // let inner_rect = rect.pad(frame);
-        // let max_text_rect = inner_rect.pad_left(TEXT_PADDING).pad_right(TEXT_PADDING);
-        let rect = rect;
         let font_size = style.font_size(ui.theme());
         let line_wrap = style.line_wrap(ui.theme());
         let x_align = style.x_align(ui.theme());
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
+        let text_idx = state.view().text_idx.get(&mut ui);
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
         /// with the given styling.
@@ -207,19 +210,34 @@ impl<'a, F> Widget for TextBox<'a, F>
             }
         }
 
+        // Check to see if the given text has changed since the last time the widget was updated.
+        {
+            let maybe_new_line_infos = {
+                let line_info_slice = &state.view().line_infos[..];
+                let new_line_infos =
+                    line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w());
+                match utils::write_if_different(line_info_slice, new_line_infos) {
+                    std::borrow::Cow::Owned(new) => Some(new),
+                    _ => None,
+                }
+            };
+
+            if let Some(new_line_infos) = maybe_new_line_infos {
+                state.update(|state| state.line_infos = new_line_infos);
+            }
+        }
+
         // Find the closest cursor index to the given `xy` position.
         //
         // Returns `None` if the given `text` is empty.
         let closest_cursor_index_and_xy = |xy: Point,
                                            text: &str,
+                                           line_infos: &[text::line::Info],
                                            glyph_cache: &GlyphCache<B::CharacterCache>|
             -> Option<(text::cursor::Index, Point)>
         {
-            let line_infos_vec: Vec<_> =
-                line_infos(text, glyph_cache, font_size, line_wrap, rect.w())
-                    .collect();
-            let line_infos = line_infos_vec.iter().cloned();
-            let lines = line_infos.clone().map(|info| &text[info.range()]);
+            let line_infos = line_infos.iter().cloned();
+            let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
             let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
             let lines_with_rects = lines.zip(line_rects.clone());
@@ -246,7 +264,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                 }
 
                 // Find the index of the cursor position along the closest line.
-                let lines_with_rects = line_infos.map(|info| &text[info.range()]).zip(line_rects);
+                let lines_with_rects = line_infos.map(|info| &text[info.byte_range()]).zip(line_rects);
                 text::cursor::xys_per_line(lines_with_rects, glyph_cache, font_size)
                     .nth(closest_line_idx)
                     .map(|(xs, line_y)| {
@@ -265,7 +283,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                             }
                         }
 
-                        let index = text::cursor::Index { line: closest_line_idx, idx: closest.idx };
+                        let index = text::cursor::Index { line: closest_line_idx, char: closest.idx };
                         let point = [closest.x, line_y.middle()];
                         (index, point)
                     })
@@ -292,7 +310,9 @@ impl<'a, F> Widget for TextBox<'a, F>
                     // index at the mouse position.
                     event::Button::Mouse(input::MouseButton::Left, rel_xy) => {
                         let abs_xy = utils::vec2_add(rel_xy, rect.xy());
-                        let closest = closest_cursor_index_and_xy(abs_xy, text, ui.glyph_cache());
+                        let infos = &state.view().line_infos;
+                        let cache = ui.glyph_cache();
+                        let closest = closest_cursor_index_and_xy(abs_xy, text, infos, cache);
                         if let Some((closest_cursor, closest_cursor_xy)) = closest {
                             cursor = Cursor::Idx(closest_cursor);
                         }
@@ -307,55 +327,111 @@ impl<'a, F> Widget for TextBox<'a, F>
                         // If `Cursor::Idx`, remove the `char` behind the cursor.
                         // If `Cursor::Selection`, remove the selected text.
                         input::Key::Backspace => {
-                            let line_infos: Vec<_> =
-                                line_infos(text, ui.glyph_cache(), font_size,
-                                           line_wrap, rect.w())
-                                    .collect();
-                            let line_infos = line_infos.iter().cloned();
                             match cursor {
 
                                 Cursor::Idx(cursor_idx) => {
-                                    let idx =
-                                        text::char::index_after_cursor(line_infos.clone(), cursor_idx)
-                                            .expect("text::cursor::Index was out of range");
-                                    if idx > 0 {
+                                    let idx_after_cursor = {
+                                        let line_infos = state.view().line_infos.iter().cloned();
+                                        text::char::index_after_cursor(line_infos, cursor_idx)
+                                    };
+                                    if let Some(idx) = idx_after_cursor {
                                         let idx_to_remove = idx - 1;
-                                        let new_cursor_idx =
+                                        let new_cursor_idx = {
+                                            let line_infos = state.view().line_infos.iter().cloned();
                                             text::cursor::index_before_char(line_infos, idx_to_remove)
-                                                .expect("char index was out of range");
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                        text.remove(idx_to_remove);
+                                        };
+                                        if let Some(new_cursor_idx) = new_cursor_idx {
+                                            cursor = Cursor::Idx(new_cursor_idx);
+                                            *text = text.chars().take(idx_to_remove)
+                                                .chain(text.chars().skip(idx))
+                                                .collect();
+                                            state.update(|state| {
+                                                state.line_infos =
+                                                    line_infos(text, ui.glyph_cache(), font_size,
+                                                               line_wrap, rect.w()).collect();
+                                            });
+                                        }
                                     }
                                 },
 
                                 Cursor::Selection { start, end } => {
-                                    let (start_idx, end_idx) =
+                                    let (start_idx, end_idx) = {
+                                        let line_infos = state.view().line_infos.iter().cloned();
                                         (text::char::index_after_cursor(line_infos.clone(), start)
                                             .expect("text::cursor::Index was out of range"),
-                                         text::char::index_after_cursor(line_infos.clone(), end)
-                                            .expect("text::cursor::Index was out of range"));
-                                    let (start_idx, end_idx) = if start_idx <= end_idx {
-                                        (start_idx, end_idx)
-                                    } else {
-                                        (end_idx, start_idx)
+                                         text::char::index_after_cursor(line_infos, end)
+                                            .expect("text::cursor::Index was out of range"))
                                     };
+                                    let (start_idx, end_idx) =
+                                        if start_idx <= end_idx { (start_idx, end_idx) }
+                                        else                    { (end_idx, start_idx) };
                                     let new_cursor_char_idx =
-                                        if start_idx > 0 { start_idx - 1 } else { 0 };
-                                    let new_cursor_idx =
+                                        if start_idx > 0 { start_idx } else { 0 };
+                                    let new_cursor_idx = {
+                                        let line_infos = state.view().line_infos.iter().cloned();
                                         text::cursor::index_before_char(line_infos, new_cursor_char_idx)
-                                            .expect("char index was out of range");
+                                            .expect("char index was out of range")
+                                    };
                                     cursor = Cursor::Idx(new_cursor_idx);
-                                    *text = text[0..start_idx].chars().chain(text[end_idx..].chars()).collect();
+                                    *text = text.chars().take(start_idx)
+                                        .chain(text.chars().skip(end_idx))
+                                        .collect();
+                                    state.update(|state| {
+                                        state.line_infos =
+                                            line_infos(text, ui.glyph_cache(), font_size,
+                                                       line_wrap, rect.w()).collect();
+                                    });
                                 },
 
                             }
                         },
 
-                        // Move the cursor through the text.
                         input::Key::Left => {
+                            if !press.modifiers.contains(input::keyboard::CTRL) {
+                                match cursor {
+
+                                    // Move the cursor to the previous position.
+                                    Cursor::Idx(cursor_idx) => {
+                                        let new_cursor_idx = {
+                                            let line_infos = state.view().line_infos.iter().cloned();
+                                            cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
+                                        };
+
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+
+                                    // Move the cursor to the start of the current selection.
+                                    Cursor::Selection { start, end } => {
+                                        let new_cursor_idx = std::cmp::min(start, end);
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                }
+                            }
                         },
+
                         input::Key::Right => {
+                            if !press.modifiers.contains(input::keyboard::CTRL) {
+                                match cursor {
+
+                                    // Move the cursor to the next position.
+                                    Cursor::Idx(cursor_idx) => {
+                                        let new_cursor_idx = {
+                                            let line_infos = state.view().line_infos.iter().cloned();
+                                            cursor_idx.next(line_infos).unwrap_or(cursor_idx)
+                                        };
+
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+
+                                    // Move the cursor to the end of the current selection.
+                                    Cursor::Selection { start, end } => {
+                                        let new_cursor_idx = std::cmp::max(start, end);
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                }
+                            }
                         },
+
                         input::Key::Up => {
                         },
                         input::Key::Down => {
@@ -364,12 +440,12 @@ impl<'a, F> Widget for TextBox<'a, F>
                         input::Key::A => {
                             // Select all text on Ctrl+a.
                             if press.modifiers.contains(input::keyboard::CTRL) {
-                                let start = text::cursor::Index { line: 0, idx: 0 };
+                                let start = text::cursor::Index { line: 0, char: 0 };
                                 let end = {
                                     let line_infos =
                                         line_infos(text, ui.glyph_cache(), font_size,
                                                    line_wrap, rect.w());
-                                    text::cursor::index_before_char(line_infos, text.len())
+                                    text::cursor::index_before_char(line_infos, text.chars().count())
                                         .expect("char index was out of range")
                                 };
                                 cursor = Cursor::Selection { start: start, end: end };
@@ -403,7 +479,16 @@ impl<'a, F> Widget for TextBox<'a, F>
                         continue 'events;
                     }
 
-                    println!("{:?}", string);
+                    // Ignore text produced by arrow keys.
+                    // 
+                    // TODO: These just happened to be the modifiers for the arrows on OS X, I've
+                    // no idea if they also apply to other platforms. We should definitely see if
+                    // there's a better way to handle this, or whether this should be fixed
+                    // upstream.
+                    match &string[..] {
+                        "\u{f700}" | "\u{f701}" | "\u{f702}" | "\u{f703}" => continue 'events,
+                        _ => ()
+                    }
 
                     let (new_text, new_cursor): (String, Cursor) = {
                         let (cursor_start, cursor_end) = match cursor {
@@ -419,14 +504,15 @@ impl<'a, F> Widget for TextBox<'a, F>
 
                         let (start_idx, end_idx) =
                             (text::char::index_after_cursor(line_infos.clone(), cursor_start)
-                                .expect("text::cursor::Index was out of range"),
+                                .unwrap_or(0),
                              text::char::index_after_cursor(line_infos.clone(), cursor_end)
-                                .expect("text::cursor::Index was out of range"));
+                                .unwrap_or(0));
 
                         let new_cursor_idx = {
+                            let char_count = string.chars().count();
                             let new_cursor_char_idx = start_idx + string.chars().count();
                             text::cursor::index_before_char(line_infos, new_cursor_char_idx)
-                                .expect("char index was out of range")
+                                .unwrap_or(text::cursor::Index { line: 0, char: char_count })
                         };
 
                         let new_cursor = Cursor::Idx(new_cursor_idx);
@@ -438,13 +524,15 @@ impl<'a, F> Widget for TextBox<'a, F>
                     };
 
                     // Check that the new text would not exceed the `inner_rect` bounds.
-                    let num_lines =
-                        line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
-                            .count();
+                    let new_line_infos: Vec<_> = 
+                        line_infos(&new_text, ui.glyph_cache(), font_size, line_wrap, rect.w())
+                            .collect();
+                    let num_lines = new_line_infos.len();
                     let height = text::height(num_lines, font_size, line_spacing);
                     if height < rect.h() {
                         *text = new_text;
                         cursor = new_cursor;
+                        state.update(|state| state.line_infos = new_line_infos);
                     }
                 },
 
@@ -459,7 +547,9 @@ impl<'a, F> Widget for TextBox<'a, F>
                                     Cursor::Selection { start, .. } => start,
                                 };
                                 let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
-                                match closest_cursor_index_and_xy(abs_xy, text, ui.glyph_cache()) {
+                                let infos = &state.view().line_infos;
+                                let cache = ui.glyph_cache();
+                                match closest_cursor_index_and_xy(abs_xy, text, infos, cache) {
                                     Some((end_cursor_idx, _)) =>
                                         cursor = Cursor::Selection {
                                             start: start_cursor_idx,
@@ -469,6 +559,7 @@ impl<'a, F> Widget for TextBox<'a, F>
                                 }
                             },
 
+                            // TODO: This should move the selected text.
                             Some(Drag::MoveSelection) => {
                             },
 
@@ -491,7 +582,6 @@ impl<'a, F> Widget for TextBox<'a, F>
 
         let text_color = style.text_color(ui.theme());
         let font_size = style.font_size(ui.theme());
-        let text_idx = state.view().text_idx.get(&mut ui);
         match line_wrap {
             Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
             Wrap::Character => Text::new(&self.text).wrap_by_character(),
@@ -514,19 +604,20 @@ impl<'a, F> Widget for TextBox<'a, F>
             return;
         }
 
-        // TODO: Simplify this block!
+        // TODO: Simplify this block.
         let (cursor_x, cursor_y_range) = {
-            let line_infos_vec: Vec<_> =
-                line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w())
-                    .collect();
-            let line_infos = line_infos_vec.iter().cloned();
-            let lines = line_infos.clone().map(|info| &text[info.range()]);
+            let line_infos = state.view().line_infos.iter().cloned();
+            let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
             let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
             let lines_with_rects = lines.zip(line_rects.clone());
             let xys_per_line = text::cursor::xys_per_line(lines_with_rects, ui.glyph_cache(), font_size);
             text::cursor::xy_at(xys_per_line, cursor_idx)
-                .expect("cursor index was not in range of text")
+                .unwrap_or_else(|| {
+                    let x = rect.left();
+                    let y = Range::new(0.0, font_size as Scalar).align_to(y_align, rect.y);
+                    (x, y)
+                })
         };
 
         let cursor_line_idx = state.view().cursor_idx.get(&mut ui);
@@ -539,45 +630,38 @@ impl<'a, F> Widget for TextBox<'a, F>
             .color(text_color)
             .set(cursor_line_idx, &mut ui);
 
-        // if let Interaction::Captured(view) = new_interaction {
-        //     let cursor = view.cursor;
-        //     // This matters if the text is scrolled with the mouse.
-        //     let cursor_idx = match cursor.anchor {
-        //         Anchor::End => cursor.start,
-        //         Anchor::Start | Anchor::None => cursor.end,
-        //     };
-        //     let cursor_x = cursor_position(ui.glyph_cache(), cursor_idx, text_start_x, font_size,
-        //                                    &self.text);
+        if let Cursor::Selection { start, end } = cursor {
+            let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
 
-        //     if cursor.is_cursor() {
-        //         let cursor_idx = state.view().cursor_idx.get(&mut ui);
-        //         let start = [0.0, 0.0];
-        //         let end = [0.0, inner_rect.h()];
-        //         Line::centred(start, end)
-        //             .x_relative_to(idx, cursor_x)
-        //             .graphics_for(idx)
-        //             .parent(idx)
-        //             .color(text_color)
-        //             .set(cursor_idx, &mut ui);
-        //     } else {
-        //         let (rel_x, w) = {
-        //             let (start, end) = (cursor.start, cursor.end);
-        //             let cursor_x = cursor_position(ui.glyph_cache(), start, text_start_x, font_size,
-        //                                            &self.text);
-        //             let highlighted_text = &self.text[start..end];
-        //             let w = ui.glyph_cache().width(font_size, &highlighted_text);
-        //             (cursor_x + w / 2.0, w)
-        //         };
-        //         let dim = [w, inner_rect.h()];
-        //         let highlight_idx = state.view().highlight_idx.get(&mut ui);
-        //         Rectangle::fill(dim)
-        //             .x_relative_to(idx, rel_x)
-        //             .color(text_color.highlighted().alpha(0.25))
-        //             .graphics_for(idx)
-        //             .parent(idx)
-        //             .set(highlight_idx, &mut ui);
-        //     }
-        // }
+            let selected_rects: Vec<Rect> = {
+                let line_infos = state.view().line_infos.iter().cloned();
+                let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
+                let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
+                                                   x_align, y_align, line_spacing);
+                let lines_with_rects = lines.zip(line_rects.clone());
+                let cache = ui.glyph_cache();
+                text::line::selected_rects(lines_with_rects, cache, font_size, start, end)
+                    .collect()
+            };
+
+            // Draw a semi-transparent `Rectangle` for the selected range across each line.
+            let selected_rect_color = text_color.highlighted().alpha(0.25);
+            for (i, selected_rect) in selected_rects.iter().enumerate() {
+                if i == state.view().selected_rectangle_indices.len() {
+                    state.update(|state| {
+                        state.selected_rectangle_indices.push(ui.new_unique_node_index());
+                    });
+                }
+                let selected_rectangle_idx = state.view().selected_rectangle_indices[i];
+
+                Rectangle::fill(selected_rect.dim())
+                    .xy(selected_rect.xy())
+                    .color(selected_rect_color)
+                    .graphics_for(idx)
+                    .parent(idx)
+                    .set(selected_rectangle_idx, &mut ui);
+            }
+        }
     }
 
 }
