@@ -1,4 +1,3 @@
-
 use {CharacterCache, Scalar};
 use backend::{self, Backend, ToRawEvent};
 use backend::graphics::{Context, Graphics};
