@@ -211,7 +211,7 @@ impl<'a> Widget for Text<'a> {
             },
         };
         let line_spacing = self.style.line_spacing(&ui.theme);
-        let height = total_height(std::cmp::max(num_lines, 1), font_size, line_spacing);
+        let height = text::height(std::cmp::max(num_lines, 1), font_size, line_spacing);
         Dimension::Absolute(height)
     }
 
@@ -262,101 +262,9 @@ impl<'a> Widget for Text<'a> {
 
 }
 
-
 impl<'a> Colorable for Text<'a> {
     fn color(mut self, color: Color) -> Self {
         self.style.color = Some(color);
         self
     }
 }
-
-
-/// Calculate the total height of the text from the given number of lines, font_size and
-/// line_spacing.
-pub fn total_height(num_lines: usize, font_size: FontSize, line_spacing: Scalar) -> Scalar {
-    font_size as Scalar * num_lines as Scalar + line_spacing * (num_lines - 1) as Scalar
-}
-
-
-// impl State {
-// 
-//     /// An iterator yielding a **Rect** (representing the absolute position and dimensions) for
-//     /// every **line** in the `string`
-//     pub fn line_rects<'a>(&'a self,
-//                           container: Rect,
-//                           h_align: Align,
-//                           font_size: FontSize,
-//                           line_spacing: Scalar) -> LineRects<'a, Lines<'a>>
-//     {
-//         let lines = self.lines();
-//         LineRects::new(lines, container, h_align, font_size, line_spacing)
-//     }
-// 
-// }
-
-
-// /// Shorthand for the **Lines** iterator yielded by **State::lines**.
-// pub type Lines<'a> =
-//     text::str::Lines<'a, std::iter::Cloned<std::slice::Iter<'a, (usize, Option<text::str::line::Break>)>>>;
-
-
-// /// A walker yielding a **Rect** (representing the absolute position and dimensions) for
-// /// every **line** in its given line iterator.
-// pub struct LineRects<'a, I: 'a> {
-//     lines: I,
-//     font_size: FontSize,
-//     y_step: Scalar,
-//     h_align: Align,
-//     container_x: Range,
-//     y: Scalar,
-//     strs: ::std::marker::PhantomData<&'a ()>,
-// }
-// 
-// 
-// impl<'a, I> LineRects<'a, I> {
-// 
-//     /// Construct a new **LineRects**.
-//     pub fn new(lines: I,
-//                container: Rect,
-//                h_align: Align,
-//                font_size: FontSize,
-//                line_spacing: Scalar) -> LineRects<'a, I>
-//         where I: Iterator<Item=&'a str>,
-//     {
-//         let height = font_size as Scalar;
-//         LineRects {
-//             lines: lines,
-//             font_size: font_size,
-//             y_step: -(line_spacing + height),
-//             h_align: h_align,
-//             container_x: container.x,
-//             y: Range::new(0.0, height).align_end_of(container.y).middle(),
-//             strs: ::std::marker::PhantomData,
-//         }
-//     }
-// 
-//     /// The same as [**LineRects::next**](./struct.LineRects@method.next) but also yields the
-//     /// line's `&'a str` alongside the **Rect**.
-//     pub fn next_with_line<C>(&mut self, cache: &mut C) -> Option<(Rect, &'a str)>
-//         where I: Iterator<Item=&'a str>,
-//               C: CharacterCache,
-//     {
-//         let LineRects { ref mut lines, font_size, y_step, h_align, container_x, ref mut y, .. } = *self;
-//         lines.next().map(|line| {
-//             let w = cache.width(font_size, line);
-//             let h = font_size as Scalar;
-//             let w_range = Range::new(0.0, w);
-//             let x = match h_align {
-//                 Align::Start => w_range.align_start_of(container_x),
-//                 Align::Middle => w_range.align_middle_of(container_x),
-//                 Align::End => w_range.align_end_of(container_x),
-//             }.middle();
-//             let xy = [x, *y];
-//             let wh = [w, h];
-//             let rect = Rect::from_xy_dim(xy, wh);
-//             *y += y_step;
-//             (rect, line)
-//         })
-//     }
-// 
-// }
