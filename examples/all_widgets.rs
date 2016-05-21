@@ -29,7 +29,7 @@ use conrod::{
     Slider,
     Sizeable,
     Text,
-    TextBox,
+    TextEdit,
     Theme,
     Toggle,
     Widget,
@@ -413,12 +413,10 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         let &mut (ref mut env, ref mut text) = &mut app.envelopes[i];
 
         // Draw a TextBox. text_box(&mut String, FontSize)
-        TextBox::new(text)
+        TextEdit::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
             .w_h(320.0, 40.0)
-            .frame(app.frame_width)
-            .frame_color(app.bg_color.invert().plain_contrast())
             .color(app.bg_color.invert())
             .react(|_string: &mut String|{})
             .set(ENVELOPE_EDITOR + (i * 2), ui);
