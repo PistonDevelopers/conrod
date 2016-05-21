@@ -9,7 +9,6 @@ use {
     IndexSlot,
     Line,
     NodeIndex,
-    Padding,
     Point,
     Positionable,
     Range,
@@ -19,30 +18,25 @@ use {
     Text,
     Widget,
 };
+use event;
+use input;
 use std;
 use text;
 use utils;
+use widget;
 use widget::primitive::text::Wrap;
-use widget::{self, KidArea};
 
 
-pub type Idx = usize;
-pub type CursorX = f64;
-
-const TEXT_PADDING: Scalar = 5.0;
-
-/// A widget for displaying and mutating a given one-line text `String`. It's reaction is
-/// triggered upon pressing of the `Enter`/`Return` key.
+/// A widget for displaying and mutating multi-line text, given as a `String`.
+///
+/// By default the text is wrapped via the first whitespace before the line exceeds the
+/// `TextEdit`'s width, however a user may change this using the `.wrap_by_character` method.
 pub struct TextEdit<'a, F> {
     common: widget::CommonBuilder,
     text: &'a mut String,
     /// The reaction for the TextEdit.
-    ///
-    /// If `Some`, this will be triggered upon pressing of the `Enter`/`Return` key.
     pub maybe_react: Option<F>,
     style: Style,
-    /// Whether or not user input is enabled for the TextEdit.
-    pub enabled: bool,
 }
 
 /// Unique kind for the widget type.
@@ -52,8 +46,7 @@ widget_style!{
     KIND;
     /// Unique graphical styling for the TextEdit.
     style Style {
-        /// Color of the rectangle behind the text. If you don't want to see the rectangle, set the
-        /// color with a zeroed alpha.
+        /// The color of the text (this includes cursor and selection color).
         - color: Color { theme.shape_color }
         /// The font size for the text.
         - font_size: FontSize { 24 }
@@ -65,6 +58,8 @@ widget_style!{
         - line_spacing: Scalar { 1.0 }
         /// The way in which text is wrapped at the end of a line.
         - line_wrap: Wrap { Wrap::Whitespace }
+        /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
+        - restrict_to_height: bool { false }
     }
 }
 
@@ -110,20 +105,55 @@ pub enum Cursor {
 impl<'a, F> TextEdit<'a, F> {
 
     /// Construct a TextEdit widget.
-    pub fn new(text: &'a mut String) -> TextEdit<'a, F> {
+    pub fn new(text: &'a mut String) -> Self {
         TextEdit {
             common: widget::CommonBuilder::new(),
             text: text,
             maybe_react: None,
             style: Style::new(),
-            enabled: true,
         }
+    }
+
+    /// The `TextEdit` will wrap text via the whitespace that precedes the first width-exceeding
+    /// character.
+    ///
+    /// This is the default setting.
+    pub fn wrap_by_whitespace(self) -> Self {
+        self.line_wrap(Wrap::Whitespace)
+    }
+
+    /// By default, the `TextEdit` will wrap text via the whitespace that precedes the first
+    /// width-exceeding character.
+    ///
+    /// Calling this method causes the `TextEdit` to wrap text at the first exceeding character.
+    pub fn wrap_by_character(self) -> Self {
+        self.line_wrap(Wrap::Character)
+    }
+
+    /// Align the text to the left of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_left(mut self) -> Self {
+        self.style.x_align = Some(Align::Start);
+        self
+    }
+
+    /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_middle(mut self) -> Self {
+        self.style.x_align = Some(Align::Middle);
+        self
+    }
+
+    /// Align the text to the right of its bounding **Rect**'s *x* axis range.
+    pub fn align_text_right(mut self) -> Self {
+        self.style.x_align = Some(Align::End);
+        self
     }
 
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
         pub react { maybe_react = Some(F) }
-        pub enabled { enabled = bool }
+        pub line_wrap { style.line_wrap = Some(Wrap) }
+        pub line_spacing { style.line_spacing = Some(Scalar) }
+        pub restrict_to_height { style.restrict_to_height = Some(bool) }
     }
 
 }
@@ -163,16 +193,6 @@ impl<'a, F> Widget for TextEdit<'a, F>
         self.style.clone()
     }
 
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
-        KidArea {
-            rect: args.rect,
-            pad: Padding {
-                x: Range::new(TEXT_PADDING, TEXT_PADDING),
-                y: Range::new(TEXT_PADDING, TEXT_PADDING),
-            },
-        }
-    }
-
     /// Update the state of the TextEdit.
     fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -183,6 +203,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let x_align = style.x_align(ui.theme());
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
+        let restrict_to_height = style.restrict_to_height(ui.theme());
         let text_idx = state.view().text_idx.get(&mut ui);
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
@@ -292,8 +313,6 @@ impl<'a, F> Widget for TextEdit<'a, F>
         //     - begin dragging selected text.
         // - Left mouse `Drag` for extending the end of the selection, or for dragging selected text.
         'events: for widget_event in ui.widget_input(idx).events() {
-            use event;
-            use input;
             match widget_event {
 
                 event::Widget::Press(press) => match press.button {
@@ -434,9 +453,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                             if press.modifiers.contains(input::keyboard::CTRL) {
                                 let start = text::cursor::Index { line: 0, char: 0 };
                                 let end = {
-                                    let line_infos =
-                                        line_infos(text, ui.glyph_cache(), font_size,
-                                                   line_wrap, rect.w());
+                                    let line_infos = state.view().line_infos.iter().cloned();
                                     text::cursor::index_before_char(line_infos, text.chars().count())
                                         .expect("char index was out of range")
                                 };
@@ -518,7 +535,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                             .collect();
                     let num_lines = new_line_infos.len();
                     let height = text::height(num_lines, font_size, line_spacing);
-                    if height < rect.h() {
+                    if height < rect.h() || !restrict_to_height {
                         *text = new_text;
                         cursor = new_cursor;
                         state.update(|state| state.line_infos = new_line_infos);
