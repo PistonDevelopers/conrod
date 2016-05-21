@@ -12,6 +12,7 @@ use {
 };
 use std;
 use text;
+use utils;
 use widget;
 
 
@@ -184,7 +185,7 @@ impl<'a> Widget for Text<'a> {
         let mut max_width = 0.0;
         for line in self.text.lines() {
             let width = ui.glyph_cache.width(font_size, line);
-            max_width = ::utils::partial_max(max_width, width);
+            max_width = utils::partial_max(max_width, width);
         }
         Dimension::Absolute(max_width)
     }
