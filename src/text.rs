@@ -468,6 +468,9 @@ pub mod cursor {
 }
 
 
+/// Text handling logic related to individual lines of text.
+///
+/// This module is the core of multi-line text handling.
 pub mod line {
     use {Align, CharacterCache, FontSize, GlyphCache, Range, Rect, Scalar};
     use std;
@@ -475,25 +478,30 @@ pub mod line {
     /// The two types of **Break** indices returned by the **WrapIndicesBy** iterators.
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum Break {
-        /// `break_*` is an index at which the string should wrap due to exceeding a maximum width.
-        ///
-        /// `next_line_*` is the byte length which should be skipped in order to reach the first
-        /// non-whitespace character to use as the beginning of the next line.
+        /// A break caused by the text exceeding some maximum width.
         Wrap {
+            /// The byte index at which the break occurs.
             byte: usize,
+            /// The char index at which the string should wrap due to exceeding a maximum width.
             char: usize,
+            /// The byte length which should be skipped in order to reach the first non-whitespace
+            /// character to use as the beginning of the next line.
             len_bytes: usize,
         },
-        /// An index at which the string breaks due to a newline character, along with the
-        /// width of the "newline" token in bytes.
+        /// A break caused by a newline character.
         Newline {
+            /// The byte index at which the string should wrap due to exceeding a maximum width.
             byte: usize,
+            /// The char index at which the string should wrap due to exceeding a maximum width.
             char: usize,
+            /// The width of the "newline" token in bytes.
             len_bytes: usize,
         },
         /// The end of the string has been reached, with the given length.
         End {
+            /// The ending byte index.
             byte: usize,
+            /// The ending char index.
             char: usize,
         },
     }
@@ -925,13 +933,10 @@ pub mod line {
                     };
 
                     match next {
-                        Break::Newline { byte, char, len_bytes } => {
-                            *start_byte = byte + len_bytes;
-                            *start_char = char + 1;
-                        },
+                        Break::Newline { byte, char, len_bytes } |
                         Break::Wrap { byte, char, len_bytes } => {
-                            *start_byte = byte + len_bytes;
-                            *start_char = char + 1;
+                            *start_byte = info.start_byte + byte + len_bytes;
+                            *start_char = info.start_char + char + 1;
                         },
                         _ => unreachable!(),
                     };
@@ -939,7 +944,7 @@ pub mod line {
                     Some(info)
                 },
 
-                (Break::End { byte, char }, width) =>
+                (Break::End { char, .. }, width) =>
                     if *start_byte < text.len() {
                         let total_bytes = text.len();
                         let total_chars = *start_char + char;
