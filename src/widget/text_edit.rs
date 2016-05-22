@@ -15,6 +15,7 @@ use {
     Rect,
     Rectangle,
     Scalar,
+    Sizeable,
     Text,
     Widget,
 };
@@ -59,7 +60,7 @@ widget_style!{
         /// The way in which text is wrapped at the end of a line.
         - line_wrap: Wrap { Wrap::Whitespace }
         /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
-        - restrict_to_height: bool { false }
+        - restrict_to_height: bool { true }
     }
 }
 
@@ -194,7 +195,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
     }
 
     /// Update the state of the TextEdit.
-    fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
+    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextEdit { text, maybe_react, .. } = self;
 
@@ -324,7 +325,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         let infos = &state.view().line_infos;
                         let cache = ui.glyph_cache();
                         let closest = closest_cursor_index_and_xy(abs_xy, text, infos, cache);
-                        if let Some((closest_cursor, closest_cursor_xy)) = closest {
+                        if let Some((closest_cursor, _)) = closest {
                             cursor = Cursor::Idx(closest_cursor);
                         }
 
@@ -499,7 +500,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         _ => ()
                     }
 
-                    let (new_text, new_cursor): (String, Cursor) = {
+                    let string_char_count = string.chars().count();
+
+                    // Construct the new text with the new string inserted at the cursor.
+                    let (new_text, new_cursor_char_idx): (String, usize) = {
                         let (cursor_start, cursor_end) = match cursor {
                             Cursor::Idx(idx) => (idx, idx),
                             Cursor::Selection { start, end } =>
@@ -514,28 +518,37 @@ impl<'a, F> Widget for TextEdit<'a, F>
                              text::char::index_after_cursor(line_infos.clone(), cursor_end)
                                 .unwrap_or(0));
 
-                        let new_cursor_idx = {
-                            let char_count = string.chars().count();
-                            let new_cursor_char_idx = start_idx + string.chars().count();
-                            text::cursor::index_before_char(line_infos, new_cursor_char_idx)
-                                .unwrap_or(text::cursor::Index { line: 0, char: char_count })
-                        };
+                        let new_cursor_char_idx = start_idx + string_char_count;
 
-                        let new_cursor = Cursor::Idx(new_cursor_idx);
                         let new_text = text.chars().take(start_idx)
                             .chain(string.chars())
                             .chain(text.chars().skip(end_idx))
                             .collect();
-                        (new_text, new_cursor)
+                        (new_text, new_cursor_char_idx)
                     };
 
-                    // Check that the new text would not exceed the `inner_rect` bounds.
+                    // Calculate the new `line_infos` for the `new_text`.
                     let new_line_infos: Vec<_> = 
                         line_infos(&new_text, ui.glyph_cache(), font_size, line_wrap, rect.w())
                             .collect();
+
+                    // Check that the new text would not exceed the `inner_rect` bounds.
                     let num_lines = new_line_infos.len();
                     let height = text::height(num_lines, font_size, line_spacing);
                     if height < rect.h() || !restrict_to_height {
+
+                        // Determine the new `Cursor` and its position.
+                        let new_cursor_idx = {
+                            let line_infos = new_line_infos.iter().cloned();
+                            text::cursor::index_before_char(line_infos, new_cursor_char_idx)
+                                .unwrap_or(text::cursor::Index {
+                                    line: 0,
+                                    char: string_char_count,
+                                })
+                        };
+                        let new_cursor = Cursor::Idx(new_cursor_idx);
+
+                        // Update the text, cursor and line_infos.
                         *text = new_text;
                         cursor = new_cursor;
                         state.update(|state| state.line_infos = new_line_infos);
@@ -592,8 +605,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
             Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
             Wrap::Character => Text::new(&self.text).wrap_by_character(),
         }
+            .wh(rect.dim())
             .x_align_to(idx, x_align)
             .y_align_to(idx, y_align)
+            .align_text_to(x_align)
             .graphics_for(idx)
             .color(color)
             .font_size(font_size)
@@ -602,7 +617,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         // Draw the line for the cursor.
         let cursor_idx = match cursor {
             Cursor::Idx(idx) => idx,
-            Cursor::Selection { start, end } => end,
+            Cursor::Selection { end, .. } => end,
         };
 
         // If this widget is not capturing the keyboard, no need to draw cursor or selection.
