@@ -95,12 +95,6 @@ impl<'a> Text<'a> {
         }
     }
 
-    /// Build the **Text** with the given font size.
-    pub fn font_size(mut self, size: FontSize) -> Self {
-        self.style.font_size = Some(size);
-        self
-    }
-
     /// Specify that the **Text** should not wrap lines around the width.
     pub fn no_line_wrap(mut self) -> Self {
         self.style.maybe_wrap = Some(None);
@@ -126,27 +120,24 @@ impl<'a> Text<'a> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(mut self) -> Self {
-        self.style.text_align = Some(Align::Start);
-        self
+    pub fn align_text_left(self) -> Self {
+        self.align_text_to(Align::Start)
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_middle(mut self) -> Self {
-        self.style.text_align = Some(Align::Middle);
-        self
+    pub fn align_text_middle(self) -> Self {
+        self.align_text_to(Align::Middle)
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(mut self) -> Self {
-        self.style.text_align = Some(Align::End);
-        self
+    pub fn align_text_right(self) -> Self {
+        self.align_text_to(Align::End)
     }
 
-    /// The height of the space used between consecutive lines.
-    pub fn line_spacing(mut self, height: Scalar) -> Self {
-        self.style.line_spacing = Some(height);
-        self
+    builder_methods!{
+        pub font_size { style.font_size = Some(FontSize) }
+        pub align_text_to { style.text_align = Some(Align) }
+        pub line_spacing { style.line_spacing = Some(Scalar) }
     }
 
 }
