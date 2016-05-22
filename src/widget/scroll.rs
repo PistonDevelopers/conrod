@@ -309,9 +309,13 @@ impl<A> State<A>
 
                     // Check whether or not the mouse interactions require (un)capturing of mouse.
                     match (prev_interaction, new_interaction) {
-                        (Highlighted(_), Clicked(_)) => { ui::mouse_captured_by(ui, idx); }
+                        (Highlighted(_), Clicked(_)) => {
+                            //ui::mouse_captured_by(ui, idx);
+                        }
                         (Clicked(_), Highlighted(_)) |
-                        (Clicked(_), Normal) => { ui::mouse_uncaptured_by(ui, idx); }
+                        (Clicked(_), Normal) => {
+                            //ui::mouse_uncaptured_by(ui, idx);
+                        }
                         _ => (),
                     }
 
