@@ -79,7 +79,7 @@ pub struct UpdateArgs<'a, 'b: 'a, W, B: 'a>
 /// turn reduce related mistakes (i.e. accidentally calling it and growing the graph unnecessarily).
 #[derive(Clone, Debug, PartialEq)]
 pub struct IndexSlot {
-    maybe_idx: ::std::cell::Cell<Option<NodeIndex>>,
+    maybe_idx: std::cell::Cell<Option<NodeIndex>>,
 }
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
