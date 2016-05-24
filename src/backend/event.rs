@@ -70,8 +70,12 @@ pub trait ToRawEvent {
     /// Convert self into an `RawEvent`.
     ///
     /// **Note:** `RawEvent`s that contain co-ordinates must be oriented with (0, 0) at the middle
-    /// of the window with the `y` axis pointing upwards (Cartesian co-ordinates). The window
-    /// dimensions are provided in case co-ordinates require translation.
+    /// of the window with the *y* axis pointing upwards (Cartesian co-ordinates). Many windows
+    /// provide coordinates with the origin in the top left with *y* pointing down, so you might
+    /// need to translate these co-ordinates when implementing this method. Also be sure to
+    /// invert the *y* axis of MouseScroll events.
+    ///
+    /// The window dimensions are provided in case co-ordinates require translation.
     fn to_raw_event(self, win_w: Scalar, win_h: Scalar) -> Option<RawEvent>;
 }
 
@@ -111,7 +115,9 @@ impl<E> ToRawEvent for E
         }
 
         if let Some(xy) = self.mouse_scroll_args() {
-            return Some(Input::Move(Motion::MouseScroll(xy[0], xy[1])).into());
+            // Invert the scrolling of the *y* axis as *y* is up in conrod.
+            let (x, y) = (xy[0], -xy[1]);
+            return Some(Input::Move(Motion::MouseScroll(x, y)).into());
         }
 
         if let Some(args) = self.controller_axis_args() {
