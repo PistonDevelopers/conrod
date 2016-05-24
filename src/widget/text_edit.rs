@@ -197,7 +197,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
     /// Update the state of the TextEdit.
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let TextEdit { text, maybe_react, .. } = self;
+        let TextEdit { text, .. } = self;
 
         let font_size = style.font_size(ui.theme());
         let line_wrap = style.line_wrap(ui.theme());
@@ -580,6 +580,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
                             // TODO: This should move the selected text.
                             Some(Drag::MoveSelection) => {
+                                unimplemented!();
                             },
 
                             None => (),
