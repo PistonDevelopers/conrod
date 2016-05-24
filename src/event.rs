@@ -47,14 +47,14 @@ pub enum Ui {
     DoubleClick(Option<widget::Index>, DoubleClick),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
     Drag(Option<widget::Index>, Drag),
-    /// This is a generic scroll event. This is different from the `input::Motion::MouseScroll`
-    /// event in several aspects.
+    /// A generic scroll event.
     ///
-    /// For one, it does not necessarily have to get created by a mouse wheel, it could be
-    /// generated from a keypress, or as a response to handling some other event.
+    /// `Scroll` does not necessarily have to get created by a mouse wheel, it could be generated
+    /// from a keypress, or as a response to handling some other event.
     ///
-    /// Secondly, it contains a field holding the `input::keyboard::ModifierKey` that was held
-    /// while the scroll occured.
+    /// Received `Scroll` events are first applied to all scrollable widgets under the mouse from
+    /// top to bottom. The remainder will then be applied to either 1. whatever widget captures the
+    /// device from which the scroll was emitted or 2. whatever widget was specified.
     Scroll(Option<widget::Index>, Scroll),
     /// Indicates that the given widget has captured the mouse.
     WidgetCapturesMouse(widget::Index),
