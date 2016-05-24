@@ -935,11 +935,12 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     // around our kid widgets is in sync with the position of the `kid_area`.
     let prev_kid_area = maybe_prev_common.map(|common| common.kid_area)
         .unwrap_or_else(|| kid_area);
+
     let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_x_scroll_state)
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_x_scroll_state, 0.0)
     });
     let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_y_scroll_state)
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_y_scroll_state, 0.0)
     });
 
     // Determine whether or not this is the first time set has been called.

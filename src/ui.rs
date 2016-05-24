@@ -274,7 +274,7 @@ impl<B> Ui<B>
             ui.global_input.current.widget_under_mouse =
                 graph::algo::pick_widgets(&ui.depth_order.indices,
                                           ui.global_input.current.mouse.xy)
-                                          .next(&ui.widget_graph);
+                                          .next(&ui.widget_graph, &ui.depth_order.indices);
 
             // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
             // under mouse.
@@ -617,34 +617,89 @@ impl<B> Ui<B>
                                 // 2. Drain the `x` and `y` scroll until both are `0.0` or there
                                 //    are no more wigets.
 
-                                // let mut scrollable_widgets = {
-                                //     let depth_order = &self.depth_order.indices;
-                                //     let mouse_xy = self.global_input.current.mouse.xy;
-                                //     graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
-                                // };
+                                let mut scrollable_widgets = {
+                                    let depth_order = &self.depth_order.indices;
+                                    let mouse_xy = self.global_input.current.mouse.xy;
+                                    graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
+                                };
 
-                                // while let Some(idx) = scrollable_widgets.next(&self.widget_graph) {
-                                //     if let Some(widget) = self.widget_graph.widget_mut(idx) {
+                                while let Some(idx) =
+                                    scrollable_widgets.next(&self.widget_graph,
+                                                            &self.depth_order.indices)
+                                {
 
-                                //         if let Some(ref mut scroll) = widget.maybe_x_scroll_state {
-                                //             let target_offset = scroll.offset + x;
-                                //             let new_offset = scroll.offset_bounds.clamp_value(target_scroll_x);
-                                //             x = target_offset - new_offset;
-                                //             scroll.offset = new_offset;
-                                //         }
+                                    let (kid_area, maybe_x_scroll, maybe_y_scroll) =
+                                        match self.widget_graph.widget(idx) {
+                                            Some(widget) => {
+                                                (widget.kid_area,
+                                                 widget.maybe_x_scroll_state,
+                                                 widget.maybe_y_scroll_state)
+                                            },
+                                            None => continue,
+                                        };
 
-                                //         if let Some(ref mut scroll) = widget.maybe_y_scroll_state {
-                                //             let target_offset = scroll.offset + y;
-                                //             let new_offset = scroll.offset_bounds.clamp_value(tar
-                                //         }
+                                    let mut x_applied_scroll = 0.0;
+                                    let mut y_applied_scroll = 0.0;
 
-                                // let event = event::Ui::Scroll(event::Scroll {
-                                //     x: x,
-                                //     y: y,
-                                //     modifiers: self.global_input.current.modifiers,
-                                // }).into();
-                                // self.global_input.push_event(event);
+                                    // Apply the remaining *x* axis scroll.
+                                    if x != 0.0 {
+                                        let new_scroll =
+                                            widget::scroll::State::update(self, idx, &kid_area,
+                                                                          maybe_x_scroll, x);
+                                        if let Some(w) = self.widget_graph.widget_mut(idx) {
+                                            if let Some(ref mut s) = w.maybe_x_scroll_state {
+                                                *s = new_scroll;
+                                                if let Some(prev_scroll) = maybe_x_scroll {
+                                                    x_applied_scroll =
+                                                        new_scroll.offset - prev_scroll.offset;
+                                                    x -= x_applied_scroll;
+                                                }
+                                            }
+                                        }
+                                    }
 
+                                    // Apply the remaining *y* axis scroll.
+                                    if y != 0.0 {
+                                        let new_scroll =
+                                            widget::scroll::State::update(self, idx, &kid_area,
+                                                                          maybe_y_scroll, y);
+                                        if let Some(w) = self.widget_graph.widget_mut(idx) {
+                                            if let Some(ref mut s) = w.maybe_y_scroll_state {
+                                                *s = new_scroll;
+                                                if let Some(prev_scroll) = maybe_y_scroll {
+                                                    y_applied_scroll =
+                                                        new_scroll.offset - prev_scroll.offset;
+                                                    y -= y_applied_scroll;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Create `Scroll` event with the applied scroll amount.
+                                    if x_applied_scroll > 0.0 || y_applied_scroll > 0.0 {
+                                        let event = event::Ui::Scroll(Some(idx), event::Scroll {
+                                            x: x_applied_scroll,
+                                            y: y_applied_scroll,
+                                            modifiers: self.global_input.current.modifiers,
+                                        }).into();
+                                        self.global_input.push_event(event);
+                                    }
+                                }
+
+                                // Apply the remaining scroll to whatever widget currently captures
+                                // the mouse input.
+                                if x > 0.0 || y > 0.0 {
+                                    let widget = self.global_input.current.widget_capturing_mouse;
+                                    let event = event::Ui::Scroll(widget, event::Scroll {
+                                        x: x,
+                                        y: y,
+                                        modifiers: self.global_input.current.modifiers,
+                                    }).into();
+                                    self.global_input.push_event(event);
+                                }
+
+                                // Now that there might be a different widget under the mouse, we
+                                // must update the capturing state.
                                 track_widget_under_mouse_and_update_capturing(self);
                             },
 
