@@ -50,7 +50,7 @@ widget_style!{
         /// The color of the text (this includes cursor and selection color).
         - color: Color { theme.shape_color }
         /// The font size for the text.
-        - font_size: FontSize { 24 }
+        - font_size: FontSize { theme.font_size_medium }
         /// The horizontal alignment of the text.
         - x_align: Align { Align::Start }
         /// The vertical alignment of the text.
@@ -132,26 +132,45 @@ impl<'a, F> TextEdit<'a, F> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(mut self) -> Self {
-        self.style.x_align = Some(Align::Start);
-        self
+    pub fn align_text_left(self) -> Self {
+        self.x_align_text(Align::Start)
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_middle(mut self) -> Self {
-        self.style.x_align = Some(Align::Middle);
-        self
+    pub fn align_text_x_middle(self) -> Self {
+        self.x_align_text(Align::Middle)
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(mut self) -> Self {
-        self.style.x_align = Some(Align::End);
-        self
+    pub fn align_text_right(self) -> Self {
+        self.x_align_text(Align::End)
+    }
+
+    /// Align the text to the left of its bounding **Rect**'s *y* axis range.
+    pub fn align_text_bottom(self) -> Self {
+        self.y_align_text(Align::Start)
+    }
+
+    /// Align the text to the middle of its bounding **Rect**'s *y* axis range.
+    pub fn align_text_y_middle(self) -> Self {
+        self.y_align_text(Align::Middle)
+    }
+
+    /// Align the text to the right of its bounding **Rect**'s *y* axis range.
+    pub fn align_text_top(self) -> Self {
+        self.y_align_text(Align::End)
+    }
+
+    /// Align the text to the middle of its bounding **Rect**.
+    pub fn align_text_middle(self) -> Self {
+        self.align_text_x_middle().align_text_y_middle()
     }
 
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
         pub react { maybe_react = Some(F) }
+        pub x_align_text { style.x_align = Some(Align) }
+        pub y_align_text { style.y_align = Some(Align) }
         pub line_wrap { style.line_wrap = Some(Wrap) }
         pub line_spacing { style.line_spacing = Some(Scalar) }
         pub restrict_to_height { style.restrict_to_height = Some(bool) }
