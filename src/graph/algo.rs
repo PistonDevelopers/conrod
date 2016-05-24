@@ -13,64 +13,74 @@ use super::{EdgeIndex, Graph, GraphIndex, NodeIndex};
 use widget;
 
 
+// /// A node "walker" that yields all widgets under the given `xy` position in order from top to
+// /// bottom.
+// #[derive(Clone)]
+// pub struct PickWidgets<'a> {
+//     xy: Point,
+//     rev_depth_order: std::iter::Rev<std::slice::Iter<'a, Visitable>>,
+// }
+
+// /// A node "walker" that yields all scrollable widgets under the given `xy` position in order from
+// /// top to bottom.
+// #[derive(Clone)]
+// pub struct PickScrollableWidgets<'a> {
+//     pick_widgets: PickWidgets<'a>,
+// }
+
 /// A node "walker" that yields all widgets under the given `xy` position in order from top to
 /// bottom.
 #[derive(Clone)]
-pub struct PickWidgets<'a> {
+#[allow(missing_copy_implementations)]
+pub struct PickWidgets {
     xy: Point,
-    rev_depth_order: std::iter::Rev<std::slice::Iter<'a, Visitable>>,
+    idx: usize,
 }
 
 /// A node "walker" that yields all scrollable widgets under the given `xy` position in order from
 /// top to bottom.
 #[derive(Clone)]
-pub struct PickScrollableWidgets<'a> {
-    pick_widgets: PickWidgets<'a>,
+#[allow(missing_copy_implementations)]
+pub struct PickScrollableWidgets {
+    pick_widgets: PickWidgets,
 }
 
 
-impl<'a> PickWidgets<'a> {
+impl PickWidgets {
 
     /// The next `Visitable` under the `xy` location.
     ///
     /// A `Visitable` is either a `Widget` or a widget's `Scrollbar`.
     ///
     /// This is called within `PickWidgets::next`.
-    pub fn next_visitable(&mut self, graph: &Graph) -> Option<Visitable> {
-        while let Some(&visitable) = self.rev_depth_order.next() {
-            match visitable {
-                Visitable::Widget(idx) => {
-                    if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
-                        if visible_rect.is_over(self.xy) {
-                            return Some(visitable);
-                        }
-                    }
-                },
-                Visitable::Scrollbar(idx) => {
-                    if let Some(widget) = graph.widget(idx) {
-                        if let Some(x_scroll_state) = widget.maybe_x_scroll_state {
-                            if x_scroll_state.is_over(self.xy, widget.kid_area.rect) {
+    pub fn next_visitable(&mut self,
+                          graph: &Graph,
+                          depth_order: &[Visitable]) -> Option<Visitable>
+    {
+        while self.idx > 0 {
+            self.idx -= 1;
+            match depth_order.get(self.idx) {
+                None => break,
+                Some(&visitable) => match visitable {
+                    Visitable::Widget(idx) => {
+                        if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
+                            if visible_rect.is_over(self.xy) {
                                 return Some(visitable);
                             }
                         }
-                        if let Some(y_scroll_state) = widget.maybe_y_scroll_state {
-                            if y_scroll_state.is_over(self.xy, widget.kid_area.rect) {
-                                return Some(visitable);
-                            }
-                        }
-                    }
+                    },
+                    Visitable::Scrollbar(_) => (),
                 },
             }
         }
-
         None
     }
 
     /// The `widget::Index` of the next `Widget` under the `xy` location.
     ///
     /// The `Graph` is traversed from the top down.
-    pub fn next(&mut self, graph: &Graph) -> Option<widget::Index> {
-        self.next_visitable(graph)
+    pub fn next(&mut self, graph: &Graph, depth_order: &[Visitable]) -> Option<widget::Index> {
+        self.next_visitable(graph, depth_order)
             .map(|visitable| match visitable {
                 // Ensure that if we've picked some widget that is a **Graphic** child of some
                 // other widget, we return the **Graphic** parent.
@@ -84,13 +94,13 @@ impl<'a> PickWidgets<'a> {
 
 }
 
-impl<'a> PickScrollableWidgets<'a> {
+impl PickScrollableWidgets {
 
     /// The `widget::Index` of the next scrollable `Widget` under the `xy` location.
     ///
     /// The `Graph` is traversed from the top down.
-    pub fn next(&mut self, graph: &Graph) -> Option<widget::Index> {
-        while let Some(visitable) = self.pick_widgets.next_visitable(graph) {
+    pub fn next(&mut self, graph: &Graph, depth_order: &[Visitable]) -> Option<widget::Index> {
+        while let Some(visitable) = self.pick_widgets.next_visitable(graph, depth_order) {
             match visitable {
                 Visitable::Widget(idx) => {
                     if let Some(ref container) = graph.widget(idx) {
@@ -117,7 +127,7 @@ impl<'a> PickScrollableWidgets<'a> {
 pub fn pick_widgets(depth_order: &[Visitable], xy: Point) -> PickWidgets {
     PickWidgets {
         xy: xy,
-        rev_depth_order: depth_order.iter().rev(),
+        idx: depth_order.len(),
     }
 }
 
