@@ -16,7 +16,7 @@ use piston_graphics;
 use std::any::Any;
 use std::iter::once;
 use theme::Theme;
-use widget::{self, primitive};
+use widget::primitive;
 
 #[doc(inline)]
 pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
@@ -87,18 +87,18 @@ pub fn draw_from_graph<B, G>(context: Context,
             },
 
             Visitable::Scrollbar(idx) => {
-                if let Some(widget) = graph.widget(idx) {
+                if let Some(_widget) = graph.widget(idx) {
 
                     // Now that we've come across a scrollbar, we'll pop its Context from the
                     // scroll_stack and draw it if necessary.
-                    let context = scroll_stack.pop().unwrap_or(context);
+                    let _context = scroll_stack.pop().unwrap_or(context);
 
-                    // Draw the scrollbar(s)!
-                    draw_scrolling(&context,
-                                   graphics,
-                                   widget.kid_area.rect,
-                                   widget.maybe_x_scroll_state,
-                                   widget.maybe_y_scroll_state);
+                    // // Draw the scrollbar(s)!
+                    // draw_scrolling(&context,
+                    //                graphics,
+                    //                widget.kid_area.rect,
+                    //                widget.maybe_x_scroll_state,
+                    //                widget.maybe_y_scroll_state);
                 }
             }
 
@@ -408,55 +408,5 @@ pub fn draw_lines<G, I>(context: &Context,
             Pattern::Dashed => unimplemented!(),
             Pattern::Dotted => unimplemented!(),
         }
-    }
-}
-
-
-/// Draw the scroll bars (if necessary) for the given widget's scroll state.
-pub fn draw_scrolling<G>(context: &Context,
-                         graphics: &mut G,
-                         kid_area_rect: Rect,
-                         maybe_x_scroll_state: Option<widget::scroll::StateX>,
-                         maybe_y_scroll_state: Option<widget::scroll::StateY>)
-    where G: Graphics,
-{
-    use widget::scroll;
-
-    fn draw_axis<G, A>(context: &Context,
-                       graphics: &mut G,
-                       kid_area_rect: Rect,
-                       scroll_state: &scroll::State<A>)
-        where G: Graphics,
-              A: scroll::Axis,
-    {
-        use widget::scroll::Elem::{Handle, Track};
-        use widget::scroll::Interaction::{Highlighted, Clicked};
-
-        let color = scroll_state.color;
-        let track_color = match scroll_state.interaction {
-            Clicked(Track) => color.highlighted(),
-            Highlighted(_) | Clicked(_) => color,
-            _ if scroll_state.is_scrolling => color,
-            _ => return,
-        }.alpha(0.2);
-        let handle_color = match scroll_state.interaction {
-            Clicked(Handle(_)) => color.clicked(),
-            Highlighted(_) | Clicked(_) => color,
-            _ if scroll_state.is_scrolling => color,
-            _ => return,
-        };
-        let thickness = scroll_state.thickness;
-        let track = scroll::track::<A>(kid_area_rect, thickness);
-        let handle = scroll::handle::<A>(track, &scroll_state);
-        draw_rectangle(context, graphics, track, track_color);
-        draw_rectangle(context, graphics, handle, handle_color);
-    }
-
-    if let Some(ref scroll_state) = maybe_y_scroll_state {
-        draw_axis::<G, scroll::Y>(context, graphics, kid_area_rect, scroll_state)
-    }
-
-    if let Some(ref scroll_state) = maybe_x_scroll_state {
-        draw_axis::<G, scroll::X>(context, graphics, kid_area_rect, scroll_state)
     }
 }

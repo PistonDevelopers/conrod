@@ -37,8 +37,6 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// Optional style defaults for a Scrollbar.
-    pub maybe_scrollbar: Option<widget::scroll::Style>,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
     pub widget_styling: HashMap<&'static str, WidgetDefault>,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
@@ -93,7 +91,6 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            maybe_scrollbar: None,
             widget_styling: HashMap::new(),
             mouse_drag_threshold: 0.0,
             double_click_threshold: std::time::Duration::from_millis(500),
