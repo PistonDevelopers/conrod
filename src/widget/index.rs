@@ -1,5 +1,4 @@
-
-use ::{NodeIndex, WidgetId};
+use {NodeIndex, WidgetId};
 
 
 /// An index either given in the form of a publicly instantiated `Widget`'s `WidgetId`, or an

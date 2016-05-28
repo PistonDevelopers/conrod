@@ -1,6 +1,3 @@
-
-
-
 /// Defines a struct called `$Style`.
 ///
 /// Each given `$field_name` `$FieldType` pair will be defined as `Option` fields.

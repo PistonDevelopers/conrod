@@ -1,4 +1,3 @@
-
 use {Backend, NodeIndex, Scalar, Widget};
 use widget;
 
