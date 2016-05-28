@@ -234,6 +234,54 @@ impl<B> Ui<B>
         &self.prev_updated_widgets
     }
 
+    /// Scroll the widget at the given index by the given offset amount.
+    ///
+    /// Returns the amount of `offset` that was successfully applied to the widget.
+    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2]) -> [Scalar; 2]
+        where I: Into<widget::Index>,
+    {
+        let widget_idx = widget_idx.into();
+        let (kid_area, maybe_x_scroll, maybe_y_scroll) =
+            match self.widget_graph.widget(widget_idx) {
+                Some(widget) =>
+                    (widget.kid_area, widget.maybe_x_scroll_state, widget.maybe_y_scroll_state),
+                None => return [0.0, 0.0],
+            };
+
+        let (x, y) = (offset[0], offset[1]);
+
+        let mut x_applied_scroll = 0.0;
+        let mut y_applied_scroll = 0.0;
+
+        if x != 0.0 {
+            let new_scroll =
+                widget::scroll::State::update(self, widget_idx, &kid_area, maybe_x_scroll, x);
+            if let Some(w) = self.widget_graph.widget_mut(widget_idx) {
+                if let Some(ref mut s) = w.maybe_x_scroll_state {
+                    *s = new_scroll;
+                    if let Some(prev_scroll) = maybe_x_scroll {
+                        x_applied_scroll = new_scroll.offset - prev_scroll.offset;
+                    }
+                }
+            }
+        }
+
+        if y != 0.0 {
+            let new_scroll =
+                widget::scroll::State::update(self, widget_idx, &kid_area, maybe_y_scroll, y);
+            if let Some(w) = self.widget_graph.widget_mut(widget_idx) {
+                if let Some(ref mut s) = w.maybe_y_scroll_state {
+                    *s = new_scroll;
+                    if let Some(prev_scroll) = maybe_y_scroll {
+                        y_applied_scroll = new_scroll.offset - prev_scroll.offset;
+                    }
+                }
+            }
+        }
+
+        [x_applied_scroll, y_applied_scroll]
+    }
+
     /// Handle raw window events and update the `Ui` state accordingly.
     ///
     /// This occurs within several stages:
@@ -1055,6 +1103,15 @@ impl<'a, B> UiCell<'a, B>
     /// Returns `None` if the widget has no children or if there's is no widget for the given index.
     pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
         self.ui.kids_bounding_box(idx)
+    }
+
+    /// Scroll the widget at the given index by the given offset amount.
+    ///
+    /// Returns the amount of `offset` that was successfully applied to the widget.
+    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2]) -> [Scalar; 2]
+        where I: Into<widget::Index>
+    {
+        self.ui.scroll_widget(widget_idx, offset)
     }
 
 }
