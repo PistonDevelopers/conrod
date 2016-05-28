@@ -1,4 +1,3 @@
-
 use Backend;
 use color::{Color, Colorable};
 use ui::{self, Ui};
