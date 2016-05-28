@@ -26,6 +26,7 @@ use conrod::{
     NumberDialer,
     Point,
     Positionable,
+    Scrollbar,
     Slider,
     Sizeable,
     Text,
@@ -191,6 +192,12 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         .color(app.bg_color)
         .scroll_kids()
         .set(CANVAS, ui);
+    Scrollbar::x_axis(CANVAS)
+        .color(app.bg_color.plain_contrast())
+        .set(CANVAS_Y_SCROLLBAR, ui);
+    Scrollbar::y_axis(CANVAS)
+        .color(app.bg_color.plain_contrast())
+        .set(CANVAS_X_SCROLLBAR, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
@@ -417,6 +424,8 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         TextBox::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
+            .frame(app.frame_width)
+            .frame_color(app.bg_color.invert().plain_contrast())
             .w_h(320.0, 40.0)
             .color(app.bg_color.invert())
             .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
@@ -453,6 +462,8 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
 // the use of `WidgetMatrix` as above).
 widget_ids! {
     CANVAS,
+    CANVAS_X_SCROLLBAR,
+    CANVAS_Y_SCROLLBAR,
     TITLE,
     BUTTON,
     TITLE_PAD_SLIDER,

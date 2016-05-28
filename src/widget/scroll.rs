@@ -31,12 +31,12 @@ pub struct State<A> {
     /// A negative offset pushes the scrollable range that is under the kid_area downwards.
     pub offset: Scalar,
     /// The start and end bounds for the offset along the axis.
-    offset_bounds: Range,
+    pub offset_bounds: Range,
     /// The total range which may be "offset" from the "root" range (aka the `kid_area`).
     ///
     /// The `scrollable_range` is determined as the bounding range around both the `kid_area` and
     /// all **un-scrolled** **visible** children widgets.
-    scrollable_range_len: Scalar,
+    pub scrollable_range_len: Scalar,
     /// The axis type used to instantiate this state.
     axis: PhantomData<A>,
     /// Whether or not the this axis is currently scrolling.
@@ -51,15 +51,10 @@ pub trait Axis {
     fn perpendicular_range(Rect) -> Range;
     /// Given some rectangular `Padding`, return the `Range` that corresponds with this `Axis`.
     fn padding_range(Padding) -> Range;
-    /// The `Rect` for a scroll "track" with the given `thickness` for a container with the given
-    /// `Rect`.
-    fn track(container: Rect, thickness: Scalar) -> Rect;
     /// The coordinate of the given mouse position that corresponds with this `Axis`.
     fn mouse_scalar(mouse_xy: Point) -> Scalar;
     /// The coordinate of the given `MouseScroll` that corresponds with this `Axis`.
     fn mouse_scroll_axis(MouseScroll) -> Scalar;
-    /// The `Rect` for a scroll handle given both `Range`s.
-    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect;
     /// A `Scalar` multiplier representing the direction in which positive offset shifts the
     /// `scrollable_range` (either `-1.0` or `1.0).
     fn offset_direction() -> Scalar;
@@ -250,26 +245,12 @@ impl Axis for X {
         padding.x
     }
 
-    fn track(container: Rect, thickness: Scalar) -> Rect {
-        let h = thickness;
-        let w = container.w();
-        let x = container.x();
-        Rect::from_xy_dim([x, 0.0], [w, h]).align_bottom_of(container)
-    }
-
     fn mouse_scalar(mouse_xy: Point) -> Scalar {
         mouse_xy[0]
     }
 
     fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
         scroll.x
-    }
-
-    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect {
-        Rect {
-            x: handle_range,
-            y: perpendicular_track_range,
-        }
     }
 
     fn offset_direction() -> Scalar {
@@ -293,26 +274,12 @@ impl Axis for Y {
         padding.y
     }
 
-    fn track(container: Rect, thickness: Scalar) -> Rect {
-        let w = thickness;
-        let h = container.h();
-        let y = container.y();
-        Rect::from_xy_dim([0.0, y], [w, h]).align_right_of(container)
-    }
-
     fn mouse_scalar(mouse_xy: Point) -> Scalar {
         mouse_xy[1]
     }
 
     fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
         scroll.y
-    }
-
-    fn handle_rect(perpendicular_track_range: Range, handle_range: Range) -> Rect {
-        Rect {
-            x: perpendicular_track_range,
-            y: handle_range,
-        }
     }
 
     fn offset_direction() -> Scalar {

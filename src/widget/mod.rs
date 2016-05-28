@@ -27,6 +27,7 @@ pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod matrix;
 pub mod number_dialer;
+pub mod scrollbar;
 pub mod slider;
 pub mod tabs;
 pub mod text_box;
