@@ -37,12 +37,12 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (piston_window::G2dTexture<'static>, Glyphs);
+type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
 type Ui = conrod::Ui<Backend>;
 type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
@@ -133,7 +133,7 @@ impl DemoApp {
 fn main() {
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
+    let opengl = piston_window::OpenGL::V3_2;
     
     // Construct the window.
     let mut window: PistonWindow =
@@ -141,12 +141,12 @@ fn main() {
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
-    let mut ui: Ui = {
+    let mut ui = {
         let assets = find_folder::Search::KidsThenParents(3, 5)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
         let theme = Theme::default();
-        let glyph_cache: Glyphs = Glyphs::new(&font_path, window.factory.clone()).unwrap();
         Ui::new(glyph_cache, theme)
     };
 
@@ -411,7 +411,7 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         .set(CIRCLE, ui);
 
     // Draw two TextBox and EnvelopeEditor pairs to the right of the DropDownList flowing downward.
-    for i in 0..2 {
+    for i in 0..2usize {
 
         let &mut (ref mut env, ref mut text) = &mut app.envelopes[i];
 
@@ -424,13 +424,15 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
             .frame_color(app.bg_color.invert().plain_contrast())
             .w_h(320.0, 40.0)
             .color(app.bg_color.invert())
-            .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
-            .set(ENVELOPE_EDITOR + (i * 2), ui);
+            .react(|string: &mut String| {
+                println!("TextBox {}: {:?}", i, string);
+            })
+            .set(ENVELOPE_EDITOR + i * 2, ui);
 
         let env_y_max = if i == 0 { 20_000.0 } else { 1.0 };
         let env_skew_y = if i == 0 { 3.0 } else { 1.0 };
 
-        // Draw an EnvelopeEditor. (Vec<Point>, x_min, x_max, y_min, y_max).
+        // Draw an EnvelopeEditor. (&mut Vec<Point>, x_min, x_max, y_min, y_max).
         EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
             .down(10.0)
             .w_h(320.0, 150.0)

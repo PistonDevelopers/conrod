@@ -9,11 +9,11 @@ extern crate piston_window;
 
 
 use conrod::{Canvas, Theme, Widget, color};
-use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
 type Ui = conrod::Ui<Backend>;
 type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
@@ -34,8 +34,8 @@ fn main() {
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
-        Ui::new(glyph_cache.unwrap(), theme)
+        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
+        Ui::new(glyph_cache, theme)
     };
 
     window.set_ups(60);

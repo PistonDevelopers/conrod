@@ -258,11 +258,11 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use piston_window::{EventLoop, Glyphs, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
+    use piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use self::circular_button::CircularButton;
 
     // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-    type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+    type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
     type Ui = conrod::Ui<Backend>;
 
     // Change this to OpenGL::V2_1 if not working.
@@ -284,8 +284,9 @@ pub fn main() {
         let assets = find_folder::Search::ParentsThenKids(3, 3)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let glyph_cache = Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        Ui::new(glyph_cache, conrod::Theme::default())
+        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
+        let theme = conrod::Theme::default();
+        Ui::new(glyph_cache, theme)
     };
 
     window.set_ups(60);
