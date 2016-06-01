@@ -65,6 +65,9 @@ fn set_widgets(ref mut ui: UiCell) {
         (FOOTER, Canvas::new().color(color::BLUE).scroll_kids_vertically()),
     ]).set(MASTER, ui);
 
+    // A scrollbar for the `FOOTER` canvas.
+    conrod::Scrollbar::y_axis(FOOTER).auto_hide(true).set(FOOTER_SCROLLBAR, ui);
+
     // Now we'll make a couple floating `Canvas`ses.
     let floating = Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
     floating.middle_of(LEFT_COLUMN).title_bar("Blue").color(color::BLUE).set(FLOATING_A, ui);
@@ -131,6 +134,7 @@ widget_ids! {
     MIDDLE_COLUMN,
     RIGHT_COLUMN,
     FOOTER,
+    FOOTER_SCROLLBAR,
     FLOATING_A,
     FLOATING_B,
     TABS,

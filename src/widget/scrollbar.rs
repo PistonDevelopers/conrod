@@ -55,9 +55,14 @@ widget_style!{
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
-        - color: Color { theme.shape_color }
+        - color: Color { theme.frame_color }
         /// The "thickness" of the scrollbar's track and handle `Rect`s.
         - thickness: Scalar { 10.0 }
+        /// When true, the `Scrollbar` will only be visible when:
+        ///
+        /// - The target scrollable widget is being scrolled.
+        /// - The mouse is over the scrollbar.
+        - auto_hide: bool { false }
     }
 }
 
@@ -69,6 +74,7 @@ pub struct State {
 }
 
 impl<A> Scrollbar<A> {
+
     /// Begin building a new scrollbar widget.
     fn new(widget: widget::Index) -> Self {
         Scrollbar {
@@ -78,6 +84,21 @@ impl<A> Scrollbar<A> {
             axis: std::marker::PhantomData,
         }
     }
+
+    /// By default, this is set to `false`.
+    ///
+    /// When false, the `Scrollbar` will always be visible.
+    ///
+    /// When true, the `Scrollbar` will only be visible when:
+    ///
+    /// - The target scrollable widget is actually scrollable and:
+    /// - The target scrollable widget is being scrolled.
+    /// - The scrollbar is capturing the mouse.
+    pub fn auto_hide(mut self, auto_hide: bool) -> Self {
+        self.style.auto_hide = Some(auto_hide);
+        self
+    }
+
 }
 
 impl Scrollbar<X> {
@@ -150,23 +171,18 @@ impl<A> Widget for Scrollbar<A>
         let color = style.color(ui.theme());
 
         // Only continue if the widget that we want to scroll has some scroll state.
-        let (offset_bounds, offset, scrollable_range_len) = match ui.widget_graph().widget(widget) {
-            Some(widget) => match A::scroll_state(widget) {
-                Some(scroll) => (scroll.offset_bounds, scroll.offset, scroll.scrollable_range_len),
+        let (offset_bounds, offset, scrollable_range_len, is_scrolling) =
+            match ui.widget_graph().widget(widget) {
+                Some(widget) => match A::scroll_state(widget) {
+                    Some(scroll) =>
+                        (scroll.offset_bounds,
+                         scroll.offset,
+                         scroll.scrollable_range_len,
+                         scroll.is_scrolling),
+                    None => return,
+                },
                 None => return,
-            },
-            None => return,
-        };
-
-        // The `Track` widget along which the handle will slide.
-        let track_idx = state.view().track_idx.get(&mut ui);
-        let track_color = color.alpha(0.25);
-        Rectangle::fill(rect.dim())
-            .xy(rect.xy())
-            .color(track_color)
-            .graphics_for(idx)
-            .parent(idx)
-            .set(track_idx, &mut ui);
+            };
 
         // Calculates the `Rect` for a scroll "handle" sitting on the given `track` with an offset
         // and length that represents the given `Axis`' `state`.
@@ -209,7 +225,6 @@ impl<A> Widget for Scrollbar<A>
                     if let event::Button::Mouse(input::MouseButton::Left, xy) = press.button {
                         let abs_xy = utils::vec2_add(xy, rect.xy());
                         if rect.is_over(abs_xy) && !handle_rect.is_over(abs_xy) {
-                            println!("click!");
                             let handle_pos_range_len = handle_pos_range_len();
                             let offset_range_len = offset_bounds.len();
                             let mouse_scalar = A::mouse_scalar(xy);
@@ -241,7 +256,30 @@ impl<A> Widget for Scrollbar<A>
         }
 
         // Scroll the given widget by the accumulated additional offset.
-        ui.scroll_widget(widget, A::to_2d(additional_offset));
+        if additional_offset != 0.0 {
+            ui.scroll_widget(widget, A::to_2d(additional_offset));
+        }
+
+        // Don't draw the scrollbar if auto_hide is on and there is no interaction.
+        let auto_hide = style.auto_hide(ui.theme());
+        if auto_hide {
+            let not_scrollable = offset_bounds.magnitude().is_sign_positive();
+            let no_offset = additional_offset == 0.0;
+            let no_mouse_interaction = ui.widget_input(idx).mouse().is_none();
+            if not_scrollable || (!is_scrolling && no_offset && no_mouse_interaction) {
+                return;
+            }
+        }
+
+        // The `Track` widget along which the handle will slide.
+        let track_idx = state.view().track_idx.get(&mut ui);
+        let track_color = color.alpha(0.25);
+        Rectangle::fill(rect.dim())
+            .xy(rect.xy())
+            .color(track_color)
+            .graphics_for(idx)
+            .parent(idx)
+            .set(track_idx, &mut ui);
 
         // The `Handle` widget used as a graphical representation of the part of the scrollbar that
         // can be dragged over the track.
@@ -252,7 +290,6 @@ impl<A> Widget for Scrollbar<A>
             .graphics_for(idx)
             .parent(idx)
             .set(handle_idx, &mut ui);
-
     }
 }
 

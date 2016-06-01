@@ -192,12 +192,8 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         .color(app.bg_color)
         .scroll_kids()
         .set(CANVAS, ui);
-    Scrollbar::x_axis(CANVAS)
-        .color(app.bg_color.plain_contrast())
-        .set(CANVAS_Y_SCROLLBAR, ui);
-    Scrollbar::y_axis(CANVAS)
-        .color(app.bg_color.plain_contrast())
-        .set(CANVAS_X_SCROLLBAR, ui);
+    Scrollbar::x_axis(CANVAS).auto_hide(true).set(CANVAS_Y_SCROLLBAR, ui);
+    Scrollbar::y_axis(CANVAS).auto_hide(true).set(CANVAS_X_SCROLLBAR, ui);
 
     // Text example.
     Text::new("Widget Demonstration")

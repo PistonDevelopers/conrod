@@ -3,7 +3,6 @@
 use {
     Align,
     Backend,
-    MouseScroll,
     Point,
     Padding,
     Range,
@@ -37,10 +36,10 @@ pub struct State<A> {
     /// The `scrollable_range` is determined as the bounding range around both the `kid_area` and
     /// all **un-scrolled** **visible** children widgets.
     pub scrollable_range_len: Scalar,
-    /// The axis type used to instantiate this state.
-    axis: PhantomData<A>,
     /// Whether or not the this axis is currently scrolling.
     pub is_scrolling: bool,
+    /// The axis type used to instantiate this state.
+    axis: PhantomData<A>,
 }
 
 /// Methods for distinguishing behaviour between both scroll axes at compile-time.
@@ -53,8 +52,6 @@ pub trait Axis {
     fn padding_range(Padding) -> Range;
     /// The coordinate of the given mouse position that corresponds with this `Axis`.
     fn mouse_scalar(mouse_xy: Point) -> Scalar;
-    /// The coordinate of the given `MouseScroll` that corresponds with this `Axis`.
-    fn mouse_scroll_axis(MouseScroll) -> Scalar;
     /// A `Scalar` multiplier representing the direction in which positive offset shifts the
     /// `scrollable_range` (either `-1.0` or `1.0).
     fn offset_direction() -> Scalar;
@@ -165,7 +162,7 @@ impl<A> State<A>
     ///          +              >    
     ///
     /// ```
-    pub fn update<B>(ui: &mut Ui<B>,
+    pub fn update<B>(ui: &Ui<B>,
                      idx: super::Index,
                      kid_area: &super::KidArea,
                      maybe_prev_scroll_state: Option<Self>,
@@ -200,23 +197,29 @@ impl<A> State<A>
 
         // Determine the min and max offst bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
-        let offset_bounds = {
-            let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
-            let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
-            Range::new(min_offset, max_offset)
-        };
+        let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
+        let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
+        let offset_bounds = Range::new(min_offset, max_offset);
 
         // The range is only scrollable if it is longer than the padded kid_area_range.
         let is_scrollable = scrollable_range.len() > kid_area_range.len();
 
-        // Add the `current_offset` with the given `additional_offset`, as long as the result would
-        // not exceed the `offset_bounds`
+        // If the range is scrollable, calculate the new offset by adding the `additional_offset`.
         //
-        // The `additional_offset` is given via some scroll events.
-        let new_offset = if is_scrollable {
-            offset_bounds.clamp_value(current_offset + additional_offset)
-        } else {
-            current_offset
+        // The `additional_offset` is given via a `Scroll` event.
+        let new_offset_unbounded =
+            if is_scrollable { current_offset + additional_offset }
+            else             { current_offset };
+
+        // Clamp the new offset to ensure it does not exceed the `offset_bounds`.
+        let new_offset = {
+            // If there was some previous scroll state, we must also ensure that our new offset does
+            // exceed its `offset_bounds` either. We do this in order to avoid causing jitter when
+            // scrolling towards either end of the Range.
+            let new_offset = maybe_prev_scroll_state.as_ref()
+                .map(|prev| prev.offset_bounds.clamp_value(new_offset_unbounded))
+                .unwrap_or(new_offset_unbounded);
+            offset_bounds.clamp_value(new_offset)
         };
 
         State {
@@ -249,10 +252,6 @@ impl Axis for X {
         mouse_xy[0]
     }
 
-    fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
-        scroll.x
-    }
-
     fn offset_direction() -> Scalar {
         1.0
     }
@@ -276,10 +275,6 @@ impl Axis for Y {
 
     fn mouse_scalar(mouse_xy: Point) -> Scalar {
         mouse_xy[1]
-    }
-
-    fn mouse_scroll_axis(scroll: MouseScroll) -> Scalar {
-        scroll.y
     }
 
     fn offset_direction() -> Scalar {

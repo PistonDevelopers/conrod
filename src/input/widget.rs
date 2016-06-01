@@ -88,6 +88,12 @@ pub struct Texts<'a> {
     events: Events<'a>,
 }
 
+/// An iterator that yields all `Scroll` events yielded by the given `Events` iterator.
+#[derive(Clone)]
+pub struct Scrolls<'a> {
+    events: Events<'a>,
+}
+
 
 impl<'a> Widget<'a> {
 
@@ -156,8 +162,13 @@ impl<'a> Widget<'a> {
     /// since the last time `Ui::set_widgets` was called.
     ///
     /// Only events that occurred while the widget was capturing the keyboard will be yielded.
-    pub fn text(&self) -> Texts<'a> {
+    pub fn texts(&self) -> Texts<'a> {
         Texts { events: self.events() }
+    }
+
+    /// Produce an iterator that yields only the `Scroll` events yielded by the `Events` iterator.
+    pub fn scrolls(&self) -> Scrolls<'a> {
+        Scrolls { events: self.events() }
     }
 
 }
@@ -368,6 +379,18 @@ impl<'a> Iterator for Texts<'a> {
         while let Some(event) = self.events.next() {
             if let event::Widget::Text(text) = event {
                 return Some(text);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Scrolls<'a> {
+    type Item = event::Scroll;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Scroll(scroll) = event {
+                return Some(scroll);
             }
         }
         None

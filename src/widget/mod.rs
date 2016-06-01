@@ -1,5 +1,5 @@
 use {Backend, CharacterCache, Dimension, GlyphCache};
-use graph::NodeIndex;
+use graph::{self, NodeIndex};
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std;
 use theme::{self, Theme};
@@ -790,10 +790,10 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let maybe_widget_state: Option<Cached<W>> = {
 
         // If the cache is already initialised for a widget of a different kind, warn the user.
-        let check_container_kind = |container: &mut ::graph::Container| {
+        let check_container_kind = |container: &mut graph::Container| {
             use std::io::Write;
             if container.kind != kind {
-                writeln!(::std::io::stderr(),
+                writeln!(std::io::stderr(),
                          "A widget of a different kind already exists at the given WidgetId \
                          ({:?}). You tried to insert a {:?}, however the existing widget is a \
                          {:?}. Check your widgets' `WidgetId`s for errors.",
@@ -901,10 +901,10 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
         // If it is floating, check to see if we need to update the last time it was clicked.
         match maybe_prev_common.as_ref() {
             Some(prev) => {
-                let maybe_mouse = ui::get_mouse_state(ui, idx);
+                let maybe_mouse = ui.widget_input(idx).mouse();
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
-                        if mouse.left.position == ::mouse::ButtonPosition::Down {
+                        if mouse.buttons.left().is_down() {
                             Some(new_floating())
                         } else {
                             Some(prev_floating)
@@ -938,12 +938,30 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let prev_kid_area = maybe_prev_common.map(|common| common.kid_area)
         .unwrap_or_else(|| kid_area);
 
-    let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
+    // If the widget is scrollable, check for given `Scroll` events.
+    //
+    // TODO: On the first time the widget is set (i.e. if `maybe_prev_*_scroll_state` is `None` and
+    // `maybe_*_scroll` is `Some`) we should consider and handle the `scroll_args`'
+    // `maybe_initial_alignment` field.
+    let mut maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|_scroll_args| {
         scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_x_scroll_state, 0.0)
     });
-    let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
+    let mut maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|_scroll_args| {
         scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_y_scroll_state, 0.0)
     });
+
+    for scroll in ui.widget_input(idx).scrolls() {
+
+        if widget.common().maybe_x_scroll.is_some() {
+            maybe_x_scroll_state =
+                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_x_scroll_state, scroll.x))
+        }
+
+        if widget.common().maybe_y_scroll.is_some() {
+            maybe_y_scroll_state =
+                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_y_scroll_state, scroll.y))
+        }
+    }
 
     // Determine whether or not this is the first time set has been called.
     // We'll use this to determine whether or not we need to draw for the first time.

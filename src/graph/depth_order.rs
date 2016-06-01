@@ -1,13 +1,8 @@
 //! Types and functionality related to the calculation of a **Graph**'s rendering depth order.
 
 use daggy::Walker;
-use std::collections::HashSet;
-use super::{
-    Graph,
-    GraphIndex,
-    Node,
-    NodeIndex,
-};
+use std;
+use super::{Graph, Node, NodeIndex};
 
 
 /// Contains Node indices in order of depth, starting with the deepest.
@@ -66,19 +61,12 @@ impl DepthOrder {
     ///
     /// The `visit_by_depth` algorithm should not be recursive and instead use either looping,
     /// walking or iteration.
-    pub fn update<M, K>(&mut self,
-                        graph: &Graph,
-                        root: NodeIndex,
-                        updated_widgets: &HashSet<NodeIndex>,
-                        maybe_captured_mouse: Option<M>,
-                        maybe_captured_keyboard: Option<K>)
-        where M: GraphIndex,
-              K: GraphIndex,
+    pub fn update(&mut self,
+                  graph: &Graph,
+                  root: NodeIndex,
+                  updated_widgets: &std::collections::HashSet<NodeIndex>)
     {
         let DepthOrder { ref mut indices, ref mut floating } = *self;
-
-        let maybe_captured_mouse = maybe_captured_mouse.and_then(|idx| graph.node_index(idx));
-        let maybe_captured_keyboard = maybe_captured_keyboard.and_then(|idx| graph.node_index(idx));
 
         // Clear the buffers and ensure they've enough memory allocated.
         let num_nodes = graph.node_count();
@@ -89,13 +77,7 @@ impl DepthOrder {
 
         // Visit each node in order of depth and add their indices to depth_order.
         // If the widget is floating, then store it in the floating deque instead.
-        visit_by_depth(graph,
-                       root,
-                       updated_widgets,
-                       maybe_captured_mouse,
-                       maybe_captured_keyboard,
-                       indices,
-                       floating);
+        visit_by_depth(graph, root, updated_widgets, indices, floating);
 
         // Sort the floating widgets so that the ones clicked last come last.
         floating.sort_by(|&a, &b| match (&graph[a], &graph[b]) {
@@ -104,19 +86,13 @@ impl DepthOrder {
                 let b_floating = b.maybe_floating.expect("Not floating");
                 a_floating.time_last_clicked.cmp(&b_floating.time_last_clicked)
             },
-            _ => ::std::cmp::Ordering::Equal,
+            _ => std::cmp::Ordering::Equal,
         });
 
         // Visit all of the floating widgets last.
         while !floating.is_empty() {
             let idx = floating.remove(0);
-            visit_by_depth(graph,
-                           idx,
-                           updated_widgets,
-                           maybe_captured_mouse,
-                           maybe_captured_keyboard,
-                           indices,
-                           floating);
+            visit_by_depth(graph, idx, updated_widgets, indices, floating);
         }
     }
 
@@ -126,9 +102,7 @@ impl DepthOrder {
 /// Recursive function for visiting all nodes within the dag.
 fn visit_by_depth(graph: &Graph,
                   idx: NodeIndex,
-                  updated_widgets: &HashSet<NodeIndex>,
-                  maybe_captured_mouse: Option<NodeIndex>,
-                  maybe_captured_keyboard: Option<NodeIndex>,
+                  updated_widgets: &std::collections::HashSet<NodeIndex>,
                   depth_order: &mut Vec<Visitable>,
                   floating_deque: &mut Vec<NodeIndex>)
 {
@@ -148,9 +122,7 @@ fn visit_by_depth(graph: &Graph,
     child_sorter.sort_by(|&a, &b| {
         use std::cmp::Ordering;
 
-        if Some(a) == maybe_captured_mouse || Some(a) == maybe_captured_keyboard {
-            Ordering::Greater
-        } else if let (&Node::Widget(ref a), &Node::Widget(ref b)) = (&graph[a], &graph[b]) {
+        if let (&Node::Widget(ref a), &Node::Widget(ref b)) = (&graph[a], &graph[b]) {
             match b.depth.partial_cmp(&a.depth).expect("Depth was NaN!") {
                 Ordering::Equal => a.instantiation_order_idx.cmp(&b.instantiation_order_idx),
                 ordering => ordering,
@@ -170,13 +142,7 @@ fn visit_by_depth(graph: &Graph,
         // Store floating widgets int he floating_deque for visiting after the current tree.
         match maybe_is_floating {
             Some(true) => floating_deque.push(child_idx),
-            _          => visit_by_depth(graph,
-                                         child_idx,
-                                         updated_widgets,
-                                         maybe_captured_mouse,
-                                         maybe_captured_keyboard,
-                                         depth_order,
-                                         floating_deque),
+            _ => visit_by_depth(graph, child_idx, updated_widgets, depth_order, floating_deque),
         }
     }
 

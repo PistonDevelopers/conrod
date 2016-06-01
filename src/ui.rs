@@ -2,9 +2,9 @@ use {CharacterCache, Scalar};
 use backend::{self, Backend, ToRawEvent};
 use backend::graphics::{Context, Graphics};
 use color::Color;
+use event;
 use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
-use mouse::{self, Mouse};
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
 use std;
 use std::collections::HashSet;
@@ -58,11 +58,15 @@ pub struct Ui<B>
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
     prev_updated_widgets: HashSet<NodeIndex>,
+    /// Scroll events that have been emitted during a call to `Ui::set_widgets`. These are usually
+    /// emitted by some widget like the `Scrollbar`.
+    ///
+    /// These events will be drained and pushed onto the end of the `global_input` event buffer at
+    /// the end of the `Ui::set_widgets` method. This ensures that the events are received by the
+    /// target widgets during the next call to `Ui::set_widgets`.
+    pending_scroll_events: Vec<event::Ui>,
 
     // TODO: Remove the following fields as they should now be handled by `input::Global`.
-
-    /// The latest received mouse state.
-    mouse: Mouse,
 
     /// Window width.
     pub win_w: f64,
@@ -131,7 +135,6 @@ impl<B> Ui<B>
             widget_graph: widget_graph,
             theme: theme,
             window: window,
-            mouse: Mouse::new(),
             glyph_cache: GlyphCache::new(character_cache),
             win_w: 0.0,
             win_h: 0.0,
@@ -144,6 +147,7 @@ impl<B> Ui<B>
             updated_widgets: updated_widgets,
             prev_updated_widgets: prev_updated_widgets,
             global_input: input::Global::new(),
+            pending_scroll_events: Vec::new(),
         }
     }
 
@@ -236,50 +240,21 @@ impl<B> Ui<B>
 
     /// Scroll the widget at the given index by the given offset amount.
     ///
-    /// Returns the amount of `offset` that was successfully applied to the widget.
-    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2]) -> [Scalar; 2]
+    /// The produced `Scroll` event will be applied upon the next call to `Ui::set_widgets`.
+    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2])
         where I: Into<widget::Index>,
     {
         let widget_idx = widget_idx.into();
-        let (kid_area, maybe_x_scroll, maybe_y_scroll) =
-            match self.widget_graph.widget(widget_idx) {
-                Some(widget) =>
-                    (widget.kid_area, widget.maybe_x_scroll_state, widget.maybe_y_scroll_state),
-                None => return [0.0, 0.0],
-            };
-
         let (x, y) = (offset[0], offset[1]);
 
-        let mut x_applied_scroll = 0.0;
-        let mut y_applied_scroll = 0.0;
-
-        if x != 0.0 {
-            let new_scroll =
-                widget::scroll::State::update(self, widget_idx, &kid_area, maybe_x_scroll, x);
-            if let Some(w) = self.widget_graph.widget_mut(widget_idx) {
-                if let Some(ref mut s) = w.maybe_x_scroll_state {
-                    *s = new_scroll;
-                    if let Some(prev_scroll) = maybe_x_scroll {
-                        x_applied_scroll = new_scroll.offset - prev_scroll.offset;
-                    }
-                }
-            }
+        if x != 0.0 || y != 0.0 {
+            let event = event::Ui::Scroll(Some(widget_idx), event::Scroll {
+                x: x,
+                y: y,
+                modifiers: self.global_input.current.modifiers,
+            }).into();
+            self.global_input.push_event(event);
         }
-
-        if y != 0.0 {
-            let new_scroll =
-                widget::scroll::State::update(self, widget_idx, &kid_area, maybe_y_scroll, y);
-            if let Some(w) = self.widget_graph.widget_mut(widget_idx) {
-                if let Some(ref mut s) = w.maybe_y_scroll_state {
-                    *s = new_scroll;
-                    if let Some(prev_scroll) = maybe_y_scroll {
-                        y_applied_scroll = new_scroll.offset - prev_scroll.offset;
-                    }
-                }
-            }
-        }
-
-        [x_applied_scroll, y_applied_scroll]
     }
 
     /// Handle raw window events and update the `Ui` state accordingly.
@@ -301,7 +276,6 @@ impl<B> Ui<B>
     pub fn handle_event<E>(&mut self, event: E)
         where E: ToRawEvent,
     {
-        use event;
         use backend::event::{Input, Motion, Key, ModifierKey, RawEvent};
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
@@ -656,14 +630,7 @@ impl<B> Ui<B>
                             },
 
                             // The mouse was scrolled.
-                            Motion::MouseScroll(mut x, mut y) => {
-
-                                // TODO: Scroll each widget here:
-                                //
-                                // 1. Loop through scrollable widgets that are under the mouse from
-                                //    the top down.
-                                // 2. Drain the `x` and `y` scroll until both are `0.0` or there
-                                //    are no more wigets.
+                            Motion::MouseScroll(x, y) => {
 
                                 let mut scrollable_widgets = {
                                     let depth_order = &self.depth_order.indices;
@@ -671,6 +638,11 @@ impl<B> Ui<B>
                                     graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
                                 };
 
+                                // Iterate through the scrollable widgets from top to bottom.
+                                //
+                                // A scroll event will be created for the first scrollable widget
+                                // that hasn't already reached the bound of the scroll event's
+                                // direction.
                                 while let Some(idx) =
                                     scrollable_widgets.next(&self.widget_graph,
                                                             &self.depth_order.indices)
@@ -686,64 +658,91 @@ impl<B> Ui<B>
                                             None => continue,
                                         };
 
-                                    let mut x_applied_scroll = 0.0;
-                                    let mut y_applied_scroll = 0.0;
+                                    fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
+                                                             additional_offset: Scalar) -> bool
+                                    {
+                                        use utils;
 
-                                    // Apply the remaining *x* axis scroll.
+                                        fn approx_eq(a: Scalar, b: Scalar) -> bool {
+                                            (a - b).abs() < 0.000001
+                                        }
+
+                                        if additional_offset.is_sign_positive() {
+                                            let max = utils::partial_max(scroll.offset_bounds.start,
+                                                                         scroll.offset_bounds.end);
+                                            approx_eq(scroll.offset, max)
+                                        } else {
+                                            let min = utils::partial_min(scroll.offset_bounds.start,
+                                                                         scroll.offset_bounds.end);
+                                            approx_eq(scroll.offset, min)
+                                        }
+                                    }
+
+                                    let mut scroll_x = false;
+                                    let mut scroll_y = false;
+
+                                    // Check whether the x axis is scrollable.
                                     if x != 0.0 {
                                         let new_scroll =
                                             widget::scroll::State::update(self, idx, &kid_area,
                                                                           maybe_x_scroll, x);
-                                        if let Some(w) = self.widget_graph.widget_mut(idx) {
-                                            if let Some(ref mut s) = w.maybe_x_scroll_state {
-                                                *s = new_scroll;
-                                                if let Some(prev_scroll) = maybe_x_scroll {
-                                                    x_applied_scroll =
-                                                        new_scroll.offset - prev_scroll.offset;
-                                                    x -= x_applied_scroll;
-                                                }
-                                            }
+                                        if let Some(prev_scroll) = maybe_x_scroll {
+                                            let (prev_is_at_bound, new_is_at_bound) =
+                                                (offset_is_at_bound(&prev_scroll, x),
+                                                 offset_is_at_bound(&new_scroll, x));
+                                            scroll_x = !prev_is_at_bound || !new_is_at_bound;
                                         }
                                     }
 
-                                    // Apply the remaining *y* axis scroll.
+                                    // Check whether the y axis is scrollable.
                                     if y != 0.0 {
                                         let new_scroll =
                                             widget::scroll::State::update(self, idx, &kid_area,
                                                                           maybe_y_scroll, y);
-                                        if let Some(w) = self.widget_graph.widget_mut(idx) {
-                                            if let Some(ref mut s) = w.maybe_y_scroll_state {
-                                                *s = new_scroll;
-                                                if let Some(prev_scroll) = maybe_y_scroll {
-                                                    y_applied_scroll =
-                                                        new_scroll.offset - prev_scroll.offset;
-                                                    y -= y_applied_scroll;
-                                                }
-                                            }
+                                        if let Some(prev_scroll) = maybe_y_scroll {
+                                            let (prev_is_at_bound, new_is_at_bound) =
+                                                (offset_is_at_bound(&prev_scroll, y),
+                                                 offset_is_at_bound(&new_scroll, y));
+                                            scroll_y = !prev_is_at_bound || !new_is_at_bound;
                                         }
                                     }
 
-                                    // Create `Scroll` event with the applied scroll amount.
-                                    if x_applied_scroll > 0.0 || y_applied_scroll > 0.0 {
+                                    // Create a `Scroll` event if either axis is scrollable.
+                                    if scroll_x || scroll_y {
                                         let event = event::Ui::Scroll(Some(idx), event::Scroll {
-                                            x: x_applied_scroll,
-                                            y: y_applied_scroll,
+                                            x: x,
+                                            y: y,
                                             modifiers: self.global_input.current.modifiers,
                                         }).into();
                                         self.global_input.push_event(event);
+
+                                        // Now that we've scrolled the top, scrollable widget,
+                                        // we're done with the loop.
+                                        break;
                                     }
                                 }
 
-                                // Apply the remaining scroll to whatever widget currently captures
-                                // the mouse input.
-                                if x > 0.0 || y > 0.0 {
+                                // If no scrollable widgets could be scrolled, emit the event to
+                                // the widget that currently captures the mouse.
+                                if x != 0.0 || y != 0.0 {
                                     let widget = self.global_input.current.widget_capturing_mouse;
-                                    let event = event::Ui::Scroll(widget, event::Scroll {
-                                        x: x,
-                                        y: y,
-                                        modifiers: self.global_input.current.modifiers,
-                                    }).into();
-                                    self.global_input.push_event(event);
+                                    if let Some(idx) = widget {
+                                        if let Some(widget) = self.widget_graph.widget(idx) {
+                                            // Only create the event if the widget is not
+                                            // scrollable, as the event would have already been
+                                            // created within the above loop.
+                                            if widget.maybe_x_scroll_state.is_none()
+                                            && widget.maybe_y_scroll_state.is_none() {
+                                                let scroll = event::Scroll {
+                                                    x: x,
+                                                    y: y,
+                                                    modifiers: self.global_input.current.modifiers,
+                                                };
+                                                let event = event::Ui::Scroll(Some(idx), scroll);
+                                                self.global_input.push_event(event.into());
+                                            }
+                                        }
+                                    }
                                 }
 
                                 // Now that there might be a different widget under the mouse, we
@@ -934,7 +933,6 @@ impl<B> Ui<B>
         // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
         {
             let Ui {
-                ref global_input,
                 ref widget_graph,
                 ref mut depth_order,
                 window,
@@ -942,22 +940,17 @@ impl<B> Ui<B>
                 ..
             } = *self;
 
-            depth_order.update(widget_graph,
-                               window,
-                               updated_widgets,
-                               global_input.current.widget_capturing_mouse,
-                               global_input.current.widget_capturing_keyboard);
+            depth_order.update(widget_graph, window, updated_widgets);
         }
-
-        // Reset the mouse state.
-        self.mouse.scroll = mouse::Scroll { x: 0.0, y: 0.0 };
-        self.mouse.left.reset_pressed_and_released();
-        self.mouse.middle.reset_pressed_and_released();
-        self.mouse.right.reset_pressed_and_released();
-        self.mouse.unknown.reset_pressed_and_released();
 
         // Reset the global input state. Note that this is the **only** time this should be called.
         self.global_input.clear_events_and_update_start_state();
+
+        // Move all pending `Scroll` events that have been produced since the start of this method
+        // into the `global_input` event buffer.
+        for scroll_event in self.pending_scroll_events.drain(0..) {
+            self.global_input.push_event(scroll_event.into());
+        }
     }
 
 
@@ -1107,11 +1100,22 @@ impl<'a, B> UiCell<'a, B>
 
     /// Scroll the widget at the given index by the given offset amount.
     ///
-    /// Returns the amount of `offset` that was successfully applied to the widget.
-    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2]) -> [Scalar; 2]
+    /// The produced `Scroll` event will be pushed to the `pending_scroll_events` and will be
+    /// applied to the widget during the next call to `Ui::set_widgets`.
+    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2])
         where I: Into<widget::Index>
     {
-        self.ui.scroll_widget(widget_idx, offset)
+        let widget_idx = widget_idx.into();
+        let (x, y) = (offset[0], offset[1]);
+
+        if x != 0.0 || y != 0.0 {
+            let event = event::Ui::Scroll(Some(widget_idx), event::Scroll {
+                x: x,
+                y: y,
+                modifiers: self.ui.global_input.current.modifiers,
+            });
+            self.ui.pending_scroll_events.push(event);
+        }
     }
 
 }
@@ -1195,30 +1199,6 @@ pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
-}
-
-
-/// Return the current mouse state.
-///
-/// If the Ui has been captured and the given id doesn't match the captured id, return None.
-pub fn get_mouse_state<B>(ui: &Ui<B>, idx: widget::Index) -> Option<Mouse>
-    where B: Backend,
-{
-    match ui.global_input.current.widget_capturing_mouse {
-        Some(captured_idx) =>
-            if idx == captured_idx { Some(ui.mouse) } else { None },
-        None => match ui.global_input.current.widget_capturing_keyboard {
-            Some(captured_idx) =>
-                if idx == captured_idx { Some(ui.mouse) } else { None },
-            _ =>
-                if Some(idx) == ui.global_input.current.widget_under_mouse {
-                // || Some(idx) == ui.global_input.current.top_scrollable_widget_under_mouse {
-                    Some(ui.mouse)
-                } else {
-                    None
-                },
-        },
-    }
 }
 
 

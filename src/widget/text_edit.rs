@@ -83,6 +83,7 @@ pub struct State {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Drag {
     Selecting,
+    #[allow(dead_code)] // TODO: Implement this.
     MoveSelection,
 }
 
