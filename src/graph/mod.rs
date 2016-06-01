@@ -13,7 +13,7 @@ use std::option;
 use widget::{self, Widget};
 
 pub use daggy::Walker;
-pub use self::depth_order::{DepthOrder, Visitable};
+pub use self::depth_order::DepthOrder;
 pub use self::index_map::GraphIndex;
 
 pub mod algo;
@@ -87,6 +87,8 @@ pub struct Container {
     ///
     /// See the `Widget::float` docs for an explanation of what this means.
     pub maybe_floating: Option<widget::Floating>,
+    /// Whether or not children widgets should be cropped to the `kid_area`.
+    pub crop_kids: bool,
     /// Scroll related state (is only `Some` if this axis is scrollable).
     pub maybe_x_scroll_state: Option<widget::scroll::StateX>,
     /// Scroll related state (is only `Some` if this axis is scrollable).
@@ -699,7 +701,7 @@ impl Graph {
         let widget::PreUpdateCache {
             kind, idx, maybe_parent_idx, maybe_x_positioned_relatively_idx,
             maybe_y_positioned_relatively_idx, rect, depth, kid_area, maybe_floating,
-            maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
+            crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
         } = widget;
 
         // Construct a new `Container` to place in the `Graph`.
@@ -710,6 +712,7 @@ impl Graph {
             depth: depth,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
+            crop_kids: crop_kids,
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_y_scroll_state: maybe_y_scroll_state,
             instantiation_order_idx: instantiation_order_idx,
@@ -775,6 +778,7 @@ impl Graph {
                     container.depth = depth;
                     container.kid_area = kid_area;
                     container.maybe_floating = maybe_floating;
+                    container.crop_kids = crop_kids;
                     container.maybe_x_scroll_state = maybe_x_scroll_state;
                     container.maybe_y_scroll_state = maybe_y_scroll_state;
                     container.instantiation_order_idx = instantiation_order_idx;

@@ -42,7 +42,7 @@ use std::sync::mpsc;
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Backend = (piston_window::G2dTexture<'static>, Glyphs);
 type Ui = conrod::Ui<Backend>;
 type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
@@ -141,13 +141,13 @@ fn main() {
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
-    let mut ui = {
+    let mut ui: Ui = {
         let assets = find_folder::Search::KidsThenParents(3, 5)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
-        Ui::new(glyph_cache.unwrap(), theme)
+        let glyph_cache: Glyphs = Glyphs::new(&font_path, window.factory.clone()).unwrap();
+        Ui::new(glyph_cache, theme)
     };
 
     // Our dmonstration app that we'll control with our GUI.

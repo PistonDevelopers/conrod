@@ -8,23 +8,10 @@ use super::{Graph, Node, NodeIndex};
 /// Contains Node indices in order of depth, starting with the deepest.
 pub struct DepthOrder {
     /// The primary **Vec** storing the **DepthOrder**'s ordered indices.
-    pub indices: Vec<Visitable>,
+    pub indices: Vec<NodeIndex>,
     /// Used for storing indices of "floating" widgets during depth sorting so that they may be
     /// visited after widgets of the root tree.
     floating: Vec<NodeIndex>,
-}
-
-
-/// Parts of the graph that are significant when visiting and sorting by depth.
-///
-/// The reason a widget and its scrollbar are separate here is because a widget's scrollbar may
-/// sometimes appear on *top* of the widget's children.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Visitable {
-    /// The index of some widget in the graph.
-    Widget(NodeIndex),
-    /// The scrollbar for the widget at the given NodeIndex.
-    Scrollbar(NodeIndex),
 }
 
 
@@ -103,13 +90,13 @@ impl DepthOrder {
 fn visit_by_depth(graph: &Graph,
                   idx: NodeIndex,
                   updated_widgets: &std::collections::HashSet<NodeIndex>,
-                  depth_order: &mut Vec<Visitable>,
+                  depth_order: &mut Vec<NodeIndex>,
                   floating_deque: &mut Vec<NodeIndex>)
 {
     // First, if the current node is a widget and it was set in the current `set_widgets` stage,
     // store its index.
     match graph.widget(idx).is_some() && updated_widgets.contains(&idx) {
-        true => depth_order.push(Visitable::Widget(idx)),
+        true => depth_order.push(idx),
         // If the current node is not an updated widget, we're done with this branch.
         false => return,
     }
@@ -143,14 +130,6 @@ fn visit_by_depth(graph: &Graph,
         match maybe_is_floating {
             Some(true) => floating_deque.push(child_idx),
             _ => visit_by_depth(graph, child_idx, updated_widgets, depth_order, floating_deque),
-        }
-    }
-
-    // If the widget is scrollable, we should add its scrollbar to the visit order also.
-    if let Some(widget) = graph.widget(idx) {
-        if widget.maybe_x_scroll_state.is_some()
-        || widget.maybe_y_scroll_state.is_some() {
-            depth_order.push(Visitable::Scrollbar(idx));
         }
     }
 }

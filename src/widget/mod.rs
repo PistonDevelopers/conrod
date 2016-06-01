@@ -172,6 +172,11 @@ pub struct CommonBuilder {
     pub maybe_parent_idx: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
+    /// Whether or not the children of this **Widget** should be cropped to its `kid_area`.
+    ///
+    /// By default, the kid_area is the size of the entire widget, though it may be specified
+    /// otherwise via the `Widget::kid_area` method.
+    pub crop_kids: bool,
     /// Arguments to the scrolling of the widget's *x* axis.
     pub maybe_x_scroll: Option<scroll::Scroll>,
     /// Arguments to the scrolling of the widget's *y* axis.
@@ -300,6 +305,8 @@ pub struct PreUpdateCache {
     pub kid_area: KidArea,
     /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
+    /// Whether or not the children of the **Widget** should be cropped to its `kid_area`.
+    pub crop_kids: bool,
     /// Scrolling data for the **Widget**'s *x* axis if there is some.
     pub maybe_x_scroll_state: Option<scroll::StateX>,
     /// Scrolling data for the **Widget**'s *y* axis if there is some.
@@ -676,30 +683,43 @@ pub trait Widget: Sized {
         self
     }
 
-    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
-    ///
-    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
-    /// the `KidArea` will become scrollable.
-    fn scroll_kids(self) -> Self {
-        self.scroll_kids_vertically().scroll_kids_horizontally()
+    /// Indicates that all widgets who are children of this widget should be cropped to the
+    /// `kid_area` of this widget.
+    fn crop_kids(mut self) -> Self {
+        self.common_mut().crop_kids = true;
+        self
     }
 
-    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// Makes the widget's `KidArea` scrollable.
     ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
+    fn scroll_kids(self) -> Self {
+        self.scroll_kids_vertically().scroll_kids_horizontally().crop_kids()
+    }
+
+    /// Makes the widget's `KidArea` scrollable.
+    ///
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
     fn scroll_kids_vertically(mut self) -> Self {
         self.common_mut().maybe_y_scroll = Some(scroll::Scroll::new());
-        self
+        self.crop_kids()
     }
 
     /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
     ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
     fn scroll_kids_horizontally(mut self) -> Self {
         self.common_mut().maybe_x_scroll = Some(scroll::Scroll::new());
-        self
+        self.crop_kids()
     }
 
     /// A builder method that "lifts" the **Widget** through the given `build` function.
@@ -984,6 +1004,9 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
         let maybe_x_positioned_relatively_idx = maybe_positioned_relatively_idx(x_pos);
         let maybe_y_positioned_relatively_idx = maybe_positioned_relatively_idx(y_pos);
 
+        // Retrieve whether or not the widget's children should be cropped to it.
+        let crop_kids = widget.common().crop_kids;
+
         // This will cache the given data into the `ui`'s `widget_graph`.
         ui::pre_update_cache(ui, PreUpdateCache {
             kind: kind,
@@ -995,6 +1018,7 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
             depth: depth,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
+            crop_kids: crop_kids,
             maybe_y_scroll_state: maybe_y_scroll_state,
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_graphics_for: widget.common().maybe_graphics_for,
@@ -1134,6 +1158,7 @@ impl CommonBuilder {
             is_floating: false,
             maybe_x_scroll: None,
             maybe_y_scroll: None,
+            crop_kids: false,
         }
     }
 }

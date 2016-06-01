@@ -11,7 +11,7 @@
 
 
 use {Backend, Color, Point, Rect, Scalar};
-use graph::{self, Container, Graph, NodeIndex, Visitable};
+use graph::{self, Container, Graph, NodeIndex};
 use piston_graphics;
 use std::any::Any;
 use std::iter::once;
@@ -29,7 +29,7 @@ pub fn draw_from_graph<B, G>(context: Context,
                              graphics: &mut G,
                              character_cache: &mut B::CharacterCache,
                              graph: &Graph,
-                             depth_order: &[Visitable],
+                             depth_order: &[NodeIndex],
                              theme: &Theme)
     where B: Backend,
           G: Graphics<Texture=B::Texture>,
@@ -39,7 +39,7 @@ pub fn draw_from_graph<B, G>(context: Context,
     //
     // FIXME: This allocation every time draw is called is unnecessary. We should re-use a buffer
     // (perhaps owned by the Ui) for this.
-    let mut scroll_stack: Vec<Context> = Vec::new();
+    let mut crop_stack: Vec<(NodeIndex, Context)> = Vec::new();
 
     // Retrieve the core window widget so that we can use it to filter visible widgets.
     let window_idx = NodeIndex::new(0);
@@ -60,50 +60,37 @@ pub fn draw_from_graph<B, G>(context: Context,
     };
 
     // The depth order describes the order in which widgets should be drawn.
-    for &visitable in depth_order {
-        match visitable {
+    for &idx in depth_order {
+        if let Some(ref container) = graph.widget(idx) {
 
-            Visitable::Widget(idx) => {
-                if let Some(ref container) = graph.widget(idx) {
-
-                    // Check the stack for the current Context.
-                    let context = *scroll_stack.last().unwrap_or(&context);
-
-                    // Draw the widget, but only if it would actually be visible on the window.
-                    if is_visible(idx, container) {
-                        draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
-                    }
-
-                    // If the current widget is some scrollable widget, we need to add a context
-                    // for it to the top of the stack.
-                    //
-                    // TODO: Make this more generic than just "if scrolling crop to kid_area".
-                    if container.maybe_x_scroll_state.is_some()
-                    || container.maybe_y_scroll_state.is_some() {
-                        let context = crop_context(context, container.kid_area.rect);
-                        scroll_stack.push(context);
-                    }
-                }
-            },
-
-            Visitable::Scrollbar(idx) => {
-                if let Some(_widget) = graph.widget(idx) {
-
-                    // Now that we've come across a scrollbar, we'll pop its Context from the
-                    // scroll_stack and draw it if necessary.
-                    let _context = scroll_stack.pop().unwrap_or(context);
-
-                    // // Draw the scrollbar(s)!
-                    // draw_scrolling(&context,
-                    //                graphics,
-                    //                widget.kid_area.rect,
-                    //                widget.maybe_x_scroll_state,
-                    //                widget.maybe_y_scroll_state);
+            // If we're currently using a cropped context and the current `crop_parent_idx` is
+            // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
+            // cropped context from the stack as we are done with it.
+            while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
+                if graph.does_recursive_depth_edge_exist(crop_parent_idx, idx) {
+                    break;
+                } else {
+                    crop_stack.pop();
                 }
             }
 
+            // Check the stack for the current Context.
+            let context = crop_stack.last().map(|&(_, ctxt)| ctxt).unwrap_or(context);
+
+            // Draw the widget, but only if it would actually be visible on the window.
+            if is_visible(idx, container) {
+                draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
+            }
+
+            // If the current widget should crop its children, we need to add a context for it to
+            // the top of the stack.
+            if container.crop_kids {
+                let context = crop_context(context, container.kid_area.rect);
+                crop_stack.push((idx, context));
+            }
         }
     }
+        
 }
 
 
