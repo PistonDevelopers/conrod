@@ -420,13 +420,11 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         TextBox::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
+            .w_h(320.0, 40.0)
             .frame(app.frame_width)
             .frame_color(app.bg_color.invert().plain_contrast())
-            .w_h(320.0, 40.0)
             .color(app.bg_color.invert())
-            .react(|string: &mut String| {
-                println!("TextBox {}: {:?}", i, string);
-            })
+            .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
             .set(ENVELOPE_EDITOR + i * 2, ui);
 
         let env_y_max = if i == 0 { 20_000.0 } else { 1.0 };
