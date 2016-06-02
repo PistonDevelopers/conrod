@@ -227,7 +227,7 @@ impl<I> Widget for Polygon<I>
         fn update_points<I>(state: &mut widget::State<State>, points: I)
             where I: IntoIterator<Item=Point>,
         {
-            match iter_diff(&state.view().points, points) {
+            match iter_diff(&state.points, points) {
                 Some(IterDiff::FirstMismatch(i, mismatch)) => state.update(|state| {
                     state.points.truncate(i);
                     state.points.extend(mismatch);
@@ -255,7 +255,7 @@ impl<I> Widget for Polygon<I>
             Style::Outline(_) => Kind::Outline,
         };
 
-        if state.view().kind != kind {
+        if state.kind != kind {
             state.update(|state| state.kind = kind);
         }
     }

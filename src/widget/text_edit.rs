@@ -225,7 +225,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let restrict_to_height = style.restrict_to_height(ui.theme());
-        let text_idx = state.view().text_idx.get(&mut ui);
+        let text_idx = state.text_idx.get(&mut ui);
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
         /// with the given styling.
@@ -247,7 +247,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         // Check to see if the given text has changed since the last time the widget was updated.
         {
             let maybe_new_line_infos = {
-                let line_info_slice = &state.view().line_infos[..];
+                let line_info_slice = &state.line_infos[..];
                 let new_line_infos =
                     line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w());
                 match utils::write_if_different(line_info_slice, new_line_infos) {
@@ -324,8 +324,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
             })
         };
 
-        let mut cursor = state.view().cursor;
-        let mut drag = state.view().drag;
+        let mut cursor = state.cursor;
+        let mut drag = state.drag;
 
         // Check for the following events:
         // - `Text` events for receiving new text.
@@ -342,7 +342,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                     // index at the mouse position.
                     event::Button::Mouse(input::MouseButton::Left, rel_xy) => {
                         let abs_xy = utils::vec2_add(rel_xy, rect.xy());
-                        let infos = &state.view().line_infos;
+                        let infos = &state.line_infos;
                         let cache = ui.glyph_cache();
                         let closest = closest_cursor_index_and_xy(abs_xy, text, infos, cache);
                         if let Some((closest_cursor, _)) = closest {
@@ -363,13 +363,13 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
                                 Cursor::Idx(cursor_idx) => {
                                     let idx_after_cursor = {
-                                        let line_infos = state.view().line_infos.iter().cloned();
+                                        let line_infos = state.line_infos.iter().cloned();
                                         text::char::index_after_cursor(line_infos, cursor_idx)
                                     };
                                     if let Some(idx) = idx_after_cursor {
                                         let idx_to_remove = idx - 1;
                                         let new_cursor_idx = {
-                                            let line_infos = state.view().line_infos.iter().cloned();
+                                            let line_infos = state.line_infos.iter().cloned();
                                             text::cursor::index_before_char(line_infos, idx_to_remove)
                                         };
                                         if let Some(new_cursor_idx) = new_cursor_idx {
@@ -388,7 +388,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
                                 Cursor::Selection { start, end } => {
                                     let (start_idx, end_idx) = {
-                                        let line_infos = state.view().line_infos.iter().cloned();
+                                        let line_infos = state.line_infos.iter().cloned();
                                         (text::char::index_after_cursor(line_infos.clone(), start)
                                             .expect("text::cursor::Index was out of range"),
                                          text::char::index_after_cursor(line_infos, end)
@@ -400,7 +400,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                     let new_cursor_char_idx =
                                         if start_idx > 0 { start_idx } else { 0 };
                                     let new_cursor_idx = {
-                                        let line_infos = state.view().line_infos.iter().cloned();
+                                        let line_infos = state.line_infos.iter().cloned();
                                         text::cursor::index_before_char(line_infos, new_cursor_char_idx)
                                             .expect("char index was out of range")
                                     };
@@ -425,7 +425,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                     // Move the cursor to the previous position.
                                     Cursor::Idx(cursor_idx) => {
                                         let new_cursor_idx = {
-                                            let line_infos = state.view().line_infos.iter().cloned();
+                                            let line_infos = state.line_infos.iter().cloned();
                                             cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
                                         };
 
@@ -448,7 +448,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                     // Move the cursor to the next position.
                                     Cursor::Idx(cursor_idx) => {
                                         let new_cursor_idx = {
-                                            let line_infos = state.view().line_infos.iter().cloned();
+                                            let line_infos = state.line_infos.iter().cloned();
                                             cursor_idx.next(line_infos).unwrap_or(cursor_idx)
                                         };
 
@@ -474,7 +474,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                             if press.modifiers.contains(input::keyboard::CTRL) {
                                 let start = text::cursor::Index { line: 0, char: 0 };
                                 let end = {
-                                    let line_infos = state.view().line_infos.iter().cloned();
+                                    let line_infos = state.line_infos.iter().cloned();
                                     text::cursor::index_before_char(line_infos, text.chars().count())
                                         .expect("char index was out of range")
                                 };
@@ -530,7 +530,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                 (std::cmp::min(start, end), std::cmp::max(start, end)),
                         };
 
-                        let line_infos = state.view().line_infos.iter().cloned();
+                        let line_infos = state.line_infos.iter().cloned();
 
                         let (start_idx, end_idx) =
                             (text::char::index_after_cursor(line_infos.clone(), cursor_start)
@@ -586,7 +586,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                     Cursor::Selection { start, .. } => start,
                                 };
                                 let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
-                                let infos = &state.view().line_infos;
+                                let infos = &state.line_infos;
                                 let cache = ui.glyph_cache();
                                 match closest_cursor_index_and_xy(abs_xy, text, infos, cache) {
                                     Some((end_cursor_idx, _)) =>
@@ -612,11 +612,11 @@ impl<'a, F> Widget for TextEdit<'a, F>
             }
         }
 
-        if state.view().cursor != cursor {
+        if state.cursor != cursor {
             state.update(|state| state.cursor = cursor);
         }
 
-        if state.view().drag != drag {
+        if state.drag != drag {
             state.update(|state| state.drag = drag);
         }
 
@@ -648,7 +648,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
         // TODO: Simplify this block.
         let (cursor_x, cursor_y_range) = {
-            let line_infos = state.view().line_infos.iter().cloned();
+            let line_infos = state.line_infos.iter().cloned();
             let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
             let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
@@ -662,7 +662,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                 })
         };
 
-        let cursor_line_idx = state.view().cursor_idx.get(&mut ui);
+        let cursor_line_idx = state.cursor_idx.get(&mut ui);
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
         Line::centred(start, end)
@@ -676,7 +676,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
 
             let selected_rects: Vec<Rect> = {
-                let line_infos = state.view().line_infos.iter().cloned();
+                let line_infos = state.line_infos.iter().cloned();
                 let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
                 let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                    x_align, y_align, line_spacing);
@@ -689,12 +689,12 @@ impl<'a, F> Widget for TextEdit<'a, F>
             // Draw a semi-transparent `Rectangle` for the selected range across each line.
             let selected_rect_color = color.highlighted().alpha(0.25);
             for (i, selected_rect) in selected_rects.iter().enumerate() {
-                if i == state.view().selected_rectangle_indices.len() {
+                if i == state.selected_rectangle_indices.len() {
                     state.update(|state| {
                         state.selected_rectangle_indices.push(ui.new_unique_node_index());
                     });
                 }
-                let selected_rectangle_idx = state.view().selected_rectangle_indices[i];
+                let selected_rectangle_idx = state.selected_rectangle_indices[i];
 
                 Rectangle::fill(selected_rect.dim())
                     .xy(selected_rect.xy())

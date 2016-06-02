@@ -302,11 +302,11 @@ impl Widget for Line {
             end = vec2_add(end, difference);
         }
 
-        if state.view().start != start {
+        if state.start != start {
             state.update(|state| state.start = start);
         }
 
-        if state.view().end != end {
+        if state.end != end {
             state.update(|state| state.end = end);
         }
     }

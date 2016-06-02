@@ -191,7 +191,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         }
 
         // The **Rectangle** for the frame.
-        let frame_idx = state.view().frame_idx.get(&mut ui);
+        let frame_idx = state.frame_idx.get(&mut ui);
 
         let interaction_color = |ui: &::ui::UiCell<B>, color: Color|
             ui.widget_input(idx).mouse()
@@ -224,7 +224,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             Rect { x: x, y: y }
         };
         let color = interaction_color(&ui, style.color(ui.theme()));
-        let slider_idx = state.view().slider_idx.get(&mut ui);
+        let slider_idx = state.slider_idx.get(&mut ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         Rectangle::fill(slider_rect.dim())
             .xy_relative_to(idx, slider_xy_offset)
@@ -238,7 +238,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             Text::new(label)
                 .and(|text| if is_horizontal { text.mid_left_of(idx) }
                             else { text.mid_bottom_of(idx) })

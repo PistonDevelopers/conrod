@@ -207,7 +207,7 @@ mod circular_button {
 
             // First, we'll draw the **Circle** with a radius that is half our given width.
             let radius = rect.w() / 2.0;
-            let circle_idx = state.view().circle_idx.get(&mut ui);
+            let circle_idx = state.circle_idx.get(&mut ui);
             Circle::fill(radius)
                 .middle_of(idx)
                 .graphics_for(idx)
@@ -217,7 +217,7 @@ mod circular_button {
             // Now we'll instantiate our label using the **Text** widget.
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
-            let text_idx = state.view().text_idx.get(&mut ui);
+            let text_idx = state.text_idx.get(&mut ui);
             if let Some(ref label) = self.maybe_label {
                 Text::new(label)
                     .middle_of(idx)

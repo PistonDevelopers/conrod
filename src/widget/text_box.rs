@@ -150,7 +150,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             Rect { x: x, y: y }
         };
 
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let color = style.color(ui.theme());
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(rect.dim())
@@ -162,7 +162,7 @@ impl<'a, F> Widget for TextBox<'a, F>
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
 
-        let text_edit_idx = state.view().text_edit_idx.get(&mut ui);
+        let text_edit_idx = state.text_edit_idx.get(&mut ui);
         let text_color = style.text_color(ui.theme());
         TextEdit::new(text)
             .wh(text_rect.dim())

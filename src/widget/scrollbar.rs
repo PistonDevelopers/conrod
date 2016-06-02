@@ -272,7 +272,7 @@ impl<A> Widget for Scrollbar<A>
         }
 
         // The `Track` widget along which the handle will slide.
-        let track_idx = state.view().track_idx.get(&mut ui);
+        let track_idx = state.track_idx.get(&mut ui);
         let track_color = color.alpha(0.25);
         Rectangle::fill(rect.dim())
             .xy(rect.xy())
@@ -283,7 +283,7 @@ impl<A> Widget for Scrollbar<A>
 
         // The `Handle` widget used as a graphical representation of the part of the scrollbar that
         // can be dragged over the track.
-        let handle_idx = state.view().handle_idx.get(&mut ui);
+        let handle_idx = state.handle_idx.get(&mut ui);
         Rectangle::fill(handle_rect.dim())
             .xy(handle_rect.xy())
             .color(color)

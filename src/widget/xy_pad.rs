@@ -181,7 +181,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let color = interaction_color(&ui, style.color(ui.theme()));
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         FramedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
@@ -193,7 +193,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             let label_font_size = style.label_font_size(ui.theme());
             Text::new(label)
                 .middle_of(rectangle_idx)
@@ -214,7 +214,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         let v_line_start = [0.0, -half_h];
         let v_line_end = [0.0, half_h];
-        let v_line_idx = state.view().v_line_idx.get(&mut ui);
+        let v_line_idx = state.v_line_idx.get(&mut ui);
         Line::centred(v_line_start, v_line_end)
             .color(line_color)
             .thickness(thickness)
@@ -225,7 +225,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
         let h_line_start = [-half_w, 0.0];
         let h_line_end = [half_w, 0.0];
-        let h_line_idx = state.view().h_line_idx.get(&mut ui);
+        let h_line_idx = state.h_line_idx.get(&mut ui);
         Line::centred(h_line_start, h_line_end)
             .color(line_color)
             .thickness(thickness)
@@ -249,7 +249,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             Edge::Start => Direction::Forwards,
         };
         let value_font_size = style.value_font_size(ui.theme());
-        let value_label_idx = state.view().value_label_idx.get(&mut ui);
+        let value_label_idx = state.value_label_idx.get(&mut ui);
         Text::new(&value_string)
             .x_direction_from(v_line_idx, x_direction, VALUE_TEXT_PAD)
             .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)

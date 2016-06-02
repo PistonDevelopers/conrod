@@ -126,7 +126,7 @@ impl<'a, F> Widget for Button<'a, F>
         };
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
@@ -140,7 +140,7 @@ impl<'a, F> Widget for Button<'a, F>
 
         // Label widget.
         if let Some(label) = self.maybe_label {
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             Text::new(label)

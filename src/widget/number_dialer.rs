@@ -234,7 +234,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
         let value_under_mouse = ui.widget_input(idx).mouse()
             .and_then(|m| value_under_rel_xy(m.rel_xy()));
-        let mut pressed_value_idx = state.view().pressed_value_idx;
+        let mut pressed_value_idx = state.pressed_value_idx;
         let mut new_value = value;
 
         // Check for the following events:
@@ -311,7 +311,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             }
         }
 
-        if state.view().pressed_value_idx != pressed_value_idx {
+        if state.pressed_value_idx != pressed_value_idx {
             state.update(|state| state.pressed_value_idx = pressed_value_idx);
         }
 
@@ -319,7 +319,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         FramedRectangle::new(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
@@ -332,7 +332,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let label_color = style.label_color(ui.theme());
         let font_size = style.label_font_size(ui.theme());
         if maybe_label.is_some() {
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             Text::new(&label_string)
                 .x_y_relative_to(idx, label_rel_x, 0.0)
                 .graphics_for(idx)
@@ -343,7 +343,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         }
 
         // Ensure we have at least as many glyph_slot_indices as there are chars in our val_string.
-        if state.view().glyph_slot_indices.len() < val_string.chars().count() {
+        if state.glyph_slot_indices.len() < val_string.chars().count() {
             state.update(|state| {
                 let range = state.glyph_slot_indices.len()..val_string.chars().count();
                 let extension = range.map(|_| GlyphSlot {
@@ -359,7 +359,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let mut rel_slot_x = slot_w / 2.0 + val_string_pos[0];
         for (i, _) in val_string.char_indices() {
             let glyph_string = &val_string[i..i+1];
-            let slot = state.view().glyph_slot_indices[i];
+            let slot = state.glyph_slot_indices[i];
 
             // We only want to draw the slot **Rectangle** if it is highlighted or selected.
             let maybe_slot_color = if Some(i) == pressed_value_idx {

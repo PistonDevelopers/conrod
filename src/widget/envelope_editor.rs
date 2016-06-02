@@ -255,7 +255,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         };
 
         // Track the currently pressed point if any.
-        let mut pressed_point = state.view().pressed_point;
+        let mut pressed_point = state.pressed_point;
 
         // Handle all events that have occurred to the EnvelopeEditor since the last update.
         //
@@ -385,12 +385,12 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             }
         }
 
-        if state.view().pressed_point != pressed_point {
+        if state.pressed_point != pressed_point {
             state.update(|state| state.pressed_point = pressed_point);
         }
 
         let inner_rect = rect.pad(frame);
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let color = style.color(ui.theme());
@@ -409,7 +409,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             let font_size = style.label_font_size(ui.theme());
             Text::new(label)
                 .middle_of(rectangle_idx)
@@ -421,7 +421,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
         let line_color = label_color.with_alpha(1.0);
         {
-            let point_path_idx = state.view().point_path_idx.get(&mut ui);
+            let point_path_idx = state.point_path_idx.get(&mut ui);
             let thickness = style.line_thickness(ui.theme());
             let points = env.iter().map(|point| {
                 let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
@@ -438,18 +438,18 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .set(point_path_idx, &mut ui);
         }
 
-        let num_point_indices = state.view().point_indices.len();
+        let num_point_indices = state.point_indices.len();
         let len = env.len();
         if num_point_indices < len {
             let new_indices = (num_point_indices..len).map(|_| ui.new_unique_node_index());
             state.update(|state| state.point_indices.extend(new_indices));
         }
 
-        let iter = state.view().point_indices.iter().zip(env.iter()).enumerate();
+        let iter = state.point_indices.iter().zip(env.iter()).enumerate();
         for (i, (&point_idx, point)) in iter {
             let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
             let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
-            let point_color = if state.view().pressed_point == Some(i) {
+            let point_color = if state.pressed_point == Some(i) {
                 line_color.clicked()
             } else {
                 ui.widget_input(idx).mouse()
@@ -510,8 +510,8 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 Edge::Start => Direction::Forwards,
             };
             let value_font_size = style.value_font_size(ui.theme());
-            let value_label_idx = state.view().value_label_idx.get(&mut ui);
-            let closest_point_idx = state.view().point_indices[closest_idx];
+            let value_label_idx = state.value_label_idx.get(&mut ui);
+            let closest_point_idx = state.point_indices[closest_idx];
             const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
             Text::new(&xy_string)
                 .x_direction_from(closest_point_idx, x_direction, VALUE_TEXT_PAD)

@@ -151,7 +151,7 @@ impl<'a> Widget for TitleBar<'a> {
         let TitleBar { label, .. } = self;
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
@@ -165,7 +165,7 @@ impl<'a> Widget for TitleBar<'a> {
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        let label_idx = state.view().label_idx.get(&mut ui);
+        let label_idx = state.label_idx.get(&mut ui);
         let text_color = style.text_color(ui.theme());
         let text_align = style.text_align(ui.theme());
         let font_size = style.font_size(ui.theme());

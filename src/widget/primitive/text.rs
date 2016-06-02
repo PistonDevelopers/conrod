@@ -226,7 +226,7 @@ impl<'a> Widget for Text<'a> {
         };
 
         // If the string is different, we must update both the string and the line breaks.
-        if &state.view().string[..] != text {
+        if &state.string[..] != text {
             state.update(|state| {
                 state.string = text.to_owned();
                 state.line_infos = new_line_infos().collect();
@@ -239,7 +239,7 @@ impl<'a> Widget for Text<'a> {
 
             // Compare the line_infos and only collect the new ones if they are different.
             let maybe_new_line_infos = {
-                let line_infos = &state.view().line_infos[..];
+                let line_infos = &state.line_infos[..];
                 match write_if_different(line_infos, new_line_infos()) {
                     Cow::Owned(new) => Some(new),
                     _ => None,

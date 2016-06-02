@@ -1127,10 +1127,6 @@ impl IndexSlot {
 
 impl<'a, T> State<'a, T> {
 
-    /// Immutably borrow the internal widget state.
-    #[inline]
-    pub fn view(&self) -> &T { &self.state }
-
     /// Mutate the internal widget state and set a flag notifying us that there has been a mutation.
     ///
     /// If this method is *not* called, we assume that there has been no mutation and in turn we do
@@ -1144,6 +1140,13 @@ impl<'a, T> State<'a, T> {
         f(self.state);
     }
 
+}
+
+impl<'a, T> std::ops::Deref for State<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.state
+    }
 }
 
 
