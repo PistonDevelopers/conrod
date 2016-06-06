@@ -800,7 +800,7 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
+fn set_widget<B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     where B: Backend,
           W: Widget,
 {
