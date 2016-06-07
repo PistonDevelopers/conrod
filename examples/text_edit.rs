@@ -44,7 +44,7 @@ fn main() {
     while let Some(event) = window.next() {
         ui.handle_event(event.clone());
         event.update(|_| ui.set_widgets(|ui_cell| set_ui(ui_cell, &mut demo_text)));
-        window.draw_2d(&event, |c, g| ui.draw(c, g));
+        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
     }
 
 }
