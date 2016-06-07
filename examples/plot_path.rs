@@ -15,7 +15,7 @@ fn main() {
 
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("Text Demo", [720, 360])
+        WindowSettings::new("PlotPath Demo", [720, 360])
             .opengl(piston_window::OpenGL::V3_2)
             .samples(4)
             .exit_on_esc(true)
