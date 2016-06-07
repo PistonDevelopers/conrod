@@ -7,10 +7,113 @@
 
 use daggy::Walker;
 use position::{Point, Rect};
-use std::collections::HashSet;
-use super::depth_order::Visitable;
+use std;
 use super::{EdgeIndex, Graph, GraphIndex, NodeIndex};
 use widget;
+
+
+/// A node "walker" that yields all widgets under the given `xy` position in order from top to
+/// bottom.
+#[derive(Clone)]
+#[allow(missing_copy_implementations)]
+pub struct PickWidgets {
+    xy: Point,
+    idx: usize,
+}
+
+/// A node "walker" that yields all scrollable widgets under the given `xy` position in order from
+/// top to bottom.
+#[derive(Clone)]
+#[allow(missing_copy_implementations)]
+pub struct PickScrollableWidgets {
+    pick_widgets: PickWidgets,
+}
+
+
+impl PickWidgets {
+
+    /// The next `NodeIndex` under the `xy` location.
+    ///
+    /// This is called within `PickWidgets::next`.
+    pub fn next_node_index(&mut self,
+                           graph: &Graph,
+                           depth_order: &[NodeIndex]) -> Option<NodeIndex>
+    {
+        while self.idx > 0 {
+            self.idx -= 1;
+            match depth_order.get(self.idx) {
+                None => break,
+                Some(&idx) => {
+                    if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
+                        if visible_rect.is_over(self.xy) {
+                            return Some(idx);
+                        }
+                    }
+                },
+            }
+        }
+        None
+    }
+
+    /// The `widget::Index` of the next `Widget` under the `xy` location.
+    ///
+    /// The `Graph` is traversed from the top down.
+    ///
+    /// If the next widget is some graphic element of another widget, the graphic parent will be
+    /// returned.
+    pub fn next(&mut self, graph: &Graph, depth_order: &[NodeIndex]) -> Option<widget::Index> {
+        self.next_node_index(graph, depth_order)
+            .map(|idx| {
+                // Ensure that if we've picked some widget that is a **Graphic** child of some
+                // other widget, we return the **Graphic** parent.
+                graph.graphic_parent_recursion(idx)
+                    .last_node(graph)
+                    .unwrap_or(idx)
+            })
+            .and_then(|idx| graph.widget_index(idx))
+    }
+
+}
+
+impl PickScrollableWidgets {
+
+    /// The `widget::Index` of the next scrollable `Widget` under the `xy` location.
+    ///
+    /// The `Graph` is traversed from the top down.
+    pub fn next(&mut self, graph: &Graph, depth_order: &[NodeIndex]) -> Option<widget::Index> {
+        while let Some(idx) = self.pick_widgets.next_node_index(graph, depth_order) {
+            if let Some(ref container) = graph.widget(idx) {
+                if container.maybe_x_scroll_state.is_some()
+                || container.maybe_y_scroll_state.is_some() {
+                    if let Some(idx) = graph.widget_index(idx) {
+                        return Some(idx);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+}
+
+
+/// Produces a graph node "walker" that yields all widgets under the given `xy` position in order
+/// from top to bottom.
+pub fn pick_widgets(depth_order: &[NodeIndex], xy: Point) -> PickWidgets {
+    PickWidgets {
+        xy: xy,
+        idx: depth_order.len(),
+    }
+}
+
+/// Produces a graph node "walker" that yields all scrollable widgets under the given `xy` position
+/// in order from top to bottom.
+pub fn pick_scrollable_widgets(depth_order: &[NodeIndex], xy: Point) -> PickScrollableWidgets {
+    PickScrollableWidgets {
+        pick_widgets: pick_widgets(depth_order, xy),
+    }
+}
 
 
 /// The rectangle that represents the maximum visible area for the widget with the given index.
@@ -86,78 +189,6 @@ fn cropped_area_of_widget_maybe_within_depth<I>(graph: &Graph,
 }
 
 
-/// If the given Point is currently on a Widget, return an index to that widget.
-///
-/// If the picked widget has a **Graphic** parent, that parent's index will be returned instead.
-///
-/// This function assumes that the given `depth_order` is up-to-date for the given `graph`.
-pub fn pick_widget(graph: &Graph, depth_order: &[Visitable], xy: Point) -> Option<widget::Index> {
-    depth_order.iter().rev()
-        .find(|&&visitable| {
-            match visitable {
-                Visitable::Widget(idx) => {
-                    if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
-                        if visible_rect.is_over(xy) {
-                            return true
-                        }
-                    }
-                },
-                Visitable::Scrollbar(idx) => {
-                    if let Some(widget) = graph.widget(idx) {
-                        if let Some(x_scroll_state) = widget.maybe_x_scroll_state {
-                            if x_scroll_state.is_over(xy, widget.kid_area.rect) {
-                                return true;
-                            }
-                        }
-                        if let Some(y_scroll_state) = widget.maybe_y_scroll_state {
-                            if y_scroll_state.is_over(xy, widget.kid_area.rect) {
-                                return true;
-                            }
-                        }
-                    }
-                },
-            }
-            false
-        })
-        // Extract the node index from the `Visitable`.
-        .map(|&visitable| match visitable {
-            // Ensure that if we've picked some widget that is a **Graphic** child of some other
-            // widget, we return the **Graphic** parent.
-            Visitable::Widget(idx) => graph.graphic_parent_recursion(idx)
-                .last_node(graph)
-                .unwrap_or(idx),
-            Visitable::Scrollbar(idx) => idx,
-        })
-        .and_then(|idx| graph.widget_index(idx))
-}
-
-
-/// If the given **Point** is currently over a scrollable widget, return an index to that widget.
-///
-/// This function assumes that the given `depth_order` is up-to-date for the given `graph`.
-pub fn pick_scrollable_widget(graph: &Graph, depth_order: &[Visitable], xy: Point)
-    -> Option<widget::Index>
-{
-    depth_order.iter().rev()
-        .filter_map(|&visitable| match visitable {
-            Visitable::Widget(idx) => Some(idx),
-            Visitable::Scrollbar(_) => None,
-        })
-        .find(|&idx| {
-            if let Some(ref container) = graph.widget(idx) {
-                if container.maybe_x_scroll_state.is_some()
-                || container.maybe_y_scroll_state.is_some() {
-                    if container.rect.is_over(xy) {
-                        return true;
-                    }
-                }
-            }
-            false
-        })
-        .and_then(|idx| graph.widget_index(idx))
-}
-
-
 /// Find the absolute `Rect` that bounds all widgets that are `Depth` children of the widget at the
 /// given `idx`.
 ///
@@ -165,7 +196,7 @@ pub fn pick_scrollable_widget(graph: &Graph, depth_order: &[Visitable], xy: Poin
 /// depth_children for the total bounding box. This should use a proper `Dfs` type with it's own
 /// stack for safer traversal that won't blow the stack on hugely deep GUIs.
 pub fn kids_bounding_box<I>(graph: &Graph,
-                            prev_updated: &HashSet<NodeIndex>,
+                            prev_updated: &std::collections::HashSet<NodeIndex>,
                             idx: I) -> Option<Rect>
     where I: GraphIndex,
 {

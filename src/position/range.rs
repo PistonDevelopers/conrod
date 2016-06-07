@@ -597,6 +597,15 @@ impl Range {
         self.shift(diff)
     }
 
+    /// Align `self` to `other` along the *x* axis in accordance with the given `Align` variant.
+    pub fn align_to(self, align: super::Align, other: Self) -> Self {
+        match align {
+            super::Align::Start => self.align_start_of(other),
+            super::Align::Middle => self.align_middle_of(other),
+            super::Align::End => self.align_end_of(other),
+        }
+    }
+
     /// The closest **Edge** of `self` to the given `scalar`.
     ///
     /// Returns **Start** if the distance between both **Edge**s is equal.
@@ -618,5 +627,3 @@ impl Range {
     }
 
 }
-
-

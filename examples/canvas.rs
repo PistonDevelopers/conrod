@@ -9,11 +9,11 @@ extern crate piston_window;
 
 
 use conrod::{Canvas, Theme, Widget, color};
-use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
 type Ui = conrod::Ui<Backend>;
 type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
@@ -34,15 +34,15 @@ fn main() {
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
-        Ui::new(glyph_cache.unwrap(), theme)
+        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
+        Ui::new(glyph_cache, theme)
     };
 
     window.set_ups(60);
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
         event.update(|_| ui.set_widgets(set_widgets));
         window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
     }
@@ -64,6 +64,9 @@ fn set_widgets(ref mut ui: UiCell) {
         ])),
         (FOOTER, Canvas::new().color(color::BLUE).scroll_kids_vertically()),
     ]).set(MASTER, ui);
+
+    // A scrollbar for the `FOOTER` canvas.
+    conrod::Scrollbar::y_axis(FOOTER).auto_hide(true).set(FOOTER_SCROLLBAR, ui);
 
     // Now we'll make a couple floating `Canvas`ses.
     let floating = Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
@@ -131,6 +134,7 @@ widget_ids! {
     MIDDLE_COLUMN,
     RIGHT_COLUMN,
     FOOTER,
+    FOOTER_SCROLLBAR,
     FLOATING_A,
     FLOATING_B,
     TABS,

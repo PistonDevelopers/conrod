@@ -5,6 +5,7 @@
 use Scalar;
 use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position};
+use std;
 use std::any::Any;
 use std::collections::HashMap;
 use widget;
@@ -36,13 +37,14 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// Optional style defaults for a Scrollbar.
-    pub maybe_scrollbar: Option<widget::scroll::Style>,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
     pub widget_styling: HashMap<&'static str, WidgetDefault>,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
+    /// Once the `Duration` that separates two consecutive `Click`s is greater than this value, a
+    /// `DoubleClick` event will no longer be generated.
+    pub double_click_threshold: std::time::Duration,
 }
 
 /// The defaults for a specific widget.
@@ -72,9 +74,6 @@ impl WidgetDefault {
     }
 }
 
-/// This is the default value that is used for `Theme::mouse_drag_threshold`.
-pub const DEFAULT_MOUSE_DRAG_THRESHOLD: Scalar = 4.0;
-
 impl Theme {
 
     /// The default theme if not loading from file.
@@ -92,9 +91,9 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            maybe_scrollbar: None,
             widget_styling: HashMap::new(),
-            mouse_drag_threshold: DEFAULT_MOUSE_DRAG_THRESHOLD,
+            mouse_drag_threshold: 0.0,
+            double_click_threshold: std::time::Duration::from_millis(500),
         }
     }
 

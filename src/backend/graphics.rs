@@ -6,20 +6,22 @@
 //! [**CharacterCache**](http://docs.piston.rs/graphics/graphics/character/trait.CharacterCache.html)
 //! traits to enable genericity over custom user backends. This dependency may change in the near
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
+//!
+//! This is the only module in which the piston graphics crate will be used directly.
 
 
 use {Backend, Color, Point, Rect, Scalar};
-use graph::{self, Container, Graph, NodeIndex, Visitable};
-use graphics;
+use graph::{self, Container, Graph, NodeIndex};
+use piston_graphics;
 use std::any::Any;
 use std::iter::once;
 use theme::Theme;
-use widget::{self, primitive};
+use widget::primitive;
 
 #[doc(inline)]
-pub use graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
+pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 #[doc(inline)]
-pub use graphics::character::{Character, CharacterCache};
+pub use piston_graphics::character::{Character, CharacterCache};
 
 
 /// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
@@ -27,7 +29,7 @@ pub fn draw_from_graph<B, G>(context: Context,
                              graphics: &mut G,
                              character_cache: &mut B::CharacterCache,
                              graph: &Graph,
-                             depth_order: &[Visitable],
+                             depth_order: &[NodeIndex],
                              theme: &Theme)
     where B: Backend,
           G: Graphics<Texture=B::Texture>,
@@ -37,7 +39,7 @@ pub fn draw_from_graph<B, G>(context: Context,
     //
     // FIXME: This allocation every time draw is called is unnecessary. We should re-use a buffer
     // (perhaps owned by the Ui) for this.
-    let mut scroll_stack: Vec<Context> = Vec::new();
+    let mut crop_stack: Vec<(NodeIndex, Context)> = Vec::new();
 
     // Retrieve the core window widget so that we can use it to filter visible widgets.
     let window_idx = NodeIndex::new(0);
@@ -58,50 +60,37 @@ pub fn draw_from_graph<B, G>(context: Context,
     };
 
     // The depth order describes the order in which widgets should be drawn.
-    for &visitable in depth_order {
-        match visitable {
+    for &idx in depth_order {
+        if let Some(ref container) = graph.widget(idx) {
 
-            Visitable::Widget(idx) => {
-                if let Some(ref container) = graph.widget(idx) {
-
-                    // Check the stack for the current Context.
-                    let context = *scroll_stack.last().unwrap_or(&context);
-
-                    // Draw the widget, but only if it would actually be visible on the window.
-                    if is_visible(idx, container) {
-                        draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
-                    }
-
-                    // If the current widget is some scrollable widget, we need to add a context
-                    // for it to the top of the stack.
-                    //
-                    // TODO: Make this more generic than just "if scrolling crop to kid_area".
-                    if container.maybe_x_scroll_state.is_some()
-                    || container.maybe_y_scroll_state.is_some() {
-                        let context = crop_context(context, container.kid_area.rect);
-                        scroll_stack.push(context);
-                    }
-                }
-            },
-
-            Visitable::Scrollbar(idx) => {
-                if let Some(widget) = graph.widget(idx) {
-
-                    // Now that we've come across a scrollbar, we'll pop its Context from the
-                    // scroll_stack and draw it if necessary.
-                    let context = scroll_stack.pop().unwrap_or(context);
-
-                    // Draw the scrollbar(s)!
-                    draw_scrolling(&context,
-                                   graphics,
-                                   widget.kid_area.rect,
-                                   widget.maybe_x_scroll_state,
-                                   widget.maybe_y_scroll_state);
+            // If we're currently using a cropped context and the current `crop_parent_idx` is
+            // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
+            // cropped context from the stack as we are done with it.
+            while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
+                if graph.does_recursive_depth_edge_exist(crop_parent_idx, idx) {
+                    break;
+                } else {
+                    crop_stack.pop();
                 }
             }
 
+            // Check the stack for the current Context.
+            let context = crop_stack.last().map(|&(_, ctxt)| ctxt).unwrap_or(context);
+
+            // Draw the widget, but only if it would actually be visible on the window.
+            if is_visible(idx, container) {
+                draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
+            }
+
+            // If the current widget should crop its children, we need to add a context for it to
+            // the top of the stack.
+            if container.crop_kids {
+                let context = crop_context(context, container.kid_area.rect);
+                crop_stack.push((idx, context));
+            }
         }
     }
+        
 }
 
 
@@ -247,7 +236,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                 match oval.style {
                     ShapeStyle::Fill(_) => {
                         let color = oval.style.get_color(theme).to_fsa();
-                        let polygon = graphics::Polygon::new(color);
+                        let polygon = piston_graphics::Polygon::new(color);
                         polygon.draw(&points, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
@@ -267,7 +256,7 @@ pub fn draw_from_container<B, G>(context: &Context,
                     ShapeStyle::Fill(_) => {
                         let color = polygon.style.get_color(theme).to_fsa();
                         let points = &polygon.state.points[..];
-                        let polygon = graphics::Polygon::new(color);
+                        let polygon = piston_graphics::Polygon::new(color);
                         polygon.draw(points, &context.draw_state, context.transform, graphics);
                     },
                     ShapeStyle::Outline(line_style) => {
@@ -297,21 +286,29 @@ pub fn draw_from_container<B, G>(context: &Context,
 
         primitive::text::KIND => {
             if let Some(text) = container.unique_widget_state::<::Text>() {
-                let ::graph::UniqueWidgetState { ref state, ref style } = *text;
+                use {Align, graph, text};
+
+                let graph::UniqueWidgetState { ref state, ref style } = *text;
 
                 let font_size = style.font_size(theme);
                 let line_spacing = style.line_spacing(theme);
                 let color = style.color(theme).to_fsa();
-                let text_align = style.text_align(theme);
+                let x_align = style.text_align(theme);
+                let y_align = Align::End; // Always align text to top of Text's Rect.
                 let rect = container.rect;
+                let line_infos = state.line_infos.iter().cloned();
+                let string = &state.string;
 
-                let mut line_rects = state.line_rects(rect, text_align, font_size, line_spacing);
-                while let Some((line_rect, line)) = line_rects.next_with_line(character_cache) {
+                let lines = line_infos.clone().map(|info| &string[info.byte_range()]);
+                let line_rects =
+                    text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
+
+                for (line, line_rect) in lines.zip(line_rects) {
                     let offset = [line_rect.left().round(), line_rect.bottom().round()];
                     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
-                    graphics::text::Text::new_color(color, font_size)
+                    piston_graphics::text::Text::new_color(color, font_size)
                         .round()
                         .draw(line, character_cache, draw_state, transform, graphics);
                 }
@@ -323,7 +320,7 @@ pub fn draw_from_container<B, G>(context: &Context,
             if let Some(image) = container.state_and_style::<State<B::Texture>, Style>() {
                 let ::graph::UniqueWidgetState { ref state, ref style } = *image;
                 if let Some(texture) = state.texture.as_ref() {
-                    let mut image = graphics::image::Image::new();
+                    let mut image = piston_graphics::image::Image::new();
                     image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
                     image.source_rectangle = Some({
                         let (x, y, w, h) = texture.src_rect.x_y_w_h();
@@ -344,8 +341,9 @@ pub fn draw_from_container<B, G>(context: &Context,
 }
 
 
-/// Converts a conrod `Rect` to a `graphics::types::Rectangle` expected by the Graphics backend.
-pub fn conrod_rect_to_graphics_rect(rect: Rect) -> graphics::types::Rectangle<Scalar> {
+/// Converts a conrod `Rect` to a `piston_graphics::types::Rectangle` expected by the Graphics
+/// backend.
+pub fn conrod_rect_to_graphics_rect(rect: Rect) -> piston_graphics::types::Rectangle<Scalar> {
     let (l, b, w, h) = rect.l_b_w_h();
     [l, b, w, h]
 }
@@ -360,7 +358,7 @@ pub fn draw_rectangle<G>(context: &Context,
 {
     let (l, b, w, h) = rect.l_b_w_h();
     let lbwh = [l, b, w, h];
-    let rectangle = graphics::Rectangle::new(color.to_fsa());
+    let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
     rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
 }
 
@@ -384,8 +382,8 @@ pub fn draw_lines<G, I>(context: &Context,
         match pattern {
             Pattern::Solid => {
                 let line = match cap {
-                    Cap::Flat => graphics::Line::new(color, thickness / 2.0),
-                    Cap::Round => graphics::Line::new_round(color, thickness / 2.0),
+                    Cap::Flat => piston_graphics::Line::new(color, thickness / 2.0),
+                    Cap::Round => piston_graphics::Line::new_round(color, thickness / 2.0),
                 };
                 let mut start = first;
                 for end in points {
@@ -397,55 +395,5 @@ pub fn draw_lines<G, I>(context: &Context,
             Pattern::Dashed => unimplemented!(),
             Pattern::Dotted => unimplemented!(),
         }
-    }
-}
-
-
-/// Draw the scroll bars (if necessary) for the given widget's scroll state.
-pub fn draw_scrolling<G>(context: &Context,
-                         graphics: &mut G,
-                         kid_area_rect: Rect,
-                         maybe_x_scroll_state: Option<widget::scroll::StateX>,
-                         maybe_y_scroll_state: Option<widget::scroll::StateY>)
-    where G: Graphics,
-{
-    use widget::scroll;
-
-    fn draw_axis<G, A>(context: &Context,
-                       graphics: &mut G,
-                       kid_area_rect: Rect,
-                       scroll_state: &scroll::State<A>)
-        where G: Graphics,
-              A: scroll::Axis,
-    {
-        use widget::scroll::Elem::{Handle, Track};
-        use widget::scroll::Interaction::{Highlighted, Clicked};
-
-        let color = scroll_state.color;
-        let track_color = match scroll_state.interaction {
-            Clicked(Track) => color.highlighted(),
-            Highlighted(_) | Clicked(_) => color,
-            _ if scroll_state.is_scrolling => color,
-            _ => return,
-        }.alpha(0.2);
-        let handle_color = match scroll_state.interaction {
-            Clicked(Handle(_)) => color.clicked(),
-            Highlighted(_) | Clicked(_) => color,
-            _ if scroll_state.is_scrolling => color,
-            _ => return,
-        };
-        let thickness = scroll_state.thickness;
-        let track = scroll::track::<A>(kid_area_rect, thickness);
-        let handle = scroll::handle::<A>(track, &scroll_state);
-        draw_rectangle(context, graphics, track, track_color);
-        draw_rectangle(context, graphics, handle, handle_color);
-    }
-
-    if let Some(ref scroll_state) = maybe_y_scroll_state {
-        draw_axis::<G, scroll::Y>(context, graphics, kid_area_rect, scroll_state)
-    }
-
-    if let Some(ref scroll_state) = maybe_x_scroll_state {
-        draw_axis::<G, scroll::X>(context, graphics, kid_area_rect, scroll_state)
     }
 }

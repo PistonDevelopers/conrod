@@ -188,6 +188,21 @@ impl Rect {
         self.shift_x(xy[0]).shift_y(xy[1])
     }
 
+    /// Returns a `Rect` with a position relative to the given position on the *x* axis.
+    pub fn relative_to_x(self, x: Scalar) -> Self {
+        Rect { x: self.x.shift(-x), ..self }
+    }
+
+    /// Returns a `Rect` with a position relative to the given position on the *y* axis.
+    pub fn relative_to_y(self, y: Scalar) -> Self {
+        Rect { y: self.y.shift(-y), ..self }
+    }
+
+    /// Returns a `Rect` with a position relative to the given position.
+    pub fn relative_to(self, xy: Point) -> Self {
+        self.relative_to_x(xy[0]).relative_to_y(xy[1])
+    }
+
     /// Does the given point touch the Rectangle.
     pub fn is_over(&self, xy: Point) -> bool {
         self.x.is_over(xy[0]) && self.y.is_over(xy[1])
@@ -265,6 +280,22 @@ impl Rect {
         Rect {
             x: self.x,
             y: self.y.align_after(other.x),
+        }
+    }
+
+    /// Align `self` to `other` along the *x* axis in accordance with the given `Align` variant.
+    pub fn align_x_of(self, align: super::Align, other: Self) -> Self {
+        Rect {
+            x: self.x.align_to(align, other.x),
+            y: self.y,
+        }
+    }
+
+    /// Align `self` to `other` along the *y* axis in accordance with the given `Align` variant.
+    pub fn align_y_of(self, align: super::Align, other: Self) -> Self {
+        Rect {
+            x: self.x,
+            y: self.y.align_to(align, other.y),
         }
     }
 
@@ -375,10 +406,3 @@ impl Rect {
     }
 
 }
-
-/// A function to simplify determining whether or not a point `xy` is over a rectangle.
-/// `rect_xy` is the centered coordinatees of the rectangle.
-pub fn is_over(rect_xy: Point, rect_dim: Dimensions, xy: Point) -> bool {
-    Rect::from_xy_dim(rect_xy, rect_dim).is_over(xy)
-}
-

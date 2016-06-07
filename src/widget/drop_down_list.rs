@@ -1,5 +1,4 @@
-
-use ::{
+use {
     Backend,
     Button,
     ButtonStyle,
@@ -17,7 +16,6 @@ use ::{
     Sizeable,
 };
 use widget::{self, Widget};
-use events::InputProvider;
 
 
 /// The index of a selected item.
@@ -157,7 +155,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
         let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
 
-        let canvas_idx = state.view().canvas_idx.get(&mut ui);
+        let canvas_idx = state.canvas_idx.get(&mut ui);
 
         // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
@@ -165,11 +163,11 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         // If the number of buttons that we have in our previous state doesn't match the number of
         // strings we've just been given, we need to resize our buttons Vec.
-        let num_buttons = state.view().buttons.len();
+        let num_buttons = state.buttons.len();
         let maybe_new_buttons = if num_buttons < num_strings {
             let new_buttons = (num_buttons..num_strings)
                 .map(|i| (ui.new_unique_node_index(), self.strings[i].to_owned()));
-            let total_new_buttons = state.view().buttons.iter()
+            let total_new_buttons = state.buttons.iter()
                 .map(|&(idx, ref string)| (idx, string.clone()))
                 .chain(new_buttons);
             Some(total_new_buttons.collect())
@@ -183,11 +181,11 @@ impl<'a, F> Widget for DropDownList<'a, F>
 
         // Act on the current menu state and determine what the next one will be.
         // new_menu_state is what we will be getting passed next frame
-        let new_menu_state = match state.view().menu_state {
+        let new_menu_state = match state.menu_state {
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
                 // Get the button index and the label for the closed menu's button.
-                let buttons = &state.view().buttons;
+                let buttons = &state.buttons;
                 let (button_idx, label) = selected
                     .map(|i| (buttons[i].0, &self.strings[i][..]))
                     .unwrap_or_else(|| (buttons[0].0, self.maybe_label.unwrap_or("")));
@@ -237,7 +235,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     .set(canvas_idx, &mut ui);
 
                 let labels = self.strings.iter();
-                let button_indices = state.view().buttons.iter().map(|&(idx, _)| idx);
+                let button_indices = state.buttons.iter().map(|&(idx, _)| idx);
                 let xys = (0..num_strings).map(|i| [xy[0], xy[1] - i as f64 * (dim[1] - frame)]);
                 let iter = labels.zip(button_indices).zip(xys).enumerate();
                 let mut was_clicked = None;
@@ -252,9 +250,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     button.set(button_node_idx, &mut ui);
                 }
 
-                let mouse_pressed_elsewhere = ui.global_input.mouse_buttons_just_pressed().next().is_some()
-                        && !canvas_rect.is_over(ui.global_input.mouse_position());
-
                 // Determine the new menu state
                 if let Some(i) = was_clicked {
                     // If one of the buttons was clicked, we want to close the menu.
@@ -264,22 +259,27 @@ impl<'a, F> Widget for DropDownList<'a, F>
                         react(self.selected, i, &self.strings[i]);
                     }
                     MenuState::Closed
-                } else if mouse_pressed_elsewhere {
-                    // if a mouse button was pressed somewhere else, then close the menu
-                    MenuState::Closed
-
                 } else {
-                    // Otherwise, we just keep the menu open
-                    MenuState::Open
+                    let mouse_pressed_elsewhere =
+                        ui.global_input.current.mouse.buttons.pressed().next().is_some()
+                        && !canvas_rect.is_over(ui.global_input.current.mouse.xy);
+
+                    if mouse_pressed_elsewhere {
+                        // If a mouse button was pressed somewhere else, close the menu.
+                        MenuState::Closed
+                    } else {
+                        // Otherwise, leave the menu open.
+                        MenuState::Open
+                    }
                 }
             }
         };
 
-        if state.view().menu_state != new_menu_state {
+        if state.menu_state != new_menu_state {
             state.update(|state| state.menu_state = new_menu_state);
         }
 
-        if state.view().maybe_selected != *self.selected {
+        if state.maybe_selected != *self.selected {
             state.update(|state| state.maybe_selected = *self.selected);
         }
     }

@@ -1,4 +1,3 @@
-
 use {
     Backend,
     Button,
@@ -16,6 +15,7 @@ use {
     Widget,
 };
 use super::canvas;
+use utils;
 use widget;
 
 
@@ -202,8 +202,8 @@ impl<'a> Widget for Tabs<'a> {
             rel_tab_bar_area(dim, layout, maybe_bar_width, font_height, max_text_width);
 
         // Update the `tabs` **Vec** stored within our **State**, only if there have been changes.
-        let tabs_have_changed = state.view().tabs.len() != tabs.len()
-            || state.view().tabs.iter().zip(tabs.iter())
+        let tabs_have_changed = state.tabs.len() != tabs.len()
+            || state.tabs.iter().zip(tabs.iter())
                 .any(|(tab, &(id, _))| tab.id != id);
         if tabs_have_changed {
             state.update(|state| {
@@ -233,14 +233,14 @@ impl<'a> Widget for Tabs<'a> {
             let frame = style.canvas.frame(ui.theme());
             let frame_color = style.canvas.frame_color(ui.theme());
             let label_color = style.label_color(ui.theme());
-            let mut maybe_selected_tab_idx = state.view().maybe_selected_tab_idx
+            let mut maybe_selected_tab_idx = state.maybe_selected_tab_idx
                 .or(maybe_starting_tab_idx)
                 .or_else(|| if tabs.len() > 0 { Some(0) } else { None });
             let mut tab_rects = TabRects::new(tabs, layout, rel_tab_bar_rect);
             let mut i = 0;
             while let Some((tab_rect, _, label)) = tab_rects.next_with_id_and_label() {
                 use {Colorable, Frameable, Labelable, Positionable, Sizeable};
-                let tab = state.view().tabs[i];
+                let tab = state.tabs[i];
                 let (xy, dim) = tab_rect.xy_dim();
 
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
@@ -261,7 +261,7 @@ impl<'a> Widget for Tabs<'a> {
             maybe_selected_tab_idx
         };
 
-        if state.view().maybe_selected_tab_idx != maybe_selected_tab_idx {
+        if state.maybe_selected_tab_idx != maybe_selected_tab_idx {
             state.update(|state| state.maybe_selected_tab_idx = maybe_selected_tab_idx);
         }
 
@@ -435,7 +435,7 @@ impl<'a> TabRects<'a> {
         let TabRects { ref mut tabs, tab_dim, ref mut next_xy, xy_step } = *self;
         tabs.next().map(|&(id, label)| {
             let xy = *next_xy;
-            *next_xy = ::vecmath::vec2_add(*next_xy, xy_step);
+            *next_xy = utils::vec2_add(*next_xy, xy_step);
             let rect = Rect::from_xy_dim(xy, tab_dim);
             (rect, id, label)
         })

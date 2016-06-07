@@ -10,6 +10,7 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 extern crate piston_window;
+extern crate rand; // for making a random color.
 
 use conrod::{
     color,
@@ -25,6 +26,7 @@ use conrod::{
     NumberDialer,
     Point,
     Positionable,
+    Scrollbar,
     Slider,
     Sizeable,
     Text,
@@ -35,12 +37,12 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use piston_window::{EventLoop, Glyphs, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
 
 /// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (<piston_window::G2d<'static> as conrod::Graphics>::Texture, Glyphs);
+type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
 type Ui = conrod::Ui<Backend>;
 type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
@@ -131,7 +133,7 @@ impl DemoApp {
 fn main() {
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
+    let opengl = piston_window::OpenGL::V3_2;
     
     // Construct the window.
     let mut window: PistonWindow =
@@ -143,9 +145,9 @@ fn main() {
         let assets = find_folder::Search::KidsThenParents(3, 5)
             .for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
         let theme = Theme::default();
-        let glyph_cache = Glyphs::new(&font_path, window.factory.clone());
-        Ui::new(glyph_cache.unwrap(), theme)
+        Ui::new(glyph_cache, theme)
     };
 
     // Our dmonstration app that we'll control with our GUI.
@@ -155,7 +157,7 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(&event);
+        ui.handle_event(event.clone());
 
         // We'll set all our widgets in a single function called `set_widgets`.
         // At the moment conrod requires that we set our widgets in the Render loop,
@@ -190,6 +192,8 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         .color(app.bg_color)
         .scroll_kids()
         .set(CANVAS, ui);
+    Scrollbar::x_axis(CANVAS).auto_hide(true).set(CANVAS_Y_SCROLLBAR, ui);
+    Scrollbar::y_axis(CANVAS).auto_hide(true).set(CANVAS_X_SCROLLBAR, ui);
 
     // Text example.
     Text::new("Widget Demonstration")
@@ -208,7 +212,7 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
             .rgb(0.4, 0.75, 0.6)
             .frame(app.frame_width)
             .label("PRESS")
-            .react(|| app.bg_color = color::random())
+            .react(|| app.bg_color = color::rgb(rand::random(), rand::random(), rand::random()))
             .set(BUTTON, ui)
 
     }
@@ -226,7 +230,7 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         };
 
         // Slider widget example slider(value, min, max).
-        Slider::new(pad as f32, 30.0, 700.0)
+        Slider::new(pad as f32, 0.0, 670.0)
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
@@ -407,11 +411,12 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
         .set(CIRCLE, ui);
 
     // Draw two TextBox and EnvelopeEditor pairs to the right of the DropDownList flowing downward.
-    for i in 0..2 {
+    for i in 0..2usize {
 
         let &mut (ref mut env, ref mut text) = &mut app.envelopes[i];
 
-        // Draw a TextBox. text_box(&mut String, FontSize)
+        // A text box in which we can mutate a single line of text, and trigger reactions via the
+        // `Enter`/`Return` key.
         TextBox::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
@@ -419,13 +424,13 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
             .frame(app.frame_width)
             .frame_color(app.bg_color.invert().plain_contrast())
             .color(app.bg_color.invert())
-            .react(|_string: &mut String|{})
-            .set(ENVELOPE_EDITOR + (i * 2), ui);
+            .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
+            .set(ENVELOPE_EDITOR + i * 2, ui);
 
-        let env_y_max = match i { 0 => 20_000.0, _ => 1.0 };
-        let env_skew_y = match i { 0 => 3.0, _ => 1.0 };
+        let env_y_max = if i == 0 { 20_000.0 } else { 1.0 };
+        let env_skew_y = if i == 0 { 3.0 } else { 1.0 };
 
-        // Draw an EnvelopeEditor. (Vec<Point>, x_min, x_max, y_min, y_max).
+        // Draw an EnvelopeEditor. (&mut Vec<Point>, x_min, x_max, y_min, y_max).
         EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
             .down(10.0)
             .w_h(320.0, 150.0)
@@ -453,6 +458,8 @@ fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
 // the use of `WidgetMatrix` as above).
 widget_ids! {
     CANVAS,
+    CANVAS_X_SCROLLBAR,
+    CANVAS_Y_SCROLLBAR,
     TITLE,
     BUTTON,
     TITLE_PAD_SLIDER,

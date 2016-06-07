@@ -4,7 +4,6 @@ use widget;
 
 pub use self::range::{Edge, Range};
 pub use self::rect::{Corner, Rect};
-pub use self::rect::is_over as is_over_rect;
 //pub use self::matrix::Matrix;
 
 

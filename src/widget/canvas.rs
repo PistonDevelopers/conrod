@@ -281,7 +281,7 @@ impl<'a> Widget for Canvas<'a> {
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
         // FramedRectangle widget as the rectangle backdrop.
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
@@ -297,7 +297,7 @@ impl<'a> Widget for Canvas<'a> {
 
         // TitleBar widget if we were given some label.
         if let Some(label) = maybe_title_bar_label {
-            let title_bar_idx = state.view().title_bar_idx.get(&mut ui);
+            let title_bar_idx = state.title_bar_idx.get(&mut ui);
             let font_size = style.title_bar_font_size(ui.theme());
             let label_color = style.title_bar_text_color(ui.theme());
             let text_align = style.title_bar_text_align(ui.theme());
@@ -316,7 +316,6 @@ impl<'a> Widget for Canvas<'a> {
                 .line_spacing(line_spacing)
                 .graphics_for(idx)
                 .place_on_kid_area(false)
-                .react(|_interaction| ())
                 .set(title_bar_idx, &mut ui);
         }
 

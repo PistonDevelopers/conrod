@@ -1,12 +1,12 @@
 [package]
 name = "conrod"
-version = "0.35.0"
+version = "0.36.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
 ]
-keywords = ["ui", "widgets", "immediate-mode", "piston"]
-description = "An easy-to-use, immediate-mode, 2D GUI library"
+keywords = ["ui", "widgets", "gui", "piston", "graphics"]
+description = "An easy-to-use, extensible 2D GUI library"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
@@ -22,10 +22,8 @@ daggy = "0.4.0"
 pistoncore-input = "0.12.0"
 piston2d-graphics = "0.16.0"
 num = "0.1.30"
-rand = "0.3.13"
-time = "0.1.34"
-vecmath = "0.2.0"
 
 [dev-dependencies]
 find_folder = "0.3.0"
+rand = "0.3.13"
 piston_window = "0.45.0"

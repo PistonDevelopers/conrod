@@ -1,4 +1,3 @@
-
 use {
     Backend,
     Color,
@@ -14,7 +13,6 @@ use {
     Widget,
 };
 use widget;
-use events::InputProvider;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -109,36 +107,40 @@ impl<'a, F> Widget for Button<'a, F>
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
-        let button_color = {
+        let color = {
             let input = ui.widget_input(idx);
-            if input.mouse_left_click().is_some() {
-                self.maybe_react.map(|react_function| react_function());
+            if input.clicks().left().next().is_some() {
+                if let Some(react) = self.maybe_react {
+                    react()
+                }
             }
 
-            let style_color = style.color(ui.theme());
-            input.mouse_left_button_down().map(|_| {
-                style_color.clicked()
-            }).or_else(|| {
-                input.maybe_mouse_position().map(|_| style_color.highlighted())
-            }).unwrap_or(style_color)
+            let color = style.color(ui.theme());
+            input.mouse().map_or(color, |mouse| {
+                if mouse.buttons.left().is_down() {
+                    color.clicked()
+                } else {
+                    color.highlighted()
+                }
+            })
         };
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let frame = style.frame(ui.theme());
         let frame_color = style.frame_color(ui.theme());
         FramedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
-            .color(button_color)
+            .color(color)
             .frame(frame)
             .frame_color(frame_color)
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
         if let Some(label) = self.maybe_label {
-            let label_idx = state.view().label_idx.get(&mut ui);
+            let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             Text::new(label)

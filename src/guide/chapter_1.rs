@@ -111,9 +111,11 @@ The following are the common use widgets provided by conrod:
 - **[DropDownList]**
 - **[EnvelopeEditor]**
 - **[NumberDialer]**
+- **[Scrollbar]** - emits scroll events to some target scroll widget
 - **[Slider]**
 - **[Tabs]** - for easily switching between multiple [Canvas]ses with ease
-- **[TextBox]**
+- **[TextBox]** - an editable one-line text field
+- **[TextEdit]** - an editable block of text
 - **[TitleBar]**
 - **[Toggle]**
 - **[WidgetMatrix]**
@@ -124,7 +126,6 @@ The following are planned, but not yet implemented:
 - [Image (primitive widget)](https://github.com/PistonDevelopers/conrod/issues/647)
 - [Menu Bar / Tool Bar](https://github.com/PistonDevelopers/conrod/issues/417)
 - [Right-click Context Menu](https://github.com/PistonDevelopers/conrod/issues/394)
-- [Multi-line Text Editor](https://github.com/PistonDevelopers/conrod/issues/62)
 - [Graph / Chart](https://github.com/PistonDevelopers/conrod/issues/84)
 - [File/Directory Navigator](https://github.com/PistonDevelopers/conrod/issues/381)
 - [Advanced graph visualisation and control](https://github.com/PistonDevelopers/mush)
@@ -319,6 +320,7 @@ of the guide.
 [Slider]:           ../../struct.Slider.html            "Slider Widget"
 [Tabs]:             ../../struct.Tabs.html              "Tabs Widget"
 [TextBox]:          ../../struct.TextBox.html           "TextBox Widget"
+[TextEdit]:         ../../struct.TextEdit.html          "TextBox Widget"
 [TitleBar]:         ../../struct.TitleBar.html          "TitleBar Widget"
 [Toggle]:           ../../struct.Toggle.html            "Toggle Widget"
 [WidgetMatrix]:     ../../struct.WidgetMatrix.html      "WidgetMatrix Widget"

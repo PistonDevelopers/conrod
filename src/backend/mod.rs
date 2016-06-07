@@ -7,9 +7,12 @@
 //! enabling genericity over custom user backends. This dependency may change in the near future in
 //! favour of simplified conrod-specific backend trait.
 
-pub use self::graphics::{CharacterCache, Graphics};
 use std;
 
+pub use self::graphics::{CharacterCache, Graphics};
+pub use self::event::{RawEvent, ToRawEvent};
+
+pub mod event;
 pub mod graphics;
 
 /// A trait to be implemented by all backends to conrod.

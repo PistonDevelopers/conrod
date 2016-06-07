@@ -1,4 +1,3 @@
-
 use {Backend, NodeIndex, Scalar, Widget};
 use widget;
 
@@ -113,10 +112,10 @@ impl<'a, F, W> Widget for Matrix<F>
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 
         // First, check that we have the correct number of columns and rows.
-        let num_cols = state.view().indices.len();
-        let num_rows = state.view().indices.get(0).map(|col| col.len()).unwrap_or(0);
+        let num_cols = state.indices.len();
+        let num_rows = state.indices.get(0).map(|col| col.len()).unwrap_or(0);
         let maybe_new_indices = if num_cols < cols || num_rows < rows {
-            let mut total_cols: Vec<_> = state.view().indices.iter()
+            let mut total_cols: Vec<_> = state.indices.iter()
                 .map(|col| col.clone())
                 .chain((num_cols..cols).map(|_| Vec::with_capacity(rows)))
                 .collect();
@@ -134,7 +133,7 @@ impl<'a, F, W> Widget for Matrix<F>
         // A function to simplify getting the current slice of indices.
         fn get_indices<'a>(maybe_new: &'a Option<Vec<Vec<NodeIndex>>>,
                            state: &'a widget::State<State>) -> &'a [Vec<NodeIndex>] {
-            maybe_new.as_ref().map(|is| &is[..]).unwrap_or_else(|| &state.view().indices[..])
+            maybe_new.as_ref().map(|is| &is[..]).unwrap_or_else(|| &state.indices[..])
         }
 
         // We only need to worry about element calculations if we actually have rows and columns.

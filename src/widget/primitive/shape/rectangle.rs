@@ -107,7 +107,7 @@ impl Widget for Rectangle {
             Style::Outline(_) => Kind::Outline,
         };
 
-        if state.view().kind != kind {
+        if state.kind != kind {
             state.update(|state| state.kind = kind);
         }
     }

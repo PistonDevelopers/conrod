@@ -8,13 +8,11 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
-extern crate time;
 extern crate daggy;
-extern crate graphics;
 extern crate num;
-extern crate input;
-extern crate rand;
-extern crate vecmath;
+
+extern crate graphics as piston_graphics;
+extern crate input as piston_input;
 
 
 pub use widget::primitive::line::Line;
@@ -34,9 +32,11 @@ pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
+pub use widget::scrollbar::Scrollbar;
 pub use widget::slider::Slider;
 pub use widget::tabs::Tabs;
 pub use widget::text_box::TextBox;
+pub use widget::text_edit::TextEdit;
 pub use widget::title_bar::TitleBar;
 pub use widget::toggle::Toggle;
 pub use widget::xy_pad::XYPad;
@@ -53,9 +53,11 @@ pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
 pub use widget::number_dialer::Style as NumberDialerStyle;
+pub use widget::scrollbar::Style as ScrollbarStyle;
 pub use widget::slider::Style as SliderStyle;
 pub use widget::tabs::Style as TabsStyle;
 pub use widget::text_box::Style as TextBoxStyle;
+pub use widget::text_edit::Style as TextEditStyle;
 pub use widget::title_bar::Style as TitleBarStyle;
 pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
@@ -65,20 +67,16 @@ pub use backend::{Backend, CharacterCache, Graphics};
 pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
-pub use glyph_cache::{GlyphCache, LineBreak};
+pub use glyph_cache::GlyphCache;
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
-pub use mouse::Mouse;
-pub use mouse::ButtonState as MouseButtonState;
-pub use mouse::ButtonPosition as MouseButtonPosition;
-pub use mouse::Scroll as MouseScroll;
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 //pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
-pub use ui::{Ui, UiCell, UserInput};
+pub use ui::{Ui, UiCell};
 pub use widget::{default_x_dimension, default_y_dimension};
-pub use widget::{drag, scroll};
+pub use widget::scroll;
 pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
                  UpdateArgs, Widget};
 pub use widget::{KidArea, KidAreaArgs};
@@ -88,19 +86,19 @@ pub use widget::Index as WidgetIndex;
 pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
-pub mod events;
-
 
 pub mod backend;
 mod background;
 pub mod color;
+pub mod event;
 mod frame;
 pub mod glyph_cache;
 pub mod graph;
 pub mod guide;
+pub mod input;
 mod label;
-mod mouse;
 mod position;
+pub mod text;
 pub mod theme;
 mod ui;
 pub mod utils;

@@ -92,12 +92,6 @@ pub fn greyscale(p: f32) -> Color {
 }
 
 
-/// Construct a random color.
-pub fn random() -> Color {
-    rgb(::rand::random(), ::rand::random(), ::rand::random())
-}
-
-
 /// Clamp a f32 between 0f32 and 1f32.
 fn clampf32(f: f32) -> f32 {
     if f < 0.0 { 0.0 } else if f > 1.0 { 1.0 } else { f }

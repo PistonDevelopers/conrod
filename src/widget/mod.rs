@@ -1,10 +1,8 @@
 use {Backend, CharacterCache, Dimension, GlyphCache};
-use graph::NodeIndex;
+use graph::{self, NodeIndex};
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
-use std::any::Any;
-use std::fmt::Debug;
+use std;
 use theme::{self, Theme};
-use time::precise_time_ns;
 use ui::{self, Ui, UiCell};
 
 pub use self::id::Id;
@@ -15,7 +13,6 @@ pub use self::index::Index;
 #[macro_use] mod style;
 
 // Widget functionality modules.
-pub mod drag;
 mod id;
 mod index;
 pub mod scroll;
@@ -30,9 +27,11 @@ pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod matrix;
 pub mod number_dialer;
+pub mod scrollbar;
 pub mod slider;
 pub mod tabs;
 pub mod text_box;
+pub mod text_edit;
 pub mod title_bar;
 pub mod toggle;
 pub mod xy_pad;
@@ -81,7 +80,7 @@ pub struct UpdateArgs<'a, 'b: 'a, W, B: 'a>
 /// turn reduce related mistakes (i.e. accidentally calling it and growing the graph unnecessarily).
 #[derive(Clone, Debug, PartialEq)]
 pub struct IndexSlot {
-    maybe_idx: ::std::cell::Cell<Option<NodeIndex>>,
+    maybe_idx: std::cell::Cell<Option<NodeIndex>>,
 }
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
@@ -156,7 +155,7 @@ impl MaybeParent {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floating {
     /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
-    pub time_last_clicked: u64,
+    pub time_last_clicked: std::time::Instant,
 }
 
 /// A struct containing builder data common to all **Widget** types.
@@ -173,6 +172,11 @@ pub struct CommonBuilder {
     pub maybe_parent_idx: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
+    /// Whether or not the children of this **Widget** should be cropped to its `kid_area`.
+    ///
+    /// By default, the kid_area is the size of the entire widget, though it may be specified
+    /// otherwise via the `Widget::kid_area` method.
+    pub crop_kids: bool,
     /// Arguments to the scrolling of the widget's *x* axis.
     pub maybe_x_scroll: Option<scroll::Scroll>,
     /// Arguments to the scrolling of the widget's *y* axis.
@@ -240,8 +244,6 @@ pub struct CommonState {
     pub rect: Rect,
     /// The rendering depth for the Widget (the default is 0.0).
     pub depth: Depth,
-    /// The current state of the dragged widget, if it is draggable.
-    pub drag_state: drag::State,
     /// Floating state for the widget if it is floating.
     pub maybe_floating: Option<Floating>,
     /// The area of the widget upon which kid widgets are placed.
@@ -260,8 +262,6 @@ pub struct Cached<W>
     pub rect: Rect,
     /// Previous rendering depth of the Widget.
     pub depth: Depth,
-    /// The current state of the dragged widget, if it is draggable.
-    pub drag_state: drag::State,
     /// The area in which child widgets are placed.
     pub kid_area: KidArea,
     /// Whether or not the Widget is a "floating" Widget.
@@ -303,10 +303,10 @@ pub struct PreUpdateCache {
     pub depth: Depth,
     /// The area upon which the **Widget**'s children widgets will be placed.
     pub kid_area: KidArea,
-    /// The current state of the dragged **Widget**, if it is draggable.
-    pub drag_state: drag::State,
     /// Floating data for the **Widget** if there is some.
     pub maybe_floating: Option<Floating>,
+    /// Whether or not the children of the **Widget** should be cropped to its `kid_area`.
+    pub crop_kids: bool,
     /// Scrolling data for the **Widget**'s *x* axis if there is some.
     pub maybe_x_scroll_state: Option<scroll::StateX>,
     /// Scrolling data for the **Widget**'s *y* axis if there is some.
@@ -337,10 +337,10 @@ pub struct PostUpdateCache<W>
 
 
 /// The necessary bounds for a **Widget**'s associated **Style** type.
-pub trait Style: Any + Debug + PartialEq + Sized {}
+pub trait Style: std::any::Any + std::fmt::Debug + PartialEq + Sized {}
 
 /// Auto-implement the **Style** trait for all applicable types.
-impl<T> Style for T where T: Any + Debug + PartialEq + Sized {}
+impl<T> Style for T where T: std::any::Any + std::fmt::Debug + PartialEq + Sized {}
 
 
 /// Determines the default **Dimension** for a **Widget**.
@@ -447,7 +447,7 @@ pub trait Widget: Sized {
     /// calls to `update`.
     ///
     /// Conrod will never clone the state, it will only ever be moved.
-    type State: Any + PartialEq + ::std::fmt::Debug;
+    type State: std::any::Any + PartialEq + std::fmt::Debug;
     /// Every widget is required to have its own associated `Style` type. This type is intended to
     /// contain high-level styling information for the widget that can be *optionally specified* by
     /// a user of the widget.
@@ -597,8 +597,8 @@ pub trait Widget: Sized {
         default_y_dimension(self, ui)
     }
 
-    /// If the widget is draggable, implement this method and return the position an dimensions
-    /// of the draggable space. The position should be relative to the center of the widget.
+    /// If the widget is draggable, implement this method and return the position and dimensions of
+    /// the draggable space. The position should be relative to the center of the widget.
     fn drag_area(&self,
                  _dim: Dimensions,
                  _style: &Self::Style,
@@ -683,30 +683,43 @@ pub trait Widget: Sized {
         self
     }
 
-    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
-    ///
-    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
-    /// the `KidArea` will become scrollable.
-    fn scroll_kids(self) -> Self {
-        self.scroll_kids_vertically().scroll_kids_horizontally()
+    /// Indicates that all widgets who are children of this widget should be cropped to the
+    /// `kid_area` of this widget.
+    fn crop_kids(mut self) -> Self {
+        self.common_mut().crop_kids = true;
+        self
     }
 
-    /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
+    /// Makes the widget's `KidArea` scrollable.
     ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
+    fn scroll_kids(self) -> Self {
+        self.scroll_kids_vertically().scroll_kids_horizontally().crop_kids()
+    }
+
+    /// Makes the widget's `KidArea` scrollable.
+    ///
+    /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
+    /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
     fn scroll_kids_vertically(mut self) -> Self {
         self.common_mut().maybe_y_scroll = Some(scroll::Scroll::new());
-        self
+        self.crop_kids()
     }
 
     /// Set whether or not the widget's `KidArea` is scrollable (the default is false).
     ///
     /// If a widget is scrollable and it has children widgets that fall outside of its `KidArea`,
     /// the `KidArea` will become scrollable.
+    ///
+    /// This method calls `Widget::crop_kids` internally.
     fn scroll_kids_horizontally(mut self) -> Self {
         self.common_mut().maybe_x_scroll = Some(scroll::Scroll::new());
-        self
+        self.crop_kids()
     }
 
     /// A builder method that "lifts" the **Widget** through the given `build` function.
@@ -770,7 +783,9 @@ pub trait Widget: Sized {
         where I: Into<Index>,
               B: Backend,
     {
-        set_widget(self, idx.into(), ui::ref_mut_from_ui_cell(ui_cell));
+        let idx: Index = idx.into();
+        let ui: &'a mut Ui<B> = ui::ref_mut_from_ui_cell(ui_cell);
+        set_widget(self, idx, ui);
     }
 
 }
@@ -787,7 +802,7 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
+fn set_widget<B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     where B: Backend,
           W: Widget,
 {
@@ -797,10 +812,10 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let maybe_widget_state: Option<Cached<W>> = {
 
         // If the cache is already initialised for a widget of a different kind, warn the user.
-        let check_container_kind = |container: &mut ::graph::Container| {
+        let check_container_kind = |container: &mut graph::Container| {
             use std::io::Write;
             if container.kind != kind {
-                writeln!(::std::io::stderr(),
+                writeln!(std::io::stderr(),
                          "A widget of a different kind already exists at the given WidgetId \
                          ({:?}). You tried to insert a {:?}, however the existing widget is a \
                          {:?}. Check your widgets' `WidgetId`s for errors.",
@@ -828,7 +843,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
                 style,
                 rect,
                 depth,
-                drag_state,
                 maybe_floating,
                 maybe_x_scroll_state,
                 maybe_y_scroll_state,
@@ -840,7 +854,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
             let prev_common = CommonState {
                 rect: rect,
                 depth: depth,
-                drag_state: drag_state,
                 maybe_floating: maybe_floating,
                 kid_area: kid_area,
             };
@@ -868,72 +881,52 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     // check the positioning to retrieve the Id from there.
     let maybe_parent_idx = widget.common().maybe_parent_idx.get(idx, ui, x_pos, y_pos);
 
-    let (xy, drag_state) = {
+    // Calculate the `xy` location of the widget, considering drag.
+    let xy = maybe_prev_common
+        .as_ref()
+        .and_then(|prev| {
+            let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
+            maybe_drag_area.map(|drag_area| {
+                let mut left_mouse_drags = ui.widget_input(idx).drags().left();
+                let maybe_first_drag = left_mouse_drags.next();
+                let prev_xy = prev.rect.xy();
+                maybe_first_drag
+                    .and_then(|first_drag| {
+                        if drag_area.is_over(first_drag.from) {
+                            let total_drag_xy = left_mouse_drags
+                                .fold(first_drag.delta_xy, |total, drag| {
+                                    [total[0] + drag.delta_xy[0], total[1] + drag.delta_xy[1]]
+                                });
+                            Some([prev_xy[0] + total_drag_xy[0], prev_xy[1] + total_drag_xy[1]])
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(prev_xy)
+            })
+        })
+        // If there is no previous state to compare for dragging, return an initial state.
+        //
         // A function for generating the xy coords from the given alignment and Position.
-        let calc_xy = || ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area);
-
-        // Check to see if the widget is currently being dragged and return the new xy / drag.
-        match maybe_prev_common {
-            // If there is no previous state to compare for dragging, return an initial state.
-            None => (calc_xy(), drag::State::Normal),
-            Some(ref prev) => {
-                let maybe_mouse = ui::get_mouse_state(ui, idx);
-                let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-                match maybe_drag_area {
-                    // If the widget isn't draggable, generate its position the normal way.
-                    // FIXME: This may cause issues in the case that a widget's draggable area
-                    // is dynamic (i.e. sometimes its Some, other times its None).
-                    // Specifically, if a widget is dragged somewhere and then it returns None,
-                    // it will snap back to the position produced by calc_xy. We should keep
-                    // track of whether or not a widget `has_been_dragged` to see if we should
-                    // leave it at its previous xy or use calc_xy.
-                    None => (calc_xy(), drag::State::Normal),
-                    Some(drag_area) => match maybe_mouse {
-                        // If there is some draggable area and mouse, drag the xy.
-                        Some(mouse) => {
-                            let drag_state = prev.drag_state;
-
-                            // Drag the xy of the widget and return the new xy.
-                            drag::drag_widget(prev.rect.xy(), drag_area, drag_state, mouse)
-                        },
-                        // Otherwise just return the regular xy and drag state.
-                        None => (prev.rect.xy(), drag::State::Normal),
-                    },
-                }
-            },
-        }
-    };
+        .unwrap_or_else(|| ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area));
 
     // Construct the rectangle describing our Widget's area.
     let rect = Rect::from_xy_dim(xy, dim);
-
-    // Check whether we have stopped / started dragging the widget and in turn whether or not
-    // we need to capture the mouse.
-    match (maybe_prev_common.as_ref().map(|prev| prev.drag_state), drag_state) {
-        (Some(drag::State::Highlighted), drag::State::Clicked(_)) => {
-            ui::mouse_captured_by(ui, idx);
-        },
-        (Some(drag::State::Clicked(_)), drag::State::Highlighted) |
-        (Some(drag::State::Clicked(_)), drag::State::Normal)      => {
-            ui::mouse_uncaptured_by(ui, idx);
-        },
-        _ => (),
-    }
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
 
         fn new_floating() -> Floating {
-            Floating { time_last_clicked: precise_time_ns() }
+            Floating { time_last_clicked: std::time::Instant::now() }
         }
 
         // If it is floating, check to see if we need to update the last time it was clicked.
         match maybe_prev_common.as_ref() {
             Some(prev) => {
-                let maybe_mouse = ui::get_mouse_state(ui, idx);
+                let maybe_mouse = ui.widget_input(idx).mouse();
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
-                        if mouse.left.position == ::mouse::ButtonPosition::Down {
+                        if mouse.buttons.left().is_down() {
                             Some(new_floating())
                         } else {
                             Some(prev_floating)
@@ -966,12 +959,31 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     // around our kid widgets is in sync with the position of the `kid_area`.
     let prev_kid_area = maybe_prev_common.map(|common| common.kid_area)
         .unwrap_or_else(|| kid_area);
-    let maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_x_scroll_state)
+
+    // If the widget is scrollable, check for given `Scroll` events.
+    //
+    // TODO: On the first time the widget is set (i.e. if `maybe_prev_*_scroll_state` is `None` and
+    // `maybe_*_scroll` is `Some`) we should consider and handle the `scroll_args`'
+    // `maybe_initial_alignment` field.
+    let mut maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|_scroll_args| {
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_x_scroll_state, 0.0)
     });
-    let maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|scroll_args| {
-        scroll::State::update(ui, idx, scroll_args, &prev_kid_area, maybe_prev_y_scroll_state)
+    let mut maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|_scroll_args| {
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_y_scroll_state, 0.0)
     });
+
+    for scroll in ui.widget_input(idx).scrolls() {
+
+        if widget.common().maybe_x_scroll.is_some() {
+            maybe_x_scroll_state =
+                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_x_scroll_state, scroll.x))
+        }
+
+        if widget.common().maybe_y_scroll.is_some() {
+            maybe_y_scroll_state =
+                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_y_scroll_state, scroll.y))
+        }
+    }
 
     // Determine whether or not this is the first time set has been called.
     // We'll use this to determine whether or not we need to draw for the first time.
@@ -994,6 +1006,9 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
         let maybe_x_positioned_relatively_idx = maybe_positioned_relatively_idx(x_pos);
         let maybe_y_positioned_relatively_idx = maybe_positioned_relatively_idx(y_pos);
 
+        // Retrieve whether or not the widget's children should be cropped to it.
+        let crop_kids = widget.common().crop_kids;
+
         // This will cache the given data into the `ui`'s `widget_graph`.
         ui::pre_update_cache(ui, PreUpdateCache {
             kind: kind,
@@ -1003,9 +1018,9 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
             maybe_y_positioned_relatively_idx: maybe_y_positioned_relatively_idx,
             rect: rect,
             depth: depth,
-            drag_state: drag_state,
             kid_area: kid_area,
             maybe_floating: maybe_floating,
+            crop_kids: crop_kids,
             maybe_y_scroll_state: maybe_y_scroll_state,
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_graphics_for: widget.common().maybe_graphics_for,
@@ -1017,7 +1032,6 @@ fn set_widget<'a, B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
     let prev_common = maybe_prev_common.unwrap_or_else(|| CommonState {
         rect: rect,
         depth: depth,
-        drag_state: drag_state,
         maybe_floating: maybe_floating,
         kid_area: kid_area,
     });
@@ -1115,10 +1129,6 @@ impl IndexSlot {
 
 impl<'a, T> State<'a, T> {
 
-    /// Immutably borrow the internal widget state.
-    #[inline]
-    pub fn view(&self) -> &T { &self.state }
-
     /// Mutate the internal widget state and set a flag notifying us that there has been a mutation.
     ///
     /// If this method is *not* called, we assume that there has been no mutation and in turn we do
@@ -1134,6 +1144,13 @@ impl<'a, T> State<'a, T> {
 
 }
 
+impl<'a, T> std::ops::Deref for State<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.state
+    }
+}
+
 
 impl CommonBuilder {
     /// Construct an empty, initialised CommonBuilder.
@@ -1146,6 +1163,7 @@ impl CommonBuilder {
             is_floating: false,
             maybe_x_scroll: None,
             maybe_y_scroll: None,
+            crop_kids: false,
         }
     }
 }

@@ -184,9 +184,9 @@ impl<T> Widget for Image<T>
                 });
 
                 let src_rect_has_changed = 
-                    state.view().texture.as_ref().map(|t| &t.src_rect) != Some(&src_rect);
+                    state.texture.as_ref().map(|t| &t.src_rect) != Some(&src_rect);
                 let texture_size_changed =
-                    state.view().texture.as_ref().map(|t| t.arc.get_size())
+                    state.texture.as_ref().map(|t| t.arc.get_size())
                     != Some(texture.get_size());
                 if src_rect_has_changed || texture_size_changed {
                     state.update(|state| state.texture = Some(Texture {

@@ -9,7 +9,6 @@ use {
     FramedRectangle,
     IndexSlot,
     Labelable,
-    Mouse,
     Positionable,
     Scalar,
     Sizeable,
@@ -21,21 +20,18 @@ use widget::{self, Widget};
 
 
 /// A simple title bar widget that automatically sizes itself to the top of some other widget.
-pub struct TitleBar<'a, F> {
+pub struct TitleBar<'a> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
     /// Unique styling for the **FramedRectangle**.
     pub style: Style,
     /// A label displayed in the middle of the TitleBar.
     pub label: &'a str,
-    /// Some function used to react to interactions with the TitleBar.
-    pub maybe_react: Option<F>,
 }
 
 /// Unique state for the **TitleBar** widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    interaction: Interaction,
     rectangle_idx: IndexSlot,
     label_idx: IndexSlot,
 }
@@ -64,14 +60,6 @@ widget_style!{
     }
 }
 
-/// Some interaction with the **TitleBar**.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Interaction {
-    Normal,
-    Highlighted,
-    Clicked,
-}
-
 /// Unique kind for the widget type.
 pub const KIND: widget::Kind = "TitleBar";
 
@@ -81,23 +69,7 @@ pub const KIND: widget::Kind = "TitleBar";
 const LABEL_PADDING: f64 = 4.0;
 
 
-/// Check the current state of the button.
-fn get_new_interaction(is_over: bool, prev: Interaction, mouse: Mouse) -> Interaction {
-    use mouse::ButtonPosition::{Down, Up};
-    use self::Interaction::{Normal, Highlighted, Clicked};
-    match (is_over, prev, mouse.left.position) {
-        (true,  Normal,  Down) => Normal,
-        (true,  _,       Down) => Clicked,
-        (true,  _,       Up)   => Highlighted,
-        (false, Clicked, Down) => Clicked,
-        _                      => Normal,
-    }
-}
-
-
-impl<'a, F> TitleBar<'a, F>
-    where F: FnOnce(Interaction),
-{
+impl<'a> TitleBar<'a> {
 
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
     pub fn new<I>(label: &'a str, idx: I) -> Self
@@ -107,7 +79,6 @@ impl<'a, F> TitleBar<'a, F>
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             label: label,
-            maybe_react: None,
         }.w_of(idx).mid_top_of(idx)
     }
 
@@ -131,7 +102,6 @@ impl<'a, F> TitleBar<'a, F>
 
     builder_methods!{
         pub line_spacing { style.line_spacing = Some(Scalar) }
-        pub react { maybe_react = Some(F) }
     }
 
 }
@@ -143,9 +113,7 @@ pub fn calc_height(font_size: FontSize) -> Scalar {
 }
 
 
-impl<'a, F> Widget for TitleBar<'a, F>
-    where F: FnOnce(Interaction),
-{
+impl<'a> Widget for TitleBar<'a> {
     type State = State;
     type Style = Style;
 
@@ -165,7 +133,6 @@ impl<'a, F> Widget for TitleBar<'a, F>
         State {
             rectangle_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
-            interaction: Interaction::Normal,
         }
     }
 
@@ -181,19 +148,10 @@ impl<'a, F> Widget for TitleBar<'a, F>
 
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let TitleBar { label, maybe_react, .. } = self;
-
-        // Check whether or not a new interaction has occurred.
-        let new_interaction = match ui.input(idx).maybe_mouse {
-            None => Interaction::Normal,
-            Some(mouse) => {
-                let is_over = rect.is_over(mouse.xy);
-                get_new_interaction(is_over, state.view().interaction, mouse)
-            },
-        };
+        let TitleBar { label, .. } = self;
 
         // FramedRectangle widget.
-        let rectangle_idx = state.view().rectangle_idx.get(&mut ui);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let frame = style.frame(ui.theme());
@@ -207,7 +165,7 @@ impl<'a, F> Widget for TitleBar<'a, F>
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        let label_idx = state.view().label_idx.get(&mut ui);
+        let label_idx = state.label_idx.get(&mut ui);
         let text_color = style.text_color(ui.theme());
         let text_align = style.text_align(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -225,36 +183,26 @@ impl<'a, F> Widget for TitleBar<'a, F>
             .line_spacing(line_spacing)
             .graphics_for(idx)
             .set(label_idx, &mut ui);
-
-        if state.view().interaction != new_interaction {
-            if let Some(react) = maybe_react {
-                // If there's been some change in interaction and we have some react function, call
-                // the react function with our new interaction.
-                react(new_interaction);
-            }
-            state.update(|state| state.interaction = new_interaction);
-        }
     }
 
 }
 
 
-impl<'a, F> Colorable for TitleBar<'a, F> {
+impl<'a> Colorable for TitleBar<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Frameable for TitleBar<'a, F> {
+impl<'a> Frameable for TitleBar<'a> {
     builder_methods!{
         frame { style.frame = Some(Scalar) }
         frame_color { style.frame_color = Some(Color) }
     }
 }
 
-impl<'a, F> Labelable<'a> for TitleBar<'a, F> {
+impl<'a> Labelable<'a> for TitleBar<'a> {
     builder_methods!{
         label { label = &'a str }
         label_color { style.text_color = Some(Color) }
         label_font_size { style.font_size = Some(FontSize) }
     }
 }
-
