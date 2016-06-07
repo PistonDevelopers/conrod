@@ -279,6 +279,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
             // Find the index of the line that is closest on the *y* axis.
             let mut xys_per_line_enumerated =
                 text::cursor::xys_per_line(lines_with_rects, glyph_cache, font_size).enumerate();
+
             xys_per_line_enumerated.next().and_then(|(first_line_idx, (_, first_line_y))| {
                 let mut closest_line_idx = first_line_idx;
                 let mut closest_diff = (xy[1] - first_line_y.middle()).abs();
@@ -306,19 +307,22 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         // `xs` always yields at least one `x` (the start of the line).
                         let (first_idx, first_x) = xs_enumerated.next().unwrap();
                         let first_diff = (xy[0] - first_x).abs();
-                        struct Closest { idx: usize, x: Scalar, diff: Scalar }
-                        let mut closest = Closest { idx: first_idx, x: first_x, diff: first_diff };
+                        let mut closest_idx = first_idx;
+                        let mut closest_x = first_x;
+                        let mut closest_diff = first_diff;
                         for (i, x) in xs_enumerated {
                             let diff = (xy[0] - x).abs();
-                            if diff < closest.diff {
-                                closest = Closest { idx: i, x: x, diff: diff };
+                            if diff < closest_diff {
+                                closest_idx = i;
+                                closest_x = x;
+                                closest_diff = diff;
                             } else {
                                 break;
                             }
                         }
 
-                        let index = text::cursor::Index { line: closest_line_idx, char: closest.idx };
-                        let point = [closest.x, line_y.middle()];
+                        let index = text::cursor::Index { line: closest_line_idx, char: closest_idx };
+                        let point = [closest_x, line_y.middle()];
                         (index, point)
                     })
             })
@@ -622,16 +626,21 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
         let color = style.color(ui.theme());
         let font_size = style.font_size(ui.theme());
+        let num_lines = state.line_infos.iter().count();
+        let text_height = text::height(num_lines, font_size, line_spacing);
+        let text_y_range = Range::new(0.0, text_height).align_to(y_align, rect.y);
+        let text_rect = Rect { x: rect.x, y: text_y_range };
+
         match line_wrap {
             Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
             Wrap::Character => Text::new(&self.text).wrap_by_character(),
         }
-            .wh(rect.dim())
-            .x_align_to(idx, x_align)
-            .y_align_to(idx, y_align)
+            .wh(text_rect.dim())
+            .xy(text_rect.xy())
             .align_text_to(x_align)
             .graphics_for(idx)
             .color(color)
+            .line_spacing(line_spacing)
             .font_size(font_size)
             .set(text_idx, &mut ui);
 
