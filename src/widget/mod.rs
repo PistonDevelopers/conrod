@@ -783,7 +783,9 @@ pub trait Widget: Sized {
         where I: Into<Index>,
               B: Backend,
     {
-        set_widget(self, idx.into(), ui::ref_mut_from_ui_cell(ui_cell));
+        let idx: Index = idx.into();
+        let ui: &'a mut Ui<B> = ui::ref_mut_from_ui_cell(ui_cell);
+        set_widget(self, idx, ui);
     }
 
 }
