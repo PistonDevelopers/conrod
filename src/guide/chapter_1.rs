@@ -110,7 +110,9 @@ The following are the common use widgets provided by conrod:
 - **[Canvas]** - a container-like widget
 - **[DropDownList]**
 - **[EnvelopeEditor]**
+- **[Matrix]**
 - **[NumberDialer]**
+- **[PlotPath]**
 - **[Scrollbar]** - emits scroll events to some target scroll widget
 - **[Slider]**
 - **[Tabs]** - for easily switching between multiple [Canvas]ses with ease
@@ -118,7 +120,6 @@ The following are the common use widgets provided by conrod:
 - **[TextEdit]** - an editable block of text
 - **[TitleBar]**
 - **[Toggle]**
-- **[WidgetMatrix]**
 - **[XYPad]**
 
 The following are planned, but not yet implemented:
@@ -317,13 +318,15 @@ of the guide.
 [DropDownList]:     ../../struct.DropDownList.html      "DropDownList Widget"
 [EnvelopeEditor]:   ../../struct.EnvelopeEditor.html    "EnvelopeEditor Widget"
 [NumberDialer]:     ../../struct.NumberDialer.html      "NumberDialer Widget"
+[PlotPath]:         ../../struct.PlotPath.html          "PlotPath Widget"
+[Scrollbar]:        ../../struct.Scrollbar.html         "Scrollbar Widget"
 [Slider]:           ../../struct.Slider.html            "Slider Widget"
 [Tabs]:             ../../struct.Tabs.html              "Tabs Widget"
 [TextBox]:          ../../struct.TextBox.html           "TextBox Widget"
 [TextEdit]:         ../../struct.TextEdit.html          "TextBox Widget"
 [TitleBar]:         ../../struct.TitleBar.html          "TitleBar Widget"
 [Toggle]:           ../../struct.Toggle.html            "Toggle Widget"
-[WidgetMatrix]:     ../../struct.WidgetMatrix.html      "WidgetMatrix Widget"
+[Matrix]:           ../../struct.Matrix.html            "Matrix Widget"
 [XYPad]:            ../../struct.XYPad.html             "XYPad Widget"
 
 */
