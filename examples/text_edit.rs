@@ -59,9 +59,9 @@ fn set_ui(ref mut ui: UiCell, demo_text: &mut String) {
 
     TextEdit::new(demo_text)
         .color(color::LIGHT_BLUE)
-        .padded_w_of(CANVAS, 20.0)
-        .middle_of(CANVAS)
-        .align_text_middle()
+        .padded_wh_of(CANVAS, 20.0)
+        .mid_top_of(CANVAS)
+        .align_text_x_middle()
         .line_spacing(2.5)
         .react(|_: &mut String| {})
         .set(TEXT_EDIT, ui);
