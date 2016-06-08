@@ -91,6 +91,7 @@ The following are the primitive widgets provided by conrod:
     - **[Polygon]**
     - **[FramedRectangle]**
 - **[Text]** - automatic line-wrapping, line spacing, etc.
+- **[Image]**
 
 If conrod is lacking a primitive widget that you require, please let us know! There are currently
 plans to allow for a user to design their own primitive widgets, however these will likely remain
@@ -124,7 +125,6 @@ The following are the common use widgets provided by conrod:
 
 The following are planned, but not yet implemented:
 
-- [Image (primitive widget)](https://github.com/PistonDevelopers/conrod/issues/647)
 - [Menu Bar / Tool Bar](https://github.com/PistonDevelopers/conrod/issues/417)
 - [Right-click Context Menu](https://github.com/PistonDevelopers/conrod/issues/394)
 - [Graph / Chart](https://github.com/PistonDevelopers/conrod/issues/84)
@@ -312,6 +312,7 @@ of the guide.
 [Polygon]:          ../../struct.Polygon.html           "Polygon Widget"
 [FramedRectangle]:  ../../struct.FramedRectangle.html   "FramedRectangle Widget"
 [Text]:             ../../struct.Text.html              "Text Widget"
+[Image]:            ../../struct.Image.html             "Image Widget"
 
 [Button]:           ../../struct.Button.html            "Button Widget"
 [Canvas]:           ../../struct.Canvas.html            "Canvas Widget"
