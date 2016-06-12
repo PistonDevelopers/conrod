@@ -9,11 +9,10 @@
 
 use std;
 
-pub use self::graphics::Graphics;
 pub use self::event::{RawEvent, ToRawEvent};
 
 pub mod event;
-pub mod graphics;
+pub mod piston;
 
 /// A trait to be implemented by all backends to conrod.
 ///
@@ -24,12 +23,12 @@ pub mod graphics;
 /// `C` is some character cache and both satisfy the necessary bounds.
 pub trait Backend {
     /// The `Texture` type used by the `Graphics` and `CharacterCache` backends.
-    type Texture: self::graphics::ImageSize + std::any::Any;
+    type Texture: std::any::Any;
 }
 
 
 impl<T> Backend for (T)
-    where T: self::graphics::ImageSize + std::any::Any,
+    where T: std::any::Any,
 {
     type Texture = T;
 }

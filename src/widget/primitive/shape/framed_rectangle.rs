@@ -23,6 +23,10 @@ pub struct FramedRectangle {
 /// Unique kind for the Widget.
 pub const KIND: widget::Kind = "FramedRectangle";
 
+/// Unique state for the `FramedRectangle`.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct State;
+
 widget_style!{
     KIND;
     /// Unique styling for the **FramedRectangle** widget.
@@ -52,7 +56,7 @@ impl FramedRectangle {
 
 
 impl Widget for FramedRectangle {
-    type State = ();
+    type State = State;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -67,11 +71,11 @@ impl Widget for FramedRectangle {
         KIND
     }
 
-    fn init_state(&self) -> () {
-        ()
+    fn init_state(&self) -> Self::State {
+        State
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 

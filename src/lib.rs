@@ -69,7 +69,7 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use backend::{Backend, Graphics};
+pub use backend::Backend;
 pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
@@ -104,6 +104,7 @@ pub mod guide;
 pub mod input;
 mod label;
 mod position;
+pub mod render;
 pub mod text;
 pub mod theme;
 mod ui;

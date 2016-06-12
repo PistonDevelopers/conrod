@@ -1,9 +1,9 @@
 use backend::{self, Backend, ToRawEvent};
-use backend::graphics::{Context, Graphics};
 use color::Color;
 use event;
 use graph::{self, Graph, NodeIndex};
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
+use render;
 use rusttype;
 use std;
 use text;
@@ -980,33 +980,25 @@ impl<B> Ui<B>
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics<Texture=B::Texture>,
-    {
-        use backend::graphics::{draw_from_graph, Transformed};
-
+    pub fn draw(&mut self) -> render::Primitives {
         let Ui {
-            ref mut glyph_cache,
             ref mut redraw_count,
             ref widget_graph,
             ref depth_order,
             ref theme,
+            win_w, win_h,
             ..
         } = *self;
-
-        let view_size = context.get_view_size();
-        let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
         // Use the depth_order indices as the order for drawing.
         let indices = &depth_order.indices;
 
-        // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph::<B, G>(context, graphics, glyph_cache, widget_graph, indices, theme);
-
-        // Because we just drew everything, take one from the redraw count.
+        // We're about to draw everything, so take one from the redraw count.
         if *redraw_count > 0 {
             *redraw_count -= 1;
         }
+
+        render::Primitives::new(widget_graph, indices, theme, [win_w, win_h])
     }
 
 
@@ -1024,12 +1016,11 @@ impl<B> Ui<B>
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics<Texture=B::Texture>,
-    {
+    pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
         if self.redraw_count > 0 {
-            self.draw(context, graphics);
+            return Some(self.draw())
         }
+        None
     }
 
 
