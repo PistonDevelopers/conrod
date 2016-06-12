@@ -1,4 +1,3 @@
-use Backend;
 use color::{Color, Colorable};
 use ui::{self, Ui};
 
@@ -18,9 +17,7 @@ impl Background {
     }
 
     /// Set the color used clear the background with before drawing widgets.
-    pub fn set<B>(&mut self, ui: &mut Ui<B>)
-        where B: Backend
-    {
+    pub fn set(&mut self, ui: &mut Ui) {
         let color = self.maybe_color.unwrap_or(ui.theme.background_color);
         ui::clear_with(ui, color);
     }

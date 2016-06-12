@@ -1,6 +1,5 @@
 use {
     Align,
-    Backend,
     Color,
     Colorable,
     Dimension,
@@ -175,7 +174,7 @@ impl<'a> Widget for Text<'a> {
     ///
     /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
     /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
-    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension(&self, ui: &Ui) -> Dimension {
         let font = match self.style.font_id(&ui.theme)
             .or(ui.fonts.ids().next())
             .and_then(|id| ui.fonts.get(id))
@@ -197,7 +196,7 @@ impl<'a> Widget for Text<'a> {
     ///
     /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
     /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
-    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
         use position::Sizeable;
 
         let font = match self.style.font_id(&ui.theme)
@@ -232,7 +231,7 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// Update the state of the Text.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { rect, state, style, ui, .. } = args;
         let Text { text, .. } = self;
 

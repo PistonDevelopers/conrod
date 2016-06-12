@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     PointPath,
@@ -97,7 +96,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
     }
 
     /// Update the state of the PlotPath.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
 
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let PlotPath { min_x, max_x, min_y, max_y, mut f, .. } = self;

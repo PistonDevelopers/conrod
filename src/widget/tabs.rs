@@ -1,5 +1,4 @@
 use {
-    Backend,
     Button,
     Canvas,
     Color,
@@ -226,7 +225,7 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// Update the state of the Tabs.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Tabs { tabs, maybe_starting_tab_idx, .. } = self;
         let layout = style.layout(&ui.theme);

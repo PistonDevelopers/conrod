@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Dimension,
     Rect,
@@ -93,21 +92,21 @@ impl Widget for Image {
         self.style.clone()
     }
 
-    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension(&self, ui: &Ui) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.w()),
             None => widget::default_x_dimension(self, ui),
         }
     }
 
-    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
         match self.src_rect.as_ref() {
             Some(rect) => Dimension::Absolute(rect.h()),
             None => widget::default_y_dimension(self, ui),
         }
     }
 
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { state, .. } = args;
         let Image { src_rect, texture_index, .. } = self;
 

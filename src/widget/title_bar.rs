@@ -1,6 +1,5 @@
 use {
     Align,
-    Backend,
     Color,
     Colorable,
     Dimension,
@@ -140,13 +139,13 @@ impl<'a> Widget for TitleBar<'a> {
         self.style.clone()
     }
 
-    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
         let font_size = self.style.font_size(&ui.theme);
         let h = calc_height(font_size);
         Dimension::Absolute(h)
     }
 
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TitleBar { label, .. } = self;
 

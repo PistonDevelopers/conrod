@@ -9,7 +9,7 @@
 //! This is the only module in which the piston graphics crate will be used directly.
 
 
-use {Align, Backend, Color, Dimensions, FontSize, Point, Rect, Scalar};
+use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex};
 use rusttype;
 use std::any::Any;

@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     FontSize,
@@ -190,7 +189,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let NumberDialer {
             value, min, max, precision, maybe_label, maybe_react, ..

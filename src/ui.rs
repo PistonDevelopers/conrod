@@ -1,4 +1,3 @@
-use backend::{self, Backend};
 use color::Color;
 use event;
 use graph::{self, Graph, NodeIndex};
@@ -21,11 +20,7 @@ use input;
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<B>
-    where B: Backend,
-{
-    /// The backend used by the `Ui`, providing the `Graphics` and `CharacterCache` types.
-    backend: std::marker::PhantomData<B>,
+pub struct Ui {
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// An index into the root widget of the graph, representing the entire window.
@@ -84,11 +79,9 @@ pub struct Ui<B>
 /// `RefCell` types (which `UiCell` has nothing to do with). Thus, if you have a better name for
 /// this type in mind, please let us know at the github repo via an issue or PR sometime before we
 /// hit 1.0.0!
-pub struct UiCell<'a, B: 'a>
-    where B: Backend,
-{
+pub struct UiCell<'a> {
     /// A mutable reference to a **Ui**.
-    ui: &'a mut Ui<B>,
+    ui: &'a mut Ui,
 }
 
 
@@ -98,9 +91,7 @@ pub struct UiCell<'a, B: 'a>
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 
-impl<B> Ui<B>
-    where B: Backend,
-{
+impl Ui {
 
     /// A new, empty **Ui**.
     pub fn new(theme: Theme) -> Self {
@@ -129,7 +120,6 @@ impl<B> Ui<B>
         let prev_updated_widgets = updated_widgets.clone();
         let cache = new_glyph_cache(0, 0);
         Ui {
-            backend: std::marker::PhantomData,
             widget_graph: widget_graph,
             theme: theme,
             fonts: text::font::Map::new(),
@@ -273,7 +263,7 @@ impl<B> Ui<B>
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
     pub fn handle_event<E: Into<event::Raw>>(&mut self, event: E) {
-        use event::{Input, Motion, RawEvent};
+        use event::{Input, Motion};
         use input::{Key, ModifierKey};
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
@@ -290,7 +280,7 @@ impl<B> Ui<B>
         // released.
         //
         // Note: This function expects that `ui.global_input.current.mouse.xy` is up-to-date.
-        fn track_widget_under_mouse_and_update_capturing<B: Backend>(ui: &mut Ui<B>) {
+        fn track_widget_under_mouse_and_update_capturing(ui: &mut Ui) {
             ui.global_input.current.widget_under_mouse =
                 graph::algo::pick_widgets(&ui.depth_order.indices,
                                           ui.global_input.current.mouse.xy)
@@ -798,14 +788,13 @@ impl<B> Ui<B>
         //
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
-        fn abs_from_position<B, R, P>(ui: &Ui<B>,
-                                      position: Position,
-                                      dim: Scalar,
-                                      place_on_kid_area: bool,
-                                      range_from_rect: R,
-                                      start_and_end_pad: P) -> Scalar
-            where B: Backend,
-                  R: FnOnce(Rect) -> Range,
+        fn abs_from_position<R, P>(ui: &Ui,
+                                   position: Position,
+                                   dim: Scalar,
+                                   place_on_kid_area: bool,
+                                   range_from_rect: R,
+                                   start_and_end_pad: P) -> Scalar
+            where R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> Range,
         {
             match position {
@@ -894,7 +883,7 @@ impl<B> Ui<B>
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where F: FnOnce(UiCell<B>),
+        where F: FnOnce(UiCell),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -1039,9 +1028,7 @@ impl<B> Ui<B>
 }
 
 
-impl<'a, B> UiCell<'a, B>
-    where B: Backend,
-{
+impl<'a> UiCell<'a> {
 
     /// A reference to the `Theme` that is currently active within the `Ui`.
     pub fn theme(&self) -> &Theme { &self.ui.theme }
@@ -1111,19 +1098,15 @@ impl<'a, B> UiCell<'a, B>
 
 }
 
-impl<'a, B> ::std::ops::Deref for UiCell<'a, B>
-    where B: Backend,
-{
-    type Target = Ui<B>;
-    fn deref(&self) -> &Ui<B> {
+impl<'a> ::std::ops::Deref for UiCell<'a> {
+    type Target = Ui;
+    fn deref(&self) -> &Ui {
         self.ui
     }
 }
 
-impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
-    where B: Backend,
-{
-    fn as_ref(&self) -> &Ui<B> {
+impl<'a> AsRef<Ui> for UiCell<'a> {
+    fn as_ref(&self) -> &Ui {
         &self.ui
     }
 }
@@ -1136,9 +1119,7 @@ fn new_glyph_cache(w: u32, h: u32) -> rusttype::gpu_cache::Cache {
 }
 
 /// A private constructor for the `UiCell` for internal use.
-pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
-    where B: Backend,
-{
+pub fn new_ui_cell(ui: &mut Ui) -> UiCell {
     UiCell { ui: ui }
 }
 
@@ -1146,17 +1127,12 @@ pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
 ///
 /// This function is only for internal use to allow for some `Ui` type acrobatics in order to
 /// provide a nice *safe* API for the user.
-pub fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
-    where 'b: 'a,
-          B: Backend
-{
+pub fn ref_mut_from_ui_cell<'a, 'b: 'a>(ui_cell: &'a mut UiCell<'b>) -> &'a mut Ui {
     ui_cell.ui
 }
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
-pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
-    where B: Backend,
-{
+pub fn widget_graph_mut(ui: &mut Ui) -> &mut Graph {
     &mut ui.widget_graph
 }
 
@@ -1164,12 +1140,9 @@ pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position)
-    -> Option<widget::Index>
-    where B: Backend,
-{
+pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Index> {
     use Position::{Place, Relative, Direction, Align};
-    match (x_pos, y_pos) {
+    match (x, y) {
         (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
             maybe_parent_idx,
         (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
@@ -1191,9 +1164,7 @@ pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Positio
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index
-    where B: Backend,
-{
+pub fn infer_parent_unchecked(ui: &Ui, x_pos: Position, y_pos: Position) -> widget::Index {
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
@@ -1203,9 +1174,7 @@ pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
-    where B: Backend,
-{
+pub fn pre_update_cache(ui: &mut Ui, widget: widget::PreUpdateCache) {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     let widget_idx = widget.idx;
@@ -1219,9 +1188,8 @@ pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W>)
-    where B: Backend,
-          W: Widget,
+pub fn post_update_cache<W>(ui: &mut Ui, widget: widget::PostUpdateCache<W>)
+    where W: Widget,
           W::State: 'static,
           W::Style: 'static,
 {
@@ -1232,8 +1200,6 @@ pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W
 
 
 /// Clear the background with the given color.
-pub fn clear_with<B>(ui: &mut Ui<B>, color: Color)
-    where B: Backend,
-{
+pub fn clear_with(ui: &mut Ui, color: Color) {
     ui.maybe_background_color = Some(color);
 }

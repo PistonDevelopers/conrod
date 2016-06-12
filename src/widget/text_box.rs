@@ -1,6 +1,5 @@
 use {
     Align,
-    Backend,
     Color,
     Colorable,
     FontSize,
@@ -134,7 +133,7 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextEdit.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextBox { text, mut maybe_react, .. } = self;
 

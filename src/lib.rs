@@ -69,7 +69,6 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use backend::Backend;
 pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};

@@ -1,5 +1,4 @@
 use {
-    Backend,
     Circle,
     Color,
     Colorable,
@@ -193,7 +192,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
     /// Update the `EnvelopeEditor` in accordance to the latest input and call the given `react`
     /// function if necessary.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let EnvelopeEditor {
             env,

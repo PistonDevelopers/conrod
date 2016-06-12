@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -80,7 +79,7 @@ impl Widget for FramedRectangle {
     }
 
     /// Update the state of the Rectangle.
-    fn update<B: Backend>(self, _args: widget::UpdateArgs<Self, B>) {
+    fn update(self, _args: widget::UpdateArgs<Self>) {
         // Nothing to update here!
     }
 

@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     FontSize,
@@ -147,7 +146,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         use utils::{clamp, map_range, value_from_perc};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -195,7 +194,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         // The **Rectangle** for the frame.
         let frame_idx = state.frame_idx.get(&mut ui);
 
-        let interaction_color = |ui: &::ui::UiCell<B>, color: Color|
+        let interaction_color = |ui: &::ui::UiCell, color: Color|
             ui.widget_input(idx).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()
