@@ -1,11 +1,9 @@
 use {
     Align,
     Backend,
-    CharacterCache,
     Color,
     Colorable,
     FontSize,
-    GlyphCache,
     IndexSlot,
     Line,
     NodeIndex,
@@ -61,6 +59,8 @@ widget_style!{
         - line_wrap: Wrap { Wrap::Whitespace }
         /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
         - restrict_to_height: bool { true }
+        /// The font used for the `Text`.
+        - font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -219,6 +219,17 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextEdit { text, .. } = self;
 
+        // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
+        //
+        // If we've no font to use for text logic, bail out without updating.
+        let font_id = match style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id).map(|_| id))
+        {
+            Some(font_id) => font_id,
+            None => return,
+        };
+
         let font_size = style.font_size(ui.theme());
         let line_wrap = style.line_wrap(ui.theme());
         let x_align = style.x_align(ui.theme());
@@ -229,15 +240,14 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
         /// with the given styling.
-        type LineInfos<'a, C> = text::line::Infos<'a, C, text::line::NextBreakFnPtr<C>>;
-        fn line_infos<'a, C>(text: &'a str,
-                             glyph_cache: &'a GlyphCache<C>,
-                             font_size: FontSize,
-                             line_wrap: Wrap,
-                             max_width: Scalar) -> LineInfos<'a, C>
-            where C: CharacterCache,
+        type LineInfos<'a> = text::line::Infos<'a, text::line::NextBreakFnPtr>;
+        fn line_infos<'a>(text: &'a str,
+                          font: &'a text::Font,
+                          font_size: FontSize,
+                          line_wrap: Wrap,
+                          max_width: Scalar) -> LineInfos<'a>
         {
-            let infos = text::line::infos(text, glyph_cache, font_size);
+            let infos = text::line::infos(text, font, font_size);
             match line_wrap {
                 Wrap::Whitespace => infos.wrap_by_whitespace(max_width),
                 Wrap::Character => infos.wrap_by_character(max_width),
@@ -248,8 +258,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
         {
             let maybe_new_line_infos = {
                 let line_info_slice = &state.line_infos[..];
-                let new_line_infos =
-                    line_infos(text, ui.glyph_cache(), font_size, line_wrap, rect.w());
+                let font = ui.fonts.get(font_id).unwrap();
+                let new_line_infos = line_infos(text, font, font_size, line_wrap, rect.w());
                 match utils::write_if_different(line_info_slice, new_line_infos) {
                     std::borrow::Cow::Owned(new) => Some(new),
                     _ => None,
@@ -267,7 +277,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let closest_cursor_index_and_xy = |xy: Point,
                                            text: &str,
                                            line_infos: &[text::line::Info],
-                                           glyph_cache: &GlyphCache<B::CharacterCache>|
+                                           font: &text::Font|
             -> Option<(text::cursor::Index, Point)>
         {
             let line_infos = line_infos.iter().cloned();
@@ -278,7 +288,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
             // Find the index of the line that is closest on the *y* axis.
             let mut xys_per_line_enumerated =
-                text::cursor::xys_per_line(lines_with_rects, glyph_cache, font_size).enumerate();
+                text::cursor::xys_per_line(lines_with_rects, font, font_size).enumerate();
 
             xys_per_line_enumerated.next().and_then(|(first_line_idx, (_, first_line_y))| {
                 let mut closest_line_idx = first_line_idx;
@@ -299,8 +309,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
                 }
 
                 // Find the index of the cursor position along the closest line.
-                let lines_with_rects = line_infos.map(|info| &text[info.byte_range()]).zip(line_rects);
-                text::cursor::xys_per_line(lines_with_rects, glyph_cache, font_size)
+                let lines_with_rects = line_infos
+                    .map(|info| &text[info.byte_range()])
+                    .zip(line_rects);
+                text::cursor::xys_per_line(lines_with_rects, font, font_size)
                     .nth(closest_line_idx)
                     .map(|(xs, line_y)| {
                         let mut xs_enumerated = xs.enumerate();
@@ -347,8 +359,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
                     event::Button::Mouse(input::MouseButton::Left, rel_xy) => {
                         let abs_xy = utils::vec2_add(rel_xy, rect.xy());
                         let infos = &state.line_infos;
-                        let cache = ui.glyph_cache();
-                        let closest = closest_cursor_index_and_xy(abs_xy, text, infos, cache);
+                        let font = ui.fonts.get(font_id).unwrap();
+                        let closest = closest_cursor_index_and_xy(abs_xy, text, infos, font);
                         if let Some((closest_cursor, _)) = closest {
                             cursor = Cursor::Idx(closest_cursor);
                         }
@@ -368,7 +380,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                 Cursor::Idx(cursor_idx) => {
                                     let idx_after_cursor = {
                                         let line_infos = state.line_infos.iter().cloned();
-                                        text::char::index_after_cursor(line_infos, cursor_idx)
+                                        text::glyph::index_after_cursor(line_infos, cursor_idx)
                                     };
                                     if let Some(idx) = idx_after_cursor {
                                         let idx_to_remove = idx - 1;
@@ -382,9 +394,11 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                                 .chain(text.chars().skip(idx))
                                                 .collect();
                                             state.update(|state| {
+                                                let font = ui.fonts.get(font_id).unwrap();
+                                                let w = rect.w();
                                                 state.line_infos =
-                                                    line_infos(text, ui.glyph_cache(), font_size,
-                                                               line_wrap, rect.w()).collect();
+                                                    line_infos(text, font, font_size, line_wrap, w)
+                                                        .collect();
                                             });
                                         }
                                     }
@@ -393,9 +407,9 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                 Cursor::Selection { start, end } => {
                                     let (start_idx, end_idx) = {
                                         let line_infos = state.line_infos.iter().cloned();
-                                        (text::char::index_after_cursor(line_infos.clone(), start)
+                                        (text::glyph::index_after_cursor(line_infos.clone(), start)
                                             .expect("text::cursor::Index was out of range"),
-                                         text::char::index_after_cursor(line_infos, end)
+                                         text::glyph::index_after_cursor(line_infos, end)
                                             .expect("text::cursor::Index was out of range"))
                                     };
                                     let (start_idx, end_idx) =
@@ -413,9 +427,11 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                         .chain(text.chars().skip(end_idx))
                                         .collect();
                                     state.update(|state| {
+                                        let font = ui.fonts.get(font_id).unwrap();
+                                        let w = rect.w();
                                         state.line_infos =
-                                            line_infos(text, ui.glyph_cache(), font_size,
-                                                       line_wrap, rect.w()).collect();
+                                            line_infos(text, font, font_size, line_wrap, w)
+                                                .collect();
                                     });
                                 },
 
@@ -537,9 +553,9 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         let line_infos = state.line_infos.iter().cloned();
 
                         let (start_idx, end_idx) =
-                            (text::char::index_after_cursor(line_infos.clone(), cursor_start)
+                            (text::glyph::index_after_cursor(line_infos.clone(), cursor_start)
                                 .unwrap_or(0),
-                             text::char::index_after_cursor(line_infos.clone(), cursor_end)
+                             text::glyph::index_after_cursor(line_infos.clone(), cursor_end)
                                 .unwrap_or(0));
 
                         let new_cursor_char_idx = start_idx + string_char_count;
@@ -552,9 +568,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
                     };
 
                     // Calculate the new `line_infos` for the `new_text`.
-                    let new_line_infos: Vec<_> = 
-                        line_infos(&new_text, ui.glyph_cache(), font_size, line_wrap, rect.w())
-                            .collect();
+                    let new_line_infos: Vec<_> = {
+                        let font = ui.fonts.get(font_id).unwrap();
+                        line_infos(&new_text, font, font_size, line_wrap, rect.w()).collect()
+                    };
 
                     // Check that the new text would not exceed the `inner_rect` bounds.
                     let num_lines = new_line_infos.len();
@@ -591,8 +608,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                 };
                                 let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
                                 let infos = &state.line_infos;
-                                let cache = ui.glyph_cache();
-                                match closest_cursor_index_and_xy(abs_xy, text, infos, cache) {
+                                let font = ui.fonts.get(font_id).unwrap();
+                                match closest_cursor_index_and_xy(abs_xy, text, infos, font) {
                                     Some((end_cursor_idx, _)) =>
                                         cursor = Cursor::Selection {
                                             start: start_cursor_idx,
@@ -662,7 +679,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
             let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                x_align, y_align, line_spacing);
             let lines_with_rects = lines.zip(line_rects.clone());
-            let xys_per_line = text::cursor::xys_per_line(lines_with_rects, ui.glyph_cache(), font_size);
+            let font = ui.fonts.get(font_id).unwrap();
+            let xys_per_line = text::cursor::xys_per_line(lines_with_rects, font, font_size);
             text::cursor::xy_at(xys_per_line, cursor_idx)
                 .unwrap_or_else(|| {
                     let x = rect.left();
@@ -690,9 +708,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
                 let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                    x_align, y_align, line_spacing);
                 let lines_with_rects = lines.zip(line_rects.clone());
-                let cache = ui.glyph_cache();
-                text::line::selected_rects(lines_with_rects, cache, font_size, start, end)
-                    .collect()
+                let font = ui.fonts.get(font_id).unwrap();
+                text::line::selected_rects(lines_with_rects, font, font_size, start, end).collect()
             };
 
             // Draw a semi-transparent `Rectangle` for the selected range across each line.

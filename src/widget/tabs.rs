@@ -2,19 +2,18 @@ use {
     Backend,
     Button,
     Canvas,
-    CharacterCache,
     Color,
     Dimensions,
     FontSize,
-    GlyphCache,
     NodeIndex,
     Point,
     Rect,
     Scalar,
-    Theme,
     Widget,
 };
+use std;
 use super::canvas;
+use text;
 use utils;
 use widget;
 
@@ -53,23 +52,23 @@ pub const KIND: widget::Kind = "Tabs";
 /// The padding between the edge of the title bar and the title bar's label.
 const TAB_BAR_LABEL_PADDING: f64 = 4.0;
 
-/// The styling for Canvas Tabs.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Style {
-    /// The direction in which the tabs will be laid out.
-    pub maybe_layout: Option<Layout>,
-    /// The width of the tab bar.
-    ///
-    /// For horizontally laid out tabs, this is the height of the bar.
-    ///
-    /// For vertically laid out tabs, this is the width of the bar.
-    pub maybe_bar_width: Option<Scalar>,
-    /// The color of the tabs' labels.
-    pub maybe_label_color: Option<Color>,
-    /// The font size for the tabs' labels.
-    pub maybe_label_font_size: Option<FontSize>,
-    /// Styling for each of the canvasses passed to the Canvas.
-    pub canvas: canvas::Style,
+widget_style!{
+    KIND;
+    /// Unique styling for the `Tabs` widget.
+    style Style {
+        /// Layout for the tab selection bar.
+        - layout: Layout { Layout::Horizontal }
+        /// The thickness of the tab selection bar (width for vertical, height for horizontal).
+        - bar_thickness: Option<Scalar> { None }
+        /// Color of the number dialer's label.
+        - label_color: Color { theme.label_color }
+        /// Font size of the number dialer's label.
+        - label_font_size: FontSize { theme.font_size_medium }
+        /// The `font::Id` of the number dialer's font.
+        - font_id: Option<text::font::Id> { None }
+        /// The styling for each `Canvas`.
+        - canvas: canvas::Style { canvas::Style::new() }
+    }
 }
 
 /// The direction in which the tabs will be laid out.
@@ -110,26 +109,60 @@ impl<'a> Tabs<'a> {
 
     /// Layout the tabs horizontally.
     pub fn layout_horizontally(mut self) -> Self {
-        self.style.maybe_layout = Some(Layout::Horizontal);
+        self.style.layout = Some(Layout::Horizontal);
         self
     }
 
     /// Layout the tabs vertically.
     pub fn layout_vertically(mut self) -> Self {
-        self.style.maybe_layout = Some(Layout::Vertical);
+        self.style.layout = Some(Layout::Vertical);
+        self
+    }
+
+    /// Build the `Tabs` widget with the given styling for its `Canvas`ses.
+    pub fn canvas_style(mut self, style: canvas::Style) -> Self {
+        self.style.canvas = Some(style);
+        self
+    }
+
+    /// Map the `NumberDialer`'s `canvas::Style` to a new `canvas::Style`.
+    fn map_canvas_style<F>(mut self, map: F) -> Self
+        where F: FnOnce(canvas::Style) -> canvas::Style,
+    {
+        self.style.canvas = Some(map(self.style.canvas.clone().unwrap_or_else(canvas::Style::new)));
+        self
+    }
+
+    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    pub fn pad_left(self, pad: Scalar) -> Self {
+        self.map_canvas_style(|mut style| { style.pad_left = Some(pad); style })
+    }
+
+    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    pub fn pad_right(self, pad: Scalar) -> Self {
+        self.map_canvas_style(|mut style| { style.pad_right = Some(pad); style })
+    }
+
+    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    pub fn pad_bottom(self, pad: Scalar) -> Self {
+        self.map_canvas_style(|mut style| { style.pad_bottom = Some(pad); style })
+    }
+
+    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    pub fn pad_top(self, pad: Scalar) -> Self {
+        self.map_canvas_style(|mut style| { style.pad_top = Some(pad); style })
+    }
+
+    /// The width of a vertical `Tabs` selection bar, or the height of a horizontal one.
+    pub fn bar_thickness(mut self, thickness: Scalar) -> Self {
+        self.style.bar_thickness = Some(Some(thickness));
         self
     }
 
     builder_methods!{
-        pub bar_width { style.maybe_bar_width = Some(Scalar) }
         pub starting_tab_idx { maybe_starting_tab_idx = Some(usize) }
-        pub label_color { style.maybe_label_color = Some(Color) }
-        pub label_font_size { style.maybe_label_font_size = Some(FontSize) }
-        pub canvas_style { style.canvas = canvas::Style }
-        pub pad_left { style.canvas.pad_left = Some(Scalar) }
-        pub pad_right { style.canvas.pad_right = Some(Scalar) }
-        pub pad_bottom { style.canvas.pad_bottom = Some(Scalar) }
-        pub pad_top { style.canvas.pad_top = Some(Scalar) }
+        pub label_color { style.label_color = Some(Color) }
+        pub label_font_size { style.label_font_size = Some(FontSize) }
     }
 
 }
@@ -164,23 +197,29 @@ impl<'a> Widget for Tabs<'a> {
     }
 
     /// The area on which child widgets will be placed when using the `Place` Positionable methods.
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
-        let widget::KidAreaArgs { rect, style, theme, glyph_cache } = args;
-        let font_size = style.font_size(theme);
+    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> widget::KidArea {
+        let widget::KidAreaArgs { rect, style, theme, fonts } = args;
+        let font_size = style.label_font_size(theme);
+        let bar_thickness = style.bar_thickness(theme);
+        let canvas_style = style.canvas(theme);
         match style.layout(theme) {
             Layout::Horizontal => {
-                let tab_bar_h = horizontal_tab_bar_h(style.maybe_bar_width, font_size as Scalar);
+                let tab_bar_h = horizontal_tab_bar_h(bar_thickness, font_size as Scalar);
                 widget::KidArea {
                     rect: rect.pad_top(tab_bar_h),
-                    pad: style.canvas.padding(theme),
+                    pad: canvas_style.padding(theme),
                 }
             },
             Layout::Vertical => {
-                let max_text_width = max_text_width(self.tabs.iter(), font_size, glyph_cache);
-                let tab_bar_w = vertical_tab_bar_w(style.maybe_bar_width, max_text_width as Scalar);
+                let max_text_width = style.font_id(theme)
+                    .or(fonts.ids().next())
+                    .and_then(|id| fonts.get(id))
+                    .map(|font| max_text_width(self.tabs.iter(), font_size, font))
+                    .unwrap_or(0.0);
+                let tab_bar_w = vertical_tab_bar_w(bar_thickness, max_text_width as Scalar);
                 widget::KidArea {
                     rect: rect.pad_left(tab_bar_w),
-                    pad: style.canvas.padding(theme),
+                    pad: canvas_style.padding(theme),
                 }
             },
         }
@@ -190,16 +229,21 @@ impl<'a> Widget for Tabs<'a> {
     fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Tabs { tabs, maybe_starting_tab_idx, .. } = self;
-        let layout = style.layout(ui.theme());
-        let font_size = style.font_size(ui.theme());
-        let max_text_width = max_text_width(tabs.iter(), font_size, ui.glyph_cache());
+        let layout = style.layout(&ui.theme);
+        let font_size = style.label_font_size(&ui.theme);
+        let canvas_style = style.canvas(&ui.theme);
+        let max_text_width = style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+            .map(|font| max_text_width(self.tabs.iter(), font_size, font))
+            .unwrap_or(0.0);
 
         // Calculate the area of the tab bar.
         let font_height = font_size as Scalar;
-        let maybe_bar_width = style.maybe_bar_width;
+        let bar_thickness = style.bar_thickness(&ui.theme);
         let dim = rect.dim();
         let rel_tab_bar_rect =
-            rel_tab_bar_area(dim, layout, maybe_bar_width, font_height, max_text_width);
+            rel_tab_bar_area(dim, layout, bar_thickness, font_height, max_text_width);
 
         // Update the `tabs` **Vec** stored within our **State**, only if there have been changes.
         let tabs_have_changed = state.tabs.len() != tabs.len()
@@ -229,9 +273,9 @@ impl<'a> Widget for Tabs<'a> {
 
         // Instantiate the widgets associated with each Tab.
         let maybe_selected_tab_idx = {
-            let color = style.canvas.color(ui.theme());
-            let frame = style.canvas.frame(ui.theme());
-            let frame_color = style.canvas.frame_color(ui.theme());
+            let color = canvas_style.color(&ui.theme);
+            let frame = canvas_style.frame(&ui.theme);
+            let frame_color = canvas_style.frame_color(ui.theme());
             let label_color = style.label_color(ui.theme());
             let mut maybe_selected_tab_idx = state.maybe_selected_tab_idx
                 .or(maybe_starting_tab_idx)
@@ -271,7 +315,7 @@ impl<'a> Widget for Tabs<'a> {
 
             let &(child_id, _) = &tabs[selected_idx];
             Canvas::new()
-                .with_style(style.canvas)
+                .with_style(canvas_style)
                 .kid_area_wh_of(idx)
                 .middle_of(idx)
                 .parent(idx)
@@ -284,12 +328,11 @@ impl<'a> Widget for Tabs<'a> {
 
 
 /// Calculate the max text width yielded by a string in the tabs slice.
-fn max_text_width<'a, I, C>(tabs: I, font_size: FontSize, glyph_cache: &GlyphCache<C>) -> Scalar
+fn max_text_width<'a, I>(tabs: I, font_size: FontSize, font: &text::Font) -> Scalar
     where I: Iterator<Item=&'a (widget::Id, &'a str)>,
-          C: CharacterCache,
 {
     tabs.fold(0.0, |max_w, &(_, string)| {
-        let w = glyph_cache.width(font_size, &string);
+        let w = text::line::width(string, font, font_size);
         if w > max_w { w } else { max_w }
     })
 }
@@ -298,20 +341,20 @@ fn max_text_width<'a, I, C>(tabs: I, font_size: FontSize, glyph_cache: &GlyphCac
 /// Calculate the dimensions and position of the Tab Bar relative to the center of the widget.
 fn rel_tab_bar_area(dim: Dimensions,
                     layout: Layout,
-                    maybe_bar_width: Option<Scalar>,
+                    maybe_bar_thickness: Option<Scalar>,
                     font_size: f64,
                     max_text_width: f64) -> Rect
 {
     match layout {
         Layout::Horizontal => {
             let w = dim[0];
-            let h = horizontal_tab_bar_h(maybe_bar_width, font_size);
+            let h = horizontal_tab_bar_h(maybe_bar_thickness, font_size);
             let x = 0.0;
             let y = dim[1] / 2.0 - h / 2.0;
             Rect::from_xy_dim([x, y], [w, h])
         },
         Layout::Vertical => {
-            let w = vertical_tab_bar_w(maybe_bar_width, max_text_width);
+            let w = vertical_tab_bar_w(maybe_bar_thickness, max_text_width);
             let h = dim[1];
             let x = -dim[0] / 2.0 + w / 2.0;
             let y = 0.0;
@@ -321,13 +364,13 @@ fn rel_tab_bar_area(dim: Dimensions,
 }
 
 /// The height of a horizontally laid out tab bar area.
-fn horizontal_tab_bar_h(maybe_bar_width: Option<Scalar>, font_size: Scalar) -> Scalar {
-    maybe_bar_width.unwrap_or_else(|| font_size + TAB_BAR_LABEL_PADDING * 2.0)
+fn horizontal_tab_bar_h(maybe_bar_thickness: Option<Scalar>, font_size: Scalar) -> Scalar {
+    maybe_bar_thickness.unwrap_or_else(|| font_size + TAB_BAR_LABEL_PADDING * 2.0)
 }
 
 /// The width of a vertically laid out tab bar area.
-fn vertical_tab_bar_w(maybe_bar_width: Option<Scalar>, max_text_width: Scalar) -> Scalar {
-    maybe_bar_width.unwrap_or_else(|| max_text_width + TAB_BAR_LABEL_PADDING * 2.0)
+fn vertical_tab_bar_w(maybe_bar_thickness: Option<Scalar>, max_text_width: Scalar) -> Scalar {
+    maybe_bar_thickness.unwrap_or_else(|| max_text_width + TAB_BAR_LABEL_PADDING * 2.0)
 }
 
 fn tab_dim(num_tabs: usize, tab_bar_dim: Dimensions, layout: Layout) -> Dimensions {
@@ -341,65 +384,33 @@ fn tab_dim(num_tabs: usize, tab_bar_dim: Dimensions, layout: Layout) -> Dimensio
 }
 
 
-impl Style {
-
-    /// Construct the default `Tabs` style.
-    pub fn new() -> Style {
-        Style {
-            maybe_layout: None,
-            maybe_bar_width: None,
-            maybe_label_color: None,
-            maybe_label_font_size: None,
-            canvas: canvas::Style::new(),
-        }
-    }
-
-    /// Get the layout of the tabs for the `Tabs` widget.
-    pub fn layout(&self, theme: &Theme) -> Layout {
-        const DEFAULT_LAYOUT: Layout = Layout::Horizontal;
-        self.maybe_layout.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_layout.unwrap_or(DEFAULT_LAYOUT)
-        })).unwrap_or(DEFAULT_LAYOUT)
-    }
-
-    /// Get the color for the tab labels.
-    pub fn label_color(&self, theme: &Theme) -> Color {
-        self.maybe_label_color.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_color.unwrap_or(theme.label_color)
-        })).unwrap_or(theme.label_color)
-    }
-
-    /// Get the font size for the tab labels.
-    pub fn font_size(&self, theme: &Theme) -> FontSize {
-        self.maybe_label_font_size.or(theme.widget_style::<Self>(KIND).map(|default| {
-            default.style.maybe_label_font_size.unwrap_or(theme.font_size_medium)
-        })).unwrap_or(theme.font_size_medium)
-    }
-
-}
-
-
 impl<'a> ::color::Colorable for Tabs<'a> {
-    fn color(mut self, color: Color) -> Self {
-        self.style.canvas.color = Some(color);
-        self
+    fn color(self, color: Color) -> Self {
+        self.map_canvas_style(|mut style| {
+            style.color = Some(color);
+            style
+        })
     }
 }
 
 impl<'a> ::frame::Frameable for Tabs<'a> {
-    fn frame(mut self, width: f64) -> Self {
-        self.style.canvas.frame = Some(width);
-        self
+    fn frame(self, width: f64) -> Self {
+        self.map_canvas_style(|mut style| {
+            style.frame = Some(width);
+            style
+        })
     }
-    fn frame_color(mut self, color: Color) -> Self {
-        self.style.canvas.frame_color = Some(color);
-        self
+    fn frame_color(self, color: Color) -> Self {
+        self.map_canvas_style(|mut style| {
+            style.frame_color = Some(color);
+            style
+        })
     }
 }
 
 /// An iterator yielding the **Rect** for each Tab in the given list.
 pub struct TabRects<'a> {
-    tabs: ::std::slice::Iter<'a, (widget::Id, &'a str)>,
+    tabs: std::slice::Iter<'a, (widget::Id, &'a str)>,
     tab_dim: Dimensions,
     next_xy: Point,
     xy_step: Point,

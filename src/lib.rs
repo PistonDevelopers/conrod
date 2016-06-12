@@ -10,9 +10,9 @@
 
 extern crate daggy;
 extern crate num;
-
 extern crate graphics as piston_graphics;
 extern crate input as piston_input;
+extern crate rusttype;
 
 
 pub use widget::primitive::line::Line;
@@ -69,11 +69,11 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use backend::{Backend, CharacterCache, Graphics};
+pub use backend::{Backend, Graphics};
 pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
-pub use glyph_cache::GlyphCache;
+//pub use glyph_cache::GlyphCache;
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
@@ -98,7 +98,7 @@ mod background;
 pub mod color;
 pub mod event;
 mod frame;
-pub mod glyph_cache;
+//pub mod glyph_cache;
 pub mod graph;
 pub mod guide;
 pub mod input;

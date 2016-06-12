@@ -1,6 +1,5 @@
 use {
     Backend,
-    CharacterCache,
     Color,
     Colorable,
     FontSize,
@@ -136,7 +135,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         self.style.clone()
     }
 
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> KidArea {
         const LABEL_PADDING: Scalar = 10.0;
         KidArea {
             rect: args.rect,

@@ -1,7 +1,8 @@
-use {Backend, CharacterCache, Dimension, GlyphCache};
+use {Backend, Dimension};
 use graph::{self, NodeIndex};
 use position::{Align, Depth, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std;
+use text;
 use theme::{self, Theme};
 use ui::{self, Ui, UiCell};
 
@@ -88,7 +89,7 @@ pub struct IndexSlot {
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
 /// simplify the method signature.
-pub struct KidAreaArgs<'a, W, C: 'a>
+pub struct KidAreaArgs<'a, W>
     where W: Widget,
 {
     /// The **Rect** describing the **Widget**'s position and dimensions.
@@ -97,8 +98,8 @@ pub struct KidAreaArgs<'a, W, C: 'a>
     pub style: &'a W::Style,
     /// The active **Theme** within the **Ui**.
     pub theme: &'a Theme,
-    /// The **Ui**'s **GlyphCache** (for determining text width).
-    pub glyph_cache: &'a GlyphCache<C>,
+    /// The **Font** (for determining text width).
+    pub fonts: &'a text::font::Map,
 }
 
 /// The area upon which a **Widget**'s child widgets will be placed.
@@ -611,7 +612,7 @@ pub trait Widget: Sized {
     }
 
     /// The area on which child widgets will be placed when using the `Place` `Position` methods.
-    fn kid_area<C: CharacterCache>(&self, args: KidAreaArgs<Self, C>) -> KidArea {
+    fn kid_area(&self, args: KidAreaArgs<Self>) -> KidArea {
         KidArea {
             rect: args.rect,
             pad: Padding::none(),
@@ -947,11 +948,11 @@ fn set_widget<B, W>(widget: W, idx: Index, ui: &mut Ui<B>)
 
     // Retrieve the area upon which kid widgets will be placed.
     let kid_area = {
-        let args: KidAreaArgs<W, B::CharacterCache> = KidAreaArgs {
+        let args: KidAreaArgs<W> = KidAreaArgs {
             rect: rect,
             style: &new_style,
             theme: &ui.theme,
-            glyph_cache: &ui.glyph_cache,
+            fonts: &ui.fonts,
         };
         widget.kid_area(args)
     };

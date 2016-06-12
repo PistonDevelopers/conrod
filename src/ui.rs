@@ -1,14 +1,12 @@
-use Scalar;
 use backend::{self, Backend, ToRawEvent};
 use backend::graphics::{Context, Graphics};
 use color::Color;
 use event;
-use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
-use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
+use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
+use rusttype;
 use std;
-use std::collections::HashSet;
-use std::marker::PhantomData;
+use text;
 use theme::Theme;
 use utils;
 use widget::{self, Widget};
@@ -27,15 +25,17 @@ pub struct Ui<B>
     where B: Backend,
 {
     /// The backend used by the `Ui`, providing the `Graphics` and `CharacterCache` types.
-    backend: PhantomData<B>,
+    backend: std::marker::PhantomData<B>,
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
-    /// Cache for character textures, used for label width calculation and glyph rendering.
-    pub glyph_cache: GlyphCache<B::CharacterCache>,
     /// An index into the root widget of the graph, representing the entire window.
     pub window: NodeIndex,
     /// Handles aggregation of events and providing them to Widgets
     pub global_input: input::Global,
+    /// Manages all fonts that have been loaded by the user.
+    pub fonts: text::font::Map,
+    /// A cache to use for rendering glyphs.
+    glyph_cache: rusttype::gpu_cache::Cache,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The widget::Index of the widget that was last updated/set.
@@ -52,12 +52,12 @@ pub struct Ui<B>
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
     /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
-    updated_widgets: HashSet<NodeIndex>,
+    updated_widgets: std::collections::HashSet<NodeIndex>,
     /// The `updated_widgets` for the previous `set_widgets` stage.
     ///
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
-    prev_updated_widgets: HashSet<NodeIndex>,
+    prev_updated_widgets: std::collections::HashSet<NodeIndex>,
     /// Scroll events that have been emitted during a call to `Ui::set_widgets`. These are usually
     /// emitted by some widget like the `Scrollbar`.
     ///
@@ -103,39 +103,38 @@ impl<B> Ui<B>
 {
 
     /// A new, empty **Ui**.
-    pub fn new(character_cache: B::CharacterCache, theme: Theme) -> Self {
+    pub fn new(theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
-        let updated_widgets = HashSet::new();
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        let updated_widgets = std::collections::HashSet::new();
+        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
-    pub fn with_capacity(character_cache: B::CharacterCache,
-                         theme: Theme,
-                         n_widgets: usize) -> Self
-    {
+    pub fn with_capacity(theme: Theme, n_widgets: usize) -> Self {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
-        let updated_widgets = HashSet::with_capacity(n_widgets);
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        let updated_widgets = std::collections::HashSet::with_capacity(n_widgets);
+        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
-    fn new_internal(character_cache: B::CharacterCache,
-                    theme: Theme,
+    fn new_internal(theme: Theme,
                     mut widget_graph: Graph,
                     depth_order: graph::DepthOrder,
-                    updated_widgets: HashSet<NodeIndex>) -> Self
+                    updated_widgets: std::collections::HashSet<NodeIndex>) -> Self
     {
+        use rusttype::gpu_cache::Cache;
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
+        let cache = new_glyph_cache(0, 0);
         Ui {
-            backend: PhantomData,
+            backend: std::marker::PhantomData,
             widget_graph: widget_graph,
             theme: theme,
+            fonts: text::font::Map::new(),
+            glyph_cache: cache,
             window: window,
-            glyph_cache: GlyphCache::new(character_cache),
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_widget_idx: None,
@@ -226,7 +225,7 @@ impl<B> Ui<B>
     ///
     /// This set indicates which widgets have been instantiated since the beginning of the most
     /// recent `Ui::set_widgets` call.
-    pub fn updated_widgets(&self) -> &HashSet<NodeIndex> {
+    pub fn updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
         &self.updated_widgets
     }
 
@@ -234,7 +233,7 @@ impl<B> Ui<B>
     ///
     /// This set indicates which widgets have were instantiated during the previous call to
     /// `Ui::set_widgets`.
-    pub fn prev_updated_widgets(&self) -> &HashSet<NodeIndex> {
+    pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
         &self.prev_updated_widgets
     }
 
@@ -350,6 +349,12 @@ impl<B> Ui<B>
             backend::event::Event::Render(args) => {
                 let (w, h) = (args.width as Scalar, args.height as Scalar);
                 if self.win_w != w || self.win_h != h {
+
+                    // If either dimension is greater, re-make the glyph cache.
+                    if w > self.win_w || h > self.win_h {
+                        self.glyph_cache = new_glyph_cache(w as u32, h as u32);
+                    }
+
                     self.win_w = w;
                     self.win_h = h;
                     track_widget_under_mouse_and_update_capturing(self);
@@ -566,12 +571,17 @@ impl<B> Ui<B>
                     Input::Resize(w, h) => {
 
                         // Create a `WindowResized` event.
-                        let dim = [w as Scalar, h as Scalar];
-                        let window_resized = event::Ui::WindowResized(dim).into();
+                        let (w, h) = (w as Scalar, h as Scalar);
+                        let window_resized = event::Ui::WindowResized([w, h]).into();
                         self.global_input.push_event(window_resized);
 
-                        self.win_w = w as Scalar;
-                        self.win_h = h as Scalar;
+                        // If either dimension is greater, re-make the glyph cache.
+                        if w > self.win_w || h > self.win_h {
+                            self.glyph_cache = new_glyph_cache(w as u32, h as u32);
+                        }
+
+                        self.win_w = w;
+                        self.win_h = h;
                         self.needs_redraw();
                     },
 
@@ -974,7 +984,6 @@ impl<B> Ui<B>
         where G: Graphics<Texture=B::Texture>,
     {
         use backend::graphics::{draw_from_graph, Transformed};
-        use std::ops::{Deref, DerefMut};
 
         let Ui {
             ref mut glyph_cache,
@@ -988,15 +997,11 @@ impl<B> Ui<B>
         let view_size = context.get_view_size();
         let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
-        // Retrieve the `CharacterCache` from the `Ui`'s `GlyphCache`.
-        let mut ref_mut_character_cache = glyph_cache.deref().borrow_mut();
-        let character_cache = ref_mut_character_cache.deref_mut();
-
         // Use the depth_order indices as the order for drawing.
         let indices = &depth_order.indices;
 
         // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph::<B, G>(context, graphics, character_cache, widget_graph, indices, theme);
+        draw_from_graph::<B, G>(context, graphics, glyph_cache, widget_graph, indices, theme);
 
         // Because we just drew everything, take one from the redraw count.
         if *redraw_count > 0 {
@@ -1054,8 +1059,10 @@ impl<'a, B> UiCell<'a, B>
     /// A reference to the `Theme` that is currently active within the `Ui`.
     pub fn theme(&self) -> &Theme { &self.ui.theme }
 
-    /// A reference to the `Ui`'s `GlyphCache`.
-    pub fn glyph_cache(&self) -> &GlyphCache<B::CharacterCache> { &self.ui.glyph_cache }
+    /// A convenience method for borrowing the `Font` for the given `Id` if it exists.
+    pub fn font(&self, id: text::font::Id) -> Option<&text::Font> {
+        self.ui.fonts.get(id)
+    }
 
     /// Returns the dimensions of the window
     pub fn window_dim(&self) -> Dimensions {
@@ -1132,6 +1139,13 @@ impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
     fn as_ref(&self) -> &Ui<B> {
         &self.ui
     }
+}
+
+/// Construct a new RustType GPU cache with the given dimensions.
+fn new_glyph_cache(w: u32, h: u32) -> rusttype::gpu_cache::Cache {
+    const POSITION_TOLERANCE: f32 = 0.1;
+    const SCALE_TOLERANCE: f32 = 0.1;
+    rusttype::gpu_cache::Cache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE)
 }
 
 /// A private constructor for the `UiCell` for internal use.

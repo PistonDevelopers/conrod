@@ -47,6 +47,8 @@ widget_style!{
         - line_spacing: Scalar { 1.0 }
         /// Alignment of the text along the *x* axis.
         - text_align: Align { Align::Start }
+        /// The id of the font to use for rendring and layout.
+        - font_id: Option<text::font::Id> { theme.font_id }
         // /// The typeface with which the Text is rendered.
         // - typeface: Path,
         // /// The line styling for the text.
@@ -170,19 +172,42 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// If no specific width was given, we'll use the width of the widest line as a default.
+    ///
+    /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
+    /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
     fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+        let font = match self.style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+        {
+            Some(font) => font,
+            None => return Dimension::Absolute(0.0),
+        };
+
         let font_size = self.style.font_size(&ui.theme);
         let mut max_width = 0.0;
         for line in self.text.lines() {
-            let width = ui.glyph_cache.width(font_size, line);
+            let width = text::line::width(line, font, font_size);
             max_width = utils::partial_max(max_width, width);
         }
         Dimension::Absolute(max_width)
     }
 
     /// If no specific height was given, we'll use the total height of the text as a default.
+    ///
+    /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
+    /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
     fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         use position::Sizeable;
+
+        let font = match self.style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+        {
+            Some(font) => font,
+            None => return Dimension::Absolute(0.0),
+        };
+
         let text = &self.text;
         let font_size = self.style.font_size(&ui.theme);
         let num_lines = match self.style.maybe_wrap(&ui.theme) {
@@ -191,11 +216,11 @@ impl<'a> Widget for Text<'a> {
                 None => text.lines().count(),
                 Some(max_w) => match wrap {
                     Wrap::Character =>
-                        text::line::infos(text, &ui.glyph_cache, font_size)
+                        text::line::infos(text, font, font_size)
                             .wrap_by_character(max_w)
                             .count(),
                     Wrap::Whitespace =>
-                        text::line::infos(text, &ui.glyph_cache, font_size)
+                        text::line::infos(text, font, font_size)
                             .wrap_by_whitespace(max_w)
                             .count(),
                 },
@@ -214,14 +239,22 @@ impl<'a> Widget for Text<'a> {
         let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_size = style.font_size(ui.theme());
 
+        let font = match self.style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+        {
+            Some(font) => font,
+            None => return,
+        };
+
         // Produces an iterator yielding info for each line within the `text`.
         let new_line_infos = || match maybe_wrap {
             None =>
-                text::line::infos(text, ui.glyph_cache(), font_size),
+                text::line::infos(text, font, font_size),
             Some(Wrap::Character) =>
-                text::line::infos(text, ui.glyph_cache(), font_size).wrap_by_character(rect.w()),
+                text::line::infos(text, font, font_size).wrap_by_character(rect.w()),
             Some(Wrap::Whitespace) =>
-                text::line::infos(text, ui.glyph_cache(), font_size).wrap_by_whitespace(rect.w()),
+                text::line::infos(text, font, font_size).wrap_by_whitespace(rect.w()),
         };
 
         // If the string is different, we must update both the string and the line breaks.

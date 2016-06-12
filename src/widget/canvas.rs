@@ -1,7 +1,6 @@
 use {
     Align,
     Backend,
-    CharacterCache,
     Color,
     Colorable,
     Dimensions,
@@ -266,7 +265,7 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// The area of the widget below the title bar, upon which child widgets will be placed.
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, .. } = args;
         if self.maybe_title_bar_label.is_some() {
             let font_size = style.title_bar_font_size(theme);

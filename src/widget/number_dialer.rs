@@ -19,6 +19,7 @@ use num::{Float, NumCast};
 use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
+use text;
 use utils::clamp;
 use widget;
 
@@ -61,6 +62,8 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// The font size for the NumberDialer's label.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The `Id` associated with the font to use for the `NumberDialer` values.
+        - font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -196,9 +199,25 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let rel_rect = rect.relative_to(rect.xy());
         let frame = style.frame(ui.theme());
         let inner_rel_rect = rel_rect.pad(frame);
+
+        // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
+        //
+        // If we've no font to use for text logic, bail out without updating.
+        let font_id = match style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id).map(|_| id))
+        {
+            Some(font_id) => font_id,
+            None => return,
+        };
+
         let font_size = style.label_font_size(ui.theme());
         let label_string = maybe_label.map_or_else(|| String::new(), |text| format!("{}: ", text));
-        let label_dim = [ui.glyph_cache().width(font_size, &label_string), font_size as f64];
+        let label_w = {
+            let font = ui.fonts.get(font_id).unwrap();
+            text::line::width(&label_string, font, font_size)
+        };
+        let label_dim = [label_w, font_size as f64];
         let precision_len = if precision == 0 { 0 } else { precision as usize + 1 };
         let val_string_len = max.to_string().len() + precision_len;
         let val_string = create_val_string(value, val_string_len, precision);

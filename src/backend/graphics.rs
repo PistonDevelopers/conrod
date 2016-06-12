@@ -2,9 +2,8 @@
 //!
 //! **Note:** Conrod currently uses Piston's generic [graphics
 //! crate](https://github.com/PistonDevelopers/graphics) (and specifically the
-//! [**Graphics**](http://docs.piston.rs/graphics/graphics/trait.Graphics.html)) and
-//! [**CharacterCache**](http://docs.piston.rs/graphics/graphics/character/trait.CharacterCache.html)
-//! traits to enable genericity over custom user backends. This dependency may change in the near
+//! [**Graphics**](http://docs.piston.rs/graphics/graphics/trait.Graphics.html))
+//! trait to enable genericity over custom user backends. This dependency may change in the near
 //! future in favour of a simplified conrod-specific graphics and character caching backend trait.
 //!
 //! This is the only module in which the piston graphics crate will be used directly.
@@ -13,6 +12,7 @@
 use {Backend, Color, Point, Rect, Scalar};
 use graph::{self, Container, Graph, NodeIndex};
 use piston_graphics;
+use rusttype;
 use std::any::Any;
 use std::iter::once;
 use theme::Theme;
@@ -20,14 +20,13 @@ use widget::primitive;
 
 #[doc(inline)]
 pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
-#[doc(inline)]
-pub use piston_graphics::character::{Character, CharacterCache};
 
 
-/// Draw the given **Graph** using the given **CharacterCache** and **Graphics** backends.
+
+/// Draw the given **Graph** using the given **Graphics** backend.
 pub fn draw_from_graph<B, G>(context: Context,
                              graphics: &mut G,
-                             character_cache: &mut B::CharacterCache,
+                             glyph_cache: &mut rusttype::gpu_cache::Cache,
                              graph: &Graph,
                              depth_order: &[NodeIndex],
                              theme: &Theme)
@@ -79,7 +78,7 @@ pub fn draw_from_graph<B, G>(context: Context,
 
             // Draw the widget, but only if it would actually be visible on the window.
             if is_visible(idx, container) {
-                draw_from_container::<B, G>(&context, graphics, character_cache, container, theme);
+                draw_from_container::<B, G>(&context, graphics, glyph_cache, container, theme);
             }
 
             // If the current widget should crop its children, we need to add a context for it to
@@ -173,10 +172,10 @@ fn crop_context(context: Context, rect: Rect) -> Context {
 
 
 
-/// Use the given **CharacterCache** and **Graphics** backends to draw the given widget.
+/// Use the given **Graphics** backends to draw the given widget.
 pub fn draw_from_container<B, G>(context: &Context,
                                  graphics: &mut G,
-                                 character_cache: &mut B::CharacterCache,
+                                 glyph_cache: &mut rusttype::gpu_cache::Cache,
                                  container: &Container,
                                  theme: &Theme)
     where B: Backend,
@@ -303,15 +302,15 @@ pub fn draw_from_container<B, G>(context: &Context,
                 let line_rects =
                     text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
 
-                for (line, line_rect) in lines.zip(line_rects) {
-                    let offset = [line_rect.left().round(), line_rect.bottom().round()];
-                    let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
-                    let transform = context.transform;
-                    let draw_state = &context.draw_state;
-                    piston_graphics::text::Text::new_color(color, font_size)
-                        .round()
-                        .draw(line, character_cache, draw_state, transform, graphics);
-                }
+                // for (line, line_rect) in lines.zip(line_rects) {
+                //     let offset = [line_rect.left().round(), line_rect.bottom().round()];
+                //     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
+                //     let transform = context.transform;
+                //     let draw_state = &context.draw_state;
+                //     piston_graphics::text::Text::new_color(color, font_size)
+                //         .round()
+                //         .draw(line, character_cache, draw_state, transform, graphics);
+                // }
             }
         },
 
