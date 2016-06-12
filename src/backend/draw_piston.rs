@@ -9,7 +9,7 @@ pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 
 
 /// Render the given sequence of conrod primitive widgets.
-pub fn draw_primitives<G>(mut primitives: render::Primitives, context: Context, graphics: &mut G)
+pub fn primitives<G>(mut primitives: render::Primitives, context: Context, graphics: &mut G)
     where G: Graphics,
 {
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointint upwards).

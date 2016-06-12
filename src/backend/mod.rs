@@ -9,10 +9,8 @@
 
 use std;
 
-pub use self::event::{RawEvent, ToRawEvent};
-
-pub mod event;
-pub mod piston;
+pub mod draw_piston;
+pub mod event_piston;
 
 /// A trait to be implemented by all backends to conrod.
 ///

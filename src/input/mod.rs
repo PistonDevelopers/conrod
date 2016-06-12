@@ -26,7 +26,10 @@ pub use self::state::State;
 pub use self::global::Global;
 pub use self::widget::Widget;
 
-pub use backend::event::{
+#[doc(inline)]
+pub use piston_input::keyboard::ModifierKey;
+#[doc(inline)]
+pub use piston_input::{
     Button,
     ControllerButton,
     ControllerAxisArgs,

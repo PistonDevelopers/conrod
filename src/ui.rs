@@ -1,4 +1,4 @@
-use backend::{self, Backend, ToRawEvent};
+use backend::{self, Backend};
 use color::Color;
 use event;
 use graph::{self, Graph, NodeIndex};
@@ -272,10 +272,9 @@ impl<B> Ui<B>
     ///
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
-    pub fn handle_event<E>(&mut self, event: E)
-        where E: ToRawEvent,
-    {
-        use backend::event::{Input, Motion, Key, ModifierKey, RawEvent};
+    pub fn handle_event<E: Into<event::Raw>>(&mut self, event: E) {
+        use event::{Input, Motion, RawEvent};
+        use input::{Key, ModifierKey};
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
         // `input::Global`'s `input::State`.
@@ -324,7 +323,7 @@ impl<B> Ui<B>
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use backend::event::keyboard::{CTRL, SHIFT, ALT, GUI};
+            use input::keyboard::{CTRL, SHIFT, ALT, GUI};
             match key {
                 Key::LCtrl | Key::RCtrl => Some(CTRL),
                 Key::LShift | Key::RShift => Some(SHIFT),
@@ -335,10 +334,7 @@ impl<B> Ui<B>
         }
 
         // Convert the user given event to a `RawEvent` or return early if we cannot.
-        let event: RawEvent = match event.to_raw_event(self.win_w, self.win_h) {
-            Some(event) => event,
-            None => return,
-        };
+        let event: event::Raw = event.into();
 
         match event {
 
@@ -346,7 +342,7 @@ impl<B> Ui<B>
             //
             // This event is also the first time that we receive the proper dimensions of the
             // window (when the `Ui` is created, the dimensions are set to `0`).
-            backend::event::Event::Render(args) => {
+            event::RawEvent::Render(args) => {
                 let (w, h) = (args.width as Scalar, args.height as Scalar);
                 if self.win_w != w || self.win_h != h {
 
@@ -367,7 +363,7 @@ impl<B> Ui<B>
             // interpret higher level events such as `Click` or `Drag`.
             //
             // Finally, we also ensure that the `current_state` is up-to-date.
-            backend::event::Event::Input(input_event) => {
+            event::RawEvent::Input(input_event) => {
                 use event;
                 use input::Button;
                 use input::state::mouse::Button as MouseButton;
