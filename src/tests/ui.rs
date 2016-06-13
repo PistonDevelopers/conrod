@@ -1,16 +1,15 @@
 use {
     Theme,
     Canvas,
-    CharacterCache,
     Color,
     FontSize,
     Labelable,
     Positionable,
     Colorable,
     Sizeable,
-    Widget
+    Widget,
+    Ui,
 };
-use backend::graphics::{Character, ImageSize};
 use event::{self, Input, Motion};
 use input::{self, Button, Key, MouseButton};
 use input::keyboard::ModifierKey;
@@ -22,7 +21,6 @@ use position::Point;
 ///// Test assist code.
 
 
-type Ui = ::Ui<MockBackend>;
 
 fn left_click_mouse(ui: &mut Ui) {
     press_mouse_button(MouseButton::Left, ui);
@@ -71,55 +69,7 @@ fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
 
 fn windowless_ui() -> Ui {
     let theme = Theme::default();
-    let cc = MockCharacterCache::new();
-    Ui::new(cc, theme)
-}
-
-#[derive(Copy, Clone)]
-struct MockBackend;
-
-impl ::Backend for MockBackend {
-    type Texture = MockImageSize;
-    type CharacterCache = MockCharacterCache;
-}
-
-#[derive(Clone)]
-struct MockImageSize {
-    w: u32,
-    h: u32,
-}
-
-impl ImageSize for MockImageSize {
-    fn get_size(&self) -> (u32, u32) {
-        (self.w, self.h)
-    }
-}
-
-#[derive(Clone)]
-struct MockCharacterCache{
-    my_char: Character<'static, MockImageSize>
-}
-
-impl MockCharacterCache {
-    fn new() -> MockCharacterCache {
-        const MOCK_IMAGE_SIZE: &'static MockImageSize = &MockImageSize{ w: 14, h: 22 };
-        MockCharacterCache {
-            my_char: Character{
-                offset: [0.0, 0.0],
-                size: [14.0, 22.0],
-                texture: MOCK_IMAGE_SIZE,
-            }
-        }
-    }
-}
-
-impl CharacterCache for MockCharacterCache {
-    type Texture = MockImageSize;
-
-    fn character(&mut self, _font_size: FontSize, _ch: char) -> Character<'static, MockImageSize> {
-        self.my_char.clone()
-    }
-
+    Ui::new(theme)
 }
 
 

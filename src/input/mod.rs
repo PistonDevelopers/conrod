@@ -36,4 +36,6 @@ pub use piston_input::{
     keyboard,
     Key,
     MouseButton,
+    Touch,
+    TouchArgs,
 };

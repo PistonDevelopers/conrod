@@ -22,18 +22,7 @@ pub struct Oval {
 
 /// Unique state for the **Oval**.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct State {
-    kind: Kind,
-}
-
-/// Whether the **Oval** is drawn as an **Outline** or **Fill**ed with a color.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Kind {
-    /// Only the **Outline** of the **Oval** is drawn.
-    Outline,
-    /// The **Oval**'s area is **Fill**ed with some color.
-    Fill,
-}
+pub struct State;
 
 /// Unique Kind for the Widget.
 pub const KIND: widget::Kind = "Oval";
@@ -89,27 +78,15 @@ impl Widget for Oval {
     }
 
     fn init_state(&self) -> State {
-        State {
-            kind: Kind::Fill,
-        }
+        State
     }
 
     fn style(&self) -> Style {
         self.style.clone()
     }
 
-    /// Update the state of the Oval.
-    fn update(self, args: widget::UpdateArgs<Self>) {
-        let widget::UpdateArgs { state, style, .. } = args;
-
-        let kind = match *style {
-            Style::Fill(_) => Kind::Fill,
-            Style::Outline(_) => Kind::Outline,
-        };
-
-        if state.kind != kind {
-            state.update(|state| state.kind = kind);
-        }
+    fn update(self, _args: widget::UpdateArgs<Self>) {
+        // Nothing to be updated here.
     }
 
 }

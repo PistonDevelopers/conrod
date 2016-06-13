@@ -9,11 +9,8 @@
 //! This is the only module in which the piston graphics crate will be used directly.
 
 
-use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
-use graph::{self, Container, Graph, NodeIndex};
-use rusttype;
-use std::any::Any;
-use std::iter::once;
+use {Align, Color, Dimensions, Point, Rect, Scalar};
+use graph::{self, Graph, NodeIndex};
 use std;
 use text;
 use texture;
@@ -58,6 +55,7 @@ pub enum PrimitiveKind<'a> {
     /// `Rectangle` widget produces a single `Rectangle`. The `FramedRectangle` produces two
     /// `Rectangle`s, the first for the outer frame and the second for the inner on top.
     Rectangle {
+        /// The fill colour for the rectangle. 
         color: Color
     },
 
@@ -65,7 +63,11 @@ pub enum PrimitiveKind<'a> {
     ///
     /// These are produced by the `Oval` and `Polygon` primitive widgets.
     Polygon {
+        /// The fill colour for the inner part of the polygon
         color: Color,
+        /// The ordered points that, when joined with lines, represent each side of the `Polygon`.
+        ///
+        /// The first and final points should always be the same.
         points: &'a [Point],
     },
 
@@ -74,33 +76,47 @@ pub enum PrimitiveKind<'a> {
     /// These are produces via the `Line` and `PointPath` primitive widgets, or the `shape`
     /// primitives if they are instantiated with an `Outline` style.
     Lines {
+        /// The colour of each `Line`.
         color: Color,
+        /// Whether the end of the lines should be `Flat` or `Round`.
         cap: primitive::line::Cap,
+        /// The thickness of the lines, i.e. the width of a vertical line or th height of a
+        /// horizontal line.
         thickness: Scalar,
+        /// The ordered points which should be joined by lines.
         points: &'a [Point],
     },
 
     /// A single `Image`, produced by the primitive `Image` widget.
     Image {
+        /// The unique identifier for the texture used by the `Image`.
+        ///
+        /// This is normally produced by a `conrod::texture::Map` instance.
         texture_id: texture::Id,
+        /// When `Some`, colours the `Image`. When `None`, the `Image` uses its regular colours.
         maybe_color: Option<Color>,
+        /// The area of the texture that will be drawn to the `Image`'s `Rect`.
         source_rect: Option<Rect>,
     },
 
     /// A single block of `Text`, produced by the primitive `Text` widget.
     Text {
+        /// The colour of the `Text`.
         color: Color,
+        /// The RustType GPU cache, used for caching `PositionedGlyph` within some texture in GPU
+        /// memory.
+        ///
+        /// The `positioned_glyphs` will be queued for caching within the `glyph_cache` just prior
+        /// to being passed to the user `draw_primitive` function.
         glyph_cache: &'a mut text::GlyphCache,
+        /// All glyphs within the `Text` laid out in their correct positions in order from top-left
+        /// to bottom right.
         positioned_glyphs: &'a [text::PositionedGlyph],
+        /// The unique identifier for the font, used for the `glyph_cache.rect_for(id, glyph)`
+        /// method.
         font_id: text::font::Id,
     },
 
-}
-
-/// An iterator yielding vertices for each `Primitive` widget.
-pub struct Vertices<'a> {
-    primitives: Primitives<'a>,
-    vertices: Vec<Point>,
 }
 
 
@@ -138,6 +154,11 @@ impl<'a> Primitives<'a> {
 
 
 impl<'a> Primitives<'a> {
+
+    /// Call the given `draw_primitivese` function with all `Primitive`s that make up the `Ui` in
+    /// its current state.
+    ///
+    /// `Primitive`s are yielded in order of depth, bottom to top.
     pub fn draw<F>(&mut self, mut draw_primitive: F)
         where F: FnMut(Primitive),
     {
@@ -253,7 +274,7 @@ impl<'a> Primitives<'a> {
                 primitive::shape::oval::KIND => {
                     if let Some(oval) = container.unique_widget_state::<::Oval>() {
                         use std::f64::consts::PI;
-                        let graph::UniqueWidgetState { ref state, ref style } = *oval;
+                        let graph::UniqueWidgetState { ref style, .. } = *oval;
 
                         let (x, y, w, h) = rect.x_y_w_h();
                         let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;

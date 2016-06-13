@@ -115,7 +115,6 @@ impl Ui {
                     depth_order: graph::DepthOrder,
                     updated_widgets: std::collections::HashSet<NodeIndex>) -> Self
     {
-        use rusttype::gpu_cache::Cache;
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
         let cache = new_glyph_cache(0, 0);

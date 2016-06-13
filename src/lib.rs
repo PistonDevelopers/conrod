@@ -10,7 +10,6 @@
 
 extern crate daggy;
 extern crate num;
-extern crate graphics as piston_graphics;
 extern crate input as piston_input;
 extern crate rusttype;
 

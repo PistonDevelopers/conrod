@@ -15,8 +15,11 @@ pub use rusttype::{
 };
 pub use rusttype::gpu_cache::Cache as GlyphCache;
 
+/// The RustType `FontCollection` type used by conrod.
 pub type FontCollection = ::rusttype::FontCollection<'static>;
+/// The RustType `Font` type used by conrod.
 pub type Font = ::rusttype::Font<'static>;
+/// The RustType `PositionedGlyph` type used by conrod.
 pub type PositionedGlyph = ::rusttype::PositionedGlyph<'static>;
 
 /// An iterator yielding each line within the given `text` as a new `&str`, where the start and end
@@ -107,7 +110,9 @@ pub mod font {
     /// Returned when loading new fonts from file or bytes.
     #[derive(Debug)]
     pub enum Error {
+        /// Some error occurred while loading a `FontCollection` from a file.
         IO(std::io::Error),
+        /// No `Font`s could be yielded from the `FontCollection`.
         NoFont,
     }
 
@@ -438,7 +443,6 @@ pub mod glyph {
 /// Logic related to the positioning of the cursor within text.
 pub mod cursor {
     use {FontSize, Range, Rect, Scalar};
-    use std;
 
     /// Every possible cursor position within each line of text yielded by the given iterator.
     ///
