@@ -8,5 +8,6 @@
 //! Those prefixed with `draw` contain functions for rendering conrod's `Primitives` iterator to
 //! to some graphics backend.
 
-pub mod draw_piston;
-pub mod event_piston;
+#[cfg(feature="draw_piston")] pub mod draw_piston;
+#[cfg(feature="event_glutin")] pub mod event_glutin;
+#[cfg(feature="event_piston")] pub mod event_piston;
