@@ -1,16 +1,35 @@
 //! A piston backend for rendering conrod primitives.
 
+extern crate graphics as piston_graphics;
+
 use Rect;
-use piston_graphics;
 use render;
+use text;
+use texture;
 
 #[doc(inline)]
 pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 
 
+/// A texture and function for caching font glyphs.
+///
+/// The texture_cache will then also be used for rendering the glyphs to the screen.
+pub struct TextRenderer<'a, T: 'a, F> {
+    pub texture_cache: &'a mut T,
+    pub cache_queued_glyphs: F,
+}
+
+
 /// Render the given sequence of conrod primitive widgets.
-pub fn primitives<G>(mut primitives: render::Primitives, context: Context, graphics: &mut G)
-    where G: Graphics,
+pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
+                                    context: Context,
+                                    graphics: &'a mut G,
+                                    mut text_renderer: TextRenderer<'a, T, FC>,
+                                    mut get_texture: FT)
+    where G: Graphics<Texture=T>,
+          T: ImageSize + 'a,
+          FC: FnMut(&mut T, text::RtRect<u32>, &[u8]),
+          FT: FnMut(texture::Id) -> Option<&'a T>,
 {
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointint upwards).
     let view_size = context.get_view_size();
@@ -53,40 +72,61 @@ pub fn primitives<G>(mut primitives: render::Primitives, context: Context, graph
                 }
             },
 
-            render::PrimitiveKind::Text {
-                color, text, line_infos, font_size, line_spacing, x_align, y_align
-            } => {
-                use text;
-                let line_infos = line_infos.iter().cloned();
-                let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
-                let line_rects =
-                    text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
-                for (line, line_rect) in lines.zip(line_rects) {
-                    let offset = [line_rect.left().round(), line_rect.bottom().round()];
-                    let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
-                    let transform = context.transform;
-                    let draw_state = &context.draw_state;
-                    // piston_graphics::text::Text::new_color(color, font_size)
-                    //     .round()
-                    //     .draw(line, character_cache, draw_state, transform, graphics);
+            // render::PrimitiveKind::Text {
+            //     color, text, line_infos, font_size, font, line_spacing, x_align, y_align
+            // } => {
+            render::PrimitiveKind::Text { color, glyph_cache, positioned_glyphs, font_id } => {
+                let TextRenderer { ref mut texture_cache, ref mut cache_queued_glyphs } = text_renderer;
+                glyph_cache.cache_queued(|rect, data| cache_queued_glyphs(texture_cache, rect, data));
+                let cache_id = font_id.index();
+                for g in positioned_glyphs {
+                    if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
+                        // TODO: We should be writing straight to a vertex buffer rather than
+                        // instantiating an `Image` and making GL calls every single glyph.
+                        let mut image = piston_graphics::image::Image::new_color(color.to_fsa());
+                        image.source_rectangle = {
+                            let x = uv_rect.min.x as i32;
+                            let y = uv_rect.min.y as i32;
+                            let w = (uv_rect.max.x - uv_rect.min.x) as i32;
+                            let h = (uv_rect.max.y - uv_rect.min.y) as i32;
+                            Some([x, y, w, h])
+                        };
+                        image.draw(*texture_cache, &context.draw_state, context.transform, graphics);
+                    }
                 }
-            },
 
-            render::PrimitiveKind::Image { texture_index, source_rect } => {
-                // if let Some(texture) = state.texture.as_ref() {
-                //     let mut image = piston_graphics::image::Image::new();
-                //     image.color = style.maybe_color.and_then(|c| c.map(|c| c.to_fsa()));
-                //     image.source_rectangle = Some({
-                //         let (x, y, w, h) = texture.src_rect.x_y_w_h();
-                //         [x as i32, y as i32, w as i32, h as i32]
-                //     });
-                //     let (left, top, w, h) = rect.l_t_w_h();
-                //     image.rectangle = Some([0.0, 0.0, w, h]);
-                //     let context = context.trans(left, top).scale(1.0, -1.0);
+                // use text;
+                // let line_infos = line_infos.iter().cloned();
+                // let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
+                // let line_rects =
+                //     text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
+                // for (line, line_rect) in lines.zip(line_rects) {
+                //     let offset = [line_rect.left().round(), line_rect.bottom().round()];
+                //     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
                 //     let transform = context.transform;
                 //     let draw_state = &context.draw_state;
-                //     image.draw(texture.arc.as_ref(), draw_state, transform, graphics);
+                //     // piston_graphics::text::Text::new_color(color, font_size)
+                //     //     .round()
+                //     //     .draw(line, character_cache, draw_state, transform, graphics);
                 // }
+
+            },
+
+            render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
+                if let Some(texture) = get_texture(texture_id) {
+                    let mut image = piston_graphics::image::Image::new();
+                    image.color = maybe_color.map(|c| c.to_fsa());
+                    if let Some(source_rect) = source_rect {
+                        let (x, y, w, h) = source_rect.x_y_w_h();
+                        image.source_rectangle = Some([x as i32, y as i32, w as i32, h as i32]);
+                    }
+                    let (left, top, w, h) = rect.l_t_w_h();
+                    image.rectangle = Some([0.0, 0.0, w, h]);
+                    let context = context.trans(left, top).scale(1.0, -1.0);
+                    let transform = context.transform;
+                    let draw_state = &context.draw_state;
+                    image.draw(texture, draw_state, transform, graphics);
+                }
             },
 
         }
