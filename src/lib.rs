@@ -105,6 +105,7 @@ mod label;
 mod position;
 pub mod render;
 pub mod text;
+pub mod texture;
 pub mod theme;
 mod ui;
 pub mod utils;

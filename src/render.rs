@@ -16,6 +16,7 @@ use std::any::Any;
 use std::iter::once;
 use std;
 use text;
+use texture;
 use theme::Theme;
 use widget::primitive;
 
@@ -26,13 +27,17 @@ pub struct Primitives<'a> {
     depth_order: std::slice::Iter<'a, NodeIndex>,
     graph: &'a Graph,
     theme: &'a Theme,
+    fonts: &'a text::font::Map,
     window_rect: Rect,
     /// The point slice to use for the `Lines` and `Polygon` primitives.
     points: Vec<Point>,
+    /// The slice of rusttype `PositionedGlyph`s to re-use for the `Text` primitive.
+    positioned_glyphs: Vec<text::PositionedGlyph>,
+    /// The GPU cache for caching `Text` glyphs.
+    glyph_cache: &'a mut text::GlyphCache,
 }
 
 /// Data required for rendering a single primitive widget.
-#[derive(Clone)]
 pub struct Primitive<'a> {
     /// State and style for this primitive widget.
     pub kind: PrimitiveKind<'a>,
@@ -45,34 +50,51 @@ pub struct Primitive<'a> {
 }
 
 /// The unique kind for each primitive element in the Ui.
-#[derive(Clone)]
 pub enum PrimitiveKind<'a> {
+
+    /// A filled `Rectangle`.
+    ///
+    /// These are produced by the `Rectangle` and `FramedRectangle` primitive widgets. A `Filled`
+    /// `Rectangle` widget produces a single `Rectangle`. The `FramedRectangle` produces two
+    /// `Rectangle`s, the first for the outer frame and the second for the inner on top.
     Rectangle {
-        color: Color,
+        color: Color
     },
+
+    /// A filled `Polygon`.
+    ///
+    /// These are produced by the `Oval` and `Polygon` primitive widgets.
     Polygon {
         color: Color,
         points: &'a [Point],
     },
+
+    /// A series of consecutive `Line`s.
+    ///
+    /// These are produces via the `Line` and `PointPath` primitive widgets, or the `shape`
+    /// primitives if they are instantiated with an `Outline` style.
     Lines {
         color: Color,
         cap: primitive::line::Cap,
         thickness: Scalar,
         points: &'a [Point],
     },
+
+    /// A single `Image`, produced by the primitive `Image` widget.
     Image {
-        texture_index: usize,
+        texture_id: texture::Id,
+        maybe_color: Option<Color>,
         source_rect: Option<Rect>,
     },
+
+    /// A single block of `Text`, produced by the primitive `Text` widget.
     Text {
         color: Color,
-        text: &'a str,
-        line_infos: &'a [text::line::Info],
-        font_size: FontSize,
-        line_spacing: Scalar,
-        x_align: Align,
-        y_align: Align,
+        glyph_cache: &'a mut text::GlyphCache,
+        positioned_glyphs: &'a [text::PositionedGlyph],
+        font_id: text::font::Id,
     },
+
 }
 
 /// An iterator yielding vertices for each `Primitive` widget.
@@ -87,10 +109,13 @@ const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
 
 
 impl<'a> Primitives<'a> {
+
     /// Constructor for the `Primitives` iterator.
     pub fn new(graph: &'a Graph,
                depth_order: &'a [NodeIndex],
                theme: &'a Theme,
+               fonts: &'a text::font::Map,
+               glyph_cache: &'a mut text::GlyphCache,
                window_dim: Dimensions) -> Self
     {
         Primitives {
@@ -98,13 +123,17 @@ impl<'a> Primitives<'a> {
             depth_order: depth_order.iter(),
             graph: graph,
             theme: theme,
+            fonts: fonts,
             window_rect: Rect::from_xy_dim([0.0, 0.0], window_dim),
             // Initialise the `points` `Vec` with at least as many points as there are in an
             // outlined `Rectangle`. This saves us from having to check the length of the buffer
             // before writing points for an `Oval` or `Rectangle`.
             points: vec![[0.0, 0.0]; NUM_POINTS],
+            positioned_glyphs: Vec::new(),
+            glyph_cache: glyph_cache,
         }
     }
+
 }
 
 
@@ -117,8 +146,11 @@ impl<'a> Primitives<'a> {
             ref mut depth_order,
             graph,
             theme,
+            fonts,
             window_rect,
             ref mut points,
+            ref mut positioned_glyphs,
+            ref mut glyph_cache,
         } = *self;
 
         while let Some(&node_index) = depth_order.next() {
@@ -322,14 +354,47 @@ impl<'a> Primitives<'a> {
                 primitive::text::KIND => {
                     if let Some(text) = container.unique_widget_state::<::Text>() {
                         let graph::UniqueWidgetState { ref state, ref style } = *text;
+                        let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
+                            Some(id) => id,
+                            None => continue,
+                        };
+                        let font = match fonts.get(font_id) {
+                            Some(font) => font,
+                            None => continue,
+                        };
+
+                        // Retrieve styling.
+                        let color = style.color(theme);
+                        let font_size = style.font_size(theme);
+                        let line_spacing = style.line_spacing(theme);
+                        let x_align = style.text_align(theme);
+                        let y_align = Align::End;
+                        let scale = text::pt_to_scale(font_size);
+
+                        // Produce the text layout iterators.
+                        let line_infos = state.line_infos.iter().cloned();
+                        let lines = line_infos.clone().map(|info| &state.string[info.byte_range()]);
+                        let line_rects = text::line::rects(line_infos, font_size, rect,
+                                                           x_align, y_align, line_spacing);
+
+                        // Clear the existing glyphs and fill the buffer with glyphs for this Text.
+                        positioned_glyphs.clear();
+                        for (line, line_rect) in lines.zip(line_rects) {
+                            let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
+                            let point = text::RtPoint { x: x, y: y };
+                            positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
+                        }
+
+                        // Queue the glyphs to be cached.
+                        for glyph in positioned_glyphs.iter() {
+                            glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+                        }
+
                         let kind = PrimitiveKind::Text {
-                            color: style.color(theme),
-                            text: &state.string[..],
-                            line_infos: &state.line_infos[..],
-                            font_size: style.font_size(theme),
-                            line_spacing: style.line_spacing(theme),
-                            x_align: style.text_align(theme),
-                            y_align: Align::End,
+                            color: color,
+                            glyph_cache: glyph_cache,
+                            positioned_glyphs: positioned_glyphs,
+                            font_id: font_id,
                         };
                         draw_primitive(new_primitive(kind, scizzor, rect));
                     }
@@ -339,8 +404,10 @@ impl<'a> Primitives<'a> {
                     use widget::primitive::image::{State, Style};
                     if let Some(image) = container.state_and_style::<State, Style>() {
                         let graph::UniqueWidgetState { ref state, ref style } = *image;
+                        let maybe_color = style.maybe_color(theme);
                         let kind = PrimitiveKind::Image {
-                            texture_index: state.texture_index,
+                            maybe_color: maybe_color,
+                            texture_id: state.texture_id,
                             source_rect: state.src_rect,
                         };
                         draw_primitive(new_primitive(kind, scizzor, rect));

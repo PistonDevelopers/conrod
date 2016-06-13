@@ -971,6 +971,8 @@ impl Ui {
             ref widget_graph,
             ref depth_order,
             ref theme,
+            ref fonts,
+            ref mut glyph_cache,
             win_w, win_h,
             ..
         } = *self;
@@ -983,7 +985,7 @@ impl Ui {
             *redraw_count -= 1;
         }
 
-        render::Primitives::new(widget_graph, indices, theme, [win_w, win_h])
+        render::Primitives::new(widget_graph, indices, theme, fonts, glyph_cache, [win_w, win_h])
     }
 
 

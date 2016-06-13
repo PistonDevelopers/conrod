@@ -10,11 +10,14 @@ pub use rusttype::{
     GlyphIter,
     LayoutIter,
     Point as RtPoint,
+    Rect as RtRect,
     Scale,
 };
+pub use rusttype::gpu_cache::Cache as GlyphCache;
 
 pub type FontCollection = ::rusttype::FontCollection<'static>;
 pub type Font = ::rusttype::Font<'static>;
+pub type PositionedGlyph = ::rusttype::PositionedGlyph<'static>;
 
 /// An iterator yielding each line within the given `text` as a new `&str`, where the start and end
 /// indices into each line are provided by the given iterator.
@@ -101,6 +104,13 @@ pub mod font {
         keys: std::collections::hash_map::Keys<'a, Id, super::Font>,
     }
 
+    /// Returned when loading new fonts from file or bytes.
+    #[derive(Debug)]
+    pub enum Error {
+        IO(std::io::Error),
+        NoFont,
+    }
+
     impl Id {
 
         /// Returns the inner `usize` from the `Id`.
@@ -120,11 +130,6 @@ pub mod font {
             }
         }
 
-        /// Remove the `rusttype::Font` for the given `font::Id` from the `Map` and return it.
-        pub fn remove(&mut self, id: Id) -> Option<super::Font> {
-            self.map.remove(&id)
-        }
-
         /// Borrow the `rusttype::Font` associated with the given `font::Id`.
         pub fn get(&self, id: Id) -> Option<&super::Font> {
             self.map.get(&id)
@@ -137,6 +142,14 @@ pub mod font {
             let id = Id(index);
             self.map.insert(id, font);
             id
+        }
+
+        /// Insert a single `Font` into the map by loading it from the given file path.
+        pub fn insert_from_file<P>(&mut self, path: P) -> Result<Id, Error>
+            where P: AsRef<std::path::Path>,
+        {
+            let font = try!(from_file(path));
+            Ok(self.insert(font))
         }
 
         // /// Adds each font in the given `rusttype::FontCollection` to the `Map` and returns an
@@ -163,6 +176,28 @@ pub mod font {
 
     }
 
+
+    /// Load a `super::FontCollection` from a file at a given path.
+    pub fn collection_from_file<P>(path: P) -> Result<super::FontCollection, std::io::Error>
+        where P: AsRef<std::path::Path>,
+    {
+        use std::io::Read;
+        let path = path.as_ref();
+        let mut file = try!(std::fs::File::open(path));
+        let mut file_buffer = Vec::new();
+        try!(file.read_to_end(&mut file_buffer));
+        Ok(super::FontCollection::from_bytes(file_buffer))
+    }
+
+    /// Load a single `Font` from a file at the given path.
+    pub fn from_file<P>(path: P) -> Result<super::Font, Error>
+        where P: AsRef<std::path::Path>
+    {
+        let collection = try!(collection_from_file(path));
+        collection.into_font().ok_or(Error::NoFont)
+    }
+
+
     impl Iterator for NewIds {
         type Item = Id;
         fn next(&mut self) -> Option<Self::Item> {
@@ -174,6 +209,27 @@ pub mod font {
         type Item = Id;
         fn next(&mut self) -> Option<Self::Item> {
             self.keys.next().map(|&id| id)
+        }
+    }
+
+    impl From<std::io::Error> for Error {
+        fn from(e: std::io::Error) -> Self {
+            Error::IO(e)
+        }
+    }
+
+    impl std::error::Error for Error {
+        fn description(&self) -> &str {
+            match *self {
+                Error::IO(ref e) => std::error::Error::description(e),
+                Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+            }
+        }
+    }
+
+    impl std::fmt::Display for Error {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+            writeln!(f, "{}", std::error::Error::description(self))
         }
     }
 

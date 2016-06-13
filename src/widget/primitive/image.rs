@@ -5,6 +5,7 @@ use {
     Widget,
     Ui,
 };
+use texture;
 use widget;
 
 /// A primitive and basic widget for drawing an `Image`.
@@ -18,16 +19,16 @@ pub struct Image {
     pub style: Style,
     /// A unique index representing a widget.
     ///
-    /// It is up to the user to ensure that the `texture_index` is unique and mapped to the correct
+    /// It is up to the user to ensure that the `texture_id` is unique and mapped to the correct
     /// texture.
-    pub texture_index: usize,
+    pub texture_id: texture::Id,
 }
 
 /// Unique `State` to be stored between updates for the `Image`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct State {
     /// A unique index into the `Texture`.
-    pub texture_index: usize,
+    pub texture_id: texture::Id,
     /// The rectangular area of the texture to use as the image.
     pub src_rect: Option<Rect>,
 }
@@ -48,12 +49,12 @@ widget_style!{
 impl Image {
 
     /// Construct a new `Image`.
-    pub fn new(texture_index: usize) -> Self {
+    pub fn new(texture_id: texture::Id) -> Self {
         Image {
             common: widget::CommonBuilder::new(),
             src_rect: None,
             style: Style::new(),
-            texture_index: texture_index,
+            texture_id: texture_id,
         }
     }
 
@@ -83,7 +84,7 @@ impl Widget for Image {
 
     fn init_state(&self) -> Self::State {
         State {
-            texture_index: self.texture_index,
+            texture_id: self.texture_id,
             src_rect: None,
         }
     }
@@ -108,10 +109,10 @@ impl Widget for Image {
 
     fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { state, .. } = args;
-        let Image { src_rect, texture_index, .. } = self;
+        let Image { src_rect, texture_id, .. } = self;
 
-        if state.texture_index != texture_index {
-            state.update(|state| state.texture_index = texture_index);
+        if state.texture_id != texture_id {
+            state.update(|state| state.texture_id = texture_id);
         }
 
         if state.src_rect != src_rect {
