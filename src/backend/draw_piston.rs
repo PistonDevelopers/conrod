@@ -8,29 +8,47 @@ use text;
 use texture;
 
 #[doc(inline)]
-pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
+pub use self::piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 
 
 /// A texture and function for caching font glyphs.
 ///
 /// The texture_cache will then also be used for rendering the glyphs to the screen.
-pub struct TextRenderer<'a, T: 'a, F> {
+pub struct Renderer<'a, G, T, FC, FT>
+    where G: Graphics<Texture=T> + 'a,
+          T: ImageSize + 'a,
+          FC: for<'b> FnMut(&'b mut G, &'b mut T, text::RtRect<u32>, &'b [u8]),
+          FT: FnMut(texture::Id) -> Option<&'a T>,
+{
+    /// The piston2d-graphics drawing context.
+    pub context: Context,
+    /// The piston `Graphics` backend.
+    pub graphics: &'a mut G,
+    /// Some texture type `T` upon which we can cache text glyphs.
     pub texture_cache: &'a mut T,
-    pub cache_queued_glyphs: F,
+    /// A function for caching glyphs within the given texture cache.
+    pub cache_queued_glyphs: FC,
+    /// A function for retrieving a texture of type `T` given some unique `texture::Id`.
+    pub get_texture: FT,
 }
 
 
 /// Render the given sequence of conrod primitive widgets.
 pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
-                                    context: Context,
-                                    graphics: &'a mut G,
-                                    mut text_renderer: TextRenderer<'a, T, FC>,
-                                    mut get_texture: FT)
+                                    renderer: Renderer<'a, G, T, FC, FT>)
     where G: Graphics<Texture=T>,
-          T: ImageSize + 'a,
-          FC: FnMut(&mut T, text::RtRect<u32>, &[u8]),
+          T: ImageSize,
+          FC: FnMut(&mut G, &mut T, text::RtRect<u32>, &[u8]),
           FT: FnMut(texture::Id) -> Option<&'a T>,
 {
+    let Renderer {
+        context,
+        graphics,
+        texture_cache,
+        mut cache_queued_glyphs,
+        mut get_texture,
+    } = renderer;
+
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointint upwards).
     let view_size = context.get_view_size();
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
@@ -72,12 +90,10 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                 }
             },
 
-            // render::PrimitiveKind::Text {
-            //     color, text, line_infos, font_size, font, line_spacing, x_align, y_align
-            // } => {
             render::PrimitiveKind::Text { color, glyph_cache, positioned_glyphs, font_id } => {
-                let TextRenderer { ref mut texture_cache, ref mut cache_queued_glyphs } = text_renderer;
-                glyph_cache.cache_queued(|rect, data| cache_queued_glyphs(texture_cache, rect, data));
+                glyph_cache.cache_queued(|rect, data| {
+                    cache_queued_glyphs(graphics, texture_cache, rect, data)
+                });
                 let cache_id = font_id.index();
                 for g in positioned_glyphs {
                     if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
@@ -91,25 +107,9 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                             let h = (uv_rect.max.y - uv_rect.min.y) as i32;
                             Some([x, y, w, h])
                         };
-                        image.draw(*texture_cache, &context.draw_state, context.transform, graphics);
+                        image.draw(texture_cache, &context.draw_state, context.transform, graphics);
                     }
                 }
-
-                // use text;
-                // let line_infos = line_infos.iter().cloned();
-                // let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
-                // let line_rects =
-                //     text::line::rects(line_infos, font_size, rect, x_align, y_align, line_spacing);
-                // for (line, line_rect) in lines.zip(line_rects) {
-                //     let offset = [line_rect.left().round(), line_rect.bottom().round()];
-                //     let context = context.trans(offset[0], offset[1]).scale(1.0, -1.0);
-                //     let transform = context.transform;
-                //     let draw_state = &context.draw_state;
-                //     // piston_graphics::text::Text::new_color(color, font_size)
-                //     //     .round()
-                //     //     .draw(line, character_cache, draw_state, transform, graphics);
-                // }
-
             },
 
             render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {

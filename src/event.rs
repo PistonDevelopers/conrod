@@ -38,7 +38,7 @@
 //! `glfw_window`, `sdl2_window` and `glutin_window` need not concern themselves with this trait.
 
 use input;
-use position::{Dimensions, Point};
+use position::{Dimensions, Point, Scalar};
 use utils::vec2_sub;
 use widget;
 
@@ -304,6 +304,17 @@ pub struct Scroll {
     pub y: f64,
     /// Which modifier keys, if any, that were being held down while the scroll occured
     pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Constructor for a new `RawEvent::Render`.
+pub fn render(dt_secs: f64, w_px: u32, h_px: u32, dpi: Scalar) -> RawEvent {
+    RawEvent::Render(input::RenderArgs {
+        ext_dt: dt_secs,
+        width: (w_px as Scalar / dpi) as u32,
+        height: (h_px as Scalar / dpi) as u32,
+        draw_width: w_px,
+        draw_height: h_px,
+    })
 }
 
 impl Move {

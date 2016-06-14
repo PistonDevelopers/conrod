@@ -20,7 +20,6 @@ pub fn convert(e: glutin::Event, win_w: Scalar, win_h: Scalar, dpi: Scalar) -> O
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     let tx = |x: Scalar| (x / dpi) - win_w / 2.0;
     let ty = |y: Scalar| -((y / dpi) - win_h / 2.0);
-    let txy = |xy: [Scalar; 2]| [tx(xy[0]), ty(xy[1])];
 
     match e {
 
