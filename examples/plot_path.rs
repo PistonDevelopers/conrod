@@ -3,12 +3,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 use conrod::Widget;
-use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
-
-/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-type Ui = conrod::Ui<Backend>;
-type UiCell<'a> = conrod::UiCell<'a, Backend>;
+use piston_window::{EventLoop, G2dTexture, PistonWindow, UpdateEvent, Window, WindowSettings};
 
 
 fn main() {
@@ -22,28 +17,54 @@ fn main() {
             .build()
             .unwrap();
 
-    // Construct our `Ui`.
-    let mut ui = {
-        let assets = find_folder::Search::KidsThenParents(3, 5)
-            .for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let theme = conrod::Theme::default();
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        Ui::new(glyph_cache, theme)
-    };
+    // construct our `Ui`.
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
+
+    // No text to draw, so we'll just create an empty text texture cache.
+    let mut text_texture_cache: G2dTexture<'static> =
+        G2dTexture::empty(&mut window.factory).unwrap();
 
     window.set_ups(60);
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(event.clone());
+
+        // Convert the piston event to a conrod event.
+        let size = window.size();
+        let (w, h) = (size.width as conrod::Scalar, size.height as conrod::Scalar);
+        if let Some(e) = conrod::backend::event_piston::convert_event(event.clone(), w, h) {
+            ui.handle_event(e);
+        }
+
         event.update(|_| ui.set_widgets(set_ui));
-        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
+
+        window.draw_2d(&event, |c, g| {
+            if let Some(primitives) = ui.draw_if_changed() {
+
+                // Data and functions for rendering the primitives.
+                let renderer = conrod::backend::draw_piston::Renderer {
+                    context: c,
+                    graphics: g,
+                    texture_cache: &mut text_texture_cache,
+                    // No text to draw.
+                    cache_queued_glyphs: |_graphics: &mut piston_window::G2d,
+                                          _cache: &mut G2dTexture<'static>,
+                                          _rect: conrod::text::RtRect<u32>,
+                                          _data: &[u8]| {
+                        unimplemented!();
+                    },
+                    // No images to draw.
+                    get_texture: |_id| None,
+                };
+
+                conrod::backend::draw_piston::primitives(primitives, renderer);
+            }
+        });
     }
 }
 
 // Declare the `WidgetId`s and instantiate the widgets.
-fn set_ui(ref mut ui: UiCell) {
+fn set_ui(ref mut ui: conrod::UiCell) {
     use conrod::{color, Canvas, Colorable, PlotPath, Positionable, Sizeable, Widget};
 
     widget_ids!{CANVAS, PLOT};

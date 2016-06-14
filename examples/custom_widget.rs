@@ -20,7 +20,6 @@ extern crate piston_window;
 mod circular_button {
     use conrod::{
         self,
-        Backend,
         Circle,
         Color,
         Colorable,
@@ -162,7 +161,7 @@ mod circular_button {
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
-        fn update<B: Backend>(self, args: UpdateArgs<Self, B>) {
+        fn update(self, args: UpdateArgs<Self>) {
             let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
 
             let color = {
@@ -258,12 +257,11 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
+    use piston_window::{EventLoop, G2dTexture, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use self::circular_button::CircularButton;
 
-    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-    type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-    type Ui = conrod::Ui<Backend>;
+    const WIDTH: u32 = 1200;
+    const HEIGHT: u32 = 800;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -272,21 +270,28 @@ pub fn main() {
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let mut window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
+    let mut window: PistonWindow = WindowSettings::new("Control Panel", [WIDTH, HEIGHT])
         .opengl(opengl)
         .exit_on_esc(true)
         .build().unwrap();
 
-    // Conrod's main object.
-    let mut ui = {
-        // Load a font. `Glyphs` is provided to us via piston_window and gfx, though you may use
-        // any type that implements `CharacterCache`.
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
-            .for_folder("assets").unwrap();
+    // construct our `Ui`.
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
+
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    {
+        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        let theme = conrod::Theme::default();
-        Ui::new(glyph_cache, theme)
+        ui.fonts.insert_from_file(font_path).unwrap();
+    }
+
+    // Create a texture cache in which we can cache text on the GPU.
+    let mut text_texture_cache: G2dTexture<'static> = {
+        const BUFFER_LEN: usize = WIDTH as usize * HEIGHT as usize;
+        const INIT: [u8; BUFFER_LEN] = [128; BUFFER_LEN];
+        let factory = &mut window.factory;
+        let settings = piston_window::TextureSettings::new();
+        G2dTexture::from_memory_alpha(factory, &INIT, WIDTH, HEIGHT, &settings).unwrap()
     };
 
     window.set_ups(60);
@@ -323,6 +328,34 @@ pub fn main() {
         }));
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-        window.draw_2d(&e, |c, g| ui.draw_if_changed(c, g));
+        window.draw_2d(&e, |c, g| {
+            if let Some(primitives) = ui.draw_if_changed() {
+
+                // Data and functions for rendering the primitives.
+                let renderer = conrod::backend::draw_piston::Renderer {
+                    context: c,
+                    graphics: g,
+                    texture_cache: &mut text_texture_cache,
+                    // A type used for passing the `texture_cache` used for caching and rendering
+                    // `Text` to the function for rendering.
+                    cache_queued_glyphs: |graphics: &mut piston_window::G2d,
+                                          cache: &mut G2dTexture<'static>,
+                                          rect: conrod::text::RtRect<u32>,
+                                          data: &[u8]| {
+                        use piston_window::texture::UpdateTexture;
+                        let dim = [rect.width(), rect.height()];
+                        let format = piston_window::texture::Format::Rgba8;
+                        let encoder = &mut graphics.encoder;
+                        UpdateTexture::update(cache, encoder, format, data, dim)
+                            .expect("Failed to update texture");
+                    },
+                    // A function that returns some texture `T` for the given `texture::Id`. We
+                    // have no `Image` widgets, so no need to implement this.
+                    get_texture: |_id| None,
+                };
+
+                conrod::backend::draw_piston::primitives(primitives, renderer);
+            }
+        });
     }
 }
