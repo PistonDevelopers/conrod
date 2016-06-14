@@ -40,4 +40,3 @@ event_piston = []
 find_folder = "0.3.0"
 rand = "0.3.13"
 piston_window = "0.50.0"
-piston-texture = "0.4.0"
