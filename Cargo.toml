@@ -22,11 +22,16 @@ daggy = "0.4.0"
 num = "0.1.30"
 pistoncore-input = "0.13.0"
 rusttype = "0.2.0"
+
 # Feature-gated dependencies.
-piston2d-graphics = { version = "0.16.0", optional = true }
+glium = { version = "0.14.0", optional = true }
 glutin = { version = "0.5.1", optional = true }
+piston2d-graphics = { version = "0.16.0", optional = true }
 
 [features]
+default = ["piston"]
+piston = ["draw_piston", "event_piston"]
+draw_glium = ["glium"]
 draw_piston = ["piston2d-graphics"]
 event_glutin = ["glutin"]
 event_piston = []
