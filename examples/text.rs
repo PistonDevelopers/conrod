@@ -2,7 +2,6 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Theme, Widget};
 use piston_window::{EventLoop, G2dTexture, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
@@ -19,11 +18,10 @@ fn main() {
             .opengl(opengl).exit_on_esc(true).build().unwrap();
 
     // Construct our `Ui`.
-    let mut ui = conrod::Ui::new(Theme::default());
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5)
-        .for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -80,7 +78,7 @@ fn main() {
 }
 
 fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text};
+    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text, Widget};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{
