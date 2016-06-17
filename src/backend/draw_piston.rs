@@ -129,6 +129,11 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                 }
             },
 
+            render::PrimitiveKind::Other(_widget) => {
+                // TODO: Perhaps add a function to the `Renderer` params to allow a user to draw
+                // these.
+            },
+
         }
     });
 }
