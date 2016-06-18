@@ -18,7 +18,7 @@ fn main() {
 
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("Text Demo", [360, 360])
+        WindowSettings::new("RangeSlider Demo", [360, 360])
             .opengl(OpenGL::V3_2).exit_on_esc(true).samples(4).vsync(true).build().unwrap();
 
     // Construct our `Ui`.
