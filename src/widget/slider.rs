@@ -21,10 +21,13 @@ use num::{Float, NumCast, ToPrimitive};
 use widget;
 
 
-/// Linear value selection. If the slider's width is greater than it's height, it will
-/// automatically become a horizontal slider, otherwise it will be a vertical slider. Its reaction
-/// is triggered if the value is updated or if the mouse button is released while the cursor is
-/// above the rectangle.
+/// Linear value selection.
+///
+/// If the slider's width is greater than it's height, it will automatically become a horizontal
+/// slider, otherwise it will be a vertical slider.
+///
+/// Its reaction is triggered if the value is updated or if the mouse button is released while
+/// the cursor is above the rectangle.
 pub struct Slider<'a, T, F> {
     common: widget::CommonBuilder,
     value: T,
@@ -104,7 +107,7 @@ impl<'a, T, F> Slider<'a, T, F> {
 
 impl<'a, T, F> Widget for Slider<'a, T, F>
     where F: FnOnce(T),
-          T: ::std::any::Any + ::std::fmt::Debug + Float + NumCast + ToPrimitive,
+          T: Float + NumCast + ToPrimitive,
 {
     type State = State;
     type Style = Style;
