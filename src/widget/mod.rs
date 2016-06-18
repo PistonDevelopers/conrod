@@ -28,6 +28,7 @@ pub mod envelope_editor;
 pub mod matrix;
 pub mod number_dialer;
 pub mod plot_path;
+pub mod range_slider;
 pub mod scrollbar;
 pub mod slider;
 pub mod tabs;
