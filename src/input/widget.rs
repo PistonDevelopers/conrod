@@ -49,6 +49,63 @@ pub struct Events<'a> {
     idx: widget::Index,
 }
 
+/// An `Iterator` yielding all button presses occuring within the given sequence of
+/// `widget::Event`s.
+#[derive(Clone)]
+pub struct Presses<'a> {
+    events: Events<'a>,
+}
+
+/// An `Iterator` yielding all mouse button presses occuring within the given sequence of `Presses`.
+#[derive(Clone)]
+pub struct MousePresses<'a> {
+    presses: Presses<'a>,
+}
+
+/// An `Iterator` yielding all mouse button presses occuring within the given sequence of
+/// `Presses` for some specific mouse button.
+#[derive(Clone)]
+pub struct MouseButtonPresses<'a> {
+    mouse_presses: MousePresses<'a>,
+    button: input::MouseButton,
+}
+
+/// An `Iterator` yielding all keyboard button presses occuring within the given sequence of
+/// `Presses`.
+#[derive(Clone)]
+pub struct KeyPresses<'a> {
+    presses: Presses<'a>,
+}
+
+/// An `Iterator` yielding all button releases occuring within the given sequence of
+/// `widget::Event`s.
+#[derive(Clone)]
+pub struct Releases<'a> {
+    events: Events<'a>,
+}
+
+/// An `Iterator` yielding all mouse button releases occuring within the given sequence of
+/// `Releases` for some specific mouse button.
+#[derive(Clone)]
+pub struct MouseButtonReleases<'a> {
+    mouse_releases: MouseReleases<'a>,
+    button: input::MouseButton,
+}
+
+/// An `Iterator` yielding all mouse button releases occuring within the given sequence of
+/// `Releases`.
+#[derive(Clone)]
+pub struct MouseReleases<'a> {
+    releases: Releases<'a>,
+}
+
+/// An `Iterator` yielding all keyboard button releases occuring within the given sequence of
+/// `Releases`.
+#[derive(Clone)]
+pub struct KeyReleases<'a> {
+    releases: Releases<'a>,
+}
+
 /// An `Iterator` yielding all mouse clicks occuring within the given sequence of `widget::Event`s.
 #[derive(Clone)]
 pub struct Clicks<'a> {
@@ -142,6 +199,16 @@ impl<'a> Widget<'a> {
         }
     }
 
+    /// Filters all events yielded by `Self::events` other than `event::Press`es.
+    pub fn presses(&self) -> Presses<'a> {
+        Presses { events: self.events() }
+    }
+
+    /// Filters all events yielded by `Self::events` other than `event::Release`es.
+    pub fn releases(&self) -> Releases<'a> {
+        Releases { events: self.events() }
+    }
+
     /// Filters all events yielded by `Self::events` for all `event::Click`s.
     ///
     /// A _click_ is determined to have occured if a pointing device button was both pressed and
@@ -188,6 +255,99 @@ impl<'a> Mouse<'a> {
     /// Is the mouse currently over the widget.
     pub fn is_over(&self) -> bool {
         self.rect.is_over(self.mouse_abs_xy)
+    }
+
+}
+
+impl<'a> Presses<'a> {
+
+    /// Produces an `Iterator` that yields only the press events that correspond with mouse buttons.
+    pub fn mouse(self) -> MousePresses<'a> {
+        MousePresses {
+            presses: self,
+        }
+    }
+
+    /// Produces an `Iterator` that yields only the press events that correspond with keyboard
+    /// buttons.
+    pub fn key(self) -> KeyPresses<'a> {
+        KeyPresses {
+            presses: self,
+        }
+    }
+
+}
+
+impl<'a> MousePresses<'a> {
+
+    /// Produces an `Iterator` that yields only events associated with the given mouse button.
+    pub fn button(self, button: input::MouseButton) -> MouseButtonPresses<'a> {
+        MouseButtonPresses {
+            mouse_presses: self,
+            button: button,
+        }
+    }
+
+    /// Produces an `Iterator` that yields only the left mouse button press events.
+    pub fn left(self) -> MouseButtonPresses<'a> {
+        self.button(input::MouseButton::Left)
+    }
+
+    /// Produces an `Iterator` that yields only the middle mouse button press events.
+    pub fn middle(self) -> MouseButtonPresses<'a> {
+        self.button(input::MouseButton::Middle)
+    }
+
+    /// Produces an `Iterator` that yields only the right mouse button press events.
+    pub fn right(self) -> MouseButtonPresses<'a> {
+        self.button(input::MouseButton::Right)
+    }
+
+}
+
+impl<'a> Releases<'a> {
+
+    /// Produces an `Iterator` that yields only the release events that correspond with mouse
+    /// buttons.
+    pub fn mouse(self) -> MouseReleases<'a> {
+        MouseReleases {
+            releases: self,
+        }
+    }
+
+    /// Produces an `Iterator` that yields only the release events that correspond with keyboard
+    /// buttons.
+    pub fn key(self) -> KeyReleases<'a> {
+        KeyReleases {
+            releases: self,
+        }
+    }
+
+}
+
+impl<'a> MouseReleases<'a> {
+
+    /// Produces an `Iterator` that yields only events associated with the given mouse button.
+    pub fn button(self, button: input::MouseButton) -> MouseButtonReleases<'a> {
+        MouseButtonReleases {
+            mouse_releases: self,
+            button: button,
+        }
+    }
+
+    /// Produces an `Iterator` that yields only the left mouse button release events.
+    pub fn left(self) -> MouseButtonReleases<'a> {
+        self.button(input::MouseButton::Left)
+    }
+
+    /// Produces an `Iterator` that yields only the middle mouse button release events.
+    pub fn middle(self) -> MouseButtonReleases<'a> {
+        self.button(input::MouseButton::Middle)
+    }
+
+    /// Produces an `Iterator` that yields only the right mouse button release events.
+    pub fn right(self) -> MouseButtonReleases<'a> {
+        self.button(input::MouseButton::Right)
     }
 
 }
@@ -325,9 +485,105 @@ impl<'a> Iterator for Events<'a> {
 }
 
 
+impl<'a> Iterator for Presses<'a> {
+    type Item = event::Press;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Press(press) = event {
+                return Some(press);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for MousePresses<'a> {
+    type Item = event::MousePress;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(press) = self.presses.next() {
+            if let Some(mouse_press) = press.mouse() {
+                return Some(mouse_press);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for MouseButtonPresses<'a> {
+    type Item = (Point, input::keyboard::ModifierKey);
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(mouse_press) = self.mouse_presses.next() {
+            if self.button == mouse_press.button {
+                return Some((mouse_press.xy, mouse_press.modifiers));
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for KeyPresses<'a> {
+    type Item = event::KeyPress;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(press) = self.presses.next() {
+            if let Some(key_press) = press.key() {
+                return Some(key_press);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Releases<'a> {
+    type Item = event::Release;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Release(release) = event {
+                return Some(release);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for MouseReleases<'a> {
+    type Item = event::MouseRelease;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(release) = self.releases.next() {
+            if let Some(mouse_release) = release.mouse() {
+                return Some(mouse_release);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for MouseButtonReleases<'a> {
+    type Item = (Point, input::keyboard::ModifierKey);
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(mouse_release) = self.mouse_releases.next() {
+            if self.button == mouse_release.button {
+                return Some((mouse_release.xy, mouse_release.modifiers));
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for KeyReleases<'a> {
+    type Item = event::KeyRelease;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(release) = self.releases.next() {
+            if let Some(key_release) = release.key() {
+                return Some(key_release);
+            }
+        }
+        None
+    }
+}
+
 impl<'a> Iterator for Clicks<'a> {
     type Item = event::Click;
-    fn next(&mut self) -> Option<event::Click> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(event) = self.events.next() {
             if let event::Widget::Click(click) = event {
                 return Some(click);
@@ -339,7 +595,7 @@ impl<'a> Iterator for Clicks<'a> {
 
 impl<'a> Iterator for ButtonClicks<'a> {
     type Item = event::Click;
-    fn next(&mut self) -> Option<event::Click> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(click) = self.clicks.next() {
             if self.button == click.button {
                 return Some(click);
@@ -351,7 +607,7 @@ impl<'a> Iterator for ButtonClicks<'a> {
 
 impl<'a> Iterator for Drags<'a> {
     type Item = event::Drag;
-    fn next(&mut self) -> Option<event::Drag> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(event) = self.events.next() {
             if let event::Widget::Drag(drag) = event {
                 return Some(drag);
@@ -363,7 +619,7 @@ impl<'a> Iterator for Drags<'a> {
 
 impl<'a> Iterator for ButtonDrags<'a> {
     type Item = event::Drag;
-    fn next(&mut self) -> Option<event::Drag> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(drag) = self.drags.next() {
             if self.button == drag.button {
                 return Some(drag);
@@ -375,7 +631,7 @@ impl<'a> Iterator for ButtonDrags<'a> {
 
 impl<'a> Iterator for Texts<'a> {
     type Item = event::Text;
-    fn next(&mut self) -> Option<event::Text> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(event) = self.events.next() {
             if let event::Widget::Text(text) = event {
                 return Some(text);

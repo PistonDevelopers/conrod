@@ -143,11 +143,51 @@ pub struct Press {
     pub modifiers: input::keyboard::ModifierKey,
 }
 
+/// Contains all relevant information for the event where a mouse button was pressed.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct MousePress {
+    /// The mouse button that was pressed.
+    pub button: input::MouseButton,
+    /// The location at which the mouse was pressed.
+    pub xy: Point,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Contains all relevant information for the event where a keyboard button was pressed.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct KeyPress {
+    /// The key that was pressed.
+    pub key: input::Key,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
 /// Contains all relevant information for a Release event.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Release {
     /// The `Button` that was released.
     pub button: Button,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Contains all relevant information for the event where a mouse button was released.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct MouseRelease {
+    /// The mouse button that was released.
+    pub button: input::MouseButton,
+    /// The location at which the mouse was released.
+    pub xy: Point,
+    /// The modifier keys that were down at the time.
+    pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Contains all relevant information for the event where a keyboard button was release.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct KeyRelease {
+    /// The key that was release.
+    pub key: input::Key,
     /// The modifier keys that were down at the time.
     pub modifiers: input::keyboard::ModifierKey,
 }
@@ -233,6 +273,7 @@ impl Button {
 }
 
 impl Press {
+
     /// Returns a copy of the Press relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Press {
         Press {
@@ -240,9 +281,36 @@ impl Press {
             ..*self
         }
     }
+
+    /// If the `Press` event represents the pressing of a mouse button, return `Some`.
+    pub fn mouse(self) -> Option<MousePress> {
+        match self.button {
+            Button::Mouse(button, xy) =>
+                Some(MousePress {
+                    button: button,
+                    xy: xy,
+                    modifiers: self.modifiers,
+                }),
+            _ => None,
+        }
+    }
+
+    /// If the `Press` event represents the pressing of keyboard button, return `Some`.
+    pub fn key(self) -> Option<KeyPress> {
+        match self.button {
+            Button::Keyboard(key) =>
+                Some(KeyPress {
+                    key: key,
+                    modifiers: self.modifiers,
+                }),
+            _ => None,
+        }
+    }
+
 }
 
 impl Release {
+
     /// Returns a copy of the Release relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Release {
         Release {
@@ -250,6 +318,32 @@ impl Release {
             ..*self
         }
     }
+
+    /// If the `Release` event represents the releasing of a mouse button, return `Some`.
+    pub fn mouse(self) -> Option<MouseRelease> {
+        match self.button {
+            Button::Mouse(button, xy) =>
+                Some(MouseRelease {
+                    button: button,
+                    xy: xy,
+                    modifiers: self.modifiers,
+                }),
+            _ => None,
+        }
+    }
+
+    /// If the `Release` event represents the release of keyboard button, return `Some`.
+    pub fn key(self) -> Option<KeyRelease> {
+        match self.button {
+            Button::Keyboard(key) =>
+                Some(KeyRelease {
+                    key: key,
+                    modifiers: self.modifiers,
+                }),
+            _ => None,
+        }
+    }
+
 }
 
 impl Click {
