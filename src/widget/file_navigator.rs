@@ -82,7 +82,7 @@ widget_style!{
         /// The color of the directory and file names.
         - text_color: Color { theme.label_color }
         /// The font size for the directory and file names.
-        - text_font_size: FontSize { 12 }
+        - font_size: FontSize { theme.font_size_medium }
         /// The default width of a single directory view.
         ///
         /// The first directory will always be initialised to this size.
@@ -129,6 +129,7 @@ impl<'a, F> FileNavigator<'a, F>
 
     builder_methods!{
         pub react { maybe_react = Some(F) }
+        pub font_size { style.font_size = Some(FontSize) }
     }
 
 }
@@ -232,11 +233,13 @@ impl<'a, F> Widget for FileNavigator<'a, F>
 
             let mut maybe_action = None;
             let directory_view_width = column_width - RESIZE_HANDLE_WIDTH;
+            let font_size = style.font_size(&ui.theme);
             DirectoryView::new(&state.directory_stack[i].0, types)
                 .h(rect.h())
                 .w(directory_view_width)
                 .and(|view| if i == 0 { view.mid_left_of(idx) } else { view.right(0.0) })
                 .color(color)
+                .font_size(font_size)
                 .parent(scrollable_canvas_idx)
                 .react(|event| match event {
                     directory_view::Event::SelectEntry(path) => {
@@ -398,7 +401,7 @@ pub mod directory_view {
             /// Color of the FileNavigator's pressable area.
             - color: Color { theme.shape_color }
             /// The font size for the directory and file names.
-            - text_font_size: FontSize { theme.font_size_medium }
+            - font_size: FontSize { theme.font_size_medium }
         }
     }
 
@@ -427,6 +430,7 @@ pub mod directory_view {
 
         builder_methods!{
             pub react { maybe_react = Some(F) }
+            pub font_size { style.font_size = Some(FontSize) }
         }
 
     }
@@ -534,7 +538,7 @@ pub mod directory_view {
             }
 
             let color = style.color(&ui.theme);
-            let font_size = style.text_font_size(&ui.theme);
+            let font_size = style.font_size(&ui.theme);
             let file_h = font_size as Scalar * 2.0;
             let unselected_rect_color = color.plain_contrast().plain_contrast();
 
@@ -599,6 +603,7 @@ pub mod directory_view {
 
                     Text::new(&entry_name)
                         .color(color.plain_contrast())
+                        .font_size(font_size)
                         .mid_left_with_margin_on(rect_idx, 10.0)
                         .align_text_left()
                         .graphics_for(rect_idx)

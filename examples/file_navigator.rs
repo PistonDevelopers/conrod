@@ -16,7 +16,7 @@ fn main() {
 
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("Text Demo", [600, 300])
+        WindowSettings::new("FileNavigator Demo", [600, 300])
             .opengl(OpenGL::V3_2)
             .vsync(true)
             .samples(4)
@@ -53,6 +53,7 @@ fn main() {
                 // Navigate the conrod directory only showing `.rs` and `.toml` files.
                 FileNavigator::with_extension(&conrod_directory, &["rs", "toml"])
                     .color(color::LIGHT_BLUE)
+                    .font_size(18)
                     .wh_of(CANVAS)
                     .middle_of(CANVAS)
                     .react(|event| println!("{:?}", &event))
