@@ -219,12 +219,20 @@ impl<'a, F> Widget for FileNavigator<'a, F>
 
             // Check to see if the resize handle has received any events.
             if let Some(resize_rect) = ui.rect_of(resize_idx) {
+                let mut scroll_x = 0.0;
                 for drag in ui.widget_input(resize_idx).drags().left() {
                     let target_w = column_width + drag.delta_xy[0];
                     let min_w = resize_rect.w() * 3.0;
-                    let max_w = column_width + (rect.right() - resize_rect.right());
-                    column_width = utils::clamp(target_w, min_w, max_w);
+                    let end_w = column_width + (rect.right() - resize_rect.right());
+                    column_width = min_w.max(target_w);
                     state.update(|state| state.directory_stack[i].1 = column_width);
+                    // If we've dragged the column past end of the rect, scroll it.
+                    if target_w > end_w {
+                        scroll_x += target_w - end_w;
+                    }
+                }
+                if scroll_x > 0.0 {
+                    ui.scroll_widget(scrollable_canvas_idx, [-scroll_x, 0.0]);
                 }
             }
 
@@ -281,6 +289,15 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                             react(Event::ChangeDirectory(path));
                         }
                     });
+
+                    // If the resulting total width of all `DirectoryView`s would exceed the
+                    // width of the `FileNavigator` itself, scroll toward the top-most
+                    // `DirectoryView`.
+                    let total_w = state.directory_stack.iter().fold(0.0, |t, &(_, w)| t + w);
+                    let overlap = total_w - rect.w();
+                    if overlap > 0.0 {
+                        ui.scroll_widget(scrollable_canvas_idx, [-overlap, 0.0]);
+                    }
                 },
 
                 Some(Action::ExitDir) => {
@@ -546,7 +563,7 @@ pub mod directory_view {
             Rectangle::fill(rect.dim())
                 .scroll_kids_vertically()
                 .xy(rect.xy())
-                .color(unselected_rect_color.alpha(0.25))
+                .color(unselected_rect_color.alpha(0.8))
                 .parent(idx)
                 .set(scrollable_canvas_idx, &mut ui);
 
