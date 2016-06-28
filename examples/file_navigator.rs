@@ -53,7 +53,7 @@ fn main() {
                 // Navigate the conrod directory only showing `.rs` and `.toml` files.
                 FileNavigator::with_extension(&conrod_directory, &["rs", "toml"])
                     .color(color::LIGHT_BLUE)
-                    .font_size(18)
+                    .font_size(16)
                     .wh_of(CANVAS)
                     .middle_of(CANVAS)
                     .react(|event| println!("{:?}", &event))
