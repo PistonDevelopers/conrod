@@ -619,9 +619,6 @@ impl<B> Ui<B>
                                     }
                                 }
 
-                                // TODO: Check for dragging of the scrollbar, and whether or not a
-                                // `event::Scroll` needs to be created.
-
                                 // Update the position of the mouse within the global_input's
                                 // input::State.
                                 self.global_input.current.mouse.xy = mouse_xy;
