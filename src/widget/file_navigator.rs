@@ -22,7 +22,6 @@ use {
     Widget,
 };
 use std;
-use utils;
 use widget;
 
 pub use self::directory_view::DirectoryView;
@@ -87,6 +86,9 @@ widget_style!{
         ///
         /// The first directory will always be initialised to this size.
         - directory_view_width: Scalar { 250.0 }
+        /// The width of the bar that separates each directory in the stack and allows for
+        /// re-sizing.
+        - resize_handle_width: Scalar { 5.0 }
     }
 }
 
@@ -214,7 +216,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 },
             };
 
-            const RESIZE_HANDLE_WIDTH: Scalar = 5.0;
+            let resize_handle_width = style.resize_handle_width(&ui.theme);
             let mut column_width = state.directory_stack[i].1;
 
             // Check to see if the resize handle has received any events.
@@ -240,7 +242,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
             enum Action { EnterDir(std::path::PathBuf), ExitDir }
 
             let mut maybe_action = None;
-            let directory_view_width = column_width - RESIZE_HANDLE_WIDTH;
+            let directory_view_width = column_width - resize_handle_width;
             let font_size = style.font_size(&ui.theme);
             DirectoryView::new(&state.directory_stack[i].0, types)
                 .h(rect.h())
@@ -250,6 +252,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 .font_size(font_size)
                 .parent(scrollable_canvas_idx)
                 .react(|event| match event {
+
                     directory_view::Event::SelectEntry(path) => {
                         if path.is_dir() {
                             maybe_action = Some(Action::EnterDir(path.clone()));
@@ -260,17 +263,20 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                             react(Event::ChangeSelection(vec![path]));
                         }
                     },
+
                     directory_view::Event::SelectEntries(paths) => {
                         maybe_action = Some(Action::ExitDir);
                         if let Some(ref mut react) = maybe_react {
                             react(Event::ChangeSelection(paths));
                         }
                     },
+
                     directory_view::Event::DoubleClick(path) => {
                         if let Some(ref mut react) = maybe_react {
                             react(Event::DoubleClick(path));
                         }
                     },
+
                 })
                 .set(view_idx, &mut ui);
 
@@ -319,7 +325,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 },
                 None => resize_color.alpha(0.2),
             };
-            Rectangle::fill([RESIZE_HANDLE_WIDTH, rect.h()])
+            Rectangle::fill([resize_handle_width, rect.h()])
                 .color(resize_color)
                 .right(0.0)
                 .parent(scrollable_canvas_idx)
