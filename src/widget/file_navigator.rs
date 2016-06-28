@@ -89,8 +89,10 @@ widget_style!{
     style Style {
         /// Color of the FileNavigator's pressable area.
         - color: Color { theme.shape_color }
+        /// The color of the unselected area of the `FileNavigator`.
+        - unselected_color: Option<Color> { None }
         /// The color of the directory and file names.
-        - text_color: Color { theme.label_color }
+        - text_color: Option<Color> { None }
         /// The font size for the directory and file names.
         - font_size: FontSize { theme.font_size_medium }
         /// The default width of a single directory view.
@@ -143,6 +145,18 @@ impl<'a, F> FileNavigator<'a, F>
     /// list of extensions: `&["wav", "wave", "aiff"]`.
     pub fn with_extension(starting_directory: &'a std::path::Path, exts: &'a [&'a str]) -> Self {
         Self::new(starting_directory, Types::WithExtension(exts))
+    }
+
+    /// The color of the unselected entries within each `DirectoryView`.
+    pub fn unselected_color(mut self, color: Color) -> Self {
+        self.style.unselected_color = Some(Some(color));
+        self
+    }
+
+    /// The color of the `Text` used to display the file names.
+    pub fn text_color(mut self, color: Color) -> Self {
+        self.style.text_color = Some(Some(color));
+        self
     }
 
     builder_methods!{
@@ -202,6 +216,10 @@ impl<'a, F> Widget for FileNavigator<'a, F>
         }
 
         let color = style.color(&ui.theme);
+        let unselected_color = style.unselected_color(&ui.theme)
+            .unwrap_or_else(|| color.plain_contrast().plain_contrast());
+        let text_color = style.text_color(&ui.theme)
+            .unwrap_or_else(|| color.plain_contrast());
 
         let scrollable_canvas_idx = state.scrollable_canvas_idx.get(&mut ui);
         Rectangle::fill(rect.dim())
@@ -214,6 +232,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
         // A scrollbar for the `FOOTER` canvas.
         let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
         Scrollbar::x_axis(scrollable_canvas_idx)
+            .color(color.plain_contrast())
             .auto_hide(true)
             .set(scrollbar_idx, &mut ui);
 
@@ -266,6 +285,8 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 .w(directory_view_width)
                 .and(|view| if i == 0 { view.mid_left_of(idx) } else { view.right(0.0) })
                 .color(color)
+                .unselected_color(unselected_color)
+                .text_color(text_color)
                 .font_size(font_size)
                 .parent(scrollable_canvas_idx)
                 .react(|event| match event {
@@ -400,6 +421,7 @@ impl<'a, F> Colorable for FileNavigator<'a, F> {
 pub mod directory_view {
     use {
         Backend,
+        color,
         Color,
         Colorable,
         FontSize,
@@ -464,6 +486,10 @@ pub mod directory_view {
         style Style {
             /// Color of the FileNavigator's pressable area.
             - color: Color { theme.shape_color }
+            /// The color of the unselected area of the `FileNavigator`.
+            - unselected_color: Option<Color> { None }
+            /// The color of the directory and file names.
+            - text_color: Option<Color> { None }
             /// The font size for the directory and file names.
             - font_size: FontSize { theme.font_size_medium }
         }
@@ -491,6 +517,18 @@ pub mod directory_view {
                 types: types,
                 maybe_react: None,
             }
+        }
+
+        /// The color of the unselected entries within each `DirectoryView`.
+        pub fn unselected_color(mut self, color: Color) -> Self {
+            self.style.unselected_color = Some(Some(color));
+            self
+        }
+
+        /// The color of the `Text` used to display the file names.
+        pub fn text_color(mut self, color: Color) -> Self {
+            self.style.text_color = Some(Some(color));
+            self
         }
 
         builder_methods!{
@@ -603,7 +641,10 @@ pub mod directory_view {
             let color = style.color(&ui.theme);
             let font_size = style.font_size(&ui.theme);
             let file_h = font_size as Scalar * 2.0;
-            let unselected_rect_color = color.plain_contrast().plain_contrast();
+            let unselected_rect_color = style.unselected_color(&ui.theme)
+                .unwrap_or_else(|| color.plain_contrast().plain_contrast());
+            let text_color = style.text_color(&ui.theme)
+                .unwrap_or_else(|| color.plain_contrast());
 
             let scrollable_canvas_idx = state.scrollable_canvas_idx.get(&mut ui);
             Rectangle::fill(rect.dim())
@@ -616,6 +657,7 @@ pub mod directory_view {
             // A scrollbar for the `FOOTER` canvas.
             let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
             Scrollbar::y_axis(scrollable_canvas_idx)
+                .color(color.plain_contrast())
                 .auto_hide(true)
                 .set(scrollbar_idx, &mut ui);
 
@@ -646,11 +688,11 @@ pub mod directory_view {
                         color
                     } else {
                         match ui.widget_input(rect_idx).mouse() {
-                            None => unselected_rect_color.alpha(0.0),
+                            None => color::TRANSPARENT,
                             Some(mouse) => if mouse.buttons.left().is_down() {
                                 color
                             } else {
-                                unselected_rect_color.highlighted().alpha(0.25)
+                                unselected_rect_color.highlighted().alpha(0.5)
                             },
                         }
                     };
@@ -665,7 +707,7 @@ pub mod directory_view {
                         .set(rect_idx, &mut ui);
 
                     Text::new(&entry_name)
-                        .color(color.plain_contrast())
+                        .color(text_color)
                         .font_size(font_size)
                         .mid_left_with_margin_on(rect_idx, 10.0)
                         .align_text_left()
