@@ -87,9 +87,9 @@ widget_style!{
     KIND;
     /// Unique styling for the widget.
     style Style {
-        /// Color of the FileNavigator's pressable area.
+        /// Color of the selected entries.
         - color: Color { theme.shape_color }
-        /// The color of the unselected area of the `FileNavigator`.
+        /// The color of the unselected entries.
         - unselected_color: Option<Color> { None }
         /// The color of the directory and file names.
         - text_color: Option<Color> { None }
@@ -484,9 +484,9 @@ pub mod directory_view {
         KIND;
         /// Unique styling for the widget.
         style Style {
-            /// Color of the FileNavigator's pressable area.
+            /// Color of the selected entries.
             - color: Color { theme.shape_color }
-            /// The color of the unselected area of the `FileNavigator`.
+            /// The color of the unselected entries.
             - unselected_color: Option<Color> { None }
             /// The color of the directory and file names.
             - text_color: Option<Color> { None }
