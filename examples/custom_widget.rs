@@ -323,6 +323,6 @@ pub fn main() {
         }));
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-        window.draw_2d(&e, |c, g| ui.draw_if_changed(c, g))
+        window.draw_2d(&e, |c, g| ui.draw_if_changed(c, g));
     }
 }
