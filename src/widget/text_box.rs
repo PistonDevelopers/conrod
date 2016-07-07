@@ -95,6 +95,7 @@ impl<'a, F> TextBox<'a, F> {
     }
 
     builder_methods!{
+        pub text_color { style.text_color = Some(Color) }
         pub font_size { style.font_size = Some(FontSize) }
         pub react { maybe_react = Some(F) }
         pub x_align_text { style.x_align = Some(Align) }
