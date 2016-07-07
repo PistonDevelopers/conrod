@@ -63,6 +63,7 @@ pub struct State {
     menu_state: MenuState,
     buttons: Vec<(NodeIndex, String)>,
     maybe_selected: Option<Idx>,
+    closed_menu: IndexSlot,
     canvas_idx: IndexSlot,
 }
 
@@ -141,6 +142,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
             buttons: Vec::new(),
             maybe_selected: None,
             canvas_idx: IndexSlot::new(),
+            closed_menu: IndexSlot::new(),
         }
     }
 
@@ -188,7 +190,11 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let buttons = &state.buttons;
                 let (button_idx, label) = selected
                     .map(|i| (buttons[i].0, &self.strings[i][..]))
-                    .unwrap_or_else(|| (buttons[0].0, self.maybe_label.unwrap_or("")));
+                    .unwrap_or_else(|| {
+                        let closed_menu_idx = state.closed_menu.get(&mut ui);
+                        let label = self.maybe_label.unwrap_or("");
+                        (closed_menu_idx, label)
+                    });
 
                 let mut was_clicked = false;
                 {
