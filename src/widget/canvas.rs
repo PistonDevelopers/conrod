@@ -85,6 +85,8 @@ widget_style!{
         /// Padding for the top edge of the Canvas' kid area.
         - pad_top: Scalar { theme.padding.y.end }
 
+        /// The color of the title bar. Defaults to the color of the Canvas.
+        - title_bar_color: Option<Color> { None }
         /// The color of the title bar's text.
         - title_bar_text_color: Color { theme.label_color }
         /// The font size for the title bar's text.
@@ -206,6 +208,12 @@ impl<'a> Canvas<'a> {
             .pad_top(pad.y.end)
     }
 
+    /// Set the color of the `Canvas`' `TitleBar` if it is visible.
+    pub fn title_bar_color(mut self, color: Color) -> Self {
+        self.style.title_bar_color = Some(Some(color));
+        self
+    }
+
 }
 
 
@@ -298,11 +306,12 @@ impl<'a> Widget for Canvas<'a> {
         // TitleBar widget if we were given some label.
         if let Some(label) = maybe_title_bar_label {
             let title_bar_idx = state.title_bar_idx.get(&mut ui);
-            let font_size = style.title_bar_font_size(ui.theme());
-            let label_color = style.title_bar_text_color(ui.theme());
-            let text_align = style.title_bar_text_align(ui.theme());
-            let line_spacing = style.title_bar_line_spacing(ui.theme());
-            let maybe_wrap = style.title_bar_maybe_wrap(ui.theme());
+            let color = style.title_bar_color(&ui.theme).unwrap_or(color);
+            let font_size = style.title_bar_font_size(&ui.theme);
+            let label_color = style.title_bar_text_color(&ui.theme);
+            let text_align = style.title_bar_text_align(&ui.theme);
+            let line_spacing = style.title_bar_line_spacing(&ui.theme);
+            let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
             TitleBar::new(label, rectangle_idx)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
