@@ -10,7 +10,6 @@ use {
     Line,
     Positionable,
     Scalar,
-    Sizeable,
     Text,
     Widget,
 };

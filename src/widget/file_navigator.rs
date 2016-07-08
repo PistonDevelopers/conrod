@@ -431,7 +431,6 @@ pub mod directory_view {
         Rectangle,
         Scalar,
         Scrollbar,
-        Sizeable,
         Text,
         Widget,
     };
@@ -572,8 +571,6 @@ pub mod directory_view {
         }
 
         fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
-            use graph::Walker;
-
             let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
             let DirectoryView { directory, types, mut maybe_react, .. } = self;
 
