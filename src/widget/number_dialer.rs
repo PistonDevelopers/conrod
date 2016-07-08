@@ -12,7 +12,6 @@ use {
     Positionable,
     Rectangle,
     Scalar,
-    Sizeable,
     Text,
     Widget,
 };

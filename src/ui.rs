@@ -1,4 +1,4 @@
-use {CharacterCache, Scalar};
+use Scalar;
 use backend::{self, Backend, ToRawEvent};
 use backend::graphics::{Context, Graphics};
 use color::Color;
