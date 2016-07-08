@@ -9,7 +9,6 @@ use {
     Rect,
     Rectangle,
     Scalar,
-    Sizeable,
     Ui,
 };
 use graph;
@@ -96,6 +95,16 @@ impl<A> Scrollbar<A> {
     /// - The scrollbar is capturing the mouse.
     pub fn auto_hide(mut self, auto_hide: bool) -> Self {
         self.style.auto_hide = Some(auto_hide);
+        self
+    }
+
+    /// Build the widget with the given `thickness`.
+    ///
+    /// This value sets the width of vertical scrollbars, or the height of horizontal scrollbars.
+    ///
+    /// By default, this is `10.0`.
+    pub fn thickness(mut self, thickness: Scalar) -> Self {
+        self.style.thickness = Some(thickness);
         self
     }
 
