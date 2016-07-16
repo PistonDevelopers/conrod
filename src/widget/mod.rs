@@ -1188,17 +1188,14 @@ impl CommonStyle {
 impl<W> Positionable for W
     where W: Widget,
 {
-    #[inline]
     fn x_position(mut self, x: Position) -> Self {
         self.common_mut().style.maybe_x_position = Some(x);
         self
     }
-    #[inline]
     fn y_position(mut self, y: Position) -> Self {
         self.common_mut().style.maybe_y_position = Some(y);
         self
     }
-    #[inline]
     fn get_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_y_position = || self.common().style.maybe_y_position
             .and_then(|y_pos| infer_position_from_other_position(y_pos, Align::Start));
@@ -1206,7 +1203,6 @@ impl<W> Positionable for W
             .or_else(from_y_position)
             .unwrap_or(self.default_x_position(ui))
     }
-    #[inline]
     fn get_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position {
         let from_x_position = || self.common().style.maybe_x_position
             .and_then(|x_pos| infer_position_from_other_position(x_pos, Align::End));
@@ -1214,12 +1210,10 @@ impl<W> Positionable for W
             .or_else(from_x_position)
             .unwrap_or(self.default_y_position(ui))
     }
-    #[inline]
     fn depth(mut self, depth: Depth) -> Self {
         self.common_mut().style.maybe_depth = Some(depth);
         self
     }
-    #[inline]
     fn get_depth(&self) -> Depth {
         const DEFAULT_DEPTH: Depth = 0.0;
         self.common().style.maybe_depth.unwrap_or(DEFAULT_DEPTH)
@@ -1244,24 +1238,20 @@ fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> 
 impl<W> Sizeable for W
     where W: Widget,
 {
-    #[inline]
     fn x_dimension(mut self, w: Dimension) -> Self {
         self.common_mut().style.maybe_x_dimension = Some(w);
         self
     }
-    #[inline]
     fn y_dimension(mut self, h: Dimension) -> Self {
         self.common_mut().style.maybe_y_dimension = Some(h);
         self
     }
-    #[inline]
     /// We attempt to retrieve the `x` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_x_dimension`
     /// - Otherwise, use the default returned by **Widget::default_x_dimension**.
     fn get_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
         self.common().style.maybe_x_dimension.unwrap_or_else(|| self.default_x_dimension(ui))
     }
-    #[inline]
     /// We attempt to retrieve the `y` **Dimension** for the widget via the following:
     /// - Check for specified value at `maybe_y_dimension`
     /// - Otherwise, use the default returned by **Widget::default_y_dimension**.
