@@ -26,6 +26,7 @@ pub mod canvas;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod file_navigator;
+pub mod framed_rectangle;
 pub mod matrix;
 pub mod number_dialer;
 pub mod plot_path;
