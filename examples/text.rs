@@ -44,29 +44,27 @@ fn main() {
 
             // Only re-draw if there was some change in the `Ui`.
             if let Some(primitives) = ui.draw_if_changed() {
+
+                // A function used for caching glyphs from `Text` widgets.
+                fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
+                                       cache: &mut G2dTexture<'static>,
+                                       rect: conrod::text::RtRect<u32>,
+                                       data: &[u8])
+                {
+                    use piston_window::texture::UpdateTexture;
+                    let dim = [rect.width(), rect.height()];
+                    let format = piston_window::texture::Format::Rgba8;
+                    let encoder = &mut graphics.encoder;
+                    UpdateTexture::update(cache, encoder, format, data, dim)
+                        .expect("Failed to update texture");
+                }
+
                 // Data and functions for rendering the primitives.
                 let renderer = conrod::backend::draw_piston::Renderer {
                     context: c,
                     graphics: g,
                     texture_cache: &mut text_texture_cache,
-                    // A type used for passing the `texture_cache` used for caching and rendering
-                    // `Text` to the function for rendering.
-                    cache_queued_glyphs: |graphics: &mut piston_window::G2d,
-                                          cache: &mut G2dTexture<'static>,
-                                          rect: conrod::text::RtRect<u32>,
-                                          data: &[u8]| {
-                        use piston_window::texture::UpdateTexture;
-
-                        println!("{:?}", rect);
-                        println!("data: LEN={:?}, BYTES={:?}", data.len(), data);
-                        let dim = [rect.width(), rect.height()];
-                        let format = piston_window::texture::Format::Rgba8;
-                        let encoder = &mut graphics.encoder;
-                        UpdateTexture::update(cache, encoder, format, data, dim)
-                            .expect("Failed to update texture");
-                    },
-                    // A function that returns some texture `T` for the given `texture::Id`. We
-                    // have no `Image` widgets, so no need to implement this.
+                    cache_queued_glyphs: cache_queued_glyphs,
                     get_texture: |_id| None,
                 };
 
