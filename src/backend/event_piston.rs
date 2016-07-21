@@ -4,6 +4,7 @@ use {Point, Scalar};
 use event::{self, Input, Motion, RawEvent};
 use piston_input;
 
+/// Converts any `GenericEvent` to a `Raw` conrod event.
 pub fn convert_event<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Raw>
     where E: piston_input::GenericEvent,
 {

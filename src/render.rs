@@ -162,18 +162,8 @@ impl<'a> Primitives<'a> {
         }
     }
 
-}
-
-
-impl<'a> Primitives<'a> {
-
-    /// Call the given `draw_primitivese` function with all `Primitive`s that make up the `Ui` in
-    /// its current state.
-    ///
-    /// `Primitive`s are yielded in order of depth, bottom to top.
-    pub fn draw<F>(&mut self, mut draw_primitive: F)
-        where F: FnMut(Primitive),
-    {
+    /// Yield the next `Primitive` for rendering.
+    pub fn next(&mut self) -> Option<Primitive> {
         let Primitives {
             ref mut crop_stack,
             ref mut depth_order,
@@ -186,53 +176,10 @@ impl<'a> Primitives<'a> {
             ref mut glyph_cache,
         } = *self;
 
-        while let Some(&node_index) = depth_order.next() {
+        while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::shape::Style as ShapeStyle;
-
-            let container = match graph.widget(node_index) {
-                Some(container) => container,
-                None => continue,
-            };
-
-            // If we're currently using a cropped context and the current `crop_parent_idx` is
-            // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
-            // cropped context from the stack as we are done with it.
-            while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
-                if graph.does_recursive_depth_edge_exist(crop_parent_idx, node_index) {
-                    break;
-                } else {
-                    crop_stack.pop();
-                }
-            }
-
-            // Check the stack for the current Context.
-            let scizzor = crop_stack.last().map(|&(_, scizzor)| scizzor).unwrap_or(window_rect);
-
-            // If the current widget should crop its children, we need to add a rect for it to
-            // the top of the crop stack.
-            if container.crop_kids {
-                let scizzor_rect = container.kid_area.rect.overlap(scizzor)
-                    .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]));
-                crop_stack.push((node_index, scizzor_rect));
-            }
-
-            // We only want to return primitives that are actually visible.
-            let is_visible = container.rect.overlap(window_rect).is_some()
-                && graph::algo::cropped_area_of_widget(graph, node_index).is_some();
-            if !is_visible {
-                continue;
-            }
-
+            let (scizzor, container) = widget;
             let rect = container.rect;
-
-            // Simplify the constructor for a `Primitive`.
-            fn new_primitive(kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
-                Primitive {
-                    kind: kind,
-                    scizzor: scizzor,
-                    rect: rect,
-                }
-            }
 
             // Extract the unique state and style from the container.
             match container.kind {
@@ -244,7 +191,7 @@ impl<'a> Primitives<'a> {
                         match *style {
                             ShapeStyle::Fill(_) => {
                                 let kind = PrimitiveKind::Rectangle { color: color };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                             ShapeStyle::Outline(ref line_style) => {
                                 let (l, r, b, t) = rect.l_r_b_t();
@@ -261,25 +208,9 @@ impl<'a> Primitives<'a> {
                                     thickness: thickness,
                                     points: &points[..5],
                                 };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                         }
-                    }
-                },
-
-                primitive::shape::framed_rectangle::KIND => {
-                    if let Some(rectangle) = container.unique_widget_state::<::FramedRectangle>() {
-                        let graph::UniqueWidgetState { ref style, .. } = *rectangle;
-                        let frame = style.frame(theme);
-                        if frame > 0.0 {
-                            let frame_color = style.frame_color(theme);
-                            let kind = PrimitiveKind::Rectangle { color: frame_color };
-                            draw_primitive(new_primitive(kind, scizzor, rect));
-                        }
-                        let color = style.color(theme);
-                        let rect = rect.pad(frame);
-                        let kind = PrimitiveKind::Rectangle { color: color };
-                        draw_primitive(new_primitive(kind, scizzor, rect));
                     }
                 },
 
@@ -302,7 +233,7 @@ impl<'a> Primitives<'a> {
                         match *style {
                             ShapeStyle::Fill(_) => {
                                 let kind = PrimitiveKind::Polygon { color: color, points: points };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                             ShapeStyle::Outline(ref line_style) => {
                                 let cap = line_style.get_cap(theme);
@@ -313,7 +244,7 @@ impl<'a> Primitives<'a> {
                                     thickness: thickness,
                                     points: points,
                                 };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                         }
                     }
@@ -330,7 +261,7 @@ impl<'a> Primitives<'a> {
                         match *style {
                             ShapeStyle::Fill(_) => {
                                 let kind = PrimitiveKind::Polygon { color: color, points: points };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                             ShapeStyle::Outline(ref line_style) => {
                                 let cap = line_style.get_cap(theme);
@@ -341,7 +272,7 @@ impl<'a> Primitives<'a> {
                                     thickness: thickness,
                                     points: points,
                                 };
-                                draw_primitive(new_primitive(kind, scizzor, rect));
+                                return Some(new_primitive(kind, scizzor, rect));
                             },
                         }
                     }
@@ -362,7 +293,7 @@ impl<'a> Primitives<'a> {
                             thickness: thickness,
                             points: points,
                         };
-                        draw_primitive(new_primitive(kind, scizzor, rect));
+                        return Some(new_primitive(kind, scizzor, rect));
                     }
                 },
 
@@ -380,7 +311,7 @@ impl<'a> Primitives<'a> {
                             thickness: thickness,
                             points: points,
                         };
-                        draw_primitive(new_primitive(kind, scizzor, rect));
+                        return Some(new_primitive(kind, scizzor, rect));
                     }
                 },
 
@@ -429,7 +360,7 @@ impl<'a> Primitives<'a> {
                             positioned_glyphs: positioned_glyphs,
                             font_id: font_id,
                         };
-                        draw_primitive(new_primitive(kind, scizzor, rect));
+                        return Some(new_primitive(kind, scizzor, rect));
                     }
                 },
 
@@ -443,20 +374,374 @@ impl<'a> Primitives<'a> {
                             texture_id: state.texture_id,
                             source_rect: state.src_rect,
                         };
-                        draw_primitive(new_primitive(kind, scizzor, rect));
+                        return Some(new_primitive(kind, scizzor, rect));
                     }
                 },
 
                 // Return an `Other` variant for all non-primitive widgets.
                 _ => {
                     let kind = PrimitiveKind::Other(container);
-                    draw_primitive(new_primitive(kind, scizzor, rect));
+                    return Some(new_primitive(kind, scizzor, rect));
                 },
             }
         }
+
+        None
     }
-        
 }
+
+
+
+/// Simplify the constructor for a `Primitive`.
+fn new_primitive(kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
+    Primitive {
+        kind: kind,
+        scizzor: scizzor,
+        rect: rect,
+    }
+}
+
+/// Retrieves the next visible widget from the `depth_order`, updating the `crop_stack` as
+/// necessary.
+fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
+                   graph: &'a Graph,
+                   crop_stack: &mut Vec<(NodeIndex, Rect)>,
+                   window_rect: Rect) -> Option<(Rect, &'a graph::Container)>
+{
+    while let Some(&node_index) = depth_order.next() {
+        let container = match graph.widget(node_index) {
+            Some(container) => container,
+            None => continue,
+        };
+
+        // If we're currently using a cropped context and the current `crop_parent_idx` is
+        // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
+        // cropped context from the stack as we are done with it.
+        while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
+            if graph.does_recursive_depth_edge_exist(crop_parent_idx, node_index) {
+                break;
+            } else {
+                crop_stack.pop();
+            }
+        }
+
+        // Check the stack for the current Context.
+        let scizzor = crop_stack.last().map(|&(_, scizzor)| scizzor).unwrap_or(window_rect);
+
+        // If the current widget should crop its children, we need to add a rect for it to
+        // the top of the crop stack.
+        if container.crop_kids {
+            let scizzor_rect = container.kid_area.rect.overlap(scizzor)
+                .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]));
+            crop_stack.push((node_index, scizzor_rect));
+        }
+
+        // We only want to return primitives that are actually visible.
+        let is_visible = container.rect.overlap(window_rect).is_some()
+            && graph::algo::cropped_area_of_widget(graph, node_index).is_some();
+        if !is_visible {
+            continue;
+        }
+
+        return Some((scizzor, container));
+    }
+
+    None
+}
+
+
+// impl<'a> Primitives<'a> {
+// 
+//     /// Call the given `draw_primitivese` function with all `Primitive`s that make up the `Ui` in
+//     /// its current state.
+//     ///
+//     /// `Primitive`s are yielded in order of depth, bottom to top.
+//     pub fn draw<F>(&mut self, mut draw_primitive: F)
+//         where F: FnMut(Primitive),
+//     {
+//         let Primitives {
+//             ref mut crop_stack,
+//             ref mut depth_order,
+//             graph,
+//             theme,
+//             fonts,
+//             window_rect,
+//             ref mut points,
+//             ref mut positioned_glyphs,
+//             ref mut glyph_cache,
+//         } = *self;
+// 
+//         while let Some(&node_index) = depth_order.next() {
+//             use widget::primitive::shape::Style as ShapeStyle;
+// 
+//             let container = match graph.widget(node_index) {
+//                 Some(container) => container,
+//                 None => continue,
+//             };
+// 
+//             // If we're currently using a cropped context and the current `crop_parent_idx` is
+//             // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
+//             // cropped context from the stack as we are done with it.
+//             while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
+//                 if graph.does_recursive_depth_edge_exist(crop_parent_idx, node_index) {
+//                     break;
+//                 } else {
+//                     crop_stack.pop();
+//                 }
+//             }
+// 
+//             // Check the stack for the current Context.
+//             let scizzor = crop_stack.last().map(|&(_, scizzor)| scizzor).unwrap_or(window_rect);
+// 
+//             // If the current widget should crop its children, we need to add a rect for it to
+//             // the top of the crop stack.
+//             if container.crop_kids {
+//                 let scizzor_rect = container.kid_area.rect.overlap(scizzor)
+//                     .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]));
+//                 crop_stack.push((node_index, scizzor_rect));
+//             }
+// 
+//             // We only want to return primitives that are actually visible.
+//             let is_visible = container.rect.overlap(window_rect).is_some()
+//                 && graph::algo::cropped_area_of_widget(graph, node_index).is_some();
+//             if !is_visible {
+//                 continue;
+//             }
+// 
+//             let rect = container.rect;
+// 
+//             // Simplify the constructor for a `Primitive`.
+//             fn new_primitive(kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
+//                 Primitive {
+//                     kind: kind,
+//                     scizzor: scizzor,
+//                     rect: rect,
+//                 }
+//             }
+// 
+//             // Extract the unique state and style from the container.
+//             match container.kind {
+// 
+//                 primitive::shape::rectangle::KIND => {
+//                     if let Some(rectangle) = container.unique_widget_state::<::Rectangle>() {
+//                         let graph::UniqueWidgetState { ref style, .. } = *rectangle;
+//                         let color = style.get_color(theme);
+//                         match *style {
+//                             ShapeStyle::Fill(_) => {
+//                                 let kind = PrimitiveKind::Rectangle { color: color };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                             ShapeStyle::Outline(ref line_style) => {
+//                                 let (l, r, b, t) = rect.l_r_b_t();
+//                                 points[0] = [l, b];
+//                                 points[1] = [l, t];
+//                                 points[2] = [r, t];
+//                                 points[3] = [r, b];
+//                                 points[4] = [l, b];
+//                                 let cap = line_style.get_cap(theme);
+//                                 let thickness = line_style.get_thickness(theme);
+//                                 let kind = PrimitiveKind::Lines {
+//                                     color: color,
+//                                     cap: cap,
+//                                     thickness: thickness,
+//                                     points: &points[..5],
+//                                 };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                         }
+//                     }
+//                 },
+// 
+//                 primitive::shape::framed_rectangle::KIND => {
+//                     if let Some(rectangle) = container.unique_widget_state::<::FramedRectangle>() {
+//                         let graph::UniqueWidgetState { ref style, .. } = *rectangle;
+//                         let frame = style.frame(theme);
+//                         if frame > 0.0 {
+//                             let frame_color = style.frame_color(theme);
+//                             let kind = PrimitiveKind::Rectangle { color: frame_color };
+//                             draw_primitive(new_primitive(kind, scizzor, rect));
+//                         }
+//                         let color = style.color(theme);
+//                         let rect = rect.pad(frame);
+//                         let kind = PrimitiveKind::Rectangle { color: color };
+//                         draw_primitive(new_primitive(kind, scizzor, rect));
+//                     }
+//                 },
+// 
+//                 primitive::shape::oval::KIND => {
+//                     if let Some(oval) = container.unique_widget_state::<::Oval>() {
+//                         use std::f64::consts::PI;
+//                         let graph::UniqueWidgetState { ref style, .. } = *oval;
+// 
+//                         let (x, y, w, h) = rect.x_y_w_h();
+//                         let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
+//                         let hw = w / 2.0;
+//                         let hh = h / 2.0;
+//                         let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
+//                         for i in 0..NUM_POINTS {
+//                             points[i] = f(i as f64);
+//                         }
+// 
+//                         let color = style.get_color(theme);
+//                         let points = &mut points[..NUM_POINTS];
+//                         match *style {
+//                             ShapeStyle::Fill(_) => {
+//                                 let kind = PrimitiveKind::Polygon { color: color, points: points };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                             ShapeStyle::Outline(ref line_style) => {
+//                                 let cap = line_style.get_cap(theme);
+//                                 let thickness = line_style.get_thickness(theme);
+//                                 let kind = PrimitiveKind::Lines {
+//                                     color: color,
+//                                     cap: cap,
+//                                     thickness: thickness,
+//                                     points: points,
+//                                 };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                         }
+//                     }
+//                 },
+// 
+//                 primitive::shape::polygon::KIND => {
+//                     use widget::primitive::shape::Style;
+//                     use widget::primitive::shape::polygon::State;
+//                     if let Some(polygon) = container.state_and_style::<State, Style>() {
+//                         let graph::UniqueWidgetState { ref state, ref style } = *polygon;
+// 
+//                         let color = style.get_color(theme);
+//                         let points = &state.points[..];
+//                         match *style {
+//                             ShapeStyle::Fill(_) => {
+//                                 let kind = PrimitiveKind::Polygon { color: color, points: points };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                             ShapeStyle::Outline(ref line_style) => {
+//                                 let cap = line_style.get_cap(theme);
+//                                 let thickness = line_style.get_thickness(theme);
+//                                 let kind = PrimitiveKind::Lines {
+//                                     color: color,
+//                                     cap: cap,
+//                                     thickness: thickness,
+//                                     points: points,
+//                                 };
+//                                 draw_primitive(new_primitive(kind, scizzor, rect));
+//                             },
+//                         }
+//                     }
+//                 },
+// 
+//                 primitive::line::KIND => {
+//                     if let Some(line) = container.unique_widget_state::<::Line>() {
+//                         let graph::UniqueWidgetState { ref state, ref style } = *line;
+//                         let color = style.get_color(theme);
+//                         let cap = style.get_cap(theme);
+//                         let thickness = style.get_thickness(theme);
+//                         points[0] = state.start;
+//                         points[1] = state.end;
+//                         let points = &points[..2];
+//                         let kind = PrimitiveKind::Lines {
+//                             color: color,
+//                             cap: cap,
+//                             thickness: thickness,
+//                             points: points,
+//                         };
+//                         draw_primitive(new_primitive(kind, scizzor, rect));
+//                     }
+//                 },
+// 
+//                 primitive::point_path::KIND => {
+//                     use widget::primitive::point_path::{State, Style};
+//                     if let Some(point_path) = container.state_and_style::<State, Style>() {
+//                         let graph::UniqueWidgetState { ref state, ref style } = *point_path;
+//                         let color = style.get_color(theme);
+//                         let cap = style.get_cap(theme);
+//                         let thickness = style.get_thickness(theme);
+//                         let points = &state.points[..];
+//                         let kind = PrimitiveKind::Lines {
+//                             color: color,
+//                             cap: cap,
+//                             thickness: thickness,
+//                             points: points,
+//                         };
+//                         draw_primitive(new_primitive(kind, scizzor, rect));
+//                     }
+//                 },
+// 
+//                 primitive::text::KIND => {
+//                     if let Some(text) = container.unique_widget_state::<::Text>() {
+//                         let graph::UniqueWidgetState { ref state, ref style } = *text;
+//                         let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
+//                             Some(id) => id,
+//                             None => continue,
+//                         };
+//                         let font = match fonts.get(font_id) {
+//                             Some(font) => font,
+//                             None => continue,
+//                         };
+// 
+//                         // Retrieve styling.
+//                         let color = style.color(theme);
+//                         let font_size = style.font_size(theme);
+//                         let line_spacing = style.line_spacing(theme);
+//                         let x_align = style.text_align(theme);
+//                         let y_align = Align::End;
+//                         let scale = text::pt_to_scale(font_size);
+// 
+//                         // Produce the text layout iterators.
+//                         let line_infos = state.line_infos.iter().cloned();
+//                         let lines = line_infos.clone().map(|info| &state.string[info.byte_range()]);
+//                         let line_rects = text::line::rects(line_infos, font_size, rect,
+//                                                            x_align, y_align, line_spacing);
+// 
+//                         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
+//                         positioned_glyphs.clear();
+//                         for (line, line_rect) in lines.zip(line_rects) {
+//                             let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
+//                             let point = text::RtPoint { x: x, y: y };
+//                             positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
+//                         }
+// 
+//                         // Queue the glyphs to be cached.
+//                         for glyph in positioned_glyphs.iter() {
+//                             glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+//                         }
+// 
+//                         let kind = PrimitiveKind::Text {
+//                             color: color,
+//                             glyph_cache: glyph_cache,
+//                             positioned_glyphs: positioned_glyphs,
+//                             font_id: font_id,
+//                         };
+//                         draw_primitive(new_primitive(kind, scizzor, rect));
+//                     }
+//                 },
+// 
+//                 primitive::image::KIND => {
+//                     use widget::primitive::image::{State, Style};
+//                     if let Some(image) = container.state_and_style::<State, Style>() {
+//                         let graph::UniqueWidgetState { ref state, ref style } = *image;
+//                         let maybe_color = style.maybe_color(theme);
+//                         let kind = PrimitiveKind::Image {
+//                             maybe_color: maybe_color,
+//                             texture_id: state.texture_id,
+//                             source_rect: state.src_rect,
+//                         };
+//                         draw_primitive(new_primitive(kind, scizzor, rect));
+//                     }
+//                 },
+// 
+//                 // Return an `Other` variant for all non-primitive widgets.
+//                 _ => {
+//                     let kind = PrimitiveKind::Other(container);
+//                     draw_primitive(new_primitive(kind, scizzor, rect));
+//                 },
+//             }
+//         }
+//     }
+//         
+// }
 
 
 

@@ -53,7 +53,7 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
     let view_size = context.get_view_size();
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
-    primitives.draw(|render::Primitive { kind, scizzor, rect }| {
+    while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
         let context = crop_context(context, scizzor);
 
         match kind {
@@ -135,7 +135,7 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
             },
 
         }
-    });
+    }
 }
 
 
