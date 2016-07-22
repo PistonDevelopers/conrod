@@ -13,6 +13,7 @@ mod feature {
     extern crate find_folder;
     use conrod;
     use glium;
+    use std;
 
     use glium::{DisplayBuild, Surface};
     use glium::glutin;
@@ -29,7 +30,7 @@ mod feature {
         let display = glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
-            .with_title("Conrod with glutin & glium!".into())
+            .with_title("Conrod with glutin & glium!")
             .build_glium()
             .unwrap();
 
@@ -97,8 +98,6 @@ mod feature {
             ).unwrap()
         };
 
-        let mut text: String = "FOO!".into();
-
 
         // Start the loop:
         //
@@ -120,9 +119,26 @@ mod feature {
             // Draw the `Ui`.
             if let Some(mut primitives) = ui.draw_if_changed() {
                 use conrod::render;
+                use conrod::text::rt;
+
+                #[derive(Copy, Clone)]
+                struct Vertex {
+                    position: [f32; 2],
+                    tex_coords: [f32; 2],
+                    colour: [f32; 4]
+                }
+
+                implement_vertex!(Vertex, position, tex_coords, colour);
+
+                let (screen_width, screen_height) = {
+                    let (w, h) = display.get_framebuffer_dimensions();
+                    (w as f32, h as f32)
+                };
+
+                let mut vertices: Vec<Vertex> = Vec::new();
 
                 // Draw each primitive in order of depth.
-                primitives.draw(|render::Primitive { kind, scizzor, rect }| {
+                while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
                     match kind {
 
                         render::PrimitiveKind::Rectangle { color } => {
@@ -156,33 +172,83 @@ mod feature {
                                 text_texture_cache.main_level().write(glium_rect, image);
                             }).unwrap();
 
+                            let color = color.to_fsa();
+
                             // Render glyphs via the texture cache.
                             let cache_id = font_id.index();
-                            for g in positioned_glyphs {
-                                if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
-                                    // TODO
-                                }
-                            }
 
+                            // TODO: Should be the top left corner?
+                            let origin = rt::point(0.0, 0.0);
+
+                            // TODO 
+                            let to_gl_rect = |screen_rect: conrod::text::rt::Rect<i32>| conrod::text::rt::Rect {
+                                min: origin
+                                    + (rt::vector(screen_rect.min.x as f32 / screen_width - 0.5,
+                                            1.0 - screen_rect.min.y as f32 / screen_height - 0.5)) * 2.0,
+                                max: origin
+                                    + (rt::vector(screen_rect.max.x as f32 / screen_width - 0.5,
+                                            1.0 - screen_rect.max.y as f32 / screen_height - 0.5)) * 2.0
+                            };
+
+                            let extension = positioned_glyphs.into_iter()
+                                .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
+                                .flat_map(|(uv_rect, screen_rect)| {
+                                    use std::iter::once;
+                                    let gl_rect = to_gl_rect(screen_rect);
+                                    once(Vertex {
+                                        position: [gl_rect.min.x, gl_rect.max.y],
+                                        tex_coords: [uv_rect.min.x, uv_rect.max.y],
+                                        colour: color
+                                    }).chain(once(Vertex {
+                                        position: [gl_rect.min.x,  gl_rect.min.y],
+                                        tex_coords: [uv_rect.min.x, uv_rect.min.y],
+                                        colour: color
+                                    })).chain(once(Vertex {
+                                        position: [gl_rect.max.x,  gl_rect.min.y],
+                                        tex_coords: [uv_rect.max.x, uv_rect.min.y],
+                                        colour: color
+                                    })).chain(once(Vertex {
+                                        position: [gl_rect.max.x,  gl_rect.min.y],
+                                        tex_coords: [uv_rect.max.x, uv_rect.min.y],
+                                        colour: color
+                                    })).chain(once(Vertex {
+                                        position: [gl_rect.max.x, gl_rect.max.y],
+                                        tex_coords: [uv_rect.max.x, uv_rect.max.y],
+                                        colour: color
+                                    })).chain(once(Vertex {
+                                        position: [gl_rect.min.x, gl_rect.max.y],
+                                        tex_coords: [uv_rect.min.x, uv_rect.max.y],
+                                        colour: color
+                                    }))
+                                });
+
+                            vertices.extend(extension);
                         },
 
                         render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
                             // TODO
                         },
+
+                        // We have no special case widgets to handle.
+                        render::PrimitiveKind::Other(_) => (),
                     }
-                });
+
+                    let uniforms = uniform! {
+                        tex: text_texture_cache.sampled()
+                            .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                    };
+
+                    let mut target = display.draw();
+                    target.clear_color(1.0, 1.0, 1.0, 0.0);
+                    let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
+                    let blend = glium::Blend::alpha_blending();
+                    let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+                    let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
+                    target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
+                    target.finish().unwrap();
+                }
 
             }
-
-            // let mut target = display.draw();
-            // target.clear_color(1.0, 1.0, 1.0, 0.0);
-
-            // let blend = glium::Blend::alpha_blending();
-            // let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
-            // let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-            // target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
-
-            // target.finish().unwrap();
 
             // Update all widgets within the `Ui`.
             ui.set_widgets(|ui| set_widgets(ui));
@@ -206,20 +272,30 @@ mod feature {
                     _ => {},
                 }
             }
+
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
 
 
     /// Instantiate the widgets.
     fn set_widgets(ref mut ui: conrod::UiCell) {
-        use conrod::{Colorable, Widget};
+        use conrod::{Colorable, Positionable, Widget};
 
         widget_ids!{
             CANVAS,
             BUTTON,
+            TEXT,
         };
 
         conrod::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+
+        conrod::Text::new("Foo! Bar! Baz!\n Floozy Woozy\n Qux Flux")
+            .middle_of(CANVAS)
+            .font_size(64)
+            .color(conrod::color::LIGHT_BLUE)
+            .align_text_middle()
+            .set(TEXT, ui);
     }
 }
 
