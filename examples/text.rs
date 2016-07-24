@@ -2,7 +2,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use piston_window::{EventLoop, G2dTexture, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, G2dTexture, ImageSize, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
 fn main() {
@@ -25,14 +25,15 @@ fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Create a texture cache in which we can cache text on the GPU.
-    let mut text_texture_cache: G2dTexture<'static> = {
-        const BUFFER_LEN: usize = WIDTH as usize * HEIGHT as usize;
-        const INIT: [u8; BUFFER_LEN] = [128; BUFFER_LEN];
-        let factory = &mut window.factory;
+    fn new_text_texture_cache(window: &mut PistonWindow, w: u32, h: u32) -> G2dTexture<'static> {
+        let buffer_len = w as usize * h as usize;
+        let init = vec![128; buffer_len];
         let settings = piston_window::TextureSettings::new();
-        G2dTexture::from_memory_alpha(factory, &INIT, WIDTH, HEIGHT, &settings).unwrap()
+        G2dTexture::from_memory_alpha(&mut window.factory, &init, w, h, &settings).unwrap()
     };
+
+    // Create a texture cache in which we can cache text on the GPU.
+    let mut text_texture_cache = new_text_texture_cache(&mut window, WIDTH, HEIGHT);
 
     window.set_ups(60);
 
@@ -40,6 +41,14 @@ fn main() {
     while let Some(event) = window.next() {
         ui.handle_event(event.clone());
         event.update(|_| ui.set_widgets(set_ui));
+
+        // Check to see if the size of the glyph cache has changed.
+        let (w, h) = ui.glyph_cache().dimensions();
+        let (cur_w, cur_h) = text_texture_cache.get_size();
+        if w > cur_w || h > cur_h {
+            text_texture_cache = new_text_texture_cache(&mut window, w, h);
+        }
+
         window.draw_2d(&event, |c, g| {
 
             // Only re-draw if there was some change in the `Ui`.
@@ -48,14 +57,18 @@ fn main() {
                 // A function used for caching glyphs from `Text` widgets.
                 fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
                                        cache: &mut G2dTexture<'static>,
-                                       rect: conrod::text::RtRect<u32>,
+                                       rect: conrod::text::rt::Rect<u32>,
                                        data: &[u8])
                 {
                     use piston_window::texture::UpdateTexture;
-                    let dim = [rect.width(), rect.height()];
+                    let offset = [rect.min.x, rect.min.y];
+                    let size = [rect.width(), rect.height()];
                     let format = piston_window::texture::Format::Rgba8;
                     let encoder = &mut graphics.encoder;
-                    UpdateTexture::update(cache, encoder, format, data, dim)
+
+                    // FIXME: These allocations and iterations are slow and messy.
+                    let new_data: Vec<_> = data.iter().flat_map(|&b| vec![255, 255, 255, b]).collect();
+                    UpdateTexture::update(cache, encoder, format, &new_data[..], offset, size)
                         .expect("Failed to update texture");
                 }
 

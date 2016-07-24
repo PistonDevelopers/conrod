@@ -57,7 +57,7 @@ fn main() {
                     texture_cache: &mut text_texture_cache,
                     cache_queued_glyphs: |_graphics: &mut piston_window::G2d,
                                           _cache: &mut G2dTexture<'static>,
-                                          _rect: conrod::text::RtRect<u32>,
+                                          _rect: conrod::text::rt::Rect<u32>,
                                           _data: &[u8]| {
                         // No text to draw.
                         unimplemented!();

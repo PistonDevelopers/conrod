@@ -6,7 +6,7 @@ use render;
 
 /// Render the given sequence of conrod primitive widgets.
 pub fn primitives(mut primitives: render::Primitives) {
-    primitives.draw(|render::Primitive { kind, scizzor, rect }| {
+    while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
         match kind {
 
             render::PrimitiveKind::Rectangle { color } => {
@@ -36,6 +36,7 @@ pub fn primitives(mut primitives: render::Primitives) {
             render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
             },
 
+            render::PrimitiveKind::Other(_) => (),
         }
-    });
+    }
 }

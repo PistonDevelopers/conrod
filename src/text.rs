@@ -4,16 +4,14 @@ use {FontSize, Scalar};
 use std;
 
 // Re-export all relevant rusttype types here.
-pub use rusttype::{
-    Glyph,
-    GlyphId,
-    GlyphIter,
-    LayoutIter,
-    Point as RtPoint,
-    Rect as RtRect,
-    Scale,
-};
+pub use rusttype::{Glyph, GlyphId, GlyphIter, LayoutIter, Scale};
 pub use rusttype::gpu_cache::Cache as GlyphCache;
+
+// Re-export any possibly ambiguous rusttype types here.
+pub mod rt {
+    pub use rusttype::{Point, Rect, Vector, point, vector};
+}
+
 
 /// The RustType `FontCollection` type used by conrod.
 pub type FontCollection = ::rusttype::FontCollection<'static>;
@@ -360,7 +358,7 @@ pub mod glyph {
             let scale = super::pt_to_scale(font_size);
             lines_with_rects.next().map(|(line, line_rect)| {
                 let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
-                let point = super::RtPoint { x: x, y: y };
+                let point = super::rt::Point { x: x, y: y };
                 Rects {
                     next_left: line_rect.x.start,
                     layout: font.layout(line, scale, point),
@@ -594,7 +592,7 @@ pub mod cursor {
             let scale = super::pt_to_scale(font_size);
             lines_with_rects.next().map(|(line, line_rect)| {
                 let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
-                let point = super::RtPoint { x: x, y: y };
+                let point = super::rt::Point { x: x, y: y };
                 let y = line_rect.y;
                 let layout = font.layout(line, scale, point);
                 let xs = Xs {
@@ -962,7 +960,7 @@ pub mod line {
     /// Produce the width of the given line of text.
     pub fn width(text: &str, font: &super::Font, font_size: FontSize) -> Scalar {
         let scale = super::Scale::uniform(super::pt_to_px(font_size));
-        let point = super::RtPoint { x: 0.0, y: 0.0 };
+        let point = super::rt::Point { x: 0.0, y: 0.0 };
         font.layout(text, scale, point)
             .fold(0, |_, g| g.pixel_bounding_box().map(|r| r.max.x).unwrap_or(0))
             as Scalar

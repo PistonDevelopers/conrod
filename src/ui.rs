@@ -226,6 +226,11 @@ impl Ui {
         &self.prev_updated_widgets
     }
 
+    /// Borrow the **Ui**'s glyph cache.
+    pub fn glyph_cache(&self) -> &rusttype::gpu_cache::Cache {
+        &self.glyph_cache
+    }
+
     /// Scroll the widget at the given index by the given offset amount.
     ///
     /// The produced `Scroll` event will be applied upon the next call to `Ui::set_widgets`.

@@ -17,7 +17,7 @@ pub use self::piston_graphics::{Context, DrawState, Graphics, ImageSize, Transfo
 pub struct Renderer<'a, G, T, FC, FT>
     where G: Graphics<Texture=T> + 'a,
           T: ImageSize + 'a,
-          FC: for<'b> FnMut(&'b mut G, &'b mut T, text::RtRect<u32>, &'b [u8]),
+          FC: for<'b> FnMut(&'b mut G, &'b mut T, text::rt::Rect<u32>, &'b [u8]),
           FT: FnMut(texture::Id) -> Option<&'a T>,
 {
     /// The piston2d-graphics drawing context.
@@ -38,7 +38,7 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                                     renderer: Renderer<'a, G, T, FC, FT>)
     where G: Graphics<Texture=T>,
           T: ImageSize,
-          FC: FnMut(&mut G, &mut T, text::RtRect<u32>, &[u8]),
+          FC: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
           FT: FnMut(texture::Id) -> Option<&'a T>,
 {
     let Renderer {
@@ -91,20 +91,32 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
             },
 
             render::PrimitiveKind::Text { color, glyph_cache, positioned_glyphs, font_id } => {
+                let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
+
+                // Cache the glyphs within the GPU cache.
                 glyph_cache.cache_queued(|rect, data| {
                     cache_queued_glyphs(graphics, texture_cache, rect, data)
-                });
+                }).unwrap();
+
                 let cache_id = font_id.index();
+                let (tex_w, tex_h) = texture_cache.get_size();
+                let (view_w, view_h) = (view_size[0], view_size[1]);
                 for g in positioned_glyphs {
                     if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
+                        let position = match g.pixel_bounding_box() {
+                            Some(r) => r.min,
+                            None => continue,
+                        };
+                        let context = context.trans(position.x as f64, position.y as f64);
                         // TODO: We should be writing straight to a vertex buffer rather than
-                        // instantiating an `Image` and making GL calls every single glyph.
+                        // instantiating an `Image` and making GL calls every single glyph - not
+                        // sure if this is possible with piston however.
                         let mut image = piston_graphics::image::Image::new_color(color.to_fsa());
                         image.source_rectangle = {
-                            let x = uv_rect.min.x as i32;
-                            let y = uv_rect.min.y as i32;
-                            let w = (uv_rect.max.x - uv_rect.min.x) as i32;
-                            let h = (uv_rect.max.y - uv_rect.min.y) as i32;
+                            let x = (uv_rect.min.x * view_w as f32).round() as i32;
+                            let y = (uv_rect.min.y * view_h as f32).round() as i32;
+                            let w = ((uv_rect.max.x - uv_rect.min.x) * view_w as f32).round() as i32;
+                            let h = ((uv_rect.max.y - uv_rect.min.y) * view_h as f32).round() as i32;
                             Some([x, y, w, h])
                         };
                         image.draw(texture_cache, &context.draw_state, context.transform, graphics);

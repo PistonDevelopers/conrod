@@ -176,6 +176,12 @@ impl<'a> Primitives<'a> {
             ref mut glyph_cache,
         } = *self;
 
+        let (window_w, window_h) = window_rect.w_h();
+
+        let trans_x = |x: Scalar| x + window_w / 2.0;
+        let trans_y = |y: Scalar| (-y) + window_h / 2.0;
+        let trans_xy = |xy: [Scalar; 2]| [trans_x(xy[0]), trans_y(xy[1])];
+
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::shape::Style as ShapeStyle;
             let (scizzor, container) = widget;
@@ -344,8 +350,8 @@ impl<'a> Primitives<'a> {
                         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
                         positioned_glyphs.clear();
                         for (line, line_rect) in lines.zip(line_rects) {
-                            let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
-                            let point = text::RtPoint { x: x, y: y };
+                            let (x, y) = (trans_x(line_rect.left()) as f32, trans_y(line_rect.bottom()) as f32);
+                            let point = text::rt::Point { x: x, y: y };
                             positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
                         }
 
