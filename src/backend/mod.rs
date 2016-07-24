@@ -1,14 +1,13 @@
-//! Backend-specific implementations.
+//! Feature-gated, backend-specific functionality.
 //!
-//! Each module is prefixed by either `event` or `draw`.
+//! Conrod can be thought of as a pipe, where its inputs are `conrod::event::Raw`s and its output
+//! is `conrod::render::Primitives`. The following feature-gated backend modules provide helper
+//! functionality for converting events and rendering primitives in a way that is suitable to each.
 //!
-//! Those prefixed with `event` contain functions for converting events polled from their window
-//! backend to conrod's `event::Raw` type.
-//!
-//! Those prefixed with `draw` contain functions for rendering conrod's `Primitives` iterator to
-//! to some graphics backend.
+//! If there is a popular backend that you would like to see support for that is currently missing
+//! from this module, feel free to open an issue or pull request at the conrod repository.
 
-#[cfg(feature="draw_glium")] pub mod draw_glium;
-#[cfg(feature="draw_piston")] pub mod draw_piston;
-#[cfg(feature="event_glutin")] pub mod event_glutin;
-#[cfg(feature="event_piston")] pub mod event_piston;
+#[cfg(feature="glium")] pub mod glium;
+#[cfg(feature="glutin")] pub mod glutin;
+#[cfg(feature="piston")] pub mod piston;
+#[cfg(feature="piston")] #[cfg(feature="piston_window")] pub mod piston_window;

@@ -180,7 +180,6 @@ impl<'a> Primitives<'a> {
 
         let trans_x = |x: Scalar| x + window_w / 2.0;
         let trans_y = |y: Scalar| (-y) + window_h / 2.0;
-        let trans_xy = |xy: [Scalar; 2]| [trans_x(xy[0]), trans_y(xy[1])];
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::shape::Style as ShapeStyle;

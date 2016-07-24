@@ -341,7 +341,7 @@ impl Ui {
                 if self.win_w != w || self.win_h != h {
 
                     // If either dimension is greater, re-make the glyph cache.
-                    if w > self.win_w || h > self.win_h {
+                    if w != self.win_w || h != self.win_h {
                         self.glyph_cache = new_glyph_cache(w as u32, h as u32);
                     }
 
@@ -566,7 +566,7 @@ impl Ui {
                         self.global_input.push_event(window_resized);
 
                         // If either dimension is greater, re-make the glyph cache.
-                        if w > self.win_w || h > self.win_h {
+                        if w != self.win_w || h != self.win_h {
                             self.glyph_cache = new_glyph_cache(w as u32, h as u32);
                         }
 

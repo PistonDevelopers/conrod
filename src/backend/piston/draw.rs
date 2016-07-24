@@ -99,10 +99,9 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                 }).unwrap();
 
                 let cache_id = font_id.index();
-                let (tex_w, tex_h) = texture_cache.get_size();
                 let (view_w, view_h) = (view_size[0], view_size[1]);
                 for g in positioned_glyphs {
-                    if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
+                    if let Ok(Some((uv_rect, _screen_rect))) = glyph_cache.rect_for(cache_id, g) {
                         let position = match g.pixel_bounding_box() {
                             Some(r) => r.min,
                             None => continue,

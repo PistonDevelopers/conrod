@@ -7,7 +7,7 @@ use std;
 pub use rusttype::{Glyph, GlyphId, GlyphIter, LayoutIter, Scale};
 pub use rusttype::gpu_cache::Cache as GlyphCache;
 
-// Re-export any possibly ambiguous rusttype types here.
+/// Re-exported RustType geometrical types.
 pub mod rt {
     pub use rusttype::{Point, Rect, Vector, point, vector};
 }
