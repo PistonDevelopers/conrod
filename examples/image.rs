@@ -51,7 +51,7 @@ fn main() {
             if let Some(primitives) = ui.draw_if_changed() {
 
                 // Data and functions for rendering the primitives.
-                let renderer = conrod::backend::draw_piston::Renderer {
+                let renderer = conrod::backend::piston::draw::Renderer {
                     context: c,
                     graphics: g,
                     texture_cache: &mut text_texture_cache,
@@ -67,7 +67,7 @@ fn main() {
                     get_texture: |id| texture_map.get(id),
                 };
 
-                conrod::backend::draw_piston::primitives(primitives, renderer);
+                conrod::backend::piston::draw::primitives(primitives, renderer);
             }
         });
 

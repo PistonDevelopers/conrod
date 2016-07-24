@@ -32,7 +32,7 @@ fn main() {
         // Convert the piston event to a conrod event.
         let size = window.size();
         let (w, h) = (size.width as conrod::Scalar, size.height as conrod::Scalar);
-        if let Some(e) = conrod::backend::event_piston::convert_event(event.clone(), w, h) {
+        if let Some(e) = conrod::backend::piston::event::convert_event(event.clone(), w, h) {
             ui.handle_event(e);
         }
 
@@ -42,14 +42,14 @@ fn main() {
             if let Some(primitives) = ui.draw_if_changed() {
 
                 // Data and functions for rendering the primitives.
-                let renderer = conrod::backend::draw_piston::Renderer {
+                let renderer = conrod::backend::piston::draw::Renderer {
                     context: c,
                     graphics: g,
                     texture_cache: &mut text_texture_cache,
                     // No text to draw.
                     cache_queued_glyphs: |_graphics: &mut piston_window::G2d,
                                           _cache: &mut G2dTexture<'static>,
-                                          _rect: conrod::text::RtRect<u32>,
+                                          _rect: conrod::text::rt::Rect<u32>,
                                           _data: &[u8]| {
                         unimplemented!();
                     },
@@ -57,7 +57,7 @@ fn main() {
                     get_texture: |_id| None,
                 };
 
-                conrod::backend::draw_piston::primitives(primitives, renderer);
+                conrod::backend::piston::draw::primitives(primitives, renderer);
             }
         });
     }
