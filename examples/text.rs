@@ -2,7 +2,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use piston_window::{EventLoop, G2dTexture, ImageSize, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{EventLoop, ImageSize, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
 fn main() {
@@ -25,15 +25,9 @@ fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    fn new_text_texture_cache(window: &mut PistonWindow, w: u32, h: u32) -> G2dTexture<'static> {
-        let buffer_len = w as usize * h as usize;
-        let init = vec![128; buffer_len];
-        let settings = piston_window::TextureSettings::new();
-        G2dTexture::from_memory_alpha(&mut window.factory, &init, w, h, &settings).unwrap()
-    };
-
     // Create a texture cache in which we can cache text on the GPU.
-    let mut text_texture_cache = new_text_texture_cache(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache =
+        conrod::backend::piston_window::new_text_texture_cache(&mut window, WIDTH, HEIGHT);
 
     window.set_ups(60);
 
@@ -45,43 +39,19 @@ fn main() {
         // Check to see if the size of the glyph cache has changed.
         let (w, h) = ui.glyph_cache().dimensions();
         let (cur_w, cur_h) = text_texture_cache.get_size();
-        if w > cur_w || h > cur_h {
-            text_texture_cache = new_text_texture_cache(&mut window, w, h);
+        if w != cur_w || h != cur_h {
+            text_texture_cache =
+                conrod::backend::piston_window::new_text_texture_cache(&mut window, w, h);
         }
 
         window.draw_2d(&event, |c, g| {
-
             // Only re-draw if there was some change in the `Ui`.
             if let Some(primitives) = ui.draw_if_changed() {
-
-                // A function used for caching glyphs from `Text` widgets.
-                fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
-                                       cache: &mut G2dTexture<'static>,
-                                       rect: conrod::text::rt::Rect<u32>,
-                                       data: &[u8])
-                {
-                    use piston_window::texture::UpdateTexture;
-                    let offset = [rect.min.x, rect.min.y];
-                    let size = [rect.width(), rect.height()];
-                    let format = piston_window::texture::Format::Rgba8;
-                    let encoder = &mut graphics.encoder;
-
-                    // FIXME: These allocations and iterations are slow and messy.
-                    let new_data: Vec<_> = data.iter().flat_map(|&b| vec![255, 255, 255, b]).collect();
-                    UpdateTexture::update(cache, encoder, format, &new_data[..], offset, size)
-                        .expect("Failed to update texture");
-                }
-
-                // Data and functions for rendering the primitives.
-                let renderer = conrod::backend::draw_piston::Renderer {
-                    context: c,
-                    graphics: g,
-                    texture_cache: &mut text_texture_cache,
-                    cache_queued_glyphs: cache_queued_glyphs,
-                    get_texture: |_id| None,
-                };
-
-                conrod::backend::draw_piston::primitives(primitives, renderer);
+                conrod::backend::piston_window::draw(
+                    c, g, primitives,
+                    &mut text_texture_cache,
+                    |_texture_id| None,
+                );
             }
         });
     }
