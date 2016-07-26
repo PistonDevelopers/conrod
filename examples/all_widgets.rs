@@ -36,7 +36,7 @@ use conrod::{
     WidgetMatrix,
     XYPad,
 };
-use piston_window::{EventLoop, G2dTexture, PistonWindow, UpdateEvent, Window, WindowSettings};
+use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
 
@@ -144,14 +144,12 @@ fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Create a texture cache in which we can cache text on the GPU.
-    let mut text_texture_cache: G2dTexture<'static> = {
-        const BUFFER_LEN: usize = WIDTH as usize * HEIGHT as usize;
-        const INIT: [u8; BUFFER_LEN] = [128; BUFFER_LEN];
-        let factory = &mut window.factory;
-        let settings = piston_window::TextureSettings::new();
-        G2dTexture::from_memory_alpha(factory, &INIT, WIDTH, HEIGHT, &settings).unwrap()
-    };
+    // Create a texture to use for efficiently caching text on the GPU.
+    let mut text_texture_cache =
+        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+
+    // The image map describing each of our widget->image mappings (in our case, none).
+    let image_map = conrod::image::Map::new();
 
     // Our dmonstration app that we'll control with our GUI.
     let mut app = DemoApp::new();
@@ -162,9 +160,7 @@ fn main() {
     while let Some(event) = window.next() {
 
         // Convert the piston event to a conrod event.
-        let size = window.size();
-        let (w, h) = (size.width as conrod::Scalar, size.height as conrod::Scalar);
-        if let Some(e) = conrod::backend::piston::event::convert_event(event.clone(), w, h) {
+        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -184,34 +180,11 @@ fn main() {
         //
         // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
         window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-
-                // A function used for caching glyphs from `Text` widgets.
-                fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
-                                       cache: &mut G2dTexture<'static>,
-                                       rect: conrod::text::rt::Rect<u32>,
-                                       data: &[u8])
-                {
-                    use piston_window::texture::UpdateTexture;
-                    let dim = [rect.width(), rect.height()];
-                    let format = piston_window::texture::Format::Rgba8;
-                    let encoder = &mut graphics.encoder;
-                    UpdateTexture::update(cache, encoder, format, data, dim)
-                        .expect("Failed to update texture");
-                }
-
-                // Data and functions for rendering the primitives.
-                let renderer = conrod::backend::piston::draw::Renderer {
-                    context: c,
-                    graphics: g,
-                    texture_cache: &mut text_texture_cache,
-                    cache_queued_glyphs: cache_queued_glyphs,
-                    // A function that returns some texture `T` for the given `texture::Id`. We
-                    // have no `Image` widgets, so no need to implement this.
-                    get_texture: |_id| None,
-                };
-
-                conrod::backend::piston::draw::primitives(primitives, renderer);
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
             }
         });
     }

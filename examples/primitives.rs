@@ -14,23 +14,22 @@ fn main() {
     let mut window: PistonWindow =
         WindowSettings::new("Primitives Demo", [400, 720])
             .opengl(opengl).samples(4).exit_on_esc(true).build().unwrap();
+    window.set_ups(60);
 
     // construct our `Ui`.
     let mut ui = conrod::Ui::new(conrod::Theme::default());
 
     // No text to draw, so we'll just create an empty text texture cache.
-    let mut text_texture_cache: G2dTexture<'static> =
-        G2dTexture::empty(&mut window.factory).unwrap();
+    let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
 
-    window.set_ups(60);
+    // The image map describing each of our widget->image mappings (in our case, none).
+    let image_map = conrod::image::Map::new();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
 
         // Convert the piston event to a conrod event.
-        let size = window.size();
-        let (w, h) = (size.width as conrod::Scalar, size.height as conrod::Scalar);
-        if let Some(e) = conrod::backend::piston::event::convert_event(event.clone(), w, h) {
+        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -39,25 +38,11 @@ fn main() {
 
         // Draw the `Ui`.
         window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-
-                // Data and functions for rendering the primitives.
-                let renderer = conrod::backend::piston::draw::Renderer {
-                    context: c,
-                    graphics: g,
-                    texture_cache: &mut text_texture_cache,
-                    // No text to draw.
-                    cache_queued_glyphs: |_graphics: &mut piston_window::G2d,
-                                          _cache: &mut G2dTexture<'static>,
-                                          _rect: conrod::text::rt::Rect<u32>,
-                                          _data: &[u8]| {
-                        unimplemented!();
-                    },
-                    // No images to draw.
-                    get_texture: |_id| None,
-                };
-
-                conrod::backend::piston::draw::primitives(primitives, renderer);
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
             }
         });
     }
