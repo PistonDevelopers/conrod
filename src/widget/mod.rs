@@ -229,7 +229,6 @@ pub struct CommonStyle {
 /// We do this so that we can keep track of whether or not the **Widget::State** has been mutated
 /// (using an internal `has_updated` flag). This allows us to know whether or not we need to
 /// re-draw the **Widget**, without having to compare the previous and new **Widget::State**s.
-#[derive(Debug)]
 pub struct State<'a, T: 'a> {
     state: &'a mut T,
     /// A flag indicating whether or not the widget's State has been updated.
@@ -443,7 +442,7 @@ pub trait Widget: Sized {
     /// calls to `update`.
     ///
     /// Conrod will never clone the state, it will only ever be moved.
-    type State: std::any::Any + PartialEq + std::fmt::Debug;
+    type State: std::any::Any;
     /// Every widget is required to have its own associated `Style` type. This type is intended to
     /// contain high-level styling information for the widget that can be *optionally specified* by
     /// a user of the widget.

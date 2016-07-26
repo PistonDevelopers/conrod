@@ -1,12 +1,6 @@
-use {
-    Color,
-    Dimension,
-    Rect,
-    Widget,
-    Ui,
-};
-use texture;
+use {Color, Dimension, Rect, Widget, Ui};
 use widget;
+
 
 /// A primitive and basic widget for drawing an `Image`.
 #[derive(Copy, Clone)]
@@ -17,19 +11,14 @@ pub struct Image {
     pub src_rect: Option<Rect>,
     /// Unique styling.
     pub style: Style,
-    /// A unique index representing a widget.
-    ///
-    /// It is up to the user to ensure that the `texture_id` is unique and mapped to the correct
-    /// texture.
-    pub texture_id: texture::Id,
 }
 
 /// Unique `State` to be stored between updates for the `Image`.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone)]
 pub struct State {
-    /// A unique index into the `Texture`.
-    pub texture_id: texture::Id,
-    /// The rectangular area of the texture to use as the image.
+    /// The rectangular area of the image that we wish to display.
+    ///
+    /// If `None`, the entire image will be used.
     pub src_rect: Option<Rect>,
 }
 
@@ -49,17 +38,46 @@ widget_style!{
 impl Image {
 
     /// Construct a new `Image`.
-    pub fn new(texture_id: texture::Id) -> Self {
+    ///
+    /// Note that the `Image` widget does not require borrowing or owning any image data directly.
+    /// Instead, image data is stored within a `conrod::image::Map` where widget indices are mapped
+    /// to their associated data.
+    ///
+    /// This is done for a few reasons:
+    ///
+    /// - To avoid requiring that the widget graph owns an instance of each image
+    /// - To avoid requiring that the user passes the image data to the `Image` every update
+    /// unnecessarily
+    /// - To make it easier for users to borrow and mutate their images without needing to index
+    /// into the `Ui`'s widget graph (which also requires casting types).
+    ///
+    /// During rendering, conrod will take the `image::Map`, retrieve the data associated with each
+    /// image and yield it via the `render::Primitive::Image` variant.
+    ///
+    /// Note: this implies that the type must be the same for all `Image` widgets instantiated via
+    /// the same `Ui`. In the case that you require multiple different types of images, we
+    /// recommend that you either:
+    ///
+    /// 1. use an enum with a variant for each type
+    /// 2. use a trait object, where the trait is implemented for each of your image types or
+    /// 3. use an index type which may be mapped to your various image types.
+    pub fn new() -> Self {
         Image {
             common: widget::CommonBuilder::new(),
             src_rect: None,
             style: Style::new(),
-            texture_id: texture_id,
         }
     }
 
+    /// The rectangular area of the image that we wish to display.
+    ///
+    /// If this method is not called, the entire image will be used.
+    pub fn source_rectangle(mut self, rect: Rect) -> Self {
+        self.src_rect = Some(rect);
+        self
+    }
+
     builder_methods!{
-        pub source_rectangle { src_rect = Some(Rect) }
         pub color { style.maybe_color = Some(Option<Color>) }
     }
 
@@ -84,7 +102,6 @@ impl Widget for Image {
 
     fn init_state(&self) -> Self::State {
         State {
-            texture_id: self.texture_id,
             src_rect: None,
         }
     }
@@ -109,11 +126,7 @@ impl Widget for Image {
 
     fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { state, .. } = args;
-        let Image { src_rect, texture_id, .. } = self;
-
-        if state.texture_id != texture_id {
-            state.update(|state| state.texture_id = texture_id);
-        }
+        let Image { src_rect, .. } = self;
 
         if state.src_rect != src_rect {
             state.update(|state| state.src_rect = src_rect);

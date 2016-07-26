@@ -1,15 +1,15 @@
 use color::Color;
 use event;
 use graph::{self, Graph, NodeIndex};
+use image;
+use input;
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
 use render;
-use rusttype;
 use std;
 use text;
 use theme::Theme;
 use utils;
 use widget::{self, Widget};
-use input;
 
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
@@ -29,8 +29,6 @@ pub struct Ui {
     pub global_input: input::Global,
     /// Manages all fonts that have been loaded by the user.
     pub fonts: text::font::Map,
-    /// A cache to use for rendering glyphs.
-    glyph_cache: rusttype::gpu_cache::Cache,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The widget::Index of the widget that was last updated/set.
@@ -117,12 +115,10 @@ impl Ui {
     {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
-        let cache = new_glyph_cache(0, 0);
         Ui {
             widget_graph: widget_graph,
             theme: theme,
             fonts: text::font::Map::new(),
-            glyph_cache: cache,
             window: window,
             win_w: 0.0,
             win_h: 0.0,
@@ -224,11 +220,6 @@ impl Ui {
     /// `Ui::set_widgets`.
     pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
         &self.prev_updated_widgets
-    }
-
-    /// Borrow the **Ui**'s glyph cache.
-    pub fn glyph_cache(&self) -> &rusttype::gpu_cache::Cache {
-        &self.glyph_cache
     }
 
     /// Scroll the widget at the given index by the given offset amount.
@@ -339,12 +330,6 @@ impl Ui {
             event::RawEvent::Render(args) => {
                 let (w, h) = (args.width as Scalar, args.height as Scalar);
                 if self.win_w != w || self.win_h != h {
-
-                    // If either dimension is greater, re-make the glyph cache.
-                    if w != self.win_w || h != self.win_h {
-                        self.glyph_cache = new_glyph_cache(w as u32, h as u32);
-                    }
-
                     self.win_w = w;
                     self.win_h = h;
                     track_widget_under_mouse_and_update_capturing(self);
@@ -564,11 +549,6 @@ impl Ui {
                         let (w, h) = (w as Scalar, h as Scalar);
                         let window_resized = event::Ui::WindowResized([w, h]).into();
                         self.global_input.push_event(window_resized);
-
-                        // If either dimension is greater, re-make the glyph cache.
-                        if w != self.win_w || h != self.win_h {
-                            self.glyph_cache = new_glyph_cache(w as u32, h as u32);
-                        }
 
                         self.win_w = w;
                         self.win_h = h;
@@ -964,19 +944,28 @@ impl Ui {
         self.redraw_count = self.num_redraw_frames;
     }
 
+    /// The first of the `Primitivees` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
+    /// be a `Rectangle` the size of the window in which conrod is hosted.
+    ///
+    /// This method sets the colour with which this `Rectangle` is drawn (the default being
+    /// `conrod::color::TRANSPARENT`.
+    pub fn clear_with(&mut self, color: Color) {
+        self.maybe_background_color = Some(color);
+    }
 
     /// Draw the `Ui` in it's current state.
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw(&mut self) -> render::Primitives {
+    pub fn draw<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
+        -> render::Primitives<'a, Img>
+    {
         let Ui {
             ref mut redraw_count,
             ref widget_graph,
             ref depth_order,
             ref theme,
             ref fonts,
-            ref mut glyph_cache,
             win_w, win_h,
             ..
         } = *self;
@@ -989,7 +978,10 @@ impl Ui {
             *redraw_count -= 1;
         }
 
-        render::Primitives::new(widget_graph, indices, theme, fonts, glyph_cache, [win_w, win_h])
+        // We're about to draw, so we can reset the image::Map's redraw trigger.
+        image_map.trigger_redraw.set(false);
+
+        render::Primitives::new(widget_graph, indices, theme, fonts, [win_w, win_h], image_map)
     }
 
 
@@ -1007,10 +999,17 @@ impl Ui {
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
-        if self.redraw_count > 0 {
-            return Some(self.draw())
+    pub fn draw_if_changed<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
+        -> Option<render::Primitives<'a, Img>>
+    {
+        if image_map.trigger_redraw.get() {
+            self.needs_redraw();
         }
+
+        if self.redraw_count > 0 {
+            return Some(self.draw(image_map))
+        }
+
         None
     }
 
@@ -1117,13 +1116,6 @@ impl<'a> AsRef<Ui> for UiCell<'a> {
     }
 }
 
-/// Construct a new RustType GPU cache with the given dimensions.
-fn new_glyph_cache(w: u32, h: u32) -> rusttype::gpu_cache::Cache {
-    const POSITION_TOLERANCE: f32 = 0.1;
-    const SCALE_TOLERANCE: f32 = 0.1;
-    rusttype::gpu_cache::Cache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE)
-}
-
 /// A private constructor for the `UiCell` for internal use.
 pub fn new_ui_cell(ui: &mut Ui) -> UiCell {
     UiCell { ui: ui }
@@ -1202,10 +1194,4 @@ pub fn post_update_cache<W>(ui: &mut Ui, widget: widget::PostUpdateCache<W>)
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     ui.widget_graph.post_update_cache(widget);
-}
-
-
-/// Clear the background with the given color.
-pub fn clear_with(ui: &mut Ui, color: Color) {
-    ui.maybe_background_color = Some(color);
 }

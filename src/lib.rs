@@ -68,10 +68,8 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
-//pub use glyph_cache::GlyphCache;
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
@@ -92,19 +90,17 @@ pub use widget::State as WidgetState;
 
 
 pub mod backend;
-mod background;
 pub mod color;
 pub mod event;
 mod frame;
-//pub mod glyph_cache;
 pub mod graph;
 pub mod guide;
+pub mod image;
 pub mod input;
 mod label;
 mod position;
 pub mod render;
 pub mod text;
-pub mod texture;
 pub mod theme;
 mod ui;
 pub mod utils;

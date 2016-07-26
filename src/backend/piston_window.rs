@@ -5,33 +5,105 @@
 
 extern crate piston_window;
 
+use event;
 use self::piston_window::{G2dTexture, PistonWindow};
 use render;
 use text;
-use texture;
 
-/// Constructor for a new texture cache.
-pub fn new_text_texture_cache(window: &mut PistonWindow, w: u32, h: u32) -> G2dTexture<'static> {
-    let buffer_len = w as usize * h as usize;
-    let init = vec![128; buffer_len];
-    let settings = self::piston_window::TextureSettings::new();
-    G2dTexture::from_memory_alpha(&mut window.factory, &init, w, h, &settings).unwrap()
+
+/// A wrapper around a `G2dTexture` and a rusttype GPU `Cache`
+///
+/// Using a wrapper simplifies the construction of both caches and ensures that they maintain
+/// identical dimensions.
+pub struct GlyphCache {
+    cache: text::GlyphCache,
+    texture: G2dTexture<'static>,
+    vertex_data: Vec<u8>,
 }
 
+
+impl GlyphCache {
+
+    /// Constructor for a new `GlyphCache`.
+    ///
+    /// The `PistonWindow` provides the `Factory` argument to the `G2dTexture` constructor.
+    ///
+    /// The `width` and `height` arguments are in pixel values.
+    ///
+    /// If you need to resize the `GlyphCache`, construct a new one and discard the old one.
+    pub fn new(window: &mut PistonWindow, width: u32, height: u32) -> GlyphCache {
+
+        // Construct the rusttype GPU cache with the tolerances recommended by their documentation.
+        const SCALE_TOLERANCE: f32 = 0.1;
+        const POSITION_TOLERANCE: f32 = 0.1;
+        let cache = text::GlyphCache::new(width, height, SCALE_TOLERANCE, POSITION_TOLERANCE);
+
+        // Construct a `G2dTexture`
+        let buffer_len = width as usize * height as usize;
+        let init = vec![128; buffer_len];
+        let settings = self::piston_window::TextureSettings::new();
+        let factory = &mut window.factory;
+        let texture = G2dTexture::from_memory_alpha(factory, &init, width, height, &settings).unwrap();
+
+        GlyphCache {
+            cache: cache,
+            texture: texture,
+            vertex_data: Vec::new(),
+        }
+    }
+
+}
+
+
+/// Converts any `GenericEvent` to a `Raw` conrod event.
+pub fn convert_event<E>(event: E, window: &PistonWindow) -> Option<event::Raw>
+    where E: super::piston::event::GenericEvent,
+{
+    use self::piston_window::Window;
+    use Scalar;
+
+    let size = window.size();
+    let (w, h) = (size.width as Scalar, size.height as Scalar);
+    super::piston::event::convert(event, w, h)
+}
+
+
 /// Renders the given sequence of conrod primitives.
-pub fn draw<'a, 'b, F>(context: super::piston::draw::Context,
-                       graphics: &'a mut piston_window::G2d<'b>,
-                       primitives: render::Primitives,
-                       text_texture_cache: &'a mut G2dTexture<'static>,
-                       get_texture: F)
-    where F: FnMut(texture::Id) -> Option<&'a G2dTexture<'static>>
+pub fn draw<'a, 'b, Img, F>(context: super::piston::draw::Context,
+                            graphics: &'a mut piston_window::G2d<'b>,
+                            primitives: render::Primitives<Img>,
+                            glyph_cache: &'a mut GlyphCache,
+                            texture_from_image: F)
+    where F: FnMut(&Img) -> &G2dTexture<'static>,
 {
 
+    let GlyphCache { ref mut texture, ref mut cache, ref mut vertex_data } = *glyph_cache;
+
+    // An iterator that efficiently maps the `byte`s yielded from `data` to `[r, g, b, byte]`;
+    //
+    // This is only used within the `cache_queued_glyphs` below, however due to a bug in rustc we
+    // are unable to declare types inside the closure scope.
+    struct Bytes { b: u8, i: u8 }
+    impl Iterator for Bytes {
+        type Item = u8;
+        fn next(&mut self) -> Option<Self::Item> {
+            let b = match self.i {
+                0 => 255,
+                1 => 255,
+                2 => 255,
+                3 => self.b,
+                _ => return None,
+            };
+            self.i += 1;
+            Some(b)
+        }
+    }
+
     // A function used for caching glyphs from `Text` widgets.
-    fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
-                           cache: &mut G2dTexture<'static>,
-                           rect: text::rt::Rect<u32>,
-                           data: &[u8])
+    let cache_queued_glyphs = |graphics: &mut piston_window::G2d,
+                               cache: &mut G2dTexture<'static>,
+                               rect: text::rt::Rect<u32>,
+                               data: &[u8]|
     {
         use self::piston_window::texture::UpdateTexture;
         let offset = [rect.min.x, rect.min.y];
@@ -39,20 +111,19 @@ pub fn draw<'a, 'b, F>(context: super::piston::draw::Context,
         let format = self::piston_window::texture::Format::Rgba8;
         let encoder = &mut graphics.encoder;
 
-        // FIXME: These allocations and iterations are slow and messy.
-        let new_data: Vec<_> = data.iter().flat_map(|&b| vec![255, 255, 255, b]).collect();
-        UpdateTexture::update(cache, encoder, format, &new_data[..], offset, size)
+        vertex_data.clear();
+        vertex_data.extend(data.iter().flat_map(|&b| Bytes { b: b, i: 0 }));
+        UpdateTexture::update(cache, encoder, format, &vertex_data[..], offset, size)
             .expect("Failed to update texture");
-    }
-
-    // Data and functions for rendering the primitives.
-    let renderer = super::piston::draw::Renderer {
-        context: context,
-        graphics: graphics,
-        texture_cache: text_texture_cache,
-        cache_queued_glyphs: cache_queued_glyphs,
-        get_texture: get_texture,
     };
 
-    super::piston::draw::primitives(primitives, renderer);
+    super::piston::draw::primitives(
+        primitives,
+        context,
+        graphics,
+        texture,
+        cache,
+        cache_queued_glyphs,
+        texture_from_image,
+    );
 }

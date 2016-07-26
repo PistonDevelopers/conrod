@@ -11,15 +11,16 @@
 
 use {Align, Color, Dimensions, Point, Rect, Scalar};
 use graph::{self, Graph, NodeIndex};
+use image;
 use std;
 use text;
-use texture;
 use theme::Theme;
 use widget::primitive;
 
 
-/// An iterator yielding a reference to each primitive in order of depth for rendering.
-pub struct Primitives<'a> {
+/// An iterator-like type that yields a reference to each primitive in order of depth for
+/// rendering.
+pub struct Primitives<'a, Img: 'a> {
     crop_stack: Vec<(NodeIndex, Rect)>,
     depth_order: std::slice::Iter<'a, NodeIndex>,
     graph: &'a Graph,
@@ -30,14 +31,15 @@ pub struct Primitives<'a> {
     points: Vec<Point>,
     /// The slice of rusttype `PositionedGlyph`s to re-use for the `Text` primitive.
     positioned_glyphs: Vec<text::PositionedGlyph>,
-    /// The GPU cache for caching `Text` glyphs.
-    glyph_cache: &'a mut text::GlyphCache,
+    /// The type that the `Primitives` will use to retrieve `Image<T>` data so that it may be
+    /// yielded via `Primitive::Image` variants.
+    image_map: &'a image::Map<Img>,
 }
 
 /// Data required for rendering a single primitive widget.
-pub struct Primitive<'a> {
+pub struct Primitive<'a, Img: 'a> {
     /// State and style for this primitive widget.
-    pub kind: PrimitiveKind<'a>,
+    pub kind: PrimitiveKind<'a, Img>,
     /// The Rect to which the primitive widget should be cropped.
     ///
     /// Only parts of the widget within this `Rect` should be drawn.
@@ -47,7 +49,7 @@ pub struct Primitive<'a> {
 }
 
 /// The unique kind for each primitive element in the Ui.
-pub enum PrimitiveKind<'a> {
+pub enum PrimitiveKind<'a, Img: 'a> {
 
     /// A filled `Rectangle`.
     ///
@@ -89,10 +91,10 @@ pub enum PrimitiveKind<'a> {
 
     /// A single `Image`, produced by the primitive `Image` widget.
     Image {
-        /// The unique identifier for the texture used by the `Image`.
+        /// The `Image` along with the data with which it was instantiated.
         ///
         /// This is normally produced by a `conrod::texture::Map` instance.
-        texture_id: texture::Id,
+        image: Option<&'a Img>,
         /// When `Some`, colours the `Image`. When `None`, the `Image` uses its regular colours.
         maybe_color: Option<Color>,
         /// The area of the texture that will be drawn to the `Image`'s `Rect`.
@@ -103,17 +105,11 @@ pub enum PrimitiveKind<'a> {
     Text {
         /// The colour of the `Text`.
         color: Color,
-        /// The RustType GPU cache, used for caching `PositionedGlyph` within some texture in GPU
-        /// memory.
-        ///
-        /// The `positioned_glyphs` will be queued for caching within the `glyph_cache` just prior
-        /// to being passed to the user `draw_primitive` function.
-        glyph_cache: &'a mut text::GlyphCache,
         /// All glyphs within the `Text` laid out in their correct positions in order from top-left
         /// to bottom right.
         positioned_glyphs: &'a [text::PositionedGlyph],
-        /// The unique identifier for the font, used for the `glyph_cache.rect_for(id, glyph)`
-        /// method.
+        /// The unique identifier for the font, useful for the `glyph_cache.rect_for(id, glyph)`
+        /// method when using the `conrod::text::GlyphCache` (rusttype's GPU `Cache`).
         font_id: text::font::Id,
     },
 
@@ -136,15 +132,15 @@ const CIRCLE_RESOLUTION: usize = 50;
 const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
 
 
-impl<'a> Primitives<'a> {
+impl<'a, Img> Primitives<'a, Img> {
 
     /// Constructor for the `Primitives` iterator.
     pub fn new(graph: &'a Graph,
                depth_order: &'a [NodeIndex],
                theme: &'a Theme,
                fonts: &'a text::font::Map,
-               glyph_cache: &'a mut text::GlyphCache,
-               window_dim: Dimensions) -> Self
+               window_dim: Dimensions,
+               image_map: &'a image::Map<Img>) -> Self
     {
         Primitives {
             crop_stack: Vec::new(),
@@ -158,12 +154,12 @@ impl<'a> Primitives<'a> {
             // before writing points for an `Oval` or `Rectangle`.
             points: vec![[0.0, 0.0]; NUM_POINTS],
             positioned_glyphs: Vec::new(),
-            glyph_cache: glyph_cache,
+            image_map: image_map,
         }
     }
 
     /// Yield the next `Primitive` for rendering.
-    pub fn next(&mut self) -> Option<Primitive> {
+    pub fn next(&mut self) -> Option<Primitive<Img>> {
         let Primitives {
             ref mut crop_stack,
             ref mut depth_order,
@@ -173,7 +169,7 @@ impl<'a> Primitives<'a> {
             window_rect,
             ref mut points,
             ref mut positioned_glyphs,
-            ref mut glyph_cache,
+            ref image_map,
         } = *self;
 
         let (window_w, window_h) = window_rect.w_h();
@@ -183,7 +179,7 @@ impl<'a> Primitives<'a> {
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::shape::Style as ShapeStyle;
-            let (scizzor, container) = widget;
+            let (idx, scizzor, container) = widget;
             let rect = container.rect;
 
             // Extract the unique state and style from the container.
@@ -354,14 +350,8 @@ impl<'a> Primitives<'a> {
                             positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
                         }
 
-                        // Queue the glyphs to be cached.
-                        for glyph in positioned_glyphs.iter() {
-                            glyph_cache.queue_glyph(font_id.index(), glyph.clone());
-                        }
-
                         let kind = PrimitiveKind::Text {
                             color: color,
-                            glyph_cache: glyph_cache,
                             positioned_glyphs: positioned_glyphs,
                             font_id: font_id,
                         };
@@ -374,9 +364,12 @@ impl<'a> Primitives<'a> {
                     if let Some(image) = container.state_and_style::<State, Style>() {
                         let graph::UniqueWidgetState { ref state, ref style } = *image;
                         let maybe_color = style.maybe_color(theme);
+                        let image = graph.widget_id(idx)
+                            .and_then(|id| image_map.get(id))
+                            .or_else(|| image_map.get(idx));
                         let kind = PrimitiveKind::Image {
                             maybe_color: maybe_color,
-                            texture_id: state.texture_id,
+                            image: image,
                             source_rect: state.src_rect,
                         };
                         return Some(new_primitive(kind, scizzor, rect));
@@ -398,7 +391,7 @@ impl<'a> Primitives<'a> {
 
 
 /// Simplify the constructor for a `Primitive`.
-fn new_primitive(kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
+fn new_primitive<Img>(kind: PrimitiveKind<Img>, scizzor: Rect, rect: Rect) -> Primitive<Img> {
     Primitive {
         kind: kind,
         scizzor: scizzor,
@@ -411,7 +404,7 @@ fn new_primitive(kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
 fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
                    graph: &'a Graph,
                    crop_stack: &mut Vec<(NodeIndex, Rect)>,
-                   window_rect: Rect) -> Option<(Rect, &'a graph::Container)>
+                   window_rect: Rect) -> Option<(graph::NodeIndex, Rect, &'a graph::Container)>
 {
     while let Some(&node_index) = depth_order.next() {
         let container = match graph.widget(node_index) {
@@ -448,7 +441,7 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
             continue;
         }
 
-        return Some((scizzor, container));
+        return Some((node_index, scizzor, container));
     }
 
     None
@@ -473,7 +466,6 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
 //             window_rect,
 //             ref mut points,
 //             ref mut positioned_glyphs,
-//             ref mut glyph_cache,
 //         } = *self;
 // 
 //         while let Some(&node_index) = depth_order.next() {
@@ -708,14 +700,8 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
 //                             positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
 //                         }
 // 
-//                         // Queue the glyphs to be cached.
-//                         for glyph in positioned_glyphs.iter() {
-//                             glyph_cache.queue_glyph(font_id.index(), glyph.clone());
-//                         }
-// 
 //                         let kind = PrimitiveKind::Text {
 //                             color: color,
-//                             glyph_cache: glyph_cache,
 //                             positioned_glyphs: positioned_glyphs,
 //                             font_id: font_id,
 //                         };

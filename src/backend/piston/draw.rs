@@ -5,50 +5,37 @@ extern crate graphics as piston_graphics;
 use Rect;
 use render;
 use text;
-use texture;
 
 #[doc(inline)]
 pub use self::piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 
 
-/// A texture and function for caching font glyphs.
-///
-/// The texture_cache will then also be used for rendering the glyphs to the screen.
-pub struct Renderer<'a, G, T, FC, FT>
-    where G: Graphics<Texture=T> + 'a,
-          T: ImageSize + 'a,
-          FC: for<'b> FnMut(&'b mut G, &'b mut T, text::rt::Rect<u32>, &'b [u8]),
-          FT: FnMut(texture::Id) -> Option<&'a T>,
-{
-    /// The piston2d-graphics drawing context.
-    pub context: Context,
-    /// The piston `Graphics` backend.
-    pub graphics: &'a mut G,
-    /// Some texture type `T` upon which we can cache text glyphs.
-    pub texture_cache: &'a mut T,
-    /// A function for caching glyphs within the given texture cache.
-    pub cache_queued_glyphs: FC,
-    /// A function for retrieving a texture of type `T` given some unique `texture::Id`.
-    pub get_texture: FT,
-}
-
-
 /// Render the given sequence of conrod primitive widgets.
-pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
-                                    renderer: Renderer<'a, G, T, FC, FT>)
+///
+/// Params:
+///
+/// - `primitives` - The sequence of primitives to be rendered to the screen.
+/// - `context` - The piston2d-graphics drawing context.
+/// - `graphics` - The piston `Graphics` backend.
+/// - `text_texture_cache` - Some texture type `T` upon which we can cache text glyphs.
+/// - `glyph_cache` - The RustType `Cache` used to cache glyphs in our `text_texture_cache`.
+/// - `cache_queue_glyphs` - A function for caching glyphs within the given texture cache.
+/// - `texture_from_image` - A function that borrows a drawable texture `T` from an `Img`. In many
+///   cases, `Img` may be the same type as `T`, however we provide this to allow for flexibility.
+pub fn primitives<'a, Img, G, T, C, F>(
+    mut primitives: render::Primitives<Img>,
+    context: Context,
+    graphics: &'a mut G,
+    text_texture_cache: &'a mut T,
+    glyph_cache: &'a mut text::GlyphCache,
+    mut cache_queued_glyphs: C,
+    mut texture_from_image: F,
+)
     where G: Graphics<Texture=T>,
           T: ImageSize,
-          FC: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
-          FT: FnMut(texture::Id) -> Option<&'a T>,
+          C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
+          F: FnMut(&Img) -> &T,
 {
-    let Renderer {
-        context,
-        graphics,
-        texture_cache,
-        mut cache_queued_glyphs,
-        mut get_texture,
-    } = renderer;
-
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointint upwards).
     let view_size = context.get_view_size();
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
@@ -90,16 +77,21 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                 }
             },
 
-            render::PrimitiveKind::Text { color, glyph_cache, positioned_glyphs, font_id } => {
+            render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
                 let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
+
+                // Queue the glyphs to be cached.
+                for glyph in positioned_glyphs.iter() {
+                    glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+                }
 
                 // Cache the glyphs within the GPU cache.
                 glyph_cache.cache_queued(|rect, data| {
-                    cache_queued_glyphs(graphics, texture_cache, rect, data)
+                    cache_queued_glyphs(graphics, text_texture_cache, rect, data)
                 }).unwrap();
 
                 let cache_id = font_id.index();
-                let (view_w, view_h) = (view_size[0], view_size[1]);
+                let (tex_w, tex_h) = text_texture_cache.get_size();
                 for g in positioned_glyphs {
                     if let Ok(Some((uv_rect, _screen_rect))) = glyph_cache.rect_for(cache_id, g) {
                         let position = match g.pixel_bounding_box() {
@@ -112,19 +104,19 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                         // sure if this is possible with piston however.
                         let mut image = piston_graphics::image::Image::new_color(color.to_fsa());
                         image.source_rectangle = {
-                            let x = (uv_rect.min.x * view_w as f32).round() as i32;
-                            let y = (uv_rect.min.y * view_h as f32).round() as i32;
-                            let w = ((uv_rect.max.x - uv_rect.min.x) * view_w as f32).round() as i32;
-                            let h = ((uv_rect.max.y - uv_rect.min.y) * view_h as f32).round() as i32;
+                            let x = (uv_rect.min.x * tex_w as f32).round() as i32;
+                            let y = (uv_rect.min.y * tex_h as f32).round() as i32;
+                            let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32).round() as i32;
+                            let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32).round() as i32;
                             Some([x, y, w, h])
                         };
-                        image.draw(texture_cache, &context.draw_state, context.transform, graphics);
+                        image.draw(text_texture_cache, &context.draw_state, context.transform, graphics);
                     }
                 }
             },
 
-            render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
-                if let Some(texture) = get_texture(texture_id) {
+            render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
+                if let Some(img) = image {
                     let mut image = piston_graphics::image::Image::new();
                     image.color = maybe_color.map(|c| c.to_fsa());
                     if let Some(source_rect) = source_rect {
@@ -136,13 +128,14 @@ pub fn primitives<'a, G, T, FC, FT>(mut primitives: render::Primitives,
                     let context = context.trans(left, top).scale(1.0, -1.0);
                     let transform = context.transform;
                     let draw_state = &context.draw_state;
-                    image.draw(texture, draw_state, transform, graphics);
+                    let tex = texture_from_image(img);
+                    image.draw(tex, draw_state, transform, graphics);
                 }
             },
 
             render::PrimitiveKind::Other(_widget) => {
-                // TODO: Perhaps add a function to the `Renderer` params to allow a user to draw
-                // these.
+                // TODO: Perhaps add a function to the `primitives` params to allow a user to
+                // handle these.
             },
 
         }
