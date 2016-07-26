@@ -5,7 +5,7 @@ extern crate glium;
 use render;
 
 /// Render the given sequence of conrod primitive widgets.
-pub fn primitives(mut primitives: render::Primitives) {
+pub fn primitives<Img>(mut primitives: render::Primitives<Img>) {
     while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
         match kind {
 
@@ -21,7 +21,7 @@ pub fn primitives(mut primitives: render::Primitives) {
             render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
             },
 
-            render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
+            render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
             },
 
             render::PrimitiveKind::Other(_) => (),

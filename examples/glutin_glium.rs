@@ -1,14 +1,14 @@
 //! A demonstration using glutin to provide events and glium for drawing the Ui.
 
-#[cfg(feature="event_glutin")] #[cfg(feature="draw_glium")] #[macro_use] extern crate conrod;
-#[cfg(feature="event_glutin")] #[cfg(feature="draw_glium")] #[macro_use] extern crate glium;
+#[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
+#[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 
 fn main() {
     feature::main();
 }
 
-#[cfg(feature="event_glutin")]
-#[cfg(feature="draw_glium")]
+#[cfg(feature="glutin")]
+#[cfg(feature="glium")]
 mod feature {
     extern crate find_folder;
     use conrod;
@@ -72,31 +72,42 @@ mod feature {
         let mut ui = conrod::Ui::new(conrod::Theme::default());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        {
-            let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
-            let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-            ui.fonts.insert_from_file(font_path).unwrap();
-        }
+        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        ui.fonts.insert_from_file(font_path).unwrap();
 
-        // Build a texture the size of the number of pixels in the window to use as a cache for text
-        // glyphs.
-        let text_texture_cache = {
+        // Build the glyph cache and a texture for caching glyphs on the GPU.
+        let (mut glyph_cache, text_texture_cache) = {
             let dpi = display.get_window().unwrap().hidpi_factor();
             let cache_width = (WIN_W as f32 * dpi) as u32;
             let cache_height = (WIN_H as f32 * dpi) as u32;
+
+            // First, the rusttype `Cache`, used for caching glyphs onto the GPU.
+            const SCALE_TOLERANCE: f32 = 0.1;
+            const POSITION_TOLERANCE: f32 = 0.1;
+            let cacher = conrod::text::GlyphCache::new(cache_width, cache_height,
+                                                       SCALE_TOLERANCE,
+                                                       POSITION_TOLERANCE);
+
+            // Now the texture.
             let grey_image = glium::texture::RawImage2d {
                 data: Cow::Owned(vec![128u8; cache_width as usize * cache_height as usize]),
                 width: cache_width,
                 height: cache_height,
                 format: glium::texture::ClientFormat::U8
             };
-            glium::texture::Texture2d::with_format(
+            let texture = glium::texture::Texture2d::with_format(
                 &display,
                 grey_image,
                 glium::texture::UncompressedFloatFormat::U8,
                 glium::texture::MipmapsOption::NoMipmap
-            ).unwrap()
+            ).unwrap();
+
+            (cacher, texture)
         };
+
+        // Mappings from `Image` widget indices to their image data.
+        let image_map = conrod::image::Map::<()>::new();
 
 
         // Start the loop:
@@ -117,7 +128,7 @@ mod feature {
             ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi as conrod::Scalar));
 
             // Draw the `Ui`.
-            if let Some(mut primitives) = ui.draw_if_changed() {
+            if let Some(mut primitives) = ui.draw_if_changed(&image_map) {
                 use conrod::render;
                 use conrod::text::rt;
 
@@ -153,7 +164,12 @@ mod feature {
                             // TODO
                         },
 
-                        render::PrimitiveKind::Text { color, glyph_cache, positioned_glyphs, font_id } => {
+                        render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
+
+                            // Queue the glyphs to be cached.
+                            for glyph in positioned_glyphs.iter() {
+                                glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+                            }
 
                             // Cache the glyphs on the GPU.
                             glyph_cache.cache_queued(|rect, data| {
@@ -225,7 +241,7 @@ mod feature {
                             vertices.extend(extension);
                         },
 
-                        render::PrimitiveKind::Image { maybe_color, texture_id, source_rect } => {
+                        render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
                             // TODO
                         },
 
@@ -255,10 +271,10 @@ mod feature {
 
             for event in display.poll_events() {
 
-                // Use the `event_glutin` backend feature to convert the glutin event to a conrod one.
+                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
                 let dpi = dpi as conrod::Scalar;
-                if let Some(event) = conrod::backend::event_glutin::convert(event.clone(), w, h, dpi) {
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi) {
                     ui.handle_event(event);
                 }
 
@@ -290,7 +306,7 @@ mod feature {
 
         conrod::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
-        conrod::Text::new("Foo! Bar! Baz!\n Floozy Woozy\n Qux Flux")
+        conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
             .middle_of(CANVAS)
             .font_size(64)
             .color(conrod::color::LIGHT_BLUE)
@@ -299,11 +315,11 @@ mod feature {
     }
 }
 
-#[cfg(not(feature="event_glutin"))]
-#[cfg(not(feature="draw_glium"))]
+#[cfg(not(feature="glutin"))]
+#[cfg(not(feature="glium"))]
 mod feature {
     pub fn main() {
-        println!("This example requires the `event_glutin` and `draw_glium` features. \
-                 Try running `cargo run --release --features=\"event_glutin draw_glium\" --example <example_name>`");
+        println!("This example requires the `glutin` and `glium` features. \
+                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
     }
 }
