@@ -85,9 +85,9 @@ mod feature {
             // First, the rusttype `Cache`, used for caching glyphs onto the GPU.
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
-            let cacher = conrod::text::GlyphCache::new(cache_width, cache_height,
-                                                       SCALE_TOLERANCE,
-                                                       POSITION_TOLERANCE);
+            let cache = conrod::text::GlyphCache::new(cache_width, cache_height,
+                                                      SCALE_TOLERANCE,
+                                                      POSITION_TOLERANCE);
 
             // Now the texture.
             let grey_image = glium::texture::RawImage2d {
@@ -103,7 +103,7 @@ mod feature {
                 glium::texture::MipmapsOption::NoMipmap
             ).unwrap();
 
-            (cacher, texture)
+            (cache, texture)
         };
 
         // Mappings from `Image` widget indices to their image data.
@@ -118,14 +118,14 @@ mod feature {
         // - Repeat.
         'main: loop {
 
-            let ((win_w, win_h), dpi) = {
+            let ((win_w, win_h), dpi_factor) = {
                 let window = display.get_window().unwrap();
                 (window.get_inner_size_pixels().unwrap(), window.hidpi_factor())
             };
 
             // Construct a render event for conrod at the beginning of rendering.
             let dt_secs = 0.0;
-            ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi as conrod::Scalar));
+            ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi_factor as conrod::Scalar));
 
             // Draw the `Ui`.
             if let Some(mut primitives) = ui.draw_if_changed(&image_map) {
@@ -164,7 +164,8 @@ mod feature {
                             // TODO
                         },
 
-                        render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
+                        render::PrimitiveKind::Text { color, text, font_id } => {
+                            let positioned_glyphs = text.positioned_glyphs(dpi_factor);
 
                             // Queue the glyphs to be cached.
                             for glyph in positioned_glyphs.iter() {
@@ -190,13 +191,9 @@ mod feature {
 
                             let color = color.to_fsa();
 
-                            // Render glyphs via the texture cache.
                             let cache_id = font_id.index();
 
-                            // TODO: Should be the top left corner?
                             let origin = rt::point(0.0, 0.0);
-
-                            // TODO 
                             let to_gl_rect = |screen_rect: conrod::text::rt::Rect<i32>| conrod::text::rt::Rect {
                                 min: origin
                                     + (rt::vector(screen_rect.min.x as f32 / screen_width - 0.5,
@@ -211,31 +208,17 @@ mod feature {
                                 .flat_map(|(uv_rect, screen_rect)| {
                                     use std::iter::once;
                                     let gl_rect = to_gl_rect(screen_rect);
-                                    once(Vertex {
-                                        position: [gl_rect.min.x, gl_rect.max.y],
-                                        tex_coords: [uv_rect.min.x, uv_rect.max.y],
-                                        colour: color
-                                    }).chain(once(Vertex {
-                                        position: [gl_rect.min.x,  gl_rect.min.y],
-                                        tex_coords: [uv_rect.min.x, uv_rect.min.y],
-                                        colour: color
-                                    })).chain(once(Vertex {
-                                        position: [gl_rect.max.x,  gl_rect.min.y],
-                                        tex_coords: [uv_rect.max.x, uv_rect.min.y],
-                                        colour: color
-                                    })).chain(once(Vertex {
-                                        position: [gl_rect.max.x,  gl_rect.min.y],
-                                        tex_coords: [uv_rect.max.x, uv_rect.min.y],
-                                        colour: color
-                                    })).chain(once(Vertex {
-                                        position: [gl_rect.max.x, gl_rect.max.y],
-                                        tex_coords: [uv_rect.max.x, uv_rect.max.y],
-                                        colour: color
-                                    })).chain(once(Vertex {
-                                        position: [gl_rect.min.x, gl_rect.max.y],
-                                        tex_coords: [uv_rect.min.x, uv_rect.max.y],
-                                        colour: color
-                                    }))
+                                    let v = |p, t| once(Vertex {
+                                        position: p,
+                                        tex_coords: t,
+                                        colour: color,
+                                    });
+                                    v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y])
+                                        .chain(v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]))
+                                        .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
+                                        .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
+                                        .chain(v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]))
+                                        .chain(v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]))
                                 });
 
                             vertices.extend(extension);
@@ -273,13 +256,12 @@ mod feature {
 
                 // Use the `glutin` backend feature to convert the glutin event to a conrod one.
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
-                let dpi = dpi as conrod::Scalar;
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi) {
+                let dpi_factor = dpi_factor as conrod::Scalar;
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi_factor) {
                     ui.handle_event(event);
                 }
 
                 match event {
-
                     // Break from the loop upon `Escape`.
                     glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
                     glutin::Event::Closed =>
@@ -289,7 +271,7 @@ mod feature {
                 }
             }
 
-            std::thread::sleep(std::time::Duration::from_millis(1));
+            std::thread::sleep(std::time::Duration::from_millis(15));
         }
     }
 
@@ -309,7 +291,7 @@ mod feature {
         conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
             .middle_of(CANVAS)
             .font_size(64)
-            .color(conrod::color::LIGHT_BLUE)
+            .color(conrod::color::BLACK)
             .align_text_middle()
             .set(TEXT, ui);
     }

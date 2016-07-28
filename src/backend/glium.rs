@@ -18,7 +18,7 @@ pub fn primitives<Img>(mut primitives: render::Primitives<Img>) {
             render::PrimitiveKind::Lines { color, cap, thickness, points } => {
             },
 
-            render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
+            render::PrimitiveKind::Text { color, text, font_id } => {
             },
 
             render::PrimitiveKind::Image { maybe_color, image, source_rect } => {

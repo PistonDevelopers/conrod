@@ -9,7 +9,7 @@
 //! This is the only module in which the piston graphics crate will be used directly.
 
 
-use {Align, Color, Dimensions, Point, Rect, Scalar};
+use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
 use graph::{self, Graph, NodeIndex};
 use image;
 use std;
@@ -107,7 +107,8 @@ pub enum PrimitiveKind<'a, Img: 'a> {
         color: Color,
         /// All glyphs within the `Text` laid out in their correct positions in order from top-left
         /// to bottom right.
-        positioned_glyphs: &'a [text::PositionedGlyph],
+        text: Text<'a>,
+        //positioned_glyphs: &'a [text::PositionedGlyph],
         /// The unique identifier for the font, useful for the `glyph_cache.rect_for(id, glyph)`
         /// method when using the `conrod::text::GlyphCache` (rusttype's GPU `Cache`).
         font_id: text::font::Id,
@@ -127,6 +128,74 @@ pub enum PrimitiveKind<'a, Img: 'a> {
 
 }
 
+
+/// A type used for producing a `PositionedGlyph` iterator.
+///
+/// We produce this type rather than the `&[PositionedGlyph]`s directly so that we can properly
+/// handle "HiDPI" scales when caching glyphs.
+pub struct Text<'a> {
+    positioned_glyphs: &'a mut Vec<text::PositionedGlyph>,
+    window_dim: Dimensions,
+    text: &'a str,
+    line_infos: &'a [text::line::Info],
+    font: &'a text::Font,
+    font_size: FontSize,
+    rect: Rect,
+    x_align: Align,
+    y_align: Align,
+    line_spacing: Scalar,
+}
+
+impl<'a> Text<'a> {
+
+    /// Produces a list of `PositionedGlyph`s which may be used to cache and render the text.
+    ///
+    /// `dpi_factor`, aka "dots per inch factor" is a multiplier representing the density of
+    /// the display's pixels. The `Scale` of the font will be multiplied by this factor in order to
+    /// ensure that each `PositionedGlyph`'s `pixel_bounding_box` is accurate and that the GPU
+    /// cache receives glyphs of a size that will display correctly on displays regardless of DPI.
+    ///
+    /// Note that conrod does not require this factor when instantiating `Text` widgets and laying
+    /// out text. This is because conrod positioning uses a "pixel-agnostic" `Scalar` value
+    /// representing *perceived* distances for its positioning and layout, rather than pixel
+    /// values. During rendering however, the pixel density must be known
+    pub fn positioned_glyphs(self, dpi_factor: f32) -> &'a [text::PositionedGlyph] {
+        let Text {
+            positioned_glyphs,
+            window_dim,
+            text,
+            line_infos,
+            font,
+            font_size,
+            rect,
+            x_align,
+            y_align,
+            line_spacing,
+        } = self;
+
+        // Convert conrod coordinates to pixel coordinates.
+        let trans_x = |x: Scalar| (x + window_dim[0] / 2.0) * dpi_factor as Scalar;
+        let trans_y = |y: Scalar| ((-y) + window_dim[1] / 2.0) * dpi_factor as Scalar;
+
+        // Produce the text layout iterators.
+        let line_infos = line_infos.iter().cloned();
+        let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
+        let line_rects = text::line::rects(line_infos, font_size, rect,
+                                           x_align, y_align, line_spacing);
+
+        // Clear the existing glyphs and fill the buffer with glyphs for this Text.
+        positioned_glyphs.clear();
+        let scale = text::pt_to_scale((font_size as f32 * dpi_factor) as FontSize);
+        for (line, line_rect) in lines.zip(line_rects) {
+            let (x, y) = (trans_x(line_rect.left()) as f32, trans_y(line_rect.bottom()) as f32);
+            let point = text::rt::Point { x: x, y: y };
+            positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
+        }
+
+        positioned_glyphs
+    }
+
+}
 
 const CIRCLE_RESOLUTION: usize = 50;
 const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
@@ -171,11 +240,6 @@ impl<'a, Img> Primitives<'a, Img> {
             ref mut positioned_glyphs,
             ref image_map,
         } = *self;
-
-        let (window_w, window_h) = window_rect.w_h();
-
-        let trans_x = |x: Scalar| x + window_w / 2.0;
-        let trans_y = |y: Scalar| (-y) + window_h / 2.0;
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::shape::Style as ShapeStyle;
@@ -334,25 +398,23 @@ impl<'a, Img> Primitives<'a, Img> {
                         let line_spacing = style.line_spacing(theme);
                         let x_align = style.text_align(theme);
                         let y_align = Align::End;
-                        let scale = text::pt_to_scale(font_size);
 
-                        // Produce the text layout iterators.
-                        let line_infos = state.line_infos.iter().cloned();
-                        let lines = line_infos.clone().map(|info| &state.string[info.byte_range()]);
-                        let line_rects = text::line::rects(line_infos, font_size, rect,
-                                                           x_align, y_align, line_spacing);
-
-                        // Clear the existing glyphs and fill the buffer with glyphs for this Text.
-                        positioned_glyphs.clear();
-                        for (line, line_rect) in lines.zip(line_rects) {
-                            let (x, y) = (trans_x(line_rect.left()) as f32, trans_y(line_rect.bottom()) as f32);
-                            let point = text::rt::Point { x: x, y: y };
-                            positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
-                        }
+                        let text = Text {
+                            positioned_glyphs: positioned_glyphs,
+                            window_dim: window_rect.dim(),
+                            text: &state.string,
+                            line_infos: &state.line_infos,
+                            font: font,
+                            font_size: font_size,
+                            rect: rect,
+                            x_align: x_align,
+                            y_align: y_align,
+                            line_spacing: line_spacing,
+                        };
 
                         let kind = PrimitiveKind::Text {
                             color: color,
-                            positioned_glyphs: positioned_glyphs,
+                            text: text,
                             font_id: font_id,
                         };
                         return Some(new_primitive(kind, scizzor, rect));

@@ -40,6 +40,9 @@ pub fn primitives<'a, Img, G, T, C, F>(
     let view_size = context.get_view_size();
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
 
+    // A re-usable buffer of rectangles describing the glyph's screen and texture positions.
+    let mut glyph_rectangles = Vec::new();
+
     while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
         let context = crop_context(context, scizzor);
 
@@ -77,7 +80,15 @@ pub fn primitives<'a, Img, G, T, C, F>(
                 }
             },
 
-            render::PrimitiveKind::Text { color, positioned_glyphs, font_id } => {
+            render::PrimitiveKind::Text { color, text, font_id } => {
+
+                // Retrieve the "dots per inch" factor by dividing the window width by the view.
+                //
+                // TODO: Perhaps this should be a method on the `Context` type?
+                let dpi_factor = context.viewport
+                    .map(|v| v.window_size[0] as f32 / view_size[0] as f32)
+                    .unwrap_or(1.0);
+                let positioned_glyphs = text.positioned_glyphs(dpi_factor);
                 let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
 
                 // Queue the glyphs to be cached.
@@ -92,27 +103,38 @@ pub fn primitives<'a, Img, G, T, C, F>(
 
                 let cache_id = font_id.index();
                 let (tex_w, tex_h) = text_texture_cache.get_size();
-                for g in positioned_glyphs {
-                    if let Ok(Some((uv_rect, _screen_rect))) = glyph_cache.rect_for(cache_id, g) {
-                        let position = match g.pixel_bounding_box() {
-                            Some(r) => r.min,
-                            None => continue,
+                let color = color.to_fsa();
+
+                let rectangles = positioned_glyphs.into_iter()
+                    .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
+                    .map(|(uv_rect, screen_rect)| {
+                        let rectangle = {
+                            let div_dpi_factor = |s| (s as f32 / dpi_factor as f32) as f64;
+                            let left = div_dpi_factor(screen_rect.min.x);
+                            let top = div_dpi_factor(screen_rect.min.y);
+                            let right = div_dpi_factor(screen_rect.max.x);
+                            let bottom = div_dpi_factor(screen_rect.max.y);
+                            let w = right - left;
+                            let h = bottom - top;
+                            [left, top, w, h]
                         };
-                        let context = context.trans(position.x as f64, position.y as f64);
-                        // TODO: We should be writing straight to a vertex buffer rather than
-                        // instantiating an `Image` and making GL calls every single glyph - not
-                        // sure if this is possible with piston however.
-                        let mut image = piston_graphics::image::Image::new_color(color.to_fsa());
-                        image.source_rectangle = {
+                        let source_rectangle = {
                             let x = (uv_rect.min.x * tex_w as f32).round() as i32;
                             let y = (uv_rect.min.y * tex_h as f32).round() as i32;
                             let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32).round() as i32;
                             let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32).round() as i32;
-                            Some([x, y, w, h])
+                            [x, y, w, h]
                         };
-                        image.draw(text_texture_cache, &context.draw_state, context.transform, graphics);
-                    }
-                }
+                        (rectangle, source_rectangle)
+                    });
+                glyph_rectangles.clear();
+                glyph_rectangles.extend(rectangles);
+                piston_graphics::image::draw_many(&glyph_rectangles,
+                                                  color,
+                                                  text_texture_cache,
+                                                  &context.draw_state,
+                                                  context.transform,
+                                                  graphics);
             },
 
             render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
