@@ -612,7 +612,13 @@ pub mod cursor {
         fn next(&mut self) -> Option<Self::Item> {
             self.next_x.map(|x| {
                 self.next_x = self.layout.next()
-                    .and_then(|g| g.pixel_bounding_box().map(|r| r.max.x as Scalar));
+                    .map(|g| {
+                        g.pixel_bounding_box()
+                            .map(|r| r.max.x as Scalar)
+                            .unwrap_or_else(|| {
+                                x + g.unpositioned().h_metrics().advance_width as Scalar
+                            })
+                    });
                 x
             })
         }
