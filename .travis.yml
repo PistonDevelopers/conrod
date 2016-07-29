@@ -20,6 +20,7 @@ addons:
 script:
     - cargo build --verbose
     - cargo test --verbose
+    - cargo build --no-default-features --features "glutin glium" --example glutin_glium
     - cargo doc --verbose
 
 after_success:
