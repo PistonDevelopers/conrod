@@ -20,7 +20,6 @@ extern crate piston_window;
 mod circular_button {
     use conrod::{
         self,
-        Backend,
         Circle,
         Color,
         Colorable,
@@ -162,7 +161,7 @@ mod circular_button {
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
-        fn update<B: Backend>(self, args: UpdateArgs<Self, B>) {
+        fn update(self, args: UpdateArgs<Self>) {
             let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
 
             let color = {
@@ -261,9 +260,8 @@ pub fn main() {
     use piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use self::circular_button::CircularButton;
 
-    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-    type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-    type Ui = conrod::Ui<Backend>;
+    const WIDTH: u32 = 1200;
+    const HEIGHT: u32 = 800;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -272,30 +270,35 @@ pub fn main() {
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let mut window: PistonWindow = WindowSettings::new("Control Panel", [1200, 800])
+    let mut window: PistonWindow = WindowSettings::new("Control Panel", [WIDTH, HEIGHT])
         .opengl(opengl)
         .exit_on_esc(true)
         .build().unwrap();
-
-    // Conrod's main object.
-    let mut ui = {
-        // Load a font. `Glyphs` is provided to us via piston_window and gfx, though you may use
-        // any type that implements `CharacterCache`.
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
-            .for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        let theme = conrod::Theme::default();
-        Ui::new(glyph_cache, theme)
-    };
-
     window.set_ups(60);
 
-    while let Some(e) = window.next() {
-        // Pass each `Event` to the `Ui`.
-        ui.handle_event(e.clone());
+    // construct our `Ui`.
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
 
-        e.update(|_| ui.set_widgets(|ref mut ui| {
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
+
+    // Create a texture to use for efficiently caching text on the GPU.
+    let mut text_texture_cache =
+        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+
+    // The image map describing each of our widget->image mappings (in our case, none).
+    let image_map = conrod::image::Map::new();
+
+    while let Some(event) = window.next() {
+
+        // Convert the piston event to a conrod event.
+        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+            ui.handle_event(e);
+        }
+
+        event.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
             conrod::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
@@ -323,6 +326,13 @@ pub fn main() {
         }));
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-        window.draw_2d(&e, |c, g| ui.draw_if_changed(c, g));
+        window.draw_2d(&event, |c, g| {
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
+            }
+        });
     }
 }

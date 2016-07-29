@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     FontSize,
@@ -104,7 +103,7 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
         let color = {

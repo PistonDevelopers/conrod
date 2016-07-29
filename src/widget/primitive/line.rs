@@ -1,6 +1,5 @@
 
 use {
-    Backend,
     Color,
     Colorable,
     Point,
@@ -289,7 +288,7 @@ impl Widget for Line {
     }
 
     /// Update the state of the Line.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { rect, state, .. } = args;
         let Line { mut start, mut end, should_centre_points, .. } = self;
 

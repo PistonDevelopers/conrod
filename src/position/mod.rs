@@ -1,5 +1,5 @@
 
-use {Backend, Ui};
+use Ui;
 use widget;
 
 pub use self::range::{Edge, Range};
@@ -137,10 +137,10 @@ pub trait Positionable: Sized {
     fn y_position(self, Position) -> Self;
 
     /// Get the **Position** along the *x* axis.
-    fn get_x_position<B: Backend>(&self, ui: &Ui<B>) -> Position;
+    fn get_x_position(&self, ui: &Ui) -> Position;
 
     /// Get the **Position** along the *y* axis.
-    fn get_y_position<B: Backend>(&self, ui: &Ui<B>) -> Position;
+    fn get_y_position(&self, ui: &Ui) -> Position;
 
     // Absolute positioning.
 
@@ -656,10 +656,10 @@ pub trait Sizeable: Sized {
     fn y_dimension(self, x: Dimension) -> Self;
 
     /// The widget's length along the x axis as a Dimension.
-    fn get_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension;
+    fn get_x_dimension(&self, ui: &Ui) -> Dimension;
 
     /// The widget's length along the y axis as a Dimension.
-    fn get_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension;
+    fn get_y_dimension(&self, ui: &Ui) -> Dimension;
 
     // Provided defaults.
 
@@ -750,7 +750,7 @@ pub trait Sizeable: Sized {
     }
 
     /// Get the absolute width of the widget as a Scalar value.
-    fn get_w<B: Backend>(&self, ui: &Ui<B>) -> Option<Scalar> {
+    fn get_w(&self, ui: &Ui) -> Option<Scalar> {
         match self.get_x_dimension(ui) {
             Dimension::Absolute(width) => Some(width),
             Dimension::Of(idx, None) => ui.w_of(idx),
@@ -761,7 +761,7 @@ pub trait Sizeable: Sized {
     }
 
     /// Get the height of the widget.
-    fn get_h<B: Backend>(&self, ui: &Ui<B>) -> Option<Scalar> {
+    fn get_h(&self, ui: &Ui) -> Option<Scalar> {
         match self.get_y_dimension(ui) {
             Dimension::Absolute(height) => Some(height),
             Dimension::Of(idx, None) => ui.h_of(idx),
@@ -772,7 +772,7 @@ pub trait Sizeable: Sized {
     }
 
     /// The dimensions for the widget.
-    fn get_wh<B: Backend>(&self, ui: &Ui<B>) -> Option<Dimensions> {
+    fn get_wh(&self, ui: &Ui) -> Option<Dimensions> {
         self.get_w(ui).and_then(|w| self.get_h(ui).map(|h| [w, h]))
     }
 

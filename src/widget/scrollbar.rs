@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     Dimension,
@@ -37,10 +36,10 @@ pub trait Axis: scroll::Axis + Sized {
     fn scroll_state(widget: &graph::Container) -> Option<&scroll::State<Self>>;
     /// Determine a default *x* dimension for the scrollbar in the case that no specific width is
     /// given.
-    fn default_x_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, ui: &Ui<B>) -> Dimension;
+    fn default_x_dimension(scrollbar: &Scrollbar<Self>, ui: &Ui) -> Dimension;
     /// Determine a default *y* dimension for the scrollbar in the case that no specific height is
     /// given.
-    fn default_y_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, ui: &Ui<B>) -> Dimension;
+    fn default_y_dimension(scrollbar: &Scrollbar<Self>, ui: &Ui) -> Dimension;
     /// Convert a given `Scalar` along the axis into two dimensions.
     fn to_2d(scalar: Scalar) -> [Scalar; 2];
 }
@@ -165,15 +164,15 @@ impl<A> Widget for Scrollbar<A>
         self.style.clone()
     }
 
-    fn default_x_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension(&self, ui: &Ui) -> Dimension {
         A::default_x_dimension(self, ui)
     }
 
-    fn default_y_dimension<B: Backend>(&self, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
         A::default_y_dimension(self, ui)
     }
 
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Scrollbar { widget, .. } = self;
 
@@ -322,11 +321,11 @@ impl Axis for X {
         widget.maybe_x_scroll_state.as_ref()
     }
 
-    fn default_x_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, _ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension(scrollbar: &Scrollbar<Self>, _ui: &Ui) -> Dimension {
         Dimension::Of(scrollbar.widget, None)
     }
 
-    fn default_y_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(scrollbar: &Scrollbar<Self>, ui: &Ui) -> Dimension {
         Dimension::Absolute(scrollbar.style.thickness(&ui.theme))
     }
 
@@ -356,11 +355,11 @@ impl Axis for Y {
         widget.maybe_y_scroll_state.as_ref()
     }
 
-    fn default_x_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, ui: &Ui<B>) -> Dimension {
+    fn default_x_dimension(scrollbar: &Scrollbar<Self>, ui: &Ui) -> Dimension {
         Dimension::Absolute(scrollbar.style.thickness(&ui.theme))
     }
 
-    fn default_y_dimension<B: Backend>(scrollbar: &Scrollbar<Self>, _ui: &Ui<B>) -> Dimension {
+    fn default_y_dimension(scrollbar: &Scrollbar<Self>, _ui: &Ui) -> Dimension {
         Dimension::Of(scrollbar.widget, None)
     }
 

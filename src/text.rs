@@ -3,6 +3,23 @@
 use {FontSize, Scalar};
 use std;
 
+// Re-export all relevant rusttype types here.
+pub use rusttype::{Glyph, GlyphId, GlyphIter, LayoutIter, Scale};
+pub use rusttype::gpu_cache::Cache as GlyphCache;
+
+/// Re-exported RustType geometrical types.
+pub mod rt {
+    pub use rusttype::{Point, Rect, Vector, point, vector};
+}
+
+
+/// The RustType `FontCollection` type used by conrod.
+pub type FontCollection = ::rusttype::FontCollection<'static>;
+/// The RustType `Font` type used by conrod.
+pub type Font = ::rusttype::Font<'static>;
+/// The RustType `PositionedGlyph` type used by conrod.
+pub type PositionedGlyph = ::rusttype::PositionedGlyph<'static>;
+
 /// An iterator yielding each line within the given `text` as a new `&str`, where the start and end
 /// indices into each line are provided by the given iterator.
 #[derive(Clone)]
@@ -35,6 +52,17 @@ pub fn lines<I>(text: &str, ranges: I) -> Lines<I>
 }
 
 
+/// Converts the given font size in "points" to its font size in pixels.
+pub fn pt_to_px(font_size_in_points: FontSize) -> f32 {
+    (font_size_in_points * 4) as f32 / 3.0
+}
+
+/// Converts the given font size in "points" to a uniform `rusttype::Scale`.
+pub fn pt_to_scale(font_size_in_points: FontSize) -> Scale {
+    Scale::uniform(pt_to_px(font_size_in_points))
+}
+
+
 impl<'a, I> Iterator for Lines<'a, I>
     where I: Iterator<Item=std::ops::Range<usize>>,
 {
@@ -46,9 +74,174 @@ impl<'a, I> Iterator for Lines<'a, I>
 }
 
 
-/// Logic and types specific to individual character layout.
-pub mod char {
-    use {CharacterCache, FontSize, GlyphCache, Range, Rect, Scalar};
+/// The `font::Id` and `font::Map` types.
+pub mod font {
+    use std;
+
+    /// A type-safe wrapper around the `FontId`.
+    ///
+    /// This is used as both:
+    ///
+    /// - The key for the `font::Map`'s inner `HashMap`.
+    /// - The `font_id` field for the rusttype::gpu_cache::Cache.
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct Id(usize);
+
+    /// A collection of mappings from `font::Id`s to `rusttype::Font`s.
+    pub struct Map {
+        next_index: usize,
+        map: std::collections::HashMap<Id, super::Font>,
+    }
+
+    /// An iterator yielding an `Id` for each new `rusttype::Font` inserted into the `Map` via the
+    /// `insert_collection` method.
+    pub struct NewIds {
+        index_range: std::ops::Range<usize>,
+    }
+
+    /// Yields the `Id` for each `Font` within the `Map`.
+    #[derive(Clone)]
+    pub struct Ids<'a> {
+        keys: std::collections::hash_map::Keys<'a, Id, super::Font>,
+    }
+
+    /// Returned when loading new fonts from file or bytes.
+    #[derive(Debug)]
+    pub enum Error {
+        /// Some error occurred while loading a `FontCollection` from a file.
+        IO(std::io::Error),
+        /// No `Font`s could be yielded from the `FontCollection`.
+        NoFont,
+    }
+
+    impl Id {
+
+        /// Returns the inner `usize` from the `Id`.
+        pub fn index(self) -> usize {
+            self.0
+        }
+
+    }
+
+    impl Map {
+
+        /// Construct the new, empty `Map`.
+        pub fn new() -> Self {
+            Map {
+                next_index: 0,
+                map: std::collections::HashMap::new(),
+            }
+        }
+
+        /// Borrow the `rusttype::Font` associated with the given `font::Id`.
+        pub fn get(&self, id: Id) -> Option<&super::Font> {
+            self.map.get(&id)
+        }
+
+        /// Adds the given `rusttype::Font` to the `Map` and returns a unique `Id` for it.
+        pub fn insert(&mut self, font: super::Font) -> Id {
+            let index = self.next_index;
+            self.next_index = index.wrapping_add(1);
+            let id = Id(index);
+            self.map.insert(id, font);
+            id
+        }
+
+        /// Insert a single `Font` into the map by loading it from the given file path.
+        pub fn insert_from_file<P>(&mut self, path: P) -> Result<Id, Error>
+            where P: AsRef<std::path::Path>,
+        {
+            let font = try!(from_file(path));
+            Ok(self.insert(font))
+        }
+
+        // /// Adds each font in the given `rusttype::FontCollection` to the `Map` and returns an
+        // /// iterator yielding a unique `Id` for each.
+        // pub fn insert_collection(&mut self, collection: super::FontCollection) -> NewIds {
+        //     let start_index = self.next_index;
+        //     let mut end_index = start_index;
+        //     for index in 0.. {
+        //         match collection.font_at(index) {
+        //             Some(font) => {
+        //                 self.insert(font);
+        //                 end_index += 1;
+        //             }
+        //             None => break,
+        //         }
+        //     }
+        //     NewIds { index_range: start_index..end_index }
+        // }
+
+        /// Produces an iterator yielding the `Id` for each `Font` within the `Map`.
+        pub fn ids(&self) -> Ids {
+            Ids { keys: self.map.keys() }
+        }
+
+    }
+
+
+    /// Load a `super::FontCollection` from a file at a given path.
+    pub fn collection_from_file<P>(path: P) -> Result<super::FontCollection, std::io::Error>
+        where P: AsRef<std::path::Path>,
+    {
+        use std::io::Read;
+        let path = path.as_ref();
+        let mut file = try!(std::fs::File::open(path));
+        let mut file_buffer = Vec::new();
+        try!(file.read_to_end(&mut file_buffer));
+        Ok(super::FontCollection::from_bytes(file_buffer))
+    }
+
+    /// Load a single `Font` from a file at the given path.
+    pub fn from_file<P>(path: P) -> Result<super::Font, Error>
+        where P: AsRef<std::path::Path>
+    {
+        let collection = try!(collection_from_file(path));
+        collection.into_font().ok_or(Error::NoFont)
+    }
+
+
+    impl Iterator for NewIds {
+        type Item = Id;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.index_range.next().map(|i| Id(i))
+        }
+    }
+
+    impl<'a> Iterator for Ids<'a> {
+        type Item = Id;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.keys.next().map(|&id| id)
+        }
+    }
+
+    impl From<std::io::Error> for Error {
+        fn from(e: std::io::Error) -> Self {
+            Error::IO(e)
+        }
+    }
+
+    impl std::error::Error for Error {
+        fn description(&self) -> &str {
+            match *self {
+                Error::IO(ref e) => std::error::Error::description(e),
+                Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+            }
+        }
+    }
+
+    impl std::fmt::Display for Error {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+            writeln!(f, "{}", std::error::Error::description(self))
+        }
+    }
+
+}
+
+
+/// Logic and types specific to individual glyph layout.
+pub mod glyph {
+    use {FontSize, Range, Rect, Scalar};
     use std;
 
     /// Some position along the X axis (used within `CharXs`).
@@ -57,32 +250,23 @@ pub mod char {
     /// The half of the width of some character (used within `CharXs`).
     pub type HalfW = Scalar;
 
-    /// An iterator yielding the widths of each consecutive character in some sequence.
-    #[derive(Clone)]
-    pub struct Widths<'a, I, C: 'a> {
-        chars: I,
-        cache: &'a GlyphCache<C>,
-        font_size: FontSize,
-    }
-
-    /// An iterator yielding the `Rect` for each `char` in the given `text`.
-    #[derive(Clone)]
-    pub struct Rects<'a, C: 'a> {
+    /// An iterator yielding the `Rect` for each `char`'s `Glyph` in the given `text`.
+    pub struct Rects<'a, 'b> {
         /// The *y* axis `Range` of the `Line` for which character `Rect`s are being yielded.
         ///
         /// Every yielded `Rect` will use this as its `y` `Range`.
         y: Range,
         /// The position of the next `Rect`'s left edge along the *x* axis.
         next_left: Scalar,
-        widths: Widths<'a, std::str::Chars<'a>, C>,
+        /// `PositionedGlyphs` yielded by the RustType `LayoutIter`.
+        layout: super::LayoutIter<'a, 'b>,
     }
 
     /// An iterator that, for every `(line, line_rect)` pair yielded by the given iterator,
     /// produces an iterator that yields a `Rect` for every character in that line.
-    #[derive(Clone)]
-    pub struct RectsPerLine<'a, I, C: 'a> {
+    pub struct RectsPerLine<'a, I> {
         lines_with_rects: I,
-        cache: &'a GlyphCache<C>,
+        font: &'a super::Font,
         font_size: FontSize,
     }
 
@@ -93,9 +277,8 @@ pub mod char {
     /// will be produced.
     ///
     /// All lines that have no selected `Rect`s will be skipped.
-    #[derive(Clone)]
-    pub struct SelectedRectsPerLine<'a, I, C: 'a> {
-        enumerated_rects_per_line: std::iter::Enumerate<RectsPerLine<'a, I, C>>,
+    pub struct SelectedRectsPerLine<'a, I> {
+        enumerated_rects_per_line: std::iter::Enumerate<RectsPerLine<'a, I>>,
         start_cursor_idx: super::cursor::Index,
         end_cursor_idx: super::cursor::Index,
     }
@@ -103,9 +286,8 @@ pub mod char {
     /// Yields a `Rect` for each selected character in a single line of text.
     ///
     /// This iterator can only be produced by the `SelectedCharRectsPerLine` iterator.
-    #[derive(Clone)]
-    pub struct SelectedRects<'a, C: 'a> {
-        enumerated_rects: std::iter::Enumerate<super::char::Rects<'a, C>>,
+    pub struct SelectedRects<'a, 'b> {
+        enumerated_rects: std::iter::Enumerate<Rects<'a, 'b>>,
         end_char_idx: usize,
     }
 
@@ -128,34 +310,19 @@ pub mod char {
             })
     }
 
-    /// Converts the given sequence of `char`s into their Scalar widths.
-    pub fn widths<I, C>(chars: I,
-                        cache: &GlyphCache<C>,
-                        font_size: FontSize) -> Widths<I::IntoIter, C>
-        where I: IntoIterator<Item=char>,
-              C: CharacterCache,
-    {
-        Widths {
-            chars: chars.into_iter(),
-            cache: cache,
-            font_size: font_size,
-        }
-    }
-
     /// Produce an iterator that, for every `(line, line_rect)` pair yielded by the given iterator,
     /// produces an iterator that yields a `Rect` for every character in that line.
     ///
     /// This is useful when information about character positioning is needed when reasoning about
     /// text layout.
-    pub fn rects_per_line<'a, I, C>(lines_with_rects: I,
-                                    cache: &'a GlyphCache<C>,
-                                    font_size: FontSize) -> RectsPerLine<'a, I, C>
+    pub fn rects_per_line<'a, I>(lines_with_rects: I,
+                                 font: &'a super::Font,
+                                 font_size: FontSize) -> RectsPerLine<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
         RectsPerLine {
             lines_with_rects: lines_with_rects,
-            cache: cache,
+            font: font,
             font_size: font_size,
         }
     }
@@ -167,55 +334,44 @@ pub mod char {
     /// will be produced.
     ///
     /// All lines that have no selected `Rect`s will be skipped.
-    pub fn selected_rects_per_line<'a, I, C>(lines_with_rects: I,
-                                             cache: &'a GlyphCache<C>,
-                                             font_size: FontSize,
-                                             start: super::cursor::Index,
-                                             end: super::cursor::Index) -> SelectedRectsPerLine<'a, I, C>
+    pub fn selected_rects_per_line<'a, I>(lines_with_rects: I,
+                                          font: &'a super::Font,
+                                          font_size: FontSize,
+                                          start: super::cursor::Index,
+                                          end: super::cursor::Index) -> SelectedRectsPerLine<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
         SelectedRectsPerLine {
             enumerated_rects_per_line:
-                rects_per_line(lines_with_rects, cache, font_size).enumerate(),
+                rects_per_line(lines_with_rects, font, font_size).enumerate(),
             start_cursor_idx: start,
             end_cursor_idx: end,
         }
     }
 
-    impl<'a, I, C> Iterator for Widths<'a, I, C>
-        where I: Iterator<Item=char>,
-              C: CharacterCache,
-    {
-        type Item = Scalar;
-        fn next(&mut self) -> Option<Self::Item> {
-            let Widths { font_size, cache, ref mut chars } = *self;
-            chars.next().map(|ch| cache.char_width(font_size, ch))
-        }
-    }
-
-    impl<'a, I, C> Iterator for RectsPerLine<'a, I, C>
+    impl<'a, I> Iterator for RectsPerLine<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
-        type Item = Rects<'a, C>;
+        type Item = Rects<'a, 'a>;
         fn next(&mut self) -> Option<Self::Item> {
-            let RectsPerLine { ref mut lines_with_rects, cache, font_size } = *self;
+            let RectsPerLine { ref mut lines_with_rects, font, font_size } = *self;
+            let scale = super::pt_to_scale(font_size);
             lines_with_rects.next().map(|(line, line_rect)| {
+                let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
+                let point = super::rt::Point { x: x, y: y };
                 Rects {
                     next_left: line_rect.x.start,
-                    widths: widths(line.chars(), cache, font_size),
+                    layout: font.layout(line, scale, point),
                     y: line_rect.y
                 }
             })
         }
     }
 
-    impl<'a, I, C> Iterator for SelectedRectsPerLine<'a, I, C>
+    impl<'a, I> Iterator for SelectedRectsPerLine<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
-        type Item = SelectedRects<'a, C>;
+        type Item = SelectedRects<'a, 'a>;
         fn next(&mut self) -> Option<Self::Item> {
             let SelectedRectsPerLine {
                 ref mut enumerated_rects_per_line,
@@ -253,15 +409,15 @@ pub mod char {
         }
     }
 
-    impl<'a, C> Iterator for Rects<'a, C>
-        where C: CharacterCache,
-    {
+    impl<'a, 'b> Iterator for Rects<'a, 'b> {
         type Item = Rect;
         fn next(&mut self) -> Option<Self::Item> {
-            let Rects { ref mut next_left, ref mut widths, y } = *self;
-            widths.next().map(|w| {
+            let Rects { ref mut next_left, ref mut layout, y } = *self;
+            layout.next().map(|g| {
                 let left = *next_left;
-                let right = left + w;
+                let right = g.pixel_bounding_box()
+                    .map(|bb| bb.max.x as Scalar)
+                    .unwrap_or_else(|| left + g.unpositioned().h_metrics().advance_width as Scalar);
                 *next_left = right;
                 let x = Range::new(left, right);
                 Rect { x: x, y: y }
@@ -269,9 +425,7 @@ pub mod char {
         }
     }
 
-    impl<'a, C> Iterator for SelectedRects<'a, C>
-        where C: CharacterCache,
-    {
+    impl<'a, 'b> Iterator for SelectedRects<'a, 'b> {
         type Item = Rect;
         fn next(&mut self) -> Option<Self::Item> {
             let SelectedRects { ref mut enumerated_rects, end_char_idx } = *self;
@@ -288,27 +442,25 @@ pub mod char {
 
 /// Logic related to the positioning of the cursor within text.
 pub mod cursor {
-    use {CharacterCache, FontSize, GlyphCache, Range, Rect, Scalar};
-    use std;
+    use {FontSize, Range, Rect, Scalar};
 
     /// Every possible cursor position within each line of text yielded by the given iterator.
     ///
     /// Yields `(xs, y_range)`, where `y_range` is the `Range` occupied by the line across the *y*
     /// axis and `xs` is every possible cursor position along the *x* axis
     #[derive(Clone)]
-    pub struct XysPerLine<'a, I, C: 'a> {
+    pub struct XysPerLine<'a, I> {
         lines_with_rects: I,
-        cache: &'a GlyphCache<C>,
+        font: &'a super::Font,
         font_size: FontSize,
     }
 
     /// Each possible cursor position along the *x* axis within a line of text.
     ///
     /// `Xs` iterators are produced by the `XysPerLine` iterator.
-    #[derive(Clone)]
-    pub struct Xs<'a, C: 'a> {
+    pub struct Xs<'a, 'b> {
         next_x: Option<Scalar>,
-        widths: super::char::Widths<'a, std::str::Chars<'a>, C>,
+        layout: super::LayoutIter<'a, 'b>,
     }
 
     /// An index representing the position of a cursor within some text.
@@ -389,13 +541,13 @@ pub mod cursor {
     ///
     /// Yields `(xs, y_range)`, where `y_range` is the `Range` occupied by the line across the *y*
     /// axis and `xs` is every possible cursor position along the *x* axis
-    pub fn xys_per_line<I, C>(lines_with_rects: I,
-                              cache: &GlyphCache<C>,
-                              font_size: FontSize) -> XysPerLine<I, C>
+    pub fn xys_per_line<'a, I>(lines_with_rects: I,
+                               font: &'a super::Font,
+                               font_size: FontSize) -> XysPerLine<'a, I>
     {
         XysPerLine {
             lines_with_rects: lines_with_rects,
-            cache: cache,
+            font: font,
             font_size: font_size,
         }
     }
@@ -415,9 +567,8 @@ pub mod cursor {
     }
 
     /// Determine the *xy* location of the cursor at the given cursor `Index`.
-    pub fn xy_at<'a, I, C: 'a>(xys_per_line: I, idx: Index) -> Option<(Scalar, Range)>
-        where I: Iterator<Item=(Xs<'a, C>, Range)>,
-              C: CharacterCache,
+    pub fn xy_at<'a, I>(xys_per_line: I, idx: Index) -> Option<(Scalar, Range)>
+        where I: Iterator<Item=(Xs<'a, 'a>, Range)>,
     {
         for (i, (xs, y)) in xys_per_line.enumerate() {
             if i == idx.line {
@@ -432,35 +583,42 @@ pub mod cursor {
     }
 
 
-    impl<'a, I, C> Iterator for XysPerLine<'a, I, C>
+    impl<'a, I> Iterator for XysPerLine<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
         // The `Range` occupied by the line across the *y* axis, along with an iterator yielding
         // each possible cursor position along the *x* axis.
-        type Item = (Xs<'a, C>, Range);
+        type Item = (Xs<'a, 'a>, Range);
         fn next(&mut self) -> Option<Self::Item> {
-            let XysPerLine { ref mut lines_with_rects, cache, font_size } = *self;
+            let XysPerLine { ref mut lines_with_rects, font, font_size } = *self;
+            let scale = super::pt_to_scale(font_size);
             lines_with_rects.next().map(|(line, line_rect)| {
+                let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
+                let point = super::rt::Point { x: x, y: y };
                 let y = line_rect.y;
-                let widths = super::char::widths(line.chars(), cache, font_size);
+                let layout = font.layout(line, scale, point);
                 let xs = Xs {
                     next_x: Some(line_rect.x.start),
-                    widths: widths,
+                    layout: layout,
                 };
                 (xs, y)
             })
         }
     }
 
-    impl<'a, C> Iterator for Xs<'a, C>
-        where C: CharacterCache,
-    {
+    impl<'a, 'b> Iterator for Xs<'a, 'b> {
         // Each possible cursor position along the *x* axis.
         type Item = Scalar;
         fn next(&mut self) -> Option<Self::Item> {
             self.next_x.map(|x| {
-                self.next_x = self.widths.next().map(|w| x + w);
+                self.next_x = self.layout.next()
+                    .map(|g| {
+                        g.pixel_bounding_box()
+                            .map(|r| r.max.x as Scalar)
+                            .unwrap_or_else(|| {
+                                x + g.unpositioned().h_metrics().advance_width as Scalar
+                            })
+                    });
                 x
             })
         }
@@ -472,7 +630,7 @@ pub mod cursor {
 ///
 /// This module is the core of multi-line text handling.
 pub mod line {
-    use {Align, CharacterCache, FontSize, GlyphCache, Range, Rect, Scalar};
+    use {Align, FontSize, Range, Rect, Scalar};
     use std;
 
     /// The two types of **Break** indices returned by the **WrapIndicesBy** iterators.
@@ -533,9 +691,9 @@ pub mod line {
     /// Construct an `Infos` iterator via the [infos function](./fn.infos.html) and its two builder
     /// methods, [wrap_by_character](./struct.Infos.html#method.wrap_by_character) and
     /// [wrap_by_whitespace](./struct.Infos.html#method.wrap_by_whitespace).
-    pub struct Infos<'a, C: 'a, F> {
+    pub struct Infos<'a, F> {
         text: &'a str,
-        cache: &'a GlyphCache<C>,
+        font: &'a super::Font,
         font_size: FontSize,
         max_width: Scalar,
         next_break_fn: F,
@@ -559,14 +717,13 @@ pub mod line {
     /// The yielded `Rect`s represent the selected range within each line of text.
     ///
     /// Lines that do not contain any selected text will be skipped.
-    #[derive(Clone)]
-    pub struct SelectedRects<'a, I, C: 'a> {
-        selected_char_rects_per_line: super::char::SelectedRectsPerLine<'a, I, C>,
+    pub struct SelectedRects<'a, I> {
+        selected_char_rects_per_line: super::glyph::SelectedRectsPerLine<'a, I>,
     }
 
     /// An alias for function pointers that are compatible with the `Block`'s required text
     /// wrapping function.
-    pub type NextBreakFnPtr<C> = fn(&str, &GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar);
+    pub type NextBreakFnPtr = fn(&str, &super::Font, FontSize, Scalar) -> (Break, Scalar);
 
 
     impl Break {
@@ -593,13 +750,13 @@ pub mod line {
 
     }
 
-    impl<'a, C, F> Clone for Infos<'a, C, F>
+    impl<'a, F> Clone for Infos<'a, F>
         where F: Clone,
     {
         fn clone(&self) -> Self {
             Infos {
                 text: self.text,
-                cache: self.cache,
+                font: self.font,
                 font_size: self.font_size,
                 max_width: self.max_width,
                 next_break_fn: self.next_break_fn.clone(),
@@ -633,9 +790,7 @@ pub mod line {
 
     }
 
-    impl<'a, C> Infos<'a, C, NextBreakFnPtr<C>>
-        where C: CharacterCache,
-    {
+    impl<'a> Infos<'a, NextBreakFnPtr> {
 
         /// Converts `Self` into an `Infos` whose lines are wrapped at the character that first
         /// causes the line width to exceed the given `max_width`.
@@ -656,16 +811,40 @@ pub mod line {
     }
 
 
+    /// A function for finding the advance width between the given character that also considers
+    /// the kerning for some previous glyph.
+    ///
+    /// This also updates the `last_glyph` with the glyph produced for the given `char`.
+    ///
+    /// This is primarily for use within the `next_break` functions below.
+    ///
+    /// The following code is adapted from the rusttype::LayoutIter::next src.
+    fn advance_width(ch: char,
+                     font: &super::Font,
+                     scale: super::Scale,
+                     last_glyph: &mut Option<super::GlyphId>) -> Scalar
+    {
+        let g = font.glyph(ch).unwrap().scaled(scale);
+        let kern = last_glyph
+            .map(|last| font.pair_kerning(scale, last, g.id()))
+            .unwrap_or(0.0);
+        let advance_width = g.h_metrics().advance_width;
+        *last_glyph = Some(g.id());
+        (kern + advance_width) as Scalar
+    }
+
+
     /// Returns the next index at which the text naturally breaks via a newline character,
     /// along with the width of the line.
-    fn next_break<C>(text: &str,
-                     cache: &GlyphCache<C>,
-                     font_size: FontSize) -> (Break, Scalar)
-        where C: CharacterCache,
+    fn next_break(text: &str,
+                  font: &super::Font,
+                  font_size: FontSize) -> (Break, Scalar)
     {
+        let scale = super::pt_to_scale(font_size);
         let mut width = 0.0;
         let mut char_i = 0;
         let mut char_indices = text.char_indices().peekable();
+        let mut last_glyph = None;
         while let Some((byte_i, ch)) = char_indices.next() {
             // Check for a newline.
             if ch == '\r' {
@@ -679,7 +858,7 @@ pub mod line {
             }
 
             // Update the width.
-            width += cache.char_width(font_size, ch);
+            width += advance_width(ch, font, scale, &mut last_glyph);
             char_i += 1;
         }
         let break_ = Break::End { byte: text.len(), char: char_i };
@@ -691,15 +870,16 @@ pub mod line {
     /// - A line wrap at the beginning of the first character exceeding the `max_width`.
     ///
     /// Also returns the width of each line alongside the Break.
-    fn next_break_by_character<C>(text: &str,
-                                  cache: &GlyphCache<C>,
-                                  font_size: FontSize,
-                                  max_width: Scalar) -> (Break, Scalar)
-        where C: CharacterCache,
+    fn next_break_by_character(text: &str,
+                               font: &super::Font,
+                               font_size: FontSize,
+                               max_width: Scalar) -> (Break, Scalar)
     {
+        let scale = super::pt_to_scale(font_size);
         let mut width = 0.0;
         let mut char_i = 0;
         let mut char_indices = text.char_indices().peekable();
+        let mut last_glyph = None;
         while let Some((byte_i, ch)) = char_indices.next() {
 
             // Check for a newline.
@@ -714,7 +894,7 @@ pub mod line {
             }
 
             // Add the character's width to the width so far.
-            let new_width = width + cache.char_width(font_size, ch);
+            let new_width = width + advance_width(ch, font, scale, &mut last_glyph);
 
             // Check for a line wrap.
             if new_width > max_width {
@@ -736,17 +916,18 @@ pub mod line {
     /// exceeding the `max_width`.
     ///
     /// Also returns the width the line alongside the Break.
-    fn next_break_by_whitespace<C>(text: &str,
-                                   cache: &GlyphCache<C>,
-                                   font_size: FontSize,
-                                   max_width: Scalar) -> (Break, Scalar)
-        where C: CharacterCache,
+    fn next_break_by_whitespace(text: &str,
+                                font: &super::Font,
+                                font_size: FontSize,
+                                max_width: Scalar) -> (Break, Scalar)
     {
         struct Last { byte: usize, char: usize, width_before: Scalar }
+        let scale = super::pt_to_scale(font_size);
         let mut last_whitespace_start = Last { byte: 0, char: 0, width_before: 0.0 };
         let mut width = 0.0;
         let mut char_i = 0;
         let mut char_indices = text.char_indices().peekable();
+        let mut last_glyph = None;
         while let Some((byte_i, ch)) = char_indices.next() {
 
             // Check for a newline.
@@ -756,7 +937,7 @@ pub mod line {
                     return (break_, width)
                 }
             } else if ch == '\n' {
-                let break_ = Break::Newline { byte: byte_i, char: char_i, len_bytes: 2 };
+                let break_ = Break::Newline { byte: byte_i, char: char_i, len_bytes: 1 };
                 return (break_, width);
             }
 
@@ -766,7 +947,7 @@ pub mod line {
             }
 
             // Add the character's width to the width so far.
-            let new_width = width + cache.char_width(font_size, ch);
+            let new_width = width + advance_width(ch, font, scale, &mut last_glyph);
 
             // Check for a line wrap.
             if width > max_width {
@@ -784,17 +965,34 @@ pub mod line {
     }
 
 
+    /// Produce the width of the given line of text including spaces (i.e. ' ').
+    pub fn width(text: &str, font: &super::Font, font_size: FontSize) -> Scalar {
+        let scale = super::Scale::uniform(super::pt_to_px(font_size));
+        let point = super::rt::Point { x: 0.0, y: 0.0 };
+
+        let mut total_w = 0.0;
+        for g in font.layout(text, scale, point) {
+            match g.pixel_bounding_box() {
+                Some(bb) => total_w = bb.max.x as f32,
+                None => total_w += g.unpositioned().h_metrics().advance_width,
+            }
+        }
+
+        total_w as Scalar
+    }
+
+
     /// Produce an `Infos` iterator wrapped by the given `next_break_fn`.
-    pub fn infos_wrapped_by<'a, C, F>(text: &'a str,
-                                      cache: &'a GlyphCache<C>,
-                                      font_size: FontSize,
-                                      max_width: Scalar,
-                                      next_break_fn: F) -> Infos<'a, C, F>
-        where F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar)
+    pub fn infos_wrapped_by<'a, F>(text: &'a str,
+                                   font: &'a super::Font,
+                                   font_size: FontSize,
+                                   max_width: Scalar,
+                                   next_break_fn: F) -> Infos<'a, F>
+        where F: for<'b> FnMut(&'b str, &'b super::Font, FontSize, Scalar) -> (Break, Scalar)
     {
         Infos {
             text: text,
-            cache: cache,
+            font: font,
             font_size: font_size,
             max_width: max_width,
             next_break_fn: next_break_fn,
@@ -807,21 +1005,19 @@ pub mod line {
     ///
     /// The produced `Infos` iterator will not wrap the text, and only break each line via newline
     /// characters within the text (either `\n` or `\r\n`).
-    pub fn infos<'a, C>(text: &'a str,
-                        cache: &'a GlyphCache<C>,
-                        font_size: FontSize) -> Infos<'a, C, NextBreakFnPtr<C>>
-        where C: CharacterCache,
+    pub fn infos<'a>(text: &'a str,
+                     font: &'a super::Font,
+                     font_size: FontSize) -> Infos<'a, NextBreakFnPtr>
     {
-        fn no_wrap<C>(text: &str,
-                      cache: &GlyphCache<C>,
-                      font_size: FontSize,
-                      _max_width: Scalar) -> (Break, Scalar)
-            where C: CharacterCache,
+        fn no_wrap(text: &str,
+                   font: &super::Font,
+                   font_size: FontSize,
+                   _max_width: Scalar) -> (Break, Scalar)
         {
-            next_break(text, cache, font_size)
+            next_break(text, font, font_size)
         }
 
-        infos_wrapped_by(text, cache, font_size, std::f64::MAX, no_wrap)
+        infos_wrapped_by(text, font, font_size, std::f64::MAX, no_wrap)
     }
 
     /// Produce an iterator yielding the bounding `Rect` for each line in the text.
@@ -875,30 +1071,28 @@ pub mod line {
     /// The yielded `Rect`s represent the selected range within each line of text.
     ///
     /// Lines that do not contain any selected text will be skipped.
-    pub fn selected_rects<'a, I, C>(lines_with_rects: I,
-                                    cache: &'a GlyphCache<C>,
-                                    font_size: FontSize,
-                                    start: super::cursor::Index,
-                                    end: super::cursor::Index) -> SelectedRects<'a, I, C>
+    pub fn selected_rects<'a, I>(lines_with_rects: I,
+                                 font: &'a super::Font,
+                                 font_size: FontSize,
+                                 start: super::cursor::Index,
+                                 end: super::cursor::Index) -> SelectedRects<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
         SelectedRects {
             selected_char_rects_per_line:
-                super::char::selected_rects_per_line(lines_with_rects, cache, font_size, start, end)
+                super::glyph::selected_rects_per_line(lines_with_rects, font, font_size, start, end)
         }
     }
 
 
-    impl<'a, C, F> Iterator for Infos<'a, C, F>
-        where C: CharacterCache,
-              F: for<'b> FnMut(&'b str, &'b GlyphCache<C>, FontSize, Scalar) -> (Break, Scalar)
+    impl<'a, F> Iterator for Infos<'a, F>
+        where F: for<'b> FnMut(&'b str, &'b super::Font, FontSize, Scalar) -> (Break, Scalar)
     {
         type Item = Info;
         fn next(&mut self) -> Option<Self::Item> {
             let Infos {
                 text,
-                cache,
+                font,
                 font_size,
                 max_width,
                 ref mut next_break_fn,
@@ -906,7 +1100,7 @@ pub mod line {
                 ref mut start_char,
             } = *self;
 
-            match next_break_fn(&text[*start_byte..], cache, font_size, max_width) {
+            match next_break_fn(&text[*start_byte..], font, font_size, max_width) {
                 (next @ Break::Newline { .. }, width) | (next @ Break::Wrap { .. }, width) => {
 
                     let next_break = match next {
@@ -999,9 +1193,8 @@ pub mod line {
         }
     }
 
-    impl<'a, I, C> Iterator for SelectedRects<'a, I, C>
+    impl<'a, I> Iterator for SelectedRects<'a, I>
         where I: Iterator<Item=(&'a str, Rect)>,
-              C: CharacterCache,
     {
         type Item = Rect;
         fn next(&mut self) -> Option<Self::Item> {

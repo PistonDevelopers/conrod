@@ -5,8 +5,8 @@ authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
 ]
-keywords = ["ui", "widgets", "gui", "piston", "graphics"]
-description = "An easy-to-use, extensible 2D GUI library"
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
@@ -19,11 +19,44 @@ path = "./src/lib.rs"
 
 [dependencies]
 daggy = "0.4.0"
-pistoncore-input = "0.13.0"
-piston2d-graphics = "0.16.0"
 num = "0.1.30"
+pistoncore-input = "0.13.0"
+rusttype = "0.2.0"
+
+# Optional dependencies and features
+# ----------------------------------
+#
+# None of the following dependencies are necessary to use conrod, however they may greatly
+# simplify the work involved when using conrod with certain window or graphics backends.
+#
+# `glium`
+# Provides functions for rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
+# Enables the `conrod::backend::glium` module.
+#
+# `glutin`
+# Provides a function for converting glutin `Event`s to `conrod::event::Raw`s.
+# Enables the `conrod::backend::glutin` module.
+#
+# `piston`
+# Provides functions for:
+# - Converting piston `GenericEvent` types to `conrod::event::Raw`s.
+# - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
+# Enables the `conrod::backend::piston` module.
+#
+# `piston_window`
+# Provides functions for:
+# - Text cache `G2dTexture` construction.
+# - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
+# Enables the `conrod::backend::piston_window` module.
+# Note: Use the `piston` feature for `piston_window` event conversions.
+glium = { version = "0.15.0", optional = true }
+glutin = { version = "0.6.1", optional = true }
+piston2d-graphics = { version = "0.17", optional = true }
+piston_window = { version = "0.51", optional = true }
+[features]
+default = ["piston", "piston_window"]
+piston = ["piston2d-graphics"]
 
 [dev-dependencies]
 find_folder = "0.3.0"
 rand = "0.3.13"
-piston_window = "0.50.0"

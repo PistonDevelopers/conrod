@@ -2,49 +2,66 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Theme, Widget};
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
-/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-type Ui = conrod::Ui<Backend>;
-type UiCell<'a> = conrod::UiCell<'a, Backend>;
-
-
 fn main() {
+    const WIDTH: u32 = 1080;
+    const HEIGHT: u32 = 720;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("Text Demo", [1080, 720])
+        WindowSettings::new("Text Demo", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).build().unwrap();
+    window.set_ups(60);
 
     // Construct our `Ui`.
-    let mut ui = {
-        let assets = find_folder::Search::KidsThenParents(3, 5)
-            .for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let theme = Theme::default();
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        Ui::new(glyph_cache, theme)
-    };
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
 
-    window.set_ups(60);
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
+
+    // Create a texture cache in which we can cache text on the GPU.
+    //
+    // Note that the dimensions of the `GlyphCache` don't need to be the dimensions of the window,
+    // they just need to be at least large enough to cache the maximum amount of text that might be
+    // drawn in a single frame.
+    let mut text_texture_cache =
+        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+
+    // The image map describing each of our widget->image mappings (in our case, none).
+    let image_map = conrod::image::Map::new();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(event.clone());
+
+        // Convert the piston event to a conrod event.
+        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+            ui.handle_event(e);
+        }
+
         event.update(|_| ui.set_widgets(set_ui));
-        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
+
+        window.draw_2d(&event, |c, g| {
+            // Only re-draw if there was some change in the `Ui`.
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
+            }
+        });
     }
 
 }
 
-fn set_ui(ref mut ui: UiCell) {
-    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text};
+fn set_ui(ref mut ui: conrod::UiCell) {
+    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text, Widget};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{

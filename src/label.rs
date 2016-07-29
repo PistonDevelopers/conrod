@@ -1,5 +1,4 @@
 
-use backend::Backend;
 use color::{Color, hsl, hsla, rgb, rgba};
 use ui::Ui;
 
@@ -39,17 +38,17 @@ pub trait Labelable<'a>: Sized {
     fn label_font_size(self, size: FontSize) -> Self;
 
     /// Set a "small" font size for the widget's label.
-    fn small_font<B: Backend>(self, ui: &Ui<B>) -> Self {
+    fn small_font(self, ui: &Ui) -> Self {
         self.label_font_size(ui.theme.font_size_small)
     }
 
     /// Set a "medium" font size for the widget's label.
-    fn medium_font<B: Backend>(self, ui: &Ui<B>) -> Self {
+    fn medium_font(self, ui: &Ui) -> Self {
         self.label_font_size(ui.theme.font_size_medium)
     }
 
     /// Set a "large" font size for the widget's label.
-    fn large_font<B: Backend>(self, ui: &Ui<B>) -> Self {
+    fn large_font(self, ui: &Ui) -> Self {
         self.label_font_size(ui.theme.font_size_large)
     }
 

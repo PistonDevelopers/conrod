@@ -10,16 +10,14 @@
 
 extern crate daggy;
 extern crate num;
-
-extern crate graphics as piston_graphics;
 extern crate input as piston_input;
+extern crate rusttype;
 
 
 pub use widget::primitive::line::Line;
 pub use widget::primitive::image::Image;
 pub use widget::primitive::point_path::PointPath;
 pub use widget::primitive::shape::circle::Circle;
-pub use widget::primitive::shape::framed_rectangle::FramedRectangle;
 pub use widget::primitive::shape::polygon::Polygon;
 pub use widget::primitive::shape::oval::Oval;
 pub use widget::primitive::shape::rectangle::Rectangle;
@@ -31,6 +29,7 @@ pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::file_navigator::{FileNavigator, Event as FileNavigatorEvent};
+pub use widget::framed_rectangle::FramedRectangle;
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::plot_path::PlotPath;
@@ -48,7 +47,6 @@ pub use widget::xy_pad::XYPad;
 pub use widget::primitive::line::Style as LineStyle;
 pub use widget::primitive::image::Style as ImageStyle;
 pub use widget::primitive::shape::Style as ShapeStyle;
-pub use widget::primitive::shape::framed_rectangle::Style as FramedRectangleStyle;
 pub use widget::primitive::text::Style as TextStyle;
 
 pub use widget::button::Style as ButtonStyle;
@@ -56,6 +54,7 @@ pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
 pub use widget::file_navigator::Style as FileNavigatorStyle;
+pub use widget::framed_rectangle::Style as FramedRectangleStyle;
 pub use widget::number_dialer::Style as NumberDialerStyle;
 pub use widget::plot_path::Style as PlotPathStyle;
 pub use widget::range_slider::Style as RangeSliderStyle;
@@ -69,11 +68,8 @@ pub use widget::toggle::Style as ToggleStyle;
 pub use widget::xy_pad::Style as XYPadStyle;
 
 
-pub use backend::{Backend, CharacterCache, Graphics};
-pub use background::Background;
 pub use color::{Color, Colorable};
 pub use frame::{Framing, Frameable};
-pub use glyph_cache::GlyphCache;
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
@@ -94,16 +90,16 @@ pub use widget::State as WidgetState;
 
 
 pub mod backend;
-mod background;
 pub mod color;
 pub mod event;
 mod frame;
-pub mod glyph_cache;
 pub mod graph;
 pub mod guide;
+pub mod image;
 pub mod input;
 mod label;
 mod position;
+pub mod render;
 pub mod text;
 pub mod theme;
 mod ui;

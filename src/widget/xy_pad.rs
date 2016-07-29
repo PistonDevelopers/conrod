@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     Frameable,
@@ -131,7 +130,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         use position::{Direction, Edge};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -166,7 +165,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             }
         }
 
-        let interaction_color = |ui: &::ui::UiCell<B>, color: Color|
+        let interaction_color = |ui: &::ui::UiCell, color: Color|
             ui.widget_input(idx).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()

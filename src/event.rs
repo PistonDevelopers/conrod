@@ -2,14 +2,72 @@
 //! can handle.
 //!
 //! The core of this module is the `Event` enum, which encapsulates all of those events.
+//!
+//!
+//!
+//! The backend for conrod's event system.
+//!
+//! Conrod's event system looks like this:
+//!
+//! *RawEvent -> Ui -> UiEvent -> Widget*
+//!
+//! The **Ui** receives **RawEvent**s such as `Press` and `Release` via the `Ui::handle_event`
+//! method. It interprets these **RawEvent**s to create higher-level **UiEvent**s such as
+//! `DoubleClick`, `WidgetCapturesKeyboard`, etc. These **UiEvent**s are stored and then fed to
+//! each **Widget** when `Ui::set_widgets` is called. At the end of `Ui::set_widgets` the stored
+//! **UiEvent**s are flushed ready for the next incoming **RawEvent**s.
+//!
+//! Conrod uses the `pistoncore-input` crate's `Event` type as the [**RawEvent**
+//! type](./type.RawEvent.html). There are a few reasons for this:
+//!
+//! 1. This `Event` type already provides a number of useful variants of events that we wish to
+//!    provide and handle within conrod, and we do not yet see any great need to re-write it and
+//!    duplicate code.
+//! 2. The `Event` type is already compatible with all `pistoncore-window` backends including
+//!    `glfw_window`, `sdl2_window` and `glutin_window`.
+//! 3. The `pistoncore-input` crate also provides a `GenericEvent` trait which allows us to easily
+//!    provide a blanket implementation of `ToRawEvent` for all event types that already implement
+//!    this trait.
+//!
+//! Because we use the `pistoncore-input` `Event` type, we also re-export its associated data
+//! types (`Button`, `ControllerAxisArgs`, `Key`, etc).
+//!
+//! The [**ToRawEvent** trait](./trait.ToRawEvent.html) should be implemented for event types that
+//! are to be passed to the `Ui::handle_event` method. As mentioned above, a blanket implementation
+//! is already provided for all types that implement `pistoncore-input::GenericEvent`, so users of
+//! `glfw_window`, `sdl2_window` and `glutin_window` need not concern themselves with this trait.
 
 use input;
-use position::{Dimensions, Point};
+use position::{Dimensions, Point, Scalar};
 use utils::vec2_sub;
 use widget;
 
+use piston_input;
+
+
+/// The event type that is used by conrod to track inputs from the world. Events yielded by polling
+/// window backends should be converted to this type. This can be thought of as the event type
+/// which is supplied by the window backend to drive the state of the `Ui` forward.
+///
+/// This type is solely used within the `Ui::handle_event` method which immediately converts
+/// given user events to `RawEvent`s via the [**ToRawEvent** trait](./trait.ToRawEvent.html) bound.
+/// The `RawEvent`s are interpreted to create higher level `Event`s (such as DoubleClick,
+/// WidgetCapturesKeyboard, etc) which are stored for later processing by `Widget`s, which will
+/// occur during the call to `Ui::set_widgets`.
+///
+/// **Note:** `Raw` events that contain co-ordinates must be oriented with (0, 0) at the middle of
+/// the window with the *y* axis pointing upwards (Cartesian co-ordinates). Many windows provide
+/// coordinates with the origin in the top left with *y* pointing down, so you might need to
+/// translate these co-ordinates when implementing this method. Also be sure to invert the *y* axis
+/// of MouseScroll events.
+pub type Raw = piston_input::Event<piston_input::Input>;
+
+/// Unfortunately we're unable to access variants of the `Event` enum via the `RawEvent` type
+/// alias above, thus we must also re-export `Event` itself so that a user may use it if they
+/// require accessing its variants.
+pub use piston_input::Event as RawEvent;
 #[doc(inline)]
-pub use backend::event::{Input, Motion};
+pub use piston_input::{Input, Motion};
 
 
 /// Enum containing all the events that the `Ui` may provide.
@@ -246,6 +304,17 @@ pub struct Scroll {
     pub y: f64,
     /// Which modifier keys, if any, that were being held down while the scroll occured
     pub modifiers: input::keyboard::ModifierKey,
+}
+
+/// Constructor for a new `RawEvent::Render`.
+pub fn render(dt_secs: f64, w_px: u32, h_px: u32, dpi: Scalar) -> RawEvent {
+    RawEvent::Render(input::RenderArgs {
+        ext_dt: dt_secs,
+        width: (w_px as Scalar / dpi) as u32,
+        height: (h_px as Scalar / dpi) as u32,
+        draw_width: w_px,
+        draw_height: h_px,
+    })
 }
 
 impl Move {

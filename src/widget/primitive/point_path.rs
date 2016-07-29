@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     Point,
@@ -183,7 +182,7 @@ impl<I> Widget for PointPath<I>
     }
 
     /// Update the state of the Line.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
         let PointPath { points, maybe_shift_to_centre_from, .. } = self;

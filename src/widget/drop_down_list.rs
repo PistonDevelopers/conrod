@@ -1,5 +1,4 @@
 use {
-    Backend,
     Button,
     ButtonStyle,
     Color,
@@ -151,7 +150,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update<B: Backend>(mut self, args: widget::UpdateArgs<Self, B>) {
+    fn update(mut self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
         let frame = style.frame(ui.theme());

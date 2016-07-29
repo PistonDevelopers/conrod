@@ -1,41 +1,13 @@
-//! Traits and functionality related to Conrod's generic backend.
+//! Feature-gated, backend-specific functionality.
 //!
-//! These modules describe an interface allowing users to use their own graphics, events and
-//! character caching systems with Conrod.
+//! Conrod can be thought of as a pipe, where its inputs are `conrod::event::Raw`s and its output
+//! is `conrod::render::Primitives`. The following feature-gated backend modules provide helper
+//! functionality for converting events and rendering primitives in a way that is suitable to each.
 //!
-//! **Note:** Conrod currently heavily depends upon the piston graphics and event crates for
-//! enabling genericity over custom user backends. This dependency may change in the near future in
-//! favour of simplified conrod-specific backend trait.
+//! If there is a popular backend that you would like to see support for that is currently missing
+//! from this module, feel free to open an issue or pull request at the conrod repository.
 
-use std;
-
-pub use self::graphics::{CharacterCache, Graphics};
-pub use self::event::{RawEvent, ToRawEvent};
-
-pub mod event;
-pub mod graphics;
-
-/// A trait to be implemented by all backends to conrod.
-///
-/// This trait allows conrod to remain entirely backend agnostic so that users may use conrod with
-/// any window, graphics or font contexts.
-///
-/// Conrod provides a blanket implementation for all `(T, C)` tuples, where `T` is some texture and
-/// `C` is some character cache and both satisfy the necessary bounds.
-pub trait Backend {
-    /// The `Texture` type used by the `Graphics` and `CharacterCache` backends.
-    type Texture: self::graphics::ImageSize + std::any::Any;
-    /// The character cache used by the backend.
-    ///
-    /// Must implement the [`CharacterCache` trait](./trait.CharacterCache.html).
-    type CharacterCache: CharacterCache<Texture=Self::Texture>;
-}
-
-
-impl<T, C> Backend for (T, C)
-    where T: self::graphics::ImageSize + std::any::Any,
-          C: CharacterCache<Texture=T>,
-{
-    type Texture = T;
-    type CharacterCache = C;
-}
+#[cfg(feature="glium")] pub mod glium;
+#[cfg(feature="glutin")] pub mod glutin;
+#[cfg(feature="piston")] pub mod piston;
+#[cfg(feature="piston")] #[cfg(feature="piston_window")] pub mod piston_window;

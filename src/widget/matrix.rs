@@ -1,4 +1,4 @@
-use {Backend, NodeIndex, Scalar, Widget};
+use {NodeIndex, Scalar, Widget};
 use widget;
 
 
@@ -107,7 +107,7 @@ impl<'a, F, W> Widget for Matrix<F>
     }
 
     /// Update the state of the Matrix.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Matrix { cols, rows, maybe_each_widget, .. } = self;
 

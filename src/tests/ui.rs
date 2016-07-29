@@ -1,16 +1,14 @@
 use {
     Theme,
     Canvas,
-    CharacterCache,
     Color,
-    FontSize,
     Labelable,
     Positionable,
     Colorable,
     Sizeable,
-    Widget
+    Widget,
+    Ui,
 };
-use backend::graphics::{Character, ImageSize};
 use event::{self, Input, Motion};
 use input::{self, Button, Key, MouseButton};
 use input::keyboard::ModifierKey;
@@ -22,7 +20,6 @@ use position::Point;
 ///// Test assist code.
 
 
-type Ui = ::Ui<MockBackend>;
 
 fn left_click_mouse(ui: &mut Ui) {
     press_mouse_button(MouseButton::Left, ui);
@@ -71,55 +68,7 @@ fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
 
 fn windowless_ui() -> Ui {
     let theme = Theme::default();
-    let cc = MockCharacterCache::new();
-    Ui::new(cc, theme)
-}
-
-#[derive(Copy, Clone)]
-struct MockBackend;
-
-impl ::Backend for MockBackend {
-    type Texture = MockImageSize;
-    type CharacterCache = MockCharacterCache;
-}
-
-#[derive(Clone)]
-struct MockImageSize {
-    w: u32,
-    h: u32,
-}
-
-impl ImageSize for MockImageSize {
-    fn get_size(&self) -> (u32, u32) {
-        (self.w, self.h)
-    }
-}
-
-#[derive(Clone)]
-struct MockCharacterCache{
-    my_char: Character<'static, MockImageSize>
-}
-
-impl MockCharacterCache {
-    fn new() -> MockCharacterCache {
-        const MOCK_IMAGE_SIZE: &'static MockImageSize = &MockImageSize{ w: 14, h: 22 };
-        MockCharacterCache {
-            my_char: Character{
-                offset: [0.0, 0.0],
-                size: [14.0, 22.0],
-                texture: MOCK_IMAGE_SIZE,
-            }
-        }
-    }
-}
-
-impl CharacterCache for MockCharacterCache {
-    type Texture = MockImageSize;
-
-    fn character(&mut self, _font_size: FontSize, _ch: char) -> Character<'static, MockImageSize> {
-        self.my_char.clone()
-    }
-
+    Ui::new(theme)
 }
 
 
@@ -155,42 +104,6 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     assert!(ui.global_input.events().next().is_none());
 }
 
-#[test]
-fn ui_should_push_capturing_event_when_mouse_button_is_pressed_over_a_widget() {
-    let mut ui = windowless_ui();
-    ui.win_w = 250.0;
-    ui.win_h = 300.0;
-
-    const CANVAS_ID: widget::Id = widget::Id(0);
-    const BUTTON_ID: widget::Id = widget::Id(1);
-    ui.set_widgets(|ref mut ui| {
-
-        Canvas::new()
-            .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
-            .set(CANVAS_ID, ui);
-        ButtonWidget::new()
-            .w_h(100.0, 200.0)
-            .label("MyButton")
-            .react(|| {})
-            .bottom_right_of(CANVAS_ID)
-            .set(BUTTON_ID, ui);
-    });
-
-    let button_idx = Index::Public(BUTTON_ID);
-    move_mouse_to_widget(button_idx, &mut ui);
-    press_mouse_button(MouseButton::Left, &mut ui);
-
-    let expected_capture_event = event::Ui::WidgetCapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_capture_event.into());
-
-    // Now click somewhere on the background and widget should uncapture
-    release_mouse_button(MouseButton::Left, &mut ui);
-    move_mouse_to_abs_coordinates(1.0, 1.0, &mut ui);
-    press_mouse_button(MouseButton::Left, &mut ui);
-
-    let expected_uncapture_event = event::Ui::WidgetUncapturesKeyboard(button_idx);
-    assert_event_was_pushed(&ui, expected_uncapture_event.into());
-}
 
 #[test]
 fn ui_should_push_input_events_to_aggregator() {

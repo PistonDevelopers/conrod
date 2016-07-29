@@ -6,54 +6,67 @@
 extern crate find_folder;
 extern crate piston_window;
 
-fn main() {
-    use conrod::{Canvas, Colorable, Image, Positionable, Theme, Widget, color};
-    use piston_window::{EventLoop, Flip, PistonWindow, Texture, UpdateEvent, WindowSettings};
-    use std::sync::Arc;
+use conrod::{Canvas, Colorable, Image, Positionable, Sizeable, Theme, Widget, color};
+use piston_window::{EventLoop, Flip, ImageSize, G2dTexture, PistonWindow, Texture, UpdateEvent};
 
-    // Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-    type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-    type Ui = conrod::Ui<Backend>;
+fn main() {
+    const WIDTH: u32 = 800;
+    const HEIGHT: u32 = 600;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = piston_window::OpenGL::V3_2;
 
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("Image Widget Demonstration", [800, 600])
+        piston_window::WindowSettings::new("Image Widget Demonstration", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).samples(4).build().unwrap();
-
-    // Get the path to our `assets` directory (where the fonts and images are).
-    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+    window.set_ups(60);
 
     // construct our `Ui`.
-    let mut ui = {
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let theme = Theme::default();
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        Ui::new(glyph_cache, theme)
+    let mut ui = conrod::Ui::new(Theme::default());
+
+    // Create an empty texture to pass for the text cache as we're not drawing any text.
+    let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
+
+    // The `WidgetId` for our background and `Image` widgets.
+    widget_ids!(BACKGROUND, RUST_LOGO);
+
+    // Create our `conrod::image::Map` which describes each of our widget->image mappings.
+    // In our case we only have one image, however the macro may be used to list multiple.
+    let image_map = image_map! {
+        (RUST_LOGO, rust_logo(&mut window)),
     };
 
-    // The texture to use for the `Image`.
-    let rust_logo = {
-        let path = assets.join("images/rust.png");
-        let factory = &mut window.factory;
-        let settings = piston_window::TextureSettings::new();
-        Arc::new(Texture::from_path(factory, &path, Flip::None, &settings).unwrap())
-    };
-
-    window.set_ups(60);
+    // We'll instantiate the `Image` at its full size, so we'll retrieve its dimensions.
+    let (w, h) = image_map.get(RUST_LOGO).unwrap().get_size();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
         ui.handle_event(event.clone());
-        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
+
+        window.draw_2d(&event, |c, g| {
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
+            }
+        });
+
         event.update(|_| ui.set_widgets(|mut ui| {
-            widget_ids!(CANVAS, RUST_LOGO);
-            Canvas::new().color(color::LIGHT_BLUE).set(CANVAS, &mut ui);
-            Image::from_texture(rust_logo.clone())
-                .middle_of(CANVAS)
-                .set(RUST_LOGO, &mut ui);
+            // Draw a light blue background.
+            Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, &mut ui);
+            // Instantiate the `Image` at its full size in the middle of the window.
+            Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, &mut ui);
         }));
     }
+}
+
+// Load the Rust logo from our assets folder.
+fn rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
+    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+    let path = assets.join("images/rust.png");
+    let factory = &mut window.factory;
+    let settings = piston_window::TextureSettings::new();
+    Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
 }

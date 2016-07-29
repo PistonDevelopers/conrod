@@ -1,9 +1,11 @@
 use {
-    Backend,
     Color,
     Colorable,
     Dimensions,
     Frameable,
+    IndexSlot,
+    Rectangle,
+    Positionable,
     Scalar,
     Sizeable,
     Widget,
@@ -12,6 +14,15 @@ use widget;
 
 
 /// A filled rectangle widget that may or may not have some frame.
+///
+/// NOTE: FramedRectangle is currently implemented as two filled rectangles:
+///
+/// 1. A `Rectangle` for the frame.
+/// 2. A `Rectangle` for the non-frame area.
+///
+/// This is flawed in that, if a user specifies an alpha lower than 1.0, the front `Rectangle` will
+/// blend with the frame `Rectangle`, which is likely unexpected behaviour. This should be changed
+/// so that the frame is drawn using a outlined `Rectangle`.
 #[derive(Copy, Clone, Debug)]
 pub struct FramedRectangle {
     /// Data necessary and common for all widget builder types.
@@ -22,6 +33,13 @@ pub struct FramedRectangle {
 
 /// Unique kind for the Widget.
 pub const KIND: widget::Kind = "FramedRectangle";
+
+/// Unique state for the `FramedRectangle`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct State {
+    frame_idx: IndexSlot,
+    rectangle_idx: IndexSlot,
+}
 
 widget_style!{
     KIND;
@@ -52,7 +70,7 @@ impl FramedRectangle {
 
 
 impl Widget for FramedRectangle {
-    type State = ();
+    type State = State;
     type Style = Style;
 
     fn common(&self) -> &widget::CommonBuilder {
@@ -67,17 +85,41 @@ impl Widget for FramedRectangle {
         KIND
     }
 
-    fn init_state(&self) -> () {
-        ()
+    fn init_state(&self) -> Self::State {
+        State {
+            frame_idx: IndexSlot::new(),
+            rectangle_idx: IndexSlot::new(),
+        }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the Rectangle.
-    fn update<B: Backend>(self, _args: widget::UpdateArgs<Self, B>) {
-        // Nothing to update here!
+    fn update(self, args: widget::UpdateArgs<Self>) {
+        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+
+        let frame = style.frame(&ui.theme);
+        if frame > 0.0 {
+            let frame_color = style.frame_color(&ui.theme);
+            let frame_idx = state.frame_idx.get(&mut ui);
+            Rectangle::fill(rect.dim())
+                .xy(rect.xy())
+                .color(frame_color)
+                .parent(idx)
+                .graphics_for(idx)
+                .set(frame_idx, &mut ui);
+        }
+
+        let color = style.color(&ui.theme);
+        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        Rectangle::fill(rect.pad(frame).dim())
+            .xy(rect.xy())
+            .color(color)
+            .parent(idx)
+            .graphics_for(idx)
+            .set(rectangle_idx, &mut ui);
     }
 
 }

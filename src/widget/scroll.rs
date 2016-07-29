@@ -2,7 +2,6 @@
 
 use {
     Align,
-    Backend,
     Point,
     Padding,
     Range,
@@ -162,12 +161,11 @@ impl<A> State<A>
     ///          +              >    
     ///
     /// ```
-    pub fn update<B>(ui: &Ui<B>,
-                     idx: super::Index,
-                     kid_area: &super::KidArea,
-                     maybe_prev_scroll_state: Option<Self>,
-                     additional_offset: Scalar) -> Self
-        where B: Backend,
+    pub fn update(ui: &Ui,
+                  idx: super::Index,
+                  kid_area: &super::KidArea,
+                  maybe_prev_scroll_state: Option<Self>,
+                  additional_offset: Scalar) -> Self
     {
 
         // Retrieve the *current* scroll offset.

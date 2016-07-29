@@ -1,18 +1,15 @@
-use Scalar;
-use backend::{self, Backend, ToRawEvent};
-use backend::graphics::{Context, Graphics};
 use color::Color;
 use event;
-use glyph_cache::GlyphCache;
 use graph::{self, Graph, NodeIndex};
-use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect};
+use image;
+use input;
+use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
+use render;
 use std;
-use std::collections::HashSet;
-use std::marker::PhantomData;
+use text;
 use theme::Theme;
 use utils;
 use widget::{self, Widget};
-use input;
 
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
@@ -23,19 +20,15 @@ use input;
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
-pub struct Ui<B>
-    where B: Backend,
-{
-    /// The backend used by the `Ui`, providing the `Graphics` and `CharacterCache` types.
-    backend: PhantomData<B>,
+pub struct Ui {
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
-    /// Cache for character textures, used for label width calculation and glyph rendering.
-    pub glyph_cache: GlyphCache<B::CharacterCache>,
     /// An index into the root widget of the graph, representing the entire window.
     pub window: NodeIndex,
     /// Handles aggregation of events and providing them to Widgets
     pub global_input: input::Global,
+    /// Manages all fonts that have been loaded by the user.
+    pub fonts: text::font::Map,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
     /// The widget::Index of the widget that was last updated/set.
@@ -52,12 +45,12 @@ pub struct Ui<B>
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
     /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
-    updated_widgets: HashSet<NodeIndex>,
+    updated_widgets: std::collections::HashSet<NodeIndex>,
     /// The `updated_widgets` for the previous `set_widgets` stage.
     ///
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
-    prev_updated_widgets: HashSet<NodeIndex>,
+    prev_updated_widgets: std::collections::HashSet<NodeIndex>,
     /// Scroll events that have been emitted during a call to `Ui::set_widgets`. These are usually
     /// emitted by some widget like the `Scrollbar`.
     ///
@@ -84,11 +77,9 @@ pub struct Ui<B>
 /// `RefCell` types (which `UiCell` has nothing to do with). Thus, if you have a better name for
 /// this type in mind, please let us know at the github repo via an issue or PR sometime before we
 /// hit 1.0.0!
-pub struct UiCell<'a, B: 'a>
-    where B: Backend,
-{
+pub struct UiCell<'a> {
     /// A mutable reference to a **Ui**.
-    ui: &'a mut Ui<B>,
+    ui: &'a mut Ui,
 }
 
 
@@ -98,44 +89,37 @@ pub struct UiCell<'a, B: 'a>
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 
-impl<B> Ui<B>
-    where B: Backend,
-{
+impl Ui {
 
     /// A new, empty **Ui**.
-    pub fn new(character_cache: B::CharacterCache, theme: Theme) -> Self {
+    pub fn new(theme: Theme) -> Self {
         let widget_graph = Graph::new();
         let depth_order = graph::DepthOrder::new();
-        let updated_widgets = HashSet::new();
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        let updated_widgets = std::collections::HashSet::new();
+        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// A new **Ui** with the capacity given as a number of widgets.
-    pub fn with_capacity(character_cache: B::CharacterCache,
-                         theme: Theme,
-                         n_widgets: usize) -> Self
-    {
+    pub fn with_capacity(theme: Theme, n_widgets: usize) -> Self {
         let widget_graph = Graph::with_node_capacity(n_widgets);
         let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
-        let updated_widgets = HashSet::with_capacity(n_widgets);
-        Self::new_internal(character_cache, theme, widget_graph, depth_order, updated_widgets)
+        let updated_widgets = std::collections::HashSet::with_capacity(n_widgets);
+        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
     }
 
     /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
-    fn new_internal(character_cache: B::CharacterCache,
-                    theme: Theme,
+    fn new_internal(theme: Theme,
                     mut widget_graph: Graph,
                     depth_order: graph::DepthOrder,
-                    updated_widgets: HashSet<NodeIndex>) -> Self
+                    updated_widgets: std::collections::HashSet<NodeIndex>) -> Self
     {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
         Ui {
-            backend: PhantomData,
             widget_graph: widget_graph,
             theme: theme,
+            fonts: text::font::Map::new(),
             window: window,
-            glyph_cache: GlyphCache::new(character_cache),
             win_w: 0.0,
             win_h: 0.0,
             maybe_prev_widget_idx: None,
@@ -226,7 +210,7 @@ impl<B> Ui<B>
     ///
     /// This set indicates which widgets have been instantiated since the beginning of the most
     /// recent `Ui::set_widgets` call.
-    pub fn updated_widgets(&self) -> &HashSet<NodeIndex> {
+    pub fn updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
         &self.updated_widgets
     }
 
@@ -234,7 +218,7 @@ impl<B> Ui<B>
     ///
     /// This set indicates which widgets have were instantiated during the previous call to
     /// `Ui::set_widgets`.
-    pub fn prev_updated_widgets(&self) -> &HashSet<NodeIndex> {
+    pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
         &self.prev_updated_widgets
     }
 
@@ -273,10 +257,9 @@ impl<B> Ui<B>
     ///
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
-    pub fn handle_event<E>(&mut self, event: E)
-        where E: ToRawEvent,
-    {
-        use backend::event::{Input, Motion, Key, ModifierKey, RawEvent};
+    pub fn handle_event<E: Into<event::Raw>>(&mut self, event: E) {
+        use event::{Input, Motion};
+        use input::{Key, ModifierKey};
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
         // `input::Global`'s `input::State`.
@@ -292,7 +275,7 @@ impl<B> Ui<B>
         // released.
         //
         // Note: This function expects that `ui.global_input.current.mouse.xy` is up-to-date.
-        fn track_widget_under_mouse_and_update_capturing<B: Backend>(ui: &mut Ui<B>) {
+        fn track_widget_under_mouse_and_update_capturing(ui: &mut Ui) {
             ui.global_input.current.widget_under_mouse =
                 graph::algo::pick_widgets(&ui.depth_order.indices,
                                           ui.global_input.current.mouse.xy)
@@ -325,7 +308,7 @@ impl<B> Ui<B>
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use backend::event::keyboard::{CTRL, SHIFT, ALT, GUI};
+            use input::keyboard::{CTRL, SHIFT, ALT, GUI};
             match key {
                 Key::LCtrl | Key::RCtrl => Some(CTRL),
                 Key::LShift | Key::RShift => Some(SHIFT),
@@ -336,10 +319,7 @@ impl<B> Ui<B>
         }
 
         // Convert the user given event to a `RawEvent` or return early if we cannot.
-        let event: RawEvent = match event.to_raw_event(self.win_w, self.win_h) {
-            Some(event) => event,
-            None => return,
-        };
+        let event: event::Raw = event.into();
 
         match event {
 
@@ -347,7 +327,7 @@ impl<B> Ui<B>
             //
             // This event is also the first time that we receive the proper dimensions of the
             // window (when the `Ui` is created, the dimensions are set to `0`).
-            backend::event::Event::Render(args) => {
+            event::RawEvent::Render(args) => {
                 let (w, h) = (args.width as Scalar, args.height as Scalar);
                 if self.win_w != w || self.win_h != h {
                     self.win_w = w;
@@ -362,7 +342,7 @@ impl<B> Ui<B>
             // interpret higher level events such as `Click` or `Drag`.
             //
             // Finally, we also ensure that the `current_state` is up-to-date.
-            backend::event::Event::Input(input_event) => {
+            event::RawEvent::Input(input_event) => {
                 use event;
                 use input::Button;
                 use input::state::mouse::Button as MouseButton;
@@ -566,12 +546,12 @@ impl<B> Ui<B>
                     Input::Resize(w, h) => {
 
                         // Create a `WindowResized` event.
-                        let dim = [w as Scalar, h as Scalar];
-                        let window_resized = event::Ui::WindowResized(dim).into();
+                        let (w, h) = (w as Scalar, h as Scalar);
+                        let window_resized = event::Ui::WindowResized([w, h]).into();
                         self.global_input.push_event(window_resized);
 
-                        self.win_w = w as Scalar;
-                        self.win_h = h as Scalar;
+                        self.win_w = w;
+                        self.win_h = h;
                         self.needs_redraw();
                     },
 
@@ -792,14 +772,13 @@ impl<B> Ui<B>
         //
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
-        fn abs_from_position<B, R, P>(ui: &Ui<B>,
-                                      position: Position,
-                                      dim: Scalar,
-                                      place_on_kid_area: bool,
-                                      range_from_rect: R,
-                                      start_and_end_pad: P) -> Scalar
-            where B: Backend,
-                  R: FnOnce(Rect) -> Range,
+        fn abs_from_position<R, P>(ui: &Ui,
+                                   position: Position,
+                                   dim: Scalar,
+                                   place_on_kid_area: bool,
+                                   range_from_rect: R,
+                                   start_and_end_pad: P) -> Scalar
+            where R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> Range,
         {
             match position {
@@ -888,7 +867,7 @@ impl<B> Ui<B>
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where F: FnOnce(UiCell<B>),
+        where F: FnOnce(UiCell),
     {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
@@ -965,43 +944,44 @@ impl<B> Ui<B>
         self.redraw_count = self.num_redraw_frames;
     }
 
+    /// The first of the `Primitivees` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
+    /// be a `Rectangle` the size of the window in which conrod is hosted.
+    ///
+    /// This method sets the colour with which this `Rectangle` is drawn (the default being
+    /// `conrod::color::TRANSPARENT`.
+    pub fn clear_with(&mut self, color: Color) {
+        self.maybe_background_color = Some(color);
+    }
 
     /// Draw the `Ui` in it's current state.
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics<Texture=B::Texture>,
+    pub fn draw<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
+        -> render::Primitives<'a, Img>
     {
-        use backend::graphics::{draw_from_graph, Transformed};
-        use std::ops::{Deref, DerefMut};
-
         let Ui {
-            ref mut glyph_cache,
             ref mut redraw_count,
             ref widget_graph,
             ref depth_order,
             ref theme,
+            ref fonts,
+            win_w, win_h,
             ..
         } = *self;
-
-        let view_size = context.get_view_size();
-        let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
-
-        // Retrieve the `CharacterCache` from the `Ui`'s `GlyphCache`.
-        let mut ref_mut_character_cache = glyph_cache.deref().borrow_mut();
-        let character_cache = ref_mut_character_cache.deref_mut();
 
         // Use the depth_order indices as the order for drawing.
         let indices = &depth_order.indices;
 
-        // Draw the `Ui` from the `widget_graph`.
-        draw_from_graph::<B, G>(context, graphics, character_cache, widget_graph, indices, theme);
-
-        // Because we just drew everything, take one from the redraw count.
+        // We're about to draw everything, so take one from the redraw count.
         if *redraw_count > 0 {
             *redraw_count -= 1;
         }
+
+        // We're about to draw, so we can reset the image::Map's redraw trigger.
+        image_map.trigger_redraw.set(false);
+
+        render::Primitives::new(widget_graph, indices, theme, fonts, [win_w, win_h], image_map)
     }
 
 
@@ -1019,12 +999,18 @@ impl<B> Ui<B>
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed<G>(&mut self, context: Context, graphics: &mut G)
-        where G: Graphics<Texture=B::Texture>,
+    pub fn draw_if_changed<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
+        -> Option<render::Primitives<'a, Img>>
     {
-        if self.redraw_count > 0 {
-            self.draw(context, graphics);
+        if image_map.trigger_redraw.get() {
+            self.needs_redraw();
         }
+
+        if self.redraw_count > 0 {
+            return Some(self.draw(image_map))
+        }
+
+        None
     }
 
 
@@ -1047,15 +1033,15 @@ impl<B> Ui<B>
 }
 
 
-impl<'a, B> UiCell<'a, B>
-    where B: Backend,
-{
+impl<'a> UiCell<'a> {
 
     /// A reference to the `Theme` that is currently active within the `Ui`.
     pub fn theme(&self) -> &Theme { &self.ui.theme }
 
-    /// A reference to the `Ui`'s `GlyphCache`.
-    pub fn glyph_cache(&self) -> &GlyphCache<B::CharacterCache> { &self.ui.glyph_cache }
+    /// A convenience method for borrowing the `Font` for the given `Id` if it exists.
+    pub fn font(&self, id: text::font::Id) -> Option<&text::Font> {
+        self.ui.fonts.get(id)
+    }
 
     /// Returns the dimensions of the window
     pub fn window_dim(&self) -> Dimensions {
@@ -1117,27 +1103,21 @@ impl<'a, B> UiCell<'a, B>
 
 }
 
-impl<'a, B> ::std::ops::Deref for UiCell<'a, B>
-    where B: Backend,
-{
-    type Target = Ui<B>;
-    fn deref(&self) -> &Ui<B> {
+impl<'a> ::std::ops::Deref for UiCell<'a> {
+    type Target = Ui;
+    fn deref(&self) -> &Ui {
         self.ui
     }
 }
 
-impl<'a, B> AsRef<Ui<B>> for UiCell<'a, B>
-    where B: Backend,
-{
-    fn as_ref(&self) -> &Ui<B> {
+impl<'a> AsRef<Ui> for UiCell<'a> {
+    fn as_ref(&self) -> &Ui {
         &self.ui
     }
 }
 
 /// A private constructor for the `UiCell` for internal use.
-pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
-    where B: Backend,
-{
+pub fn new_ui_cell(ui: &mut Ui) -> UiCell {
     UiCell { ui: ui }
 }
 
@@ -1145,17 +1125,12 @@ pub fn new_ui_cell<B>(ui: &mut Ui<B>) -> UiCell<B>
 ///
 /// This function is only for internal use to allow for some `Ui` type acrobatics in order to
 /// provide a nice *safe* API for the user.
-pub fn ref_mut_from_ui_cell<'a, 'b, B>(ui_cell: &'a mut UiCell<'b, B>) -> &'a mut Ui<B>
-    where 'b: 'a,
-          B: Backend
-{
+pub fn ref_mut_from_ui_cell<'a, 'b: 'a>(ui_cell: &'a mut UiCell<'b>) -> &'a mut Ui {
     ui_cell.ui
 }
 
 /// A mutable reference to the given `Ui`'s widget `Graph`.
-pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
-    where B: Backend,
-{
+pub fn widget_graph_mut(ui: &mut Ui) -> &mut Graph {
     &mut ui.widget_graph
 }
 
@@ -1163,12 +1138,9 @@ pub fn widget_graph_mut<B>(ui: &mut Ui<B>) -> &mut Graph
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position)
-    -> Option<widget::Index>
-    where B: Backend,
-{
+pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Index> {
     use Position::{Place, Relative, Direction, Align};
-    match (x_pos, y_pos) {
+    match (x, y) {
         (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
             maybe_parent_idx,
         (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
@@ -1190,9 +1162,7 @@ pub fn infer_parent_from_position<B>(ui: &Ui<B>, x_pos: Position, y_pos: Positio
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -> widget::Index
-    where B: Backend,
-{
+pub fn infer_parent_unchecked(ui: &Ui, x_pos: Position, y_pos: Position) -> widget::Index {
     infer_parent_from_position(ui, x_pos, y_pos)
         .or(ui.maybe_current_parent_idx)
         .unwrap_or(ui.window.into())
@@ -1202,9 +1172,7 @@ pub fn infer_parent_unchecked<B>(ui: &Ui<B>, x_pos: Position, y_pos: Position) -
 /// Cache some `PreUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
-    where B: Backend,
-{
+pub fn pre_update_cache(ui: &mut Ui, widget: widget::PreUpdateCache) {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     let widget_idx = widget.idx;
@@ -1218,21 +1186,12 @@ pub fn pre_update_cache<B>(ui: &mut Ui<B>, widget: widget::PreUpdateCache)
 /// Cache some `PostUpdateCache` widget data into the widget graph.
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
-pub fn post_update_cache<B, W>(ui: &mut Ui<B>, widget: widget::PostUpdateCache<W>)
-    where B: Backend,
-          W: Widget,
+pub fn post_update_cache<W>(ui: &mut Ui, widget: widget::PostUpdateCache<W>)
+    where W: Widget,
           W::State: 'static,
           W::Style: 'static,
 {
     ui.maybe_prev_widget_idx = Some(widget.idx);
     ui.maybe_current_parent_idx = widget.maybe_parent_idx;
     ui.widget_graph.post_update_cache(widget);
-}
-
-
-/// Clear the background with the given color.
-pub fn clear_with<B>(ui: &mut Ui<B>, color: Color)
-    where B: Backend,
-{
-    ui.maybe_background_color = Some(color);
 }

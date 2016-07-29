@@ -7,7 +7,7 @@ use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position};
 use std;
 use std::any::Any;
-use std::collections::HashMap;
+use text;
 use widget;
 
 
@@ -31,6 +31,8 @@ pub struct Theme {
     pub frame_width: Scalar,
     /// A default color for widget labels.
     pub label_color: Color,
+    /// The `Id` of the default font used for text widgets when one is not specified.
+    pub font_id: Option<text::font::Id>,
     /// A default "large" font size.
     pub font_size_large: u32,
     /// A default "medium" font size.
@@ -38,7 +40,7 @@ pub struct Theme {
     /// A default "small" font size.
     pub font_size_small: u32,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
-    pub widget_styling: HashMap<&'static str, WidgetDefault>,
+    pub widget_styling: std::collections::HashMap<&'static str, WidgetDefault>,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
@@ -88,10 +90,11 @@ impl Theme {
             frame_color: BLACK,
             frame_width: 1.0,
             label_color: BLACK,
+            font_id: None,
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            widget_styling: HashMap::new(),
+            widget_styling: std::collections::HashMap::new(),
             mouse_drag_threshold: 0.0,
             double_click_threshold: std::time::Duration::from_millis(500),
         }

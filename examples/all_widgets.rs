@@ -31,7 +31,6 @@ use conrod::{
     Sizeable,
     Text,
     TextBox,
-    Theme,
     Toggle,
     Widget,
     WidgetMatrix,
@@ -40,11 +39,6 @@ use conrod::{
 use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 use std::sync::mpsc;
 
-
-/// Conrod is backend agnostic. Here, we define the `piston_window` backend to use for our `Ui`.
-type Backend = (piston_window::G2dTexture<'static>, piston_window::Glyphs);
-type Ui = conrod::Ui<Backend>;
-type UiCell<'a> = conrod::UiCell<'a, Backend>;
 
 /// This struct holds all of the variables used to demonstrate application data being passed
 /// through the widgets. If some of these seem strange, that's because they are! Most of these
@@ -131,24 +125,31 @@ impl DemoApp {
 
 
 fn main() {
+    const WIDTH: u32 = 1100;
+    const HEIGHT: u32 = 560;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = piston_window::OpenGL::V3_2;
     
     // Construct the window.
     let mut window: PistonWindow =
-        WindowSettings::new("All The Widgets!", [1100, 560])
+        WindowSettings::new("All The Widgets!", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // construct our `Ui`.
-    let mut ui = {
-        let assets = find_folder::Search::KidsThenParents(3, 5)
-            .for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        let glyph_cache = piston_window::Glyphs::new(&font_path, window.factory.clone()).unwrap();
-        let theme = Theme::default();
-        Ui::new(glyph_cache, theme)
-    };
+    let mut ui = conrod::Ui::new(conrod::Theme::default());
+
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
+
+    // Create a texture to use for efficiently caching text on the GPU.
+    let mut text_texture_cache =
+        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+
+    // The image map describing each of our widget->image mappings (in our case, none).
+    let image_map = conrod::image::Map::new();
 
     // Our dmonstration app that we'll control with our GUI.
     let mut app = DemoApp::new();
@@ -157,13 +158,18 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-        ui.handle_event(event.clone());
+
+        // Convert the piston event to a conrod event.
+        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+            ui.handle_event(e);
+        }
 
         // We'll set all our widgets in a single function called `set_widgets`.
-        // At the moment conrod requires that we set our widgets in the Render loop,
-        // however soon we'll add support so that you can set your Widgets at any arbitrary
-        // update rate.
-        event.update(|_| ui.set_widgets(|mut ui| set_widgets(&mut ui, &mut app)));
+        event.update(|_| {
+            ui.set_widgets(|mut ui| {
+                set_widgets(&mut ui, &mut app);
+            });
+        });
 
         // Draw our Ui!
         //
@@ -173,7 +179,14 @@ fn main() {
         // designer's discretion.
         //
         // If instead you need to re-draw your conrod GUI every frame, use `Ui::draw`.
-        window.draw_2d(&event, |c, g| ui.draw_if_changed(c, g));
+        window.draw_2d(&event, |c, g| {
+            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+                fn texture_from_image<T>(img: &T) -> &T { img };
+                conrod::backend::piston_window::draw(c, g, primitives,
+                                                     &mut text_texture_cache,
+                                                     texture_from_image);
+            }
+        });
     }
 }
 
@@ -183,7 +196,7 @@ fn main() {
 /// the `Ui` at their given indices. Every other time this get called, the `Widget`s will avoid any
 /// allocations by updating the pre-existing cached state. A new graphical `Element` is only
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
-fn set_widgets(ui: &mut UiCell, app: &mut DemoApp) {
+fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
     Canvas::new()

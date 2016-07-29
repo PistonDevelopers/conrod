@@ -7,7 +7,6 @@
 //! - `FileView`: Displays some basic information about the file.
 
 use {
-    Backend,
     color,
     Color,
     Colorable,
@@ -200,7 +199,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let FileNavigator { starting_directory, types, mut maybe_react, .. } = self;
 
@@ -420,7 +419,6 @@ impl<'a, F> Colorable for FileNavigator<'a, F> {
 /// double-clicking.
 pub mod directory_view {
     use {
-        Backend,
         color,
         Color,
         Colorable,
@@ -570,7 +568,7 @@ pub mod directory_view {
             self.style.clone()
         }
 
-        fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+        fn update(self, args: widget::UpdateArgs<Self>) {
             let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
             let DirectoryView { directory, types, mut maybe_react, .. } = self;
 

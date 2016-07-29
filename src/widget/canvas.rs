@@ -1,7 +1,5 @@
 use {
     Align,
-    Backend,
-    CharacterCache,
     Color,
     Colorable,
     Dimensions,
@@ -244,11 +242,11 @@ impl<'a> Widget for Canvas<'a> {
         self.style.clone()
     }
 
-    fn default_x_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
+    fn default_x_position(&self, _ui: &Ui) -> Position {
         Position::Place(Place::Middle, None)
     }
 
-    fn default_y_position<B: Backend>(&self, _ui: &Ui<B>) -> Position {
+    fn default_y_position(&self, _ui: &Ui) -> Position {
         Position::Place(Place::Middle, None)
     }
 
@@ -266,7 +264,7 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// The area of the widget below the title bar, upon which child widgets will be placed.
-    fn kid_area<C: CharacterCache>(&self, args: widget::KidAreaArgs<Self, C>) -> widget::KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> widget::KidArea {
         let widget::KidAreaArgs { rect, style, theme, .. } = args;
         if self.maybe_title_bar_label.is_some() {
             let font_size = style.title_bar_font_size(theme);
@@ -284,7 +282,7 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     /// Update the state of the Canvas.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
@@ -350,14 +348,14 @@ impl<'a> Widget for Canvas<'a> {
             let non_abs_length = (total_length - total_abs).max(0.0);
             let weight_normaliser = 1.0 / total_weight;
 
-            let length = |split: &Self, ui: &UiCell<B>| -> Scalar {
+            let length = |split: &Self, ui: &UiCell| -> Scalar {
                 match split.style.length(ui.theme()) {
                     Length::Absolute(length) => length,
                     Length::Weight(weight) => weight * weight_normaliser * non_abs_length,
                 }
             };
 
-            let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell<B>| {
+            let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell| {
                 split.parent(idx).set(split_id, ui);
             };
 

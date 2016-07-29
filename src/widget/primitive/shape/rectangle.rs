@@ -1,5 +1,4 @@
 use {
-    Backend,
     Color,
     Colorable,
     Dimensions,
@@ -99,7 +98,7 @@ impl Widget for Rectangle {
     }
 
     /// Update the state of the Rectangle.
-    fn update<B: Backend>(self, args: widget::UpdateArgs<Self, B>) {
+    fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { state, style, .. } = args;
 
         let kind = match *style {

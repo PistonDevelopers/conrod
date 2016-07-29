@@ -7,9 +7,9 @@
 //!
 //! This module exists mostly to support the `input::Provider` trait.
 
-use backend::event::keyboard::{NO_MODIFIER, ModifierKey};
 use position::Point;
 use self::mouse::Mouse;
+use super::keyboard::{NO_MODIFIER, ModifierKey};
 use utils;
 use widget;
 
