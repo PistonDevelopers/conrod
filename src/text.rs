@@ -415,7 +415,9 @@ pub mod glyph {
             let Rects { ref mut next_left, ref mut layout, y } = *self;
             layout.next().map(|g| {
                 let left = *next_left;
-                let right = g.pixel_bounding_box().map(|r| r.min.x as Scalar).unwrap_or(left);
+                let right = g.pixel_bounding_box()
+                    .map(|bb| bb.max.x as Scalar)
+                    .unwrap_or_else(|| left + g.unpositioned().h_metrics().advance_width as Scalar);
                 *next_left = right;
                 let x = Range::new(left, right);
                 Rect { x: x, y: y }
@@ -929,7 +931,7 @@ pub mod line {
                     return (break_, width)
                 }
             } else if ch == '\n' {
-                let break_ = Break::Newline { byte: byte_i, char: char_i, len_bytes: 2 };
+                let break_ = Break::Newline { byte: byte_i, char: char_i, len_bytes: 1 };
                 return (break_, width);
             }
 
@@ -957,13 +959,20 @@ pub mod line {
     }
 
 
-    /// Produce the width of the given line of text.
+    /// Produce the width of the given line of text including spaces (i.e. ' ').
     pub fn width(text: &str, font: &super::Font, font_size: FontSize) -> Scalar {
         let scale = super::Scale::uniform(super::pt_to_px(font_size));
         let point = super::rt::Point { x: 0.0, y: 0.0 };
-        font.layout(text, scale, point)
-            .fold(0, |_, g| g.pixel_bounding_box().map(|r| r.max.x).unwrap_or(0))
-            as Scalar
+
+        let mut total_w = 0.0;
+        for g in font.layout(text, scale, point) {
+            match g.pixel_bounding_box() {
+                Some(bb) => total_w = bb.max.x as f32,
+                None => total_w += g.unpositioned().h_metrics().advance_width,
+            }
+        }
+
+        total_w as Scalar
     }
 
 
