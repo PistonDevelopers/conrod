@@ -109,7 +109,6 @@ mod feature {
         // Mappings from `Image` widget indices to their image data.
         let image_map = conrod::image::Map::<()>::new();
 
-
         // Start the loop:
         //
         // - Render the current state of the `Ui`.
@@ -232,25 +231,22 @@ mod feature {
                         render::PrimitiveKind::Other(_) => (),
                     }
 
-                    let uniforms = uniform! {
-                        tex: text_texture_cache.sampled()
-                            .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
-                    };
-
-                    let mut target = display.draw();
-                    target.clear_color(1.0, 1.0, 1.0, 0.0);
-                    let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
-                    let blend = glium::Blend::alpha_blending();
-                    let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-                    let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
-                    target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
-                    target.finish().unwrap();
                 }
 
-            }
+                let uniforms = uniform! {
+                    tex: text_texture_cache.sampled()
+                        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                };
 
-            // Update all widgets within the `Ui`.
-            ui.set_widgets(|ui| set_widgets(ui));
+                let mut target = display.draw();
+                target.clear_color(1.0, 1.0, 1.0, 0.0);
+                let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
+                let blend = glium::Blend::alpha_blending();
+                let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+                let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
+                target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
+                target.finish().unwrap();
+            }
 
             for event in display.poll_events() {
 
@@ -271,14 +267,18 @@ mod feature {
                 }
             }
 
-            std::thread::sleep(std::time::Duration::from_millis(15));
+            // Update all widgets within the `Ui`.
+            ui.set_widgets(|ui| set_widgets(ui));
+
+            // Avoid hogging the CPU.
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
 
 
     /// Instantiate the widgets.
     fn set_widgets(ref mut ui: conrod::UiCell) {
-        use conrod::{Colorable, Positionable, Widget};
+        use conrod::{Colorable, Positionable, Sizeable, Widget};
 
         widget_ids!{
             CANVAS,
@@ -288,9 +288,21 @@ mod feature {
 
         conrod::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
-        conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
+
+        // Some starting text to edit.
+        let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+            Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
+            finibus odio nec elit condimentum, rhoncus fermentum purus lacinia. Interdum et malesuada \
+            fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
+            Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
+            Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
+            magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
+
+        //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
+        conrod::Text::new(demo_text)
             .middle_of(CANVAS)
-            .font_size(64)
+            .wh_of(CANVAS)
+            .font_size(20)
             .color(conrod::color::BLACK)
             .align_text_middle()
             .set(TEXT, ui);
@@ -302,6 +314,6 @@ mod feature {
 mod feature {
     pub fn main() {
         println!("This example requires the `glutin` and `glium` features. \
-                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
+                 Try running `cargo run --release --no-default-features --features=\"glutin glium\" --example <example_name>`");
     }
 }
