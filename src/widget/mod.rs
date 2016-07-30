@@ -27,6 +27,7 @@ pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod file_navigator;
 pub mod framed_rectangle;
+pub mod list;
 pub mod matrix;
 pub mod number_dialer;
 pub mod plot_path;
@@ -246,6 +247,10 @@ pub struct CommonState {
     pub maybe_floating: Option<Floating>,
     /// The area of the widget upon which kid widgets are placed.
     pub kid_area: KidArea,
+    /// If the widget is scrollable across the *x* axis.
+    pub maybe_x_scroll_state: Option<scroll::StateX>,
+    /// If the widget is scrollable across the *y* axis.
+    pub maybe_y_scroll_state: Option<scroll::StateY>,
 }
 
 /// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
@@ -823,11 +828,7 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
-    let (maybe_prev_unique_state,
-         maybe_prev_common,
-         maybe_prev_style,
-         maybe_prev_x_scroll_state,
-         maybe_prev_y_scroll_state) =
+    let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style) =
         maybe_widget_state.map(|prev| {
 
             // Destructure the cached state.
@@ -849,14 +850,12 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
                 depth: depth,
                 maybe_floating: maybe_floating,
                 kid_area: kid_area,
+                maybe_x_scroll_state: maybe_x_scroll_state,
+                maybe_y_scroll_state: maybe_y_scroll_state,
             };
 
-            (Some(state),
-             Some(prev_common),
-             Some(style),
-             maybe_x_scroll_state,
-             maybe_y_scroll_state)
-        }).unwrap_or_else(|| (None, None, None, None, None));
+            (Some(state), Some(prev_common), Some(style))
+        }).unwrap_or_else(|| (None, None, None));
 
     // We need to hold onto the current "previously set widget", as this may change during our
     // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last
@@ -959,10 +958,12 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     // `maybe_*_scroll` is `Some`) we should consider and handle the `scroll_args`'
     // `maybe_initial_alignment` field.
     let mut maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|_scroll_args| {
-        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_x_scroll_state, 0.0)
+        let maybe_prev = maybe_prev_common.as_ref().and_then(|p| p.maybe_x_scroll_state);
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev, 0.0)
     });
     let mut maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|_scroll_args| {
-        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev_y_scroll_state, 0.0)
+        let maybe_prev = maybe_prev_common.as_ref().and_then(|p| p.maybe_y_scroll_state);
+        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev, 0.0)
     });
 
     for scroll in ui.widget_input(idx).scrolls() {
@@ -1027,6 +1028,8 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
         depth: depth,
         maybe_floating: maybe_floating,
         kid_area: kid_area,
+        maybe_x_scroll_state: maybe_x_scroll_state,
+        maybe_y_scroll_state: maybe_y_scroll_state,
     });
 
     // Retrieve the widget's unique state and update it via `Widget::update`.
@@ -1070,8 +1073,9 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     let style_has_changed = maybe_prev_style.map(|style| style != new_style).unwrap_or(false);
 
     // We need to know if the scroll state has changed to see if we need to redraw.
-    let scroll_has_changed = maybe_x_scroll_state != maybe_prev_x_scroll_state
-        || maybe_y_scroll_state != maybe_prev_y_scroll_state;
+    let scroll_has_changed =
+        maybe_x_scroll_state != maybe_prev_common.as_ref().and_then(|p| p.maybe_x_scroll_state)
+        || maybe_y_scroll_state != maybe_prev_common.as_ref().and_then(|p| p.maybe_y_scroll_state);
 
     // We only need to redraw if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
