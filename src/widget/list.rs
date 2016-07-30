@@ -13,6 +13,7 @@ use {
     Widget,
     UiCell,
 };
+use std;
 use widget;
 
 /// A helper widget, useful for instantiating a sequence of widgets in a vertical list.
@@ -249,7 +250,8 @@ impl<F> Widget for List<F>
 
         let first_visible_item_idx = num_top_hidden_items.floor() as usize;
         let first_visible_item_margin = first_visible_item_idx as Scalar * item_h;
-        let end_of_visible_idx_range = first_visible_item_idx + num_visible_items;
+        let end_of_visible_idx_range =
+            std::cmp::min(first_visible_item_idx + num_visible_items, num_items as usize);
         let visible_idx_range = first_visible_item_idx..end_of_visible_idx_range;
 
         // Ensure there are at least as many indices as there are visible items.
