@@ -385,6 +385,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .frame_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
+        .scrollbar_on_top()
         .react(|selected_idx: &mut Option<usize>, new_idx, string: &str| {
             *selected_idx = Some(new_idx);
             ddl_color = match string {

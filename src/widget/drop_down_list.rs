@@ -7,13 +7,14 @@ use {
     Frameable,
     IndexSlot,
     Labelable,
+    List,
     NodeIndex,
     Positionable,
-    Rect,
-    Rectangle,
     Scalar,
+    ScrollbarStyle,
     Sizeable,
 };
+use super::list::ScrollbarPosition;
 use widget::{self, Widget};
 
 
@@ -53,6 +54,10 @@ widget_style!{
         - label_font_size: FontSize { theme.font_size_medium }
         /// Maximum height of the Open menu before the scrollbar appears.
         - maybe_max_visible_height: Option<MaxHeight> { None }
+        /// The position of the scrollbar in the case that the list is scrollable.
+        - scrollbar_position: Option<ScrollbarPosition> { None }
+        /// The width of the scrollbar in the case that the list is scrollable.
+        - scrollbar_width: Option<Scalar> { None }
     }
 }
 
@@ -63,7 +68,7 @@ pub struct State {
     buttons: Vec<(NodeIndex, String)>,
     maybe_selected: Option<Idx>,
     closed_menu: IndexSlot,
-    canvas_idx: IndexSlot,
+    list_idx: IndexSlot,
 }
 
 /// Representations of the max height of the visible area of the DropDownList.
@@ -114,6 +119,32 @@ impl<'a, F> DropDownList<'a, F> {
         self
     }
 
+    /// Specifies that the list should be scrollable and should provide a `Scrollbar` to the right
+    /// of the items.
+    pub fn scrollbar_next_to(mut self) -> Self {
+        self.style.scrollbar_position = Some(Some(ScrollbarPosition::NextTo));
+        self
+    }
+
+    /// Specifies that the list should be scrollable and should provide a `Scrollbar` that hovers
+    /// above the right edge of the items and automatically hides when the user is not scrolling.
+    pub fn scrollbar_on_top(mut self) -> Self {
+        self.style.scrollbar_position = Some(Some(ScrollbarPosition::OnTop));
+        self
+    }
+
+    /// Even in the case that the list is scrollable, do not display a `Scrollbar`.
+    pub fn no_scrollbar(mut self) -> Self {
+        self.style.scrollbar_position = Some(None);
+        self
+    }
+
+    /// Specify the width of the scrollbar.
+    pub fn scrollbar_width(mut self, w: Scalar) -> Self {
+        self.style.scrollbar_width = Some(Some(w));
+        self
+    }
+
 }
 
 
@@ -140,7 +171,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
             menu_state: MenuState::Closed,
             buttons: Vec::new(),
             maybe_selected: None,
-            canvas_idx: IndexSlot::new(),
+            list_idx: IndexSlot::new(),
             closed_menu: IndexSlot::new(),
         }
     }
@@ -153,10 +184,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     fn update(mut self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
-        let frame = style.frame(ui.theme());
         let num_strings = self.strings.len();
-
-        let canvas_idx = state.canvas_idx.get(&mut ui);
 
         // Check that the selected index, if given, is not greater than the number of strings.
         let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
@@ -212,48 +240,62 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 if was_clicked { MenuState::Open } else { MenuState::Closed }
             },
             MenuState::Open => {
+
                 // Otherwise if open, we want to set all the buttons that would be currently visible.
-                let (xy, dim) = rect.xy_dim();
+                let (_, y, w, h) = rect.x_y_w_h();
                 let max_visible_height = {
                     let bottom_win_y = (-ui.window_dim()[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
-                    let max = xy[1] + dim[1] / 2.0 - bottom_win_y - WINDOW_PADDING;
+                    let max = y + h / 2.0 - bottom_win_y - WINDOW_PADDING;
                     style.maybe_max_visible_height(ui.theme()).map(|max_height| {
                         let height = match max_height {
-                            MaxHeight::Items(num) => (dim[1] - frame) * num as Scalar + frame,
+                            MaxHeight::Items(num) => h * num as Scalar,
                             MaxHeight::Scalar(height) => height,
                         };
                         ::utils::partial_min(height, max)
                     }).unwrap_or(max)
                 };
-                let canvas_dim = [dim[0], max_visible_height];
-                let canvas_shift_y = dim[1] / 2.0 - canvas_dim[1] / 2.0;
-                let canvas_xy = [xy[0], xy[1] + canvas_shift_y];
-                let canvas_rect = Rect::from_xy_dim(canvas_xy, canvas_dim);
-                Rectangle::fill([dim[0], max_visible_height])
-                    .graphics_for(idx)
-                    .color(::color::BLACK.alpha(0.0))
-                    .xy(canvas_xy)
-                    .parent(idx)
-                    .floating(true)
-                    .scroll_kids_vertically()
-                    .set(canvas_idx, &mut ui);
 
-                let labels = self.strings.iter();
-                let button_indices = state.buttons.iter().map(|&(idx, _)| idx);
-                let xys = (0..num_strings).map(|i| [xy[0], xy[1] - i as f64 * (dim[1] - frame)]);
-                let iter = labels.zip(button_indices).zip(xys).enumerate();
+                // The list of buttons.
                 let mut was_clicked = None;
-                for (i, ((label, button_node_idx), button_xy)) in iter {
-                    let mut button = Button::new()
-                        .wh(dim)
-                        .label(label)
-                        .parent(canvas_idx)
-                        .xy(button_xy)
-                        .react(|| was_clicked = Some(i));
-                    button.style = style.button_style(Some(i) == selected);
-                    button.set(button_node_idx, &mut ui);
-                }
+                let num_strings = self.strings.len();
+                let item_h = h;
+                let list_h = max_visible_height.min(num_strings as Scalar * item_h);
+                let list_idx = state.list_idx.get(&mut ui);
+                let scrollbar_color = style.frame_color(&ui.theme);
+                let scrollbar_position = style.scrollbar_position(&ui.theme);
+                let scrollbar_width = style.scrollbar_width(&ui.theme)
+                    .unwrap_or_else(|| {
+                        ui.theme.widget_style::<ScrollbarStyle>(super::scrollbar::KIND)
+                            .and_then(|style| style.style.thickness)
+                            .unwrap_or(10.0)
+                    });
+                List::new(num_strings as u32, item_h)
+                    .w_h(w, list_h)
+                    .and(|ls| match scrollbar_position {
+                        Some(ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
+                        Some(ScrollbarPosition::OnTop) => ls.scrollbar_on_top(),
+                        None => ls,
+                    })
+                    .scrollbar_color(scrollbar_color)
+                    .scrollbar_width(scrollbar_width)
+                    .mid_top_of(idx)
+                    .item(|item| {
+
+                        // Instiate the `Button` for each item.
+                        let i = item.i;
+                        let label = match self.strings.get(i) {
+                            Some(label) => label,
+                            None => return,
+                        };
+                        let mut button = Button::new()
+                            .label(label)
+                            .react(|| was_clicked = Some(i));
+                        button.style = style.button_style(Some(i) == selected);
+                        item.set(button);
+
+                    })
+                    .set(list_idx, &mut ui);
 
                 // Determine the new menu state
                 if let Some(i) = was_clicked {
@@ -265,11 +307,18 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     }
                     MenuState::Closed
                 } else {
-                    let mouse_pressed_elsewhere =
-                        ui.global_input.current.mouse.buttons.pressed().next().is_some()
-                        && !canvas_rect.is_over(ui.global_input.current.mouse.xy);
 
-                    if mouse_pressed_elsewhere {
+                    // Close the menu if the mouse is pressed and the currently pressed widget is
+                    // not any of the drop down list's children.
+                    let should_close =
+                        ui.global_input.current.mouse.buttons.pressed().next().is_some()
+                        && match ui.global_input.current.widget_capturing_mouse {
+                            None => true,
+                            Some(capturing) => !ui.widget_graph()
+                                .does_recursive_depth_edge_exist(idx, capturing),
+                        };
+
+                    if should_close {
                         // If a mouse button was pressed somewhere else, close the menu.
                         MenuState::Closed
                     } else {
