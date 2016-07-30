@@ -76,11 +76,12 @@ pub struct Item<'a, 'b: 'a> {
     ui: &'a mut UiCell<'b>,
 }
 
-/// If the `List` is scrollable, this type represents whether the `Scrollbar` should be beside the
-/// items, or whether it should be on top of the items with an auto-hide functionality.
+/// If the `List` is scrollable, this describes how th `Scrollbar` should be positioned.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ScrollbarPosition {
+    /// To the right of the items (reduces the item width to fit).
     NextTo,
+    /// On top of the right edge of the items with auto_hide activated.
     OnTop,
 }
 
