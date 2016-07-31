@@ -7,7 +7,7 @@ extern crate find_folder;
 extern crate piston_window;
 
 
-use conrod::{Canvas, Theme, Widget, color};
+use conrod::{Canvas, Widget, color};
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 
@@ -25,7 +25,9 @@ fn main() {
     window.set_ups(60);
 
     // construct our `Ui`.
-    let mut ui = conrod::Ui::new(Theme::default());
+    let mut ui = conrod::UiBuilder::new()
+        .build()
+        .unwrap();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
