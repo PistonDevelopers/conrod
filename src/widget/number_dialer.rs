@@ -2,8 +2,8 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Labelable,
     NodeIndex,
@@ -49,10 +49,10 @@ widget_style!{
     style Style {
         /// Color of the NumberDialer's rectangle.
         - color: Color { theme.shape_color }
-        /// The color of the rectangle frame.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the rectangle frame.
-        - frame_color: Color { theme.frame_color }
+        /// The color of the rectangle border.
+        - border: Scalar { theme.border_width }
+        /// The color of the rectangle border.
+        - border_color: Color { theme.border_color }
         /// The color of the NumberDialer's label.
         - label_color: Color { theme.label_color }
         /// The font size for the NumberDialer's label.
@@ -188,8 +188,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         } = self;
 
         let rel_rect = rect.relative_to(rect.xy());
-        let frame = style.frame(ui.theme());
-        let inner_rel_rect = rel_rect.pad(frame);
+        let border = style.border(ui.theme());
+        let inner_rel_rect = rel_rect.pad(border);
 
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
@@ -326,15 +326,15 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
         // The **Rectangle** backdrop widget.
         let color = style.color(ui.theme());
-        let frame = style.frame(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
+        let border = style.border(ui.theme());
+        let border_color = style.border_color(ui.theme());
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        FramedRectangle::new(rect.dim())
+        BorderedRectangle::new(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         // The **Text** for the **NumberDialer**'s label.
@@ -410,10 +410,10 @@ impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Frameable for NumberDialer<'a, T, F> {
+impl<'a, T, F> Borderable for NumberDialer<'a, T, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

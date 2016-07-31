@@ -4,8 +4,8 @@ use {
     Colorable,
     Dimensions,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Labelable,
     Padding,
@@ -66,10 +66,10 @@ widget_style!{
     style Style {
         /// The color of the Canvas' rectangle surface.
         - color: Color { theme.background_color }
-        /// The width of the frame surrounding the Canvas' rectangle.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the Canvas' frame.
-        - frame_color: Color { theme.frame_color }
+        /// The width of the border surrounding the Canvas' rectangle.
+        - border: Scalar { theme.border_width }
+        /// The color of the Canvas' border.
+        - border_color: Color { theme.border_color }
         /// If this Canvas is a split of some parent Canvas, this is the length of the split.
         - length: Length { Length::Weight(1.0) }
 
@@ -278,16 +278,16 @@ impl<'a> Widget for Canvas<'a> {
         let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
-        // FramedRectangle widget as the rectangle backdrop.
+        // BorderedRectangle widget as the rectangle backdrop.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
-        let frame = style.frame(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(dim)
+        let border = style.border(ui.theme());
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(dim)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .middle_of(idx)
             .graphics_for(idx)
             .place_on_kid_area(false)
@@ -308,8 +308,8 @@ impl<'a> Widget for Canvas<'a> {
                     title_bar.style.text_align = Some(text_align);
                 })
                 .color(color)
-                .frame(frame)
-                .frame_color(frame_color)
+                .border(border)
+                .border_color(border_color)
                 .label_font_size(font_size)
                 .label_color(label_color)
                 .line_spacing(line_spacing)
@@ -430,10 +430,10 @@ impl<'a> ::color::Colorable for Canvas<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a> ::frame::Frameable for Canvas<'a> {
+impl<'a> ::border::Borderable for Canvas<'a> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

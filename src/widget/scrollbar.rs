@@ -49,7 +49,7 @@ widget_style!{
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
-        - color: Color { theme.frame_color }
+        - color: Color { theme.border_color }
         /// The "thickness" of the scrollbar's track and handle `Rect`s.
         - thickness: Scalar { 10.0 }
         /// When true, the `Scrollbar` will only be visible when:

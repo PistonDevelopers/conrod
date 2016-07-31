@@ -3,8 +3,8 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Positionable,
     Range,
@@ -35,17 +35,17 @@ pub struct TextBox<'a, F> {
 widget_style!{
     /// Unique graphical styling for the TextBox.
     style Style {
-        /// The length of the gap between the bounding rectangle's frame and the edge of the text.
+        /// The length of the gap between the bounding rectangle's border and the edge of the text.
         - text_padding: Scalar { 5.0 }
         /// Color of the rectangle behind the text.
         ///
         /// If you don't want to see the rectangle, either set the color with a zeroed alpha or use
         /// the `TextEdit` widget directly.
         - color: Color { theme.shape_color }
-        /// The width of the bounding `FramedRectangle` frame.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the `FramedRecangle`'s frame.
-        - frame_color: Color { theme.frame_color }
+        /// The width of the bounding `BorderedRectangle` border.
+        - border: Scalar { theme.border_width }
+        /// The color of the `BorderedRecangle`'s border.
+        - border_color: Color { theme.border_color }
         /// The color of the `TextEdit` widget.
         - text_color: Color { theme.label_color }
         /// The font size for the text.
@@ -130,12 +130,12 @@ impl<'a, F> Widget for TextBox<'a, F>
         let TextBox { text, mut maybe_react, .. } = self;
 
         let font_size = style.font_size(ui.theme());
-        let frame = style.frame(ui.theme());
+        let border = style.border(ui.theme());
         let text_padding = style.text_padding(ui.theme());
         let x_align = style.x_align(ui.theme());
 
         let text_rect = {
-            let w = rect.x.pad(frame + text_padding).len();
+            let w = rect.x.pad(border + text_padding).len();
             let h = font_size as Scalar + 1.0;
             let x = Range::new(0.0, w).align_middle_of(rect.x);
             let y = Range::new(0.0, h).align_middle_of(rect.y);
@@ -144,14 +144,14 @@ impl<'a, F> Widget for TextBox<'a, F>
 
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let color = style.color(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(rect.dim())
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(rect.dim())
             .xy(rect.xy())
             .graphics_for(idx)
             .parent(idx)
-            .frame(frame)
+            .border(border)
             .color(color)
-            .frame_color(frame_color)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         let text_edit_idx = state.text_edit_idx.get(&mut ui);
@@ -189,10 +189,10 @@ impl<'a, F> Widget for TextBox<'a, F>
 
 }
 
-impl<'a, F> Frameable for TextBox<'a, F> {
+impl<'a, F> Borderable for TextBox<'a, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

@@ -21,7 +21,7 @@ use conrod::{
     Colorable,
     DropDownList,
     EnvelopeEditor,
-    Frameable,
+    Borderable,
     Labelable,
     NumberDialer,
     Point,
@@ -57,9 +57,9 @@ struct DemoApp {
     /// The height of the vertical sliders (we will play with this
     /// using a number_dialer).
     v_slider_height: f64,
-    /// The widget frame width (we'll use this to demo Framing
+    /// The widget border width (we'll use this to demo Bordering
     /// and number_dialer).
-    frame_width: f64,
+    border_width: f64,
     /// Bool matrix for widget_matrix demonstration.
     bool_matrix: [[bool; 8]; 8],
     /// A vector of strings for drop_down_list demonstration.
@@ -90,7 +90,7 @@ impl DemoApp {
             toggle_label: "OFF".to_string(),
             title_pad: 350.0,
             v_slider_height: 230.0,
-            frame_width: 1.0,
+            border_width: 1.0,
             bool_matrix: [ [true, true, true, true, true, true, true, true],
                            [true, false, false, false, false, false, false, true],
                            [true, false, true, false, true, true, true, true],
@@ -200,7 +200,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
     Canvas::new()
-        .frame(app.frame_width)
+        .border(app.border_width)
         .pad(30.0)
         .color(app.bg_color)
         .scroll_kids()
@@ -223,7 +223,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.4, 0.75, 0.6)
-            .frame(app.frame_width)
+            .border(app.border_width)
             .label("PRESS")
             .react(|| app.bg_color = color::rgb(rand::random(), rand::random(), rand::random()))
             .set(BUTTON, ui)
@@ -248,7 +248,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.5, 0.3, 0.6)
-            .frame(app.frame_width)
+            .border(app.border_width)
             .label(&label)
             .label_color(color::WHITE)
             .react(|new_pad: f32| app.title_pad = new_pad as f64)
@@ -267,7 +267,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .w_h(75.0, 75.0)
         .down(20.0)
         .rgb(0.6, 0.25, 0.75)
-        .frame(app.frame_width)
+        .border(app.border_width)
         .label(&label)
         .label_color(color::WHITE)
         .react(|value| {
@@ -305,7 +305,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .and(|slider| if i == 0 { slider.down(25.0) } else { slider.right(20.0) })
             .w_h(40.0, app.v_slider_height)
             .color(color)
-            .frame(app.frame_width)
+            .border(app.border_width)
             .label(&label)
             .label_color(color::WHITE)
             .react(|color| match i {
@@ -322,23 +322,23 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .w_h(260.0, 60.0)
         .right_from(shown_widget, 30.0)
         .color(app.bg_color.invert())
-        .frame(app.frame_width)
+        .border(app.border_width)
         .label("Height (px)")
         .label_color(app.bg_color.invert().plain_contrast())
         .react(|new_height| app.v_slider_height = new_height)
         .set(SLIDER_HEIGHT, ui);
 
     // Number Dialer widget example. (value, min, max, precision)
-    NumberDialer::new(app.frame_width, 0.0, 15.0, 2)
+    NumberDialer::new(app.border_width, 0.0, 15.0, 2)
         .w_h(260.0, 60.0)
         .down(20.0)
         .color(app.bg_color.invert().plain_contrast())
-        .frame(app.frame_width)
-        .frame_color(app.bg_color.plain_contrast())
-        .label("Frame Width (px)")
+        .border(app.border_width)
+        .border_color(app.bg_color.plain_contrast())
+        .label("Border Width (px)")
         .label_color(app.bg_color.plain_contrast())
-        .react(|new_width| app.frame_width = new_width)
-        .set(FRAME_WIDTH, ui);
+        .react(|new_width| app.border_width = new_width)
+        .set(BORDER_WIDTH, ui);
 
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
@@ -364,7 +364,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             let elem_sender = app.elem_sender.clone();
             Toggle::new(elem)
                 .rgba(r, g, b, a)
-                .frame(app.frame_width)
+                .border(app.border_width)
                 .react(move |new_val: bool| elem_sender.send((col, row, new_val)).unwrap())
         })
         .set(TOGGLE_MATRIX, ui);
@@ -381,8 +381,8 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
         .color(ddl_color)
-        .frame(app.frame_width)
-        .frame_color(ddl_color.plain_contrast())
+        .border(app.border_width)
+        .border_color(ddl_color.plain_contrast())
         .label("Colors")
         .label_color(ddl_color.plain_contrast())
         .scrollbar_on_top()
@@ -407,8 +407,8 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .right_from(TOGGLE_MATRIX, 30.0)
         .align_bottom_of(TOGGLE_MATRIX) // Align to the bottom of the last TOGGLE_MATRIX element.
         .color(ddl_color)
-        .frame(app.frame_width)
-        .frame_color(color::WHITE)
+        .border(app.border_width)
+        .border_color(color::WHITE)
         .label("Circle Position")
         .label_color(ddl_color.plain_contrast().alpha(0.5))
         .line_thickness(2.0)
@@ -435,8 +435,8 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
             .w_h(320.0, 40.0)
-            .frame(app.frame_width)
-            .frame_color(app.bg_color.invert().plain_contrast())
+            .border(app.border_width)
+            .border_color(app.bg_color.invert().plain_contrast())
             .color(app.bg_color.invert())
             .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
             .set(ENVELOPE_EDITOR + i * 2, ui);
@@ -450,8 +450,8 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .w_h(320.0, 150.0)
             .skew_y(env_skew_y)
             .color(app.bg_color.invert())
-            .frame(app.frame_width)
-            .frame_color(app.bg_color.invert().plain_contrast())
+            .border(app.border_width)
+            .border_color(app.bg_color.invert().plain_contrast())
             .label(&text)
             .label_color(app.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
@@ -480,7 +480,7 @@ widget_ids! {
     TOGGLE,
     COLOR_SLIDER with 3,
     SLIDER_HEIGHT,
-    FRAME_WIDTH,
+    BORDER_WIDTH,
     TOGGLE_MATRIX,
     COLOR_SELECT,
     CIRCLE_POSITION,

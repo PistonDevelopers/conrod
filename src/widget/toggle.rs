@@ -2,8 +2,8 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Labelable,
     Positionable,
@@ -33,14 +33,14 @@ pub struct Toggle<'a, F> {
 }
 
 widget_style!{
-    /// Styling for the Toggle including coloring, framing and labelling.
+    /// Styling for the Toggle including coloring, bordering and labelling.
     style Style {
         /// Color of the Toggle's pressable area.
         - color: Color { theme.shape_color }
-        /// The width of the rectangular frame surrounding the Toggle.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the Toggle's frame.
-        - frame_color: Color { theme.frame_color }
+        /// The width of the rectangular border surrounding the Toggle.
+        - border: Scalar { theme.border_width }
+        /// The color of the Toggle's border.
+        - border_color: Color { theme.border_color }
         /// The color of the Toggle's Text label.
         - label_color: Color { theme.label_color }
         /// The font size for the Toggle's Text label.
@@ -124,10 +124,10 @@ impl<'a, F> Widget for Toggle<'a, F>
             state.update(|state| state.value = new_value);
         }
 
-        // FramedRectangle widget.
+        // BorderedRectangle widget.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
-        let frame = style.frame(ui.theme());
+        let border = style.border(ui.theme());
         let color = {
             let color = style.color(ui.theme());
             let color = if new_value { color } else { color.with_luminance(0.1) };
@@ -138,13 +138,13 @@ impl<'a, F> Widget for Toggle<'a, F>
                 None => color,
             }
         };
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(dim)
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
@@ -167,10 +167,10 @@ impl<'a, F> Colorable for Toggle<'a, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Frameable for Toggle<'a, F> {
+impl<'a, F> Borderable for Toggle<'a, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

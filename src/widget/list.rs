@@ -39,7 +39,7 @@ widget_style! {
         /// The width of the scrollbar if it is visible.
         - scrollbar_width: Option<Scalar> { None }
         /// The color of the scrollbar if it is visible.
-        - scrollbar_color: Color { theme.frame_color }
+        - scrollbar_color: Color { theme.border_color }
         /// The location of the `List`'s scrollbar.
         - scrollbar_position: Option<ScrollbarPosition> { None }
     }

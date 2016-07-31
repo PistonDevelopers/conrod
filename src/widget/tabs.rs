@@ -265,8 +265,8 @@ impl<'a> Widget for Tabs<'a> {
         // Instantiate the widgets associated with each Tab.
         let maybe_selected_tab_idx = {
             let color = canvas_style.color(&ui.theme);
-            let frame = canvas_style.frame(&ui.theme);
-            let frame_color = canvas_style.frame_color(ui.theme());
+            let border = canvas_style.border(&ui.theme);
+            let border_color = canvas_style.border_color(ui.theme());
             let label_color = style.label_color(ui.theme());
             let mut maybe_selected_tab_idx = state.maybe_selected_tab_idx
                 .or(maybe_starting_tab_idx)
@@ -274,7 +274,7 @@ impl<'a> Widget for Tabs<'a> {
             let mut tab_rects = TabRects::new(tabs, layout, rel_tab_bar_rect);
             let mut i = 0;
             while let Some((tab_rect, _, label)) = tab_rects.next_with_id_and_label() {
-                use {Colorable, Frameable, Labelable, Positionable, Sizeable};
+                use {Colorable, Borderable, Labelable, Positionable, Sizeable};
                 let tab = state.tabs[i];
                 let (xy, dim) = tab_rect.xy_dim();
 
@@ -283,8 +283,8 @@ impl<'a> Widget for Tabs<'a> {
                     .wh(dim)
                     .xy_relative_to(idx, xy)
                     .color(color)
-                    .frame(frame)
-                    .frame_color(frame_color)
+                    .border(border)
+                    .border_color(border_color)
                     .label(label)
                     .label_color(label_color)
                     .parent(idx)
@@ -384,16 +384,16 @@ impl<'a> ::color::Colorable for Tabs<'a> {
     }
 }
 
-impl<'a> ::frame::Frameable for Tabs<'a> {
-    fn frame(self, width: f64) -> Self {
+impl<'a> ::border::Borderable for Tabs<'a> {
+    fn border(self, width: f64) -> Self {
         self.map_canvas_style(|mut style| {
-            style.frame = Some(width);
+            style.border = Some(width);
             style
         })
     }
-    fn frame_color(self, color: Color) -> Self {
+    fn border_color(self, color: Color) -> Self {
         self.map_canvas_style(|mut style| {
-            style.frame_color = Some(color);
+            style.border_color = Some(color);
             style
         })
     }
