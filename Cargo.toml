@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.37.2"
+version = "0.38.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
