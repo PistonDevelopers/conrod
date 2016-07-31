@@ -40,7 +40,7 @@ pub struct Theme {
     /// A default "small" font size.
     pub font_size_small: u32,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
-    pub widget_styling: std::collections::HashMap<&'static str, WidgetDefault>,
+    pub widget_styling: std::collections::HashMap<std::any::TypeId, WidgetDefault>,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
@@ -103,10 +103,11 @@ impl Theme {
     /// Retrieve the unique default styling for a widget.
     ///
     /// Attempts to cast the `Box<WidgetStyle>` to the **Widget**'s unique associated style **T**.
-    pub fn widget_style<T>(&self, kind: &'static str) -> Option<UniqueDefault<T>>
+    pub fn widget_style<T>(&self) -> Option<UniqueDefault<T>>
         where T: widget::Style,
     {
-        self.widget_styling.get(kind).and_then(|boxed_default| {
+        let style_id = std::any::TypeId::of::<T>();
+        self.widget_styling.get(&style_id).and_then(|boxed_default| {
             boxed_default.style.downcast_ref().map(|style| {
                 let common = &boxed_default.common;
                 UniqueDefault {

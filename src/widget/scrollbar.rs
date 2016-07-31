@@ -44,12 +44,8 @@ pub trait Axis: scroll::Axis + Sized {
     fn to_2d(scalar: Scalar) -> [Scalar; 2];
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "Scrollbar";
-
 
 widget_style!{
-    KIND;
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
@@ -147,10 +143,6 @@ impl<A> Widget for Scrollbar<A>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

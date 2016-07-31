@@ -22,11 +22,7 @@ pub struct State {
     pub src_rect: Option<Rect>,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "Image";
-
 widget_style!{
-    KIND;
     /// Unique styling for the `Image` widget.
     style Style {
         /// Optionally specify a single colour to use for the image.
@@ -94,10 +90,6 @@ impl Widget for Image {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

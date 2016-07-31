@@ -36,11 +36,7 @@ pub struct XYPad<'a, X, Y, F> {
     pub enabled: bool,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "XYPad";
-
 widget_style!{
-    KIND;
     /// Unique graphical styling for the XYPad.
     style Style {
         /// The color of the XYPad's rectangle.
@@ -109,10 +105,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

@@ -275,11 +275,6 @@ pub struct Cached<W>
     pub maybe_y_scroll_state: Option<scroll::StateY>,
 }
 
-/// A unique identifier for a **Widget** type.
-///
-/// Note: This might be replaced with **Any::get_type_id** when it stabilises.
-pub type Kind = &'static str;
-
 /// **Widget** data to be cached prior to the **Widget::update** call in the **set_widget**
 /// function.
 ///
@@ -288,8 +283,8 @@ pub type Kind = &'static str;
 /// reference.
 #[allow(missing_copy_implementations)]
 pub struct PreUpdateCache {
-    /// The **Widget**'s unique kind.
-    pub kind: Kind,
+    /// The **Widget**'s unique type identifier.
+    pub type_id: std::any::TypeId,
     /// The **Widget**'s unique Index.
     pub idx: Index,
     /// The **Widget**'s parent's unique index (if it has a parent).
@@ -357,7 +352,7 @@ fn default_dimension<W, F>(widget: &W, ui: &Ui, f: F) -> Dimension
     where W: Widget,
           F: FnOnce(theme::UniqueDefault<W::Style>) -> Option<Dimension>,
 {
-    ui.theme.widget_style::<W::Style>(widget.unique_kind())
+    ui.theme.widget_style::<W::Style>()
         .and_then(f)
         .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx, None)))
         .unwrap_or_else(|| {
@@ -415,7 +410,6 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 ///
 /// - common
 /// - common_mut
-/// - unique_kind
 /// - init_state
 /// - style
 /// - update
@@ -519,14 +513,6 @@ pub trait Widget: Sized {
     /// accordingly (perhaps under a different name).
     fn common_mut(&mut self) -> &mut CommonBuilder;
 
-    /// Return the kind of the widget as a &'static str.
-    ///
-    /// Note that this must be unique from all other widgets' "unique kinds".
-    ///
-    /// This is used by conrod to help avoid WidgetId errors and to provide better messages for
-    /// those that do occur.
-    fn unique_kind(&self) -> Kind;
-
     /// Return the initial **State** of the Widget.
     ///
     /// The `Ui` will only call this once, shortly prior to the first time that **Widget::update**
@@ -565,7 +551,7 @@ pub trait Widget: Sized {
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
     fn default_x_position(&self, ui: &Ui) -> Position {
-        ui.theme.widget_style::<Self::Style>(self.unique_kind())
+        ui.theme.widget_style::<Self::Style>()
             .and_then(|style| style.common.maybe_x_position)
             .unwrap_or(ui.theme.x_position)
     }
@@ -574,7 +560,7 @@ pub trait Widget: Sized {
     ///
     /// This is used when no **Position** is explicitly given when instantiating the Widget.
     fn default_y_position(&self, ui: &Ui) -> Position {
-        ui.theme.widget_style::<Self::Style>(self.unique_kind())
+        ui.theme.widget_style::<Self::Style>()
             .and_then(|style| style.common.maybe_y_position)
             .unwrap_or(ui.theme.y_position)
     }
@@ -804,27 +790,27 @@ pub trait Widget: Sized {
 fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     where W: Widget,
 {
-    let kind = widget.unique_kind();
+    let type_id = std::any::TypeId::of::<W::State>();
 
     // Take the previous state of the widget from the cache if there is some to collect.
     let maybe_widget_state: Option<Cached<W>> = {
 
-        // If the cache is already initialised for a widget of a different kind, warn the user.
-        let check_container_kind = |container: &mut graph::Container| {
+        // If the cache is already initialised for a widget of a different type, warn the user.
+        let check_container_type_id = |container: &mut graph::Container| {
             use std::io::Write;
-            if container.kind != kind {
+            if container.type_id != type_id {
                 writeln!(std::io::stderr(),
-                         "A widget of a different kind already exists at the given WidgetId \
+                         "A widget of a different type already exists at the given WidgetId \
                          ({:?}). You tried to insert a {:?}, however the existing widget is a \
                          {:?}. Check your widgets' `WidgetId`s for errors.",
-                          idx, kind, container.kind).unwrap();
+                          idx, type_id, container.type_id).unwrap();
                 return None;
             } else {
                 container.take_widget_state()
             }
         };
 
-        ui::widget_graph_mut(ui).widget_mut(idx).and_then(check_container_kind)
+        ui::widget_graph_mut(ui).widget_mut(idx).and_then(check_container_type_id)
     };
 
     // Seperate the Widget's previous state into it's unique state, style and scrolling.
@@ -1005,7 +991,7 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
 
         // This will cache the given data into the `ui`'s `widget_graph`.
         ui::pre_update_cache(ui, PreUpdateCache {
-            kind: kind,
+            type_id: type_id,
             idx: idx,
             maybe_parent_idx: maybe_parent_idx,
             maybe_x_positioned_relatively_idx: maybe_x_positioned_relatively_idx,

@@ -24,9 +24,6 @@ pub struct Oval {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct State;
 
-/// Unique Kind for the Widget.
-pub const KIND: widget::Kind = "Oval";
-
 
 impl Oval {
 
@@ -71,10 +68,6 @@ impl Widget for Oval {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

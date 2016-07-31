@@ -37,11 +37,7 @@ pub struct TextEdit<'a, F> {
     style: Style,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "TextEdit";
-
 widget_style!{
-    KIND;
     /// Unique graphical styling for the TextEdit.
     style Style {
         /// The color of the text (this includes cursor and selection color).
@@ -190,10 +186,6 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

@@ -47,11 +47,7 @@ pub struct EnvelopeEditor<'a, E:'a, F>
     enabled: bool,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "EnvelopeEditor";
-
 widget_style!{
-    KIND;
     /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
     style Style {
         /// Coloring for the EnvelopeEditor's **FramedRectangle**.
@@ -169,10 +165,6 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

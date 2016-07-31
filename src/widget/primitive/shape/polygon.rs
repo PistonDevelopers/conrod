@@ -49,9 +49,6 @@ pub enum Kind {
     Fill,
 }
 
-/// Unique Kind for the Widget.
-pub const KIND: widget::Kind = "Polygon";
-
 
 impl<I> Polygon<I> {
 
@@ -198,10 +195,6 @@ impl<I> Widget for Polygon<I>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        "Polygon"
     }
 
     fn init_state(&self) -> State {

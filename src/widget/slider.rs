@@ -51,7 +51,6 @@ pub struct Slider<'a, T, F> {
 }
 
 widget_style!{
-    KIND;
     /// Graphical styling unique to the Slider widget.
     style Style {
         /// The color of the slidable rectangle.
@@ -74,9 +73,6 @@ pub struct State {
     slider_idx: IndexSlot,
     label_idx: IndexSlot,
 }
-
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "Slider";
 
 impl<'a, T, F> Slider<'a, T, F> {
 
@@ -116,10 +112,6 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

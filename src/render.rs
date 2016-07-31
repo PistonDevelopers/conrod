@@ -241,207 +241,206 @@ impl<'a, Img> Primitives<'a, Img> {
         } = *self;
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
+            use {Rectangle, Oval, Line, Text as TextWidget, Image, Widget};
+            use widget::primitive::point_path::State as PointPathState;
+            use widget::primitive::shape::polygon::State as PolygonState;
             use widget::primitive::shape::Style as ShapeStyle;
+
             let (idx, scizzor, container) = widget;
             let rect = container.rect;
 
+            fn state_type_id<W>() -> std::any::TypeId
+                where W: Widget,
+            {
+                std::any::TypeId::of::<W::State>()
+            }
+
             // Extract the unique state and style from the container.
-            match container.kind {
-
-                primitive::shape::rectangle::KIND => {
-                    if let Some(rectangle) = container.unique_widget_state::<::Rectangle>() {
-                        let graph::UniqueWidgetState { ref style, .. } = *rectangle;
-                        let color = style.get_color(theme);
-                        match *style {
-                            ShapeStyle::Fill(_) => {
-                                let kind = PrimitiveKind::Rectangle { color: color };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                            ShapeStyle::Outline(ref line_style) => {
-                                let (l, r, b, t) = rect.l_r_b_t();
-                                points[0] = [l, b];
-                                points[1] = [l, t];
-                                points[2] = [r, t];
-                                points[3] = [r, b];
-                                points[4] = [l, b];
-                                let cap = line_style.get_cap(theme);
-                                let thickness = line_style.get_thickness(theme);
-                                let kind = PrimitiveKind::Lines {
-                                    color: color,
-                                    cap: cap,
-                                    thickness: thickness,
-                                    points: &points[..5],
-                                };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                        }
+            if container.type_id == state_type_id::<Rectangle>() {
+                if let Some(rectangle) = container.unique_widget_state::<Rectangle>() {
+                    let graph::UniqueWidgetState { ref style, .. } = *rectangle;
+                    let color = style.get_color(theme);
+                    match *style {
+                        ShapeStyle::Fill(_) => {
+                            let kind = PrimitiveKind::Rectangle { color: color };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
+                        ShapeStyle::Outline(ref line_style) => {
+                            let (l, r, b, t) = rect.l_r_b_t();
+                            points[0] = [l, b];
+                            points[1] = [l, t];
+                            points[2] = [r, t];
+                            points[3] = [r, b];
+                            points[4] = [l, b];
+                            let cap = line_style.get_cap(theme);
+                            let thickness = line_style.get_thickness(theme);
+                            let kind = PrimitiveKind::Lines {
+                                color: color,
+                                cap: cap,
+                                thickness: thickness,
+                                points: &points[..5],
+                            };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
                     }
-                },
+                }
 
-                primitive::shape::oval::KIND => {
-                    if let Some(oval) = container.unique_widget_state::<::Oval>() {
-                        use std::f64::consts::PI;
-                        let graph::UniqueWidgetState { ref style, .. } = *oval;
+            } else if container.type_id == state_type_id::<Oval>() {
+                if let Some(oval) = container.unique_widget_state::<Oval>() {
+                    use std::f64::consts::PI;
+                    let graph::UniqueWidgetState { ref style, .. } = *oval;
 
-                        let (x, y, w, h) = rect.x_y_w_h();
-                        let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
-                        let hw = w / 2.0;
-                        let hh = h / 2.0;
-                        let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
-                        for i in 0..NUM_POINTS {
-                            points[i] = f(i as f64);
-                        }
-
-                        let color = style.get_color(theme);
-                        let points = &mut points[..NUM_POINTS];
-                        match *style {
-                            ShapeStyle::Fill(_) => {
-                                let kind = PrimitiveKind::Polygon { color: color, points: points };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                            ShapeStyle::Outline(ref line_style) => {
-                                let cap = line_style.get_cap(theme);
-                                let thickness = line_style.get_thickness(theme);
-                                let kind = PrimitiveKind::Lines {
-                                    color: color,
-                                    cap: cap,
-                                    thickness: thickness,
-                                    points: points,
-                                };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                        }
+                    let (x, y, w, h) = rect.x_y_w_h();
+                    let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
+                    let hw = w / 2.0;
+                    let hh = h / 2.0;
+                    let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
+                    for i in 0..NUM_POINTS {
+                        points[i] = f(i as f64);
                     }
-                },
 
-                primitive::shape::polygon::KIND => {
-                    use widget::primitive::shape::Style;
-                    use widget::primitive::shape::polygon::State;
-                    if let Some(polygon) = container.state_and_style::<State, Style>() {
-                        let graph::UniqueWidgetState { ref state, ref style } = *polygon;
-
-                        let color = style.get_color(theme);
-                        let points = &state.points[..];
-                        match *style {
-                            ShapeStyle::Fill(_) => {
-                                let kind = PrimitiveKind::Polygon { color: color, points: points };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                            ShapeStyle::Outline(ref line_style) => {
-                                let cap = line_style.get_cap(theme);
-                                let thickness = line_style.get_thickness(theme);
-                                let kind = PrimitiveKind::Lines {
-                                    color: color,
-                                    cap: cap,
-                                    thickness: thickness,
-                                    points: points,
-                                };
-                                return Some(new_primitive(kind, scizzor, rect));
-                            },
-                        }
+                    let color = style.get_color(theme);
+                    let points = &mut points[..NUM_POINTS];
+                    match *style {
+                        ShapeStyle::Fill(_) => {
+                            let kind = PrimitiveKind::Polygon { color: color, points: points };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
+                        ShapeStyle::Outline(ref line_style) => {
+                            let cap = line_style.get_cap(theme);
+                            let thickness = line_style.get_thickness(theme);
+                            let kind = PrimitiveKind::Lines {
+                                color: color,
+                                cap: cap,
+                                thickness: thickness,
+                                points: points,
+                            };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
                     }
-                },
+                }
 
-                primitive::line::KIND => {
-                    if let Some(line) = container.unique_widget_state::<::Line>() {
-                        let graph::UniqueWidgetState { ref state, ref style } = *line;
-                        let color = style.get_color(theme);
-                        let cap = style.get_cap(theme);
-                        let thickness = style.get_thickness(theme);
-                        points[0] = state.start;
-                        points[1] = state.end;
-                        let points = &points[..2];
-                        let kind = PrimitiveKind::Lines {
-                            color: color,
-                            cap: cap,
-                            thickness: thickness,
-                            points: points,
-                        };
-                        return Some(new_primitive(kind, scizzor, rect));
+            } else if container.type_id == std::any::TypeId::of::<PolygonState>() {
+                use widget::primitive::shape::Style;
+                if let Some(polygon) = container.state_and_style::<PolygonState, Style>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *polygon;
+
+                    let color = style.get_color(theme);
+                    let points = &state.points[..];
+                    match *style {
+                        ShapeStyle::Fill(_) => {
+                            let kind = PrimitiveKind::Polygon { color: color, points: points };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
+                        ShapeStyle::Outline(ref line_style) => {
+                            let cap = line_style.get_cap(theme);
+                            let thickness = line_style.get_thickness(theme);
+                            let kind = PrimitiveKind::Lines {
+                                color: color,
+                                cap: cap,
+                                thickness: thickness,
+                                points: points,
+                            };
+                            return Some(new_primitive(kind, scizzor, rect));
+                        },
                     }
-                },
+                }
 
-                primitive::point_path::KIND => {
-                    use widget::primitive::point_path::{State, Style};
-                    if let Some(point_path) = container.state_and_style::<State, Style>() {
-                        let graph::UniqueWidgetState { ref state, ref style } = *point_path;
-                        let color = style.get_color(theme);
-                        let cap = style.get_cap(theme);
-                        let thickness = style.get_thickness(theme);
-                        let points = &state.points[..];
-                        let kind = PrimitiveKind::Lines {
-                            color: color,
-                            cap: cap,
-                            thickness: thickness,
-                            points: points,
-                        };
-                        return Some(new_primitive(kind, scizzor, rect));
-                    }
-                },
-
-                primitive::text::KIND => {
-                    if let Some(text) = container.unique_widget_state::<::Text>() {
-                        let graph::UniqueWidgetState { ref state, ref style } = *text;
-                        let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
-                            Some(id) => id,
-                            None => continue,
-                        };
-                        let font = match fonts.get(font_id) {
-                            Some(font) => font,
-                            None => continue,
-                        };
-
-                        // Retrieve styling.
-                        let color = style.color(theme);
-                        let font_size = style.font_size(theme);
-                        let line_spacing = style.line_spacing(theme);
-                        let x_align = style.text_align(theme);
-                        let y_align = Align::End;
-
-                        let text = Text {
-                            positioned_glyphs: positioned_glyphs,
-                            window_dim: window_rect.dim(),
-                            text: &state.string,
-                            line_infos: &state.line_infos,
-                            font: font,
-                            font_size: font_size,
-                            rect: rect,
-                            x_align: x_align,
-                            y_align: y_align,
-                            line_spacing: line_spacing,
-                        };
-
-                        let kind = PrimitiveKind::Text {
-                            color: color,
-                            text: text,
-                            font_id: font_id,
-                        };
-                        return Some(new_primitive(kind, scizzor, rect));
-                    }
-                },
-
-                primitive::image::KIND => {
-                    use widget::primitive::image::{State, Style};
-                    if let Some(image) = container.state_and_style::<State, Style>() {
-                        let graph::UniqueWidgetState { ref state, ref style } = *image;
-                        let maybe_color = style.maybe_color(theme);
-                        let image = graph.widget_id(idx)
-                            .and_then(|id| image_map.get(id))
-                            .or_else(|| image_map.get(idx));
-                        let kind = PrimitiveKind::Image {
-                            maybe_color: maybe_color,
-                            image: image,
-                            source_rect: state.src_rect,
-                        };
-                        return Some(new_primitive(kind, scizzor, rect));
-                    }
-                },
-
-                // Return an `Other` variant for all non-primitive widgets.
-                _ => {
-                    let kind = PrimitiveKind::Other(container);
+            } else if container.type_id == state_type_id::<Line>() {
+                if let Some(line) = container.unique_widget_state::<Line>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *line;
+                    let color = style.get_color(theme);
+                    let cap = style.get_cap(theme);
+                    let thickness = style.get_thickness(theme);
+                    points[0] = state.start;
+                    points[1] = state.end;
+                    let points = &points[..2];
+                    let kind = PrimitiveKind::Lines {
+                        color: color,
+                        cap: cap,
+                        thickness: thickness,
+                        points: points,
+                    };
                     return Some(new_primitive(kind, scizzor, rect));
-                },
+                }
+
+            } else if container.type_id == std::any::TypeId::of::<PointPathState>() {
+                use widget::primitive::point_path::Style;
+                if let Some(point_path) = container.state_and_style::<PointPathState, Style>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *point_path;
+                    let color = style.get_color(theme);
+                    let cap = style.get_cap(theme);
+                    let thickness = style.get_thickness(theme);
+                    let points = &state.points[..];
+                    let kind = PrimitiveKind::Lines {
+                        color: color,
+                        cap: cap,
+                        thickness: thickness,
+                        points: points,
+                    };
+                    return Some(new_primitive(kind, scizzor, rect));
+                }
+
+            } else if container.type_id == state_type_id::<TextWidget>() {
+                if let Some(text) = container.unique_widget_state::<TextWidget>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *text;
+                    let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
+                        Some(id) => id,
+                        None => continue,
+                    };
+                    let font = match fonts.get(font_id) {
+                        Some(font) => font,
+                        None => continue,
+                    };
+
+                    // Retrieve styling.
+                    let color = style.color(theme);
+                    let font_size = style.font_size(theme);
+                    let line_spacing = style.line_spacing(theme);
+                    let x_align = style.text_align(theme);
+                    let y_align = Align::End;
+
+                    let text = Text {
+                        positioned_glyphs: positioned_glyphs,
+                        window_dim: window_rect.dim(),
+                        text: &state.string,
+                        line_infos: &state.line_infos,
+                        font: font,
+                        font_size: font_size,
+                        rect: rect,
+                        x_align: x_align,
+                        y_align: y_align,
+                        line_spacing: line_spacing,
+                    };
+
+                    let kind = PrimitiveKind::Text {
+                        color: color,
+                        text: text,
+                        font_id: font_id,
+                    };
+                    return Some(new_primitive(kind, scizzor, rect));
+                }
+
+            } else if container.type_id == state_type_id::<Image>() {
+                use widget::primitive::image::{State, Style};
+                if let Some(image) = container.state_and_style::<State, Style>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *image;
+                    let maybe_color = style.maybe_color(theme);
+                    let image = graph.widget_id(idx)
+                        .and_then(|id| image_map.get(id))
+                        .or_else(|| image_map.get(idx));
+                    let kind = PrimitiveKind::Image {
+                        maybe_color: maybe_color,
+                        image: image,
+                        source_rect: state.src_rect,
+                    };
+                    return Some(new_primitive(kind, scizzor, rect));
+                }
+
+            // Return an `Other` variant for all non-primitive widgets.
+            } else {
+                let kind = PrimitiveKind::Other(container);
+                return Some(new_primitive(kind, scizzor, rect));
             }
         }
 

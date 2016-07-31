@@ -32,11 +32,7 @@ pub struct State {
     indices: Vec<Vec<NodeIndex>>,
 }
 
-/// Unique kind for the widget.
-pub const KIND: &'static str = "WidgetMatrix";
-
 widget_style!{
-    KIND;
     /// Unique styling for the `Matrix`.
     style Style {
         /// The width of the padding for each matrix element's "cell".
@@ -92,10 +88,6 @@ impl<'a, F, W> Widget for Matrix<F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

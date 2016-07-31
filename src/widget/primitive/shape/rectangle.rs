@@ -34,9 +34,6 @@ pub enum Kind {
     Fill,
 }
 
-/// Unique Kind for the widget.
-pub const KIND: widget::Kind = "Rectangle";
-
 
 impl Rectangle {
 
@@ -81,10 +78,6 @@ impl Widget for Rectangle {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

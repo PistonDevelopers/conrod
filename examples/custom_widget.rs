@@ -18,29 +18,13 @@ extern crate piston_window;
 
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
-    use conrod::{
-        self,
-        Circle,
-        Color,
-        Colorable,
-        CommonBuilder,
-        Dimensions,
-        FontSize,
-        IndexSlot,
-        Labelable,
-        Point,
-        Positionable,
-        Text,
-        UpdateArgs,
-        Widget,
-        WidgetKind,
-    };
+    use conrod::{self, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
     /// The type upon which we'll implement the `Widget` trait.
     pub struct CircularButton<'a, F> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
-        common: CommonBuilder,
+        common: conrod::CommonBuilder,
         /// Optional label string for the button.
         maybe_label: Option<&'a str>,
         /// Optional callback for when the button is pressed. If you want the button to
@@ -53,24 +37,20 @@ mod circular_button {
         enabled: bool
     }
 
-    /// A `&'static str` that can be used to uniquely identify our widget type.
-    pub const KIND: WidgetKind = "CircularButton";
-
     // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
     // widget's associated `Style` type. This generates both a `Style` struct, as well as an
     // implementation that automatically retrieves defaults from the provided theme.
     //
     // See the documenation of the macro for a more details.
     widget_style!{
-        KIND;
         /// Represents the unique styling for our CircularButton widget.
         style Style {
             /// Color of the button.
-            - color: Color { theme.shape_color }
+            - color: conrod::Color { theme.shape_color }
             /// Color of the button's label.
-            - label_color: Color { theme.label_color }
+            - label_color: conrod::Color { theme.label_color }
             /// Font size of the button's label.
-            - label_font_size: FontSize { theme.font_size_medium }
+            - label_font_size: conrod::FontSize { theme.font_size_medium }
         }
     }
 
@@ -78,9 +58,9 @@ mod circular_button {
     #[derive(Clone, Debug, PartialEq)]
     pub struct State {
         /// An index to use for our **Circle** primitive graphics widget.
-        circle_idx: IndexSlot,
+        circle_idx: conrod::IndexSlot,
         /// An index to use for our **Text** primitive graphics widget (for the label).
-        text_idx: IndexSlot,
+        text_idx: conrod::IndexSlot,
     }
 
     /// Return whether or not a given point is over a circle at a given point on a
@@ -101,7 +81,7 @@ mod circular_button {
         /// Create a button context to be built upon.
         pub fn new() -> CircularButton<'a, F> {
             CircularButton {
-                common: CommonBuilder::new(),
+                common: conrod::CommonBuilder::new(),
                 maybe_react: None,
                 maybe_label: None,
                 style: Style::new(),
@@ -136,22 +116,18 @@ mod circular_button {
         /// The Style struct that we defined using the `widget_style!` macro.
         type Style = Style;
 
-        fn common(&self) -> &CommonBuilder {
+        fn common(&self) -> &conrod::CommonBuilder {
             &self.common
         }
 
-        fn common_mut(&mut self) -> &mut CommonBuilder {
+        fn common_mut(&mut self) -> &mut conrod::CommonBuilder {
             &mut self.common
-        }
-
-        fn unique_kind(&self) -> &'static str {
-            KIND
         }
 
         fn init_state(&self) -> State {
             State {
-                circle_idx: IndexSlot::new(),
-                text_idx: IndexSlot::new(),
+                circle_idx: conrod::IndexSlot::new(),
+                text_idx: conrod::IndexSlot::new(),
             }
         }
 
@@ -161,8 +137,8 @@ mod circular_button {
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
-        fn update(self, args: UpdateArgs<Self>) {
-            let UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
+        fn update(self, args: conrod::UpdateArgs<Self>) {
+            let conrod::UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
 
             let color = {
                 let input = ui.widget_input(idx);
@@ -207,7 +183,7 @@ mod circular_button {
             // First, we'll draw the **Circle** with a radius that is half our given width.
             let radius = rect.w() / 2.0;
             let circle_idx = state.circle_idx.get(&mut ui);
-            Circle::fill(radius)
+            conrod::Circle::fill(radius)
                 .middle_of(idx)
                 .graphics_for(idx)
                 .color(color)
@@ -218,7 +194,7 @@ mod circular_button {
             let font_size = style.label_font_size(ui.theme());
             let text_idx = state.text_idx.get(&mut ui);
             if let Some(ref label) = self.maybe_label {
-                Text::new(label)
+                conrod::Text::new(label)
                     .middle_of(idx)
                     .font_size(font_size)
                     .graphics_for(idx)
@@ -231,7 +207,7 @@ mod circular_button {
 
     /// Provide the chainable color() configuration method.
     impl<'a, F> Colorable for CircularButton<'a, F> {
-        fn color(mut self, color: Color) -> Self {
+        fn color(mut self, color: conrod::Color) -> Self {
             self.style.color = Some(color);
             self
         }
@@ -244,11 +220,11 @@ mod circular_button {
             self.maybe_label = Some(text);
             self
         }
-        fn label_color(mut self, color: Color) -> Self {
+        fn label_color(mut self, color: conrod::Color) -> Self {
             self.style.label_color = Some(color);
             self
         }
-        fn label_font_size(mut self, size: FontSize) -> Self {
+        fn label_font_size(mut self, size: conrod::FontSize) -> Self {
             self.style.label_font_size = Some(size);
             self
         }
