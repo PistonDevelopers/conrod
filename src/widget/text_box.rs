@@ -32,11 +32,7 @@ pub struct TextBox<'a, F> {
     style: Style,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "TextBox";
-
 widget_style!{
-    KIND;
     /// Unique graphical styling for the TextBox.
     style Style {
         /// The length of the gap between the bounding rectangle's frame and the edge of the text.
@@ -115,10 +111,6 @@ impl<'a, F> Widget for TextBox<'a, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

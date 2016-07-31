@@ -36,7 +36,6 @@ pub struct State {
 }
 
 widget_style!{
-    KIND;
     /// Unique styling for the **TitleBar** widget.
     style Style {
         /// The color of the TitleBar's rectangle surface.
@@ -58,9 +57,6 @@ widget_style!{
         - text_align: Align { Align::Middle }
     }
 }
-
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "TitleBar";
 
 /// The padding between the edge of the title bar and the title bar's label.
 ///
@@ -122,10 +118,6 @@ impl<'a> Widget for TitleBar<'a> {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

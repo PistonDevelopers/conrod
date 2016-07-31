@@ -26,11 +26,7 @@ pub struct PlotPath<X, Y, F> {
     f: F,
 }
 
-/// The unique `WidgetKind` for the `PlotPath`.
-pub const KIND: widget::Kind = "PlotPath";
-
 widget_style!{
-    KIND;
     /// Unique styling parameters for the `PlotPath` widget.
     style Style {
         /// The thickness of the plotted line.
@@ -79,10 +75,6 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

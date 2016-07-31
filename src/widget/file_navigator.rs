@@ -79,11 +79,7 @@ pub struct Directory {
     column_width: Scalar,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "FileNavigator";
-
 widget_style!{
-    KIND;
     /// Unique styling for the widget.
     style Style {
         /// Color of the selected entries.
@@ -178,10 +174,6 @@ impl<'a, F> Widget for FileNavigator<'a, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> State {
@@ -474,11 +466,7 @@ pub mod directory_view {
         is_selected: bool,
     }
 
-    /// Unique kind for the widget.
-    pub const KIND: widget::Kind = "FileNavigatorDirectoryView";
-
     widget_style!{
-        KIND;
         /// Unique styling for the widget.
         style Style {
             /// Color of the selected entries.
@@ -547,10 +535,6 @@ pub mod directory_view {
 
         fn common_mut(&mut self) -> &mut widget::CommonBuilder {
             &mut self.common
-        }
-
-        fn unique_kind(&self) -> widget::Kind {
-            KIND
         }
 
         fn init_state(&self) -> Self::State {

@@ -87,7 +87,6 @@ pub use widget::{KidArea, KidAreaArgs};
 pub use widget::CommonState as WidgetCommonState;
 pub use widget::Id as WidgetId;
 pub use widget::Index as WidgetIndex;
-pub use widget::Kind as WidgetKind;
 pub use widget::State as WidgetState;
 
 

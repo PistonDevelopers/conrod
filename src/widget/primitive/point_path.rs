@@ -36,9 +36,6 @@ pub struct State {
     pub points: Vec<Point>,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "PointPath";
-
 
 /// Find the bounding rect for the given series of points.
 fn bounding_box_for_points<I>(mut points: I) -> Rect
@@ -165,10 +162,6 @@ impl<I> Widget for PointPath<I>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> State {

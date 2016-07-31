@@ -29,11 +29,7 @@ pub struct Text<'a> {
     pub style: Style,
 }
 
-/// The unique kind for the widget.
-pub const KIND: widget::Kind = "Text";
-
 widget_style!{
-    KIND;
     /// The styling for a **Text**'s graphics.
     style Style {
         /// The font size for the **Text**.
@@ -153,10 +149,6 @@ impl<'a> Widget for Text<'a> {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

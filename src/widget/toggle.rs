@@ -32,11 +32,7 @@ pub struct Toggle<'a, F> {
     pub enabled: bool,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "Toggle";
-
 widget_style!{
-    KIND;
     /// Styling for the Toggle including coloring, framing and labelling.
     style Style {
         /// Color of the Toggle's pressable area.
@@ -94,10 +90,6 @@ impl<'a, F> Widget for Toggle<'a, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

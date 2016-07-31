@@ -51,9 +51,6 @@ pub struct Style {
     pub maybe_cap: Option<Cap>,
 }
 
-/// Unique kind for the widget.
-pub const KIND: &'static str = "Line";
-
 /// The pattern used to draw the line.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Pattern {
@@ -229,14 +226,14 @@ impl Style {
     /// The Pattern for the Line.
     pub fn get_pattern(&self, theme: &Theme) -> Pattern {
         const DEFAULT_PATTERN: Pattern = Pattern::Solid;
-        self.maybe_pattern.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+        self.maybe_pattern.or_else(|| theme.widget_style::<Style>().map(|default| {
             default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN)
         })).unwrap_or(DEFAULT_PATTERN)
     }
 
     /// The Color for the Line.
     pub fn get_color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+        self.maybe_color.or_else(|| theme.widget_style::<Style>().map(|default| {
             default.style.maybe_color.unwrap_or(theme.shape_color)
         })).unwrap_or(theme.shape_color)
     }
@@ -244,7 +241,7 @@ impl Style {
     /// The width or thickness of the Line.
     pub fn get_thickness(&self, theme: &Theme) -> Scalar {
         const DEFAULT_THICKNESS: Scalar = 1.0;
-        self.maybe_thickness.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+        self.maybe_thickness.or_else(|| theme.widget_style::<Style>().map(|default| {
             default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
         })).unwrap_or(DEFAULT_THICKNESS)
     }
@@ -252,7 +249,7 @@ impl Style {
     /// The styling for the ends of the Line.
     pub fn get_cap(&self, theme: &Theme) -> Cap {
         const DEFAULT_CAP: Cap = Cap::Flat;
-        self.maybe_cap.or_else(|| theme.widget_style::<Style>(KIND).map(|default| {
+        self.maybe_cap.or_else(|| theme.widget_style::<Style>().map(|default| {
             default.style.maybe_cap.unwrap_or(DEFAULT_CAP)
         })).unwrap_or(DEFAULT_CAP)
     }
@@ -270,10 +267,6 @@ impl Widget for Line {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

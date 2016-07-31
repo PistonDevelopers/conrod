@@ -32,11 +32,7 @@ pub struct List<F> {
     maybe_item: Option<F>,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "List";
-
 widget_style! {
-    KIND;
     /// Unique styling for the `List`.
     style Style {
         /// The width of the scrollbar if it is visible.
@@ -186,10 +182,6 @@ impl<F> Widget for List<F>
         &mut self.common
     }
 
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
-    }
-
     fn init_state(&self) -> State {
         State {
             scroll_trigger_idx: IndexSlot::new(),
@@ -219,7 +211,7 @@ impl<F> Widget for List<F>
         // The width of the scrollbar.
         let scrollbar_w = style.scrollbar_width(&ui.theme)
             .unwrap_or_else(|| {
-                ui.theme.widget_style::<ScrollbarStyle>(super::scrollbar::KIND)
+                ui.theme.widget_style::<ScrollbarStyle>()
                     .and_then(|style| style.style.thickness)
                     .unwrap_or(10.0)
             });

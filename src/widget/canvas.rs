@@ -62,7 +62,6 @@ pub struct State {
 }
 
 widget_style!{
-    KIND;
     /// Unique styling for the Canvas.
     style Style {
         /// The color of the Canvas' rectangle surface.
@@ -97,9 +96,6 @@ widget_style!{
         - title_bar_text_align: Align { Align::Middle }
     }
 }
-
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "Canvas";
 
 /// A series of **Canvas** splits along with their unique identifiers.
 pub type ListOfSplits<'a> = &'a [(widget::Id, Canvas<'a>)];
@@ -225,10 +221,6 @@ impl<'a> Widget for Canvas<'a> {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> State {

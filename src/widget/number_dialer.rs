@@ -44,11 +44,7 @@ pub struct NumberDialer<'a, T, F> {
     enabled: bool,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "NumberDialer";
-
 widget_style!{
-    KIND;
     /// Unique graphical styling for the NumberDialer.
     style Style {
         /// Color of the NumberDialer's rectangle.
@@ -169,10 +165,6 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {

@@ -6,10 +6,9 @@
 use daggy;
 use position::{Axis, Depth, Rect};
 use self::index_map::IndexMap;
+use std;
 use std::any::Any;
-use std::iter;
 use std::ops::{Index, IndexMut};
-use std::option;
 use widget::{self, Widget};
 
 pub use daggy::Walker;
@@ -36,7 +35,8 @@ pub type Parents = daggy::Parents<Node, Edge, u32>;
 pub type Children = daggy::Children<Node, Edge, u32>;
 
 /// An alias for the iterator yielding both **X** and **Y** **Position** parents.
-pub type PositionParents<I> = iter::Chain<option::IntoIter<I>, option::IntoIter<I>>;
+pub type PositionParents<I> =
+    std::iter::Chain<std::option::IntoIter<I>, std::option::IntoIter<I>>;
 
 /// An alias for some filtered children walker.
 pub type FilteredChildren =
@@ -75,8 +75,10 @@ pub struct UniqueWidgetState<State, Style> where
 pub struct Container {
     /// Dynamically stored widget state.
     pub maybe_state: Option<Box<Any>>,
-    /// A unique widget kind identifier.
-    pub kind: &'static str,
+    /// The unique `TypeId` associated with the `Widget::State`.
+    ///
+    /// This is equal to `std::any::TypeId::of::<Widget::State>()`.
+    pub type_id: std::any::TypeId,
     /// The rectangle describing the Widget's area.
     pub rect: Rect,
     /// The depth at which the widget will be rendered comparatively to its siblings.
@@ -699,7 +701,7 @@ impl Graph {
                             instantiation_order_idx: usize)
     {
         let widget::PreUpdateCache {
-            kind, idx, maybe_parent_idx, maybe_x_positioned_relatively_idx,
+            type_id, idx, maybe_parent_idx, maybe_x_positioned_relatively_idx,
             maybe_y_positioned_relatively_idx, rect, depth, kid_area, maybe_floating,
             crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
         } = widget;
@@ -707,7 +709,7 @@ impl Graph {
         // Construct a new `Container` to place in the `Graph`.
         let new_container = || Container {
             maybe_state: None,
-            kind: kind,
+            type_id: type_id,
             rect: rect,
             depth: depth,
             kid_area: kid_area,
@@ -765,15 +767,17 @@ impl Graph {
 
                     // If the container already exists with the state of some other kind of
                     // widget, we can assume there's been a mistake with the given Id.
+                    //
                     // TODO: It might be overkill to panic here.
-                    if container.kind != kind && container.kind != "EMPTY" {
-                        panic!("A widget of a different kind already exists at the given idx \
-                                ({:?}). You tried to insert a {:?}, however the existing \
-                                widget is a {:?}. Check your `WidgetId`s for errors.",
-                                idx, &kind, container.kind);
+                    if container.type_id != type_id {
+                        panic!("A widget of a different type already exists at the given idx \
+                                ({:?}). You tried to insert a widget with state of type {:?}, \
+                                however the existing widget state is of type {:?}. Check your \
+                                `WidgetId`s for errors.",
+                                idx, &type_id, container.type_id);
                     }
 
-                    container.kind = kind;
+                    container.type_id = type_id;
                     container.rect = rect;
                     container.depth = depth;
                     container.kid_area = kid_area;

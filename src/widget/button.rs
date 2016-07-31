@@ -26,11 +26,7 @@ pub struct Button<'a, F> {
     enabled: bool,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "Button";
-
 widget_style!{
-    KIND;
     /// Unique styling for the Button.
     style Style {
         /// Color of the Button's pressable area.
@@ -85,10 +81,6 @@ impl<'a, F> Widget for Button<'a, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> widget::Kind {
-        KIND
     }
 
     fn init_state(&self) -> State {

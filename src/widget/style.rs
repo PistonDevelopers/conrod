@@ -99,25 +99,25 @@ macro_rules! impl_widget_style_new {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! impl_widget_style_retrieval_method {
-    ($KIND:ident, $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }) => {
+    ($field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ }) => {
         /// Retrieves the value from the `Style`.
         ///
         /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
         pub fn $field_name(&self, theme: &$crate::Theme) -> $FieldType {
             self.$field_name
-                .or_else(|| theme.widget_style::<Self>($KIND).and_then(|default| {
+                .or_else(|| theme.widget_style::<Self>().and_then(|default| {
                     default.style.$field_name
                 }))
                 .unwrap_or_else(|| theme.$($theme_field).+)
         }
     };
-    ($KIND:ident, $field_name:ident: $FieldType:ty { $default:expr }) => {
+    ($field_name:ident: $FieldType:ty { $default:expr }) => {
         /// Retrieves the value from the `Style`.
         ///
         /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
         pub fn $field_name(&self, theme: &$crate::Theme) -> $FieldType {
             self.$field_name
-                .or_else(|| theme.widget_style::<Self>($KIND).and_then(|default| {
+                .or_else(|| theme.widget_style::<Self>().and_then(|default| {
                     default.style.$field_name
                 }))
                 .unwrap_or_else(|| $default)
@@ -131,27 +131,25 @@ macro_rules! impl_widget_style_retrieval_methods {
 
     // Retrieval methods with a field on the `theme` to use as the default.
     (
-        $KIND:ident,
         $(#[$field_attr:meta])*
         - $field_name:ident: $FieldType:ty { theme.$($theme_field:ident).+ } $($rest:tt)*
     ) => {
-        impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { theme.$($theme_field).+});
-        impl_widget_style_retrieval_methods!($KIND, $($rest)*);
+        impl_widget_style_retrieval_method!($field_name: $FieldType { theme.$($theme_field).+});
+        impl_widget_style_retrieval_methods!($($rest)*);
     };
 
 
     // Retrieval methods with an expression to use as the default.
     (
-        $KIND:ident,
         $(#[$field_attr:meta])*
         - $field_name:ident: $FieldType:ty { $default:expr } $($rest:tt)*
     ) => {
-        impl_widget_style_retrieval_method!($KIND, $field_name: $FieldType { $default });
-        impl_widget_style_retrieval_methods!($KIND, $($rest)*);
+        impl_widget_style_retrieval_method!($field_name: $FieldType { $default });
+        impl_widget_style_retrieval_methods!($($rest)*);
     };
 
     // All methods have been implemented.
-    ($KIND:ident,) => {};
+    () => {};
 }
 
 
@@ -168,9 +166,7 @@ macro_rules! impl_widget_style_retrieval_methods {
 /// ```
 /// # #[macro_use] extern crate conrod;
 /// # fn main() {}
-/// # const KIND: conrod::WidgetKind = "Example";
 /// widget_style!{
-///     KIND;
 ///     // Doc comment or attr for the generated `Style` struct can go here.
 ///     style Style {
 ///         // Fields and their type T (which get converted to `Option<T>` in the struct definition)
@@ -208,13 +204,7 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///     // Other necessary fields...
 /// }
 ///
-/// /// A unique string used to dynamically identify the widget type.
-/// ///
-/// /// Conrod uses this to store unique styling for each widget in a `HashMap` within the `Theme`.
-/// const KIND: conrod::WidgetKind = "MyWidget";
-///
 /// widget_style!{
-///     KIND;
 ///     /// Unique, awesome styling for a `MyWidget`.
 ///     style Style {
 ///         /// The totally amazing color to use for the `MyWidget`.
@@ -248,11 +238,6 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///     // Other necessary fields...
 /// }
 ///
-/// /// A unique string used to dynamically identify the widget type.
-/// ///
-/// /// Conrod uses this to store unique styling for each widget in a `HashMap` within the `Theme`.
-/// const KIND: conrod::WidgetKind = "MyWidget";
-///
 /// /// Unique, awesome styling for a `MyWidget`.
 /// #[derive(Copy, Clone, Debug, PartialEq)]
 /// pub struct Style {
@@ -283,7 +268,7 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///     /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
 ///     pub fn color(&self, theme: &conrod::Theme) -> conrod::Color {
 ///         self.color
-///             .or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+///             .or_else(|| theme.widget_style::<Self>().and_then(|default| {
 ///                 default.style.color
 ///             }))
 ///             .unwrap_or_else(|| theme.shape_color)
@@ -294,7 +279,7 @@ macro_rules! impl_widget_style_retrieval_methods {
 ///     /// If the `Style`'s field is `None`, falls back to default specified within the `Theme`.
 ///     pub fn label_color(&self, theme: &conrod::Theme) -> conrod::Color {
 ///         self.label_color
-///             .or_else(|| theme.widget_style::<Self>(KIND).and_then(|default| {
+///             .or_else(|| theme.widget_style::<Self>().and_then(|default| {
 ///                 default.style.label_color
 ///             }))
 ///             .unwrap_or_else(|| conrod::color::PURPLE)
@@ -311,7 +296,6 @@ macro_rules! impl_widget_style_retrieval_methods {
 #[macro_export]
 macro_rules! widget_style {
     (
-        $KIND:ident;
         $(#[$Style_attr:meta])*
         style $Style:ident {
             $($fields:tt)*
@@ -331,7 +315,7 @@ macro_rules! widget_style {
 
         // The "field, theme or default" retrieval methods.
         impl $Style {
-            impl_widget_style_retrieval_methods!($KIND, $($fields)*);
+            impl_widget_style_retrieval_methods!($($fields)*);
         }
     };
 }

@@ -35,11 +35,7 @@ pub struct DropDownList<'a, F> {
     enabled: bool,
 }
 
-/// Unique kind for the widget.
-pub const KIND: widget::Kind = "DropDownList";
-
 widget_style!{
-    KIND;
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
@@ -162,10 +158,6 @@ impl<'a, F> Widget for DropDownList<'a, F>
         &mut self.common
     }
 
-    fn unique_kind(&self) -> &'static str {
-        KIND
-    }
-
     fn init_state(&self) -> State {
         State {
             menu_state: MenuState::Closed,
@@ -266,7 +258,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
                     .unwrap_or_else(|| {
-                        ui.theme.widget_style::<ScrollbarStyle>(super::scrollbar::KIND)
+                        ui.theme.widget_style::<ScrollbarStyle>()
                             .and_then(|style| style.style.thickness)
                             .unwrap_or(10.0)
                     });

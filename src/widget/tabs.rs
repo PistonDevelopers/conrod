@@ -45,14 +45,10 @@ pub struct Tab {
     button_idx: NodeIndex,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "Tabs";
-
 /// The padding between the edge of the title bar and the title bar's label.
 const TAB_BAR_LABEL_PADDING: f64 = 4.0;
 
 widget_style!{
-    KIND;
     /// Unique styling for the `Tabs` widget.
     style Style {
         /// Layout for the tab selection bar.
@@ -177,10 +173,6 @@ impl<'a> Widget for Tabs<'a> {
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> State {

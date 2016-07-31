@@ -35,11 +35,7 @@ pub struct RangeSlider<'a, T, F> {
     style: Style,
 }
 
-/// Unique kind for the widget type.
-pub const KIND: widget::Kind = "RangeSlider";
-
 widget_style!{
-    KIND;
     /// Graphical styling unique to the RangeSlider widget.
     style Style {
         /// The color of the slidable rectangle.
@@ -115,10 +111,6 @@ impl<'a, T, F> Widget for RangeSlider<'a, T, F>
 
     fn common_mut(&mut self) -> &mut widget::CommonBuilder {
         &mut self.common
-    }
-
-    fn unique_kind(&self) -> &'static str {
-        KIND
     }
 
     fn init_state(&self) -> Self::State {
