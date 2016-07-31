@@ -30,6 +30,7 @@ pub struct List<F> {
     item_h: Scalar,
     num_items: u32,
     maybe_item: Option<F>,
+    item_instantiation: ItemInstantiation,
 }
 
 widget_style! {
@@ -73,6 +74,15 @@ pub struct Item<'a, 'b: 'a> {
     ui: &'a mut UiCell<'b>,
 }
 
+/// The way in which a `List` should instantiate its `Item`s.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ItemInstantiation {
+    /// Instantiate an `Item` for every element, regardless of visibility.
+    All,
+    /// Only instantiate visible `Item`s.
+    OnlyVisible,
+}
+
 /// If the `List` is scrollable, this describes how th `Scrollbar` should be positioned.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ScrollbarPosition {
@@ -93,6 +103,7 @@ impl<F> List<F> {
             style: Style::new(),
             item_h: item_height,
             num_items: num_items,
+            item_instantiation: ItemInstantiation::OnlyVisible,
             maybe_item: None,
         }.crop_kids()
     }
@@ -136,6 +147,27 @@ impl<F> List<F> {
     /// The color of the `Scrollbar`.
     pub fn scrollbar_color(mut self, color: Color) -> Self {
         self.style.scrollbar_color = Some(color);
+        self
+    }
+
+    /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
+    /// whether or not the `Item` would be visible.
+    ///
+    /// Note: This may cause significantly heavier CPU load for lists containing many items (100+).
+    /// We only recommend using this when absolutely necessary as large lists may cause unnecessary
+    /// bloating within the widget graph, and in turn result in greater traversal times.
+    pub fn instantiate_all_items(mut self) -> Self {
+        self.item_instantiation = ItemInstantiation::All;
+        self
+    }
+
+    /// Indicates that only `Item`s that are visible should be instantiated. This ensures that we
+    /// avoid bloating the widget graph with unnecessary nodes and in turn keep traversal times to
+    /// a minimum.
+    ///
+    /// This is the default `List` behaviour.
+    pub fn instantiate_only_visible_items(mut self) -> Self {
+        self.item_instantiation = ItemInstantiation::OnlyVisible;
         self
     }
 
@@ -196,7 +228,7 @@ impl<F> Widget for List<F>
 
     fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, rect, prev, mut ui, style, .. } = args;
-        let List { maybe_item, item_h, num_items, .. } = self;
+        let List { maybe_item, item_h, num_items, item_instantiation, .. } = self;
 
         // We need a positive item height and number of items in order to do anything useful.
         if item_h <= 0.0 || num_items == 0 {
@@ -235,22 +267,33 @@ impl<F> Widget for List<F>
             .parent(idx)
             .set(scroll_trigger_idx, &mut ui);
 
-        let scroll_trigger_rect = ui.rect_of(scroll_trigger_idx).unwrap();
-        let hidden_range_length = scroll_trigger_rect.top() - rect.top();
-        let num_top_hidden_items = hidden_range_length / item_h;
-        let num_visible_items = (rect.h() / item_h + 1.0).floor() as usize;
+        // Determine the index range of the items that should be instantiated.
+        let (item_idx_range, first_item_margin) = match item_instantiation {
+            ItemInstantiation::All => {
+                let range = 0..num_items as usize;
+                let margin = 0.0;
+                (range, margin)
+            },
+            ItemInstantiation::OnlyVisible => {
+                let scroll_trigger_rect = ui.rect_of(scroll_trigger_idx).unwrap();
+                let hidden_range_length = scroll_trigger_rect.top() - rect.top();
+                let num_top_hidden_items = hidden_range_length / item_h;
+                let num_visible_items = (rect.h() / item_h + 1.0).floor() as usize;
 
-        let first_visible_item_idx = num_top_hidden_items.floor() as usize;
-        let first_visible_item_margin = first_visible_item_idx as Scalar * item_h;
-        let end_of_visible_idx_range =
-            std::cmp::min(first_visible_item_idx + num_visible_items, num_items as usize);
-        let visible_idx_range = first_visible_item_idx..end_of_visible_idx_range;
+                let first_visible_item_idx = num_top_hidden_items.floor() as usize;
+                let first_visible_item_margin = first_visible_item_idx as Scalar * item_h;
+                let end_of_visible_idx_range =
+                    std::cmp::min(first_visible_item_idx + num_visible_items, num_items as usize);
+                let range = first_visible_item_idx..end_of_visible_idx_range;
+                (range, first_visible_item_margin)
+            },
+        };
 
         // Ensure there are at least as many indices as there are visible items.
         let num_indices = state.item_indices.len();
-        if num_indices < num_visible_items {
+        if num_indices < item_idx_range.len() {
             state.update(|state| {
-                let extension = (num_indices..num_visible_items)
+                let extension = (num_indices..item_idx_range.len())
                     .map(|_| ui.new_unique_node_index());
                 state.item_indices.extend(extension);
             });
@@ -261,7 +304,7 @@ impl<F> Widget for List<F>
             Some(f) => f,
             None => return,
         };
-        let iter = visible_idx_range.zip(state.item_indices.iter());
+        let iter = item_idx_range.zip(state.item_indices.iter());
         let mut last_idx = None;
         for (i, &node_index) in iter {
 
@@ -272,7 +315,7 @@ impl<F> Widget for List<F>
                 scroll_trigger_idx: scroll_trigger_idx,
                 w: item_w,
                 h: item_h,
-                first_item_margin: first_visible_item_margin,
+                first_item_margin: first_item_margin,
                 ui: &mut ui,
             };
 
