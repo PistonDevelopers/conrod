@@ -78,7 +78,7 @@ pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 //pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
-pub use ui::{Ui, UiCell};
+pub use ui::{Ui, UiCell, UiBuilder};
 pub use widget::{default_x_dimension, default_y_dimension};
 pub use widget::scroll;
 pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
