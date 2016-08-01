@@ -30,7 +30,7 @@ pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::file_navigator::{FileNavigator, Event as FileNavigatorEvent};
 pub use widget::framed_rectangle::FramedRectangle;
-pub use widget::list::{List, ScrollbarPosition as ListbarScrollPosition};
+pub use widget::list::{List, Item as ListItem, ScrollbarPosition as ListbarScrollPosition};
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
 pub use widget::plot_path::PlotPath;

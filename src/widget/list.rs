@@ -175,6 +175,14 @@ impl<F> List<F> {
 
 impl<'a, 'b> Item<'a, 'b> {
 
+    /// Borrow the `UiCell` from the `Item`.
+    ///
+    /// This is useful in the case that users wish to access the `Ui` to traverse the widget graph,
+    /// access the theme or examine user input.
+    pub fn ui(&self) -> &UiCell {
+        &self.ui
+    }
+
     /// Sets the given widget as the widget to use for the item.
     ///
     /// Sets the:
