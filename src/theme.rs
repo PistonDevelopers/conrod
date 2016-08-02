@@ -7,13 +7,11 @@ use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position};
 use std;
 use std::any::Any;
-use std::rc::Rc;
 use text;
 use widget;
 
 
 /// A serializable collection of canvas and widget styling defaults.
-#[derive(Clone)]
 pub struct Theme {
     /// A name for the theme used for identification.
     pub name: String,
@@ -52,10 +50,9 @@ pub struct Theme {
 }
 
 /// The defaults for a specific widget.
-#[derive(Clone)]
 pub struct WidgetDefault {
     /// The unique style of a widget.
-    pub style: Rc<Any>,
+    pub style: Box<Any>,
     /// The attributes commonly shared between widgets.
     pub common: widget::CommonStyle,
 }
@@ -71,7 +68,7 @@ pub struct UniqueDefault<'a, T: 'a> {
 
 impl WidgetDefault {
     /// Constructor for a WidgetDefault.
-    pub fn new(style: Rc<Any>) -> WidgetDefault {
+    pub fn new(style: Box<Any>) -> WidgetDefault {
         WidgetDefault {
             style: style,
             common: widget::CommonStyle::new(),

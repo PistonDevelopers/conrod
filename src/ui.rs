@@ -16,7 +16,7 @@ use widget::{self, Widget};
 
 pub struct UiBuilder {
     /// The theme used to set default styling for widgets.
-    theme: Theme,
+    maybe_theme: Option<Theme>,
     /// Number of widgets given as number
     maybe_widgets_capacity: Option<usize>
 }
@@ -104,19 +104,9 @@ impl UiBuilder {
     /// - maybe_widgets_capacity: None
     pub fn new() -> Self {
         UiBuilder {
-            theme: Theme::default(),
+            maybe_theme: None,
             maybe_widgets_capacity: None
         }
-    }
-
-    /// Gets the theme of built **Ui**.
-    pub fn get_theme(&self) -> Theme {
-        self.theme.clone()
-    }
-
-    /// Sets the theme of built **Ui**.
-    pub fn set_theme(&mut self, value: Theme) {
-        self.theme = value;
     }
 
     /// Sets the theme of built **Ui**.
@@ -125,33 +115,8 @@ impl UiBuilder {
     /// unlike [`set_theme()`](#method.set_theme),
     /// so that it can be used in method chaining.
     pub fn theme(mut self, value: Theme) -> Self {
-        self.set_theme(value);
+        self.maybe_theme = Some(value);
         self
-    }
-
-    /// Gets widgets capacity of built **Ui**.
-    pub fn get_maybe_widgets_capacity(&self) -> Option<usize> {
-        self.maybe_widgets_capacity
-    }
-
-    /// Sets widgets capacity of built **Ui**.
-    pub fn set_maybe_widgets_capacity(&mut self, value: Option<usize>) {
-        self.maybe_widgets_capacity = value;
-    }
-
-    /// Sets widgets capacity of built **Ui**.
-    ///
-    /// This method moves the current builder,
-    /// unlike [`set_maybe_widgets_capacity()`](#method.set_maybe_widgets_capacity),
-    /// so that it can be used in method chaining.
-    pub fn maybe_widgets_capacity(mut self, value: Option<usize>) -> Self {
-        self.set_maybe_widgets_capacity(value);
-        self
-    }
-
-    /// Sets widgets capacity of built **Ui**.
-    pub fn set_widgets_capacity(&mut self, value: usize) {
-        self.maybe_widgets_capacity = Some(value);
     }
 
     /// Sets widgets capacity of built **Ui**.
@@ -160,12 +125,12 @@ impl UiBuilder {
     /// unlike [`set_widgets_capacity()`](#method.set_widgets_capacity),
     /// so that it can be used in method chaining.
     pub fn widgets_capacity(mut self, value: usize) -> Self {
-        self.set_widgets_capacity(value);
+        self.maybe_widgets_capacity = Some(value);
         self
     }
 
     /// Build **Ui** from the given builder
-    pub fn build(&self) -> Result<Ui, String> {
+    pub fn build(self) -> Result<Ui, String> {
         Ui::new(self)
     }
 }
@@ -173,23 +138,21 @@ impl UiBuilder {
 impl Ui {
 
     /// A new, empty **Ui**.
-    pub fn new(builder: &UiBuilder) -> Result<Self, String> {
+    fn new(builder: UiBuilder) -> Result<Self, String> {
         let (mut widget_graph, depth_order, updated_widgets) =
-             if let Some(n_widgets) = builder.get_maybe_widgets_capacity() {
-                 (Graph::with_node_capacity(n_widgets),
-                  graph::DepthOrder::with_node_capacity(n_widgets),
-                  std::collections::HashSet::with_capacity(n_widgets))
-             } else {
-                 (Graph::new(),
-                  graph::DepthOrder::new(),
-                  std::collections::HashSet::new())
-             };
+            builder.maybe_widgets_capacity.map_or_else(
+                || (Graph::new(),
+                   graph::DepthOrder::new(),
+                   std::collections::HashSet::new()),
+                |n| (Graph::with_node_capacity(n),
+                     graph::DepthOrder::with_node_capacity(n),
+                     std::collections::HashSet::with_capacity(n)));
 
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
         Ok(Ui {
             widget_graph: widget_graph,
-            theme: builder.get_theme(),
+            theme: builder.maybe_theme.unwrap_or(Theme::default()),
             fonts: text::font::Map::new(),
             window: window,
             win_w: 0.0,
