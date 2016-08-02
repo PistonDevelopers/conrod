@@ -503,7 +503,7 @@ pub mod cursor {
                 let new_line = line - 1;
                 line_infos.nth(new_line)
                     .map(|info| {
-                        let new_char = info.end_char();
+                        let new_char = info.end_char() - info.start_char;
                         Index { line: new_line, char: new_char }
                     })
             } else {
@@ -559,7 +559,7 @@ pub mod cursor {
         for (i, line_info) in line_infos.enumerate() {
             let start_char = line_info.start_char;
             let end_char = line_info.end_char();
-            if start_char <= char_index && char_index <= end_char + 1 {
+            if start_char <= char_index && char_index <= end_char {
                 return Some(Index { line: i, char: char_index - start_char });
             }
         }
@@ -941,11 +941,6 @@ pub mod line {
                 return (break_, width);
             }
 
-            // Check for a new whitespace.
-            else if ch.is_whitespace() {
-                last_whitespace_start = Last { byte: byte_i, char: char_i, width_before: width };
-            }
-
             // Add the character's width to the width so far.
             let new_width = width + advance_width(ch, font, scale, &mut last_glyph);
 
@@ -954,6 +949,11 @@ pub mod line {
                 let Last { byte, char, width_before } = last_whitespace_start;
                 let break_ = Break::Wrap { byte: byte, char: char, len_bytes: 1 };
                 return (break_, width_before);
+            }
+
+            // Check for a new whitespace.
+            if ch.is_whitespace() {
+                last_whitespace_start = Last { byte: byte_i, char: char_i, width_before: width };
             }
 
             width = new_width;
