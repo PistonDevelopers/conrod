@@ -1,5 +1,4 @@
 use {
-    Theme,
     Canvas,
     Color,
     Labelable,
@@ -68,9 +67,7 @@ fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
 }
 
 fn windowless_ui() -> Ui {
-    let theme = Theme::default();
     UiBuilder::new()
-        .theme(theme)
         .build()
         .unwrap()
 }

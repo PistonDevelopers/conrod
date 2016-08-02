@@ -152,7 +152,7 @@ impl Ui {
         let prev_updated_widgets = updated_widgets.clone();
         Ok(Ui {
             widget_graph: widget_graph,
-            theme: builder.maybe_theme.unwrap_or(Theme::default()),
+            theme: builder.maybe_theme.unwrap_or_else(|| Theme::default()),
             fonts: text::font::Map::new(),
             window: window,
             win_w: 0.0,
