@@ -100,7 +100,7 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 impl UiBuilder {
     /// Create **Ui** builder with defaults.
     ///
-    /// - theme: Theme::default()
+    /// - maybe_theme: Theme::default()
     /// - maybe_widgets_capacity: None
     pub fn new() -> Self {
         UiBuilder {
@@ -112,7 +112,6 @@ impl UiBuilder {
     /// Sets the theme of built **Ui**.
     ///
     /// This method moves the current builder,
-    /// unlike [`set_theme()`](#method.set_theme),
     /// so that it can be used in method chaining.
     pub fn theme(mut self, value: Theme) -> Self {
         self.maybe_theme = Some(value);
@@ -122,7 +121,6 @@ impl UiBuilder {
     /// Sets widgets capacity of built **Ui**.
     ///
     /// This method moves the current builder,
-    /// unlike [`set_widgets_capacity()`](#method.set_widgets_capacity),
     /// so that it can be used in method chaining.
     pub fn widgets_capacity(mut self, value: usize) -> Self {
         self.maybe_widgets_capacity = Some(value);
