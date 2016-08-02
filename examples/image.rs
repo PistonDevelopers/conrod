@@ -6,7 +6,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Colorable, Image, Positionable, Sizeable, Theme, Widget, color};
+use conrod::{Canvas, Colorable, Image, Positionable, Sizeable, Widget, color};
 use piston_window::{EventLoop, Flip, ImageSize, G2dTexture, PistonWindow, Texture, UpdateEvent};
 
 fn main() {
@@ -23,7 +23,9 @@ fn main() {
     window.set_ups(60);
 
     // construct our `Ui`.
-    let mut ui = conrod::Ui::new(Theme::default());
+    let mut ui = conrod::UiBuilder::new()
+        .build()
+        .unwrap();
 
     // Create an empty texture to pass for the text cache as we're not drawing any text.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
