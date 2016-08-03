@@ -128,7 +128,7 @@ impl UiBuilder {
     }
 
     /// Build **Ui** from the given builder
-    pub fn build(self) -> Result<Ui, String> {
+    pub fn build(self) -> Ui {
         Ui::new(self)
     }
 }
@@ -136,7 +136,7 @@ impl UiBuilder {
 impl Ui {
 
     /// A new, empty **Ui**.
-    fn new(builder: UiBuilder) -> Result<Self, String> {
+    fn new(builder: UiBuilder) -> Self {
         let (mut widget_graph, depth_order, updated_widgets) =
             builder.maybe_widgets_capacity.map_or_else(
                 || (Graph::new(),
@@ -148,7 +148,7 @@ impl Ui {
 
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
-        Ok(Ui {
+        Ui {
             widget_graph: widget_graph,
             theme: builder.maybe_theme.unwrap_or_else(|| Theme::default()),
             fonts: text::font::Map::new(),
@@ -165,7 +165,7 @@ impl Ui {
             prev_updated_widgets: prev_updated_widgets,
             global_input: input::Global::new(),
             pending_scroll_events: Vec::new(),
-        })
+        }
     }
 
     /// Returns a `input::Widget` for the given widget

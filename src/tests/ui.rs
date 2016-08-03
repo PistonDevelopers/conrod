@@ -69,7 +69,6 @@ fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
 fn windowless_ui() -> Ui {
     UiBuilder::new()
         .build()
-        .unwrap()
 }
 
 
