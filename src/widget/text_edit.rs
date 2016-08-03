@@ -374,16 +374,13 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                         text::glyph::index_after_cursor(line_infos, cursor_idx)
                                     };
                                     if let Some(idx) = idx_after_cursor {
-                                        let idx_to_remove = idx - 1;
-                                        let new_cursor_idx = {
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            text::cursor::index_before_char(line_infos, idx_to_remove)
-                                        };
-                                        if let Some(new_cursor_idx) = new_cursor_idx {
-                                            cursor = Cursor::Idx(new_cursor_idx);
+                                        if idx > 0 {
+                                            let idx_to_remove = idx - 1;
+
                                             *text = text.chars().take(idx_to_remove)
                                                 .chain(text.chars().skip(idx))
                                                 .collect();
+
                                             state.update(|state| {
                                                 let font = ui.fonts.get(font_id).unwrap();
                                                 let w = rect.w();
@@ -391,6 +388,13 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                                     line_infos(text, font, font_size, line_wrap, w)
                                                         .collect();
                                             });
+
+                                            let line_infos = state.line_infos.iter().cloned();
+                                            let new_cursor_idx =
+                                                 text::cursor::index_before_char(line_infos, idx_to_remove)
+                                                 // in case we removed the last character
+                                                .unwrap_or(text::cursor::Index {line: 0, char: 0});
+                                            cursor = Cursor::Idx(new_cursor_idx);
                                         }
                                     }
                                 },
@@ -439,7 +443,6 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                             let line_infos = state.line_infos.iter().cloned();
                                             cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
                                         };
-
                                         cursor = Cursor::Idx(new_cursor_idx);
                                     },
 
