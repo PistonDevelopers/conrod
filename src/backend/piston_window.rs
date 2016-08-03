@@ -31,7 +31,8 @@ impl GlyphCache {
     /// The `width` and `height` arguments are in pixel values.
     ///
     /// If you need to resize the `GlyphCache`, construct a new one and discard the old one.
-    pub fn new(window: &mut PistonWindow, width: u32, height: u32) -> GlyphCache {
+    pub fn new<B>(window: &mut PistonWindow<B>, width: u32, height: u32) -> GlyphCache 
+        where B: self::piston_window::Window {
 
         // Construct the rusttype GPU cache with the tolerances recommended by their documentation.
         const SCALE_TOLERANCE: f32 = 0.1;
@@ -56,8 +57,9 @@ impl GlyphCache {
 
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.
-pub fn convert_event<E>(event: E, window: &PistonWindow) -> Option<event::Raw>
+pub fn convert_event<E, B>(event: E, window: &PistonWindow<B>) -> Option<event::Raw>
     where E: super::piston::event::GenericEvent,
+          B: self::piston_window::Window,
 {
     use self::piston_window::Window;
     use Scalar;
