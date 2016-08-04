@@ -23,8 +23,7 @@ fn main() {
     window.set_ups(60);
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new()
-        .build();
+    let mut ui = conrod::UiBuilder::new().build();
 
     // Create an empty texture to pass for the text cache as we're not drawing any text.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
