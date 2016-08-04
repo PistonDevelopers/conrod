@@ -3,6 +3,7 @@
 extern crate graphics as piston_graphics;
 
 use Rect;
+use image;
 use render;
 use text;
 
@@ -19,15 +20,66 @@ pub use self::piston_graphics::{Context, DrawState, Graphics, ImageSize, Transfo
 /// - `graphics` - The piston `Graphics` backend.
 /// - `text_texture_cache` - Some texture type `T` upon which we can cache text glyphs.
 /// - `glyph_cache` - The RustType `Cache` used to cache glyphs in our `text_texture_cache`.
+/// - `image_map` - Mappings from image widget indices to their associated image data.
 /// - `cache_queue_glyphs` - A function for caching glyphs within the given texture cache.
 /// - `texture_from_image` - A function that borrows a drawable texture `T` from an `Img`. In many
 ///   cases, `Img` may be the same type as `T`, however we provide this to allow for flexibility.
-pub fn primitives<'a, Img, G, T, C, F>(
-    mut primitives: render::Primitives<Img>,
+pub fn primitives<'a, P, G, T, Img, C, F>(
+    mut primitives: P,
     context: Context,
     graphics: &'a mut G,
     text_texture_cache: &'a mut T,
     glyph_cache: &'a mut text::GlyphCache,
+    image_map: &'a image::Map<Img>,
+    mut cache_queued_glyphs: C,
+    mut texture_from_image: F,
+)
+    where P: render::PrimitiveWalker,
+          G: Graphics<Texture=T>,
+          T: ImageSize,
+          C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
+          F: FnMut(&Img) -> &T,
+{
+
+    // A re-usable buffer of rectangles describing the glyph's screen and texture positions.
+    let mut glyph_rectangles = Vec::new();
+
+    while let Some(prim) = render::PrimitiveWalker::next_primitive(&mut primitives) {
+        primitive(prim,
+                  context,
+                  graphics,
+                  text_texture_cache,
+                  glyph_cache,
+                  image_map,
+                  &mut glyph_rectangles,
+                  &mut cache_queued_glyphs,
+                  &mut texture_from_image);
+    }
+}
+
+
+/// Render a single `Primitive`.
+///
+/// Params:
+///
+/// - `primitive` - The `Primitive` that is to be rendered to the screen.
+/// - `context` - The piston2d-graphics drawing context.
+/// - `graphics` - The piston `Graphics` backend.
+/// - `text_texture_cache` - Some texture type `T` upon which we can cache text glyphs.
+/// - `glyph_cache` - The RustType `Cache` used to cache glyphs in our `text_texture_cache`.
+/// - `image_map` - Mappings from image widget indices to their associated image data.
+/// - `glyph_rectangles` - A re-usable buffer for collecting positioning rectangles for glyphs.
+/// - `cache_queue_glyphs` - A function for caching glyphs within the given texture cache.
+/// - `texture_from_image` - A function that borrows a drawable texture `T` from an `Img`. In many
+///   cases, `Img` may be the same type as `T`, however we provide this to allow for flexibility.
+pub fn primitive<'a, Img, G, T, C, F>(
+    primitive: render::Primitive,
+    context: Context,
+    graphics: &'a mut G,
+    text_texture_cache: &'a mut T,
+    glyph_cache: &'a mut text::GlyphCache,
+    image_map: &'a image::Map<Img>,
+    glyph_rectangles: &mut Vec<([f64; 4], [i32; 4])>,
     mut cache_queued_glyphs: C,
     mut texture_from_image: F,
 )
@@ -36,133 +88,133 @@ pub fn primitives<'a, Img, G, T, C, F>(
           C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
           F: FnMut(&Img) -> &T,
 {
-    // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointint upwards).
+    let render::Primitive { index, kind, scizzor, rect } = primitive;
     let view_size = context.get_view_size();
+    // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointing upwards).
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
+    let context = crop_context(context, scizzor);
 
-    // A re-usable buffer of rectangles describing the glyph's screen and texture positions.
-    let mut glyph_rectangles = Vec::new();
+    match kind {
 
-    while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
-        let context = crop_context(context, scizzor);
+        render::PrimitiveKind::Rectangle { color } => {
+            let (l, b, w, h) = rect.l_b_w_h();
+            let lbwh = [l, b, w, h];
+            let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
+            rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
+        },
 
-        match kind {
+        render::PrimitiveKind::Polygon { color, points } => {
+            let color = color.to_fsa();
+            let polygon = piston_graphics::Polygon::new(color);
+            polygon.draw(points, &context.draw_state, context.transform, graphics);
+        },
 
-            render::PrimitiveKind::Rectangle { color } => {
-                let (l, b, w, h) = rect.l_b_w_h();
-                let lbwh = [l, b, w, h];
-                let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
-                rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
-            },
+        render::PrimitiveKind::Lines { color, cap, thickness, points } => {
+            use widget::primitive::line::Cap;
+            let color = color.to_fsa();
 
-            render::PrimitiveKind::Polygon { color, points } => {
-                let color = color.to_fsa();
-                let polygon = piston_graphics::Polygon::new(color);
-                polygon.draw(points, &context.draw_state, context.transform, graphics);
-            },
+            let mut points = points.iter();
+            if let Some(first) = points.next() {
+                let line = match cap {
+                    Cap::Flat => piston_graphics::Line::new(color, thickness / 2.0),
+                    Cap::Round => piston_graphics::Line::new_round(color, thickness / 2.0),
+                };
+                let mut start = first;
+                for end in points {
+                    let coords = [start[0], start[1], end[0], end[1]];
+                    line.draw(coords, &context.draw_state, context.transform, graphics);
+                    start = end;
+                }
+            }
+        },
 
-            render::PrimitiveKind::Lines { color, cap, thickness, points } => {
-                use widget::primitive::line::Cap;
-                let color = color.to_fsa();
+        render::PrimitiveKind::Text { color, text, font_id } => {
 
-                let mut points = points.iter();
-                if let Some(first) = points.next() {
-                    let line = match cap {
-                        Cap::Flat => piston_graphics::Line::new(color, thickness / 2.0),
-                        Cap::Round => piston_graphics::Line::new_round(color, thickness / 2.0),
+            // Retrieve the "dots per inch" factor by dividing the window width by the view.
+            //
+            // TODO: Perhaps this should be a method on the `Context` type?
+            let dpi_factor = context.viewport
+                .map(|v| v.window_size[0] as f32 / view_size[0] as f32)
+                .unwrap_or(1.0);
+            let positioned_glyphs = text.positioned_glyphs(dpi_factor);
+            // Re-orient the context to top-left origin with *y* facing downwards, as the
+            // `positioned_glyphs` yield pixel positioning.
+            let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
+
+            // Queue the glyphs to be cached.
+            for glyph in positioned_glyphs.iter() {
+                glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+            }
+
+            // Cache the glyphs within the GPU cache.
+            glyph_cache.cache_queued(|rect, data| {
+                cache_queued_glyphs(graphics, text_texture_cache, rect, data)
+            }).unwrap();
+
+            let cache_id = font_id.index();
+            let (tex_w, tex_h) = text_texture_cache.get_size();
+            let color = color.to_fsa();
+
+            let rectangles = positioned_glyphs.into_iter()
+                .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
+                .map(|(uv_rect, screen_rect)| {
+                    let rectangle = {
+                        let div_dpi_factor = |s| (s as f32 / dpi_factor as f32) as f64;
+                        let left = div_dpi_factor(screen_rect.min.x);
+                        let top = div_dpi_factor(screen_rect.min.y);
+                        let right = div_dpi_factor(screen_rect.max.x);
+                        let bottom = div_dpi_factor(screen_rect.max.y);
+                        let w = right - left;
+                        let h = bottom - top;
+                        [left, top, w, h]
                     };
-                    let mut start = first;
-                    for end in points {
-                        let coords = [start[0], start[1], end[0], end[1]];
-                        line.draw(coords, &context.draw_state, context.transform, graphics);
-                        start = end;
-                    }
+                    let source_rectangle = {
+                        let x = (uv_rect.min.x * tex_w as f32).round() as i32;
+                        let y = (uv_rect.min.y * tex_h as f32).round() as i32;
+                        let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32).round() as i32;
+                        let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32).round() as i32;
+                        [x, y, w, h]
+                    };
+                    (rectangle, source_rectangle)
+                });
+            glyph_rectangles.clear();
+            glyph_rectangles.extend(rectangles);
+            piston_graphics::image::draw_many(&glyph_rectangles,
+                                              color,
+                                              text_texture_cache,
+                                              &context.draw_state,
+                                              context.transform,
+                                              graphics);
+        },
+
+        render::PrimitiveKind::Image { color, source_rect } => {
+            if let Some(img) = image_map.get(index) {
+                let mut image = piston_graphics::image::Image::new();
+                image.color = color.map(|c| c.to_fsa());
+                if let Some(source_rect) = source_rect {
+                    let (x, y, w, h) = source_rect.x_y_w_h();
+                    image.source_rectangle = Some([x as i32, y as i32, w as i32, h as i32]);
                 }
-            },
+                let (left, top, w, h) = rect.l_t_w_h();
+                image.rectangle = Some([0.0, 0.0, w, h]);
+                let context = context.trans(left, top).scale(1.0, -1.0);
+                let transform = context.transform;
+                let draw_state = &context.draw_state;
+                let tex = texture_from_image(img);
+                image.draw(tex, draw_state, transform, graphics);
+            }
+        },
 
-            render::PrimitiveKind::Text { color, text, font_id } => {
+        render::PrimitiveKind::Other(_widget) => {
+            // TODO: Perhaps add a function to the `primitives` params to allow a user to
+            // handle these.
+        },
 
-                // Retrieve the "dots per inch" factor by dividing the window width by the view.
-                //
-                // TODO: Perhaps this should be a method on the `Context` type?
-                let dpi_factor = context.viewport
-                    .map(|v| v.window_size[0] as f32 / view_size[0] as f32)
-                    .unwrap_or(1.0);
-                let positioned_glyphs = text.positioned_glyphs(dpi_factor);
-                let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
-
-                // Queue the glyphs to be cached.
-                for glyph in positioned_glyphs.iter() {
-                    glyph_cache.queue_glyph(font_id.index(), glyph.clone());
-                }
-
-                // Cache the glyphs within the GPU cache.
-                glyph_cache.cache_queued(|rect, data| {
-                    cache_queued_glyphs(graphics, text_texture_cache, rect, data)
-                }).unwrap();
-
-                let cache_id = font_id.index();
-                let (tex_w, tex_h) = text_texture_cache.get_size();
-                let color = color.to_fsa();
-
-                let rectangles = positioned_glyphs.into_iter()
-                    .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
-                    .map(|(uv_rect, screen_rect)| {
-                        let rectangle = {
-                            let div_dpi_factor = |s| (s as f32 / dpi_factor as f32) as f64;
-                            let left = div_dpi_factor(screen_rect.min.x);
-                            let top = div_dpi_factor(screen_rect.min.y);
-                            let right = div_dpi_factor(screen_rect.max.x);
-                            let bottom = div_dpi_factor(screen_rect.max.y);
-                            let w = right - left;
-                            let h = bottom - top;
-                            [left, top, w, h]
-                        };
-                        let source_rectangle = {
-                            let x = (uv_rect.min.x * tex_w as f32).round() as i32;
-                            let y = (uv_rect.min.y * tex_h as f32).round() as i32;
-                            let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32).round() as i32;
-                            let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32).round() as i32;
-                            [x, y, w, h]
-                        };
-                        (rectangle, source_rectangle)
-                    });
-                glyph_rectangles.clear();
-                glyph_rectangles.extend(rectangles);
-                piston_graphics::image::draw_many(&glyph_rectangles,
-                                                  color,
-                                                  text_texture_cache,
-                                                  &context.draw_state,
-                                                  context.transform,
-                                                  graphics);
-            },
-
-            render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
-                if let Some(img) = image {
-                    let mut image = piston_graphics::image::Image::new();
-                    image.color = maybe_color.map(|c| c.to_fsa());
-                    if let Some(source_rect) = source_rect {
-                        let (x, y, w, h) = source_rect.x_y_w_h();
-                        image.source_rectangle = Some([x as i32, y as i32, w as i32, h as i32]);
-                    }
-                    let (left, top, w, h) = rect.l_t_w_h();
-                    image.rectangle = Some([0.0, 0.0, w, h]);
-                    let context = context.trans(left, top).scale(1.0, -1.0);
-                    let transform = context.transform;
-                    let draw_state = &context.draw_state;
-                    let tex = texture_from_image(img);
-                    image.draw(tex, draw_state, transform, graphics);
-                }
-            },
-
-            render::PrimitiveKind::Other(_widget) => {
-                // TODO: Perhaps add a function to the `primitives` params to allow a user to
-                // handle these.
-            },
-
-        }
     }
+ 
+
 }
+
 
 
 /// Crop the given **Context** to the given **Rect**.
