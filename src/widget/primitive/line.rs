@@ -63,7 +63,9 @@ pub enum Pattern {
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Cap {
+    /// The line is capped with a flat edge.
     Flat,
+    /// The line is capped with a semi-circle.
     Round,
 }
 
