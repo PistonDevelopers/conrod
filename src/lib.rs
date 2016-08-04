@@ -14,7 +14,7 @@ extern crate input as piston_input;
 extern crate rusttype;
 
 
-pub use widget::primitive::line::Line;
+pub use widget::primitive::line::{Line, Cap as LineCap};
 pub use widget::primitive::image::Image;
 pub use widget::primitive::point_path::PointPath;
 pub use widget::primitive::shape::circle::Circle;
