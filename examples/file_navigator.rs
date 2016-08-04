@@ -21,7 +21,8 @@ fn main() {
     window.set_ups(60);
 
     // Construct our `Ui`.
-    let mut ui = conrod::Ui::new(conrod::Theme::default());
+    let mut ui = conrod::UiBuilder::new()
+        .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();

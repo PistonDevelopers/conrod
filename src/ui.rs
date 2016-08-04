@@ -11,6 +11,15 @@ use theme::Theme;
 use utils;
 use widget::{self, Widget};
 
+/// `UiBuilder` stores everything that needs to be customized when constructing
+//// 'Ui' type.
+
+pub struct UiBuilder {
+    /// The theme used to set default styling for widgets.
+    maybe_theme: Option<Theme>,
+    /// Number of widgets given as number
+    maybe_widgets_capacity: Option<usize>
+}
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
@@ -88,36 +97,60 @@ pub struct UiCell<'a> {
 /// buffer. Otherwise if we don't draw into each buffer, we will probably be subject to flickering.
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
+impl UiBuilder {
+    /// Create **Ui** builder with defaults.
+    ///
+    /// - maybe_theme: Theme::default()
+    /// - maybe_widgets_capacity: None
+    pub fn new() -> Self {
+        UiBuilder {
+            maybe_theme: None,
+            maybe_widgets_capacity: None
+        }
+    }
+
+    /// Sets the theme of built **Ui**.
+    ///
+    /// This method moves the current builder,
+    /// so that it can be used in method chaining.
+    pub fn theme(mut self, value: Theme) -> Self {
+        self.maybe_theme = Some(value);
+        self
+    }
+
+    /// Sets widgets capacity of built **Ui**.
+    ///
+    /// This method moves the current builder,
+    /// so that it can be used in method chaining.
+    pub fn widgets_capacity(mut self, value: usize) -> Self {
+        self.maybe_widgets_capacity = Some(value);
+        self
+    }
+
+    /// Build **Ui** from the given builder
+    pub fn build(self) -> Ui {
+        Ui::new(self)
+    }
+}
 
 impl Ui {
 
     /// A new, empty **Ui**.
-    pub fn new(theme: Theme) -> Self {
-        let widget_graph = Graph::new();
-        let depth_order = graph::DepthOrder::new();
-        let updated_widgets = std::collections::HashSet::new();
-        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
-    }
+    fn new(builder: UiBuilder) -> Self {
+        let (mut widget_graph, depth_order, updated_widgets) =
+            builder.maybe_widgets_capacity.map_or_else(
+                || (Graph::new(),
+                   graph::DepthOrder::new(),
+                   std::collections::HashSet::new()),
+                |n| (Graph::with_node_capacity(n),
+                     graph::DepthOrder::with_node_capacity(n),
+                     std::collections::HashSet::with_capacity(n)));
 
-    /// A new **Ui** with the capacity given as a number of widgets.
-    pub fn with_capacity(theme: Theme, n_widgets: usize) -> Self {
-        let widget_graph = Graph::with_node_capacity(n_widgets);
-        let depth_order = graph::DepthOrder::with_node_capacity(n_widgets);
-        let updated_widgets = std::collections::HashSet::with_capacity(n_widgets);
-        Self::new_internal(theme, widget_graph, depth_order, updated_widgets)
-    }
-
-    /// An internal constructor to share logic between the `new` and `with_capacity` constructors.
-    fn new_internal(theme: Theme,
-                    mut widget_graph: Graph,
-                    depth_order: graph::DepthOrder,
-                    updated_widgets: std::collections::HashSet<NodeIndex>) -> Self
-    {
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
         Ui {
             widget_graph: widget_graph,
-            theme: theme,
+            theme: builder.maybe_theme.unwrap_or_else(|| Theme::default()),
             fonts: text::font::Map::new(),
             window: window,
             win_w: 0.0,

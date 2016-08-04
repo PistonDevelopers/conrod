@@ -1,5 +1,4 @@
 use {
-    Theme,
     Canvas,
     Color,
     Labelable,
@@ -8,6 +7,7 @@ use {
     Sizeable,
     Widget,
     Ui,
+    UiBuilder
 };
 use event::{self, Input, Motion};
 use input::{self, Button, Key, MouseButton};
@@ -67,8 +67,8 @@ fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
 }
 
 fn windowless_ui() -> Ui {
-    let theme = Theme::default();
-    Ui::new(theme)
+    UiBuilder::new()
+        .build()
 }
 
 

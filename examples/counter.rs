@@ -7,7 +7,7 @@ fn main() {
     const WIDTH: u32 = 200;
     const HEIGHT: u32 = 200;
 
-    use conrod::{Labelable, Positionable, Sizeable, Theme, Widget};
+    use conrod::{Labelable, Positionable, Sizeable, Widget};
     use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
     // Change this to OpenGL::V2_1 if not working.
@@ -19,7 +19,8 @@ fn main() {
     window.set_ups(60);
 
     // construct our `Ui`.
-    let mut ui = conrod::Ui::new(Theme::default());
+    let mut ui = conrod::UiBuilder::new()
+        .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
