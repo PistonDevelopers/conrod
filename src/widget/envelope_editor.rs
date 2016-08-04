@@ -4,8 +4,8 @@ use {
     Colorable,
     Direction,
     Edge,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     FontSize,
     IndexSlot,
     Labelable,
@@ -50,12 +50,12 @@ pub struct EnvelopeEditor<'a, E:'a, F>
 widget_style!{
     /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
     style Style {
-        /// Coloring for the EnvelopeEditor's **FramedRectangle**.
+        /// Coloring for the EnvelopeEditor's **BorderedRectangle**.
         - color: Color { theme.shape_color }
-        /// Thickness of the **FramedRectangle**'s frame.
-        - frame: f64 { theme.frame_width }
-        /// Color of the frame.
-        - frame_color: Color { theme.frame_color }
+        /// Thickness of the **BorderedRectangle**'s border.
+        - border: f64 { theme.border_width }
+        /// Color of the border.
+        - border_color: Color { theme.border_color }
         /// Color of the label.
         - label_color: Color { theme.label_color }
         /// The font size of the **EnvelopeEditor**'s label if one was given.
@@ -197,9 +197,9 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         } = self;
 
         let point_radius = style.point_radius(ui.theme());
-        let frame = style.frame(ui.theme());
+        let border = style.border(ui.theme());
         let rel_rect = Rect::from_xy_dim([0.0, 0.0], rect.dim());
-        let inner_rel_rect = rel_rect.pad(frame);
+        let inner_rel_rect = rel_rect.pad(border);
 
         // Converts some envelope point's `x` value to a value in the given `Scalar` range.
         let map_x_to = |x: E::X, start: Scalar, end: Scalar| -> Scalar {
@@ -380,22 +380,22 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             state.update(|state| state.pressed_point = pressed_point);
         }
 
-        let inner_rect = rect.pad(frame);
+        let inner_rect = rect.pad(border);
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
-        let frame = style.frame(ui.theme());
+        let border = style.border(ui.theme());
         let color = style.color(ui.theme());
         let color = ui.widget_input(idx).mouse()
             .and_then(|m| if inner_rect.is_over(m.abs_xy()) { Some(color.highlighted()) }
                           else { None })
             .unwrap_or(color);
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(dim)
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         let label_color = style.label_color(ui.theme());
@@ -526,13 +526,13 @@ impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, E, F> Frameable for EnvelopeEditor<'a, E, F>
+impl<'a, E, F> Borderable for EnvelopeEditor<'a, E, F>
     where
         E: EnvelopePoint
 {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

@@ -29,7 +29,7 @@ pub use widget::drop_down_list::DropDownList;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::file_navigator::{FileNavigator, Event as FileNavigatorEvent};
-pub use widget::framed_rectangle::FramedRectangle;
+pub use widget::bordered_rectangle::BorderedRectangle;
 pub use widget::list::{List, Item as ListItem, ScrollbarPosition as ListbarScrollPosition};
 pub use widget::matrix::Matrix as WidgetMatrix;
 pub use widget::number_dialer::NumberDialer;
@@ -55,7 +55,7 @@ pub use widget::canvas::Style as CanvasStyle;
 pub use widget::drop_down_list::Style as DropDownListStyle;
 pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
 pub use widget::file_navigator::Style as FileNavigatorStyle;
-pub use widget::framed_rectangle::Style as FramedRectangleStyle;
+pub use widget::bordered_rectangle::Style as BorderedRectangleStyle;
 pub use widget::list::Style as ListStyle;
 pub use widget::number_dialer::Style as NumberDialerStyle;
 pub use widget::plot_path::Style as PlotPathStyle;
@@ -71,7 +71,7 @@ pub use widget::xy_pad::Style as XYPadStyle;
 
 
 pub use color::{Color, Colorable};
-pub use frame::{Framing, Frameable};
+pub use border::{Bordering, Borderable};
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
@@ -93,7 +93,7 @@ pub use widget::State as WidgetState;
 pub mod backend;
 pub mod color;
 pub mod event;
-mod frame;
+mod border;
 pub mod graph;
 pub mod guide;
 pub mod image;

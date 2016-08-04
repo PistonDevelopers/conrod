@@ -2,8 +2,8 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Labelable,
     Positionable,
@@ -31,10 +31,10 @@ widget_style!{
     style Style {
         /// Color of the Button's pressable area.
         - color: Color { theme.shape_color }
-        /// Width of the frame surrounding the button
-        - frame: Scalar { theme.frame_width }
-        /// The color of the frame.
-        - frame_color: Color { theme.frame_color }
+        /// Width of the border surrounding the button
+        - border: Scalar { theme.border_width }
+        /// The color of the border.
+        - border_color: Color { theme.border_color }
         /// The color of the Button's label.
         - label_color: Color { theme.label_color }
         /// The font size of the Button's label.
@@ -116,17 +116,17 @@ impl<'a, F> Widget for Button<'a, F>
             })
         };
 
-        // FramedRectangle widget.
+        // BorderedRectangle widget.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
-        let frame = style.frame(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(dim)
+        let border = style.border(ui.theme());
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
@@ -151,10 +151,10 @@ impl<'a, F> Colorable for Button<'a, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Frameable for Button<'a, F> {
+impl<'a, F> Borderable for Button<'a, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

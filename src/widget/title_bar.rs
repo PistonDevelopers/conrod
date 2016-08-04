@@ -4,8 +4,8 @@ use {
     Colorable,
     Dimension,
     FontSize,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     IndexSlot,
     Labelable,
     Positionable,
@@ -22,7 +22,7 @@ use widget::{self, Widget};
 pub struct TitleBar<'a> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
-    /// Unique styling for the **FramedRectangle**.
+    /// Unique styling for the **BorderedRectangle**.
     pub style: Style,
     /// A label displayed in the middle of the TitleBar.
     pub label: &'a str,
@@ -40,10 +40,10 @@ widget_style!{
     style Style {
         /// The color of the TitleBar's rectangle surface.
         - color: Color { theme.background_color }
-        /// The width of the frame surrounding the TitleBar's rectangle.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the TitleBar's frame.
-        - frame_color: Color { theme.frame_color }
+        /// The width of the border surrounding the TitleBar's rectangle.
+        - border: Scalar { theme.border_width }
+        /// The color of the TitleBar's border.
+        - border_color: Color { theme.border_color }
 
         /// The color of the title bar's text.
         - text_color: Color { theme.label_color }
@@ -141,16 +141,16 @@ impl<'a> Widget for TitleBar<'a> {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TitleBar { label, .. } = self;
 
-        // FramedRectangle widget.
+        // BorderedRectangle widget.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
-        let frame = style.frame(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
-        FramedRectangle::new(dim)
+        let border = style.border(ui.theme());
+        let border_color = style.border_color(ui.theme());
+        BorderedRectangle::new(dim)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .middle_of(idx)
             .graphics_for(idx)
             .set(rectangle_idx, &mut ui);
@@ -167,7 +167,7 @@ impl<'a> Widget for TitleBar<'a> {
                 text.style.maybe_wrap = Some(maybe_wrap);
                 text.style.text_align = Some(text_align);
             })
-            .padded_w_of(rectangle_idx, frame)
+            .padded_w_of(rectangle_idx, border)
             .middle_of(rectangle_idx)
             .color(text_color)
             .font_size(font_size)
@@ -183,10 +183,10 @@ impl<'a> Colorable for TitleBar<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a> Frameable for TitleBar<'a> {
+impl<'a> Borderable for TitleBar<'a> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

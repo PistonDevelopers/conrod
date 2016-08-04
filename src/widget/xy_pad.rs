@@ -1,8 +1,8 @@
 use {
     Color,
     Colorable,
-    Frameable,
-    FramedRectangle,
+    Borderable,
+    BorderedRectangle,
     FontSize,
     IndexSlot,
     Labelable,
@@ -41,10 +41,10 @@ widget_style!{
     style Style {
         /// The color of the XYPad's rectangle.
         - color: Color { theme.shape_color }
-        /// The width of the frame surrounding the rectangle.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the surrounding rectangle frame.
-        - frame_color: Color { theme.frame_color }
+        /// The width of the border surrounding the rectangle.
+        - border: Scalar { theme.border_width }
+        /// The color of the surrounding rectangle border.
+        - border_color: Color { theme.border_color }
         /// The color of the XYPad's label and value label text.
         - label_color: Color { theme.label_color }
         /// The font size for the XYPad's label.
@@ -134,8 +134,8 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             ..
         } = self;
 
-        let frame = style.frame(ui.theme());
-        let inner_rect = rect.pad(frame);
+        let border = style.border(ui.theme());
+        let inner_rect = rect.pad(border);
 
         let mut new_x = x;
         let mut new_y = y;
@@ -166,18 +166,18 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
                 })
                 .unwrap_or(color);
 
-        // The backdrop **FramedRectangle** widget.
+        // The backdrop **BorderedRectangle** widget.
         let dim = rect.dim();
         let color = interaction_color(&ui, style.color(ui.theme()));
-        let frame = style.frame(ui.theme());
-        let frame_color = style.frame_color(ui.theme());
+        let border = style.border(ui.theme());
+        let border_color = style.border_color(ui.theme());
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        FramedRectangle::new(dim)
+        BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
-            .frame(frame)
-            .frame_color(frame_color)
+            .border(border)
+            .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
         // Label **Text** widget.
@@ -257,10 +257,10 @@ impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, X, Y, F> Frameable for XYPad<'a, X, Y, F> {
+impl<'a, X, Y, F> Borderable for XYPad<'a, X, Y, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

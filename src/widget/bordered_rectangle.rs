@@ -2,7 +2,7 @@ use {
     Color,
     Colorable,
     Dimensions,
-    Frameable,
+    Borderable,
     IndexSlot,
     Rectangle,
     Positionable,
@@ -13,48 +13,48 @@ use {
 use widget;
 
 
-/// A filled rectangle widget that may or may not have some frame.
+/// A filled rectangle widget that may or may not have some border.
 ///
-/// NOTE: FramedRectangle is currently implemented as two filled rectangles:
+/// NOTE: BorderedRectangle is currently implemented as two filled rectangles:
 ///
-/// 1. A `Rectangle` for the frame.
-/// 2. A `Rectangle` for the non-frame area.
+/// 1. A `Rectangle` for the border.
+/// 2. A `Rectangle` for the non-border area.
 ///
 /// This is flawed in that, if a user specifies an alpha lower than 1.0, the front `Rectangle` will
-/// blend with the frame `Rectangle`, which is likely unexpected behaviour. This should be changed
-/// so that the frame is drawn using a outlined `Rectangle`.
+/// blend with the border `Rectangle`, which is likely unexpected behaviour. This should be changed
+/// so that the border is drawn using a outlined `Rectangle`.
 #[derive(Copy, Clone, Debug)]
-pub struct FramedRectangle {
+pub struct BorderedRectangle {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
-    /// Unique styling for the **FramedRectangle**.
+    /// Unique styling for the **BorderedRectangle**.
     pub style: Style,
 }
 
-/// Unique state for the `FramedRectangle`.
+/// Unique state for the `BorderedRectangle`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    frame_idx: IndexSlot,
+    border_idx: IndexSlot,
     rectangle_idx: IndexSlot,
 }
 
 widget_style!{
-    /// Unique styling for the **FramedRectangle** widget.
+    /// Unique styling for the **BorderedRectangle** widget.
     style Style {
         /// Shape styling for the inner rectangle.
         - color: Color { theme.shape_color }
-        /// The thickness of the frame.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the frame.
-        - frame_color: Color { theme.frame_color }
+        /// The thickness of the border.
+        - border: Scalar { theme.border_width }
+        /// The color of the border.
+        - border_color: Color { theme.border_color }
     }
 }
 
-impl FramedRectangle {
+impl BorderedRectangle {
 
-    /// Build a new **FramedRectangle**.
+    /// Build a new **BorderedRectangle**.
     pub fn new(dim: Dimensions) -> Self {
-        FramedRectangle {
+        BorderedRectangle {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
         }.wh(dim)
@@ -65,7 +65,7 @@ impl FramedRectangle {
 }
 
 
-impl Widget for FramedRectangle {
+impl Widget for BorderedRectangle {
     type State = State;
     type Style = Style;
 
@@ -79,7 +79,7 @@ impl Widget for FramedRectangle {
 
     fn init_state(&self) -> Self::State {
         State {
-            frame_idx: IndexSlot::new(),
+            border_idx: IndexSlot::new(),
             rectangle_idx: IndexSlot::new(),
         }
     }
@@ -92,21 +92,21 @@ impl Widget for FramedRectangle {
     fn update(self, args: widget::UpdateArgs<Self>) {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
-        let frame = style.frame(&ui.theme);
-        if frame > 0.0 {
-            let frame_color = style.frame_color(&ui.theme);
-            let frame_idx = state.frame_idx.get(&mut ui);
+        let border = style.border(&ui.theme);
+        if border > 0.0 {
+            let border_color = style.border_color(&ui.theme);
+            let border_idx = state.border_idx.get(&mut ui);
             Rectangle::fill(rect.dim())
                 .xy(rect.xy())
-                .color(frame_color)
+                .color(border_color)
                 .parent(idx)
                 .graphics_for(idx)
-                .set(frame_idx, &mut ui);
+                .set(border_idx, &mut ui);
         }
 
         let color = style.color(&ui.theme);
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        Rectangle::fill(rect.pad(frame).dim())
+        Rectangle::fill(rect.pad(border).dim())
             .xy(rect.xy())
             .color(color)
             .parent(idx)
@@ -117,14 +117,14 @@ impl Widget for FramedRectangle {
 }
 
 
-impl Colorable for FramedRectangle {
+impl Colorable for BorderedRectangle {
     builder_method!(color { style.color = Some(Color) });
 }
 
 
-impl Frameable for FramedRectangle {
+impl Borderable for BorderedRectangle {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }

@@ -26,7 +26,7 @@ pub mod canvas;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod file_navigator;
-pub mod framed_rectangle;
+pub mod bordered_rectangle;
 pub mod list;
 pub mod matrix;
 pub mod number_dialer;
@@ -447,7 +447,7 @@ pub trait Widget: Sized {
     /// a user of the widget.
     ///
     /// All `Style` structs are typically `Copy` and contain simple, descriptive fields like
-    /// `color`, `font_size`, `line_spacing`, `frame_width`, etc. These types are also required to
+    /// `color`, `font_size`, `line_spacing`, `border_width`, etc. These types are also required to
     /// be `PartialEq`. This is so that the `Ui` may automatically compare the previous style to
     /// the new style each time `.set` is called, allowing conrod to automatically determine
     /// whether or not something has changed and if a re-draw is required.
@@ -481,10 +481,10 @@ pub trait Widget: Sized {
     /// pub struct Style {
     ///     /// Color of the Button's pressable area.
     ///     pub color: Option<Color>,
-    ///     /// Width of the frame surrounding the button.
-    ///     pub frame: Option<Scalar>,
-    ///     /// The color of the Button's rectangular frame.
-    ///     pub frame_color: Option<Color>,
+    ///     /// Width of the border surrounding the button.
+    ///     pub border: Option<Scalar>,
+    ///     /// The color of the Button's rectangular border.
+    ///     pub border_color: Option<Color>,
     ///     /// The color of the Button's label.
     ///     pub label_color: Option<Color>,
     ///     /// The font size for the Button's label.

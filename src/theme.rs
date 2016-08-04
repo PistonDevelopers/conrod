@@ -25,10 +25,10 @@ pub struct Theme {
     pub background_color: Color,
     /// A default color for widget shapes.
     pub shape_color: Color,
-    /// A default color for widget frames.
-    pub frame_color: Color,
-    /// A default width for widget frames.
-    pub frame_width: Scalar,
+    /// A default color for widget borders.
+    pub border_color: Color,
+    /// A default width for widget borders.
+    pub border_width: Scalar,
     /// A default color for widget labels.
     pub label_color: Color,
     /// The `Id` of the default font used for text widgets when one is not specified.
@@ -87,8 +87,8 @@ impl Theme {
             y_position: Position::Direction(Direction::Backwards, 20.0, None),
             background_color: BLACK,
             shape_color: WHITE,
-            frame_color: BLACK,
-            frame_width: 1.0,
+            border_color: BLACK,
+            border_width: 1.0,
             label_color: BLACK,
             font_id: None,
             font_size_large: 26,

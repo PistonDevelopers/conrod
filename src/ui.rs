@@ -918,13 +918,13 @@ impl Ui {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use {color, Colorable, Frameable, FramedRectangle, Positionable, Widget};
-            type Window = FramedRectangle;
+            use {color, Colorable, Borderable, BorderedRectangle, Positionable, Widget};
+            type Window = BorderedRectangle;
             Window::new([self.win_w, self.win_h])
                 .no_parent()
                 .x_y(0.0, 0.0)
-                .frame(0.0)
-                .frame_color(color::BLACK.alpha(0.0))
+                .border(0.0)
+                .border_color(color::BLACK.alpha(0.0))
                 .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
                 .set(self.window, &mut UiCell { ui: self });
         }

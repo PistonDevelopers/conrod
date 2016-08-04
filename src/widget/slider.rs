@@ -2,7 +2,7 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
+    Borderable,
     Labelable,
     IndexSlot,
     KidArea,
@@ -55,10 +55,10 @@ widget_style!{
     style Style {
         /// The color of the slidable rectangle.
         - color: Color { theme.shape_color }
-        /// The length of the frame around the edges of the slidable rectangle.
-        - frame: Scalar { theme.frame_width }
-        /// The color of the Slider's frame.
-        - frame_color: Color { theme.frame_color }
+        /// The length of the border around the edges of the slidable rectangle.
+        - border: Scalar { theme.border_width }
+        /// The color of the Slider's border.
+        - border_color: Color { theme.border_color }
         /// The color of the Slider's label.
         - label_color: Color { theme.label_color }
         /// The font-size for the Slider's label.
@@ -69,7 +69,7 @@ widget_style!{
 /// Represents the state of the Slider widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    frame_idx: IndexSlot,
+    border_idx: IndexSlot,
     slider_idx: IndexSlot,
     label_idx: IndexSlot,
 }
@@ -116,7 +116,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
     fn init_state(&self) -> Self::State {
         State {
-            frame_idx: IndexSlot::new(),
+            border_idx: IndexSlot::new(),
             slider_idx: IndexSlot::new(),
             label_idx: IndexSlot::new(),
         }
@@ -145,8 +145,8 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let Slider { value, min, max, skew, maybe_label, maybe_react, .. } = self;
 
         let is_horizontal = rect.w() > rect.h();
-        let frame = style.frame(ui.theme());
-        let inner_rect = rect.pad(frame);
+        let border = style.border(ui.theme());
+        let inner_rect = rect.pad(border);
 
         let new_value = if let Some(mouse) = ui.widget_input(idx).mouse() {
             if mouse.buttons.left().is_down() {
@@ -183,8 +183,8 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             }
         }
 
-        // The **Rectangle** for the frame.
-        let frame_idx = state.frame_idx.get(&mut ui);
+        // The **Rectangle** for the border.
+        let border_idx = state.border_idx.get(&mut ui);
 
         let interaction_color = |ui: &::ui::UiCell, color: Color|
             ui.widget_input(idx).mouse()
@@ -195,12 +195,12 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 })
                 .unwrap_or(color);
 
-        let frame_color = interaction_color(&ui, style.frame_color(ui.theme()));
+        let border_color = interaction_color(&ui, style.border_color(ui.theme()));
         Rectangle::fill(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
-            .color(frame_color)
-            .set(frame_idx, &mut ui);
+            .color(border_color)
+            .set(border_idx, &mut ui);
 
         // The **Rectangle** for the adjustable slider.
         let slider_rect = if is_horizontal {
@@ -249,10 +249,10 @@ impl<'a, T, F> Colorable for Slider<'a, T, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Frameable for Slider<'a, T, F> {
+impl<'a, T, F> Borderable for Slider<'a, T, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 

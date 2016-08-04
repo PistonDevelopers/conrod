@@ -778,7 +778,7 @@ pub trait Sizeable: Sized {
 
 }
 
-/// The distance between the inner edge of a frame and the outer edge of the inner content.
+/// The distance between the inner edge of a border and the outer edge of the inner content.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Padding {
     /// Padding on the start and end of the *x* axis.

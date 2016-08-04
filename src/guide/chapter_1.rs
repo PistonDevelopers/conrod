@@ -89,7 +89,7 @@ The following are the primitive widgets provided by conrod:
     - **[Rectangle]**
     - **[Oval]**
     - **[Polygon]**
-    - **[FramedRectangle]**
+    - **[BorderedRectangle]**
 - **[Text]** - automatic line-wrapping, line spacing, etc.
 - **[Image]**
 
@@ -310,7 +310,7 @@ of the guide.
 [Rectangle]:        ../../struct.Rectangle.html         "Rectangle Widget"
 [Oval]:             ../../struct.Oval.html              "Oval Widget"
 [Polygon]:          ../../struct.Polygon.html           "Polygon Widget"
-[FramedRectangle]:  ../../struct.FramedRectangle.html   "FramedRectangle Widget"
+[BorderedRectangle]:  ../../struct.BorderedRectangle.html   "BorderedRectangle Widget"
 [Text]:             ../../struct.Text.html              "Text Widget"
 [Image]:            ../../struct.Image.html             "Image Widget"
 

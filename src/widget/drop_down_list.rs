@@ -4,7 +4,7 @@ use {
     Color,
     Colorable,
     FontSize,
-    Frameable,
+    Borderable,
     IndexSlot,
     Labelable,
     List,
@@ -40,10 +40,10 @@ widget_style!{
     style Style {
         /// Color of the widget.
         - color: Color { theme.shape_color }
-        /// Width of the widget's frame.
-        - frame: Scalar { theme.frame_width }
-        /// Color of the widget's frame.
-        - frame_color: Color { theme.frame_color }
+        /// Width of the widget's border.
+        - border: Scalar { theme.border_width }
+        /// Color of the widget's border.
+        - border_color: Color { theme.border_color }
         /// Color of the item labels.
         - label_color: Color { theme.label_color }
         /// Font size for the item labels.
@@ -254,7 +254,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let item_h = h;
                 let list_h = max_visible_height.min(num_strings as Scalar * item_h);
                 let list_idx = state.list_idx.get(&mut ui);
-                let scrollbar_color = style.frame_color(&ui.theme);
+                let scrollbar_color = style.border_color(&ui.theme);
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
                     .unwrap_or_else(|| {
@@ -339,8 +339,8 @@ impl Style {
     pub fn button_style(&self, is_selected: bool) -> ButtonStyle {
         ButtonStyle {
             color: self.color.map(|c| if is_selected { c.highlighted() } else { c }),
-            frame: self.frame,
-            frame_color: self.frame_color,
+            border: self.border,
+            border_color: self.border_color,
             label_color: self.label_color,
             label_font_size: self.label_font_size,
         }
@@ -353,10 +353,10 @@ impl<'a, F> Colorable for DropDownList<'a, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Frameable for DropDownList<'a, F> {
+impl<'a, F> Borderable for DropDownList<'a, F> {
     builder_methods!{
-        frame { style.frame = Some(Scalar) }
-        frame_color { style.frame_color = Some(Color) }
+        border { style.border = Some(Scalar) }
+        border_color { style.border_color = Some(Color) }
     }
 }
 
