@@ -24,6 +24,7 @@ pub mod primitive;
 pub mod button;
 pub mod canvas;
 pub mod drop_down_list;
+pub mod list_select;
 pub mod envelope_editor;
 pub mod file_navigator;
 pub mod bordered_rectangle;
