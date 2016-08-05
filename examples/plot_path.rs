@@ -37,10 +37,11 @@ fn main() {
         event.update(|_| ui.set_widgets(set_ui));
 
         window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed(&image_map) {
+            if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
                 conrod::backend::piston_window::draw(c, g, primitives,
                                                      &mut text_texture_cache,
+                                                     &image_map,
                                                      texture_from_image);
             }
         });

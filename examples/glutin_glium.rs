@@ -106,9 +106,6 @@ mod feature {
             (cache, texture)
         };
 
-        // Mappings from `Image` widget indices to their image data.
-        let image_map = conrod::image::Map::<()>::new();
-
         // Start the loop:
         //
         // - Render the current state of the `Ui`.
@@ -127,7 +124,7 @@ mod feature {
             ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi_factor as conrod::Scalar));
 
             // Draw the `Ui`.
-            if let Some(mut primitives) = ui.draw_if_changed(&image_map) {
+            if let Some(mut primitives) = ui.draw_if_changed() {
                 use conrod::render;
                 use conrod::text::rt;
 
@@ -148,7 +145,7 @@ mod feature {
                 let mut vertices: Vec<Vertex> = Vec::new();
 
                 // Draw each primitive in order of depth.
-                while let Some(render::Primitive { kind, scizzor, rect }) = primitives.next() {
+                while let Some(render::Primitive { index, kind, scizzor, rect }) = primitives.next() {
                     match kind {
 
                         render::PrimitiveKind::Rectangle { color } => {
@@ -223,7 +220,7 @@ mod feature {
                             vertices.extend(extension);
                         },
 
-                        render::PrimitiveKind::Image { maybe_color, image, source_rect } => {
+                        render::PrimitiveKind::Image { color, source_rect } => {
                             // TODO
                         },
 

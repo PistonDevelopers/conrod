@@ -6,6 +6,7 @@
 extern crate piston_window;
 
 use event;
+use image;
 use self::piston_window::{G2dTexture, PistonWindow};
 use render;
 use text;
@@ -71,15 +72,82 @@ pub fn convert_event<E, B>(event: E, window: &PistonWindow<B>) -> Option<event::
 
 
 /// Renders the given sequence of conrod primitives.
-pub fn draw<'a, 'b, Img, F>(context: super::piston::draw::Context,
-                            graphics: &'a mut piston_window::G2d<'b>,
-                            primitives: render::Primitives<Img>,
-                            glyph_cache: &'a mut GlyphCache,
-                            texture_from_image: F)
+pub fn draw<'a, 'b, P, Img, F>(context: super::piston::draw::Context,
+                               graphics: &'a mut piston_window::G2d<'b>,
+                               primitives: P,
+                               glyph_cache: &'a mut GlyphCache,
+                               image_map: &'a image::Map<Img>,
+                               texture_from_image: F)
+    where P: render::PrimitiveWalker,
+          F: FnMut(&Img) -> &G2dTexture<'static>,
+{
+    let GlyphCache { ref mut texture, ref mut cache, ref mut vertex_data } = *glyph_cache;
+
+    // A function used for caching glyphs from `Text` widgets.
+    let cache_queued_glyphs_fn = |graphics: &mut piston_window::G2d,
+                                  cache: &mut G2dTexture<'static>,
+                                  rect: text::rt::Rect<u32>,
+                                  data: &[u8]|
+    {
+        cache_queued_glyphs(graphics, cache, rect, data, vertex_data);
+    };
+
+    super::piston::draw::primitives(
+        primitives,
+        context,
+        graphics,
+        texture,
+        cache,
+        image_map,
+        cache_queued_glyphs_fn,
+        texture_from_image,
+    );
+}
+
+/// Draw a single `Primitive` to the screen.
+///
+/// This is useful if the user requires rendering primitives individually, perhaps to perform their
+/// own rendering in between, etc.
+pub fn draw_primitive<'a, 'b, Img, F>(context: super::piston::draw::Context,
+                                      graphics: &'a mut piston_window::G2d<'b>,
+                                      primitive: render::Primitive,
+                                      glyph_cache: &'a mut GlyphCache,
+                                      image_map: &'a image::Map<Img>,
+                                      glyph_rectangles: &mut Vec<([f64; 4], [i32; 4])>,
+                                      texture_from_image: F)
     where F: FnMut(&Img) -> &G2dTexture<'static>,
 {
-
     let GlyphCache { ref mut texture, ref mut cache, ref mut vertex_data } = *glyph_cache;
+
+    // A function used for caching glyphs from `Text` widgets.
+    let cache_queued_glyphs_fn = |graphics: &mut piston_window::G2d,
+                                  cache: &mut G2dTexture<'static>,
+                                  rect: text::rt::Rect<u32>,
+                                  data: &[u8]|
+    {
+        cache_queued_glyphs(graphics, cache, rect, data, vertex_data);
+    };
+
+    super::piston::draw::primitive(
+        primitive,
+        context,
+        graphics,
+        texture,
+        cache,
+        image_map,
+        glyph_rectangles,
+        cache_queued_glyphs_fn,
+        texture_from_image,
+    );
+}
+
+fn cache_queued_glyphs(graphics: &mut piston_window::G2d,
+                       cache: &mut G2dTexture<'static>,
+                       rect: text::rt::Rect<u32>,
+                       data: &[u8],
+                       vertex_data: &mut Vec<u8>)
+{
+    use self::piston_window::texture::UpdateTexture;
 
     // An iterator that efficiently maps the `byte`s yielded from `data` to `[r, g, b, byte]`;
     //
@@ -101,31 +169,13 @@ pub fn draw<'a, 'b, Img, F>(context: super::piston::draw::Context,
         }
     }
 
-    // A function used for caching glyphs from `Text` widgets.
-    let cache_queued_glyphs = |graphics: &mut piston_window::G2d,
-                               cache: &mut G2dTexture<'static>,
-                               rect: text::rt::Rect<u32>,
-                               data: &[u8]|
-    {
-        use self::piston_window::texture::UpdateTexture;
-        let offset = [rect.min.x, rect.min.y];
-        let size = [rect.width(), rect.height()];
-        let format = self::piston_window::texture::Format::Rgba8;
-        let encoder = &mut graphics.encoder;
+    let offset = [rect.min.x, rect.min.y];
+    let size = [rect.width(), rect.height()];
+    let format = self::piston_window::texture::Format::Rgba8;
+    let encoder = &mut graphics.encoder;
 
-        vertex_data.clear();
-        vertex_data.extend(data.iter().flat_map(|&b| Bytes { b: b, i: 0 }));
-        UpdateTexture::update(cache, encoder, format, &vertex_data[..], offset, size)
-            .expect("Failed to update texture");
-    };
-
-    super::piston::draw::primitives(
-        primitives,
-        context,
-        graphics,
-        texture,
-        cache,
-        cache_queued_glyphs,
-        texture_from_image,
-    );
+    vertex_data.clear();
+    vertex_data.extend(data.iter().flat_map(|&b| Bytes { b: b, i: 0 }));
+    UpdateTexture::update(cache, encoder, format, &vertex_data[..], offset, size)
+        .expect("Failed to update texture");
 }

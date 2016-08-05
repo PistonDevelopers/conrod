@@ -1,7 +1,6 @@
 use color::Color;
 use event;
 use graph::{self, Graph, NodeIndex};
-use image;
 use input;
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
 use render;
@@ -990,9 +989,7 @@ impl Ui {
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
-        -> render::Primitives<'a, Img>
-    {
+    pub fn draw(&mut self) -> render::Primitives {
         let Ui {
             ref mut redraw_count,
             ref widget_graph,
@@ -1011,10 +1008,7 @@ impl Ui {
             *redraw_count -= 1;
         }
 
-        // We're about to draw, so we can reset the image::Map's redraw trigger.
-        image_map.trigger_redraw.set(false);
-
-        render::Primitives::new(widget_graph, indices, theme, fonts, [win_w, win_h], image_map)
+        render::Primitives::new(widget_graph, indices, theme, fonts, [win_w, win_h])
     }
 
 
@@ -1032,15 +1026,9 @@ impl Ui {
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed<'a, Img>(&'a mut self, image_map: &'a image::Map<Img>)
-        -> Option<render::Primitives<'a, Img>>
-    {
-        if image_map.trigger_redraw.get() {
-            self.needs_redraw();
-        }
-
+    pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
         if self.redraw_count > 0 {
-            return Some(self.draw(image_map))
+            return Some(self.draw())
         }
 
         None
