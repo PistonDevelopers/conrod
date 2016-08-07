@@ -69,9 +69,14 @@ pub use self::Event::{SelectEntry, SelectEntries, DoubleClick, KeyPress};
 /// Provides tuple(s) of index in list and string representation of selection
 #[derive(Clone, Debug)]
 pub enum Event {
-    SelectEntry((usize, String)),
+    /// If a single enty is selected, return index in list and string representation of item.
+    SelectEntry(usize, String),
+    /// If several entries are elected, return indices in list and string representations of items.
     SelectEntries(Vec<(usize, String)>),
-    DoubleClick((usize, String)),
+    /// If entry selected by doubleclick, return index in list and string representation of item.
+    DoubleClick(usize, String),
+    /// If one or more entries are elected by keyboard, return indices in list and string
+    /// representations of items as well as specific key event.
     KeyPress(Vec<(usize, String)>, event::KeyPress),
 }
 
@@ -284,7 +289,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                                     state.last_selected_entry = Some(i);
                                 });
                                 if let Some(ref mut react) = self.maybe_react {
-                                    react(Event::DoubleClick((i, self.entries[i].to_string())));
+                                    react(Event::DoubleClick(i, self.entries[i].to_string()));
                                 }
                             }
                         },
@@ -362,7 +367,8 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                                                 react(Event::SelectEntries(list));
                                             } else {
                                                 // Safe to unwrap here, as list len is 1
-                                                react(Event::SelectEntry(list.pop().unwrap()));
+                                                let (ix, st) = list.pop().unwrap();
+                                                react(Event::SelectEntry(ix, st));
                                             }
                                         }
                                     }
@@ -382,7 +388,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                                         state.last_selected_entry = Some(i);
                                     });
                                     if let Some(ref mut react) = self.maybe_react {
-                                        react(Event::SelectEntry((i, self.entries[i].to_string())));
+                                        react(Event::SelectEntry(i, self.entries[i].to_string()));
                                     }
                                 },
                             }
@@ -406,7 +412,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                                             state.last_selected_entry = Some(i);
 
                                             if let Some(ref mut react) = self.maybe_react {
-                                                react(Event::SelectEntry((i, self.entries[i].to_string())));
+                                                react(Event::SelectEntry(i, self.entries[i].to_string()));
                                             }
                                         }),
 
@@ -421,7 +427,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                                             state.last_selected_entry = Some(i);
 
                                             if let Some(ref mut react) = self.maybe_react {
-                                                react(Event::SelectEntry((i, self.entries[i].to_string())));
+                                                react(Event::SelectEntry(i, self.entries[i].to_string()));
                                             }
                                         }),
 

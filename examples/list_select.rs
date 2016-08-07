@@ -72,7 +72,7 @@ fn main() {
         event.update(|_| {
             // Instantiate the conrod widgets.
             ui.set_widgets(|ref mut ui| {
-                use conrod::{Canvas, color, Colorable, Positionable, Sizeable, ListSelect};
+                use conrod::{Canvas, color, Colorable, Positionable, Sizeable, ListSelect, ListSelectEvent};
 
                 widget_ids!(CANVAS, LIST_BOX);
 
@@ -87,14 +87,13 @@ fn main() {
                     .selected_text_color(color::YELLOW)
                     .font_size(16)
                     .scrollbar_auto_hide(false)
-                    .react(|event| {/*
+                    .react(|event| {
                         match event {
-                            Event::SelectEntry(e) 		=> { println!("Select Entry: {:?}", &e); },
-                            Event::SelectEntries(vec) 	=> { println!("Select Entries: {:?}", &vec); },
-                            Event::DoubleClick(vec) 	=> { println!("Double Click: {:?}", &vec); },
-                            Event::KeyPress(vec, kp) 	=> { println!("Keypress: {:?}", &vec); },
-                        }*/
-                        println!("Got event: {:?}", event);
+                            ListSelectEvent::SelectEntry(ix, name) 	=> { println!("Select Entry: {}, {}", ix, name); },
+                            ListSelectEvent::SelectEntries(list) 	=> { println!("Select Entries: {:?}", list); },
+                            ListSelectEvent::DoubleClick(ix, name) 	=> { println!("Double Click: {}, {}", ix, name); },
+                            ListSelectEvent::KeyPress(list, kp) 	=> { println!("Keypress: {:?}, {:?}", kp, list); },
+                        }
                     })
                     .set(LIST_BOX, ui);
                 });

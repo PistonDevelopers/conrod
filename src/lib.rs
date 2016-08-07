@@ -27,6 +27,7 @@ pub use widget::button::Button;
 pub use widget::canvas::Canvas;
 pub use widget::drop_down_list::DropDownList;
 pub use widget::list_select::ListSelect;
+pub use widget::list_select::Event as ListSelectEvent;
 pub use widget::envelope_editor::EnvelopeEditor;
 pub use widget::envelope_editor::EnvelopePoint;
 pub use widget::file_navigator::{FileNavigator, Event as FileNavigatorEvent};
