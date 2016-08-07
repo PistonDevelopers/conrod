@@ -272,6 +272,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     .scrollbar_color(scrollbar_color)
                     .scrollbar_width(scrollbar_width)
                     .mid_top_of(idx)
+                    .floating(true)
                     .item(|item| {
 
                         // Instiate the `Button` for each item.
