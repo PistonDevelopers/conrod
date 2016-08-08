@@ -7,7 +7,6 @@ use {
     Colorable,
     FontSize,
     Labelable,
-    NodeIndex,
     Positionable,
     Scalar,
     Borderable,
@@ -18,7 +17,7 @@ use std::fmt::Display;
 
 /// Displays a given Vec<T> where T: Display as a selectable List. Its reaction is triggered upon
 /// selection of a list item.
-pub struct ListSelect<'a, T, F> {
+pub struct ListSelect<'a, T: 'a, F> {
     entries: &'a [T],
     selected: &'a mut [bool],
     common: widget::CommonBuilder,
@@ -119,67 +118,6 @@ impl<'a, T, F> ListSelect<'a, T, F>
         pub selected_text_color { style.selected_text_color = Some(Color) }
     }
 
-    /// Clear selection status for all items
-    fn clear_all_selected(&mut self, last_selected_entry: &mut Option<usize>) {
-        *last_selected_entry = None;
-        for i in 0..self.selected.len() {
-            self.selected[i] = false;
-        }
-    }
-
-    /// Make sure that last selected item refers to an actual selected value in list
-    /// If not push first selected item, if any.
-    fn validate_last_selected(&mut self, last_selected_entry: &mut Option<usize>) {
-
-        if let Some(ix) = *last_selected_entry {
-            if ix<self.selected.len() && !self.selected[ix] {
-                *last_selected_entry = None;
-            } else {
-                *last_selected_entry = None;
-            }
-        }
-        if *last_selected_entry == None {
-            for j in 0..self.selected.len() {
-                if self.selected[j] {
-                    *last_selected_entry = Some(j);
-                    break;
-                }
-            }
-        }
-    }
-
-    /// Returns a Vec of tuples (index, String) to hand over to React closure
-    fn get_selected_as_tuples(&self) -> Vec<(usize, String)> {
-        let mut selected = Vec::new();
-
-        for i in 0..self.selected.len() {
-            if self.selected[i] {
-                selected.push((i as usize, self.entries[i].to_string()));
-            }
-        }
-        selected
-    }
-
-    /// given an index, find first and last of enclosing selection.
-    /// Used to expand existing block with shift key.
-    fn get_selected_range(&self, ix: usize) -> (usize, usize) {
-        let mut first = ix;
-        while self.selected[first] && first>0 {
-            first -= 1;
-        }
-        if !self.selected[first] {
-            first +=1;
-        }
-        let mut last = ix;
-        while self.selected[last] && last<self.selected.len()-1 {
-            last+=1;
-        }
-        if !self.selected[last] {
-            last -=1;
-        }
-        (first, last)
-    }
-
 }
 
 impl<'a, T, F> Widget for ListSelect<'a, T, F>
@@ -211,255 +149,299 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
 
     /// Update the state of the ListSelect.
     fn update(mut self, args: widget::UpdateArgs<Self>) -> Self::Event {
+        use Sizeable;
 
         let widget::UpdateArgs { idx, mut state, style, mut ui, .. } = args;
+        let ListSelect { entries, selected, multiple_selections, mut maybe_react, .. } = self;
 
-        let list_idx = state.list_idx.get(&mut ui);
-
-        {
-            state.update(|state| {
-                self.validate_last_selected(&mut state.last_selected_entry);
-            });
-            use position::Sizeable;
-
-            let unsel_rect_color = style.color(&ui.theme);
-            let unsel_text_color = style.text_color(&ui.theme);
-            let sel_rect_color   = style.selected_color(&ui.theme);
-            let sel_text_color   = style.selected_text_color(&ui.theme);
-
-            let font_size = style.font_size(&ui.theme);
-            let rect_h = font_size as Scalar * 2.0;
-
-            // For storing NodeIndex for the buttons in the list, for retrieving events
-            let mut entry_idx_list = vec![NodeIndex::new(0 as usize); self.entries.len()];
-
-            // If set, a widget event was generated. Set in inner closure
-            let mut list_index_event: Option<usize> = None;
-
-            let mut txt_col;
-            let mut rect_col;
-
-            let num_items = self.entries.len() as u32;
-            let (mut list_items, list_scrollbar) = widget::List::new(num_items, rect_h)
-                .scrollbar_on_top()
-                .middle_of(idx)
-                .wh_of(idx)
-                .set(list_idx, &mut ui);
-
-            while let Some(item) = list_items.next(&ui) {
-                let i = item.i;
-                let label = format!("{}", self.entries[i].to_string());
-
-                // Set button colors, depending if selected or not.
-                if self.selected[i] {
-                    txt_col = sel_text_color; rect_col = sel_rect_color;
-                } else {
-                    txt_col = unsel_text_color; rect_col = unsel_rect_color;
-                }
-                // Save widget NodeIndex so input states can be retrieved later
-                entry_idx_list[i]=item.widget_idx;
-
-                let button = widget::Button::new()
-                    .label(&label)
-                    .label_color(txt_col)
-                    .color(rect_col)
-                    .label_font_size(font_size)
-                    .border(0.0);
-                if item.set(button, &mut ui).was_clicked() {
-                    list_index_event = Some(i);
-                }
+        // Make sure that `last_selected_entry` refers to an actual selected value in the list.
+        // If not push first selected item, if any.
+        if let Some(ix) = state.last_selected_entry {
+            if ix >= selected.len() || !selected[ix] {
+                state.update(|state| state.last_selected_entry = None);
             }
-
-            if let Some(scrollbar) = list_scrollbar {
-                scrollbar.set(&mut ui);
-            }
-
-            // If an event (moue click, etc.) happened
-            if let Some(i) = list_index_event {
-                let multi_selections = self.multiple_selections;
-
-                for widget_event in ui.widget_input(entry_idx_list[i as usize]).events() {
-                    use event;
-                    use input::{self};
-
-                    match widget_event {
-
-                        // Check if the entry has been `DoubleClick`ed.
-                        event::Widget::DoubleClick(click) => {
-                            if let input::MouseButton::Left = click.button {
-                                // Deselect all others.
-                                state.update(|state| {
-                                    self.clear_all_selected(&mut state.last_selected_entry);
-                                    self.selected[i] = true;
-                                    state.last_selected_entry = Some(i);
-                                });
-                                if let Some(ref mut react) = self.maybe_react {
-                                    react(Event::DoubleClick(i, self.entries[i].to_string()));
-                                }
-                            }
-                        },
-
-                        // Check if the entry has been `Click`ed.
-                        event::Widget::Click(click) => {
-                            let is_shift_down = click.modifiers.contains(input::keyboard::SHIFT);
-
-                            // On Mac ALT is use for adding to selection, on Windows it's CTRL
-                            let is_alt_down = click.modifiers.contains(input::keyboard::ALT) ||
-                                              click.modifiers.contains(input::keyboard::CTRL);
-
-                            match state.last_selected_entry {
-
-                                // If there is already a currently selected item and shift is
-                                // held, extend the selection to this one.
-                                Some(idx) if is_shift_down && multi_selections => {
-
-                                    // Default range
-                                    let mut start_idx_range = std::cmp::min(idx, i);
-                                    let mut end_idx_range = std::cmp::max(idx, i);
-
-                                    // Get continous block selected from last selected idx
-                                    // so the block can be extended up or down
-                                    let (first, last) = self.get_selected_range(idx);
-
-                                    if i<first {
-                                        start_idx_range = i;
-                                        end_idx_range = last;
-                                    }
-                                    if i>last {
-                                        start_idx_range = first;
-                                        end_idx_range = i;
-                                    }
-
-                                    // generate react list inline rather than using get_selected_as_tuples()
-                                    let mut temp = Vec::new();
-                                    state.update(|state| {
-
-                                        self.clear_all_selected(&mut state.last_selected_entry);
-                                        state.last_selected_entry = Some(i);
-
-                                        // Set selected only for the range. Clearing other blocks.
-                                        for j in 0..self.selected.len() {
-                                            if start_idx_range <= j && j <= end_idx_range {
-                                                self.selected[j] = true;
-                                                temp.push((j as usize, self.entries[j].to_string()));
-                                            } else {
-                                                self.selected[j] = false;
-                                            }
-                                        }
-                                    });
-
-                                    if let Some(ref mut react) = self.maybe_react {
-                                        react(Event::SelectEntries(temp))
-                                    }
-                                },
-
-                                // If alt is down, additively select or deselect this item.
-                                Some(_) | None if is_alt_down && multi_selections => {
-                                    state.update(|state| {
-                                        let new_is_selected = !self.selected[i];
-                                        self.selected[i] = new_is_selected;
-                                        if new_is_selected {
-                                            state.last_selected_entry = Some(i);
-                                        }
-                                    });
-
-                                    let mut list = self.get_selected_as_tuples();
-                                    let num_entries_selected = list.len();
-
-                                    if  num_entries_selected > 0 {
-                                        if let Some(ref mut react) = self.maybe_react {
-                                            if num_entries_selected > 1 {
-                                                react(Event::SelectEntries(list));
-                                            } else {
-                                                // Safe to unwrap here, as list len is 1
-                                                let (ix, st) = list.pop().unwrap();
-                                                react(Event::SelectEntry(ix, st));
-                                            }
-                                        }
-                                    }
-                                },
-
-                                // Otherwise, no shift/ctrl/alt, select just this one
-                                // Clear all others
-                                _ => {
-                                    // Deselect all others.
-                                    state.update(|state| {
-                                        self.clear_all_selected(&mut state.last_selected_entry);
-                                    });
-
-                                    // Select the current item.
-                                    state.update(|state| {
-                                        self.selected[i] = true;
-                                        state.last_selected_entry = Some(i);
-                                    });
-                                    if let Some(ref mut react) = self.maybe_react {
-                                        react(Event::SelectEntry(i, self.entries[i].to_string()));
-                                    }
-                                },
-                            }
-                        },
-
-                        // Check for whether or not the item should be selected.
-                        event::Widget::Press(press) => match press.button {
-
-                            // Keyboard check whether the selection has been bumped up or down.
-                            event::Button::Keyboard(key) => {
-                                if let Some(i) = state.last_selected_entry {
-                                    match key {
-
-                                        // Bump the selection up the list.
-                                        input::Key::Up => state.update(|state| {
-                                            // Clear old selected entries.
-                                            self.clear_all_selected(&mut state.last_selected_entry);
-
-                                            let i = if i == 0 { 0 } else { i - 1 };
-                                            self.selected[i] = true;
-                                            state.last_selected_entry = Some(i);
-
-                                            if let Some(ref mut react) = self.maybe_react {
-                                                react(Event::SelectEntry(i, self.entries[i].to_string()));
-                                            }
-                                        }),
-
-                                        // Bump the selection down the list.
-                                        input::Key::Down => state.update(|state| {
-                                            // Clear old selected entries.
-                                            self.clear_all_selected(&mut state.last_selected_entry);
-
-                                            let last_idx = self.entries.len() - 1;
-                                            let i = if i < last_idx { i + 1 } else { last_idx };
-                                            self.selected[i] = true;
-                                            state.last_selected_entry = Some(i);
-
-                                            if let Some(ref mut react) = self.maybe_react {
-                                                react(Event::SelectEntry(i, self.entries[i].to_string()));
-                                            }
-                                        }),
-
-                                        _ => (),
-                                    }
-
-                                    // For any other pressed keys, yield an event along
-                                    // with all the paths of all selected entries.
-                                    let list = self.get_selected_as_tuples();
-                                    if let Some(ref mut react) = self.maybe_react {
-                                        let key_press = event::KeyPress {
-                                            key: key,
-                                            modifiers: press.modifiers,
-                                        };
-                                        react(Event::KeyPress(list, key_press));
-                                    }
-                                }
-                            },
-
-                            _ => (),
-                        },
-
-                        _ => (),
-                    }
+        }
+        if state.last_selected_entry.is_none() {
+            for j in 0..selected.len() {
+                if selected[j] {
+                    state.update(|state| state.last_selected_entry = Some(j));
+                    break;
                 }
             }
         }
+
+        let unsel_rect_color = style.color(&ui.theme);
+        let unsel_text_color = style.text_color(&ui.theme);
+        let sel_rect_color = style.selected_color(&ui.theme);
+        let sel_text_color = style.selected_text_color(&ui.theme);
+
+        let font_size = style.font_size(&ui.theme);
+        let rect_h = font_size as Scalar * 2.0;
+
+        // If set, a widget event was generated. Set in inner closure
+        let mut clicked_item = None;
+
+        let num_items = self.entries.len() as u32;
+        let (mut list_items, list_scrollbar) = widget::List::new(num_items, rect_h)
+            .scrollbar_on_top()
+            .middle_of(idx)
+            .wh_of(idx)
+            .set(list_idx, &mut ui);
+
+        while let Some(item) = list_items.next(&ui) {
+            let i = item.i;
+            let label = format!("{}", self.entries[i].to_string());
+
+            // Set button colors, depending if selected or not.
+            if self.selected[i] {
+                txt_col = sel_text_color; rect_col = sel_rect_color;
+            } else {
+                txt_col = unsel_text_color; rect_col = unsel_rect_color;
+            }
+            // Save widget NodeIndex so input states can be retrieved later
+            entry_idx_list[i]=item.widget_idx;
+
+            let button = widget::Button::new()
+                .label(&label)
+                .label_color(txt_col)
+                .color(rect_col)
+                .label_font_size(font_size)
+                .border(0.0);
+            if item.set(button, &mut ui).was_clicked() {
+                list_index_event = Some(i);
+            }
+        }
+
+        if let Some(scrollbar) = list_scrollbar {
+            scrollbar.set(&mut ui);
+        }
+
+        // Clear selection status for all items.
+        fn clear_all_selected(last_selected_entry: &mut Option<usize>, selected: &mut [bool]) {
+            *last_selected_entry = None;
+            for i in 0..selected.len() {
+                selected[i] = false;
+            }
+        }
+
+        // Returns a Vec of tuples (index, String) to hand over to React closure
+        let selected_entries = |entries: &[T], selected: &[bool]| -> Vec<(usize, String)> {
+            let mut selected_entries = Vec::new();
+
+            for i in 0..selected.len() {
+                if selected[i] {
+                    selected_entries.push((i as usize, entries[i].to_string()));
+                }
+            }
+
+            selected_entries
+        };
+
+        // Given an index, find the first and last indices of the enclosing selection.
+        // Used to expand existing selection with shift key.
+        fn selected_range(selected: &[bool], ix: usize) -> (usize, usize) {
+            let mut first = ix;
+            while selected[first] && first > 0 {
+                first -= 1;
+            }
+            if !selected[first] {
+                first += 1;
+            }
+            let mut last = ix;
+            while selected[last] && last < selected.len() - 1 {
+                last += 1;
+            }
+            if !selected[last] {
+                last -= 1;
+            }
+            (first, last)
+        }
+
+        // If no list items were clicked, we're done.
+        let (i, item_idx) = match clicked_item {
+            Some(item) => item,
+            None => return,
+        };
+
+        // Otherwise, check for changes in selection.
+        for widget_event in ui.widget_input(item_idx).events() {
+            use {event, input};
+
+            match widget_event {
+
+                // Check if the entry has been `DoubleClick`ed.
+                event::Widget::DoubleClick(click) => {
+                    if let input::MouseButton::Left = click.button {
+                        // Deselect all others.
+                        state.update(|state| {
+                            clear_all_selected(&mut state.last_selected_entry, selected);
+                            selected[i] = true;
+                            state.last_selected_entry = Some(i);
+                        });
+                        if let Some(ref mut react) = maybe_react {
+                            react(Event::DoubleClick(i, entries[i].to_string()));
+                        }
+                    }
+                },
+
+                // Check if the entry has been `Click`ed.
+                event::Widget::Click(click) => {
+                    let is_shift_down = click.modifiers.contains(input::keyboard::SHIFT);
+
+                    // On Mac ALT is use for adding to selection, on Windows it's CTRL
+                    let is_alt_down = click.modifiers.contains(input::keyboard::ALT) ||
+                                      click.modifiers.contains(input::keyboard::CTRL);
+
+                    match state.last_selected_entry {
+
+                        // If there is already a currently selected item and shift is
+                        // held, extend the selection to this one.
+                        Some(idx) if is_shift_down && multiple_selections => {
+
+                            // Default range
+                            let mut start_idx_range = std::cmp::min(idx, i);
+                            let mut end_idx_range = std::cmp::max(idx, i);
+
+                            // Get continous block selected from last selected idx
+                            // so the block can be extended up or down
+                            let (first, last) = selected_range(selected, idx);
+
+                            if i < first {
+                                start_idx_range = i;
+                                end_idx_range = last;
+                            }
+                            if i > last {
+                                start_idx_range = first;
+                                end_idx_range = i;
+                            }
+
+                            // generate react list inline rather than using get_selected_as_tuples()
+                            let mut temp = Vec::new();
+                            state.update(|state| {
+
+                                clear_all_selected(&mut state.last_selected_entry, selected);
+                                state.last_selected_entry = Some(i);
+
+                                // Set selected only for the range. Clearing other blocks.
+                                for j in 0..selected.len() {
+                                    if start_idx_range <= j && j <= end_idx_range {
+                                        selected[j] = true;
+                                        temp.push((j as usize, entries[j].to_string()));
+                                    } else {
+                                        selected[j] = false;
+                                    }
+                                }
+                            });
+
+                            if let Some(ref mut react) = maybe_react {
+                                react(Event::SelectEntries(temp))
+                            }
+                        },
+
+                        // If alt is down, additively select or deselect this item.
+                        Some(_) | None if is_alt_down && multiple_selections => {
+                            state.update(|state| {
+                                let new_is_selected = !selected[i];
+                                selected[i] = new_is_selected;
+                                if new_is_selected {
+                                    state.last_selected_entry = Some(i);
+                                }
+                            });
+
+                            let mut selected_entries = selected_entries(entries, selected);
+                            let num_entries_selected = selected_entries.len();
+
+                            if  num_entries_selected > 0 {
+                                if let Some(ref mut react) = maybe_react {
+                                    if num_entries_selected > 1 {
+                                        react(Event::SelectEntries(selected_entries));
+                                    } else {
+                                        // Safe to unwrap here, as list len is 1
+                                        let (ix, st) = selected_entries.pop().unwrap();
+                                        react(Event::SelectEntry(ix, st));
+                                    }
+                                }
+                            }
+                        },
+
+                        // Otherwise, no shift/ctrl/alt, select just this one
+                        // Clear all others
+                        _ => {
+                            // Deselect all others.
+                            state.update(|state| {
+                                clear_all_selected(&mut state.last_selected_entry, selected);
+                            });
+
+                            // Select the current item.
+                            selected[i] = true;
+                            state.update(|state| state.last_selected_entry = Some(i));
+                            if let Some(ref mut react) = maybe_react {
+                                react(Event::SelectEntry(i, entries[i].to_string()));
+                            }
+                        },
+                    }
+                },
+
+                // Check for whether or not the item should be selected.
+                event::Widget::Press(press) => match press.button {
+
+                    // Keyboard check whether the selection has been bumped up or down.
+                    event::Button::Keyboard(key) => {
+                        if let Some(i) = state.last_selected_entry {
+                            match key {
+
+                                // Bump the selection up the list.
+                                input::Key::Up => state.update(|state| {
+                                    // Clear old selected entries.
+                                    clear_all_selected(&mut state.last_selected_entry, selected);
+
+                                    let i = if i == 0 { 0 } else { i - 1 };
+                                    selected[i] = true;
+                                    state.last_selected_entry = Some(i);
+
+                                    if let Some(ref mut react) = maybe_react {
+                                        react(Event::SelectEntry(i, entries[i].to_string()));
+                                    }
+                                }),
+
+                                // Bump the selection down the list.
+                                input::Key::Down => state.update(|state| {
+                                    // Clear old selected entries.
+                                    clear_all_selected(&mut state.last_selected_entry, selected);
+
+                                    let last_idx = entries.len() - 1;
+                                    let i = if i < last_idx { i + 1 } else { last_idx };
+                                    selected[i] = true;
+                                    state.last_selected_entry = Some(i);
+
+                                    if let Some(ref mut react) = maybe_react {
+                                        react(Event::SelectEntry(i, entries[i].to_string()));
+                                    }
+                                }),
+
+                                _ => (),
+                            }
+
+                            // For any other pressed keys, yield an event along
+                            // with all the paths of all selected entries.
+                            let selected_entries = selected_entries(entries, selected);
+                            if let Some(ref mut react) = maybe_react {
+                                let key_press = event::KeyPress {
+                                    key: key,
+                                    modifiers: press.modifiers,
+                                };
+                                react(Event::KeyPress(selected_entries, key_press));
+                            }
+                        }
+                    },
+
+                    _ => (),
+                },
+
+                _ => (),
+            }
+        }
+
     }
 
 }
