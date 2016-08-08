@@ -18,7 +18,7 @@ use std::fmt::Display;
 
 /// Displays a given Vec<T> where T: Display as a selectable List. Its reaction is triggered upon
 /// selection of a list item.
-pub struct ListSelect<'a, T, F> where F: FnMut(Event), T: Display+'a {
+pub struct ListSelect<'a, T, F> {
     entries: &'a [T],
     selected: &'a mut [bool],
     common: widget::CommonBuilder,
@@ -75,7 +75,10 @@ pub enum Event {
     KeyPress(Vec<(usize, String)>, event::KeyPress),
 }
 
-impl<'a, T, F> ListSelect<'a, T, F> where F: FnMut(Event), T: Display {
+impl<'a, T, F> ListSelect<'a, T, F>
+    where F: FnMut(Event),
+          T: Display,
+{
 
     /// Internal constructor
     fn new(entries: &'a [T], selected: &'a mut [bool], multi_sel: bool) -> Self {
@@ -180,7 +183,8 @@ impl<'a, T, F> ListSelect<'a, T, F> where F: FnMut(Event), T: Display {
 }
 
 impl<'a, T, F> Widget for ListSelect<'a, T, F>
-    where F: FnMut(Event), T: Display+'a
+    where F: FnMut(Event),
+          T: Display + 'a,
 {
     type State = State;
     type Style = Style;
@@ -460,11 +464,11 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
 
 }
 
-impl<'a, T, F> Colorable for ListSelect<'a, T, F> where F: FnMut(Event), T: Display {
+impl<'a, T, F> Colorable for ListSelect<'a, T, F> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Borderable for ListSelect<'a, T, F> where F: FnMut(Event), T: Display {
+impl<'a, T, F> Borderable for ListSelect<'a, T, F> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
