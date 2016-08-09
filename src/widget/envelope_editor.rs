@@ -1,22 +1,19 @@
+//! The `EnvelopeEditor` widget and related items.
+
 use {
-    Circle,
     Color,
     Colorable,
     Direction,
     Edge,
     Borderable,
-    BorderedRectangle,
     FontSize,
-    IndexSlot,
     Labelable,
     NodeIndex,
     Point,
-    PointPath,
     Positionable,
     Rect,
     Scalar,
     Sizeable,
-    Text,
     Widget,
 };
 use num::Float;
@@ -73,10 +70,10 @@ widget_style!{
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     pressed_point: Option<usize>,
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
-    value_label_idx: IndexSlot,
-    point_path_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
+    value_label_idx: widget::IndexSlot,
+    point_path_idx: widget::IndexSlot,
     point_indices: Vec<NodeIndex>,
 }
 
@@ -170,10 +167,10 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
     fn init_state(&self) -> Self::State {
         State {
             pressed_point: None,
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
-            value_label_idx: IndexSlot::new(),
-            point_path_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
+            value_label_idx: widget::IndexSlot::new(),
+            point_path_idx: widget::IndexSlot::new(),
             point_indices: Vec::new(),
         }
     }
@@ -390,7 +387,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                           else { None })
             .unwrap_or(color);
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
@@ -402,7 +399,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         if let Some(label) = maybe_label {
             let label_idx = state.label_idx.get(&mut ui);
             let font_size = style.label_font_size(ui.theme());
-            Text::new(label)
+            widget::Text::new(label)
                 .middle_of(rectangle_idx)
                 .graphics_for(idx)
                 .color(label_color)
@@ -419,7 +416,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
                 [x, y]
             });
-            PointPath::new(points)
+            widget::PointPath::new(points)
                 .wh(inner_rect.dim())
                 .xy(inner_rect.xy())
                 .graphics_for(idx)
@@ -456,7 +453,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     })
                     .unwrap_or(line_color)
             };
-            Circle::fill(point_radius)
+            widget::Circle::fill(point_radius)
                 .color(point_color)
                 .x_y(x, y)
                 .graphics_for(idx)
@@ -504,7 +501,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
             let value_label_idx = state.value_label_idx.get(&mut ui);
             let closest_point_idx = state.point_indices[closest_idx];
             const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
-            Text::new(&xy_string)
+            widget::Text::new(&xy_string)
                 .x_direction_from(closest_point_idx, x_direction, VALUE_TEXT_PAD)
                 .y_direction_from(closest_point_idx, y_direction, VALUE_TEXT_PAD)
                 .color(line_color)

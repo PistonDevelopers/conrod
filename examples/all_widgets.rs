@@ -12,32 +12,7 @@ extern crate find_folder;
 extern crate piston_window;
 extern crate rand; // for making a random color.
 
-use conrod::{
-    color,
-    Button,
-    Canvas,
-    Circle,
-    Color,
-    Colorable,
-    DropDownList,
-    EnvelopeEditor,
-    Borderable,
-    Labelable,
-    NumberDialer,
-    Point,
-    Positionable,
-    Scrollbar,
-    Slider,
-    Sizeable,
-    Text,
-    TextBox,
-    Toggle,
-    Widget,
-    WidgetMatrix,
-    XYPad,
-};
 use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
-use std::sync::mpsc;
 
 
 /// This struct holds all of the variables used to demonstrate application data being passed
@@ -46,7 +21,7 @@ use std::sync::mpsc;
 /// during interaction with the widgets.
 struct DemoApp {
     /// Background color (for demonstration of button and sliders).
-    bg_color: Color,
+    bg_color: conrod::Color,
     /// Should the button be shown (for demonstration of button).
     show_button: bool,
     /// The label that will be drawn to the Toggle.
@@ -65,27 +40,27 @@ struct DemoApp {
     /// A vector of strings for drop_down_list demonstration.
     ddl_colors: Vec<String>,
     /// The currently selected DropDownList color.
-    ddl_color: Color,
+    ddl_color: conrod::Color,
     /// We also need an Option<idx> to indicate whether or not an
     /// item is selected.
     selected_idx: Option<usize>,
     /// Co-ordinates for a little circle used to demonstrate the
     /// xy_pad.
-    circle_pos: Point,
+    circle_pos: conrod::Point,
     /// Envelope for demonstration of EnvelopeEditor.
-    envelopes: Vec<(Vec<Point>, String)>,
+    envelopes: Vec<(Vec<conrod::Point>, String)>,
     /// A channel for sending results from the `WidgetMatrix`.
-    elem_sender: mpsc::Sender<(usize, usize, bool)>,
-    elem_receiver: mpsc::Receiver<(usize, usize, bool)>,
+    elem_sender: std::sync::mpsc::Sender<(usize, usize, bool)>,
+    elem_receiver: std::sync::mpsc::Receiver<(usize, usize, bool)>,
 }
 
 impl DemoApp {
 
     /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
-        let (elem_sender, elem_receiver) = mpsc::channel();
+        let (elem_sender, elem_receiver) = std::sync::mpsc::channel();
         DemoApp {
-            bg_color: color::rgb(0.2, 0.35, 0.45),
+            bg_color: conrod::color::rgb(0.2, 0.35, 0.45),
             show_button: false,
             toggle_label: "OFF".to_string(),
             title_pad: 350.0,
@@ -104,7 +79,7 @@ impl DemoApp {
                               "Red".to_string(),
                               "Green".to_string(),
                               "Blue".to_string()],
-            ddl_color: color::PURPLE,
+            ddl_color: conrod::color::PURPLE,
             selected_idx: None,
             circle_pos: [-50.0, 110.0],
             envelopes: vec![(vec![ [0.0, 0.0],
@@ -198,19 +173,48 @@ fn main() {
 /// allocations by updating the pre-existing cached state. A new graphical `Element` is only
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
 fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
+    use conrod::{color, widget, Colorable, Borderable, Labelable, Positionable, Sizeable, Widget};
+
+    // In conrod, each widget must have its own unique identifier so that the `Ui` can keep track
+    // of its state between updates.
+    //
+    // To make this easier, conrod provides the `widget_ids` macro, which generates a unique
+    // const `widget::Id` for each identifier given in the list.
+    //
+    // The `with n` syntax reserves `n` number of `widget::Id`s for that identifier, rather than
+    // just one.
+    //
+    // This is often useful when you need to use an identifier in some kind of loop.
+    widget_ids! {
+        CANVAS,
+        CANVAS_X_SCROLLBAR,
+        CANVAS_Y_SCROLLBAR,
+        TITLE,
+        BUTTON,
+        TITLE_PAD_SLIDER,
+        TOGGLE,
+        COLOR_SLIDER with 3,
+        SLIDER_HEIGHT,
+        BORDER_WIDTH,
+        TOGGLE_MATRIX,
+        COLOR_SELECT,
+        CIRCLE_POSITION,
+        CIRCLE,
+        ENVELOPE_EDITOR with 4
+    }
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-    Canvas::new()
+    widget::Canvas::new()
         .border(app.border_width)
         .pad(30.0)
         .color(app.bg_color)
         .scroll_kids()
         .set(CANVAS, ui);
-    Scrollbar::x_axis(CANVAS).auto_hide(true).set(CANVAS_Y_SCROLLBAR, ui);
-    Scrollbar::y_axis(CANVAS).auto_hide(true).set(CANVAS_X_SCROLLBAR, ui);
+    widget::Scrollbar::x_axis(CANVAS).auto_hide(true).set(CANVAS_Y_SCROLLBAR, ui);
+    widget::Scrollbar::y_axis(CANVAS).auto_hide(true).set(CANVAS_X_SCROLLBAR, ui);
 
     // Text example.
-    Text::new("Widget Demonstration")
+    widget::Text::new("Widget Demonstration")
         .top_left_with_margins_on(CANVAS, 0.0, app.title_pad)
         .font_size(32)
         .color(app.bg_color.plain_contrast())
@@ -219,7 +223,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     if app.show_button {
 
         // Button widget example button.
-        Button::new()
+        widget::Button::new()
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
@@ -244,7 +248,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         };
 
         // Slider widget example slider(value, min, max).
-        Slider::new(pad as f32, 0.0, 670.0)
+        widget::Slider::new(pad as f32, 0.0, 670.0)
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
@@ -264,7 +268,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     let shown_widget = if app.show_button { BUTTON } else { TITLE_PAD_SLIDER };
 
     // Toggle widget example toggle(value).
-    Toggle::new(app.show_button)
+    widget::Toggle::new(app.show_button)
         .w_h(75.0, 75.0)
         .down(20.0)
         .rgb(0.6, 0.25, 0.75)
@@ -302,7 +306,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         let label = format!("{:.*}", 2, value);
 
         // Slider widget examples. slider(value, min, max)
-        Slider::new(value, 0.0, 1.0)
+        widget::Slider::new(value, 0.0, 1.0)
             .and(|slider| if i == 0 { slider.down(25.0) } else { slider.right(20.0) })
             .w_h(40.0, app.v_slider_height)
             .color(color)
@@ -319,7 +323,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     }
 
     // Number Dialer widget example. (value, min, max, precision)
-    NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
+    widget::NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
         .w_h(260.0, 60.0)
         .right_from(shown_widget, 30.0)
         .color(app.bg_color.invert())
@@ -330,7 +334,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .set(SLIDER_HEIGHT, ui);
 
     // Number Dialer widget example. (value, min, max, precision)
-    NumberDialer::new(app.border_width, 0.0, 15.0, 2)
+    widget::NumberDialer::new(app.border_width, 0.0, 15.0, 2)
         .w_h(260.0, 60.0)
         .down(20.0)
         .color(app.bg_color.invert().plain_contrast())
@@ -344,7 +348,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     // A demonstration using widget_matrix to easily draw
     // a matrix of any kind of widget.
     let (cols, rows) = (8, 8);
-    WidgetMatrix::new(cols, rows)
+    widget::Matrix::new(cols, rows)
         .down(20.0)
         .w_h(260.0, 260.0) // matrix width and height.
         .each_widget(|_n, col: usize, row: usize| { // called for every matrix elem.
@@ -363,7 +367,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             // element's rectangle.
             let elem = app.bool_matrix[col][row];
             let elem_sender = app.elem_sender.clone();
-            Toggle::new(elem)
+            widget::Toggle::new(elem)
                 .rgba(r, g, b, a)
                 .border(app.border_width)
                 .react(move |new_val: bool| elem_sender.send((col, row, new_val)).unwrap())
@@ -377,7 +381,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
 
     // A demonstration using a DropDownList to select its own color.
     let mut ddl_color = app.ddl_color;
-    DropDownList::new(&mut app.ddl_colors, &mut app.selected_idx)
+    widget::DropDownList::new(&mut app.ddl_colors, &mut app.selected_idx)
         .w_h(150.0, 40.0)
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
@@ -402,7 +406,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     app.ddl_color = ddl_color;
 
     // Draw an xy_pad.
-    XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
+    widget::XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
                app.circle_pos[1], 95.0, 245.0) // y range.
         .w_h(150.0, 150.0)
         .right_from(TOGGLE_MATRIX, 30.0)
@@ -420,7 +424,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .set(CIRCLE_POSITION, ui);
 
     // Draw a circle at the app's circle_pos.
-    Circle::fill(15.0)
+    widget::Circle::fill(15.0)
         .xy_relative_to(CIRCLE_POSITION, app.circle_pos)
         .color(app.ddl_color)
         .set(CIRCLE, ui);
@@ -432,7 +436,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
 
         // A text box in which we can mutate a single line of text, and trigger reactions via the
         // `Enter`/`Return` key.
-        TextBox::new(text)
+        widget::TextBox::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
             .w_h(320.0, 40.0)
@@ -446,7 +450,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         let env_skew_y = if i == 0 { 3.0 } else { 1.0 };
 
         // Draw an EnvelopeEditor. (&mut Vec<Point>, x_min, x_max, y_min, y_max).
-        EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
+        widget::EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
             .down(10.0)
             .w_h(320.0, 150.0)
             .skew_y(env_skew_y)
@@ -457,34 +461,8 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .label_color(app.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
             .line_thickness(2.0)
-            .react(|_points: &mut Vec<Point>, _idx: usize|{})
+            .react(|_points: &mut Vec<conrod::Point>, _idx: usize|{})
             .set(ENVELOPE_EDITOR + (i * 2) + 1, ui);
     }
 
-}
-
-
-// In conrod, each widget must have its own unique identifier so that the `Ui` can keep track of
-// its state between updates.
-// To make this easier, conrod provides the `widget_ids` macro, which generates a unique `WidgetId`
-// for each identifier given in the list.
-// The `with n` syntax reserves `n` number of WidgetIds for that identifier, rather than just one.
-// This is often useful when you need to use an identifier in some kind of loop (i.e. like within
-// the use of `WidgetMatrix` as above).
-widget_ids! {
-    CANVAS,
-    CANVAS_X_SCROLLBAR,
-    CANVAS_Y_SCROLLBAR,
-    TITLE,
-    BUTTON,
-    TITLE_PAD_SLIDER,
-    TOGGLE,
-    COLOR_SLIDER with 3,
-    SLIDER_HEIGHT,
-    BORDER_WIDTH,
-    TOGGLE_MATRIX,
-    COLOR_SELECT,
-    CIRCLE_POSITION,
-    CIRCLE,
-    ENVELOPE_EDITOR with 4
 }

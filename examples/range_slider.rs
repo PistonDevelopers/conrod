@@ -62,31 +62,31 @@ fn main() {
 
 // Declare the `WidgetId`s and instantiate the widgets.
 fn set_ui(ref mut ui: conrod::UiCell, oval_range: &mut (conrod::Scalar, conrod::Scalar)) {
-    use conrod::{Canvas, color, Colorable, Oval, Positionable, RangeSlider, Sizeable, Widget};
+    use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
     widget_ids!{CANVAS, OVAL, RANGE_SLIDER};
 
-    Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
 
     const PAD: conrod::Scalar = 20.0;
     let (ref mut start, ref mut end) = *oval_range;
     let min = 0.0;
     let max = 1.0;
-    RangeSlider::new(*start, *end, min, max)
+    widget::RangeSlider::new(*start, *end, min, max)
         .color(color::LIGHT_BLUE)
         .padded_w_of(CANVAS, PAD)
         .h(30.0)
         .mid_top_with_margin_on(CANVAS, PAD)
         .react(|edge, value| match edge {
-            conrod::RangeSliderEdge::Start => *start = value,
-            conrod::RangeSliderEdge::End => *end = value,
+            widget::range_slider::Edge::Start => *start = value,
+            widget::range_slider::Edge::End => *end = value,
         })
         .set(RANGE_SLIDER, ui);
 
     let range_slider_w = ui.w_of(RANGE_SLIDER).unwrap();
     let w = (*end - *start) * range_slider_w;
     let h = 200.0;
-    Oval::fill([w, h])
+    widget::Oval::fill([w, h])
         .mid_left_with_margin_on(CANVAS, PAD + *start * range_slider_w)
         .color(color::LIGHT_BLUE)
         .down(50.0)

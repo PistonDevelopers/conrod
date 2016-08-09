@@ -1,23 +1,20 @@
+//! A wrapper around the `List` widget providing the ability to select one or more items.
 
 use {
     color,
+    event,
     Color,
     Colorable,
-    event,
     FontSize,
-    IndexSlot,
     Labelable,
     NodeIndex,
     Positionable,
     Scalar,
-    List,
-    Button,
     Borderable,
 };
 use widget::{self, Widget};
-use std::fmt::Display;
-
 use std;
+use std::fmt::Display;
 
 /// Displays a given Vec<T> where T: Display as a selectable List. Its reaction is triggered upon
 /// selection of a list item.
@@ -57,13 +54,11 @@ widget_style!{
 /// Represents the state of the ListSelect.
 #[derive(PartialEq, Clone, Debug)]
 pub struct State {
-    list_idx: IndexSlot,
+    list_idx: widget::IndexSlot,
     /// Tracking index of last selected entry that has been pressed in order to
     /// perform multi selection when `SHIFT` or `ALT`(Mac) / 'CTRL'(Other OS) is held.
     last_selected_entry: Option<usize>,
 }
-
-pub use self::Event::{SelectEntry, SelectEntries, DoubleClick, KeyPress};
 
 /// The kind of events that the `ListSelect` may `react` to.
 /// Provides tuple(s) of index in list and string representation of selection
@@ -200,7 +195,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
 
     fn init_state(&self) -> State {
         State {
-            list_idx: IndexSlot::new(),
+            list_idx: widget::IndexSlot::new(),
             last_selected_entry:None,
         }
     }
@@ -239,7 +234,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
             let mut txt_col = unsel_text_color;
             let mut rect_col = unsel_rect_color;
 
-            List::new(self.entries.len() as u32, rect_h)
+            widget::List::new(self.entries.len() as u32, rect_h)
                 .scrollbar_on_top()
                 .middle_of(idx)
                 .wh_of(idx)
@@ -256,7 +251,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
                     // Save widget NodeIndex so input states can be retrieved later
                     entry_idx_list[i]=item.widget_idx;
 
-                    let button = Button::new()
+                    let button = widget::Button::new()
                         .label(&label)
                         .label_color(txt_col)
                         .color(rect_col)

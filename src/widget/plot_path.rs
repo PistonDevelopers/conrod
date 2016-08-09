@@ -1,12 +1,6 @@
-use {
-    Color,
-    Colorable,
-    PointPath,
-    Positionable,
-    Scalar,
-    Sizeable,
-    Widget,
-};
+//! A widget for plotting a series of lines using the given function *x -> y*.
+
+use {Color, Colorable, Positionable, Scalar, Sizeable, Widget};
 use num;
 use utils;
 use widget;
@@ -110,7 +104,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
         let point_path_idx = state.point_path_idx.get(&mut ui);
         let thickness = style.thickness(ui.theme());
         let color = style.color(ui.theme());
-        PointPath::new(point_iter)
+        widget::PointPath::new(point_iter)
             .wh(rect.dim())
             .xy(rect.xy())
             .color(color)

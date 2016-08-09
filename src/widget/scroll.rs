@@ -1,14 +1,6 @@
 //! Scroll related types and logic.
 
-use {
-    Align,
-    Point,
-    Padding,
-    Range,
-    Rect,
-    Scalar,
-    Ui,
-};
+use {Align, Point, Padding, Range, Rect, Scalar, Ui};
 use std::marker::PhantomData;
 
 

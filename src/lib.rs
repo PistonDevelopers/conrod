@@ -14,88 +14,21 @@ extern crate input as piston_input;
 extern crate rusttype;
 
 
-pub use widget::primitive::line::{Line, Cap as LineCap};
-pub use widget::primitive::image::Image;
-pub use widget::primitive::point_path::PointPath;
-pub use widget::primitive::shape::circle::Circle;
-pub use widget::primitive::shape::polygon::Polygon;
-pub use widget::primitive::shape::oval::Oval;
-pub use widget::primitive::shape::rectangle::Rectangle;
-pub use widget::primitive::text::{Text, Wrap as TextWrap};
-
-pub use widget::button::Button;
-pub use widget::canvas::Canvas;
-pub use widget::drop_down_list::DropDownList;
-pub use widget::list_select::ListSelect;
-pub use widget::list_select::Event as ListSelectEvent;
-pub use widget::envelope_editor::EnvelopeEditor;
-pub use widget::envelope_editor::EnvelopePoint;
-pub use widget::file_navigator::{FileNavigator, Event as FileNavigatorEvent};
-pub use widget::bordered_rectangle::BorderedRectangle;
-pub use widget::list::{List, Item as ListItem, ScrollbarPosition as ListbarScrollPosition};
-pub use widget::matrix::Matrix as WidgetMatrix;
-pub use widget::number_dialer::NumberDialer;
-pub use widget::plot_path::PlotPath;
-pub use widget::range_slider::{RangeSlider, Edge as RangeSliderEdge};
-pub use widget::scrollbar::Scrollbar;
-pub use widget::slider::Slider;
-pub use widget::tabs::Tabs;
-pub use widget::text_box::TextBox;
-pub use widget::text_edit::TextEdit;
-pub use widget::title_bar::TitleBar;
-pub use widget::toggle::Toggle;
-pub use widget::xy_pad::XYPad;
-
-
-pub use widget::primitive::line::Style as LineStyle;
-pub use widget::primitive::image::Style as ImageStyle;
-pub use widget::primitive::shape::Style as ShapeStyle;
-pub use widget::primitive::text::Style as TextStyle;
-
-pub use widget::button::Style as ButtonStyle;
-pub use widget::canvas::Style as CanvasStyle;
-pub use widget::drop_down_list::Style as DropDownListStyle;
-pub use widget::envelope_editor::Style as EnvelopeEditorStyle;
-pub use widget::file_navigator::Style as FileNavigatorStyle;
-pub use widget::bordered_rectangle::Style as BorderedRectangleStyle;
-pub use widget::list::Style as ListStyle;
-pub use widget::number_dialer::Style as NumberDialerStyle;
-pub use widget::plot_path::Style as PlotPathStyle;
-pub use widget::range_slider::Style as RangeSliderStyle;
-pub use widget::scrollbar::Style as ScrollbarStyle;
-pub use widget::slider::Style as SliderStyle;
-pub use widget::tabs::Style as TabsStyle;
-pub use widget::text_box::Style as TextBoxStyle;
-pub use widget::text_edit::Style as TextEditStyle;
-pub use widget::title_bar::Style as TitleBarStyle;
-pub use widget::toggle::Style as ToggleStyle;
-pub use widget::xy_pad::Style as XYPadStyle;
-
-
 pub use color::{Color, Colorable};
 pub use border::{Bordering, Borderable};
 pub use graph::NodeIndex;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
-//pub use position::Matrix as PositionMatrix;
 pub use theme::Theme;
 pub use ui::{Ui, UiCell, UiBuilder};
-pub use widget::{default_x_dimension, default_y_dimension};
-pub use widget::scroll;
-pub use widget::{CommonBuilder, CommonState, CommonStyle, Floating, IndexSlot, MaybeParent,
-                 UpdateArgs, Widget};
-pub use widget::{KidArea, KidAreaArgs};
-pub use widget::CommonState as WidgetCommonState;
-pub use widget::Id as WidgetId;
-pub use widget::Index as WidgetIndex;
-pub use widget::State as WidgetState;
+pub use widget::{scroll, Widget};
 
 
 pub mod backend;
+mod border;
 pub mod color;
 pub mod event;
-mod border;
 pub mod graph;
 pub mod guide;
 pub mod image;
@@ -107,26 +40,24 @@ pub mod text;
 pub mod theme;
 mod ui;
 pub mod utils;
-mod widget;
+pub mod widget;
 
-#[cfg(test)]
-mod tests;
-
-
+#[cfg(test)] mod tests;
 
 
 /// Generate a list of unique IDs given a list of identifiers.
 ///
-/// This is the recommended way of generating `WidgetId`s as it greatly lessens the chances of
+/// This is the recommended way of generating `widget::Id`s as it greatly lessens the chances of
 /// making errors when adding or removing widget ids.
 ///
 /// Each Widget must have its own unique identifier so that the `Ui` can keep track of its state
 /// between updates.
 ///
-/// To make this easier, we provide the `widget_ids` macro, which generates a unique `WidgetId` for
-/// each identifier given in the list.
+/// To make this easier, we provide the `widget_ids` macro, which generates a unique `widget::Id`
+/// for each identifier given in the list.
 ///
-/// The `with n` syntax reserves `n` number of `WidgetId`s for that identifier rather than just one.
+/// The `with n` syntax reserves `n` number of `widget::Id`s for that identifier rather than just
+/// one.
 ///
 /// This is often useful in the case that you need to set multiple Widgets in a loop or when using
 /// the `widget::Matrix`.
@@ -143,31 +74,30 @@ mod tests;
 ///
 /// This will raise the recursion limit from the default (~64) to 512. You should be able to set it
 /// to a higher number if you find it necessary.
-///
 #[macro_export]
 macro_rules! widget_ids {
 
     // Handle the first ID.
     ( $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
         widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle the first ID with some given step between it and the next ID.
     ( $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
         widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
     // Handle some consecutive ID.
     ( $prev_id:expr => $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
         widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle some consecutive ID with some given step between it and the next ID.
     ( $prev_id:expr => $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
         widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
@@ -187,22 +117,22 @@ macro_rules! widget_ids {
 
     // Handle a single ID without a trailing comma.
     ( $widget_id:ident ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
     );
 
     // Handle a single ID with some given step without a trailing comma.
     ( $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId(0);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
     );
 
     // Handle the last ID without a trailing comma.
     ( $prev_id:expr => $widget_id:ident ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
     );
 
     // Handle the last ID with some given step without a trailing comma.
     ( $prev_id:expr => $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::WidgetId = $crate::WidgetId($prev_id + 1);
+        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
     );
 
 }
@@ -217,9 +147,9 @@ fn test() {
         D,
         E with 8,
     }
-    assert_eq!(A, WidgetId(0));
-    assert_eq!(B, WidgetId(1));
-    assert_eq!(C, WidgetId(66));
-    assert_eq!(D, WidgetId(99));
-    assert_eq!(E, WidgetId(100));
+    assert_eq!(A, widget::Id(0));
+    assert_eq!(B, widget::Id(1));
+    assert_eq!(C, widget::Id(66));
+    assert_eq!(D, widget::Id(99));
+    assert_eq!(E, widget::Id(100));
 }

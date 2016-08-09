@@ -60,22 +60,22 @@ fn main() {
 
 // Declare the `WidgetId`s and instantiate the widgets.
 fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool]) {
-    use conrod::{Colorable, Labelable, Positionable, Sizeable, Widget};
+    use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
     widget_ids!{CANVAS, LIST};
 
-    conrod::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+    widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
     const ITEM_HEIGHT: conrod::Scalar = 50.0;
 
-    conrod::List::new(list.len() as u32, ITEM_HEIGHT)
+    widget::List::new(list.len() as u32, ITEM_HEIGHT)
         .scrollbar_on_top()
         .middle_of(CANVAS)
         .wh_of(CANVAS)
         .item(|item| {
             let i = item.i;
             let label = format!("item {}: {}", i, list[i]);
-            let toggle = conrod::Toggle::new(list[i])
+            let toggle = widget::Toggle::new(list[i])
                 .label(&label)
                 .label_color(conrod::color::WHITE)
                 .color(conrod::color::LIGHT_BLUE)

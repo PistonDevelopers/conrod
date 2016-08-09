@@ -1,17 +1,16 @@
+//! A widget for displaying and mutating a one-line field of text.
+
 use {
     Align,
     Color,
     Colorable,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Positionable,
     Range,
     Rect,
     Scalar,
     Sizeable,
-    TextEdit,
     Widget,
 };
 use event;
@@ -58,8 +57,8 @@ widget_style!{
 /// The `State` of the `TextBox` widget that will be cached within the `Ui`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    text_edit_idx: IndexSlot,
-    rectangle_idx: IndexSlot,
+    text_edit_idx: widget::IndexSlot,
+    rectangle_idx: widget::IndexSlot,
 }
 
 impl<'a, F> TextBox<'a, F> {
@@ -115,8 +114,8 @@ impl<'a, F> Widget for TextBox<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            text_edit_idx: IndexSlot::new(),
-            rectangle_idx: IndexSlot::new(),
+            text_edit_idx: widget::IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -145,7 +144,7 @@ impl<'a, F> Widget for TextBox<'a, F>
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let color = style.color(ui.theme());
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(rect.dim())
+        widget::BorderedRectangle::new(rect.dim())
             .xy(rect.xy())
             .graphics_for(idx)
             .parent(idx)
@@ -156,7 +155,7 @@ impl<'a, F> Widget for TextBox<'a, F>
 
         let text_edit_idx = state.text_edit_idx.get(&mut ui);
         let text_color = style.text_color(ui.theme());
-        TextEdit::new(text)
+        widget::TextEdit::new(text)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .font_size(font_size)

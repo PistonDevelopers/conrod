@@ -1,19 +1,17 @@
+//! A widget for displaying and mutating multi-line text, given as a `String`.
+
 use {
     Align,
     Color,
     Colorable,
     FontSize,
-    IndexSlot,
-    Line,
     NodeIndex,
     Point,
     Positionable,
     Range,
     Rect,
-    Rectangle,
     Scalar,
     Sizeable,
-    Text,
     Widget,
 };
 use event;
@@ -68,16 +66,18 @@ pub struct State {
     /// Information about each line of text.
     line_infos: Vec<text::line::Info>,
     selected_rectangle_indices: Vec<NodeIndex>,
-    rectangle_idx: IndexSlot,
-    text_idx: IndexSlot,
-    cursor_idx: IndexSlot,
-    highlight_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    text_idx: widget::IndexSlot,
+    cursor_idx: widget::IndexSlot,
+    highlight_idx: widget::IndexSlot,
 }
 
 /// Track whether some sort of dragging is currently occurring.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Drag {
+    /// The drag is currently selecting a range of text.
     Selecting,
+    /// The drag is moving a selection of text.
     #[allow(dead_code)] // TODO: Implement this.
     MoveSelection,
 }
@@ -88,12 +88,10 @@ pub enum Cursor {
     /// The cursor is at the given character index.
     Idx(text::cursor::Index),
     /// The cursor is a selection between these two indices.
-    ///
-    /// The `start` is always the "anchor" point.
-    ///
-    /// The `end` may be either greater or less than the `start`.
     Selection {
+        /// The `start` is always the "anchor" point.
         start: text::cursor::Index,
+        /// The `end` may be either greater or less than the `start`.
         end: text::cursor::Index,
     },
 }
@@ -194,10 +192,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
             drag: None,
             line_infos: Vec::new(),
             selected_rectangle_indices: Vec::new(),
-            rectangle_idx: IndexSlot::new(),
-            text_idx: IndexSlot::new(),
-            cursor_idx: IndexSlot::new(),
-            highlight_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            text_idx: widget::IndexSlot::new(),
+            cursor_idx: widget::IndexSlot::new(),
+            highlight_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -643,8 +641,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let text_rect = Rect { x: rect.x, y: text_y_range };
 
         match line_wrap {
-            Wrap::Whitespace => Text::new(&self.text).wrap_by_word(),
-            Wrap::Character => Text::new(&self.text).wrap_by_character(),
+            Wrap::Whitespace => widget::Text::new(&self.text).wrap_by_word(),
+            Wrap::Character => widget::Text::new(&self.text).wrap_by_character(),
         }
             .wh(text_rect.dim())
             .xy(text_rect.xy())
@@ -686,7 +684,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let cursor_line_idx = state.cursor_idx.get(&mut ui);
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
-        Line::centred(start, end)
+        widget::Line::centred(start, end)
             .x_y(cursor_x, cursor_y_range.middle())
             .graphics_for(idx)
             .parent(idx)
@@ -716,7 +714,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                 }
                 let selected_rectangle_idx = state.selected_rectangle_indices[i];
 
-                Rectangle::fill(selected_rect.dim())
+                widget::Rectangle::fill(selected_rect.dim())
                     .xy(selected_rect.xy())
                     .color(selected_rect_color)
                     .graphics_for(idx)

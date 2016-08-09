@@ -275,7 +275,7 @@ mod feature {
 
     /// Instantiate the widgets.
     fn set_widgets(ref mut ui: conrod::UiCell) {
-        use conrod::{Colorable, Positionable, Sizeable, Widget};
+        use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 
         widget_ids!{
             CANVAS,
@@ -283,8 +283,7 @@ mod feature {
             TEXT,
         };
 
-        conrod::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
-
+        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
         // Some starting text to edit.
         let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -296,7 +295,7 @@ mod feature {
             magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
 
         //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
-        conrod::Text::new(demo_text)
+        widget::Text::new(demo_text)
             .middle_of(CANVAS)
             .wh_of(CANVAS)
             .font_size(20)

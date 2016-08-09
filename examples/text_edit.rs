@@ -64,13 +64,13 @@ fn main() {
 
 // Declare the `WidgetId`s and instantiate the widgets.
 fn set_ui(ref mut ui: conrod::UiCell, demo_text: &mut String) {
-    use conrod::{Canvas, color, Colorable, Positionable, Sizeable, TextEdit, Widget};
+    use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
     widget_ids!{CANVAS, TEXT_EDIT};
 
-    Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
 
-    TextEdit::new(demo_text)
+    widget::TextEdit::new(demo_text)
         .color(color::LIGHT_BLUE)
         .padded_wh_of(CANVAS, 20.0)
         .mid_top_of(CANVAS)

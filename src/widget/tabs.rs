@@ -1,6 +1,6 @@
+//! A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
+
 use {
-    Button,
-    Canvas,
     Color,
     Dimensions,
     FontSize,
@@ -11,13 +11,12 @@ use {
     Widget,
 };
 use std;
-use super::canvas;
 use text;
 use utils;
 use widget;
 
 
-/// A wrapper around a list of canvasses that displays thema s a list of selectable tabs.
+/// A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
 pub struct Tabs<'a> {
     tabs: &'a [(widget::Id, &'a str)],
     style: Style,
@@ -62,7 +61,7 @@ widget_style!{
         /// The `font::Id` of the number dialer's font.
         - font_id: Option<text::font::Id> { None }
         /// The styling for each `Canvas`.
-        - canvas: canvas::Style { canvas::Style::new() }
+        - canvas: widget::canvas::Style { widget::canvas::Style::new() }
     }
 }
 
@@ -115,35 +114,38 @@ impl<'a> Tabs<'a> {
     }
 
     /// Build the `Tabs` widget with the given styling for its `Canvas`ses.
-    pub fn canvas_style(mut self, style: canvas::Style) -> Self {
+    pub fn canvas_style(mut self, style: widget::canvas::Style) -> Self {
         self.style.canvas = Some(style);
         self
     }
 
-    /// Map the `NumberDialer`'s `canvas::Style` to a new `canvas::Style`.
+    /// Map the `NumberDialer`'s `widget::canvas::Style` to a new `widget::canvas::Style`.
     fn map_canvas_style<F>(mut self, map: F) -> Self
-        where F: FnOnce(canvas::Style) -> canvas::Style,
+        where F: FnOnce(widget::canvas::Style) -> widget::canvas::Style,
     {
-        self.style.canvas = Some(map(self.style.canvas.clone().unwrap_or_else(canvas::Style::new)));
+        self.style.canvas = Some(map({
+            self.style.canvas.clone()
+                .unwrap_or_else(widget::canvas::Style::new)
+        }));
         self
     }
 
-    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
     pub fn pad_left(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_left = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
     pub fn pad_right(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_right = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
     pub fn pad_bottom(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_bottom = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
     pub fn pad_top(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_top = Some(pad); style })
     }
@@ -279,7 +281,7 @@ impl<'a> Widget for Tabs<'a> {
                 let (xy, dim) = tab_rect.xy_dim();
 
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
-                Button::new()
+                widget::Button::new()
                     .wh(dim)
                     .xy_relative_to(idx, xy)
                     .color(color)
@@ -305,7 +307,7 @@ impl<'a> Widget for Tabs<'a> {
             use position::{Positionable, Sizeable};
 
             let &(child_id, _) = &tabs[selected_idx];
-            Canvas::new()
+            widget::Canvas::new()
                 .with_style(canvas_style)
                 .kid_area_wh_of(idx)
                 .middle_of(idx)

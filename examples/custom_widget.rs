@@ -18,13 +18,13 @@ extern crate piston_window;
 
 /// The module in which we'll implement our own custom circular button.
 mod circular_button {
-    use conrod::{self, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
+    use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
     /// The type upon which we'll implement the `Widget` trait.
     pub struct CircularButton<'a, F> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
-        common: conrod::CommonBuilder,
+        common: widget::CommonBuilder,
         /// Optional label string for the button.
         maybe_label: Option<&'a str>,
         /// Optional callback for when the button is pressed. If you want the button to
@@ -58,9 +58,9 @@ mod circular_button {
     #[derive(Clone, Debug, PartialEq)]
     pub struct State {
         /// An index to use for our **Circle** primitive graphics widget.
-        circle_idx: conrod::IndexSlot,
+        circle_idx: widget::IndexSlot,
         /// An index to use for our **Text** primitive graphics widget (for the label).
-        text_idx: conrod::IndexSlot,
+        text_idx: widget::IndexSlot,
     }
 
     /// Return whether or not a given point is over a circle at a given point on a
@@ -81,7 +81,7 @@ mod circular_button {
         /// Create a button context to be built upon.
         pub fn new() -> CircularButton<'a, F> {
             CircularButton {
-                common: conrod::CommonBuilder::new(),
+                common: widget::CommonBuilder::new(),
                 maybe_react: None,
                 maybe_label: None,
                 style: Style::new(),
@@ -116,18 +116,18 @@ mod circular_button {
         /// The Style struct that we defined using the `widget_style!` macro.
         type Style = Style;
 
-        fn common(&self) -> &conrod::CommonBuilder {
+        fn common(&self) -> &widget::CommonBuilder {
             &self.common
         }
 
-        fn common_mut(&mut self) -> &mut conrod::CommonBuilder {
+        fn common_mut(&mut self) -> &mut widget::CommonBuilder {
             &mut self.common
         }
 
         fn init_state(&self) -> State {
             State {
-                circle_idx: conrod::IndexSlot::new(),
-                text_idx: conrod::IndexSlot::new(),
+                circle_idx: widget::IndexSlot::new(),
+                text_idx: widget::IndexSlot::new(),
             }
         }
 
@@ -137,8 +137,8 @@ mod circular_button {
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
-        fn update(self, args: conrod::UpdateArgs<Self>) {
-            let conrod::UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
+        fn update(self, args: widget::UpdateArgs<Self>) {
+            let widget::UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
 
             let color = {
                 let input = ui.widget_input(idx);
@@ -183,7 +183,7 @@ mod circular_button {
             // First, we'll draw the **Circle** with a radius that is half our given width.
             let radius = rect.w() / 2.0;
             let circle_idx = state.circle_idx.get(&mut ui);
-            conrod::Circle::fill(radius)
+            widget::Circle::fill(radius)
                 .middle_of(idx)
                 .graphics_for(idx)
                 .color(color)
@@ -194,7 +194,7 @@ mod circular_button {
             let font_size = style.label_font_size(ui.theme());
             let text_idx = state.text_idx.get(&mut ui);
             if let Some(ref label) = self.maybe_label {
-                conrod::Text::new(label)
+                widget::Text::new(label)
                     .middle_of(idx)
                     .font_size(font_size)
                     .graphics_for(idx)
@@ -232,7 +232,7 @@ mod circular_button {
 }
 
 pub fn main() {
-    use conrod::{self, Colorable, Labelable, Positionable, Sizeable, Widget};
+    use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
     use piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use self::circular_button::CircularButton;
 
@@ -277,7 +277,7 @@ pub fn main() {
         event.update(|_| ui.set_widgets(|ref mut ui| {
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            conrod::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
+            widget::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
 
             // The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
             widget_ids! {

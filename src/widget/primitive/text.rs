@@ -1,3 +1,5 @@
+//! The primitive widget used for displaying text.
+
 use {
     Align,
     Color,

@@ -1,19 +1,12 @@
+//! A simple, non-interactive **Polygon** widget for drawing arbitrary convex shapes.
 
-use {
-    Color,
-    Colorable,
-    LineStyle,
-    Point,
-    Positionable,
-    Sizeable,
-    Widget,
-};
+use {Color, Colorable, Point, Positionable, Sizeable, Widget};
 use super::Style;
 use widget;
 use utils::{bounding_box_for_points, vec2_add, vec2_sub};
 
 
-/// A basic, non-interactive, arbitarry **Polygon** widget.
+/// A basic, non-interactive, arbitrary **Polygon** widget.
 ///
 /// The **Polygon** is described by specifying its corners in order.
 ///
@@ -78,7 +71,7 @@ impl<I> Polygon<I> {
     }
 
     /// Build a **Polygon** **Outline**ed with the given line style.
-    pub fn outline_styled(points: I, style: LineStyle) -> Self {
+    pub fn outline_styled(points: I, style: widget::line::Style) -> Self {
         Polygon::styled(points, Style::outline_styled(style))
     }
 
@@ -124,7 +117,7 @@ impl<I> Polygon<I> {
 
     /// The same as [**Polygon::abs_styled**](./struct.Polygon#method.abs_styled) but builds the
     /// **Polygon** with the given **Outline** styling.
-    pub fn abs_outline_styled(points: I, style: LineStyle) -> Self
+    pub fn abs_outline_styled(points: I, style: widget::line::Style) -> Self
         where I: IntoIterator<Item=Point> + Clone,
     {
         Polygon::abs_styled(points, Style::outline_styled(style))
@@ -174,7 +167,7 @@ impl<I> Polygon<I> {
 
     /// The same as [**Polygon::centred_styled**](./struct.Polygon#method.centred_styled) but
     /// constructs the **Polygon** **Outline**d with the given styling.
-    pub fn centred_outline_styled(points: I, style: LineStyle) -> Self
+    pub fn centred_outline_styled(points: I, style: widget::line::Style) -> Self
         where I: IntoIterator<Item=Point> + Clone,
     {
         Polygon::centred_styled(points, Style::outline_styled(style))

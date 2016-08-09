@@ -14,7 +14,7 @@ use graph::{self, Graph, NodeIndex};
 use std;
 use text;
 use theme::Theme;
-use widget::{self, primitive};
+use widget::{self, primitive, Widget};
 
 
 /// An iterator-like type that yields a reference to each primitive in order of depth for
@@ -331,9 +331,8 @@ impl<'a> Primitives<'a> {
         } = *self;
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
-            use {Rectangle, Oval, Line, Text as TextWidget, Image, Widget};
-            use widget::primitive::point_path::State as PointPathState;
-            use widget::primitive::shape::polygon::State as PolygonState;
+            use widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
+            use widget::primitive::shape::polygon::{State as PolygonState};
             use widget::primitive::shape::Style as ShapeStyle;
 
             let (idx, scizzor, container) = widget;
@@ -347,8 +346,8 @@ impl<'a> Primitives<'a> {
             }
 
             // Extract the unique state and style from the container.
-            if container.type_id == state_type_id::<Rectangle>() {
-                if let Some(rectangle) = container.unique_widget_state::<Rectangle>() {
+            if container.type_id == state_type_id::<widget::Rectangle>() {
+                if let Some(rectangle) = container.unique_widget_state::<widget::Rectangle>() {
                     let graph::UniqueWidgetState { ref style, .. } = *rectangle;
                     let color = style.get_color(theme);
                     match *style {
@@ -376,8 +375,8 @@ impl<'a> Primitives<'a> {
                     }
                 }
 
-            } else if container.type_id == state_type_id::<Oval>() {
-                if let Some(oval) = container.unique_widget_state::<Oval>() {
+            } else if container.type_id == state_type_id::<widget::Oval>() {
+                if let Some(oval) = container.unique_widget_state::<widget::Oval>() {
                     use std::f64::consts::PI;
                     let graph::UniqueWidgetState { ref style, .. } = *oval;
 
@@ -437,8 +436,8 @@ impl<'a> Primitives<'a> {
                     }
                 }
 
-            } else if container.type_id == state_type_id::<Line>() {
-                if let Some(line) = container.unique_widget_state::<Line>() {
+            } else if container.type_id == state_type_id::<widget::Line>() {
+                if let Some(line) = container.unique_widget_state::<widget::Line>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *line;
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
@@ -456,8 +455,7 @@ impl<'a> Primitives<'a> {
                 }
 
             } else if container.type_id == std::any::TypeId::of::<PointPathState>() {
-                use widget::primitive::point_path::Style;
-                if let Some(point_path) = container.state_and_style::<PointPathState, Style>() {
+                if let Some(point_path) = container.state_and_style::<PointPathState, PointPathStyle>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *point_path;
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
@@ -472,8 +470,8 @@ impl<'a> Primitives<'a> {
                     return Some(new_primitive(index, kind, scizzor, rect));
                 }
 
-            } else if container.type_id == state_type_id::<TextWidget>() {
-                if let Some(text) = container.unique_widget_state::<TextWidget>() {
+            } else if container.type_id == state_type_id::<widget::Text>() {
+                if let Some(text) = container.unique_widget_state::<widget::Text>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *text;
                     let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
                         Some(id) => id,
@@ -512,7 +510,7 @@ impl<'a> Primitives<'a> {
                     return Some(new_primitive(index, kind, scizzor, rect));
                 }
 
-            } else if container.type_id == state_type_id::<Image>() {
+            } else if container.type_id == state_type_id::<widget::Image>() {
                 use widget::primitive::image::{State, Style};
                 if let Some(image) = container.state_and_style::<State, Style>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *image;

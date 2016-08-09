@@ -1,3 +1,5 @@
+//! The `Canvas` widget and related items.
+
 use {
     Align,
     Color,
@@ -5,8 +7,6 @@ use {
     Dimensions,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Labelable,
     Padding,
     Place,
@@ -16,16 +16,14 @@ use {
     Rect,
     Scalar,
     Sizeable,
-    TextWrap,
     Theme,
-    TitleBar,
     Ui,
     UiCell,
     Widget,
 };
 use position;
 use position::Direction::{Forwards, Backwards};
-use widget::{self, title_bar};
+use widget;
 
 
 /// **Canvas** is designed to be a "container"-like "parent" widget that simplifies placement of
@@ -57,8 +55,8 @@ pub struct Canvas<'a> {
 /// **Canvas** state to be cached.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: IndexSlot,
-    title_bar_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    title_bar_idx: widget::IndexSlot,
 }
 
 widget_style!{
@@ -89,7 +87,7 @@ widget_style!{
         /// The font size for the title bar's text.
         - title_bar_font_size: FontSize { theme.font_size_medium }
         /// The way in which the title bar's text should wrap.
-        - title_bar_maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) }
+        - title_bar_maybe_wrap: Option<widget::text::Wrap> { Some(widget::text::Wrap::Whitespace) }
         /// The distance between lines for multi-line title bar text.
         - title_bar_line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
@@ -121,7 +119,9 @@ pub enum Length {
 /// The direction in which a sequence of canvas splits will be laid out.
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
+    /// Lay splits along the *x* axis.
     X(position::Direction),
+    /// Lay splits along the *y* axis.
     Y(position::Direction),
 }
 
@@ -225,8 +225,8 @@ impl<'a> Widget for Canvas<'a> {
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: IndexSlot::new(),
-            title_bar_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            title_bar_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -284,7 +284,7 @@ impl<'a> Widget for Canvas<'a> {
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .color(color)
             .border(border)
             .border_color(border_color)
@@ -302,7 +302,7 @@ impl<'a> Widget for Canvas<'a> {
             let text_align = style.title_bar_text_align(&ui.theme);
             let line_spacing = style.title_bar_line_spacing(&ui.theme);
             let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
-            TitleBar::new(label, rectangle_idx)
+            widget::TitleBar::new(label, rectangle_idx)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
                     title_bar.style.text_align = Some(text_align);
@@ -402,7 +402,7 @@ impl<'a> Widget for Canvas<'a> {
 /// The height and relative y coordinate of a Canvas' title bar given some canvas height and font
 /// size for the title bar.
 fn title_bar_h_rel_y(canvas_h: Scalar, font_size: FontSize) -> (Scalar, Scalar) {
-    let h = title_bar::calc_height(font_size);
+    let h = widget::title_bar::calc_height(font_size);
     let rel_y = canvas_h / 2.0 - h / 2.0;
     (h, rel_y)
 }

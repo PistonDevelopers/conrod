@@ -1,17 +1,8 @@
+//! A simple, non-interactive widget for drawing a single straight Line.
 
-use {
-    Color,
-    Colorable,
-    Point,
-    Positionable,
-    Rect,
-    Scalar,
-    Sizeable,
-    Theme,
-    Widget,
-};
+use {Color, Colorable, Point, Positionable, Rect, Scalar, Sizeable, Theme};
 use utils::{vec2_add, vec2_sub};
-use widget;
+use widget::{self, Widget};
 
 
 /// A simple, non-interactive widget for drawing a single straight Line.
@@ -54,8 +45,11 @@ pub struct Style {
 /// The pattern used to draw the line.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Pattern {
+    /// A single continuous stroke.
     Solid,
+    /// A series of line strokes.
     Dashed,
+    /// A series of circles.
     Dotted,
 }
 

@@ -1,3 +1,5 @@
+//! A simple, non-interactive widget for drawing an `Image`.
+
 use {Color, Dimension, Rect, Widget, Ui};
 use widget;
 

@@ -11,12 +11,9 @@ use {
     Color,
     Colorable,
     FontSize,
-    IndexSlot,
     NodeIndex,
     Positionable,
-    Rectangle,
     Scalar,
-    Scrollbar,
     Sizeable,
     Widget,
 };
@@ -54,9 +51,9 @@ pub enum Types<'a> {
 #[derive(Debug, PartialEq)]
 pub struct State {
     /// A canvas upon which we can scroll the `DirectoryView`s horizontally.
-    scrollable_canvas_idx: IndexSlot,
+    scrollable_canvas_idx: widget::IndexSlot,
     /// Horizontal scrollbar for manually scrolling the canvas.
-    scrollbar_idx: IndexSlot,
+    scrollbar_idx: widget::IndexSlot,
     /// The starting directory displayed by the `FileNavigator`.
     starting_directory: std::path::PathBuf,
     /// The stack of currently displayed directories.
@@ -178,8 +175,8 @@ impl<'a, F> Widget for FileNavigator<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            scrollable_canvas_idx: IndexSlot::new(),
-            scrollbar_idx: IndexSlot::new(),
+            scrollable_canvas_idx: widget::IndexSlot::new(),
+            scrollbar_idx: widget::IndexSlot::new(),
             directory_stack: Vec::new(),
             directory_view_indices: Vec::new(),
             starting_directory: std::path::PathBuf::new(),
@@ -213,7 +210,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
             .unwrap_or_else(|| color.plain_contrast());
 
         let scrollable_canvas_idx = state.scrollable_canvas_idx.get(&mut ui);
-        Rectangle::fill(rect.dim())
+        widget::Rectangle::fill(rect.dim())
             .xy(rect.xy())
             .color(color::TRANSPARENT)
             .parent(idx)
@@ -222,7 +219,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
 
         // A scrollbar for the `FOOTER` canvas.
         let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-        Scrollbar::x_axis(scrollable_canvas_idx)
+        widget::Scrollbar::x_axis(scrollable_canvas_idx)
             .color(color.plain_contrast())
             .auto_hide(true)
             .set(scrollbar_idx, &mut ui);
@@ -377,7 +374,7 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 },
                 None => resize_color.alpha(0.2),
             };
-            Rectangle::fill([resize_handle_width, rect.h()])
+            widget::Rectangle::fill([resize_handle_width, rect.h()])
                 .color(resize_color)
                 .right(0.0)
                 .parent(scrollable_canvas_idx)
@@ -415,13 +412,9 @@ pub mod directory_view {
         Color,
         Colorable,
         FontSize,
-        IndexSlot,
         NodeIndex,
         Positionable,
-        Rectangle,
         Scalar,
-        Scrollbar,
-        Text,
         Widget,
     };
     use event;
@@ -444,8 +437,8 @@ pub mod directory_view {
     /// Unique state stored within the widget graph for each `FileNavigator`.
     #[derive(Debug, PartialEq)]
     pub struct State {
-        scrollable_canvas_idx: IndexSlot,
-        scrollbar_idx: IndexSlot,
+        scrollable_canvas_idx: widget::IndexSlot,
+        scrollbar_idx: widget::IndexSlot,
         /// The absolute path, `Rectangle` and `Text` indices for each file in the directory.
         entries: Vec<Entry>,
         /// A `Text` and `Rectangle` index for each entry.
@@ -483,9 +476,13 @@ pub mod directory_view {
     /// The kinds of `Event`s `react`ed to by the `DirectoryView`.
     #[derive(Clone)]
     pub enum Event {
+        /// A single entry was selected.
         SelectEntry(std::path::PathBuf),
+        /// Multiple entries have been selected.
         SelectEntries(Vec<std::path::PathBuf>),
+        /// One or more entries have been double clicked.
         DoubleClick(Vec<std::path::PathBuf>),
+        /// The given key has been pressed while the given entries were selected.
         KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
     }
 
@@ -539,8 +536,8 @@ pub mod directory_view {
 
         fn init_state(&self) -> Self::State {
             State {
-                scrollable_canvas_idx: IndexSlot::new(),
-                scrollbar_idx: IndexSlot::new(),
+                scrollable_canvas_idx: widget::IndexSlot::new(),
+                scrollbar_idx: widget::IndexSlot::new(),
                 indices: Vec::new(),
                 entries: Vec::new(),
                 directory: std::path::PathBuf::new(),
@@ -626,7 +623,7 @@ pub mod directory_view {
                 .unwrap_or_else(|| color.plain_contrast());
 
             let scrollable_canvas_idx = state.scrollable_canvas_idx.get(&mut ui);
-            Rectangle::fill(rect.dim())
+            widget::Rectangle::fill(rect.dim())
                 .scroll_kids_vertically()
                 .xy(rect.xy())
                 .color(unselected_rect_color.alpha(0.8))
@@ -635,7 +632,7 @@ pub mod directory_view {
 
             // A scrollbar for the `FOOTER` canvas.
             let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-            Scrollbar::y_axis(scrollable_canvas_idx)
+            widget::Scrollbar::y_axis(scrollable_canvas_idx)
                 .color(color.plain_contrast())
                 .auto_hide(true)
                 .set(scrollbar_idx, &mut ui);
@@ -676,7 +673,7 @@ pub mod directory_view {
                         }
                     };
 
-                    Rectangle::fill([rect.w(), file_h])
+                    widget::Rectangle::fill([rect.w(), file_h])
                         .color(rect_color)
                         .and(|r| match last_rect_idx {
                             None => r.mid_top_of(scrollable_canvas_idx),
@@ -685,7 +682,7 @@ pub mod directory_view {
                         .parent(scrollable_canvas_idx)
                         .set(rect_idx, &mut ui);
 
-                    Text::new(&entry_name)
+                    widget::Text::new(&entry_name)
                         .color(text_color)
                         .font_size(font_size)
                         .mid_left_with_margin_on(rect_idx, 10.0)

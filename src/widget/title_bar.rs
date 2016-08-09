@@ -1,3 +1,5 @@
+//! A simple title bar widget that automatically sizes itself to the top of some other widget.
+
 use {
     Align,
     Color,
@@ -5,14 +7,10 @@ use {
     Dimension,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Labelable,
     Positionable,
     Scalar,
     Sizeable,
-    Text,
-    TextWrap,
     Ui,
 };
 use widget::{self, Widget};
@@ -31,8 +29,8 @@ pub struct TitleBar<'a> {
 /// Unique state for the **TitleBar** widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
 }
 
 widget_style!{
@@ -50,7 +48,7 @@ widget_style!{
         /// The font size for the title bar's text.
         - font_size: FontSize { theme.font_size_medium }
         /// The way in which the title bar's text should wrap.
-        - maybe_wrap: Option<TextWrap> { Some(TextWrap::Whitespace) }
+        - maybe_wrap: Option<widget::text::Wrap> { Some(widget::text::Wrap::Whitespace) }
         /// The distance between lines for multi-line title bar text.
         - line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
@@ -122,8 +120,8 @@ impl<'a> Widget for TitleBar<'a> {
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -147,7 +145,7 @@ impl<'a> Widget for TitleBar<'a> {
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .color(color)
             .border(border)
             .border_color(border_color)
@@ -162,7 +160,7 @@ impl<'a> Widget for TitleBar<'a> {
         let font_size = style.font_size(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let maybe_wrap = style.maybe_wrap(ui.theme());
-        Text::new(label)
+        widget::Text::new(label)
             .and_mut(|text| {
                 text.style.maybe_wrap = Some(maybe_wrap);
                 text.style.text_align = Some(text_align);

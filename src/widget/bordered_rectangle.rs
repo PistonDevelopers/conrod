@@ -1,10 +1,10 @@
+//! The `BorderedRectangle` widget and related items.
+
 use {
     Color,
     Colorable,
     Dimensions,
     Borderable,
-    IndexSlot,
-    Rectangle,
     Positionable,
     Scalar,
     Sizeable,
@@ -34,8 +34,8 @@ pub struct BorderedRectangle {
 /// Unique state for the `BorderedRectangle`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    border_idx: IndexSlot,
-    rectangle_idx: IndexSlot,
+    border_idx: widget::IndexSlot,
+    rectangle_idx: widget::IndexSlot,
 }
 
 widget_style!{
@@ -79,8 +79,8 @@ impl Widget for BorderedRectangle {
 
     fn init_state(&self) -> Self::State {
         State {
-            border_idx: IndexSlot::new(),
-            rectangle_idx: IndexSlot::new(),
+            border_idx: widget::IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -96,7 +96,7 @@ impl Widget for BorderedRectangle {
         if border > 0.0 {
             let border_color = style.border_color(&ui.theme);
             let border_idx = state.border_idx.get(&mut ui);
-            Rectangle::fill(rect.dim())
+            widget::Rectangle::fill(rect.dim())
                 .xy(rect.xy())
                 .color(border_color)
                 .parent(idx)
@@ -106,7 +106,7 @@ impl Widget for BorderedRectangle {
 
         let color = style.color(&ui.theme);
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        Rectangle::fill(rect.pad(border).dim())
+        widget::Rectangle::fill(rect.pad(border).dim())
             .xy(rect.xy())
             .color(color)
             .parent(idx)

@@ -2,7 +2,6 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Widget};
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 fn main() {
@@ -72,13 +71,13 @@ fn main() {
         event.update(|_| {
             // Instantiate the conrod widgets.
             ui.set_widgets(|ref mut ui| {
-                use conrod::{Canvas, color, Colorable, Positionable, Sizeable, ListSelect, ListSelectEvent};
+                use conrod::{widget, color, Colorable, Positionable, Sizeable, Widget};
 
                 widget_ids!(CANVAS, LIST_BOX);
 
-                Canvas::new().color(color::BLUE).set(CANVAS, ui);
+                widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
 
-                ListSelect::multiple(&list_items, &mut list_selected)
+                widget::ListSelect::multiple(&list_items, &mut list_selected)
                     .w_h(350.0, 220.0)
                     .top_left_with_margins_on(CANVAS, 40.0, 40.0)
                     .color(color::LIGHT_GREY)
@@ -89,10 +88,14 @@ fn main() {
                     .scrollbar_auto_hide(false)
                     .react(|event| {
                         match event {
-                            ListSelectEvent::SelectEntry(ix, name) 	=> { println!("Select Entry: {}, {}", ix, name); },
-                            ListSelectEvent::SelectEntries(list) 	=> { println!("Select Entries: {:?}", list); },
-                            ListSelectEvent::DoubleClick(ix, name) 	=> { println!("Double Click: {}, {}", ix, name); },
-                            ListSelectEvent::KeyPress(list, kp) 	=> { println!("Keypress: {:?}, {:?}", kp, list); },
+                            widget::list_select::Event::SelectEntry(ix, name) =>
+                                println!("Select Entry: {}, {}", ix, name),
+                            widget::list_select::Event::SelectEntries(list)	=>
+                                println!("Select Entries: {:?}", list),
+                            widget::list_select::Event::DoubleClick(ix, name) =>
+                                println!("Double Click: {}, {}", ix, name),
+                            widget::list_select::Event::KeyPress(list, kp) =>
+                                println!("Keypress: {:?}, {:?}", kp, list),
                         }
                     })
                     .set(LIST_BOX, ui);
