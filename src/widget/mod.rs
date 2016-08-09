@@ -254,29 +254,7 @@ pub struct CommonState {
     pub maybe_y_scroll_state: Option<scroll::StateY>,
 }
 
-/// A **Widget**'s state in a form that is retrievable from the **Ui**'s widget cache.
-pub struct Cached<W>
-    where W: Widget,
-{
-    /// State that is unique to the Widget.
-    pub state: W::State,
-    /// Unique styling state for the Widget.
-    pub style: W::Style,
-    /// The rectangle representing the Widget's area.
-    pub rect: Rect,
-    /// Previous rendering depth of the Widget.
-    pub depth: Depth,
-    /// The area in which child widgets are placed.
-    pub kid_area: KidArea,
-    /// Whether or not the Widget is a "floating" Widget.
-    pub maybe_floating: Option<Floating>,
-    /// The state for a widget's scrollable *x* axis.
-    pub maybe_x_scroll_state: Option<scroll::StateX>,
-    /// The state for a widget's scrollable *y* axis.
-    pub maybe_y_scroll_state: Option<scroll::StateY>,
-}
-
-/// **Widget** data to be cached prior to the **Widget::update** call in the **set_widget**
+/// **Widget** data to be cached prior to the **Widget::update** call in the **widget::set_widget**
 /// function.
 ///
 /// We do this so that if this **Widget** were to internally `set` some other **Widget**s, this
@@ -315,7 +293,7 @@ pub struct PreUpdateCache {
     pub maybe_graphics_for: Option<Index>,
 }
 
-/// **Widget** data to be cached after the **Widget::update** call in the **set_widget**
+/// **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
 /// function.
 ///
 /// We do this so that if this **Widget** were to internally **Widget::set** some other
@@ -794,55 +772,56 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     let type_id = std::any::TypeId::of::<W::State>();
 
     // Take the previous state of the widget from the cache if there is some to collect.
-    let maybe_widget_state: Option<Cached<W>> = {
-
-        // If the cache is already initialised for a widget of a different type, warn the user.
-        let check_container_type_id = |container: &mut graph::Container| {
-            use std::io::Write;
-            if container.type_id != type_id {
-                writeln!(std::io::stderr(),
-                         "A widget of a different type already exists at the given WidgetId \
-                         ({:?}). You tried to insert a {:?}, however the existing widget is a \
-                         {:?}. Check your widgets' `WidgetId`s for errors.",
-                          idx, type_id, container.type_id).unwrap();
-                return None;
-            } else {
-                container.take_widget_state()
-            }
-        };
-
-        ui::widget_graph_mut(ui).widget_mut(idx).and_then(check_container_type_id)
-    };
-
-    // Seperate the Widget's previous state into it's unique state, style and scrolling.
     let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style) =
-        maybe_widget_state.map(|prev| {
+        ui::widget_graph_mut(ui)
+            .widget_mut(idx)
+            .and_then(|container| {
 
-            // Destructure the cached state.
-            let Cached {
-                state,
-                style,
-                rect,
-                depth,
-                maybe_floating,
-                maybe_x_scroll_state,
-                maybe_y_scroll_state,
-                kid_area,
-                ..
-            } = prev;
+                // If the cache is already initialised for a different widget type, warn the user.
+                if container.type_id != type_id {
+                    use std::io::Write;
+                    writeln!(std::io::stderr(),
+                             "A widget of a different type already exists at the given WidgetId \
+                             ({:?}). You tried to insert a {:?}, however the existing widget is a \
+                             {:?}. Check your widgets' `WidgetId`s for errors.",
+                              idx, type_id, container.type_id).unwrap();
+                    return None;
+                }
 
-            // Use the cached state to construct the prev_state (to be fed to Widget::update).
-            let prev_common = CommonState {
-                rect: rect,
-                depth: depth,
-                maybe_floating: maybe_floating,
-                kid_area: kid_area,
-                maybe_x_scroll_state: maybe_x_scroll_state,
-                maybe_y_scroll_state: maybe_y_scroll_state,
-            };
+                // Destructure the cached state.
+                let graph::Container {
+                    ref mut maybe_state,
+                    rect,
+                    depth,
+                    kid_area,
+                    maybe_floating,
+                    maybe_x_scroll_state,
+                    maybe_y_scroll_state,
+                    ..
+                } = *container;
 
-            (Some(state), Some(prev_common), Some(style))
-        }).unwrap_or_else(|| (None, None, None));
+                let (state, style) = match maybe_state.take().and_then(|a| a.downcast().ok()) {
+                    Some(boxed) => {
+                        let unique: graph::UniqueWidgetState<W::State, W::Style> = *boxed;
+                        let graph::UniqueWidgetState { state, style } = unique;
+                        (state, style)
+                    },
+                    None => return None,
+                };
+
+                // Use the cached state to construct the prev_state (to be fed to Widget::update).
+                let prev_common = CommonState {
+                    rect: rect,
+                    depth: depth,
+                    maybe_floating: maybe_floating,
+                    kid_area: kid_area,
+                    maybe_x_scroll_state: maybe_x_scroll_state,
+                    maybe_y_scroll_state: maybe_y_scroll_state,
+                };
+
+                Some((Some(state), Some(prev_common), Some(style)))
+            })
+            .unwrap_or_else(|| (None, None, None));
 
     // We need to hold onto the current "previously set widget", as this may change during our
     // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last

@@ -179,44 +179,6 @@ impl Container {
         self.state_and_style::<W::State, W::Style>()
     }
 
-    /// A method for taking only the unique state from the container.
-    pub fn take_unique_widget_state<W>(&mut self)
-        -> Option<Box<UniqueWidgetState<W::State, W::Style>>>
-        where W: Widget,
-              W::State: Any + 'static,
-              W::Style: Any + 'static,
-    {
-        self.maybe_state.take().map(|any_state| {
-            any_state.downcast().ok()
-                .expect("Failed to downcast from `Box<Any>` to the required UniqueWidgetState")
-        })
-    }
-
-    /// Take the widget state from the container and cast it to type W.
-    pub fn take_widget_state<W>(&mut self) -> Option<widget::Cached<W>>
-        where W: Widget,
-              W::State: Any + 'static,
-              W::Style: Any + 'static,
-    {
-        if self.maybe_state.is_some() {
-            let boxed_unique_state = self.take_unique_widget_state::<W>().unwrap();
-            let unique_state: UniqueWidgetState<W::State, W::Style> = *boxed_unique_state;
-            let UniqueWidgetState { state, style } = unique_state;
-            Some(widget::Cached {
-                state: state,
-                style: style,
-                rect: self.rect,
-                depth: self.depth,
-                kid_area: self.kid_area,
-                maybe_floating: self.maybe_floating,
-                maybe_x_scroll_state: self.maybe_x_scroll_state,
-                maybe_y_scroll_state: self.maybe_y_scroll_state,
-            })
-        } else {
-            None
-        }
-    }
-
 }
 
 
