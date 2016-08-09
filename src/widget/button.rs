@@ -10,7 +10,7 @@ use {
     Scalar,
     Widget,
 };
-use widget;
+use widget::{self, Index};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
@@ -18,6 +18,7 @@ use widget;
 pub struct Button<'a> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
+	maybe_image: Option<Index>,
     /// Unique styling for the Button.
     pub style: Style,
     /// Whether or not user input is enabled.
@@ -81,9 +82,16 @@ impl<'a> Button<'a> {
         Button {
             common: widget::CommonBuilder::new(),
             maybe_label: None,
+            maybe_image: None,
             style: Style::new(),
             enabled: true,
         }
+    }
+
+    /// Set an image as background for the button.
+    pub fn image<I>(mut self, idx: I) -> Self where I: Into<Index> {
+        self.maybe_image = Some(idx.into());
+        self
     }
 
     builder_methods!{
@@ -158,6 +166,14 @@ impl<'a> Widget for Button<'a> {
                 .color(color)
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
+        }
+
+		// Image widget.
+        if let Some(image) = self.maybe_image {
+            widget::Image::new()
+                .middle_of(idx)
+                .graphics_for(idx)
+                .set(image, &mut ui);
         }
 
         TimesClicked(times_clicked)
