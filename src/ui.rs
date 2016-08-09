@@ -10,14 +10,26 @@ use theme::Theme;
 use utils;
 use widget::{self, Widget};
 
-/// `UiBuilder` stores everything that needs to be customized when constructing
-//// 'Ui' type.
-
+/// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
     /// The theme used to set default styling for widgets.
-    maybe_theme: Option<Theme>,
-    /// Number of widgets given as number
-    maybe_widgets_capacity: Option<usize>
+    ///
+    /// If this field is `None` when `build` is called, `Theme::default` will be used.
+    pub maybe_theme: Option<Theme>,
+    /// An estimation of the maximum number of widgets that will be used with this `Ui` instance.
+    ///
+    /// This value is used to determine the size with which various collections should be
+    /// reserved. This may make the first cycle of widget instantiations more efficient as the
+    /// collections will not be required to grow dynamically. These collections include:
+    ///
+    /// - the widget graph node and edge `Vec`s
+    /// - the `HashSet` used to track updated widgets
+    /// - the widget `DepthOrder` (a kind of toposort describing the order of widgets in their
+    /// rendering order).
+    ///
+    /// If this field is `None` when `build` is called, these collections will be initialised with
+    /// no pre-reserved size and will instead grow organically as needed.
+    pub maybe_widgets_capacity: Option<usize>
 }
 
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
@@ -97,10 +109,8 @@ pub struct UiCell<'a> {
 pub const SAFE_REDRAW_COUNT: u8 = 3;
 
 impl UiBuilder {
-    /// Create **Ui** builder with defaults.
-    ///
-    /// - maybe_theme: Theme::default()
-    /// - maybe_widgets_capacity: None
+
+    /// Begin building a new `Ui` instance.
     pub fn new() -> Self {
         UiBuilder {
             maybe_theme: None,
@@ -108,19 +118,27 @@ impl UiBuilder {
         }
     }
 
-    /// Sets the theme of built **Ui**.
+    /// The theme used to set default styling for widgets.
     ///
-    /// This method moves the current builder,
-    /// so that it can be used in method chaining.
+    /// If this field is `None` when `build` is called, `Theme::default` will be used.
     pub fn theme(mut self, value: Theme) -> Self {
         self.maybe_theme = Some(value);
         self
     }
 
-    /// Sets widgets capacity of built **Ui**.
+    /// An estimation of the maximum number of widgets that will be used with this `Ui` instance.
     ///
-    /// This method moves the current builder,
-    /// so that it can be used in method chaining.
+    /// This value is used to determine the size with which various collections should be
+    /// reserved. This may make the first cycle of widget instantiations more efficient as the
+    /// collections will not be required to grow dynamically. These collections include:
+    ///
+    /// - the widget graph node and edge `Vec`s
+    /// - the `HashSet` used to track updated widgets
+    /// - the widget `DepthOrder` (a kind of toposort describing the order of widgets in their
+    /// rendering order).
+    ///
+    /// If this field is `None` when `build` is called, these collections will be initialised with
+    /// no pre-reserved size and will instead grow organically as required.
     pub fn widgets_capacity(mut self, value: usize) -> Self {
         self.maybe_widgets_capacity = Some(value);
         self
@@ -130,6 +148,7 @@ impl UiBuilder {
     pub fn build(self) -> Ui {
         Ui::new(self)
     }
+
 }
 
 impl Ui {
