@@ -1,11 +1,9 @@
-use {
-    Color,
-    Colorable,
-    Dimensions,
-    LineStyle,
-    Sizeable,
-    Widget,
-};
+//! A simple, non-interactive rectangle shape widget.
+//!
+//! Due to the frequency of its use in GUIs, the `Rectangle` gets its own widget to allow backends
+//! to specialise their rendering implementations.
+
+use {Color, Colorable, Dimensions, Sizeable, Widget};
 use super::Style as Style;
 use widget;
 
@@ -61,7 +59,7 @@ impl Rectangle {
     }
 
     /// Build an outlined rectangle rather than a filled one.
-    pub fn outline_styled(dim: Dimensions, line_style: LineStyle) -> Self {
+    pub fn outline_styled(dim: Dimensions, line_style: widget::line::Style) -> Self {
         Rectangle::styled(dim, Style::outline_styled(line_style))
     }
 

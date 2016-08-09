@@ -1,14 +1,22 @@
+//! A helper widget for laying out child widgets in the form of a grid.
+
 use {NodeIndex, Scalar, Widget};
 use widget;
 
 
-/// Reaction params.
+/// The number of the widget.
 pub type WidgetNum = usize;
+/// A column index.
 pub type ColNum = usize;
+/// A row index.
 pub type RowNum = usize;
+/// The width of an element.
 pub type Width = Scalar;
+/// The height of an element.
 pub type Height = Scalar;
+/// The position of an element along the *x* axis.
 pub type PosX = Scalar;
+/// The position of an element along the *y* axis.
 pub type PosY = Scalar;
 
 /// Draw a matrix of any rectangular widget type, where the matrix will provide a function with

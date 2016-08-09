@@ -52,7 +52,8 @@ fn main() {
 
 
 fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{Canvas, Circle, Line, Oval, PointPath, Polygon, Positionable, Rectangle, Widget};
+    use conrod::{Positionable, Widget};
+    use conrod::widget::{Canvas, Circle, Line, Oval, PointPath, Polygon, Rectangle};
     use std::iter::once;
 
     // Generate a unique const `WidgetId` for each widget.

@@ -1,12 +1,51 @@
+//! Widgets are the core building blocks for every conrod user interface.
+//!
+//! This module contains items related to the implementation of the `Widget` trait. It also
+//! re-exports all widgets (and their modules) that are provided by conrod.
+
 use graph::{self, NodeIndex};
 use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std;
-use text;
+use text::font;
 use theme::{self, Theme};
 use ui::{self, Ui, UiCell};
 
+// Re-export types that would require the user to repeat themselves in mod paths.
+
 pub use self::id::Id;
 pub use self::index::Index;
+
+pub use self::primitive::line::{self, Line};
+pub use self::primitive::image::{self, Image};
+pub use self::primitive::point_path::{self, PointPath};
+pub use self::primitive::shape::circle::{self, Circle};
+pub use self::primitive::shape::oval::{self, Oval};
+pub use self::primitive::shape::polygon::{self, Polygon};
+pub use self::primitive::shape::rectangle::{self, Rectangle};
+pub use self::primitive::text::{self, Text};
+
+pub use self::bordered_rectangle::BorderedRectangle;
+pub use self::button::Button;
+pub use self::canvas::Canvas;
+pub use self::drop_down_list::DropDownList;
+pub use self::list_select::ListSelect;
+pub use self::envelope_editor::EnvelopeEditor;
+pub use self::file_navigator::FileNavigator;
+pub use self::list::List;
+pub use self::matrix::Matrix;
+pub use self::number_dialer::NumberDialer;
+pub use self::plot_path::PlotPath;
+pub use self::range_slider::RangeSlider;
+pub use self::scrollbar::Scrollbar;
+pub use self::slider::Slider;
+pub use self::tabs::Tabs;
+pub use self::text_box::TextBox;
+pub use self::text_edit::TextEdit;
+pub use self::title_bar::TitleBar;
+pub use self::toggle::Toggle;
+pub use self::xy_pad::XYPad;
+
+
 
 // Macro providing modules.
 #[macro_use] mod builder;
@@ -100,7 +139,7 @@ pub struct KidAreaArgs<'a, W>
     /// The active **Theme** within the **Ui**.
     pub theme: &'a Theme,
     /// The **Font** (for determining text width).
-    pub fonts: &'a text::font::Map,
+    pub fonts: &'a font::Map,
 }
 
 /// The area upon which a **Widget**'s child widgets will be placed.
@@ -254,12 +293,13 @@ pub struct CommonState {
     pub maybe_y_scroll_state: Option<scroll::StateY>,
 }
 
-/// **Widget** data to be cached prior to the **Widget::update** call in the **widget::set_widget**
-/// function.
-///
-/// We do this so that if this **Widget** were to internally `set` some other **Widget**s, this
-/// **Widget**'s positioning and dimension data already exists within the widget **Graph** for
-/// reference.
+// **Widget** data to be cached prior to the **Widget::update** call in the **widget::set_widget**
+// function.
+//
+// We do this so that if this **Widget** were to internally `set` some other **Widget**s, this
+// **Widget**'s positioning and dimension data already exists within the widget **Graph** for
+// reference.
+#[allow(missing_docs)]
 #[allow(missing_copy_implementations)]
 pub struct PreUpdateCache {
     /// The **Widget**'s unique type identifier.
@@ -293,12 +333,13 @@ pub struct PreUpdateCache {
     pub maybe_graphics_for: Option<Index>,
 }
 
-/// **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
-/// function.
-///
-/// We do this so that if this **Widget** were to internally **Widget::set** some other
-/// **Widget**s, this **Widget**'s positioning and dimension data will already exist within the
-/// widget **Graph** for reference.
+// **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
+// function.
+//
+// We do this so that if this **Widget** were to internally **Widget::set** some other
+// **Widget**s, this **Widget**'s positioning and dimension data will already exist within the
+// widget **Graph** for reference.
+#[allow(missing_docs)]
 pub struct PostUpdateCache<W>
     where W: Widget,
 {

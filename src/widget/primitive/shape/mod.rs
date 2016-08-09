@@ -1,8 +1,8 @@
 //! A module encompassing the primitive 2D shape widgets.
 
 use color::Color;
-use super::line::Style as LineStyle;
 use theme::Theme;
+use widget;
 
 pub mod circle;
 pub mod oval;
@@ -14,7 +14,7 @@ pub mod rectangle;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Style {
     /// The outline of the shape with this style.
-    Outline(LineStyle),
+    Outline(widget::line::Style),
     /// A rectangle filled with this color.
     Fill(Option<Color>),
 }
@@ -34,11 +34,11 @@ impl Style {
 
     /// A default `Outline` style.
     pub fn outline() -> Self {
-        Style::Outline(LineStyle::new())
+        Style::Outline(widget::line::Style::new())
     }
 
     /// A default `Outline` style.
-    pub fn outline_styled(line_style: LineStyle) -> Self {
+    pub fn outline_styled(line_style: widget::line::Style) -> Self {
         Style::Outline(line_style)
     }
 

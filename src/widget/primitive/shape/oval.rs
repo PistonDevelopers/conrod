@@ -1,14 +1,8 @@
-use {
-    Color,
-    Colorable,
-    Dimensions,
-    LineStyle,
-    Sizeable,
-    Widget,
-};
+//! A simple, non-interactive widget for drawing a single **Oval**.
+
+use {Color, Colorable, Dimensions, Sizeable, Widget};
 use super::Style as Style;
 use widget;
-
 
 
 /// A simple, non-interactive widget for drawing a single **Oval**.
@@ -51,7 +45,7 @@ impl Oval {
     }
 
     /// Build a new **Oval** **Outline**d with the given style.
-    pub fn outline_styled(dim: Dimensions, line_style: LineStyle) -> Self {
+    pub fn outline_styled(dim: Dimensions, line_style: widget::line::Style) -> Self {
         Oval::styled(dim, Style::outline_styled(line_style))
     }
 

@@ -936,8 +936,8 @@ impl Ui {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use {color, Colorable, Borderable, BorderedRectangle, Positionable, Widget};
-            type Window = BorderedRectangle;
+            use {color, Colorable, Borderable, Positionable, Widget};
+            type Window = widget::BorderedRectangle;
             Window::new([self.win_w, self.win_h])
                 .no_parent()
                 .x_y(0.0, 0.0)

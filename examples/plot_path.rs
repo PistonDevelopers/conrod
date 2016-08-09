@@ -50,17 +50,17 @@ fn main() {
 
 // Declare the `WidgetId`s and instantiate the widgets.
 fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{color, Canvas, Colorable, PlotPath, Positionable, Sizeable, Widget};
+    use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
     widget_ids!{CANVAS, PLOT};
 
-    Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
 
     let min_x = 0.0;
     let max_x = std::f64::consts::PI * 2.0;
     let min_y = -1.0;
     let max_y = 1.0;
-    PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
+    widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
         .color(color::LIGHT_BLUE)
         .wh_of(CANVAS)
         .middle_of(CANVAS)

@@ -6,7 +6,7 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use conrod::{Canvas, Colorable, Image, Positionable, Sizeable, Widget, color};
+use conrod::{widget, Colorable, Positionable, Sizeable, Widget, color};
 use piston_window::{EventLoop, Flip, ImageSize, G2dTexture, PistonWindow, Texture, UpdateEvent};
 
 fn main() {
@@ -56,9 +56,9 @@ fn main() {
 
         event.update(|_| ui.set_widgets(|mut ui| {
             // Draw a light blue background.
-            Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, &mut ui);
+            widget::Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, &mut ui);
             // Instantiate the `Image` at its full size in the middle of the window.
-            Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, &mut ui);
+            widget::Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, &mut ui);
         }));
     }
 }

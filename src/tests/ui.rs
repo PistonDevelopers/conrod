@@ -1,5 +1,4 @@
 use {
-    Canvas,
     Color,
     Labelable,
     Positionable,
@@ -12,8 +11,7 @@ use {
 use event::{self, Input, Motion};
 use input::{self, Button, Key, MouseButton};
 use input::keyboard::ModifierKey;
-use widget::{Index, self};
-use widget::button::Button as ButtonWidget;
+use widget::{self, Index};
 use position::Point;
 
 
@@ -89,10 +87,10 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     assert!(ui.global_input.events().next().is_some());
     ui.set_widgets(|ref mut ui| {
 
-        Canvas::new()
+        widget::Canvas::new()
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
             .set(CANVAS_ID, ui);
-        ButtonWidget::new()
+        widget::Button::new()
             .w_h(100.0, 200.0)
             .label("MyButton")
             .react(|| {})

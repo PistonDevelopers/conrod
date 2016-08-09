@@ -7,7 +7,7 @@ fn main() {
     const WIDTH: u32 = 200;
     const HEIGHT: u32 = 200;
 
-    use conrod::{Labelable, Positionable, Sizeable, Widget};
+    use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
     use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
     // Change this to OpenGL::V2_1 if not working.
@@ -51,10 +51,10 @@ fn main() {
                 widget_ids!(CANVAS, COUNTER);
 
                 // Create a background canvas upon which we'll place the button.
-                conrod::Canvas::new().pad(40.0).set(CANVAS, ui);
+                widget::Canvas::new().pad(40.0).set(CANVAS, ui);
 
                 // Draw the button and increment `count` if pressed.
-                conrod::Button::new()
+                widget::Button::new()
                     .middle_of(CANVAS)
                     .w_h(80.0, 80.0)
                     .label(&count.to_string())

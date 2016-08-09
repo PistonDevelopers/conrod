@@ -1,17 +1,15 @@
+//! A widget for precision control over any base-10 digit within a given value.
+
 use {
     Color,
     Colorable,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Labelable,
     NodeIndex,
     Point,
     Positionable,
-    Rectangle,
     Scalar,
-    Text,
     Widget,
 };
 use num::{Float, NumCast};
@@ -67,8 +65,8 @@ widget_style!{
 pub struct State {
     /// The index of the value that is currently pressed.
     pressed_value_idx: Option<usize>,
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
     glyph_slot_indices: Vec<GlyphSlot>,
 }
 
@@ -170,8 +168,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     fn init_state(&self) -> Self::State {
         State {
             pressed_value_idx: None,
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
             glyph_slot_indices: Vec::new(),
         }
     }
@@ -329,7 +327,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        BorderedRectangle::new(rect.dim())
+        widget::BorderedRectangle::new(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
@@ -342,7 +340,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
         let font_size = style.label_font_size(ui.theme());
         if maybe_label.is_some() {
             let label_idx = state.label_idx.get(&mut ui);
-            Text::new(&label_string)
+            widget::Text::new(&label_string)
                 .x_y_relative_to(idx, label_rel_x, 0.0)
                 .graphics_for(idx)
                 .color(label_color)
@@ -380,7 +378,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             };
 
             if let Some(slot_color) = maybe_slot_color {
-                Rectangle::fill([slot_w, slot_h])
+                widget::Rectangle::fill([slot_w, slot_h])
                     .depth(1.0)
                     .x_y_relative_to(idx, rel_slot_x, 0.0)
                     .graphics_for(idx)
@@ -390,7 +388,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             }
 
             // Now a **Text** widget for the character itself.
-            Text::new(glyph_string)
+            widget::Text::new(glyph_string)
                 .x_y_relative_to(idx, rel_slot_x, 0.0)
                 .graphics_for(idx)
                 .color(label_color)

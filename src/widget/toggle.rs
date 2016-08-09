@@ -1,14 +1,13 @@
+//! A button that allows for toggling boolean state.
+
 use {
     Color,
     Colorable,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Labelable,
     Positionable,
     Scalar,
-    Text,
     Widget,
 };
 use widget;
@@ -52,8 +51,8 @@ widget_style!{
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
     value: bool,
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
 }
 
 
@@ -95,8 +94,8 @@ impl<'a, F> Widget for Toggle<'a, F>
     fn init_state(&self) -> State {
         State {
             value: self.value,
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -139,7 +138,7 @@ impl<'a, F> Widget for Toggle<'a, F>
             }
         };
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
@@ -152,7 +151,7 @@ impl<'a, F> Widget for Toggle<'a, F>
             let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
-            Text::new(label)
+            widget::Text::new(label)
                 .middle_of(rectangle_idx)
                 .graphics_for(idx)
                 .color(color)

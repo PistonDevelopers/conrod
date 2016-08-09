@@ -62,7 +62,7 @@ fn main() {
 }
 
 fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{Canvas, color, Colorable, Positionable, Scalar, Sizeable, Text, Widget};
+    use conrod::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
 
     // Generate a unique const `WidgetId` for each widget.
     widget_ids!{
@@ -76,10 +76,10 @@ fn set_ui(ref mut ui: conrod::UiCell) {
     }
 
     // Our `Canvas` tree, upon which we will place our text widgets.
-    Canvas::new().flow_right(&[
-        (LEFT_COL, Canvas::new().color(color::BLACK)),
-        (MIDDLE_COL, Canvas::new().color(color::DARK_CHARCOAL)),
-        (RIGHT_COL, Canvas::new().color(color::CHARCOAL)),
+    widget::Canvas::new().flow_right(&[
+        (LEFT_COL, widget::Canvas::new().color(color::BLACK)),
+        (MIDDLE_COL, widget::Canvas::new().color(color::DARK_CHARCOAL)),
+        (RIGHT_COL, widget::Canvas::new().color(color::CHARCOAL)),
     ]).set(MASTER, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -92,7 +92,7 @@ fn set_ui(ref mut ui: conrod::UiCell) {
 
     const PAD: Scalar = 20.0;
 
-    Text::new(DEMO_TEXT)
+    widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_RED)
         .padded_w_of(LEFT_COL, PAD)
         .mid_top_with_margin_on(LEFT_COL, PAD)
@@ -100,7 +100,7 @@ fn set_ui(ref mut ui: conrod::UiCell) {
         .line_spacing(10.0)
         .set(LEFT_TEXT, ui);
 
-    Text::new(DEMO_TEXT)
+    widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_GREEN)
         .padded_w_of(MIDDLE_COL, PAD)
         .middle_of(MIDDLE_COL)
@@ -108,7 +108,7 @@ fn set_ui(ref mut ui: conrod::UiCell) {
         .line_spacing(2.5)
         .set(MIDDLE_TEXT, ui);
 
-    Text::new(DEMO_TEXT)
+    widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_BLUE)
         .padded_w_of(RIGHT_COL, PAD)
         .mid_bottom_with_margin_on(RIGHT_COL, PAD)

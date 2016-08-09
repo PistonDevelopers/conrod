@@ -1,15 +1,13 @@
+//! Used for displaying and controlling a 2D point on a cartesian plane within a given range.
+
 use {
     Color,
     Colorable,
     Borderable,
-    BorderedRectangle,
     FontSize,
-    IndexSlot,
     Labelable,
-    Line,
     Positionable,
     Scalar,
-    Text,
     Widget,
 };
 use num::Float;
@@ -59,11 +57,11 @@ widget_style!{
 /// The state of the XYPad.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
-    h_line_idx: IndexSlot,
-    v_line_idx: IndexSlot,
-    value_label_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
+    h_line_idx: widget::IndexSlot,
+    v_line_idx: widget::IndexSlot,
+    value_label_idx: widget::IndexSlot,
 }
 
 
@@ -109,11 +107,11 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
 
     fn init_state(&self) -> Self::State {
         State {
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
-            h_line_idx: IndexSlot::new(),
-            v_line_idx: IndexSlot::new(),
-            value_label_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
+            h_line_idx: widget::IndexSlot::new(),
+            v_line_idx: widget::IndexSlot::new(),
+            value_label_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -172,7 +170,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
@@ -185,7 +183,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         if let Some(label) = maybe_label {
             let label_idx = state.label_idx.get(&mut ui);
             let label_font_size = style.label_font_size(ui.theme());
-            Text::new(label)
+            widget::Text::new(label)
                 .middle_of(rectangle_idx)
                 .graphics_for(idx)
                 .color(label_color)
@@ -205,7 +203,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let v_line_start = [0.0, -half_h];
         let v_line_end = [0.0, half_h];
         let v_line_idx = state.v_line_idx.get(&mut ui);
-        Line::centred(v_line_start, v_line_end)
+        widget::Line::centred(v_line_start, v_line_end)
             .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(idx, v_line_x, 0.0)
@@ -216,7 +214,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         let h_line_start = [-half_w, 0.0];
         let h_line_end = [half_w, 0.0];
         let h_line_idx = state.h_line_idx.get(&mut ui);
-        Line::centred(h_line_start, h_line_end)
+        widget::Line::centred(h_line_start, h_line_end)
             .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(idx, 0.0, h_line_y)
@@ -240,7 +238,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
         };
         let value_font_size = style.value_font_size(ui.theme());
         let value_label_idx = state.value_label_idx.get(&mut ui);
-        Text::new(&value_string)
+        widget::Text::new(&value_string)
             .x_direction_from(v_line_idx, x_direction, VALUE_TEXT_PAD)
             .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)
             .color(line_color)

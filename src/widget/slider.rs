@@ -1,18 +1,16 @@
+//! A widget for selecting a single value along some linear range.
+
 use {
     Color,
     Colorable,
     FontSize,
     Borderable,
     Labelable,
-    IndexSlot,
-    KidArea,
     Padding,
     Positionable,
     Range,
     Rect,
-    Rectangle,
     Scalar,
-    Text,
     Widget,
 };
 use num::{Float, NumCast, ToPrimitive};
@@ -69,9 +67,9 @@ widget_style!{
 /// Represents the state of the Slider widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    border_idx: IndexSlot,
-    slider_idx: IndexSlot,
-    label_idx: IndexSlot,
+    border_idx: widget::IndexSlot,
+    slider_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
 }
 
 impl<'a, T, F> Slider<'a, T, F> {
@@ -116,9 +114,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
 
     fn init_state(&self) -> Self::State {
         State {
-            border_idx: IndexSlot::new(),
-            slider_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
+            border_idx: widget::IndexSlot::new(),
+            slider_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -126,9 +124,9 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         self.style.clone()
     }
 
-    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> KidArea {
+    fn kid_area(&self, args: widget::KidAreaArgs<Self>) -> widget::KidArea {
         const LABEL_PADDING: Scalar = 10.0;
-        KidArea {
+        widget::KidArea {
             rect: args.rect,
             pad: Padding {
                 x: Range::new(LABEL_PADDING, LABEL_PADDING),
@@ -196,7 +194,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 .unwrap_or(color);
 
         let border_color = interaction_color(&ui, style.border_color(ui.theme()));
-        Rectangle::fill(rect.dim())
+        widget::Rectangle::fill(rect.dim())
             .middle_of(idx)
             .graphics_for(idx)
             .color(border_color)
@@ -219,7 +217,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         let color = interaction_color(&ui, style.color(ui.theme()));
         let slider_idx = state.slider_idx.get(&mut ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
-        Rectangle::fill(slider_rect.dim())
+        widget::Rectangle::fill(slider_rect.dim())
             .xy_relative_to(idx, slider_xy_offset)
             .graphics_for(idx)
             .parent(idx)
@@ -232,7 +230,7 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
             let label_idx = state.label_idx.get(&mut ui);
-            Text::new(label)
+            widget::Text::new(label)
                 .and(|text| if is_horizontal { text.mid_left_of(idx) }
                             else { text.mid_bottom_of(idx) })
                 .graphics_for(idx)

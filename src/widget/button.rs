@@ -1,14 +1,13 @@
+//! The `Button` widget and related items.
+
 use {
     Color,
     Colorable,
     FontSize,
     Borderable,
-    BorderedRectangle,
-    IndexSlot,
     Labelable,
     Positionable,
     Scalar,
-    Text,
     Widget,
 };
 use widget;
@@ -45,8 +44,8 @@ widget_style!{
 /// Represents the state of the Button widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: IndexSlot,
-    label_idx: IndexSlot,
+    rectangle_idx: widget::IndexSlot,
+    label_idx: widget::IndexSlot,
 }
 
 impl<'a, F> Button<'a, F> {
@@ -85,8 +84,8 @@ impl<'a, F> Widget for Button<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: IndexSlot::new(),
-            label_idx: IndexSlot::new(),
+            rectangle_idx: widget::IndexSlot::new(),
+            label_idx: widget::IndexSlot::new(),
         }
     }
 
@@ -121,7 +120,7 @@ impl<'a, F> Widget for Button<'a, F>
         let dim = rect.dim();
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        BorderedRectangle::new(dim)
+        widget::BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
             .color(color)
@@ -134,7 +133,7 @@ impl<'a, F> Widget for Button<'a, F>
             let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
-            Text::new(label)
+            widget::Text::new(label)
                 .middle_of(rectangle_idx)
                 .graphics_for(idx)
                 .color(color)

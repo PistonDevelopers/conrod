@@ -1,14 +1,12 @@
+//! A helper widget, useful for instantiating a sequence of widgets in a vertical list.
+
 use {
     color,
     Color,
     Colorable,
-    IndexSlot,
     NodeIndex,
     Positionable,
-    Rectangle,
     Scalar,
-    Scrollbar,
-    ScrollbarStyle,
     Sizeable,
     Widget,
     UiCell,
@@ -48,9 +46,9 @@ widget_style! {
 /// Represents the state of the List widget.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    scroll_trigger_idx: IndexSlot,
+    scroll_trigger_idx: widget::IndexSlot,
     item_indices: Vec<NodeIndex>,
-    scrollbar_idx: IndexSlot,
+    scrollbar_idx: widget::IndexSlot,
 }
 
 /// The data necessary for instantiating a single item within a `List`.
@@ -224,8 +222,8 @@ impl<F> Widget for List<F>
 
     fn init_state(&self) -> State {
         State {
-            scroll_trigger_idx: IndexSlot::new(),
-            scrollbar_idx: IndexSlot::new(),
+            scroll_trigger_idx: widget::IndexSlot::new(),
+            scrollbar_idx: widget::IndexSlot::new(),
             item_indices: Vec::new(),
         }
     }
@@ -251,7 +249,7 @@ impl<F> Widget for List<F>
         // The width of the scrollbar.
         let scrollbar_w = style.scrollbar_width(&ui.theme)
             .unwrap_or_else(|| {
-                ui.theme.widget_style::<ScrollbarStyle>()
+                ui.theme.widget_style::<widget::scrollbar::Style>()
                     .and_then(|style| style.style.thickness)
                     .unwrap_or(10.0)
             });
@@ -269,7 +267,7 @@ impl<F> Widget for List<F>
         // By using one long `Rectangle` widget to trigger the scrolling, this allows us to only
         // instantiate the visible items.
         let scroll_trigger_idx = state.scroll_trigger_idx.get(&mut ui);
-        Rectangle::fill([rect.w(), total_item_h])
+        widget::Rectangle::fill([rect.w(), total_item_h])
             .mid_top_of(idx)
             .color(color::TRANSPARENT)
             .parent(idx)
@@ -340,7 +338,8 @@ impl<F> Widget for List<F>
         };
         let scrollbar_color = style.scrollbar_color(&ui.theme);
         let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-        Scrollbar::y_axis(idx)
+        widget::Scrollbar::y_axis(idx)
+            .and_if(prev.maybe_floating.is_some(), |s| s.floating(true))
             .color(scrollbar_color)
             .thickness(scrollbar_w)
             .auto_hide(auto_hide)

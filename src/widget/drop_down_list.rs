@@ -1,20 +1,16 @@
+//! The `DropDownList` and related items.
+
 use {
-    Button,
-    ButtonStyle,
     Color,
     Colorable,
     FontSize,
     Borderable,
-    IndexSlot,
     Labelable,
-    List,
     NodeIndex,
     Positionable,
     Scalar,
-    ScrollbarStyle,
     Sizeable,
 };
-use super::list::ScrollbarPosition;
 use widget::{self, Widget};
 
 
@@ -51,7 +47,7 @@ widget_style!{
         /// Maximum height of the Open menu before the scrollbar appears.
         - maybe_max_visible_height: Option<MaxHeight> { None }
         /// The position of the scrollbar in the case that the list is scrollable.
-        - scrollbar_position: Option<ScrollbarPosition> { None }
+        - scrollbar_position: Option<widget::list::ScrollbarPosition> { None }
         /// The width of the scrollbar in the case that the list is scrollable.
         - scrollbar_width: Option<Scalar> { None }
     }
@@ -63,20 +59,22 @@ pub struct State {
     menu_state: MenuState,
     buttons: Vec<(NodeIndex, String)>,
     maybe_selected: Option<Idx>,
-    closed_menu: IndexSlot,
-    list_idx: IndexSlot,
+    closed_menu: widget::IndexSlot,
+    list_idx: widget::IndexSlot,
 }
 
 /// Representations of the max height of the visible area of the DropDownList.
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum MaxHeight {
+    /// Specify the max height as a number of items.
     Items(usize),
+    /// Specify the max height as an absolute scalar distance.
     Scalar(f64),
 }
 
 /// Whether the DropDownList is currently open or closed.
 #[derive(PartialEq, Clone, Copy, Debug)]
-pub enum MenuState {
+enum MenuState {
     Closed,
     Open,
 }
@@ -118,14 +116,14 @@ impl<'a, F> DropDownList<'a, F> {
     /// Specifies that the list should be scrollable and should provide a `Scrollbar` to the right
     /// of the items.
     pub fn scrollbar_next_to(mut self) -> Self {
-        self.style.scrollbar_position = Some(Some(ScrollbarPosition::NextTo));
+        self.style.scrollbar_position = Some(Some(widget::list::ScrollbarPosition::NextTo));
         self
     }
 
     /// Specifies that the list should be scrollable and should provide a `Scrollbar` that hovers
     /// above the right edge of the items and automatically hides when the user is not scrolling.
     pub fn scrollbar_on_top(mut self) -> Self {
-        self.style.scrollbar_position = Some(Some(ScrollbarPosition::OnTop));
+        self.style.scrollbar_position = Some(Some(widget::list::ScrollbarPosition::OnTop));
         self
     }
 
@@ -163,8 +161,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
             menu_state: MenuState::Closed,
             buttons: Vec::new(),
             maybe_selected: None,
-            list_idx: IndexSlot::new(),
-            closed_menu: IndexSlot::new(),
+            list_idx: widget::IndexSlot::new(),
+            closed_menu: widget::IndexSlot::new(),
         }
     }
 
@@ -218,7 +216,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let mut was_clicked = false;
                 {
                     // use the pre-existing Button widget
-                    let mut button = Button::new()
+                    let mut button = widget::Button::new()
                     .xy(rect.xy())
                     .wh(rect.dim())
                     .label(label)
@@ -258,15 +256,15 @@ impl<'a, F> Widget for DropDownList<'a, F>
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
                     .unwrap_or_else(|| {
-                        ui.theme.widget_style::<ScrollbarStyle>()
+                        ui.theme.widget_style::<widget::scrollbar::Style>()
                             .and_then(|style| style.style.thickness)
                             .unwrap_or(10.0)
                     });
-                List::new(num_strings as u32, item_h)
+                widget::List::new(num_strings as u32, item_h)
                     .w_h(w, list_h)
                     .and(|ls| match scrollbar_position {
-                        Some(ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
-                        Some(ScrollbarPosition::OnTop) => ls.scrollbar_on_top(),
+                        Some(widget::list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
+                        Some(widget::list::ScrollbarPosition::OnTop) => ls.scrollbar_on_top(),
                         None => ls,
                     })
                     .scrollbar_color(scrollbar_color)
@@ -281,7 +279,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
                             Some(label) => label,
                             None => return,
                         };
-                        let mut button = Button::new()
+                        let mut button = widget::Button::new()
                             .label(label)
                             .react(|| was_clicked = Some(i));
                         button.style = style.button_style(Some(i) == selected);
@@ -337,8 +335,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
 impl Style {
 
     /// Style for a `Button` given this `Style`'s current state.
-    pub fn button_style(&self, is_selected: bool) -> ButtonStyle {
-        ButtonStyle {
+    pub fn button_style(&self, is_selected: bool) -> widget::button::Style {
+        widget::button::Style {
             color: self.color.map(|c| if is_selected { c.highlighted() } else { c }),
             border: self.border,
             border_color: self.border_color,

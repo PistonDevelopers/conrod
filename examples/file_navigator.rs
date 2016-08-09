@@ -49,14 +49,14 @@ fn main() {
 
             // Instantiate the conrod widgets.
             ui.set_widgets(|ref mut ui| {
-                use conrod::{Canvas, Colorable, FileNavigator, Positionable, Sizeable, Widget};
+                use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 
                 widget_ids!(CANVAS, FILE_NAVIGATOR);
 
-                Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+                widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
                 // Navigate the conrod directory only showing `.rs` and `.toml` files.
-                FileNavigator::with_extension(&conrod_directory, &["rs", "toml"])
+                widget::FileNavigator::with_extension(&conrod_directory, &["rs", "toml"])
                     .color(conrod::color::LIGHT_BLUE)
                     .font_size(16)
                     .wh_of(CANVAS)

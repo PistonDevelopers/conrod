@@ -1,3 +1,5 @@
+//! A simple, non-interactive widget for drawing a series of conjoined lines.
+
 use {
     Color,
     Colorable,
