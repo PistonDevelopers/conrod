@@ -192,23 +192,21 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
             let i = item.i;
             let label = format!("{}", self.entries[i].to_string());
 
-            // Set button colors, depending if selected or not.
-            if self.selected[i] {
-                txt_col = sel_text_color; rect_col = sel_rect_color;
-            } else {
-                txt_col = unsel_text_color; rect_col = unsel_rect_color;
-            }
-            // Save widget NodeIndex so input states can be retrieved later
-            entry_idx_list[i]=item.widget_idx;
+            // Button colors, depending if selected or not.
+            let (rect_color, text_color) =  match selected[i] {
+                true => (sel_rect_color, sel_text_color),
+                false => (unsel_rect_color, unsel_text_color),
+            };
 
+            let item_idx = item.widget_idx;
             let button = widget::Button::new()
                 .label(&label)
-                .label_color(txt_col)
-                .color(rect_col)
+                .label_color(text_color)
+                .color(rect_color)
                 .label_font_size(font_size)
                 .border(0.0);
             if item.set(button, &mut ui).was_clicked() {
-                list_index_event = Some(i);
+                clicked_item = Some((i, item_idx));
             }
         }
 
