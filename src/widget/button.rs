@@ -8,15 +8,17 @@ use {
     Labelable,
     Positionable,
     Scalar,
+    Texturable,
     Widget,
 };
-use widget;
+use widget::{self, Index};
 
 
 /// A pressable button widget whose reaction is triggered upon release.
 pub struct Button<'a, F> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
+	maybe_texture: Option<Index>,
     /// The reaction for the Button. The reaction will be triggered upon release of the button.
     maybe_react: Option<F>,
     /// Unique styling for the Button.
@@ -56,6 +58,7 @@ impl<'a, F> Button<'a, F> {
             common: widget::CommonBuilder::new(),
             maybe_react: None,
             maybe_label: None,
+            maybe_texture: None,
             style: Style::new(),
             enabled: true,
         }
@@ -141,6 +144,13 @@ impl<'a, F> Widget for Button<'a, F>
                 .set(label_idx, &mut ui);
         }
 
+        // Texture widget.
+        if let Some(texture) = self.maybe_texture {
+            widget::Image::new()
+                .middle_of(rectangle_idx)
+                .set(texture, &mut ui);
+        }
+
     }
 
 }
@@ -148,6 +158,10 @@ impl<'a, F> Widget for Button<'a, F>
 
 impl<'a, F> Colorable for Button<'a, F> {
     builder_method!(color { style.color = Some(Color) });
+}
+
+impl<'a, F> Texturable for Button<'a, F> {
+    builder_method!(texture { maybe_texture = Some(Index) });
 }
 
 impl<'a, F> Borderable for Button<'a, F> {
