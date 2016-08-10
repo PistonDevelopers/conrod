@@ -93,6 +93,11 @@ impl<Idx, Img> std::iter::Extend<(Idx, Img)> for Map<Img>
     }
 }
 
+/// Types can be set a texture
+pub trait Texturable: Sized {
+    /// Provide Index of texture to be set
+    fn texture(self, texture: widget::Index) -> Self;
+}
 
 /// A macro for simplifying the instantiation of an `image::Map`.
 ///

@@ -17,6 +17,7 @@ extern crate rusttype;
 pub use color::{Color, Colorable};
 pub use border::{Bordering, Borderable};
 pub use graph::NodeIndex;
+pub use image::Texturable;
 pub use label::{FontSize, Labelable};
 pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
                    Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
