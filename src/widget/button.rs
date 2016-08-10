@@ -102,7 +102,12 @@ impl<'a, F> Widget for Button<'a, F>
 
         let color = {
             let input = ui.widget_input(idx);
-            if input.clicks().left().next().is_some() {
+            let texture_input = match self.maybe_texture {
+                Some(texture) => Some(ui.widget_input(texture)),
+                None => None
+            };
+            if input.clicks().left().next().is_some() ||
+               texture_input.is_some() && texture_input.unwrap().clicks().left().next().is_some() {
                 if let Some(react) = self.maybe_react {
                     react()
                 }
