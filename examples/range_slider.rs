@@ -72,16 +72,18 @@ fn set_ui(ref mut ui: conrod::UiCell, oval_range: &mut (conrod::Scalar, conrod::
     let (ref mut start, ref mut end) = *oval_range;
     let min = 0.0;
     let max = 1.0;
-    widget::RangeSlider::new(*start, *end, min, max)
+    for (edge, value) in widget::RangeSlider::new(*start, *end, min, max)
         .color(color::LIGHT_BLUE)
         .padded_w_of(CANVAS, PAD)
         .h(30.0)
         .mid_top_with_margin_on(CANVAS, PAD)
-        .react(|edge, value| match edge {
+        .set(RANGE_SLIDER, ui)
+    {
+        match edge {
             widget::range_slider::Edge::Start => *start = value,
             widget::range_slider::Edge::End => *end = value,
-        })
-        .set(RANGE_SLIDER, ui);
+        }
+    }
 
     let range_slider_w = ui.w_of(RANGE_SLIDER).unwrap();
     let w = (*end - *start) * range_slider_w;

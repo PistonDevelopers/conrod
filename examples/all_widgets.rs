@@ -49,16 +49,12 @@ struct DemoApp {
     circle_pos: conrod::Point,
     /// Envelope for demonstration of EnvelopeEditor.
     envelopes: Vec<(Vec<conrod::Point>, String)>,
-    /// A channel for sending results from the `WidgetMatrix`.
-    elem_sender: std::sync::mpsc::Sender<(usize, usize, bool)>,
-    elem_receiver: std::sync::mpsc::Receiver<(usize, usize, bool)>,
 }
 
 impl DemoApp {
 
     /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
-        let (elem_sender, elem_receiver) = std::sync::mpsc::channel();
         DemoApp {
             bg_color: conrod::color::rgb(0.2, 0.35, 0.45),
             show_button: false,
@@ -91,8 +87,6 @@ impl DemoApp {
                                    [0.3, 0.2],
                                    [0.6, 0.6],
                                    [1.0, 0.0], ], "Envelope B".to_string())],
-            elem_sender: elem_sender,
-            elem_receiver: elem_receiver,
         }
     }
 
@@ -223,15 +217,18 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     if app.show_button {
 
         // Button widget example button.
-        widget::Button::new()
+        if widget::Button::new()
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
             .rgb(0.4, 0.75, 0.6)
             .border(app.border_width)
             .label("PRESS")
-            .react(|| app.bg_color = color::rgb(rand::random(), rand::random(), rand::random()))
             .set(BUTTON, ui)
+            .was_clicked()
+        {
+            app.bg_color = color::rgb(rand::random(), rand::random(), rand::random())
+        }
 
     }
 
@@ -239,16 +236,10 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
     else {
 
         // Create the label for the slider.
-        let pad = app.title_pad as i16;
-        let pad_string = pad.to_string();
-        let label = {
-            let mut text = "Padding: ".to_string();
-            text.push_str(&pad_string);
-            text
-        };
+        let label = format!("Padding: {}", app.title_pad as i16);
 
         // Slider widget example slider(value, min, max).
-        widget::Slider::new(pad as f32, 0.0, 670.0)
+        if let Some(new_pad) = widget::Slider::new(app.title_pad, 0.0, 670.0)
             .w_h(200.0, 50.0)
             .mid_left_of(CANVAS)
             .down_from(TITLE, 45.0)
@@ -256,33 +247,33 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .border(app.border_width)
             .label(&label)
             .label_color(color::WHITE)
-            .react(|new_pad: f32| app.title_pad = new_pad as f64)
-            .set(TITLE_PAD_SLIDER, ui);
+            .set(TITLE_PAD_SLIDER, ui)
+        {
+            app.title_pad = new_pad;
+        }
 
     }
-
-    // Clone the label toggle to be drawn.
-    let label = app.toggle_label.clone();
 
     // Keep track of the currently shown widget.
     let shown_widget = if app.show_button { BUTTON } else { TITLE_PAD_SLIDER };
 
-    // Toggle widget example toggle(value).
-    widget::Toggle::new(app.show_button)
+    // Toggle widget example.
+    if let Some(value) = widget::Toggle::new(app.show_button)
         .w_h(75.0, 75.0)
         .down(20.0)
         .rgb(0.6, 0.25, 0.75)
         .border(app.border_width)
-        .label(&label)
+        .label(&app.toggle_label)
         .label_color(color::WHITE)
-        .react(|value| {
-            app.show_button = value;
-            app.toggle_label = match value {
-                true => "ON".to_string(),
-                false => "OFF".to_string()
-            }
-        })
-        .set(TOGGLE, ui);
+        .set(TOGGLE, ui)
+        .last()
+    {
+        app.show_button = value;
+        app.toggle_label = match value {
+            true => "ON".to_string(),
+            false => "OFF".to_string()
+        }
+    }
 
     // Let's draw a slider for each color element.
     // 0 => red, 1 => green, 2 => blue.
@@ -306,35 +297,39 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         let label = format!("{:.*}", 2, value);
 
         // Slider widget examples. slider(value, min, max)
-        widget::Slider::new(value, 0.0, 1.0)
+        for color in widget::Slider::new(value, 0.0, 1.0)
             .and(|slider| if i == 0 { slider.down(25.0) } else { slider.right(20.0) })
             .w_h(40.0, app.v_slider_height)
             .color(color)
             .border(app.border_width)
             .label(&label)
             .label_color(color::WHITE)
-            .react(|color| match i {
+            .set(COLOR_SLIDER + i, ui)
+        {
+            match i {
                 0 => app.bg_color.set_red(color),
                 1 => app.bg_color.set_green(color),
                 _ => app.bg_color.set_blue(color),
-            })
-            .set(COLOR_SLIDER + i, ui);
+            }
+        }
 
     }
 
     // Number Dialer widget example. (value, min, max, precision)
-    widget::NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
+    for new_height in widget::NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
         .w_h(260.0, 60.0)
         .right_from(shown_widget, 30.0)
         .color(app.bg_color.invert())
         .border(app.border_width)
         .label("Height (px)")
         .label_color(app.bg_color.invert().plain_contrast())
-        .react(|new_height| app.v_slider_height = new_height)
-        .set(SLIDER_HEIGHT, ui);
+        .set(SLIDER_HEIGHT, ui)
+    {
+        app.v_slider_height = new_height;
+    }
 
     // Number Dialer widget example. (value, min, max, precision)
-    widget::NumberDialer::new(app.border_width, 0.0, 15.0, 2)
+    for new_width in widget::NumberDialer::new(app.border_width, 0.0, 15.0, 2)
         .w_h(260.0, 60.0)
         .down(20.0)
         .color(app.bg_color.invert().plain_contrast())
@@ -342,86 +337,82 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
         .border_color(app.bg_color.plain_contrast())
         .label("Border Width (px)")
         .label_color(app.bg_color.plain_contrast())
-        .react(|new_width| app.border_width = new_width)
-        .set(BORDER_WIDTH, ui);
+        .set(BORDER_WIDTH, ui)
+    {
+        app.border_width = new_width;
+    }
 
-    // A demonstration using widget_matrix to easily draw
-    // a matrix of any kind of widget.
+    // A demonstration using widget_matrix to easily draw a matrix of any kind of widget.
     let (cols, rows) = (8, 8);
-    widget::Matrix::new(cols, rows)
+    let mut elements = widget::Matrix::new(cols, rows)
         .down(20.0)
-        .w_h(260.0, 260.0) // matrix width and height.
-        .each_widget(|_n, col: usize, row: usize| { // called for every matrix elem.
-
-            // Color effect for fun.
-            let (r, g, b, a) = (
-                0.5 + (col as f32 / cols as f32) / 2.0,
-                0.75,
-                1.0 - (row as f32 / rows as f32) / 2.0,
-                1.0
-            );
-
-            // Now return the widget we want to set in each element position.
-            // You can return any type that implements `Widget`.
-            // The returned widget will automatically be positioned and sized to the matrix
-            // element's rectangle.
-            let elem = app.bool_matrix[col][row];
-            let elem_sender = app.elem_sender.clone();
-            widget::Toggle::new(elem)
-                .rgba(r, g, b, a)
-                .border(app.border_width)
-                .react(move |new_val: bool| elem_sender.send((col, row, new_val)).unwrap())
-        })
+        .w_h(260.0, 260.0)
         .set(TOGGLE_MATRIX, ui);
 
-    // Receive updates to the matrix from the `WidgetMatrix`.
-    while let Ok((col, row, value)) = app.elem_receiver.try_recv() {
-        app.bool_matrix[col][row] = value;
+    // The `Matrix` widget returns an `Elements`, which can be used similar to an `Iterator`.
+    while let Some(elem) = elements.next(ui) {
+        let (col, row) = (elem.col, elem.row);
+
+        // Color effect for fun.
+        let (r, g, b, a) = (
+            0.5 + (elem.col as f32 / cols as f32) / 2.0,
+            0.75,
+            1.0 - (elem.row as f32 / rows as f32) / 2.0,
+            1.0
+        );
+
+        // We can use `Element`s to instantiate any kind of widget we like.
+        // The `Element` does all of the positioning and sizing work for us.
+        // Here, we use the `Element` to `set` a `Toggle` widget for us.
+        let toggle = widget::Toggle::new(app.bool_matrix[col][row])
+            .rgba(r, g, b, a)
+            .border(app.border_width);
+        if let Some(new_value) = elem.set(toggle, ui).last() {
+            app.bool_matrix[col][row] = new_value;
+        }
     }
 
     // A demonstration using a DropDownList to select its own color.
-    let mut ddl_color = app.ddl_color;
-    widget::DropDownList::new(&mut app.ddl_colors, &mut app.selected_idx)
+    for selected_idx in widget::DropDownList::new(&app.ddl_colors, app.selected_idx)
         .w_h(150.0, 40.0)
         .right_from(SLIDER_HEIGHT, 30.0) // Position right from widget 6 by 50 pixels.
         .max_visible_items(3)
-        .color(ddl_color)
+        .color(app.ddl_color)
         .border(app.border_width)
-        .border_color(ddl_color.plain_contrast())
+        .border_color(app.ddl_color.plain_contrast())
         .label("Colors")
-        .label_color(ddl_color.plain_contrast())
+        .label_color(app.ddl_color.plain_contrast())
         .scrollbar_on_top()
-        .react(|selected_idx: &mut Option<usize>, new_idx, string: &str| {
-            *selected_idx = Some(new_idx);
-            ddl_color = match string {
-                "Black" => color::BLACK,
-                "White" => color::WHITE,
-                "Red"   => color::RED,
-                "Green" => color::GREEN,
-                "Blue"  => color::BLUE,
-                _       => color::PURPLE,
-            };
-        })
-        .set(COLOR_SELECT, ui);
-    app.ddl_color = ddl_color;
+        .set(COLOR_SELECT, ui)
+    {
+        app.selected_idx = Some(selected_idx);
+        app.ddl_color = match &app.ddl_colors[selected_idx][..] {
+            "Black" => color::BLACK,
+            "White" => color::WHITE,
+            "Red"   => color::RED,
+            "Green" => color::GREEN,
+            "Blue"  => color::BLUE,
+            _       => color::PURPLE,
+        }
+    }
 
     // Draw an xy_pad.
-    widget::XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
-               app.circle_pos[1], 95.0, 245.0) // y range.
+    for (x, y) in widget::XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
+                                     app.circle_pos[1], 95.0, 245.0) // y range.
         .w_h(150.0, 150.0)
         .right_from(TOGGLE_MATRIX, 30.0)
         .align_bottom_of(TOGGLE_MATRIX) // Align to the bottom of the last TOGGLE_MATRIX element.
-        .color(ddl_color)
+        .color(app.ddl_color)
         .border(app.border_width)
         .border_color(color::WHITE)
         .label("Circle Position")
-        .label_color(ddl_color.plain_contrast().alpha(0.5))
+        .label_color(app.ddl_color.plain_contrast().alpha(0.5))
         .line_thickness(2.0)
-        .react(|new_x, new_y| {
-            app.circle_pos[0] = new_x;
-            app.circle_pos[1] = new_y;
-        })
-        .set(CIRCLE_POSITION, ui);
+        .set(CIRCLE_POSITION, ui)
+    {
+        app.circle_pos[0] = x;
+        app.circle_pos[1] = y;
+    }
 
     // Draw a circle at the app's circle_pos.
     widget::Circle::fill(15.0)
@@ -436,21 +427,26 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
 
         // A text box in which we can mutate a single line of text, and trigger reactions via the
         // `Enter`/`Return` key.
-        widget::TextBox::new(text)
+        for event in widget::TextBox::new(text)
             .and_if(i == 0, |text| text.right_from(COLOR_SELECT, 30.0))
             .font_size(20)
             .w_h(320.0, 40.0)
             .border(app.border_width)
             .border_color(app.bg_color.invert().plain_contrast())
             .color(app.bg_color.invert())
-            .react(|string: &mut String| println!("TextBox {}: {:?}", i, string))
-            .set(ENVELOPE_EDITOR + i * 2, ui);
+            .set(ENVELOPE_EDITOR + i * 2, ui)
+        {
+            match event {
+                widget::text_box::Event::Enter => println!("TextBox {}: {:?}", i, text),
+                widget::text_box::Event::Update(string) => *text = string,
+            }
+        }
 
         let env_y_max = if i == 0 { 20_000.0 } else { 1.0 };
         let env_skew_y = if i == 0 { 3.0 } else { 1.0 };
 
-        // Draw an EnvelopeEditor. (&mut Vec<Point>, x_min, x_max, y_min, y_max).
-        widget::EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
+        // Draw an EnvelopeEditor. (&[Point], x_min, x_max, y_min, y_max).
+        for event in widget::EnvelopeEditor::new(env, 0.0, 1.0, 0.0, env_y_max)
             .down(10.0)
             .w_h(320.0, 150.0)
             .skew_y(env_skew_y)
@@ -461,8 +457,10 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp) {
             .label_color(app.bg_color.invert().plain_contrast().alpha(0.5))
             .point_radius(6.0)
             .line_thickness(2.0)
-            .react(|_points: &mut Vec<conrod::Point>, _idx: usize|{})
-            .set(ENVELOPE_EDITOR + (i * 2) + 1, ui);
+            .set(ENVELOPE_EDITOR + (i * 2) + 1, ui)
+        {
+            event.update(env);
+        }
     }
 
 }

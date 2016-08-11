@@ -21,15 +21,12 @@ mod circular_button {
     use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
     /// The type upon which we'll implement the `Widget` trait.
-    pub struct CircularButton<'a, F> {
+    pub struct CircularButton<'a> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
         common: widget::CommonBuilder,
         /// Optional label string for the button.
         maybe_label: Option<&'a str>,
-        /// Optional callback for when the button is pressed. If you want the button to
-        /// do anything, this callback must exist.
-        maybe_react: Option<F>,
         /// See the Style struct below.
         style: Style,
         /// Whether the button is currently enabled, i.e. whether it responds to
@@ -77,23 +74,15 @@ mod circular_button {
         distance <= radius
     }
 
-    impl<'a, F> CircularButton<'a, F> {
+    impl<'a> CircularButton<'a> {
         /// Create a button context to be built upon.
-        pub fn new() -> CircularButton<'a, F> {
+        pub fn new() -> CircularButton<'a> {
             CircularButton {
                 common: widget::CommonBuilder::new(),
-                maybe_react: None,
                 maybe_label: None,
                 style: Style::new(),
                 enabled: true,
             }
-        }
-
-        /// Set the reaction for the Button. The reaction will be triggered upon release
-        /// of the button. Like other Conrod configs, this returns self for chainability.
-        pub fn react(mut self, reaction: F) -> Self {
-            self.maybe_react = Some(reaction);
-            self
         }
 
         /// If true, will allow user inputs.  If false, will disallow user inputs.  Like
@@ -108,13 +97,15 @@ mod circular_button {
 
     /// A custom Conrod widget must implement the Widget trait. See the **Widget** trait
     /// documentation for more details.
-    impl<'a, F> Widget for CircularButton<'a, F>
-        where F: FnMut()
-    {
+    impl<'a> Widget for CircularButton<'a> {
         /// The State struct that we defined above.
         type State = State;
         /// The Style struct that we defined using the `widget_style!` macro.
         type Style = Style;
+        /// The event produced by instantiating the widget.
+        ///
+        /// `Some` when clicked, otherwise `None`.
+        type Event = Option<()>;
 
         fn common(&self) -> &widget::CommonBuilder {
             &self.common
@@ -137,33 +128,29 @@ mod circular_button {
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
-        fn update(self, args: widget::UpdateArgs<Self>) {
+        fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
             let widget::UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
 
-            let color = {
+            let (color, event) = {
                 let input = ui.widget_input(idx);
 
-                // If the button was clicked, call the user's `react` function.
-                if input.clicks().left().next().is_some() {
-                    if let Some(mut react) = self.maybe_react {
-                        react();
-                    }
-                }
+                // If the button was clicked, produce `Some` event.
+                let event = input.clicks().left().next().map(|_| ());
 
                 let color = style.color(ui.theme());
-                input.mouse()
-                    .map(|mouse| {
-                        if is_over_circ([0.0, 0.0], mouse.rel_xy(), rect.dim()) {
-                            if mouse.buttons.left().is_down() {
-                                color.clicked()
-                            } else {
-                                color.highlighted()
-                            }
+                let color = input.mouse().map_or(color, |mouse| {
+                    if is_over_circ([0.0, 0.0], mouse.rel_xy(), rect.dim()) {
+                        if mouse.buttons.left().is_down() {
+                            color.clicked()
                         } else {
-                            color
+                            color.highlighted()
                         }
-                    })
-                    .unwrap_or(color)
+                    } else {
+                        color
+                    }
+                });
+
+                (color, event)
             };
 
             // Finally, we'll describe how we want our widget drawn by simply instantiating the
@@ -201,12 +188,14 @@ mod circular_button {
                     .color(label_color)
                     .set(text_idx, &mut ui);
             }
+
+            event
         }
 
     }
 
     /// Provide the chainable color() configuration method.
-    impl<'a, F> Colorable for CircularButton<'a, F> {
+    impl<'a> Colorable for CircularButton<'a> {
         fn color(mut self, color: conrod::Color) -> Self {
             self.style.color = Some(color);
             self
@@ -215,7 +204,7 @@ mod circular_button {
 
     /// Provide the chainable label(), label_color(), and label_font_size()
     /// configuration methods.
-    impl<'a, F> Labelable<'a> for CircularButton<'a, F> {
+    impl<'a> Labelable<'a> for CircularButton<'a> {
         fn label(mut self, text: &'a str) -> Self {
             self.maybe_label = Some(text);
             self
@@ -287,18 +276,19 @@ pub fn main() {
                 CIRCLE_BUTTON,
             }
 
-            // Create an instance of our custom widget.
-            CircularButton::new()
+            // Instantiate of our custom widget.
+            for _click in CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
                 .middle_of(BACKGROUND)
                 .w_h(256.0, 256.0)
                 .label_color(conrod::color::WHITE)
                 .label("Circular Button")
-                // This is called when the user clicks the button.
-                .react(|| println!("Click"))
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
                 // drawn when we call Ui::draw.
-                .set(CIRCLE_BUTTON, ui);
+                .set(CIRCLE_BUTTON, ui)
+            {
+                println!("Click!");
+            }
         }));
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.

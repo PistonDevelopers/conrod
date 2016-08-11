@@ -109,22 +109,27 @@ fn set_widgets(ref mut ui: conrod::UiCell) {
     widget::Text::new("BAZ!").color(color::WHITE).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
 
     let footer_wh = ui.wh_of(FOOTER).unwrap();
-    widget::Matrix::new(COLS, ROWS)
+    let mut elements = widget::Matrix::new(COLS, ROWS)
         .w_h(footer_wh[0], footer_wh[1] * 2.0)
         .mid_top_of(FOOTER)
-        .each_widget(|n, _col, _row| {
-            widget::Button::new()
-                .color(color::BLUE.with_luminance(n as f32 / (COLS * ROWS) as f32))
-                .react(move || println!("Hey! {:?}", n))
-        })
         .set(BUTTON_MATRIX, ui);
+    while let Some(elem) = elements.next(ui) {
+        let (r, c) = (elem.row, elem.col);
+        let n = c + r * c;
+        let luminance = n as f32 / (COLS * ROWS) as f32;
+        let button = widget::Button::new().color(color::BLUE.with_luminance(luminance));
+        for _click in elem.set(button, ui) {
+            println!("Hey! {:?}", (r, c));
+        }
+    }
 
-    widget::Button::new().color(color::RED).w_h(30.0, 30.0).middle_of(FLOATING_A)
-        .react(|| println!("Bing!"))
-        .set(BING, ui);
-    widget::Button::new().color(color::RED).w_h(30.0, 30.0).middle_of(FLOATING_B)
-        .react(|| println!("Bong!"))
-        .set(BONG, ui);
+    let button = widget::Button::new().color(color::RED).w_h(30.0, 30.0);
+    for _click in button.clone().middle_of(FLOATING_A).set(BING, ui) {
+        println!("Bing!");
+    }
+    for _click in button.middle_of(FLOATING_B).set(BONG, ui) {
+        println!("Bong!");
+    }
 }
 
 

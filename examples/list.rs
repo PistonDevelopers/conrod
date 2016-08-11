@@ -67,20 +67,27 @@ fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool]) {
     widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
     const ITEM_HEIGHT: conrod::Scalar = 50.0;
+    let num_items = list.len() as u32;
 
-    widget::List::new(list.len() as u32, ITEM_HEIGHT)
+    let (mut items, scrollbar) = widget::List::new(num_items, ITEM_HEIGHT)
         .scrollbar_on_top()
         .middle_of(CANVAS)
         .wh_of(CANVAS)
-        .item(|item| {
-            let i = item.i;
-            let label = format!("item {}: {}", i, list[i]);
-            let toggle = widget::Toggle::new(list[i])
-                .label(&label)
-                .label_color(conrod::color::WHITE)
-                .color(conrod::color::LIGHT_BLUE)
-                .react(|v| list[i] = v);
-            item.set(toggle);
-        })
         .set(LIST, ui);
+
+    while let Some(item) = items.next(ui) {
+        let i = item.i;
+        let label = format!("item {}: {}", i, list[i]);
+        let toggle = widget::Toggle::new(list[i])
+            .label(&label)
+            .label_color(conrod::color::WHITE)
+            .color(conrod::color::LIGHT_BLUE);
+        for v in item.set(toggle, ui) {
+            list[i] = v;
+        }
+    }
+
+    if let Some(scrollbar) = scrollbar {
+        scrollbar.set(ui);
+    }
 }
