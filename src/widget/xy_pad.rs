@@ -19,16 +19,11 @@ use utils::{map_range, val_to_string};
 ///
 /// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
-pub struct XYPad<'a, X, Y, F> {
+pub struct XYPad<'a, X, Y> {
     common: widget::CommonBuilder,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
     maybe_label: Option<&'a str>,
-    /// The reaction function for the XYPad.
-    ///
-    /// It will be triggered when the value is updated or if the mouse button is released while the
-    /// cursor is above the rectangle.
-    pub maybe_react: Option<F>,
     style: Style,
     /// Indicates whether the XYPad will respond to user input.
     pub enabled: bool,
@@ -65,7 +60,7 @@ pub struct State {
 }
 
 
-impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
+impl<'a, X, Y> XYPad<'a, X, Y> {
 
     /// Build a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
@@ -73,7 +68,6 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
             common: widget::CommonBuilder::new(),
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
-            maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
@@ -83,19 +77,18 @@ impl<'a, X, Y, F> XYPad<'a, X, Y, F> {
     builder_methods!{
         pub line_thickness { style.line_thickness = Some(Scalar) }
         pub value_font_size { style.value_font_size = Some(FontSize) }
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 
 }
 
-impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
+impl<'a, X, Y> Widget for XYPad<'a, X, Y>
     where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
           Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-          F: FnOnce(X, Y),
 {
     type State = State;
     type Style = Style;
+    type Event = Option<(X, Y)>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -120,7 +113,7 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
     }
 
     /// Update the XYPad's cached state.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use position::{Direction, Edge};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
@@ -128,7 +121,6 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             x, min_x, max_x,
             y, min_y, max_y,
             maybe_label,
-            maybe_react,
             ..
         } = self;
 
@@ -148,12 +140,12 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             }
         }
 
-        // React if value is changed or the pad is clicked/released.
-        if let Some(react) = maybe_react {
-            if x != new_x || y != new_y {
-                react(new_x, new_y);
-            }
-        }
+        // If the value across either axis has changed, produce an event.
+        let event = if x != new_x || y != new_y {
+            Some((new_x, new_y))
+        } else {
+            None
+        };
 
         let interaction_color = |ui: &::ui::UiCell, color: Color|
             ui.widget_input(idx).mouse()
@@ -246,23 +238,25 @@ impl<'a, X, Y, F> Widget for XYPad<'a, X, Y, F>
             .parent(idx)
             .font_size(value_font_size)
             .set(value_label_idx, &mut ui);
+
+        event
     }
 
 }
 
 
-impl<'a, X, Y, F> Colorable for XYPad<'a, X, Y, F> {
+impl<'a, X, Y> Colorable for XYPad<'a, X, Y> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, X, Y, F> Borderable for XYPad<'a, X, Y, F> {
+impl<'a, X, Y> Borderable for XYPad<'a, X, Y> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, X, Y, F> Labelable<'a> for XYPad<'a, X, Y, F> {
+impl<'a, X, Y> Labelable<'a> for XYPad<'a, X, Y> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

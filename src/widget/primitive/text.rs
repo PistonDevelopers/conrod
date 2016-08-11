@@ -144,6 +144,7 @@ impl<'a> Text<'a> {
 impl<'a> Widget for Text<'a> {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -225,7 +226,7 @@ impl<'a> Widget for Text<'a> {
     }
 
     /// Update the state of the Text.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { rect, state, style, ui, .. } = args;
         let Text { text, .. } = self;
 

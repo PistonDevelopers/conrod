@@ -11,6 +11,7 @@ use {
     Scalar,
     Sizeable,
 };
+use utils;
 use widget::{self, Widget};
 
 
@@ -19,13 +20,13 @@ pub type Idx = usize;
 /// The number of items in a list.
 pub type Len = usize;
 
-/// Displays a given `Vec<String>` as a selectable drop down menu. It's reaction is triggered upon
-/// selection of a list item.
-pub struct DropDownList<'a, F> {
+/// Displays a given `Vec<String>` as a selectable drop down menu.
+///
+/// It's reaction is triggered upon selection of a list item.
+pub struct DropDownList<'a, T: 'a> {
     common: widget::CommonBuilder,
-    strings: &'a mut Vec<String>,
-    selected: &'a mut Option<Idx>,
-    maybe_react: Option<F>,
+    items: &'a [T],
+    selected: Option<Idx>,
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
@@ -57,8 +58,7 @@ widget_style!{
 #[derive(PartialEq, Clone, Debug)]
 pub struct State {
     menu_state: MenuState,
-    buttons: Vec<(NodeIndex, String)>,
-    maybe_selected: Option<Idx>,
+    button_indices: Vec<NodeIndex>,
     closed_menu: widget::IndexSlot,
     list_idx: widget::IndexSlot,
 }
@@ -79,15 +79,14 @@ enum MenuState {
     Open,
 }
 
-impl<'a, F> DropDownList<'a, F> {
+impl<'a, T> DropDownList<'a, T> {
 
     /// Construct a new DropDownList.
-    pub fn new(strings: &'a mut Vec<String>, selected: &'a mut Option<Idx>) -> Self {
+    pub fn new(items: &'a [T], selected: Option<Idx>) -> Self {
         DropDownList {
             common: widget::CommonBuilder::new(),
-            strings: strings,
+            items: items,
             selected: selected,
-            maybe_react: None,
             maybe_label: None,
             enabled: true,
             style: Style::new(),
@@ -95,7 +94,6 @@ impl<'a, F> DropDownList<'a, F> {
     }
 
     builder_methods!{
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 
@@ -142,11 +140,12 @@ impl<'a, F> DropDownList<'a, F> {
 }
 
 
-impl<'a, F> Widget for DropDownList<'a, F>
-    where F: FnMut(&mut Option<Idx>, Idx, &str),
+impl<'a, T> Widget for DropDownList<'a, T>
+    where T: AsRef<str>,
 {
     type State = State;
     type Style = Style;
+    type Event = Option<Idx>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -159,8 +158,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
     fn init_state(&self) -> State {
         State {
             menu_state: MenuState::Closed,
-            buttons: Vec::new(),
-            maybe_selected: None,
+            button_indices: Vec::new(),
             list_idx: widget::IndexSlot::new(),
             closed_menu: widget::IndexSlot::new(),
         }
@@ -171,64 +169,59 @@ impl<'a, F> Widget for DropDownList<'a, F>
     }
 
     /// Update the state of the DropDownList.
-    fn update(mut self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
 
-        let num_strings = self.strings.len();
+        let num_items = self.items.len();
 
-        // Check that the selected index, if given, is not greater than the number of strings.
-        let selected = self.selected.and_then(|idx| if idx < num_strings { Some(idx) }
+        // Check that the selected index, if given, is not greater than the number of items.
+        let selected = self.selected.and_then(|idx| if idx < num_items { Some(idx) }
                                                     else { None });
 
-        // If the number of buttons that we have in our previous state doesn't match the number of
-        // strings we've just been given, we need to resize our buttons Vec.
-        let num_buttons = state.buttons.len();
-        let maybe_new_buttons = if num_buttons < num_strings {
-            let new_buttons = (num_buttons..num_strings)
-                .map(|i| (ui.new_unique_node_index(), self.strings[i].to_owned()));
-            let total_new_buttons = state.buttons.iter()
-                .map(|&(idx, ref string)| (idx, string.clone()))
-                .chain(new_buttons);
-            Some(total_new_buttons.collect())
-        } else {
-            None
-        };
-
-        if let Some(new_buttons) = maybe_new_buttons {
-            state.update(|state| state.buttons = new_buttons);
+        // Ensure we have at least an index for each item in the list.
+        let num_buttons = state.button_indices.len();
+        if num_buttons < num_items {
+            let extension = (num_buttons..num_items).map(|_| ui.new_unique_node_index());
+            state.update(|state| state.button_indices.extend(extension));
         }
+
+        // Track whether or not a list item was clicked.
+        let mut clicked_item = None;
 
         // Act on the current menu state and determine what the next one will be.
         // new_menu_state is what we will be getting passed next frame
         let new_menu_state = match state.menu_state {
+
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
                 // Get the button index and the label for the closed menu's button.
-                let buttons = &state.buttons;
                 let (button_idx, label) = selected
-                    .map(|i| (buttons[i].0, &self.strings[i][..]))
+                    .map(|i| {
+                        let idx = state.button_indices[i];
+                        let label = self.items[i].as_ref();
+                        (idx, label)
+                    })
                     .unwrap_or_else(|| {
                         let closed_menu_idx = state.closed_menu.get(&mut ui);
                         let label = self.maybe_label.unwrap_or("");
                         (closed_menu_idx, label)
                     });
 
-                let mut was_clicked = false;
-                {
+                let was_clicked = {
                     // use the pre-existing Button widget
                     let mut button = widget::Button::new()
-                    .xy(rect.xy())
-                    .wh(rect.dim())
-                    .label(label)
-                    .parent(idx)
-                    .react(|| {was_clicked = true});
+                        .xy(rect.xy())
+                        .wh(rect.dim())
+                        .label(label)
+                        .parent(idx);
                     button.style = style.button_style(false);
-                    button.set(button_idx, &mut ui);
-                }
+                    button.set(button_idx, &mut ui).was_clicked()
+                };
 
                 // If the button was clicked, then open, otherwise stay closed
                 if was_clicked { MenuState::Open } else { MenuState::Closed }
             },
+
             MenuState::Open => {
 
                 // Otherwise if open, we want to set all the buttons that would be currently visible.
@@ -242,15 +235,14 @@ impl<'a, F> Widget for DropDownList<'a, F>
                             MaxHeight::Items(num) => h * num as Scalar,
                             MaxHeight::Scalar(height) => height,
                         };
-                        ::utils::partial_min(height, max)
+                        utils::partial_min(height, max)
                     }).unwrap_or(max)
                 };
 
                 // The list of buttons.
-                let mut was_clicked = None;
-                let num_strings = self.strings.len();
+                let num_items = self.items.len() as u32;
                 let item_h = h;
-                let list_h = max_visible_height.min(num_strings as Scalar * item_h);
+                let list_h = max_visible_height.min(num_items as Scalar * item_h);
                 let list_idx = state.list_idx.get(&mut ui);
                 let scrollbar_color = style.border_color(&ui.theme);
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
@@ -260,7 +252,8 @@ impl<'a, F> Widget for DropDownList<'a, F>
                             .and_then(|style| style.style.thickness)
                             .unwrap_or(10.0)
                     });
-                widget::List::new(num_strings as u32, item_h)
+
+                let (mut list_items, list_scrollbar) = widget::List::new(num_items, item_h)
                     .w_h(w, list_h)
                     .and(|ls| match scrollbar_position {
                         Some(widget::list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
@@ -271,51 +264,44 @@ impl<'a, F> Widget for DropDownList<'a, F>
                     .scrollbar_width(scrollbar_width)
                     .mid_top_of(idx)
                     .floating(true)
-                    .item(|item| {
-
-                        // Instiate the `Button` for each item.
-                        let i = item.i;
-                        let label = match self.strings.get(i) {
-                            Some(label) => label,
-                            None => return,
-                        };
-                        let mut button = widget::Button::new()
-                            .label(label)
-                            .react(|| was_clicked = Some(i));
-                        button.style = style.button_style(Some(i) == selected);
-                        item.set(button);
-
-                    })
                     .set(list_idx, &mut ui);
 
-                // Determine the new menu state
-                if let Some(i) = was_clicked {
-                    // If one of the buttons was clicked, we want to close the menu.
-                    if let Some(ref mut react) = self.maybe_react {
-                        // If we were given some react function, we'll call it.
-                        *self.selected = selected;
-                        react(self.selected, i, &self.strings[i]);
+                // Instiate the `Button` for each item.
+                while let Some(item) = list_items.next(&ui) {
+                    let i = item.i;
+                    let label = match self.items.get(i) {
+                        Some(item) => item.as_ref(),
+                        None => continue,
+                    };
+                    let mut button = widget::Button::new().label(label);
+                    button.style = style.button_style(Some(i) == selected);
+                    if item.set(button, &mut ui).was_clicked() {
+                        clicked_item = Some(i);
                     }
+                }
+
+                // Instantiate the `Scrollbar` if there is one.
+                if let Some(scrollbar) = list_scrollbar {
+                    scrollbar.set(&mut ui);
+                }
+
+                // Close the menu if the mouse is pressed and the currently pressed widget is
+                // not any of the drop down list's children.
+                let should_close =
+                    clicked_item.is_none()
+                    && ui.global_input.current.mouse.buttons.pressed().next().is_some()
+                    && match ui.global_input.current.widget_capturing_mouse {
+                        None => true,
+                        Some(capturing) => !ui.widget_graph()
+                            .does_recursive_depth_edge_exist(idx, capturing),
+                    };
+
+                if should_close {
+                    // If a mouse button was pressed somewhere else, close the menu.
                     MenuState::Closed
                 } else {
-
-                    // Close the menu if the mouse is pressed and the currently pressed widget is
-                    // not any of the drop down list's children.
-                    let should_close =
-                        ui.global_input.current.mouse.buttons.pressed().next().is_some()
-                        && match ui.global_input.current.widget_capturing_mouse {
-                            None => true,
-                            Some(capturing) => !ui.widget_graph()
-                                .does_recursive_depth_edge_exist(idx, capturing),
-                        };
-
-                    if should_close {
-                        // If a mouse button was pressed somewhere else, close the menu.
-                        MenuState::Closed
-                    } else {
-                        // Otherwise, leave the menu open.
-                        MenuState::Open
-                    }
+                    // Otherwise, leave the menu open.
+                    MenuState::Open
                 }
             }
         };
@@ -324,9 +310,7 @@ impl<'a, F> Widget for DropDownList<'a, F>
             state.update(|state| state.menu_state = new_menu_state);
         }
 
-        if state.maybe_selected != *self.selected {
-            state.update(|state| state.maybe_selected = *self.selected);
-        }
+        clicked_item
     }
 
 }
@@ -348,18 +332,18 @@ impl Style {
 }
 
 
-impl<'a, F> Colorable for DropDownList<'a, F> {
+impl<'a, T> Colorable for DropDownList<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Borderable for DropDownList<'a, F> {
+impl<'a, T> Borderable for DropDownList<'a, T> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, F> Labelable<'a> for DropDownList<'a, F> {
+impl<'a, T> Labelable<'a> for DropDownList<'a, T> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

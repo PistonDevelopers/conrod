@@ -136,6 +136,7 @@ impl<A> Widget for Scrollbar<A>
 {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -164,7 +165,7 @@ impl<A> Widget for Scrollbar<A>
         A::default_y_dimension(self, ui)
     }
 
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let Scrollbar { widget, .. } = self;
 

@@ -168,6 +168,7 @@ impl<'a> Tabs<'a> {
 impl<'a> Widget for Tabs<'a> {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -281,7 +282,7 @@ impl<'a> Widget for Tabs<'a> {
                 let (xy, dim) = tab_rect.xy_dim();
 
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
-                widget::Button::new()
+                if widget::Button::new()
                     .wh(dim)
                     .xy_relative_to(idx, xy)
                     .color(color)
@@ -290,8 +291,11 @@ impl<'a> Widget for Tabs<'a> {
                     .label(label)
                     .label_color(label_color)
                     .parent(idx)
-                    .react(|| maybe_selected_tab_idx = Some(i))
-                    .set(tab.button_idx, &mut ui);
+                    .set(tab.button_idx, &mut ui)
+                    .was_clicked()
+                {
+                    maybe_selected_tab_idx = Some(i);
+                }
 
                 i += 1;
             }

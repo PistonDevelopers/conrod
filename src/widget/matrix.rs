@@ -1,6 +1,8 @@
 //! A helper widget for laying out child widgets in the form of a grid.
 
-use {NodeIndex, Scalar, Widget};
+use {NodeIndex, Scalar, Ui, UiCell, Widget};
+use graph;
+use utils;
 use widget;
 
 
@@ -22,13 +24,13 @@ pub type PosY = Scalar;
 /// Draw a matrix of any rectangular widget type, where the matrix will provide a function with
 /// the widget number, it's `rows` and `cols` position, the width and height for the widget and
 /// the location at which the widget should be drawn.
-#[derive(Copy, Clone)]
-pub struct Matrix<F> {
+#[derive(Clone)]
+#[allow(missing_copy_implementations)]
+pub struct Matrix {
     common: widget::CommonBuilder,
     style: Style,
     cols: usize,
     rows: usize,
-    maybe_each_widget: Option<F>,
 }
 
 /// The state of the Matrix, to be cached within the `Ui`'s widget `Graph`.
@@ -50,31 +52,59 @@ widget_style!{
     }
 }
 
-impl<F> Matrix<F> {
+/// The event type yielded by the `Matrix`.
+///
+/// This can be used to iterate over each element in the `Matrix`.
+#[derive(Debug)]
+#[allow(missing_copy_implementations)]
+pub struct Elements {
+    num_rows: usize,
+    num_cols: usize,
+    row: usize,
+    col: usize,
+    matrix_idx: widget::Index,
+    elem_w: Scalar,
+    elem_h: Scalar,
+    x_min: Scalar, x_max: Scalar,
+    y_min: Scalar, y_max: Scalar,
+}
+
+/// Data necessary for instantiating a widget for a single `Matrix` element.
+#[derive(Copy, Clone, Debug)]
+pub struct Element {
+    /// The index generated for the widget.
+    pub widget_idx: NodeIndex,
+    /// The row number for the `Element`.
+    pub row: usize,
+    /// The column number for the `Element`.
+    pub col: usize,
+    /// The width of the element.
+    pub w: Scalar,
+    /// The height of the element.
+    pub h: Scalar,
+    /// The *x* position of the element relative to the centre of the `Matrix`.
+    pub rel_x: Scalar,
+    /// The *y* position of the element relative to the centre of the `Matrix`.
+    pub rel_y: Scalar,
+    /// The index of the `Matrix`, used for positioning.
+    matrix_idx: widget::Index,
+}
+
+
+impl Matrix {
 
     /// Create a widget matrix context.
-    pub fn new(cols: usize, rows: usize) -> Matrix<F> {
+    pub fn new(cols: usize, rows: usize) -> Self {
         Matrix {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             cols: cols,
             rows: rows,
-            maybe_each_widget: None,
         }
     }
 
-    /// The function that will be called for each and every element in the Matrix.
-    /// The function should return the widget that will be displayed in the element associated with
-    /// the given row and column number.
-    /// Note that the returned Widget's position and dimensions will be overridden with the
-    /// dimensions and position of the matrix element's rectangle.
-    pub fn each_widget(mut self, each_widget: F) -> Matrix<F> {
-        self.maybe_each_widget = Some(each_widget);
-        self
-    }
-
     /// A builder method for adding padding to the cell.
-    pub fn cell_padding(mut self, w: Scalar, h: Scalar) -> Matrix<F> {
+    pub fn cell_padding(mut self, w: Scalar, h: Scalar) -> Self {
         self.style.cell_pad_w = Some(w);
         self.style.cell_pad_h = Some(h);
         self
@@ -83,12 +113,10 @@ impl<F> Matrix<F> {
 }
 
 
-impl<'a, F, W> Widget for Matrix<F>
-    where W: Widget,
-          F: FnMut(WidgetNum, ColNum, RowNum) -> W
-{
+impl Widget for Matrix {
     type State = State;
     type Style = Style;
+    type Event = Elements;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -107,75 +135,132 @@ impl<'a, F, W> Widget for Matrix<F>
     }
 
     /// Update the state of the Matrix.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let Matrix { cols, rows, maybe_each_widget, .. } = self;
+        let Matrix { cols, rows, .. } = self;
 
-        // First, check that we have the correct number of columns and rows.
+        // First, check that we have the correct number of columns.
         let num_cols = state.indices.len();
-        let num_rows = state.indices.get(0).map(|col| col.len()).unwrap_or(0);
-        let maybe_new_indices = if num_cols < cols || num_rows < rows {
-            let mut total_cols: Vec<_> = state.indices.iter()
-                .map(|col| col.clone())
-                .chain((num_cols..cols).map(|_| Vec::with_capacity(rows)))
-                .collect();
-            for col in total_cols.iter_mut() {
-                let rows_in_col = col.len();
-                if rows_in_col < rows {
-                    col.extend((rows_in_col..rows).map(|_| ui.new_unique_node_index()));
-                }
+        if num_cols < cols {
+            state.update(|state| {
+                state.indices.extend((num_cols..cols).map(|_| Vec::with_capacity(rows)));
+            });
+        }
+
+        // Now check that we have the correct amount of rows in each column.
+        for col in 0..cols {
+            let num_rows = state.indices[col].len();
+            if num_rows < rows {
+                state.update(|state| {
+                    let extension = (num_rows..rows).map(|_| ui.new_unique_node_index());
+                    state.indices[col].extend(extension);
+                });
             }
-            Some(total_cols)
-        } else {
-            None
+        }
+
+        let cell_pad_w = style.cell_pad_w(&ui.theme);
+        let cell_pad_h = style.cell_pad_h(&ui.theme);
+        let (w, h) = rect.w_h();
+        let elem_w = w / cols as Scalar;
+        let elem_h = h / rows as Scalar;
+        let (half_w, half_h) = (w / 2.0, h / 2.0);
+        let x_min = -half_w + elem_w / 2.0;
+        let x_max = half_w + elem_w / 2.0;
+        let y_min = -half_h - elem_h / 2.0;
+        let y_max = half_h - elem_h / 2.0;
+
+        let elements = Elements {
+            num_rows: rows,
+            num_cols: cols,
+            row: 0,
+            col: 0,
+            matrix_idx: idx,
+            elem_w: elem_w - cell_pad_w * 2.0,
+            elem_h: elem_h - cell_pad_h * 2.0,
+            x_min: x_min,
+            x_max: x_max,
+            y_min: y_min,
+            y_max: y_max,
         };
 
-        // A function to simplify getting the current slice of indices.
-        fn get_indices<'a>(maybe_new: &'a Option<Vec<Vec<NodeIndex>>>,
-                           state: &'a widget::State<State>) -> &'a [Vec<NodeIndex>] {
-            maybe_new.as_ref().map(|is| &is[..]).unwrap_or_else(|| &state.indices[..])
+        elements
+    }
+
+}
+
+
+impl Elements {
+
+    /// Yield the next `Element`.
+    pub fn next(&mut self, ui: &Ui) -> Option<Element> {
+        let Elements {
+            ref mut row,
+            ref mut col,
+            num_rows,
+            num_cols,
+            matrix_idx,
+            elem_w,
+            elem_h,
+            x_min, x_max,
+            y_min, y_max,
+        } = *self;
+
+        let (r, c) = (*row, *col);
+
+        // Retrieve the `node_index` that was generated for the next `Element`.
+        let node_index = match ui.widget_graph().widget(matrix_idx)
+            .and_then(|container| container.unique_widget_state::<Matrix>())
+            .and_then(|&graph::UniqueWidgetState { ref state, .. }| {
+                state.indices.get(c).and_then(|col| col.get(r).map(|&idx| idx))
+            })
+        {
+            Some(node_index) => node_index,
+            None => return None,
+        };
+
+        // Increment the elem indices.
+        *row += 1;
+        if *row >= num_rows {
+            *row = 0;
+            *col += 1;
         }
 
-        // We only need to worry about element calculations if we actually have rows and columns.
-        if rows > 0 && cols > 0 {
-            // Likewise, there must also be some function to give us the widgets.
-            if let Some(mut each_widget) = maybe_each_widget {
+        let rel_x = utils::map_range(c as Scalar, 0.0, num_cols as Scalar, x_min, x_max);
+        let rel_y = utils::map_range(r as Scalar, 0.0, num_rows as Scalar, y_max, y_min);
 
-                let cell_pad_w = style.cell_pad_w(ui.theme());
-                let cell_pad_h = style.cell_pad_h(ui.theme());
-                let (w, h) = rect.w_h();
-                let widget_w = w / cols as Scalar;
-                let widget_h = h / rows as Scalar;
-                let (half_w, half_h) = (w / 2.0, h / 2.0);
-                let x_min = -half_w + widget_w / 2.0;
-                let x_max = half_w + widget_w / 2.0;
-                let y_min = -half_h - widget_h / 2.0;
-                let y_max = half_h - widget_h / 2.0;
+        Some(Element {
+            widget_idx: node_index,
+            matrix_idx: matrix_idx,
+            col: c,
+            row: r,
+            w: elem_w,
+            h: elem_h,
+            rel_x: rel_x,
+            rel_y: rel_y,
+        })
+    }
 
-                let mut widget_num = 0;
-                let indices = get_indices(&maybe_new_indices, state);
-                for col in 0..cols {
-                    for row in 0..rows {
-                        use position::{Positionable, Sizeable};
-                        use utils::map_range;
-                        let rel_x = map_range(col as Scalar, 0.0, cols as Scalar, x_min, x_max);
-                        let rel_y = map_range(row as Scalar, 0.0, rows as Scalar, y_max, y_min);
-                        let w = widget_w - cell_pad_w * 2.0;
-                        let h = widget_h - cell_pad_h * 2.0;
-                        let widget_idx = indices[col][row];
-                        each_widget(widget_num, col, row)
-                            .wh([w, h])
-                            .x_y_relative_to(idx, rel_x, rel_y)
-                            .set(widget_idx, &mut ui);
-                        widget_num += 1;
-                    }
-                }
-            }
-        }
+}
 
-        if let Some(new_indices) = maybe_new_indices {
-            state.update(|state| state.indices = new_indices);
-        }
+
+impl Element {
+
+    /// Sets the given widget as the widget to use for the item.
+    ///
+    /// Sets the:
+    /// - position of the widget.
+    /// - dimensions of the widget.
+    /// - parent of the widget.
+    /// - and finally sets the widget within the `Ui`.
+    pub fn set<W>(self, widget: W, ui: &mut UiCell) -> W::Event
+        where W: Widget,
+    {
+        use {Positionable, Sizeable};
+        let Element { widget_idx, matrix_idx, w, h, rel_x, rel_y, .. } = self;
+        widget
+            .w_h(w, h)
+            .x_y_relative_to(matrix_idx, rel_x, rel_y)
+            .set(widget_idx, ui)
     }
 
 }

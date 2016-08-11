@@ -9,8 +9,10 @@ use {
     Scalar,
     Sizeable,
     Widget,
+    Ui,
     UiCell,
 };
+use graph;
 use std;
 use widget;
 
@@ -22,12 +24,13 @@ use widget;
 /// - Simplifying the positioning and sizing of items.
 /// - Optimised widget instantiation by only instantiating visible items. This is very useful for
 ///   lists containing many items, i.e. a `FileNavigator` over a directory with thousands of files.
-pub struct List<F> {
+#[derive(Clone)]
+#[allow(missing_copy_implementations)]
+pub struct List {
     common: widget::CommonBuilder,
     style: Style,
     item_h: Scalar,
     num_items: u32,
-    maybe_item: Option<F>,
     item_instantiation: ItemInstantiation,
 }
 
@@ -52,7 +55,8 @@ pub struct State {
 }
 
 /// The data necessary for instantiating a single item within a `List`.
-pub struct Item<'a, 'b: 'a> {
+#[derive(Copy, Clone, Debug)]
+pub struct Item {
     /// The index of the item within the list.
     pub i: usize,
     /// The index generated for the widget.
@@ -68,8 +72,6 @@ pub struct Item<'a, 'b: 'a> {
     /// The distance between the top of the first visible item and the top of the `scroll_trigger`
     /// `Rectangle`. This field is used for positioning the item's widget.
     first_item_margin: Scalar,
-    /// The `UiCell` instance used to instantiate the item's widget.
-    ui: &'a mut UiCell<'b>,
 }
 
 /// The way in which a `List` should instantiate its `Item`s.
@@ -90,48 +92,48 @@ pub enum ScrollbarPosition {
     OnTop,
 }
 
-impl<F> List<F> {
+/// A wrapper around a `List`'s `Scrollbar` and its `NodeIndex`.
+pub struct Scrollbar {
+    widget: widget::Scrollbar<widget::scroll::Y>,
+    idx: NodeIndex,
+}
+
+/// An `Iterator` yielding each `Item` in the list.
+pub struct Items {
+    item_indices: std::ops::Range<usize>,
+    next_item_indices_index: usize,
+    list_idx: widget::Index,
+    last_idx: Option<NodeIndex>,
+    scroll_trigger_idx: NodeIndex,
+    first_item_margin: Scalar,
+    item_w: Scalar,
+    item_h: Scalar,
+}
+
+
+impl List {
 
     /// Create a List context to be built upon.
-    pub fn new(num_items: u32, item_height: Scalar) -> Self
-        where F: FnMut(Item),
-    {
+    pub fn new(num_items: u32, item_height: Scalar) -> Self {
         List {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             item_h: item_height,
             num_items: num_items,
             item_instantiation: ItemInstantiation::OnlyVisible,
-            maybe_item: None,
         }.crop_kids()
-    }
-
-    /// A function used to instantiate each item in the list.
-    ///
-    /// Each `Item` passed via the closure argument can be used to set, position and size a single
-    /// widget. Note that when using an `Item` to set a widget within the list, the `Item` will
-    /// override any positioning or sizing that was previously specified for the widget.
-    pub fn item(mut self, f: F) -> Self
-        where F: FnMut(Item),
-    {
-        self.maybe_item = Some(f);
-        self
     }
 
     /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` to the
     /// right of the items.
-    pub fn scrollbar_next_to(mut self) -> Self
-        where F: FnMut(Item),
-    {
+    pub fn scrollbar_next_to(mut self) -> Self {
         self.style.scrollbar_position = Some(Some(ScrollbarPosition::NextTo));
         self.scroll_kids_vertically()
     }
 
     /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` that hovers
     /// above the right edge of the items and automatically hides when the user is not scrolling.
-    pub fn scrollbar_on_top(mut self) -> Self
-        where F: FnMut(Item),
-    {
+    pub fn scrollbar_on_top(mut self) -> Self {
         self.style.scrollbar_position = Some(Some(ScrollbarPosition::OnTop));
         self.scroll_kids_vertically()
     }
@@ -171,46 +173,12 @@ impl<F> List<F> {
 
 }
 
-impl<'a, 'b> Item<'a, 'b> {
 
-    /// Borrow the `UiCell` from the `Item`.
-    ///
-    /// This is useful in the case that users wish to access the `Ui` to traverse the widget graph,
-    /// access the theme or examine user input.
-    pub fn ui(&self) -> &UiCell {
-        &self.ui
-    }
 
-    /// Sets the given widget as the widget to use for the item.
-    ///
-    /// Sets the:
-    /// - position of the widget.
-    /// - dimensions of the widget.
-    /// - parent of the widget.
-    /// - and finally sets the widget within the `Ui`.
-    pub fn set<W>(self, widget: W)
-        where W: Widget,
-    {
-        let Item { widget_idx, last_idx, w, h, scroll_trigger_idx, first_item_margin, ui, .. } = self;
-
-        widget
-            .w_h(w, h)
-            .and(|w| match last_idx {
-                None => w.mid_top_with_margin_on(scroll_trigger_idx, first_item_margin)
-                    .align_left_of(scroll_trigger_idx),
-                Some(idx) => w.down_from(idx, 0.0),
-            })
-            .parent(scroll_trigger_idx)
-            .set(widget_idx, ui);
-    }
-
-}
-
-impl<F> Widget for List<F>
-    where F: FnMut(Item),
-{
+impl Widget for List {
     type State = State;
     type Style = Style;
+    type Event = (Items, Option<Scrollbar>);
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -232,14 +200,12 @@ impl<F> Widget for List<F>
         self.style.clone()
     }
 
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, prev, mut ui, style, .. } = args;
-        let List { maybe_item, item_h, num_items, item_instantiation, .. } = self;
+        let List { item_h, num_items, item_instantiation, .. } = self;
 
-        // We need a positive item height and number of items in order to do anything useful.
-        if item_h <= 0.0 || num_items == 0 {
-            return;
-        }
+        // We need a positive item height in order to do anything useful.
+        assert!(item_h > 0.0, "the given item height was {:?} however it must be > 0", item_h);
 
         // Determine whther or not the list is scrollable.
         let is_scrollable = prev.maybe_y_scroll_state.as_ref()
@@ -305,44 +271,122 @@ impl<F> Widget for List<F>
             });
         }
 
-        // Call the `item_fn` for each visible item.
-        let mut item_fn = match maybe_item {
-            Some(f) => f,
-            None => return,
+        let items = Items {
+            list_idx: idx,
+            item_indices: item_idx_range,
+            next_item_indices_index: 0,
+            last_idx: None,
+            scroll_trigger_idx: scroll_trigger_idx,
+            first_item_margin: first_item_margin,
+            item_w: item_w,
+            item_h: item_h,
         };
-        let iter = item_idx_range.zip(state.item_indices.iter());
-        let mut last_idx = None;
-        for (i, &node_index) in iter {
-
-            let item = Item {
-                i: i,
-                last_idx: last_idx,
-                widget_idx: node_index,
-                scroll_trigger_idx: scroll_trigger_idx,
-                w: item_w,
-                h: item_h,
-                first_item_margin: first_item_margin,
-                ui: &mut ui,
-            };
-
-            item_fn(item);
-
-            last_idx = Some(node_index);
-        }
 
         // Instantiate the `Scrollbar` if necessary.
         let auto_hide = match scrollbar_position {
             Some(ScrollbarPosition::NextTo) => false,
             Some(ScrollbarPosition::OnTop) => true,
-            None => return,
+            None => return (items, None),
         };
         let scrollbar_color = style.scrollbar_color(&ui.theme);
         let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-        widget::Scrollbar::y_axis(idx)
+        let scrollbar = widget::Scrollbar::y_axis(idx)
             .and_if(prev.maybe_floating.is_some(), |s| s.floating(true))
             .color(scrollbar_color)
             .thickness(scrollbar_w)
-            .auto_hide(auto_hide)
-            .set(scrollbar_idx, &mut ui);
+            .auto_hide(auto_hide);
+        let scrollbar = Scrollbar {
+            widget: scrollbar,
+            idx: scrollbar_idx,
+        };
+
+        (items, Some(scrollbar))
+    }
+}
+
+
+impl Items {
+
+    /// Yield the next `Item` in the list.
+    pub fn next(&mut self, ui: &Ui) -> Option<Item> {
+        let Items {
+            ref mut item_indices,
+            ref mut next_item_indices_index,
+            ref mut last_idx,
+            list_idx,
+            scroll_trigger_idx,
+            first_item_margin,
+            item_w,
+            item_h,
+        } = *self;
+
+        // Retrieve the `node_index` that was generated for the next `Item`.
+        let node_index = match ui.widget_graph().widget(list_idx)
+            .and_then(|container| container.unique_widget_state::<List>())
+            .and_then(|&graph::UniqueWidgetState { ref state, .. }| {
+                state.item_indices.get(*next_item_indices_index).map(|&idx| idx)
+            })
+        {
+            Some(node_index) => {
+                *next_item_indices_index += 1;
+                Some(node_index)
+            },
+            None => return None,
+        };
+
+        match (item_indices.next(), node_index) {
+            (Some(i), Some(node_index)) => {
+                let item = Item {
+                    i: i,
+                    last_idx: *last_idx,
+                    widget_idx: node_index,
+                    scroll_trigger_idx: scroll_trigger_idx,
+                    w: item_w,
+                    h: item_h,
+                    first_item_margin: first_item_margin,
+                };
+                *last_idx = Some(node_index);
+                Some(item)
+            },
+            _ => None,
+        }
+    }
+
+}
+
+
+impl Item {
+
+    /// Sets the given widget as the widget to use for the item.
+    ///
+    /// Sets the:
+    /// - position of the widget.
+    /// - dimensions of the widget.
+    /// - parent of the widget.
+    /// - and finally sets the widget within the `Ui`.
+    pub fn set<W>(self, widget: W, ui: &mut UiCell) -> W::Event
+        where W: Widget,
+    {
+        let Item { widget_idx, last_idx, w, h, scroll_trigger_idx, first_item_margin, .. } = self;
+
+        widget
+            .w_h(w, h)
+            .and(|w| match last_idx {
+                None => w.mid_top_with_margin_on(scroll_trigger_idx, first_item_margin)
+                    .align_left_of(scroll_trigger_idx),
+                Some(idx) => w.down_from(idx, 0.0),
+            })
+            .parent(scroll_trigger_idx)
+            .set(widget_idx, ui)
+    }
+
+}
+
+
+impl Scrollbar {
+    /// Set the `Scrollbar` within the given `Ui`.
+    pub fn set(self, ui: &mut UiCell) {
+        let Scrollbar { widget, idx } = self;
+        widget.set(idx, ui);
     }
 }

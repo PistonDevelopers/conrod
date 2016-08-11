@@ -24,7 +24,7 @@ use widget;
 pub use self::directory_view::DirectoryView;
 
 /// A widget for navigating and interacting with a file system.
-pub struct FileNavigator<'a, F> {
+pub struct FileNavigator<'a> {
     common: widget::CommonBuilder,
     /// Unique styling for the widget.
     pub style: Style,
@@ -32,8 +32,6 @@ pub struct FileNavigator<'a, F> {
     pub starting_directory: &'a std::path::Path,
     /// Only display files of the given type.
     pub types: Types<'a>,
-    /// A function used to react to certain `FileNavigator` events.
-    maybe_react: Option<F>,
 }
 
 /// A type for specifying the types of files to be shown by a `FileNavigator`.
@@ -97,7 +95,7 @@ widget_style!{
     }
 }
 
-/// The kinds of events that the `FileNavigator` may `react` to.
+/// The kinds of events that the `FileNavigator` may produce.
 #[derive(Clone, Debug)]
 pub enum Event {
     /// The directory at the top of the stack has changed.
@@ -110,9 +108,7 @@ pub enum Event {
     KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
 }
 
-impl<'a, F> FileNavigator<'a, F>
-    where F: FnMut(Event),
-{
+impl<'a> FileNavigator<'a> {
 
     /// Begin building a `FileNavigator` widget that displays only files of the given types.
     pub fn new(starting_directory: &'a std::path::Path, types: Types<'a>) -> Self {
@@ -121,7 +117,6 @@ impl<'a, F> FileNavigator<'a, F>
             style: Style::new(),
             starting_directory: starting_directory,
             types: types,
-            maybe_react: None,
         }
     }
 
@@ -152,18 +147,16 @@ impl<'a, F> FileNavigator<'a, F>
     }
 
     builder_methods!{
-        pub react { maybe_react = Some(F) }
         pub font_size { style.font_size = Some(FontSize) }
     }
 
 }
 
 
-impl<'a, F> Widget for FileNavigator<'a, F>
-    where F: FnMut(Event),
-{
+impl<'a> Widget for FileNavigator<'a> {
     type State = State;
     type Style = Style;
+    type Event = Vec<Event>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -188,9 +181,9 @@ impl<'a, F> Widget for FileNavigator<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
-        let FileNavigator { starting_directory, types, mut maybe_react, .. } = self;
+        let FileNavigator { starting_directory, types, .. } = self;
 
         if starting_directory != state.starting_directory {
             state.update(|state| {
@@ -223,6 +216,9 @@ impl<'a, F> Widget for FileNavigator<'a, F>
             .color(color.plain_contrast())
             .auto_hide(true)
             .set(scrollbar_idx, &mut ui);
+
+        // Collect all events that might occur.
+        let mut events = Vec::new();
 
         // Instantiate a view for every directory in the stack.
         let mut i = 0;
@@ -266,9 +262,10 @@ impl<'a, F> Widget for FileNavigator<'a, F>
             enum Action { EnterDir(std::path::PathBuf), ExitDir }
 
             let mut maybe_action = None;
+
             let directory_view_width = column_width - resize_handle_width;
             let font_size = style.font_size(&ui.theme);
-            DirectoryView::new(&state.directory_stack[i].path, types)
+            for event in DirectoryView::new(&state.directory_stack[i].path, types)
                 .h(rect.h())
                 .w(directory_view_width)
                 .and(|view| if i == 0 { view.mid_left_of(idx) } else { view.right(0.0) })
@@ -277,7 +274,9 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 .text_color(text_color)
                 .font_size(font_size)
                 .parent(scrollable_canvas_idx)
-                .react(|event| match event {
+                .set(view_idx, &mut ui)
+            {
+                match event {
 
                     directory_view::Event::SelectEntry(path) => {
                         if path.is_dir() {
@@ -285,22 +284,19 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                         } else {
                             maybe_action = Some(Action::ExitDir);
                         }
-                        if let Some(ref mut react) = maybe_react {
-                            react(Event::ChangeSelection(vec![path]));
-                        }
+                        let event = Event::ChangeSelection(vec![path]);
+                        events.push(event);
                     },
 
                     directory_view::Event::SelectEntries(paths) => {
                         maybe_action = Some(Action::ExitDir);
-                        if let Some(ref mut react) = maybe_react {
-                            react(Event::ChangeSelection(paths));
-                        }
+                        let event = Event::ChangeSelection(paths);
+                        events.push(event);
                     },
 
                     directory_view::Event::DoubleClick(path) => {
-                        if let Some(ref mut react) = maybe_react {
-                            react(Event::DoubleClick(path));
-                        }
+                        let event = Event::DoubleClick(path);
+                        events.push(event);
                     },
 
                     directory_view::Event::KeyPress(paths, key_press) => {
@@ -320,13 +316,14 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                             _ => (),
                         }
 
-                        if let Some(ref mut react) = maybe_react {
-                            react(Event::KeyPress(paths, key_press));
-                        }
+                        let event = Event::KeyPress(paths, key_press);
+                        events.push(event);
                     },
 
-                })
-                .set(view_idx, &mut ui);
+                }
+            }
+
+
 
             match maybe_action {
 
@@ -340,9 +337,9 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                         }
                         let dir = Directory { path: path.clone(), column_width: column_width };
                         state.directory_stack.push(dir);
-                        if let Some(ref mut react) = maybe_react {
-                            react(Event::ChangeDirectory(path));
-                        }
+
+                        let event = Event::ChangeDirectory(path);
+                        events.push(event);
                     });
 
                     // If the resulting total width of all `DirectoryView`s would exceed the
@@ -393,11 +390,13 @@ impl<'a, F> Widget for FileNavigator<'a, F>
                 // TODO: Need to unselect the selected directory here.
             });
         }
+
+        events
     }
 
 }
 
-impl<'a, F> Colorable for FileNavigator<'a, F> {
+impl<'a> Colorable for FileNavigator<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
@@ -422,7 +421,7 @@ pub mod directory_view {
     use widget;
 
     /// For viewing, selecting, double-clicking, etc the contents of a directory.
-    pub struct DirectoryView<'a, F> {
+    pub struct DirectoryView<'a> {
         common: widget::CommonBuilder,
         /// Unique styling for the widget.
         pub style: Style,
@@ -430,8 +429,6 @@ pub mod directory_view {
         pub directory: &'a std::path::Path,
         /// Only display files of the given type.
         pub types: super::Types<'a>,
-        /// A function used to react to certain `FileNavigator` events.
-        maybe_react: Option<F>,
     }
 
     /// Unique state stored within the widget graph for each `FileNavigator`.
@@ -473,7 +470,7 @@ pub mod directory_view {
         }
     }
 
-    /// The kinds of `Event`s `react`ed to by the `DirectoryView`.
+    /// The kinds of `Event`s produced by the `DirectoryView`.
     #[derive(Clone)]
     pub enum Event {
         /// A single entry was selected.
@@ -486,9 +483,7 @@ pub mod directory_view {
         KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
     }
 
-    impl<'a, F> DirectoryView<'a, F>
-        where F: FnMut(Event),
-    {
+    impl<'a> DirectoryView<'a> {
 
         /// Begin building a `DirectoryNavigator` widget that displays only files of the given types.
         pub fn new(directory: &'a std::path::Path, types: super::Types<'a>) -> Self {
@@ -497,7 +492,6 @@ pub mod directory_view {
                 style: Style::new(),
                 directory: directory,
                 types: types,
-                maybe_react: None,
             }
         }
 
@@ -514,17 +508,15 @@ pub mod directory_view {
         }
 
         builder_methods!{
-            pub react { maybe_react = Some(F) }
             pub font_size { style.font_size = Some(FontSize) }
         }
 
     }
 
-    impl<'a, F> Widget for DirectoryView<'a, F>
-        where F: FnMut(Event),
-    {
+    impl<'a> Widget for DirectoryView<'a> {
         type State = State;
         type Style = Style;
+        type Event = Vec<Event>;
 
         fn common(&self) -> &widget::CommonBuilder {
             &self.common
@@ -549,9 +541,9 @@ pub mod directory_view {
             self.style.clone()
         }
 
-        fn update(self, args: widget::UpdateArgs<Self>) {
+        fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
             let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
-            let DirectoryView { directory, types, mut maybe_react, .. } = self;
+            let DirectoryView { directory, types, .. } = self;
 
             if directory != &state.directory {
                 state.update(|state| {
@@ -562,7 +554,7 @@ pub mod directory_view {
 
                 let entries: Vec<_> = match std::fs::read_dir(directory).ok() {
                     Some(entries) => entries.filter_map(|e| e.ok()).collect(),
-                    None => return,
+                    None => return Vec::new(),
                 };
 
                 // Create an iterator yielding the path for each directory.
@@ -637,6 +629,9 @@ pub mod directory_view {
                 .auto_hide(true)
                 .set(scrollbar_idx, &mut ui);
 
+            // Collect any events that have occurred.
+            let mut events = Vec::new();
+
             let mut last_rect_idx = None;
             for i in 0..state.entries.len() {
 
@@ -702,14 +697,13 @@ pub mod directory_view {
                         // Check if the entry has been `DoubleClick`ed.
                         event::Widget::DoubleClick(click) => {
                             if let input::MouseButton::Left = click.button {
-                                if let Some(ref mut react) = maybe_react {
-                                    if is_selected {
-                                        let paths = state.entries.iter()
-                                            .filter(|e| e.is_selected)
-                                            .map(|e| e.path.clone())
-                                            .collect();
-                                        react(Event::DoubleClick(paths));
-                                    }
+                                if is_selected {
+                                    let paths = state.entries.iter()
+                                        .filter(|e| e.is_selected)
+                                        .map(|e| e.path.clone())
+                                        .collect();
+                                    let event = Event::DoubleClick(paths);
+                                    events.push(event);
                                 }
                             }
                         },
@@ -734,10 +728,9 @@ pub mod directory_view {
                                             state.entries[i].is_selected = true;
                                             state.last_selected_entries.push(i);
 
-                                            if let Some(ref mut react) = maybe_react {
-                                                let path = state.entries[i].path.clone();
-                                                react(Event::SelectEntry(path));
-                                            }
+                                            let path = state.entries[i].path.clone();
+                                            let event = Event::SelectEntry(path);
+                                            events.push(event);
                                         }),
 
                                         // Bump the selection down the list.
@@ -754,10 +747,9 @@ pub mod directory_view {
                                             state.entries[i].is_selected = true;
                                             state.last_selected_entries.push(i);
 
-                                            if let Some(ref mut react) = maybe_react {
-                                                let path = state.entries[i].path.clone();
-                                                react(Event::SelectEntry(path));
-                                            }
+                                            let path = state.entries[i].path.clone();
+                                            let event = Event::SelectEntry(path);
+                                            events.push(event);
                                         }),
 
                                         _ => (),
@@ -765,17 +757,16 @@ pub mod directory_view {
 
                                     // For any other pressed keys, yield an event along
                                     // with all the paths of all selected entries.
-                                    if let Some(ref mut react) = maybe_react {
-                                        let paths = state.entries.iter()
-                                            .filter(|e| e.is_selected)
-                                            .map(|e| e.path.clone())
-                                            .collect();
-                                        let key_press = event::KeyPress {
-                                            key: key,
-                                            modifiers: press.modifiers,
-                                        };
-                                        react(Event::KeyPress(paths, key_press));
-                                    }
+                                    let paths = state.entries.iter()
+                                        .filter(|e| e.is_selected)
+                                        .map(|e| e.path.clone())
+                                        .collect();
+                                    let key_press = event::KeyPress {
+                                        key: key,
+                                        modifiers: press.modifiers,
+                                    };
+                                    let event = Event::KeyPress(paths, key_press);
+                                    events.push(event);
                                 }
                             },
 
@@ -808,14 +799,13 @@ pub mod directory_view {
                                             }
                                         });
 
-                                        if let Some(ref mut react) = maybe_react {
-                                            let paths = state.entries.iter()
-                                                .take(end_idx_range + 1)
-                                                .skip(start_idx_range)
-                                                .map(|e| e.path.clone())
-                                                .collect();
-                                            react(Event::SelectEntries(paths))
-                                        }
+                                        let paths = state.entries.iter()
+                                            .take(end_idx_range + 1)
+                                            .skip(start_idx_range)
+                                            .map(|e| e.path.clone())
+                                            .collect();
+                                        let event = Event::SelectEntries(paths);
+                                        events.push(event);
                                     },
 
                                     // If alt is down, additively select or deselect this file.
@@ -837,23 +827,23 @@ pub mod directory_view {
                                         }
 
                                         // If more than one file, produce a `SelectEntries` event.
-                                        if let Some(ref mut react) = maybe_react {
-                                            if num_entries_selected != 1 {
-                                                let paths = state.entries.iter()
-                                                    .filter_map(|e| {
-                                                        if e.is_selected { Some(e.path.clone()) }
-                                                        else { None }
-                                                    })
-                                                    .collect();
-                                                react(Event::SelectEntries(paths));
+                                        if num_entries_selected != 1 {
+                                            let paths = state.entries.iter()
+                                                .filter_map(|e| {
+                                                    if e.is_selected { Some(e.path.clone()) }
+                                                    else { None }
+                                                })
+                                                .collect();
+                                            let event = Event::SelectEntries(paths);
+                                            events.push(event);
 
-                                            // Otherwise, `SelectEntry`.
-                                            } else {
-                                                let path = state.entries.iter()
-                                                    .find(|e| e.is_selected)
-                                                    .unwrap().path.clone();
-                                                react(Event::SelectEntry(path));
-                                            }
+                                        // Otherwise, `SelectEntry`.
+                                        } else {
+                                            let path = state.entries.iter()
+                                                .find(|e| e.is_selected)
+                                                .unwrap().path.clone();
+                                            let event = Event::SelectEntry(path);
+                                            events.push(event);
                                         }
                                     },
 
@@ -880,10 +870,9 @@ pub mod directory_view {
                                             state.entries[i].is_selected = true;
                                             state.last_selected_entries.push(i);
                                         });
-                                        if let Some(ref mut react) = maybe_react {
-                                            let path = state.entries[i].path.clone();
-                                            react(Event::SelectEntry(path));
-                                        }
+                                        let path = state.entries[i].path.clone();
+                                        let event = Event::SelectEntry(path);
+                                        events.push(event);
                                     },
 
                                     _ => (),
@@ -909,14 +898,15 @@ pub mod directory_view {
                     }
                     state.last_selected_entries.clear();
                 });
-                if let Some(ref mut react) = maybe_react {
-                    react(Event::SelectEntries(Vec::new()));
-                }
+                let event = Event::SelectEntries(Vec::new());
+                events.push(event);
             }
+
+            events
         }
     }
 
-    impl<'a, F> Colorable for DirectoryView<'a, F> {
+    impl<'a> Colorable for DirectoryView<'a> {
         builder_method!(color { style.color = Some(Color) });
     }
 

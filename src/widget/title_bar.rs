@@ -109,6 +109,7 @@ pub fn calc_height(font_size: FontSize) -> Scalar {
 impl<'a> Widget for TitleBar<'a> {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common

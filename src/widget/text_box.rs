@@ -21,13 +21,9 @@ use widget;
 /// form of a `String`.
 ///
 /// It's reaction is triggered upon pressing of the `Enter`/`Return` key.
-pub struct TextBox<'a, F> {
+pub struct TextBox<'a> {
     common: widget::CommonBuilder,
-    text: &'a mut String,
-    /// The reaction for the TextBox.
-    ///
-    /// If `Some`, this will be triggered upon pressing of the `Enter`/`Return` key.
-    pub maybe_react: Option<F>,
+    text: &'a str,
     style: Style,
 }
 
@@ -61,14 +57,13 @@ pub struct State {
     rectangle_idx: widget::IndexSlot,
 }
 
-impl<'a, F> TextBox<'a, F> {
+impl<'a> TextBox<'a> {
 
     /// Construct a TextBox widget.
     pub fn new(text: &'a mut String) -> Self {
         TextBox {
             common: widget::CommonBuilder::new(),
             text: text,
-            maybe_react: None,
             style: Style::new(),
         }
     }
@@ -91,18 +86,25 @@ impl<'a, F> TextBox<'a, F> {
     builder_methods!{
         pub text_color { style.text_color = Some(Color) }
         pub font_size { style.font_size = Some(FontSize) }
-        pub react { maybe_react = Some(F) }
         pub x_align_text { style.x_align = Some(Align) }
         pub pad_text { style.text_padding = Some(Scalar) }
     }
 
 }
 
-impl<'a, F> Widget for TextBox<'a, F>
-    where F: FnMut(&mut String),
-{
+/// Events produced by the `TextBox`.
+#[derive(Clone, Debug)]
+pub enum Event {
+    /// The `String` was updated.
+    Update(String),
+    /// The `Return` or `Enter` key was pressed.
+    Enter,
+}
+
+impl<'a> Widget for TextBox<'a> {
     type State = State;
     type Style = Style;
+    type Event = Vec<Event>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -124,9 +126,9 @@ impl<'a, F> Widget for TextBox<'a, F>
     }
 
     /// Update the state of the TextEdit.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let TextBox { text, mut maybe_react, .. } = self;
+        let TextBox { text, .. } = self;
 
         let font_size = style.font_size(ui.theme());
         let border = style.border(ui.theme());
@@ -153,48 +155,50 @@ impl<'a, F> Widget for TextBox<'a, F>
             .border_color(border_color)
             .set(rectangle_idx, &mut ui);
 
+        let mut events = Vec::new();
+
         let text_edit_idx = state.text_edit_idx.get(&mut ui);
         let text_color = style.text_color(ui.theme());
-        widget::TextEdit::new(text)
+        if let Some(new_string) = widget::TextEdit::new(text)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .font_size(font_size)
             .color(text_color)
             .x_align_text(x_align)
             .parent(idx)
-            .react(|_text: &mut String| {})
-            .set(text_edit_idx, &mut ui);
+            .set(text_edit_idx, &mut ui)
+        {
+            events.push(Event::Update(new_string));
+        }
 
-        // React to any `Enter`/`Return` presses.
+        // Produce an event for any `Enter`/`Return` presses.
         //
-        // TODO: We should be doing this via the `TextEdit` widget.
+        // TODO: We should probably be doing this via the `TextEdit` widget.
         for widget_event in ui.widget_input(text_edit_idx).events() {
             match widget_event {
                 event::Widget::Press(press) => match press.button {
                     event::Button::Keyboard(key) => match key {
-                        input::Key::Return => {
-                            if let Some(mut react) = maybe_react.take() {
-                                react(text);
-                            }
-                        },
-                        _ => ()
+                        input::Key::Return => events.push(Event::Enter),
+                        _ => (),
                     },
                     _ => (),
                 },
                 _ => (),
             }
         }
+
+        events
     }
 
 }
 
-impl<'a, F> Borderable for TextBox<'a, F> {
+impl<'a> Borderable for TextBox<'a> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, F> Colorable for TextBox<'a, F> {
+impl<'a> Colorable for TextBox<'a> {
     builder_method!(color { style.color = Some(Color) });
 }

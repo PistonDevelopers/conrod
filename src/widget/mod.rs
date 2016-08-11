@@ -10,7 +10,6 @@ use text::font;
 use theme::{self, Theme};
 use ui::{self, Ui, UiCell};
 
-// Re-export types that would require the user to repeat themselves in mod paths.
 
 pub use self::id::Id;
 pub use self::index::Index;
@@ -44,7 +43,6 @@ pub use self::text_edit::TextEdit;
 pub use self::title_bar::TitleBar;
 pub use self::toggle::Toggle;
 pub use self::xy_pad::XYPad;
-
 
 
 // Macro providing modules.
@@ -518,6 +516,12 @@ pub trait Widget: Sized {
     ///
     /// [1]: ./macro.widget_style!.html
     type Style: Style;
+    /// The type of event yielded by the widget, returned via the `Widget::set` function.
+    ///
+    /// For a `Toggle` widget, this might be a `bool`.
+    ///
+    /// For a non-interactive, purely graphical widget, this might be `()`.
+    type Event;
 
     /// Return a reference to a **CommonBuilder** struct owned by the Widget.
     /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
@@ -565,7 +569,7 @@ pub trait Widget: Sized {
     /// * style - The style produced by the `Widget::style` method.
     /// * ui - A wrapper around the `Ui`, offering restricted access to its functionality. See the
     /// docs for `UiCell` for more details.
-    fn update(self, args: UpdateArgs<Self>);
+    fn update(self, args: UpdateArgs<Self>) -> Self::Event;
 
     /// The default **Position** for the widget along the *x* axis.
     ///
@@ -785,12 +789,12 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
     /// needs to be re-drawn.
     /// - The new State and Style will be cached within the `Ui`.
-    fn set<'a, 'b, I>(self, idx: I, ui_cell: &'a mut UiCell<'b>)
+    fn set<'a, 'b, I>(self, idx: I, ui_cell: &'a mut UiCell<'b>) -> Self::Event
         where I: Into<Index>,
     {
         let idx: Index = idx.into();
         let ui: &'a mut Ui = ui::ref_mut_from_ui_cell(ui_cell);
-        set_widget(self, idx, ui);
+        set_widget(self, idx, ui)
     }
 
 }
@@ -807,7 +811,7 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
+fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui) -> W::Event
     where W: Widget,
 {
     let type_id = std::any::TypeId::of::<W::State>();
@@ -1040,12 +1044,12 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
     });
 
     // Retrieve the widget's unique state and update it via `Widget::update`.
-    let (unique_state, has_state_updated) = {
+    let (unique_state, has_state_updated, event) = {
 
         // Unwrap our unique widget state. If there is no previous state to unwrap, call the
         // `init_state` method to construct some initial state.
         let mut unique_state = maybe_prev_unique_state.unwrap_or_else(|| widget.init_state());
-        let has_updated = {
+        let (has_updated, event) = {
 
             // A wrapper around the widget's unique state in order to keep track of whether or not it
             // has been updated during the `Widget::update` method.
@@ -1054,7 +1058,7 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
                 has_updated: false,
             };
 
-            widget.update(UpdateArgs {
+            let event = widget.update(UpdateArgs {
                 idx: idx,
                 maybe_parent_idx: maybe_parent_idx,
                 state: &mut state,
@@ -1064,10 +1068,10 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
                 ui: ui::new_ui_cell(ui),
             });
 
-            state.has_updated
+            (state.has_updated, event)
         };
 
-        (unique_state, has_updated)
+        (unique_state, has_updated, event)
     };
 
     // Determine whether or not the `State` has changed.
@@ -1100,6 +1104,8 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui)
         state: unique_state,
         style: new_style,
     });
+
+    event
 }
 
 

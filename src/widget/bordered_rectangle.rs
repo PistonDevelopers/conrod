@@ -68,6 +68,7 @@ impl BorderedRectangle {
 impl Widget for BorderedRectangle {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -89,7 +90,7 @@ impl Widget for BorderedRectangle {
     }
 
     /// Update the state of the Rectangle.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
         let border = style.border(&ui.theme);

@@ -214,6 +214,7 @@ impl<'a> Canvas<'a> {
 impl<'a> Widget for Canvas<'a> {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common

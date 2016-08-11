@@ -24,7 +24,7 @@ use widget;
 ///
 /// Its reaction is triggered if the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
-pub struct Slider<'a, T, F> {
+pub struct Slider<'a, T> {
     common: widget::CommonBuilder,
     value: T,
     min: T,
@@ -37,11 +37,6 @@ pub struct Slider<'a, T, F> {
     ///
     /// All skew amounts should be greater than 0.0.
     pub skew: f32,
-    /// Set the reaction for the Slider.
-    ///
-    /// It will be triggered if the value is updated or if the mouse button is released while the
-    /// cursor is above the rectangle.
-    pub maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     /// Whether or not user input is enabled for the Slider.
@@ -72,7 +67,7 @@ pub struct State {
     label_idx: widget::IndexSlot,
 }
 
-impl<'a, T, F> Slider<'a, T, F> {
+impl<'a, T> Slider<'a, T> {
 
     /// Construct a new Slider widget.
     pub fn new(value: T, min: T, max: T) -> Self {
@@ -82,7 +77,6 @@ impl<'a, T, F> Slider<'a, T, F> {
             min: min,
             max: max,
             skew: 1.0,
-            maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
@@ -91,18 +85,17 @@ impl<'a, T, F> Slider<'a, T, F> {
 
     builder_methods!{
         pub skew { skew = f32 }
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 
 }
 
-impl<'a, T, F> Widget for Slider<'a, T, F>
-    where F: FnOnce(T),
-          T: Float + NumCast + ToPrimitive,
+impl<'a, T> Widget for Slider<'a, T>
+    where T: Float + NumCast + ToPrimitive,
 {
     type State = State;
     type Style = Style;
+    type Event = Option<T>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -136,11 +129,11 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{clamp, map_range, value_from_perc};
 
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let Slider { value, min, max, skew, maybe_label, maybe_react, .. } = self;
+        let Slider { value, min, max, skew, maybe_label, .. } = self;
 
         let is_horizontal = rect.w() > rect.h();
         let border = style.border(ui.theme());
@@ -172,14 +165,6 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
         } else {
             value
         };
-
-        // If the value has just changed, or if the slider has been clicked/released, call the
-        // reaction function.
-        if let Some(react) = maybe_react {
-            if value != new_value {
-                react(new_value)
-            }
-        }
 
         // The **Rectangle** for the border.
         let border_idx = state.border_idx.get(&mut ui);
@@ -238,23 +223,26 @@ impl<'a, T, F> Widget for Slider<'a, T, F>
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
         }
+
+        // If the value has just changed, return the new value.
+        if value != new_value { Some(new_value) } else { None }
     }
 
 }
 
 
-impl<'a, T, F> Colorable for Slider<'a, T, F> {
+impl<'a, T> Colorable for Slider<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Borderable for Slider<'a, T, F> {
+impl<'a, T> Borderable for Slider<'a, T> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, T, F> Labelable<'a> for Slider<'a, T, F> {
+impl<'a, T> Labelable<'a> for Slider<'a, T> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

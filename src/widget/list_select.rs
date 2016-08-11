@@ -81,7 +81,7 @@ impl<'a, T, F> ListSelect<'a, T, F> where F: FnMut(Event), T: Display {
     fn new(entries: &'a [T], selected: &'a mut [bool], multi_sel: bool) -> Self {
 
         // Making sure the two vectors are same length, nicer than a panic
-        if entries.len()!=selected.len() {
+        if entries.len() != selected.len() {
             panic!("ERROR: entries:[T] and selected[bool] in ListSelect does not have same length!");
         }
 
@@ -184,6 +184,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
 {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -205,7 +206,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
     }
 
     /// Update the state of the ListSelect.
-    fn update(mut self, args: widget::UpdateArgs<Self>) {
+    fn update(mut self, args: widget::UpdateArgs<Self>) -> Self::Event {
 
         let widget::UpdateArgs { idx, mut state, style, mut ui, .. } = args;
 
@@ -234,35 +235,40 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
             let mut txt_col = unsel_text_color;
             let mut rect_col = unsel_rect_color;
 
-            widget::List::new(self.entries.len() as u32, rect_h)
+            let num_items = self.entries.len() as u32;
+            let (mut list_items, list_scrollbar) = widget::List::new(num_items, rect_h)
                 .scrollbar_on_top()
                 .middle_of(idx)
                 .wh_of(idx)
-                .item(|item| {
-                    let i = item.i;
-                    let label = format!("{}", self.entries[i].to_string());
-
-                    // Set button colors, depending if selected or not.
-                    if self.selected[i] {
-                        txt_col = sel_text_color; rect_col = sel_rect_color;
-                    } else {
-                        txt_col = unsel_text_color; rect_col = unsel_rect_color;
-                    }
-                    // Save widget NodeIndex so input states can be retrieved later
-                    entry_idx_list[i]=item.widget_idx;
-
-                    let button = widget::Button::new()
-                        .label(&label)
-                        .label_color(txt_col)
-                        .color(rect_col)
-                        .label_font_size(font_size)
-                        .border(0.0)
-                        .react(|| {
-                            list_index_event = Some(i);
-                        });
-                    item.set(button);
-                })
                 .set(list_idx, &mut ui);
+
+            while let Some(item) = list_items.next(&ui) {
+                let i = item.i;
+                let label = format!("{}", self.entries[i].to_string());
+
+                // Set button colors, depending if selected or not.
+                if self.selected[i] {
+                    txt_col = sel_text_color; rect_col = sel_rect_color;
+                } else {
+                    txt_col = unsel_text_color; rect_col = unsel_rect_color;
+                }
+                // Save widget NodeIndex so input states can be retrieved later
+                entry_idx_list[i]=item.widget_idx;
+
+                let button = widget::Button::new()
+                    .label(&label)
+                    .label_color(txt_col)
+                    .color(rect_col)
+                    .label_font_size(font_size)
+                    .border(0.0);
+                if item.set(button, &mut ui).was_clicked() {
+                    list_index_event = Some(i);
+                }
+            }
+
+            if let Some(scrollbar) = list_scrollbar {
+                scrollbar.set(&mut ui);
+            }
 
             // If an event (moue click, etc.) happened
             if let Some(i) = list_index_event {

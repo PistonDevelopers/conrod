@@ -17,9 +17,7 @@ use {
     Widget,
 };
 use num::Float;
-use std::any::Any;
 use std::default::Default;
-use std::fmt::Debug;
 use utils::{clamp, map_range, percentage, val_to_string};
 use widget;
 
@@ -28,17 +26,16 @@ use widget;
 ///
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
-pub struct EnvelopeEditor<'a, E:'a, F>
-    where E: EnvelopePoint,
+pub struct EnvelopeEditor<'a, E>
+    where E: EnvelopePoint + 'a,
 {
     common: widget::CommonBuilder,
-    env: &'a mut Vec<E>,
+    env: &'a [E],
     /// The value skewing for the envelope's y-axis. This is useful for displaying exponential
     /// ranges such as frequency.
     pub skew_y_range: f32,
     min_x: E::X, max_x: E::X,
     min_y: E::Y, max_y: E::Y,
-    maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     enabled: bool,
@@ -80,11 +77,11 @@ pub struct State {
 
 /// `EnvPoint` must be implemented for any type that is used as a 2D point within the
 /// EnvelopeEditor.
-pub trait EnvelopePoint: Any + Clone + Debug + PartialEq {
+pub trait EnvelopePoint: Clone + PartialEq {
     /// A value on the X-axis of the envelope.
-    type X: Any + Debug + Default + Float + ToString;
+    type X: Default + Float + ToString;
     /// A value on the Y-axis of the envelope.
-    type Y: Any + Debug + Default + Float + ToString;
+    type Y: Default + Float + ToString;
     /// Return the X value.
     fn get_x(&self) -> Self::X;
     /// Return the Y value.
@@ -117,18 +114,18 @@ impl EnvelopePoint for Point {
 }
 
 
-impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
+impl<'a, E> EnvelopeEditor<'a, E>
+    where E: EnvelopePoint,
+{
 
     /// Construct an EnvelopeEditor widget.
-    pub fn new(env: &'a mut Vec<E>, min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y)
-    -> EnvelopeEditor<'a, E, F> {
+    pub fn new(env: &'a [E], min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y) -> Self {
         EnvelopeEditor {
             common: widget::CommonBuilder::new(),
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).
             min_x: min_x, max_x: max_x,
             min_y: min_y, max_y: max_y,
-            maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
@@ -140,21 +137,91 @@ impl<'a, E, F> EnvelopeEditor<'a, E, F> where E: EnvelopePoint {
         pub line_thickness { style.line_thickness = Some(Scalar) }
         pub value_font_size { style.value_font_size = Some(FontSize) }
         pub skew_y { skew_y_range = f32 }
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 
 }
 
 
-impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
+/// The kinds of events that may be yielded by the `EnvelopeEditor`.
+#[derive(Copy, Clone, Debug)]
+pub enum Event<E>
     where E: EnvelopePoint,
-          E::X: Any,
-          E::Y: Any,
-          F: FnMut(&mut Vec<E>, usize),
+{
+    /// Insert a new point.
+    AddPoint {
+        /// The index at which the point should be inserted.
+        i: usize,
+        /// The new point.
+        point: E,
+    },
+    /// Remove a point.
+    RemovePoint {
+        /// The index of the point that should be removed.
+        i: usize,
+    },
+    /// Move a point.
+    MovePoint {
+        /// The index of the point that should be moved.
+        i: usize,
+        /// The point's new *x* value.
+        x: E::X,
+        /// The point's new *y* value.
+        y: E::Y,
+    },
+}
+
+
+impl<E> Event<E>
+    where E: EnvelopePoint,
+{
+
+    /// Update the given `envelope` in accordance with the `Event`.
+    pub fn update(self, envelope: &mut Vec<E>) {
+        match self {
+
+            Event::AddPoint { i, point } => {
+                if i <= envelope.len() {
+                    envelope.insert(i, point);
+                }
+            },
+
+            Event::RemovePoint { i } => {
+                if i < envelope.len() {
+                    envelope.remove(i);
+                }
+            },
+
+            Event::MovePoint { i, x, y } => {
+                let maybe_left = if i == 0 { None } else { envelope.get(i - 1).map(|p| p.get_x()) };
+                let maybe_right = envelope.get(i + 1).map(|p| p.get_x());
+                if let Some(p) = envelope.get_mut(i) {
+                    let mut set_clamped = |min_x, max_x| {
+                        let x = if x < min_x { min_x } else if x > max_x { max_x } else { x };
+                        p.set_x(x);
+                        p.set_y(y);
+                    };
+                    match (maybe_left, maybe_right) {
+                        (None, None) => set_clamped(x, x),
+                        (Some(min), None) => set_clamped(min, x),
+                        (None, Some(max)) => set_clamped(x, max),
+                        (Some(min), Some(max)) => set_clamped(min, max),
+                    }
+                }
+            },
+
+        }
+    }
+
+}
+
+
+impl<'a, E> Widget for EnvelopeEditor<'a, E>
+    where E: EnvelopePoint,
 {
     type State = State;
     type Style = Style;
+    type Event = Vec<Event<E>>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -181,14 +248,13 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
 
     /// Update the `EnvelopeEditor` in accordance to the latest input and call the given `react`
     /// function if necessary.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let EnvelopeEditor {
             env,
             skew_y_range,
             min_x, max_x,
             min_y, max_y,
-            mut maybe_react,
             maybe_label,
             ..
         } = self;
@@ -251,6 +317,7 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
         // - New points via left `Click`.
         // - Remove points via right `Click`.
         // - Dragging points via left `Drag`.
+        let mut events = Vec::new();
         'events: for widget_event in ui.widget_input(idx).events() {
             use event;
             use input::{self, MouseButton};
@@ -291,26 +358,20 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     let new_y = map_to_y(click.xy[1], inner_rel_rect.bottom(), inner_rel_rect.top());
                     let new_point = EnvelopePoint::new(new_x, new_y);
 
-                    let mut maybe_react = |env: &mut Vec<E>, idx: usize| {
-                        if let Some(ref mut react) = maybe_react {
-                            react(env, idx);
-                        }
-                    };
-
                     // Insert the point and call the reaction function if one was given.
                     match (maybe_left, maybe_right) {
                         (Some(_), None) | (None, None) => {
                             let idx = env.len();
-                            env.push(new_point);
-                            maybe_react(env, idx);
+                            let event = Event::AddPoint { i: idx, point: new_point };
+                            events.push(event);
                         },
                         (None, Some(_)) => {
-                            env.insert(0, new_point);
-                            maybe_react(env, 0);
+                            let event = Event::AddPoint { i: 0, point: new_point };
+                            events.push(event);
                         },
                         (Some(_), Some(idx)) => {
-                            env.insert(idx, new_point);
-                            maybe_react(env, idx);
+                            let event = Event::AddPoint { i: idx, point: new_point };
+                            events.push(event);
                         },
                     }
                 },
@@ -322,10 +383,8 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                     }
 
                     if let Some(idx) = point_under_rel_xy(env, click.xy) {
-                        env.remove(idx);
-                        if let Some(ref mut react) = maybe_react {
-                            react(env, idx);
-                        }
+                        let event = Event::RemovePoint { i: idx };
+                        events.push(event);
                     }
                 },
 
@@ -361,11 +420,8 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                         let new_y = map_to_y(drag_to_y_clamped,
                                              inner_rel_rect.bottom(),
                                              inner_rel_rect.top());
-                        env[idx].set_x(new_x);
-                        env[idx].set_y(new_y);
-                        if let Some(ref mut react) = maybe_react {
-                            react(env, idx);
-                        }
+                        let event = Event::MovePoint { i: idx, x: new_x, y: new_y };
+                        events.push(event);
                     }
                 },
 
@@ -511,19 +567,20 @@ impl<'a, E, F> Widget for EnvelopeEditor<'a, E, F>
                 .set(value_label_idx, &mut ui);
         }
 
+        events
     }
 
 }
 
 
-impl<'a, E, F> Colorable for EnvelopeEditor<'a, E, F>
+impl<'a, E> Colorable for EnvelopeEditor<'a, E>
     where
         E: EnvelopePoint
 {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, E, F> Borderable for EnvelopeEditor<'a, E, F>
+impl<'a, E> Borderable for EnvelopeEditor<'a, E>
     where
         E: EnvelopePoint
 {
@@ -533,7 +590,7 @@ impl<'a, E, F> Borderable for EnvelopeEditor<'a, E, F>
     }
 }
 
-impl<'a, E, F> Labelable<'a> for EnvelopeEditor<'a, E, F>
+impl<'a, E> Labelable<'a> for EnvelopeEditor<'a, E>
     where
         E: EnvelopePoint
 {
