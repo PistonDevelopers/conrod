@@ -633,10 +633,13 @@ impl<'a> Widget for TextEdit<'a> {
             state.update(|state| state.drag = drag);
         }
 
-        let event = match text {
-            std::borrow::Cow::Borrowed(_) => None,
-            std::borrow::Cow::Owned(ref s) => Some(s.clone()),
-        };
+        /// Takes the `String` from the `Cow` if the `Cow` is `Owned`.
+        fn take_if_owned(text: std::borrow::Cow<str>) -> Option<String> {
+            match text {
+                std::borrow::Cow::Borrowed(_) => None,
+                std::borrow::Cow::Owned(s) => Some(s),
+            }
+        }
 
         let color = style.color(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -646,8 +649,8 @@ impl<'a> Widget for TextEdit<'a> {
         let text_rect = Rect { x: rect.x, y: text_y_range };
 
         match line_wrap {
-            Wrap::Whitespace => widget::Text::new(&self.text).wrap_by_word(),
-            Wrap::Character => widget::Text::new(&self.text).wrap_by_character(),
+            Wrap::Whitespace => widget::Text::new(&text).wrap_by_word(),
+            Wrap::Character => widget::Text::new(&text).wrap_by_character(),
         }
             .wh(text_rect.dim())
             .xy(text_rect.xy())
@@ -666,7 +669,7 @@ impl<'a> Widget for TextEdit<'a> {
 
         // If this widget is not capturing the keyboard, no need to draw cursor or selection.
         if ui.global_input().current.widget_capturing_keyboard != Some(idx) {
-            return event;
+            return take_if_owned(text);
         }
 
         // TODO: Simplify this block.
@@ -728,7 +731,7 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        event
+        take_if_owned(text)
     }
 
 }
