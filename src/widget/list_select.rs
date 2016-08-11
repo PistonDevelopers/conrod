@@ -148,7 +148,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
     }
 
     /// Update the state of the ListSelect.
-    fn update(mut self, args: widget::UpdateArgs<Self>) -> Self::Event {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use Sizeable;
 
         let widget::UpdateArgs { idx, mut state, style, mut ui, .. } = args;
@@ -181,6 +181,7 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
         // If set, a widget event was generated. Set in inner closure
         let mut clicked_item = None;
 
+        let list_idx = state.list_idx.get(&mut ui);
         let num_items = self.entries.len() as u32;
         let (mut list_items, list_scrollbar) = widget::List::new(num_items, rect_h)
             .scrollbar_on_top()
