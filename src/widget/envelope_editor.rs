@@ -17,7 +17,7 @@ use {
     Widget,
 };
 use num::Float;
-use std::default::Default;
+use std;
 use utils::{clamp, map_range, percentage, val_to_string};
 use widget;
 
@@ -79,9 +79,9 @@ pub struct State {
 /// EnvelopeEditor.
 pub trait EnvelopePoint: Clone + PartialEq {
     /// A value on the X-axis of the envelope.
-    type X: Default + Float + ToString;
+    type X: Float + ToString;
     /// A value on the Y-axis of the envelope.
-    type Y: Default + Float + ToString;
+    type Y: Float + ToString;
     /// Return the X value.
     fn get_x(&self) -> Self::X;
     /// Return the Y value.
@@ -259,6 +259,8 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             ..
         } = self;
 
+        let mut env = std::borrow::Cow::Borrowed(env);
+
         let point_radius = style.point_radius(ui.theme());
         let border = style.border(ui.theme());
         let rel_rect = Rect::from_xy_dim([0.0, 0.0], rect.dim());
@@ -382,7 +384,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                         continue 'events;
                     }
 
-                    if let Some(idx) = point_under_rel_xy(env, click.xy) {
+                    if let Some(idx) = point_under_rel_xy(&env, click.xy) {
                         let event = Event::RemovePoint { i: idx };
                         events.push(event);
                     }
@@ -392,7 +394,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                 event::Widget::Press(press) => {
                     if let event::Button::Mouse(MouseButton::Left, xy) = press.button {
                         // Check for a point under the cursor.
-                        if let Some(idx) = point_under_rel_xy(env, xy) {
+                        if let Some(idx) = point_under_rel_xy(&env, xy) {
                             pressed_point = Some(idx);
                         } else if pressed_point.is_some() {
                             pressed_point = None;
@@ -415,7 +417,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                         let unbounded_x = map_to_x(drag_to_x_clamped,
                                                    inner_rel_rect.left(),
                                                    inner_rel_rect.right());
-                        let (left_bound, right_bound) = get_x_bounds(env, idx);
+                        let (left_bound, right_bound) = get_x_bounds(&env, idx);
                         let new_x = clamp(unbounded_x, left_bound, right_bound);
                         let new_y = map_to_y(drag_to_y_clamped,
                                              inner_rel_rect.bottom(),
@@ -431,6 +433,11 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
 
         if state.pressed_point != pressed_point {
             state.update(|state| state.pressed_point = pressed_point);
+        }
+
+        // Ensure that the local version of the `env` is up to date for drawing.
+        for event in &events {
+            event.clone().update(env.to_mut());
         }
 
         let inner_rect = rect.pad(border);
