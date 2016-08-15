@@ -32,6 +32,8 @@ pub struct FileNavigator<'a> {
     pub starting_directory: &'a std::path::Path,
     /// Only display files of the given type.
     pub types: Types<'a>,
+    /// Whether to show hidden files and directories
+    show_hidden: bool,
 }
 
 /// A type for specifying the types of files to be shown by a `FileNavigator`.
@@ -117,6 +119,7 @@ impl<'a> FileNavigator<'a> {
             style: Style::new(),
             starting_directory: starting_directory,
             types: types,
+            show_hidden: false,
         }
     }
 
@@ -143,6 +146,13 @@ impl<'a> FileNavigator<'a> {
     /// The color of the `Text` used to display the file names.
     pub fn text_color(mut self, color: Color) -> Self {
         self.style.text_color = Some(Some(color));
+        self
+    }
+
+    /// Whether to show hidden files and directories. On Windows a hidden file is identified
+    /// by a file attribute flag, on other OSs the file name starts with a '.'.
+    pub fn show_hidden_files(mut self, show_hidden: bool) -> Self {
+        self.show_hidden = show_hidden;
         self
     }
 
@@ -273,6 +283,7 @@ impl<'a> Widget for FileNavigator<'a> {
                 .unselected_color(unselected_color)
                 .text_color(text_color)
                 .font_size(font_size)
+                .show_hidden_files(self.show_hidden)
                 .parent(scrollable_canvas_idx)
                 .set(view_idx, &mut ui)
             {
@@ -429,6 +440,8 @@ pub mod directory_view {
         pub directory: &'a std::path::Path,
         /// Only display files of the given type.
         pub types: super::Types<'a>,
+        // Whether to show hidden files and directories.
+        show_hidden: bool,
     }
 
     /// Unique state stored within the widget graph for each `FileNavigator`.
@@ -483,6 +496,39 @@ pub mod directory_view {
         KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
     }
 
+    #[cfg(target_os = "windows")]
+    /// Check if a file is hidden on windows, using the file attributes.
+    fn is_file_hidden(path: &std::path::PathBuf) -> bool {
+
+        use std::os::windows::fs::MetadataExt;
+        use std::fs;
+
+        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
+
+        let metadata = fs::metadata(&path).ok();
+        if let Some(metadata) = metadata {
+            let win_attr: u32 = metadata.file_attributes();
+            return (win_attr & FILE_ATTRIBUTE_HIDDEN) != 0;
+        }
+        false
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    /// Check if a file is hidden on any other OS than windows, using the dot file namings.
+    fn is_file_hidden(path: &std::path::PathBuf) -> bool {
+        let name = path.file_name();
+        if let Some(name) = name {
+            return name.to_string_lossy().to_owned().starts_with(".");
+        }
+        false
+    }
+
+    /// Returns true if file or directory should be displayed depending on configuration
+    /// and file status (hidden or not)
+    fn check_hidden(show_hidden: bool, path: &std::path::PathBuf) -> bool {
+        show_hidden | (!is_file_hidden(path))
+    }
+
     impl<'a> DirectoryView<'a> {
 
         /// Begin building a `DirectoryNavigator` widget that displays only files of the given types.
@@ -492,6 +538,7 @@ pub mod directory_view {
                 style: Style::new(),
                 directory: directory,
                 types: types,
+                show_hidden: false,
             }
         }
 
@@ -504,6 +551,12 @@ pub mod directory_view {
         /// The color of the `Text` used to display the file names.
         pub fn text_color(mut self, color: Color) -> Self {
             self.style.text_color = Some(Some(color));
+            self
+        }
+
+        /// Whether to show hidden files and directories
+        pub fn show_hidden_files(mut self, show_hidden: bool) -> Self {
+            self.show_hidden = show_hidden;
             self
         }
 
@@ -552,8 +605,13 @@ pub mod directory_view {
                     state.entries.clear();
                 });
 
+                let show_hidden = self.show_hidden;
                 let entries: Vec<_> = match std::fs::read_dir(directory).ok() {
-                    Some(entries) => entries.filter_map(|e| e.ok()).collect(),
+                    Some(entries) => {
+                        entries.filter_map(|e| e.ok())
+                            .filter(|f| check_hidden(show_hidden, &f.path()))
+                            .collect()
+                    }
                     None => return Vec::new(),
                 };
 
