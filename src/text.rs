@@ -1231,6 +1231,7 @@ pub mod line {
                     line_spacing: Scalar) -> Rects<I>
         where I: Iterator<Item=Info> + ExactSizeIterator,
     {
+        let num_lines = infos.len();
         let first_rect = infos.next().map(|first_info| {
 
             // Calculate the `x` `Range` of the first line `Rect`.
@@ -1242,7 +1243,6 @@ pub mod line {
             };
 
             // Calculate the `y` `Range` of the first line `Rect`.
-            let num_lines = infos.len();
             let total_text_height = super::height(num_lines, font_size, line_spacing);
             let total_text_y_range = Range::new(0.0, total_text_height);
             let total_text_y = match y_align {
