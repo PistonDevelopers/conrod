@@ -260,6 +260,17 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
+        let xy_at = |cursor_idx: text::cursor::Index,
+                     text: &str,
+                     line_infos: &[text::line::Info],
+                     font: &text::Font|
+            -> Option<(Scalar, Range)>
+        {
+            let xys_per_line = text::cursor::xys_per_line_from_text(text,line_infos,font,font_size,
+                                                                    x_align,y_align,line_spacing,rect);
+            text::cursor::xy_at(xys_per_line, cursor_idx)
+        };
+
         // Find the closest cursor index to the given `xy` position.
         //
         // Returns `None` if the given `text` is empty.
@@ -269,63 +280,20 @@ impl<'a> Widget for TextEdit<'a> {
                                            font: &text::Font|
             -> Option<(text::cursor::Index, Point)>
         {
-            let line_infos = line_infos.iter().cloned();
-            let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
-            let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
-                                               x_align, y_align, line_spacing);
-            let lines_with_rects = lines.zip(line_rects.clone());
+            let xys_per_line = text::cursor::xys_per_line_from_text(text,line_infos,font,font_size,
+                                                                    x_align,y_align,line_spacing,rect);
+            text::cursor::closest_cursor_index_and_xy(xy,xys_per_line)
+        };
 
-            // Find the index of the line that is closest on the *y* axis.
-            let mut xys_per_line_enumerated =
-                text::cursor::xys_per_line(lines_with_rects, font, font_size).enumerate();
-
-            xys_per_line_enumerated.next().and_then(|(first_line_idx, (_, first_line_y))| {
-                let mut closest_line_idx = first_line_idx;
-                let mut closest_diff = (xy[1] - first_line_y.middle()).abs();
-                for (line_idx, (_, line_y)) in xys_per_line_enumerated {
-                    if line_y.is_over(xy[1]) {
-                        closest_line_idx = line_idx;
-                        break;
-                    } else {
-                        let diff = (xy[1] - line_y.middle()).abs();
-                        if diff < closest_diff {
-                            closest_line_idx = line_idx;
-                            closest_diff = diff;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                // Find the index of the cursor position along the closest line.
-                let lines_with_rects = line_infos
-                    .map(|info| &text[info.byte_range()])
-                    .zip(line_rects);
-                text::cursor::xys_per_line(lines_with_rects, font, font_size)
-                    .nth(closest_line_idx)
-                    .map(|(xs, line_y)| {
-                        let mut xs_enumerated = xs.enumerate();
-                        // `xs` always yields at least one `x` (the start of the line).
-                        let (first_idx, first_x) = xs_enumerated.next().unwrap();
-                        let first_diff = (xy[0] - first_x).abs();
-                        let mut closest_idx = first_idx;
-                        let mut closest_x = first_x;
-                        let mut closest_diff = first_diff;
-                        for (i, x) in xs_enumerated {
-                            let diff = (xy[0] - x).abs();
-                            if diff < closest_diff {
-                                closest_idx = i;
-                                closest_x = x;
-                                closest_diff = diff;
-                            } else {
-                                break;
-                            }
-                        }
-
-                        let index = text::cursor::Index { line: closest_line_idx, char: closest_idx };
-                        let point = [closest_x, line_y.middle()];
-                        (index, point)
-                    })
+        let get_index_on_line = |x_pos: Scalar,line_idx: usize,text: &str,
+                                 line_infos: &[text::line::Info],
+                                 font: &text::Font| -> Option<text::cursor::Index> {
+            let mut xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
+                                                                        font_size, x_align, y_align,
+                                                                        line_spacing, rect);
+            xys_per_line.nth(line_idx).and_then(|(line_xs,_)| {
+                let (char_idx,_) = text::cursor::closest_cursor_index_on_line(x_pos,line_xs);
+                Some(text::cursor::Index { line: line_idx, char: char_idx })
             })
         };
 
@@ -476,9 +444,22 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
-                        input::Key::Up => {
-                        },
-                        input::Key::Down => {
+                        input::Key::Up | input::Key::Down => {
+                            let cursor_idx = match cursor {
+                                Cursor::Idx(cursor_idx) => cursor_idx,
+                                Cursor::Selection { start, .. } => start,
+                            };
+                            let font = ui.fonts.get(font_id).unwrap();
+                            let new_cursor_idx = xy_at(cursor_idx, &text, &state.line_infos, font).and_then(|(x_pos,_)| {
+                                let text::cursor::Index { line, .. } = cursor_idx;
+                                let next_line = match key {
+                                    input::Key::Up => if line > 0 { line - 1 } else { 0 },
+                                    input::Key::Down => line + 1,
+                                    _ => unreachable!()
+                                };
+                                get_index_on_line(x_pos, next_line, &text, &state.line_infos, font)
+                            }).unwrap_or(cursor_idx);
+                            cursor = Cursor::Idx(new_cursor_idx);
                         },
 
                         input::Key::A => {
@@ -672,16 +653,9 @@ impl<'a> Widget for TextEdit<'a> {
             return take_if_owned(text);
         }
 
-        // TODO: Simplify this block.
         let (cursor_x, cursor_y_range) = {
-            let line_infos = state.line_infos.iter().cloned();
-            let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
-            let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
-                                               x_align, y_align, line_spacing);
-            let lines_with_rects = lines.zip(line_rects.clone());
             let font = ui.fonts.get(font_id).unwrap();
-            let xys_per_line = text::cursor::xys_per_line(lines_with_rects, font, font_size);
-            text::cursor::xy_at(xys_per_line, cursor_idx)
+            xy_at(cursor_idx, &text, &state.line_infos, font)
                 .unwrap_or_else(|| {
                     let x = rect.left();
                     let y = Range::new(0.0, font_size as Scalar).align_to(y_align, rect.y);

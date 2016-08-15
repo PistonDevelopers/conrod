@@ -442,7 +442,8 @@ pub mod glyph {
 
 /// Logic related to the positioning of the cursor within text.
 pub mod cursor {
-    use {FontSize, Range, Rect, Scalar};
+    use {FontSize, Range, Rect, Scalar, Point, Align};
+    use std;
 
     /// Every possible cursor position within each line of text yielded by the given iterator.
     ///
@@ -452,6 +453,7 @@ pub mod cursor {
     pub struct XysPerLine<'a, I> {
         lines_with_rects: I,
         font: &'a super::Font,
+        text: &'a str,
         font_size: FontSize,
     }
 
@@ -543,13 +545,38 @@ pub mod cursor {
     /// axis and `xs` is every possible cursor position along the *x* axis
     pub fn xys_per_line<'a, I>(lines_with_rects: I,
                                font: &'a super::Font,
+                               text: &'a str,
                                font_size: FontSize) -> XysPerLine<'a, I>
     {
         XysPerLine {
             lines_with_rects: lines_with_rects,
             font: font,
+            text: text,
             font_size: font_size,
         }
+    }
+
+    /// Every possible cursor position within each line of text yielded by the given iterator.
+    ///
+    /// Yields `(xs, y_range)`, where `y_range` is the `Range` occupied by the line across the *y*
+    /// axis and `xs` is every possible cursor position along the *x* axis
+    pub fn xys_per_line_from_text<'a>(text: &'a str,
+                                      line_infos: &'a [super::line::Info],
+                                      font: &'a super::Font,
+                                      font_size: FontSize,
+                                      x_align: Align,
+                                      y_align: Align,
+                                      line_spacing: Scalar,
+                                      rect: Rect) -> XysPerLine<'a,
+                                      std::iter::Zip<std::iter::Cloned<std::slice::Iter<'a,super::line::Info>>,
+                                      super::line::Rects<std::iter::Cloned<std::slice::Iter<'a,super::line::Info>>>>>
+    {
+            let line_infos = line_infos.iter().cloned();
+            let line_rects = super::line::rects(line_infos.clone(), font_size, rect, x_align, y_align, line_spacing);
+
+            let lines = line_infos.clone();
+            let lines_with_rects = lines.zip(line_rects.clone());
+            super::cursor::xys_per_line(lines_with_rects, font, text, font_size)
     }
 
     /// Convert the given character index into a cursor `Index`.
@@ -582,17 +609,92 @@ pub mod cursor {
         None
     }
 
+    /// Find the closest cursor index to the given `xy` position, and the center Point of that cursor
+    ///
+    /// Returns `None` if the given `text` is empty.
+    pub fn closest_cursor_index_and_xy<'a, I>(xy: Point,
+                                              xys_per_line: XysPerLine<'a, I>)
+                                              -> Option<(Index, Point)>
+        where I: Iterator<Item = (super::line::Info, Rect)>,
+    {
+        closest_line(xy[1], xys_per_line).and_then(|(closest_line_idx, closest_line_xs, closest_line_y)| {
+            let (closest_char_idx, closest_x) = closest_cursor_index_on_line(xy[0], closest_line_xs);
+            let index = Index {
+                line: closest_line_idx,
+                char: closest_char_idx,
+            };
+            let point = [closest_x, closest_line_y.middle()];
+            Some((index, point))
+        })
+    }
+
+    /// Find the closest cursor index to the given `x` position, on the given line, and the x position of that cursor
+    ///
+    /// Returns `None` if the given `text` is empty.
+    pub fn closest_cursor_index_on_line<'a>(x_pos: Scalar,
+                                            line_xs: Xs<'a,'a>)
+                                            -> (usize,Scalar)
+    {
+        let mut xs_enumerated = line_xs.enumerate();
+        // `xs` always yields at least one `x` (the start of the line).
+        let (first_idx, first_x) = xs_enumerated.next().unwrap();
+        let first_diff = (x_pos - first_x).abs();
+        let mut closest = (first_idx,first_x);
+        let mut closest_diff = first_diff;
+        for (i, x) in xs_enumerated {
+            let diff = (x_pos - x).abs();
+            if diff < closest_diff {
+                closest = (i,x);
+                closest_diff = diff;
+            } else {
+                break;
+            }
+        }
+        closest
+    }
+
+    /// Find the closest line for the given `y` position, and return the line index, Xs iterator, and y-range of that line
+    ///
+    /// Returns `None` if there are no lines
+    pub fn closest_line<'a, I>(y_pos: Scalar,
+                               xys_per_line: XysPerLine<'a, I>)
+                               -> Option<(usize,Xs<'a,'a>,Range)>
+        where I: Iterator<Item=(super::line::Info, Rect)>,
+    {
+        let mut xys_per_line_enumerated = xys_per_line.enumerate();
+        xys_per_line_enumerated.next().and_then(|(first_line_idx, (first_line_xs, first_line_y))| {
+            let mut closest_line = (first_line_idx,first_line_xs,first_line_y);
+            let mut closest_diff = (y_pos - first_line_y.middle()).abs();
+            for (line_idx, (line_xs, line_y)) in xys_per_line_enumerated {
+                if line_y.is_over(y_pos) {
+                    closest_line = (line_idx,line_xs,line_y);
+                    break;
+                } else {
+                    let diff = (y_pos - line_y.middle()).abs();
+                    if diff < closest_diff {
+                        closest_line = (line_idx,line_xs,line_y);
+                        closest_diff = diff;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            Some(closest_line)
+        })
+    }
+
 
     impl<'a, I> Iterator for XysPerLine<'a, I>
-        where I: Iterator<Item=(&'a str, Rect)>,
+        where I: Iterator<Item=(super::line::Info, Rect)>,
     {
         // The `Range` occupied by the line across the *y* axis, along with an iterator yielding
         // each possible cursor position along the *x* axis.
         type Item = (Xs<'a, 'a>, Range);
         fn next(&mut self) -> Option<Self::Item> {
-            let XysPerLine { ref mut lines_with_rects, font, font_size } = *self;
+            let XysPerLine { ref mut lines_with_rects, font, text, font_size } = *self;
             let scale = super::pt_to_scale(font_size);
-            lines_with_rects.next().map(|(line, line_rect)| {
+            lines_with_rects.next().map(|(line_info, line_rect)| {
+                let line = &text[line_info.byte_range()];
                 let (x, y) = (line_rect.left() as f32, line_rect.top() as f32);
                 let point = super::rt::Point { x: x, y: y };
                 let y = line_rect.y;
