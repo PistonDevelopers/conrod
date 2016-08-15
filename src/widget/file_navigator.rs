@@ -149,8 +149,7 @@ impl<'a> FileNavigator<'a> {
         self
     }
 
-    /// Whether to show hidden files and directories. On Windows a hidden file is identified
-    /// by a file attribute flag, on other OSs the file name starts with a '.'.
+    /// Whether to show hidden files and directories.
     pub fn show_hidden_files(mut self, show_hidden: bool) -> Self {
         self.show_hidden = show_hidden;
         self
@@ -496,8 +495,13 @@ pub mod directory_view {
         KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", not(windows_metadataext)))]
+    fn is_file_hidden(_path: &std::path::PathBuf) -> bool {
+        false
+    }
+    #[cfg(all(target_os = "windows", windows_metadataext))]
     /// Check if a file is hidden on windows, using the file attributes.
+    /// To be enabled once windows::fs::MetadataExt is no longer an unstable API.
     fn is_file_hidden(path: &std::path::PathBuf) -> bool {
 
         use std::os::windows::fs::MetadataExt;
@@ -517,6 +521,7 @@ pub mod directory_view {
     /// Check if a file is hidden on any other OS than windows, using the dot file namings.
     fn is_file_hidden(path: &std::path::PathBuf) -> bool {
         let name = path.file_name();
+        println!("Linux metadataext");
         if let Some(name) = name {
             return name.to_string_lossy().to_owned().starts_with(".");
         }
