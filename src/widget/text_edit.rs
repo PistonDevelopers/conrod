@@ -300,6 +300,59 @@ impl<'a> Widget for TextEdit<'a> {
         let mut cursor = state.cursor;
         let mut drag = state.drag;
 
+        let insert_text = |string: &str, cursor: Cursor, text: &str, infos: &[text::line::Info], font: &text::Font|
+            -> Option<(String,Cursor,std::vec::Vec<text::line::Info>)>
+        {
+            let string_char_count = string.chars().count();
+            // Construct the new text with the new string inserted at the cursor.
+            let (new_text, new_cursor_char_idx): (String, usize) = {
+                let (cursor_start, cursor_end) = match cursor {
+                    Cursor::Idx(idx) => (idx, idx),
+                    Cursor::Selection { start, end } =>
+                        (std::cmp::min(start, end), std::cmp::max(start, end)),
+                };
+
+                let line_infos = infos.iter().cloned();
+
+                let (start_idx, end_idx) =
+                    (text::glyph::index_after_cursor(line_infos.clone(), cursor_start)
+                        .unwrap_or(0),
+                     text::glyph::index_after_cursor(line_infos.clone(), cursor_end)
+                        .unwrap_or(0));
+
+                let new_cursor_char_idx = start_idx + string_char_count;
+
+                let new_text = text.chars().take(start_idx)
+                    .chain(string.chars())
+                    .chain(text.chars().skip(end_idx))
+                    .collect();
+                (new_text, new_cursor_char_idx)
+            };
+
+            // Calculate the new `line_infos` for the `new_text`.
+            let new_line_infos: Vec<_> = {
+                line_infos(&new_text, font, font_size, line_wrap, rect.w()).collect()
+            };
+
+            // Check that the new text would not exceed the `inner_rect` bounds.
+            let num_lines = new_line_infos.len();
+            let height = text::height(num_lines, font_size, line_spacing);
+            if height < rect.h() || !restrict_to_height {
+                // Determine the new `Cursor` and its position.
+                let new_cursor_idx = {
+                    let line_infos = new_line_infos.iter().cloned();
+                    text::cursor::index_before_char(line_infos, new_cursor_char_idx)
+                        .unwrap_or(text::cursor::Index {
+                            line: 0,
+                            char: string_char_count,
+                        })
+                };
+                Some((new_text, Cursor::Idx(new_cursor_idx), new_line_infos))
+            } else {
+                None
+            }
+        };
+
         // Check for the following events:
         // - `Text` events for receiving new text.
         // - Left mouse `Press` events for either:
@@ -481,6 +534,16 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
+                        input::Key::Return => {
+                            match insert_text("\n", cursor, &text, &state.line_infos, ui.fonts.get(font_id).unwrap()) {
+                                Some((new_text, new_cursor, new_line_infos)) => {
+                                    *text.to_mut() = new_text;
+                                    cursor = new_cursor;
+                                    state.update(|state| state.line_infos = new_line_infos);
+                                }, _ => ()
+                            }
+                        },
+
                         _ => (),
                     },
 
@@ -512,60 +575,12 @@ impl<'a> Widget for TextEdit<'a> {
                         "\u{f700}" | "\u{f701}" | "\u{f702}" | "\u{f703}" => continue 'events,
                         _ => ()
                     }
-
-                    let string_char_count = string.chars().count();
-
-                    // Construct the new text with the new string inserted at the cursor.
-                    let (new_text, new_cursor_char_idx): (String, usize) = {
-                        let (cursor_start, cursor_end) = match cursor {
-                            Cursor::Idx(idx) => (idx, idx),
-                            Cursor::Selection { start, end } =>
-                                (std::cmp::min(start, end), std::cmp::max(start, end)),
-                        };
-
-                        let line_infos = state.line_infos.iter().cloned();
-
-                        let (start_idx, end_idx) =
-                            (text::glyph::index_after_cursor(line_infos.clone(), cursor_start)
-                                .unwrap_or(0),
-                             text::glyph::index_after_cursor(line_infos.clone(), cursor_end)
-                                .unwrap_or(0));
-
-                        let new_cursor_char_idx = start_idx + string_char_count;
-
-                        let new_text = text.chars().take(start_idx)
-                            .chain(string.chars())
-                            .chain(text.chars().skip(end_idx))
-                            .collect();
-                        (new_text, new_cursor_char_idx)
-                    };
-
-                    // Calculate the new `line_infos` for the `new_text`.
-                    let new_line_infos: Vec<_> = {
-                        let font = ui.fonts.get(font_id).unwrap();
-                        line_infos(&new_text, font, font_size, line_wrap, rect.w()).collect()
-                    };
-
-                    // Check that the new text would not exceed the `inner_rect` bounds.
-                    let num_lines = new_line_infos.len();
-                    let height = text::height(num_lines, font_size, line_spacing);
-                    if height < rect.h() || !restrict_to_height {
-
-                        // Determine the new `Cursor` and its position.
-                        let new_cursor_idx = {
-                            let line_infos = new_line_infos.iter().cloned();
-                            text::cursor::index_before_char(line_infos, new_cursor_char_idx)
-                                .unwrap_or(text::cursor::Index {
-                                    line: 0,
-                                    char: string_char_count,
-                                })
-                        };
-                        let new_cursor = Cursor::Idx(new_cursor_idx);
-
-                        // Update the text, cursor and line_infos.
-                        *text.to_mut() = new_text;
-                        cursor = new_cursor;
-                        state.update(|state| state.line_infos = new_line_infos);
+                    match insert_text(&string, cursor, &text, &state.line_infos, ui.fonts.get(font_id).unwrap()) {
+                        Some((new_text, new_cursor, new_line_infos)) => {
+                            *text.to_mut() = new_text;
+                            cursor = new_cursor;
+                            state.update(|state| state.line_infos = new_line_infos);
+                        }, _ => ()
                     }
                 },
 
