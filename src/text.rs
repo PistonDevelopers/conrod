@@ -803,6 +803,8 @@ pub mod line {
         start_byte: usize,
         /// The character index that indicates the start of the next line to be yielded.
         start_char: usize,
+        /// The break type of the previously yielded line
+        last_break: Option<Break>,
     }
 
     /// An iterator yielding a `Rect` for each line in 
@@ -864,6 +866,7 @@ pub mod line {
                 next_break_fn: self.next_break_fn.clone(),
                 start_byte: self.start_byte,
                 start_char: self.start_char,
+                last_break: None,
             }
         }
     }
@@ -1100,6 +1103,7 @@ pub mod line {
             next_break_fn: next_break_fn,
             start_byte: 0,
             start_char: 0,
+            last_break: None,
         }
     }
 
@@ -1200,6 +1204,7 @@ pub mod line {
                 ref mut next_break_fn,
                 ref mut start_byte,
                 ref mut start_char,
+                ref mut last_break,
             } = *self;
 
             match next_break_fn(&text[*start_byte..], font, font_size, max_width) {
@@ -1236,29 +1241,41 @@ pub mod line {
                         },
                         _ => unreachable!(),
                     };
-
+                    *last_break = Some(next_break);
                     Some(info)
                 },
 
-                (Break::End { char, .. }, width) =>
-                    if *start_byte < text.len() {
+                (Break::End { char, .. }, width) => {
+                    // if the last line ends in a new line, or the entire text is empty, return an empty line Info
+                    let empty_line = {
+                        match *last_break {
+                            Some(last_break_) => match last_break_ {
+                                Break::Newline { .. } => true,
+                                _ => false,
+                            }, None => true,
+                        }
+                    };
+                    if *start_byte < text.len() || empty_line {
                         let total_bytes = text.len();
                         let total_chars = *start_char + char;
+                        let end_break = Break::End {
+                            byte: total_bytes,
+                            char: total_chars,
+                        };
                         let info = Info {
                             start_byte: *start_byte,
                             start_char: *start_char,
-                            end_break: Break::End {
-                                byte: total_bytes,
-                                char: total_chars,
-                            },
+                            end_break: end_break,
                             width: width,
                         };
                         *start_byte = total_bytes;
                         *start_char = total_chars;
+                        *last_break = Some(end_break);
                         Some(info)
                     } else {
                         None
-                    },
+                    }
+                },
             }
         }
     }
