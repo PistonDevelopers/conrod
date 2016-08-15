@@ -14,11 +14,10 @@ use widget;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
-pub struct Button<'a, F> {
+#[derive(Clone)]
+pub struct Button<'a> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
-    /// The reaction for the Button. The reaction will be triggered upon release of the button.
-    maybe_react: Option<F>,
     /// Unique styling for the Button.
     pub style: Style,
     /// Whether or not user input is enabled.
@@ -48,13 +47,39 @@ pub struct State {
     label_idx: widget::IndexSlot,
 }
 
-impl<'a, F> Button<'a, F> {
+/// The `Event` type yielded by the `Button` widget.
+///
+/// Represents the number of times that the `Button` has been clicked with the left mouse button
+/// since the last update.
+#[derive(Clone, Debug)]
+#[allow(missing_copy_implementations)]
+pub struct TimesClicked(pub u16);
+
+
+impl TimesClicked {
+    /// `true` if the `Button` was clicked one or more times.
+    pub fn was_clicked(self) -> bool { self.0 > 0 }
+}
+
+impl Iterator for TimesClicked {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 > 0 {
+            self.0 -= 1;
+            Some(())
+        } else {
+            None
+        }
+    }
+}
+
+
+impl<'a> Button<'a> {
 
     /// Create a button context to be built upon.
     pub fn new() -> Self {
         Button {
             common: widget::CommonBuilder::new(),
-            maybe_react: None,
             maybe_label: None,
             style: Style::new(),
             enabled: true,
@@ -62,17 +87,15 @@ impl<'a, F> Button<'a, F> {
     }
 
     builder_methods!{
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 }
 
 
-impl<'a, F> Widget for Button<'a, F>
-    where F: FnOnce(),
-{
+impl<'a> Widget for Button<'a> {
     type State = State;
     type Style = Style;
+    type Event = TimesClicked;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -94,25 +117,21 @@ impl<'a, F> Widget for Button<'a, F>
     }
 
     /// Update the state of the Button.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
 
-        let color = {
+        let (color, times_clicked) = {
             let input = ui.widget_input(idx);
-            if input.clicks().left().next().is_some() {
-                if let Some(react) = self.maybe_react {
-                    react()
-                }
-            }
-
             let color = style.color(ui.theme());
-            input.mouse().map_or(color, |mouse| {
+            let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
                     color.clicked()
                 } else {
                     color.highlighted()
                 }
-            })
+            });
+            let times_clicked = input.clicks().left().count() as u16;
+            (color, times_clicked)
         };
 
         // BorderedRectangle widget.
@@ -141,23 +160,24 @@ impl<'a, F> Widget for Button<'a, F>
                 .set(label_idx, &mut ui);
         }
 
+        TimesClicked(times_clicked)
     }
 
 }
 
 
-impl<'a, F> Colorable for Button<'a, F> {
+impl<'a> Colorable for Button<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Borderable for Button<'a, F> {
+impl<'a> Borderable for Button<'a> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, F> Labelable<'a> for Button<'a, F> {
+impl<'a> Labelable<'a> for Button<'a> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

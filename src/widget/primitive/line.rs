@@ -256,6 +256,7 @@ impl Style {
 impl Widget for Line {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -277,7 +278,7 @@ impl Widget for Line {
     }
 
     /// Update the state of the Line.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { rect, state, .. } = args;
         let Line { mut start, mut end, should_centre_points, .. } = self;
 

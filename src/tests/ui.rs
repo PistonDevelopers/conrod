@@ -93,7 +93,6 @@ fn ui_should_reset_global_input_after_widget_are_set() {
         widget::Button::new()
             .w_h(100.0, 200.0)
             .label("MyButton")
-            .react(|| {})
             .bottom_right_of(CANVAS_ID)
             .set(BUTTON_ID, ui);
     });

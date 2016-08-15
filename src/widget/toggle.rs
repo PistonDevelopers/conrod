@@ -20,11 +20,10 @@ use widget;
 ///
 /// Note that the Toggle will not mutate the bool for you, you should do this yourself within the
 /// react function.
-pub struct Toggle<'a, F> {
+#[derive(Clone)]
+pub struct Toggle<'a> {
     common: widget::CommonBuilder,
     value: bool,
-    /// Set the reaction for the Toggle. It will be triggered upon release of the button.
-    pub maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
     /// If true, will allow user inputs. If false, will disallow user inputs.
@@ -50,19 +49,42 @@ widget_style!{
 /// The state of the Toggle.
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    value: bool,
     rectangle_idx: widget::IndexSlot,
     label_idx: widget::IndexSlot,
 }
 
+/// The `Event` type yielded by the `Toggle` widget.
+///
+/// Implements `Iterator` yielding a `bool` indicating the new state for each time the `Toggle` was
+/// clicked with the left mouse button since the last update.
+#[derive(Clone, Debug)]
+#[allow(missing_copy_implementations)]
+pub struct TimesClicked {
+    state: bool,
+    count: u16,
+}
 
-impl<'a, F> Toggle<'a, F> {
+
+impl Iterator for TimesClicked {
+    type Item = bool;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count > 0 {
+            self.count -= 1;
+            self.state = !self.state;
+            Some(self.state)
+        } else {
+            None
+        }
+    }
+}
+
+
+impl<'a> Toggle<'a> {
 
     /// Construct a new Toggle widget.
-    pub fn new(value: bool) -> Toggle<'a, F> {
+    pub fn new(value: bool) -> Toggle<'a> {
         Toggle {
             common: widget::CommonBuilder::new(),
-            maybe_react: None,
             maybe_label: None,
             value: value,
             style: Style::new(),
@@ -71,17 +93,15 @@ impl<'a, F> Toggle<'a, F> {
     }
 
     builder_methods!{
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
 
 }
 
-impl<'a, F> Widget for Toggle<'a, F>
-    where F: FnOnce(bool),
-{
+impl<'a> Widget for Toggle<'a> {
     type State = State;
     type Style = Style;
+    type Event = TimesClicked;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -93,7 +113,6 @@ impl<'a, F> Widget for Toggle<'a, F>
 
     fn init_state(&self) -> State {
         State {
-            value: self.value,
             rectangle_idx: widget::IndexSlot::new(),
             label_idx: widget::IndexSlot::new(),
         }
@@ -104,24 +123,14 @@ impl<'a, F> Widget for Toggle<'a, F>
     }
 
     /// Update the state of the Toggle.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
-        let Toggle { value, enabled, maybe_label, maybe_react, .. } = self;
+        let Toggle { value, enabled, maybe_label, .. } = self;
 
-        let new_value = if ui.widget_input(idx).clicks().left().next().is_some() && enabled {
-            let new_value = !value;
-            if let Some(react) = maybe_react {
-                react(new_value)
-            }
-            new_value
-        } else {
-            value
+        let times_clicked = TimesClicked {
+            state: value,
+            count: if enabled { ui.widget_input(idx).clicks().left().count() as u16 } else { 0 },
         };
-
-        // If the value has changed, update our state.
-        if state.value != new_value {
-            state.update(|state| state.value = new_value);
-        }
 
         // BorderedRectangle widget.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
@@ -129,6 +138,7 @@ impl<'a, F> Widget for Toggle<'a, F>
         let border = style.border(ui.theme());
         let color = {
             let color = style.color(ui.theme());
+            let new_value = times_clicked.clone().last().unwrap_or(value);
             let color = if new_value { color } else { color.with_luminance(0.1) };
             match ui.widget_input(idx).mouse() {
                 Some(mouse) =>
@@ -158,22 +168,24 @@ impl<'a, F> Widget for Toggle<'a, F>
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
         }
+
+        times_clicked
     }
 }
 
 
-impl<'a, F> Colorable for Toggle<'a, F> {
+impl<'a> Colorable for Toggle<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, F> Borderable for Toggle<'a, F> {
+impl<'a> Borderable for Toggle<'a> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, F> Labelable<'a> for Toggle<'a, F> {
+impl<'a> Labelable<'a> for Toggle<'a> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

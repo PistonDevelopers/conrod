@@ -35,7 +35,7 @@ fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
 
-    let conrod_directory = find_folder::Search::KidsThenParents(3, 5).for_folder("conrod").unwrap();
+    let directory = find_folder::Search::KidsThenParents(3, 5).for_folder("conrod").unwrap();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -56,13 +56,15 @@ fn main() {
                 widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
                 // Navigate the conrod directory only showing `.rs` and `.toml` files.
-                widget::FileNavigator::with_extension(&conrod_directory, &["rs", "toml"])
+                for event in widget::FileNavigator::with_extension(&directory, &["rs", "toml"])
                     .color(conrod::color::LIGHT_BLUE)
                     .font_size(16)
                     .wh_of(CANVAS)
                     .middle_of(CANVAS)
-                    .react(|event| println!("{:?}", &event))
-                    .set(FILE_NAVIGATOR, ui);
+                    .set(FILE_NAVIGATOR, ui)
+                {
+                    println!("{:?}", event);
+                }
             });
 
         });

@@ -62,6 +62,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
 {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -82,7 +83,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
     }
 
     /// Update the state of the PlotPath.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
 
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
         let PlotPath { min_x, max_x, min_y, max_y, mut f, .. } = self;

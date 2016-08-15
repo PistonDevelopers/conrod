@@ -54,12 +54,14 @@ fn main() {
                 widget::Canvas::new().pad(40.0).set(CANVAS, ui);
 
                 // Draw the button and increment `count` if pressed.
-                widget::Button::new()
+                for _click in widget::Button::new()
                     .middle_of(CANVAS)
                     .w_h(80.0, 80.0)
                     .label(&count.to_string())
-                    .react(|| count += 1)
-                    .set(COUNTER, ui);
+                    .set(COUNTER, ui)
+                {
+                    count += 1;
+                }
             });
         });
 

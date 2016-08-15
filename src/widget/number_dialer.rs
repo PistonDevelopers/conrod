@@ -13,7 +13,6 @@ use {
     Widget,
 };
 use num::{Float, NumCast};
-use std::any::Any;
 use std::cmp::Ordering;
 use std::iter::repeat;
 use text;
@@ -25,18 +24,13 @@ use widget;
 ///
 /// The reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the widget.
-pub struct NumberDialer<'a, T, F> {
+pub struct NumberDialer<'a, T> {
     common: widget::CommonBuilder,
     value: T,
     min: T,
     max: T,
     maybe_label: Option<&'a str>,
     precision: u8,
-    /// The reaction function for the NumberDialer.
-    ///
-    /// It will be triggered when the value is updated or if the mouse button is released while the
-    /// cursor is above the widget.
-    maybe_react: Option<F>,
     style: Style,
     /// If true, will allow user input. If false, will disallow user inputs.
     enabled: bool,
@@ -126,8 +120,9 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
 }
 
 
-impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
-
+impl<'a, T> NumberDialer<'a, T>
+    where T: Float,
+{
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
         NumberDialer {
@@ -137,25 +132,22 @@ impl<'a, T, F> NumberDialer<'a, T, F> where T: Float {
             max: max,
             precision: precision,
             maybe_label: None,
-            maybe_react: None,
             style: Style::new(),
             enabled: true,
         }
     }
 
     builder_methods!{
-        pub react { maybe_react = Some(F) }
         pub enabled { enabled = bool }
     }
-
 }
 
-impl<'a, T, F> Widget for NumberDialer<'a, T, F>
-    where F: FnOnce(T),
-          T: Any + ::std::fmt::Debug + Float + NumCast + ToString,
+impl<'a, T> Widget for NumberDialer<'a, T>
+    where T: Float + NumCast + ToString,
 {
     type State = State;
     type Style = Style;
+    type Event = Option<T>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -179,11 +171,9 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
     }
 
     /// Update the state of the NumberDialer.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let NumberDialer {
-            value, min, max, precision, maybe_label, maybe_react, ..
-        } = self;
+        let NumberDialer { value, min, max, precision, maybe_label, .. } = self;
 
         let rel_rect = rect.relative_to(rect.xy());
         let border = style.border(ui.theme());
@@ -197,7 +187,7 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             .and_then(|id| ui.fonts.get(id).map(|_| id))
         {
             Some(font_id) => font_id,
-            None => return,
+            None => return None,
         };
 
         let font_size = style.label_font_size(ui.theme());
@@ -311,12 +301,8 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
             }
         }
 
-        // If the value has changed and some reaction function was given, call it.
-        if let Some(react) = maybe_react {
-            if value != new_value {
-                react(new_value);
-            }
-        }
+        // If the value has changed produce an event.
+        let event = if value != new_value { Some(new_value) } else { None };
 
         if state.pressed_value_idx != pressed_value_idx {
             state.update(|state| state.pressed_value_idx = pressed_value_idx);
@@ -399,23 +385,25 @@ impl<'a, T, F> Widget for NumberDialer<'a, T, F>
 
             rel_slot_x += slot_w;
         }
+
+        event
     }
 
 }
 
 
-impl<'a, T, F> Colorable for NumberDialer<'a, T, F> {
+impl<'a, T> Colorable for NumberDialer<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Borderable for NumberDialer<'a, T, F> {
+impl<'a, T> Borderable for NumberDialer<'a, T> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, T, F> Labelable<'a> for NumberDialer<'a, T, F> {
+impl<'a, T> Labelable<'a> for NumberDialer<'a, T> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

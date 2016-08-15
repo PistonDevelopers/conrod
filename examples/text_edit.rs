@@ -70,12 +70,14 @@ fn set_ui(ref mut ui: conrod::UiCell, demo_text: &mut String) {
 
     widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
 
-    widget::TextEdit::new(demo_text)
+    for edit in widget::TextEdit::new(demo_text)
         .color(color::LIGHT_BLUE)
         .padded_wh_of(CANVAS, 20.0)
         .mid_top_of(CANVAS)
         .align_text_x_middle()
         .line_spacing(2.5)
-        .react(|_: &mut String| {})
-        .set(TEXT_EDIT, ui);
+        .set(TEXT_EDIT, ui)
+    {
+        *demo_text = edit;
+    }
 }

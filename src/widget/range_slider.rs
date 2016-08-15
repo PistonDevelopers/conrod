@@ -18,17 +18,12 @@ use utils;
 use widget;
 
 /// Linear range selection.
-pub struct RangeSlider<'a, T, F> {
+pub struct RangeSlider<'a, T> {
     common: widget::CommonBuilder,
     start: T,
     end: T,
     min: T,
     max: T,
-    /// Set the reaction for the Slider.
-    ///
-    /// It will be triggered if the value is updated or if the mouse button is released while the
-    /// cursor is above the rectangle.
-    pub maybe_react: Option<F>,
     maybe_label: Option<&'a str>,
     style: Style,
 }
@@ -76,7 +71,31 @@ pub enum Edge {
     End,
 }
 
-impl<'a, T, F> RangeSlider<'a, T, F> {
+/// The `Event` type produced by the `RangeSlider`.
+///
+/// This can be used as an `Iterator` that only yields changed `Edge`s.
+#[derive(Clone)]
+pub struct Event<T> {
+    start: Option<T>,
+    end: Option<T>,
+}
+
+
+impl<T> Iterator for Event<T> {
+    type Item = (Edge, T);
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(new_start) = self.start.take() {
+            return Some((Edge::Start, new_start));
+        }
+        if let Some(new_end) = self.end.take() {
+            return Some((Edge::End, new_end));
+        }
+        None
+    }
+}
+
+
+impl<'a, T> RangeSlider<'a, T> {
 
     /// Construct a new RangeSlider widget.
     pub fn new(start: T, end: T, min: T, max: T) -> Self {
@@ -86,24 +105,19 @@ impl<'a, T, F> RangeSlider<'a, T, F> {
             end: end,
             min: min,
             max: max,
-            maybe_react: None,
             maybe_label: None,
             style: Style::new(),
         }
     }
 
-    builder_methods!{
-        pub react { maybe_react = Some(F) }
-    }
-
 }
 
-impl<'a, T, F> Widget for RangeSlider<'a, T, F>
-    where F: FnMut(Edge, T),
-          T: Float + NumCast + ToPrimitive,
+impl<'a, T> Widget for RangeSlider<'a, T>
+    where T: Float + NumCast + ToPrimitive,
 {
     type State = State;
     type Style = Style;
+    type Event = Event<T>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -138,9 +152,9 @@ impl<'a, T, F> Widget for RangeSlider<'a, T, F>
     }
 
     /// Update the state of the Slider.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
-        let RangeSlider { start, end, min, max, maybe_label, maybe_react, .. } = self;
+        let RangeSlider { start, end, min, max, maybe_label, .. } = self;
 
         let border = style.border(ui.theme());
         let inner_rect = rect.pad(border);
@@ -247,16 +261,12 @@ impl<'a, T, F> Widget for RangeSlider<'a, T, F>
 
         }
 
-        // If the value has just changed, or if the slider has been clicked/released, call the
-        // reaction function.
-        if let Some(mut react) = maybe_react {
-            if start != new_start {
-                react(Edge::Start, new_start);
-            }
-            if end != new_end {
-                react(Edge::End, new_end);
-            }
-        }
+        // If the value has just changed, or if the slider has been clicked/released, produce an
+        // event.
+        let event = Event {
+            start: if start != new_start { Some(new_start) } else { None },
+            end: if end != new_end { Some(new_end) } else { None },
+        };
 
         if maybe_drag != state.drag {
             state.update(|state| state.drag = maybe_drag);
@@ -308,23 +318,25 @@ impl<'a, T, F> Widget for RangeSlider<'a, T, F>
                 .font_size(font_size)
                 .set(label_idx, &mut ui);
         }
+
+        event
     }
 
 }
 
 
-impl<'a, T, F> Colorable for RangeSlider<'a, T, F> {
+impl<'a, T> Colorable for RangeSlider<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a, T, F> Borderable for RangeSlider<'a, T, F> {
+impl<'a, T> Borderable for RangeSlider<'a, T> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a, T, F> Labelable<'a> for RangeSlider<'a, T, F> {
+impl<'a, T> Labelable<'a> for RangeSlider<'a, T> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }

@@ -27,11 +27,9 @@ use widget::primitive::text::Wrap;
 ///
 /// By default the text is wrapped via the first whitespace before the line exceeds the
 /// `TextEdit`'s width, however a user may change this using the `.wrap_by_character` method.
-pub struct TextEdit<'a, F> {
+pub struct TextEdit<'a> {
     common: widget::CommonBuilder,
-    text: &'a mut String,
-    /// The reaction for the TextEdit.
-    pub maybe_react: Option<F>,
+    text: &'a str,
     style: Style,
 }
 
@@ -97,14 +95,13 @@ pub enum Cursor {
 }
 
 
-impl<'a, F> TextEdit<'a, F> {
+impl<'a> TextEdit<'a> {
 
     /// Construct a TextEdit widget.
-    pub fn new(text: &'a mut String) -> Self {
+    pub fn new(text: &'a str) -> Self {
         TextEdit {
             common: widget::CommonBuilder::new(),
             text: text,
-            maybe_react: None,
             style: Style::new(),
         }
     }
@@ -162,7 +159,6 @@ impl<'a, F> TextEdit<'a, F> {
 
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
-        pub react { maybe_react = Some(F) }
         pub x_align_text { style.x_align = Some(Align) }
         pub y_align_text { style.y_align = Some(Align) }
         pub line_wrap { style.line_wrap = Some(Wrap) }
@@ -172,11 +168,14 @@ impl<'a, F> TextEdit<'a, F> {
 
 }
 
-impl<'a, F> Widget for TextEdit<'a, F>
-    where F: FnMut(&mut String),
-{
+impl<'a> Widget for TextEdit<'a> {
     type State = State;
     type Style = Style;
+    // TODO: We should create a more specific `Event` type that:
+    // - Allows for mutating an existing `String` directly
+    // - Enumerates possible mutations (i.e. InsertChar, RemoveCharRange, etc).
+    // - Enumerates cursor movement and range selection.
+    type Event = Option<String>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -204,9 +203,10 @@ impl<'a, F> Widget for TextEdit<'a, F>
     }
 
     /// Update the state of the TextEdit.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
         let TextEdit { text, .. } = self;
+        let mut text = std::borrow::Cow::Borrowed(text);
 
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
@@ -216,7 +216,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
             .and_then(|id| ui.fonts.get(id).map(|_| id))
         {
             Some(font_id) => font_id,
-            None => return,
+            None => return None,
         };
 
         let font_size = style.font_size(ui.theme());
@@ -248,7 +248,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
             let maybe_new_line_infos = {
                 let line_info_slice = &state.line_infos[..];
                 let font = ui.fonts.get(font_id).unwrap();
-                let new_line_infos = line_infos(text, font, font_size, line_wrap, rect.w());
+                let new_line_infos = line_infos(&text, font, font_size, line_wrap, rect.w());
                 match utils::write_if_different(line_info_slice, new_line_infos) {
                     std::borrow::Cow::Owned(new) => Some(new),
                     _ => None,
@@ -349,7 +349,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         let abs_xy = utils::vec2_add(rel_xy, rect.xy());
                         let infos = &state.line_infos;
                         let font = ui.fonts.get(font_id).unwrap();
-                        let closest = closest_cursor_index_and_xy(abs_xy, text, infos, font);
+                        let closest = closest_cursor_index_and_xy(abs_xy, &text, infos, font);
                         if let Some((closest_cursor, _)) = closest {
                             cursor = Cursor::Idx(closest_cursor);
                         }
@@ -375,7 +375,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                         if idx > 0 {
                                             let idx_to_remove = idx - 1;
 
-                                            *text = text.chars().take(idx_to_remove)
+                                            *text.to_mut() = text.chars().take(idx_to_remove)
                                                 .chain(text.chars().skip(idx))
                                                 .collect();
 
@@ -383,7 +383,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                                 let font = ui.fonts.get(font_id).unwrap();
                                                 let w = rect.w();
                                                 state.line_infos =
-                                                    line_infos(text, font, font_size, line_wrap, w)
+                                                    line_infos(&text, font, font_size, line_wrap, w)
                                                         .collect();
                                             });
 
@@ -416,14 +416,14 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                             .expect("char index was out of range")
                                     };
                                     cursor = Cursor::Idx(new_cursor_idx);
-                                    *text = text.chars().take(start_idx)
+                                    *text.to_mut() = text.chars().take(start_idx)
                                         .chain(text.chars().skip(end_idx))
                                         .collect();
                                     state.update(|state| {
                                         let font = ui.fonts.get(font_id).unwrap();
                                         let w = rect.w();
                                         state.line_infos =
-                                            line_infos(text, font, font_size, line_wrap, w)
+                                            line_infos(&text, font, font_size, line_wrap, w)
                                                 .collect();
                                     });
                                 },
@@ -582,7 +582,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                         let new_cursor = Cursor::Idx(new_cursor_idx);
 
                         // Update the text, cursor and line_infos.
-                        *text = new_text;
+                        *text.to_mut() = new_text;
                         cursor = new_cursor;
                         state.update(|state| state.line_infos = new_line_infos);
                     }
@@ -601,7 +601,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
                                 let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
                                 let infos = &state.line_infos;
                                 let font = ui.fonts.get(font_id).unwrap();
-                                match closest_cursor_index_and_xy(abs_xy, text, infos, font) {
+                                match closest_cursor_index_and_xy(abs_xy, &text, infos, font) {
                                     Some((end_cursor_idx, _)) =>
                                         cursor = Cursor::Selection {
                                             start: start_cursor_idx,
@@ -633,6 +633,14 @@ impl<'a, F> Widget for TextEdit<'a, F>
             state.update(|state| state.drag = drag);
         }
 
+        /// Takes the `String` from the `Cow` if the `Cow` is `Owned`.
+        fn take_if_owned(text: std::borrow::Cow<str>) -> Option<String> {
+            match text {
+                std::borrow::Cow::Borrowed(_) => None,
+                std::borrow::Cow::Owned(s) => Some(s),
+            }
+        }
+
         let color = style.color(ui.theme());
         let font_size = style.font_size(ui.theme());
         let num_lines = state.line_infos.iter().count();
@@ -641,8 +649,8 @@ impl<'a, F> Widget for TextEdit<'a, F>
         let text_rect = Rect { x: rect.x, y: text_y_range };
 
         match line_wrap {
-            Wrap::Whitespace => widget::Text::new(&self.text).wrap_by_word(),
-            Wrap::Character => widget::Text::new(&self.text).wrap_by_character(),
+            Wrap::Whitespace => widget::Text::new(&text).wrap_by_word(),
+            Wrap::Character => widget::Text::new(&text).wrap_by_character(),
         }
             .wh(text_rect.dim())
             .xy(text_rect.xy())
@@ -661,7 +669,7 @@ impl<'a, F> Widget for TextEdit<'a, F>
 
         // If this widget is not capturing the keyboard, no need to draw cursor or selection.
         if ui.global_input().current.widget_capturing_keyboard != Some(idx) {
-            return;
+            return take_if_owned(text);
         }
 
         // TODO: Simplify this block.
@@ -722,11 +730,13 @@ impl<'a, F> Widget for TextEdit<'a, F>
                     .set(selected_rectangle_idx, &mut ui);
             }
         }
+
+        take_if_owned(text)
     }
 
 }
 
 
-impl<'a, F> Colorable for TextEdit<'a, F> {
+impl<'a> Colorable for TextEdit<'a> {
     builder_method!(color { style.color = Some(Color) });
 }

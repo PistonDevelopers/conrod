@@ -157,6 +157,7 @@ impl<I> Widget for PointPath<I>
 {
     type State = State;
     type Style = Style;
+    type Event = ();
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -177,7 +178,7 @@ impl<I> Widget for PointPath<I>
     }
 
     /// Update the state of the Line.
-    fn update(self, args: widget::UpdateArgs<Self>) {
+    fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
         let PointPath { points, maybe_shift_to_centre_from, .. } = self;
