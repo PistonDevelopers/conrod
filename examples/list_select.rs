@@ -37,22 +37,24 @@ fn main() {
     let image_map = conrod::image::Map::new();
 
     // List of entries to display. They should implement the Display trait.
-    let list_items = vec!["African Sideneck Turtle".to_string(),
-                              "Alligator Snapping Turtle".to_string(),
-                              "Common Snapping Turtle".to_string(),
-                              "Indian Peacock Softshelled Turtle".to_string(),
-                              "Eastern River Cooter".to_string(),
-                              "Eastern Snake Necked Turtle".to_string(),
-                              "Diamond Terrapin".to_string(),
-                              "Indian Peacock Softshelled Turtle".to_string(),
-                              "Musk Turtle".to_string(),
-                              "Reeves Turtle".to_string(),
-                              "Eastern Spiny Softshell Turtle".to_string(),
-                              "Red Ear Slider Turtle".to_string(),
-                              "Indian Tent Turtle".to_string(),
-                              "Mud Turtle".to_string(),
-                              "Painted Turtle".to_string(),
-                              "Spotted Turtle".to_string()];
+    let list_items = [
+        "African Sideneck Turtle".to_string(),
+        "Alligator Snapping Turtle".to_string(),
+        "Common Snapping Turtle".to_string(),
+        "Indian Peacock Softshelled Turtle".to_string(),
+        "Eastern River Cooter".to_string(),
+        "Eastern Snake Necked Turtle".to_string(),
+        "Diamond Terrapin".to_string(),
+        "Indian Peacock Softshelled Turtle".to_string(),
+        "Musk Turtle".to_string(),
+        "Reeves Turtle".to_string(),
+        "Eastern Spiny Softshell Turtle".to_string(),
+        "Red Ear Slider Turtle".to_string(),
+        "Indian Tent Turtle".to_string(),
+        "Mud Turtle".to_string(),
+        "Painted Turtle".to_string(),
+        "Spotted Turtle".to_string()
+    ];
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
     let mut list_selected = vec![false; list_items.len()];
