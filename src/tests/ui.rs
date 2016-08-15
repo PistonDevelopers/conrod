@@ -85,7 +85,9 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     left_click_mouse(&mut ui);
 
     assert!(ui.global_input.events().next().is_some());
-    ui.set_widgets(|ref mut ui| {
+
+    {
+        let ui = &mut ui.set_widgets();
 
         widget::Canvas::new()
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
@@ -95,7 +97,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
             .label("MyButton")
             .bottom_right_of(CANVAS_ID)
             .set(BUTTON_ID, ui);
-    });
+    }
 
     assert!(ui.global_input.events().next().is_none());
 }

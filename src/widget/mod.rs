@@ -82,7 +82,7 @@ pub mod xy_pad;
 
 /// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
 /// simplify the method signature.
-pub struct UpdateArgs<'a, 'b: 'a, W>
+pub struct UpdateArgs<'a, 'b: 'a, 'c, 'd: 'c, W>
     where W: Widget,
 {
     /// The **Widget**'s unique index.
@@ -110,7 +110,7 @@ pub struct UpdateArgs<'a, 'b: 'a, W>
     ///
     /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.  Also allows
     /// calling `Widget::set` within the `Widget::update` method.
-    pub ui: UiCell<'a>,
+    pub ui: &'c mut UiCell<'d>,
 }
 
 /// A small cache for a single unique **NodeIndex**.
@@ -793,8 +793,7 @@ pub trait Widget: Sized {
         where I: Into<Index>,
     {
         let idx: Index = idx.into();
-        let ui: &'a mut Ui = ui::ref_mut_from_ui_cell(ui_cell);
-        set_widget(self, idx, ui)
+        set_widget(self, idx, ui_cell)
     }
 
 }
@@ -811,14 +810,14 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui) -> W::Event
+fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Event
     where W: Widget,
 {
     let type_id = std::any::TypeId::of::<W::State>();
 
     // Take the previous state of the widget from the cache if there is some to collect.
     let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style) =
-        ui::widget_graph_mut(ui)
+        ui::widget_graph_mut(ui::ref_mut_from_ui_cell(ui))
             .widget_mut(idx)
             .and_then(|container| {
 
@@ -1015,6 +1014,7 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui) -> W::Event
         let crop_kids = widget.common().crop_kids;
 
         // This will cache the given data into the `ui`'s `widget_graph`.
+        let ui: &mut Ui = ui::ref_mut_from_ui_cell(ui);
         ui::pre_update_cache(ui, PreUpdateCache {
             type_id: type_id,
             idx: idx,
@@ -1065,7 +1065,7 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui) -> W::Event
                 prev: &prev_common,
                 rect: rect,
                 style: &new_style,
-                ui: ui::new_ui_cell(ui),
+                ui: ui,
             });
 
             (state.has_updated, event)
@@ -1090,6 +1090,8 @@ fn set_widget<W>(widget: W, idx: Index, ui: &mut Ui) -> W::Event
 
     // We only need to redraw if some visible part of our widget has changed.
     let requires_redraw = style_has_changed || state_has_changed || scroll_has_changed;
+
+    let ui: &mut Ui = ui::ref_mut_from_ui_cell(ui);
 
     // If we require a redraw, we should notify the `Ui`.
     if requires_redraw {

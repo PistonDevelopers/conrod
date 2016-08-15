@@ -46,27 +46,25 @@ fn main() {
         }
 
         event.update(|_| {
+            use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 
             // Instantiate the conrod widgets.
-            ui.set_widgets(|ref mut ui| {
-                use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
+            let ui = &mut ui.set_widgets();
 
-                widget_ids!(CANVAS, FILE_NAVIGATOR);
+            widget_ids!(CANVAS, FILE_NAVIGATOR);
 
-                widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+            widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
-                // Navigate the conrod directory only showing `.rs` and `.toml` files.
-                for event in widget::FileNavigator::with_extension(&directory, &["rs", "toml"])
-                    .color(conrod::color::LIGHT_BLUE)
-                    .font_size(16)
-                    .wh_of(CANVAS)
-                    .middle_of(CANVAS)
-                    .set(FILE_NAVIGATOR, ui)
-                {
-                    println!("{:?}", event);
-                }
-            });
-
+            // Navigate the conrod directory only showing `.rs` and `.toml` files.
+            for event in widget::FileNavigator::with_extension(&directory, &["rs", "toml"])
+                .color(conrod::color::LIGHT_BLUE)
+                .font_size(16)
+                .wh_of(CANVAS)
+                .middle_of(CANVAS)
+                .set(FILE_NAVIGATOR, ui)
+            {
+                println!("{:?}", event);
+            }
         });
 
         window.draw_2d(&event, |c, g| {

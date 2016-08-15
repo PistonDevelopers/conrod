@@ -263,7 +263,8 @@ pub fn main() {
             ui.handle_event(e);
         }
 
-        event.update(|_| ui.set_widgets(|ref mut ui| {
+        event.update(|_| {
+            let ui = &mut ui.set_widgets();
 
             // Sets a color to clear the background with before the Ui draws our widget.
             widget::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
@@ -289,7 +290,7 @@ pub fn main() {
             {
                 println!("Click!");
             }
-        }));
+        });
 
         // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
         window.draw_2d(&event, |c, g| {

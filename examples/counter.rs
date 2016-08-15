@@ -45,24 +45,23 @@ fn main() {
 
         // `Update` the widgets.
         event.update(|_| {
-            ui.set_widgets(|ref mut ui| {
+            let ui = &mut ui.set_widgets();
 
-                // Generate the ID for the Button COUNTER.
-                widget_ids!(CANVAS, COUNTER);
+            // Generate the ID for the Button COUNTER.
+            widget_ids!(CANVAS, COUNTER);
 
-                // Create a background canvas upon which we'll place the button.
-                widget::Canvas::new().pad(40.0).set(CANVAS, ui);
+            // Create a background canvas upon which we'll place the button.
+            widget::Canvas::new().pad(40.0).set(CANVAS, ui);
 
-                // Draw the button and increment `count` if pressed.
-                for _click in widget::Button::new()
-                    .middle_of(CANVAS)
-                    .w_h(80.0, 80.0)
-                    .label(&count.to_string())
-                    .set(COUNTER, ui)
-                {
-                    count += 1;
-                }
-            });
+            // Draw the button and increment `count` if pressed.
+            for _click in widget::Button::new()
+                .middle_of(CANVAS)
+                .w_h(80.0, 80.0)
+                .label(&count.to_string())
+                .set(COUNTER, ui)
+            {
+                count += 1;
+            }
         });
 
         // Draw the `Ui` if it has changed.

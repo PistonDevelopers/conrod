@@ -34,7 +34,7 @@ fn main() {
         }
 
         // Update the widgets.
-        event.update(|_| ui.set_widgets(set_ui));
+        event.update(|_| set_ui(ui.set_widgets()));
 
         // Draw the `Ui`.
         window.draw_2d(&event, |c, g| {

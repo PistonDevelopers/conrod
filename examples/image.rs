@@ -54,12 +54,13 @@ fn main() {
             }
         });
 
-        event.update(|_| ui.set_widgets(|mut ui| {
+        event.update(|_| {
+            let ui = &mut ui.set_widgets();
             // Draw a light blue background.
-            widget::Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, &mut ui);
+            widget::Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, ui);
             // Instantiate the `Image` at its full size in the middle of the window.
-            widget::Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, &mut ui);
-        }));
+            widget::Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, ui);
+        });
     }
 }
 
