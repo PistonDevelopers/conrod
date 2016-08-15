@@ -474,45 +474,27 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
-                        input::Key::Left => {
+                        input::Key::Left | input::Key::Right => {
                             if !press.modifiers.contains(input::keyboard::CTRL) {
                                 match cursor {
-
                                     // Move the cursor to the previous position.
                                     Cursor::Idx(cursor_idx) => {
                                         let new_cursor_idx = {
                                             let line_infos = state.line_infos.iter().cloned();
-                                            cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
+                                            match key {
+                                                input::Key::Left => cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
+                                                input::Key::Right => cursor_idx.next(line_infos).unwrap_or(cursor_idx)
+                                            }
                                         };
                                         cursor = Cursor::Idx(new_cursor_idx);
                                     },
-
                                     // Move the cursor to the start of the current selection.
                                     Cursor::Selection { start, end } => {
+                                        let new_cursor_idx = match key {
+                                            input::Key::Left => std::cmp::min(start, end)
+                                            input::Key::Right => std::cmp::max(start, end)
+                                        }
                                         let new_cursor_idx = std::cmp::min(start, end);
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-                                }
-                            }
-                        },
-
-                        input::Key::Right => {
-                            if !press.modifiers.contains(input::keyboard::CTRL) {
-                                match cursor {
-
-                                    // Move the cursor to the next position.
-                                    Cursor::Idx(cursor_idx) => {
-                                        let new_cursor_idx = {
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            cursor_idx.next(line_infos).unwrap_or(cursor_idx)
-                                        };
-
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-
-                                    // Move the cursor to the end of the current selection.
-                                    Cursor::Selection { start, end } => {
-                                        let new_cursor_idx = std::cmp::max(start, end);
                                         cursor = Cursor::Idx(new_cursor_idx);
                                     },
                                 }
