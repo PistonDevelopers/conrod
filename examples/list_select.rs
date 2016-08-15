@@ -78,7 +78,7 @@ fn main() {
 
             widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
 
-            widget::ListSelect::multiple(&list_items, &mut list_selected)
+            for event in widget::ListSelect::multiple(&list_items, &list_selected)
                 .w_h(350.0, 220.0)
                 .top_left_with_margins_on(CANVAS, 40.0, 40.0)
                 .color(color::LIGHT_GREY)
@@ -87,19 +87,21 @@ fn main() {
                 .selected_text_color(color::YELLOW)
                 .font_size(16)
                 .scrollbar_auto_hide(false)
-                .react(|event| {
-                    match event {
-                        widget::list_select::Event::SelectEntry(ix, name) =>
-                            println!("Select Entry: {}, {}", ix, name),
-                        widget::list_select::Event::SelectEntries(list)	=>
-                            println!("Select Entries: {:?}", list),
-                        widget::list_select::Event::DoubleClick(ix, name) =>
-                            println!("Double Click: {}, {}", ix, name),
-                        widget::list_select::Event::KeyPress(list, kp) =>
-                            println!("Keypress: {:?}, {:?}", kp, list),
-                    }
-                })
-                .set(LIST_BOX, ui);
+                .set(LIST_BOX, ui)
+            {
+                match event {
+                    widget::list_select::Event::Selection(selection) => {
+                        println!("{:?}", &selection);
+                        for (i, is_selected) in list_selected.iter_mut().enumerate() {
+                            *is_selected = selection.contains(&i);
+                        }
+                    },
+                    widget::list_select::Event::Press(_press) => (),
+                    widget::list_select::Event::Release(_release) => (),
+                    widget::list_select::Event::Click(_click) => (),
+                    widget::list_select::Event::DoubleClick(_double_click) => (),
+                }
+            }
         });
 
         window.draw_2d(&event, |c, g| {
