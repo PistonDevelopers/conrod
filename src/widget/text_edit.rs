@@ -554,8 +554,18 @@ impl<'a> Widget for TextEdit<'a> {
                         },
 
                         input::Key::E => {
-                            // If cursor is `Idx`, move cursor to end.
+                            // move cursor to end.
                             if press.modifiers.contains(input::keyboard::CTRL) {
+                                let mut line_infos = state.line_infos.iter().cloned();
+                                let line = line_infos.len() - 1;
+                                match line_infos.nth(line) {
+                                    Some(line_info) => {
+                                        let char = line_info.end_char() - line_info.start_char;
+                                        let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                    _ => (),
+                                }
                             }
                         },
 
