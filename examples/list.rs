@@ -42,7 +42,7 @@ fn main() {
         }
 
         event.update(|_| {
-            ui.set_widgets(|ui_cell| set_ui(ui_cell, &mut list))
+            set_ui(ui.set_widgets(), &mut list);
         });
 
         window.draw_2d(&event, |c, g| {

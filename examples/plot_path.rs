@@ -34,7 +34,7 @@ fn main() {
             ui.handle_event(e);
         }
 
-        event.update(|_| ui.set_widgets(set_ui));
+        event.update(|_| set_ui(ui.set_widgets()));
 
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {

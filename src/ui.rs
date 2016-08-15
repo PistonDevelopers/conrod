@@ -917,9 +917,7 @@ impl Ui {
 
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
-    pub fn set_widgets<F>(&mut self, user_widgets_fn: F)
-        where F: FnOnce(UiCell),
-    {
+    pub fn set_widgets(&mut self) -> UiCell {
         self.maybe_prev_widget_idx = None;
         self.maybe_current_parent_idx = None;
 
@@ -931,6 +929,8 @@ impl Ui {
             updated_widgets.clear();
         }
 
+        let mut ui_cell = UiCell { ui: self };
+
         // Instantiate the root `Window` `Widget`.
         //
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
@@ -938,46 +938,18 @@ impl Ui {
         {
             use {color, Colorable, Borderable, Positionable, Widget};
             type Window = widget::BorderedRectangle;
-            Window::new([self.win_w, self.win_h])
+            Window::new([ui_cell.win_w, ui_cell.win_h])
                 .no_parent()
                 .x_y(0.0, 0.0)
                 .border(0.0)
                 .border_color(color::BLACK.alpha(0.0))
-                .color(self.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
-                .set(self.window, &mut UiCell { ui: self });
+                .color(ui_cell.maybe_background_color.unwrap_or(color::BLACK.alpha(0.0)))
+                .set(ui_cell.window, &mut ui_cell);
         }
 
-        self.maybe_current_parent_idx = Some(self.window.into());
+        ui_cell.ui.maybe_current_parent_idx = Some(ui_cell.window.into());
 
-        // Call the given user function for instantiating Widgets.
-        user_widgets_fn(UiCell { ui: self });
-
-        // We'll need to re-draw if we have gained or lost widgets.
-        if self.updated_widgets != self.prev_updated_widgets {
-            self.needs_redraw();
-        }
-
-        // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
-        {
-            let Ui {
-                ref widget_graph,
-                ref mut depth_order,
-                window,
-                ref updated_widgets,
-                ..
-            } = *self;
-
-            depth_order.update(widget_graph, window, updated_widgets);
-        }
-
-        // Reset the global input state. Note that this is the **only** time this should be called.
-        self.global_input.clear_events_and_update_start_state();
-
-        // Move all pending `Scroll` events that have been produced since the start of this method
-        // into the `global_input` event buffer.
-        for scroll_event in self.pending_scroll_events.drain(0..) {
-            self.global_input.push_event(scroll_event.into());
-        }
+        ui_cell
     }
 
 
@@ -1143,6 +1115,37 @@ impl<'a> UiCell<'a> {
 
 }
 
+impl<'a> Drop for UiCell<'a> {
+    fn drop(&mut self) {
+        // We'll need to re-draw if we have gained or lost widgets.
+        if self.ui.updated_widgets != self.ui.prev_updated_widgets {
+            self.ui.needs_redraw();
+        }
+
+        // Update the **DepthOrder** so that it reflects the **Graph**'s current state.
+        {
+            let Ui {
+                ref widget_graph,
+                ref mut depth_order,
+                window,
+                ref updated_widgets,
+                ..
+            } = *self.ui;
+
+            depth_order.update(widget_graph, window, updated_widgets);
+        }
+
+        // Reset the global input state. Note that this is the **only** time this should be called.
+        self.ui.global_input.clear_events_and_update_start_state();
+
+        // Move all pending `Scroll` events that have been produced since the start of this method
+        // into the `global_input` event buffer.
+        for scroll_event in self.ui.pending_scroll_events.drain(0..) {
+            self.ui.global_input.push_event(scroll_event.into());
+        }
+    }
+}
+
 impl<'a> ::std::ops::Deref for UiCell<'a> {
     type Target = Ui;
     fn deref(&self) -> &Ui {
@@ -1154,11 +1157,6 @@ impl<'a> AsRef<Ui> for UiCell<'a> {
     fn as_ref(&self) -> &Ui {
         &self.ui
     }
-}
-
-/// A private constructor for the `UiCell` for internal use.
-pub fn new_ui_cell(ui: &mut Ui) -> UiCell {
-    UiCell { ui: ui }
 }
 
 /// A function for retrieving the `&mut Ui<B>` from a `UiCell<B>`.

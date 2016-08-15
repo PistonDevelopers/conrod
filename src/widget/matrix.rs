@@ -136,7 +136,7 @@ impl Widget for Matrix {
 
     /// Update the state of the Matrix.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { idx, state, rect, style, ui, .. } = args;
         let Matrix { cols, rows, .. } = self;
 
         // First, check that we have the correct number of columns.

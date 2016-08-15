@@ -265,7 +265,7 @@ mod feature {
             }
 
             // Update all widgets within the `Ui`.
-            ui.set_widgets(|ui| set_widgets(ui));
+            set_widgets(ui.set_widgets());
 
             // Avoid hogging the CPU.
             std::thread::sleep(std::time::Duration::from_millis(10));

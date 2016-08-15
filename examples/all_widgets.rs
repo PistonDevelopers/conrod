@@ -135,9 +135,8 @@ fn main() {
 
         // We'll set all our widgets in a single function called `set_widgets`.
         event.update(|_| {
-            ui.set_widgets(|mut ui| {
-                set_widgets(&mut ui, &mut app);
-            });
+            let mut ui = ui.set_widgets();
+            set_widgets(&mut ui, &mut app);
         });
 
         // Draw our Ui!

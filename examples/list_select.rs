@@ -69,38 +69,39 @@ fn main() {
         }
 
         event.update(|_| {
+            use conrod::{widget, color, Colorable, Positionable, Sizeable, Widget};
+
             // Instantiate the conrod widgets.
-            ui.set_widgets(|ref mut ui| {
-                use conrod::{widget, color, Colorable, Positionable, Sizeable, Widget};
+            let ui = &mut ui.set_widgets();
 
-                widget_ids!(CANVAS, LIST_BOX);
+            widget_ids!(CANVAS, LIST_BOX);
 
-                widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
+            widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
 
-                widget::ListSelect::multiple(&list_items, &mut list_selected)
-                    .w_h(350.0, 220.0)
-                    .top_left_with_margins_on(CANVAS, 40.0, 40.0)
-                    .color(color::LIGHT_GREY)
-                    .selected_color(color::LIGHT_BLUE)
-                    .text_color(color::BLACK)
-                    .selected_text_color(color::YELLOW)
-                    .font_size(16)
-                    .scrollbar_auto_hide(false)
-                    .react(|event| {
-                        match event {
-                            widget::list_select::Event::SelectEntry(ix, name) =>
-                                println!("Select Entry: {}, {}", ix, name),
-                            widget::list_select::Event::SelectEntries(list)	=>
-                                println!("Select Entries: {:?}", list),
-                            widget::list_select::Event::DoubleClick(ix, name) =>
-                                println!("Double Click: {}, {}", ix, name),
-                            widget::list_select::Event::KeyPress(list, kp) =>
-                                println!("Keypress: {:?}, {:?}", kp, list),
-                        }
-                    })
-                    .set(LIST_BOX, ui);
-                });
+            widget::ListSelect::multiple(&list_items, &mut list_selected)
+                .w_h(350.0, 220.0)
+                .top_left_with_margins_on(CANVAS, 40.0, 40.0)
+                .color(color::LIGHT_GREY)
+                .selected_color(color::LIGHT_BLUE)
+                .text_color(color::BLACK)
+                .selected_text_color(color::YELLOW)
+                .font_size(16)
+                .scrollbar_auto_hide(false)
+                .react(|event| {
+                    match event {
+                        widget::list_select::Event::SelectEntry(ix, name) =>
+                            println!("Select Entry: {}, {}", ix, name),
+                        widget::list_select::Event::SelectEntries(list)	=>
+                            println!("Select Entries: {:?}", list),
+                        widget::list_select::Event::DoubleClick(ix, name) =>
+                            println!("Double Click: {}, {}", ix, name),
+                        widget::list_select::Event::KeyPress(list, kp) =>
+                            println!("Keypress: {:?}, {:?}", kp, list),
+                    }
+                })
+                .set(LIST_BOX, ui);
         });
+
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };

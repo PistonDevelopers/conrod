@@ -43,7 +43,7 @@ fn main() {
         }
 
         event.update(|_| {
-            ui.set_widgets(set_widgets)
+            set_widgets(ui.set_widgets());
         });
 
         window.draw_2d(&event, |c, g| {
