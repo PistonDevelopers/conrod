@@ -1112,6 +1112,8 @@ pub mod line {
     /// - A newline character.
     /// - A line wrap at the beginning of the whitespace that preceeds the first word
     /// exceeding the `max_width`.
+    /// - A line wrap at the beginning of the first character exceeding the `max_width`,
+    /// if no whitespace appears for `max_width` characters.
     ///
     /// Also returns the width the line alongside the Break.
     fn next_break_by_whitespace(text: &str,
@@ -1121,7 +1123,7 @@ pub mod line {
     {
         struct Last { byte: usize, char: usize, width_before: Scalar }
         let scale = super::pt_to_scale(font_size);
-        let mut last_whitespace_start = Last { byte: 0, char: 0, width_before: 0.0 };
+        let mut last_whitespace_start = None;
         let mut width = 0.0;
         let mut char_i = 0;
         let mut char_indices = text.char_indices().peekable();
@@ -1144,14 +1146,21 @@ pub mod line {
 
             // Check for a line wrap.
             if width > max_width {
-                let Last { byte, char, width_before } = last_whitespace_start;
-                let break_ = Break::Wrap { byte: byte, char: char, len_bytes: 1 };
-                return (break_, width_before);
+                match last_whitespace_start {
+                    Some(Last { byte, char, width_before }) => {
+                        let break_ = Break::Wrap { byte: byte, char: char, len_bytes: 1 };
+                        return (break_, width_before);
+                    },
+                    None => {
+                        let break_ = Break::Wrap { byte: byte_i, char: char_i, len_bytes: 0 };
+                        return (break_, width);
+                    }
+                }
             }
 
             // Check for a new whitespace.
             if ch.is_whitespace() {
-                last_whitespace_start = Last { byte: byte_i, char: char_i, width_before: width };
+                last_whitespace_start = Some(Last { byte: byte_i, char: char_i, width_before: width });
             }
 
             width = new_width;
