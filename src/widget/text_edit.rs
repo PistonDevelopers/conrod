@@ -260,14 +260,16 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        let xy_at = |cursor_idx: text::cursor::Index,
-                     text: &str,
-                     line_infos: &[text::line::Info],
-                     font: &text::Font|
+        // Find the position of the cursor at the given index over the given text.
+        let cursor_xy_at = |cursor_idx: text::cursor::Index,
+                            text: &str,
+                            line_infos: &[text::line::Info],
+                            font: &text::Font|
             -> Option<(Scalar, Range)>
         {
-            let xys_per_line = text::cursor::xys_per_line_from_text(text,line_infos,font,font_size,
-                                                                    x_align,y_align,line_spacing,rect);
+            let xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
+                                                                    font_size, x_align, y_align,
+                                                                    line_spacing, rect);
             text::cursor::xy_at(xys_per_line, cursor_idx)
         };
 
@@ -280,14 +282,19 @@ impl<'a> Widget for TextEdit<'a> {
                                            font: &text::Font|
             -> Option<(text::cursor::Index, Point)>
         {
-            let xys_per_line = text::cursor::xys_per_line_from_text(text,line_infos,font,font_size,
-                                                                    x_align,y_align,line_spacing,rect);
-            text::cursor::closest_cursor_index_and_xy(xy,xys_per_line)
+            let xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
+                                                                    font_size, x_align, y_align,
+                                                                    line_spacing, rect);
+            text::cursor::closest_cursor_index_and_xy(xy, xys_per_line)
         };
 
-        let get_index_on_line = |x_pos: Scalar,line_idx: usize,text: &str,
-                                 line_infos: &[text::line::Info],
-                                 font: &text::Font| -> Option<text::cursor::Index> {
+        // Find the closest cursor index to the given `x` position over the given line.
+        let closest_cursor_index_on_line = |x_pos: Scalar,
+                                            line_idx: usize,
+                                            text: &str,
+                                            line_infos: &[text::line::Info],
+                                            font: &text::Font| -> Option<text::cursor::Index>
+        {
             let mut xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
                                                                         font_size, x_align, y_align,
                                                                         line_spacing, rect);
@@ -300,10 +307,20 @@ impl<'a> Widget for TextEdit<'a> {
         let mut cursor = state.cursor;
         let mut drag = state.drag;
 
-        let insert_text = |string: &str, cursor: Cursor, text: &str, infos: &[text::line::Info], font: &text::Font|
-            -> Option<(String,Cursor,std::vec::Vec<text::line::Info>)>
+        // Insert the given `string` at the given `cursor` position within the given `text`.
+        //
+        // Produces the resulting text, cursor position and `line::Info`s for the new text.
+        //
+        // Returns `None` if the new text would exceed the height restriction.
+        let insert_text = |string: &str,
+                           cursor: Cursor,
+                           text: &str,
+                           infos: &[text::line::Info],
+                           font: &text::Font|
+            -> Option<(String, Cursor, std::vec::Vec<text::line::Info>)>
         {
             let string_char_count = string.chars().count();
+
             // Construct the new text with the new string inserted at the cursor.
             let (new_text, new_cursor_char_idx): (String, usize) = {
                 let (cursor_start, cursor_end) = match cursor {
@@ -338,6 +355,7 @@ impl<'a> Widget for TextEdit<'a> {
             let num_lines = new_line_infos.len();
             let height = text::height(num_lines, font_size, line_spacing);
             if height < rect.h() || !restrict_to_height {
+
                 // Determine the new `Cursor` and its position.
                 let new_cursor_idx = {
                     let line_infos = new_line_infos.iter().cloned();
@@ -347,6 +365,7 @@ impl<'a> Widget for TextEdit<'a> {
                             char: string_char_count,
                         })
                 };
+
                 Some((new_text, Cursor::Idx(new_cursor_idx), new_line_infos))
             } else {
                 None
@@ -359,6 +378,7 @@ impl<'a> Widget for TextEdit<'a> {
         //     - setting the cursor or start of a selection.
         //     - begin dragging selected text.
         // - Left mouse `Drag` for extending the end of the selection, or for dragging selected text.
+        // - Key presses for cursor movement.
         'events: for widget_event in ui.widget_input(idx).events() {
             match widget_event {
 
@@ -410,7 +430,8 @@ impl<'a> Widget for TextEdit<'a> {
 
                                             let line_infos = state.line_infos.iter().cloned();
                                             let new_cursor_idx =
-                                                 text::cursor::index_before_char(line_infos, idx_to_remove)
+                                                 text::cursor::index_before_char(line_infos,
+                                                                                 idx_to_remove)
                                                  // in case we removed the last character
                                                 .unwrap_or(text::cursor::Index {line: 0, char: 0});
                                             cursor = Cursor::Idx(new_cursor_idx);
@@ -433,7 +454,8 @@ impl<'a> Widget for TextEdit<'a> {
                                         if start_idx > 0 { start_idx } else { 0 };
                                     let new_cursor_idx = {
                                         let line_infos = state.line_infos.iter().cloned();
-                                        text::cursor::index_before_char(line_infos, new_cursor_char_idx)
+                                        text::cursor::index_before_char(line_infos,
+                                                                        new_cursor_char_idx)
                                             .expect("char index was out of range")
                                     };
                                     cursor = Cursor::Idx(new_cursor_idx);
@@ -503,15 +525,18 @@ impl<'a> Widget for TextEdit<'a> {
                                 Cursor::Selection { start, .. } => start,
                             };
                             let font = ui.fonts.get(font_id).unwrap();
-                            let new_cursor_idx = xy_at(cursor_idx, &text, &state.line_infos, font).and_then(|(x_pos,_)| {
-                                let text::cursor::Index { line, .. } = cursor_idx;
-                                let next_line = match key {
-                                    input::Key::Up => if line > 0 { line - 1 } else { 0 },
-                                    input::Key::Down => line + 1,
-                                    _ => unreachable!()
-                                };
-                                get_index_on_line(x_pos, next_line, &text, &state.line_infos, font)
-                            }).unwrap_or(cursor_idx);
+                            let infos = &state.line_infos;
+                            let new_cursor_idx = cursor_xy_at(cursor_idx, &text, infos, font)
+                                .and_then(|(x_pos,_)| {
+                                    let text::cursor::Index { line, .. } = cursor_idx;
+                                    let next_line = match key {
+                                        input::Key::Up => if line > 0 { line - 1 } else { 0 },
+                                        input::Key::Down => line + 1,
+                                        _ => unreachable!()
+                                    };
+                                    closest_cursor_index_on_line(x_pos, next_line, &text, infos, font)
+                                })
+                                .unwrap_or(cursor_idx);
                             cursor = Cursor::Idx(new_cursor_idx);
                         },
 
@@ -535,7 +560,8 @@ impl<'a> Widget for TextEdit<'a> {
                         },
 
                         input::Key::Return => {
-                            match insert_text("\n", cursor, &text, &state.line_infos, ui.fonts.get(font_id).unwrap()) {
+                            let font = ui.fonts.get(font_id).unwrap();
+                            match insert_text("\n", cursor, &text, &state.line_infos, font) {
                                 Some((new_text, new_cursor, new_line_infos)) => {
                                     *text.to_mut() = new_text;
                                     cursor = new_cursor;
@@ -575,7 +601,9 @@ impl<'a> Widget for TextEdit<'a> {
                         "\u{f700}" | "\u{f701}" | "\u{f702}" | "\u{f703}" => continue 'events,
                         _ => ()
                     }
-                    match insert_text(&string, cursor, &text, &state.line_infos, ui.fonts.get(font_id).unwrap()) {
+
+                    let font = ui.fonts.get(font_id).unwrap();
+                    match insert_text(&string, cursor, &text, &state.line_infos, font) {
                         Some((new_text, new_cursor, new_line_infos)) => {
                             *text.to_mut() = new_text;
                             cursor = new_cursor;
@@ -584,36 +612,34 @@ impl<'a> Widget for TextEdit<'a> {
                     }
                 },
 
-                // Check whether or not 
-                event::Widget::Drag(drag_event) => {
-                    if let input::MouseButton::Left = drag_event.button {
-                        match drag {
+                // Check whether or not we need to extend a text selection or drag some text.
+                event::Widget::Drag(drag_event) if drag_event.button == input::MouseButton::Left => {
+                    match drag {
 
-                            Some(Drag::Selecting) => {
-                                let start_cursor_idx = match cursor {
-                                    Cursor::Idx(idx) => idx,
-                                    Cursor::Selection { start, .. } => start,
-                                };
-                                let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
-                                let infos = &state.line_infos;
-                                let font = ui.fonts.get(font_id).unwrap();
-                                match closest_cursor_index_and_xy(abs_xy, &text, infos, font) {
-                                    Some((end_cursor_idx, _)) =>
-                                        cursor = Cursor::Selection {
-                                            start: start_cursor_idx,
-                                            end: end_cursor_idx,
-                                        },
-                                    _ => (),
-                                }
-                            },
+                        Some(Drag::Selecting) => {
+                            let start_cursor_idx = match cursor {
+                                Cursor::Idx(idx) => idx,
+                                Cursor::Selection { start, .. } => start,
+                            };
+                            let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
+                            let infos = &state.line_infos;
+                            let font = ui.fonts.get(font_id).unwrap();
+                            match closest_cursor_index_and_xy(abs_xy, &text, infos, font) {
+                                Some((end_cursor_idx, _)) =>
+                                    cursor = Cursor::Selection {
+                                        start: start_cursor_idx,
+                                        end: end_cursor_idx,
+                                    },
+                                _ => (),
+                            }
+                        },
 
-                            // TODO: This should move the selected text.
-                            Some(Drag::MoveSelection) => {
-                                unimplemented!();
-                            },
+                        // TODO: This should move the selected text.
+                        Some(Drag::MoveSelection) => {
+                            unimplemented!();
+                        },
 
-                            None => (),
-                        }
+                        None => (),
                     }
                 },
 
@@ -629,7 +655,7 @@ impl<'a> Widget for TextEdit<'a> {
             state.update(|state| state.drag = drag);
         }
 
-        /// Takes the `String` from the `Cow` if the `Cow` is `Owned`.
+        // Takes the `String` from the `Cow` if the `Cow` is `Owned`.
         fn take_if_owned(text: std::borrow::Cow<str>) -> Option<String> {
             match text {
                 std::borrow::Cow::Borrowed(_) => None,
@@ -670,7 +696,7 @@ impl<'a> Widget for TextEdit<'a> {
 
         let (cursor_x, cursor_y_range) = {
             let font = ui.fonts.get(font_id).unwrap();
-            xy_at(cursor_idx, &text, &state.line_infos, font)
+            cursor_xy_at(cursor_idx, &text, &state.line_infos, font)
                 .unwrap_or_else(|| {
                     let x = rect.left();
                     let y = Range::new(0.0, font_size as Scalar).align_to(y_align, rect.y);
