@@ -495,11 +495,11 @@ pub mod directory_view {
         KeyPress(Vec<std::path::PathBuf>, event::KeyPress),
     }
 
-    #[cfg(all(target_os = "windows", not(windows_metadataext)))]
+    #[cfg(all(target_os = "windows", not(feature = "windows_metadataext")))]
     fn is_file_hidden(_path: &std::path::PathBuf) -> bool {
         false
     }
-    #[cfg(all(target_os = "windows", windows_metadataext))]
+    #[cfg(all(target_os = "windows", feature = "windows_metadataext"))]
     /// Check if a file is hidden on windows, using the file attributes.
     /// To be enabled once windows::fs::MetadataExt is no longer an unstable API.
     fn is_file_hidden(path: &std::path::PathBuf) -> bool {
@@ -521,9 +521,9 @@ pub mod directory_view {
     /// Check if a file is hidden on any other OS than windows, using the dot file namings.
     fn is_file_hidden(path: &std::path::PathBuf) -> bool {
         let name = path.file_name();
-        println!("Linux metadataext");
+
         if let Some(name) = name {
-            return name.to_string_lossy().to_owned().starts_with(".");
+            return name.to_string_lossy().starts_with(".");
         }
         false
     }
