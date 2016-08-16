@@ -89,7 +89,7 @@ fn main() {
         }
 
         event.update(|_| {
-            use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+            use conrod::{color, widget, Colorable, Borderable, Positionable, Sizeable, Widget};
 
             let ui = &mut ui.set_widgets();
 
@@ -100,11 +100,12 @@ fn main() {
                 .set(CANVAS, ui);
 
             // Button widget example button.
-            if widget::Button::new()
+            if widget::Button::image(RUST_LOGO)
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
                 .middle_of(CANVAS)
-                .rgb(0.4, 0.75, 0.6)
-                .image(RUST_LOGO)
+                .color(color::TRANSPARENT)
+                .border(0.0)
+                .image_color_with_feedback(color::BLACK)
                 .set(BUTTON, ui)
 	        	.was_clicked()
 	        {
