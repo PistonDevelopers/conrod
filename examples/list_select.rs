@@ -93,7 +93,7 @@ fn main() {
             {
                 match event {
                     widget::list_select::Event::Selection(selection) => {
-                        println!("{:?}", &selection);
+                        println!("selected indices: {:?}", &selection);
                         for (i, is_selected) in list_selected.iter_mut().enumerate() {
                             *is_selected = selection.contains(&i);
                         }
