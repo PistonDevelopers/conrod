@@ -6,20 +6,23 @@ use {
     FontSize,
     Borderable,
     Labelable,
+    Rect,
     Positionable,
     Scalar,
+    UiCell,
     Widget,
 };
-use widget::{self, Index};
+use widget;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
 #[derive(Clone)]
-pub struct Button<'a> {
+pub struct Button<'a, S> {
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
-	maybe_image: Option<Index>,
-    /// Unique styling for the Button.
+    /// Whether the `Button` is a `Flat` color or an `Image`.
+    pub show: S,
+    /// Unique styling parameters for the Button.
     pub style: Style,
     /// Whether or not user input is enabled.
     enabled: bool,
@@ -40,6 +43,41 @@ widget_style!{
         - label_font_size: FontSize { theme.font_size_medium }
     }
 }
+
+/// The style of the `Button`, either `Flat` or `Image`.
+pub trait Show: Sized {
+    /// Display the unique styling of the `Button`.
+    fn show(self, _button_idx: widget::Index, _ui: &mut UiCell) {}
+}
+
+/// The `Button` simply displays a flat color.
+#[derive(Copy, Clone)]
+pub struct Flat;
+
+/// The `Button` displays an `Image` on top.
+#[derive(Copy, Clone)]
+pub struct Image {
+    /// The index of the `Image` to be used.
+    pub index: widget::Index,
+    /// If `Some`, maps the image's luminance to this `Color`.
+    pub color: ImageColor,
+    /// The rectangular area of the original source image that should be displayed.
+    pub src_rect: Option<Rect>,
+}
+
+/// The coloring of the `Image`.
+#[derive(Copy, Clone, Debug)]
+pub enum ImageColor {
+    /// The image's luminance will be mapped to this color.
+    Normal(Color),
+    /// The image's luminance will be mapped to this color.
+    ///
+    /// The color will change slightly upon interaction to provide visual feedback.
+    WithFeedback(Color),
+    /// The image's regular color will be used.
+    None,
+}
+
 
 /// Represents the state of the Button widget.
 #[derive(Clone, Debug, PartialEq)]
@@ -75,23 +113,66 @@ impl Iterator for TimesClicked {
 }
 
 
-impl<'a> Button<'a> {
+impl<'a> Button<'a, Image> {
+
+    /// Begin building a button displaying the given `Image` on top.
+    pub fn image<I>(image_idx: I) -> Self
+        where I: Into<widget::Index>,
+    {
+        let image = Image {
+            index: image_idx.into(),
+            src_rect: None,
+            color: ImageColor::None,
+        };
+        Self::new_internal(image)
+    }
+
+    /// The rectangular area of the image that we wish to display.
+    ///
+    /// If this method is not called, the entire image will be used.
+    pub fn source_rectangle(mut self, rect: Rect) -> Self {
+        self.show.src_rect = Some(rect);
+        self
+    }
+
+    /// Map the `Image`'s luminance to the given color.
+    pub fn image_color(mut self, color: Color) -> Self {
+        self.show.color = ImageColor::Normal(color);
+        self
+    }
+
+    /// Map the `Image`'s luminance to the given color.
+    ///
+    /// The color will change slightly when the button is highlighted or clicked to give the user
+    /// some visual feedback.
+    pub fn image_color_with_feedback(mut self, color: Color) -> Self {
+        self.show.color = ImageColor::WithFeedback(color);
+        self
+    }
+
+}
+
+impl<'a> Button<'a, Flat> {
+
+    /// Begin building a flat-colored `Button` widget.
+    pub fn new() -> Self {
+        Self::new_internal(Flat)
+    }
+
+}
+
+
+impl<'a, S> Button<'a, S> {
 
     /// Create a button context to be built upon.
-    pub fn new() -> Self {
+    fn new_internal(show: S) -> Self {
         Button {
             common: widget::CommonBuilder::new(),
+            show: show,
             maybe_label: None,
-            maybe_image: None,
             style: Style::new(),
             enabled: true,
         }
-    }
-
-    /// Set an image as background for the button.
-    pub fn image<I>(mut self, idx: I) -> Self where I: Into<Index> {
-        self.maybe_image = Some(idx.into());
-        self
     }
 
     builder_methods!{
@@ -100,7 +181,9 @@ impl<'a> Button<'a> {
 }
 
 
-impl<'a> Widget for Button<'a> {
+impl<'a, S> Widget for Button<'a, S>
+    where S: Show,
+{
     type State = State;
     type Style = Style;
     type Event = TimesClicked;
@@ -127,6 +210,7 @@ impl<'a> Widget for Button<'a> {
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let Button { show, maybe_label, .. } = self;
 
         let (color, times_clicked) = {
             let input = ui.widget_input(idx);
@@ -156,7 +240,7 @@ impl<'a> Widget for Button<'a> {
             .set(rectangle_idx, &mut ui);
 
         // Label widget.
-        if let Some(label) = self.maybe_label {
+        if let Some(label) = maybe_label {
             let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
@@ -168,13 +252,8 @@ impl<'a> Widget for Button<'a> {
                 .set(label_idx, &mut ui);
         }
 
-		// Image widget.
-        if let Some(image) = self.maybe_image {
-            widget::Image::new()
-                .middle_of(idx)
-                .graphics_for(idx)
-                .set(image, &mut ui);
-        }
+        // This instantiates the image widget if necessary.
+        show.show(idx, &mut ui);
 
         TimesClicked(times_clicked)
     }
@@ -182,21 +261,45 @@ impl<'a> Widget for Button<'a> {
 }
 
 
-impl<'a> Colorable for Button<'a> {
+impl<'a, S> Colorable for Button<'a, S> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a> Borderable for Button<'a> {
+impl<'a, S> Borderable for Button<'a, S> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a> Labelable<'a> for Button<'a> {
+impl<'a, S> Labelable<'a> for Button<'a, S> {
     builder_methods!{
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }
+    }
+}
+
+
+impl Show for Flat {}
+
+impl Show for Image {
+    fn show(self, button_idx: widget::Index, ui: &mut UiCell) {
+        let Image { index, src_rect, color } = self;
+        let mut image = widget::Image::new().middle_of(button_idx).graphics_for(button_idx);
+        image.src_rect = src_rect;
+        image.style.maybe_color = match color {
+            ImageColor::Normal(color) => Some(Some(color)),
+            ImageColor::WithFeedback(color) =>
+                ui.widget_input(button_idx).mouse()
+                    .map(|mouse| if mouse.buttons.left().is_down() {
+                        Some(color.clicked())
+                    } else {
+                        Some(color.highlighted())
+                    })
+                    .or(Some(Some(color))),
+            ImageColor::None => None,
+        };
+        image.set(index, ui);
     }
 }
