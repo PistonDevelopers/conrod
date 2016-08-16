@@ -15,39 +15,41 @@ use widget::{self, Widget};
 use std;
 use std::fmt::Display;
 
-/// Displays a given Vec<T> where T: Display as a selectable List. Its reaction is triggered upon
-/// selection of a list item.
-pub struct ListSelect<'a, T: 'a> {
-    entries: &'a [T],
-    selected: &'a [bool],
+/// A wrapper around the `List` widget that handles single and multiple selection logic.
+#[derive(Clone)]
+#[allow(missing_copy_implementations)]
+pub struct ListSelect {
     common: widget::CommonBuilder,
+    style: widget::list::Style,
+    item_h: Scalar,
+    num_items: u32,
+    item_instantiation: list::ItemInstantiation,
     multiple_selections: bool,
-    style: Style,
 }
 
-widget_style!{
-    /// Styling for the ListSelect, necessary for constructing its renderable Element.
-    style Style {
-        /// Size of text font in list
-        - font_size: FontSize { theme.font_size_medium }
-        /// The background color of the unselected entries.
-        - color: Color { theme.shape_color }
-        /// The background color of the selected entries.
-        - selected_color: Color { theme.label_color }
-        /// Color of the item text, when not selected.
-        - text_color: Color { theme.shape_color }
-        /// Color of the item text, when selected.
-        - selected_text_color: Color { color::BLACK }
-        /// Width of the border surrounding the widget
-        - border: Scalar { theme.border_width }
-        /// The color of the border.
-        - border_color: Color { theme.border_color }
-        /// Font size for the item labels.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// Auto hide the scrollbar or not
-        - scrollbar_auto_hide: bool { true }
-    }
-}
+// widget_style!{
+//     /// Styling for the ListSelect, necessary for constructing its renderable Element.
+//     style Style {
+//         /// Size of text font in list
+//         - font_size: FontSize { theme.font_size_medium }
+//         /// The background color of the unselected entries.
+//         - color: Color { theme.shape_color }
+//         /// The background color of the selected entries.
+//         - selected_color: Color { theme.label_color }
+//         /// Color of the item text, when not selected.
+//         - text_color: Color { theme.shape_color }
+//         /// Color of the item text, when selected.
+//         - selected_text_color: Color { color::BLACK }
+//         /// Width of the border surrounding the widget
+//         - border: Scalar { theme.border_width }
+//         /// The color of the border.
+//         - border_color: Color { theme.border_color }
+//         /// Font size for the item labels.
+//         - label_font_size: FontSize { theme.font_size_medium }
+//         /// Auto hide the scrollbar or not
+//         - scrollbar_auto_hide: bool { true }
+//     }
+// }
 
 /// Represents the state of the ListSelect.
 #[derive(PartialEq, Clone, Debug)]
@@ -58,16 +60,22 @@ pub struct State {
     last_selected_entry: Option<usize>,
 }
 
+pub struct Items {
+    items: widget::list::Items,
+}
+
+impl Items {
+
+    pub fn next(&mut self, ui: &Ui) -> Option<Item>
+
+}
+
 /// The kind of events that the `ListSelect` may `react` to.
 /// Provides tuple(s) of index in list and string representation of selection
 #[derive(Clone, Debug)]
 pub enum Event {
     /// A change in selection has occurred.
-    ///
-    /// TODO: This might need to be changed to Vec to keep track of the order in which items were
-    /// selected. Not sure if this will be important to the user yet or not, but will likely wait
-    /// for a use-case to arise.
-    Selection(std::collections::HashSet<usize>),
+    Selection(Selection),
     /// A button press occurred while the widget was capturing the mouse.
     Press(event::Press),
     /// A button release occurred while the widget was capturing the mouse.
@@ -78,45 +86,119 @@ pub enum Event {
     DoubleClick(event::DoubleClick),
 }
 
+/// Represents some change in item selection.
+#[derive(Clone, Debug)]
+pub enum Selection {
+    /// Items which have been added to the selection.
+    Add(std::collection::HashSet<usize>),
+    /// Items which have been removed from the selection.
+    Remove(std::collection::HashSet<usize>),
+}
+
+impl Selection {
+
+    /// Update the given slice of `bool`s with this `Selection`.
+    ///
+    /// Each index in the `Selection` represents and index into the slice.
+    pub fn update_bool_slice(&self, slice: &mut [bool]) {
+        match *self {
+            Selection::Add(ref indices) =>
+                for &i in indices {
+                    if let Some(b) = slice.get_mut(i) {
+                        *b = true;
+                    }
+                },
+            Selection::Remove(ref indices) =>
+                for &i in indices {
+                    if let Some(b) = slice.get_mut(i) {
+                        *b = false;
+                    }
+                },
+        }
+    }
+
+    /// Update the given set of selected indices with this `Selection`.
+    pub fn update_index_set(&self, set: &mut std::collections::HashSet<usize>) {
+        match *self {
+            Selection::Add(ref indices) => for &i in indices { set.insert(i) },
+            Selection::Remove(ref indices) => for &i in indices { set.remove(i) },
+        }
+    }
+
+}
+
 impl<'a, T> ListSelect<'a, T>
     where T: Display,
 {
 
     /// Internal constructor
-    fn new(entries: &'a [T], selected: &'a [bool], multi_sel: bool) -> Self {
-
-        // Making sure the two vectors are same length, nicer than a panic
-        if entries.len() != selected.len() {
-            panic!("ERROR: entries:[T] and selected[bool] in ListSelect does not have same length!");
-        }
-
+    fn new(num_items: u32, item_height: Scalar, multiple_selection: bool) -> Self {
         ListSelect {
             common: widget::CommonBuilder::new(),
             entries: entries,
             selected: selected,
-            multiple_selections: multi_sel,
-            style: Style::new(),
+            multiple_selections: multiple_selection,
+            style: widget::list::Style::new(),
         }
     }
 
     /// Construct a new ListSelect, allowing one selected item at a time.
     /// Second parameter is a list reflecting which entries within the list are currently selected.
-    pub fn single(entries: &'a [T], selected: &'a [bool]) -> Self {
+    pub fn single(num_iterms: u32, item_height: Scalar) -> Self {
         ListSelect::new(entries, selected, false)
     }
 
     /// Construct a new ListSelect, allowing multiple selected items.
     /// Second parameter is a list reflecting which entries within the list are currently selected.
-    pub fn multiple(entries: &'a [T], selected: &'a [bool]) -> Self {
+    pub fn multiple(num_iterms: u32, item_height: Scalar) -> Self {
         ListSelect::new(entries, selected, true)
     }
 
-    builder_methods!{
-        pub font_size { style.font_size = Some(FontSize) }
-        pub scrollbar_auto_hide { style.scrollbar_auto_hide = Some(bool) }
-        pub selected_color { style.selected_color = Some(Color) }
-        pub text_color { style.text_color = Some(Color) }
-        pub selected_text_color { style.selected_text_color = Some(Color) }
+    /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` to the
+    /// right of the items.
+    pub fn scrollbar_next_to(mut self) -> Self {
+        self.style.scrollbar_position = Some(Some(ScrollbarPosition::NextTo));
+        self.scroll_kids_vertically()
+    }
+
+    /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` that hovers
+    /// above the right edge of the items and automatically hides when the user is not scrolling.
+    pub fn scrollbar_on_top(mut self) -> Self {
+        self.style.scrollbar_position = Some(Some(ScrollbarPosition::OnTop));
+        self.scroll_kids_vertically()
+    }
+
+    /// The width of the `Scrollbar`.
+    pub fn scrollbar_width(mut self, w: Scalar) -> Self {
+        self.style.scrollbar_width = Some(Some(w));
+        self
+    }
+
+    /// The color of the `Scrollbar`.
+    pub fn scrollbar_color(mut self, color: Color) -> Self {
+        self.style.scrollbar_color = Some(color);
+        self
+    }
+
+    /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
+    /// whether or not the `Item` would be visible.
+    ///
+    /// Note: This may cause significantly heavier CPU load for lists containing many items (100+).
+    /// We only recommend using this when absolutely necessary as large lists may cause unnecessary
+    /// bloating within the widget graph, and in turn result in greater traversal times.
+    pub fn instantiate_all_items(mut self) -> Self {
+        self.item_instantiation = ItemInstantiation::All;
+        self
+    }
+
+    /// Indicates that only `Item`s that are visible should be instantiated. This ensures that we
+    /// avoid bloating the widget graph with unnecessary nodes and in turn keep traversal times to
+    /// a minimum.
+    ///
+    /// This is the default `List` behaviour.
+    pub fn instantiate_only_visible_items(mut self) -> Self {
+        self.item_instantiation = ItemInstantiation::OnlyVisible;
+        self
     }
 
 }
@@ -125,8 +207,8 @@ impl<'a, T> Widget for ListSelect<'a, T>
     where T: Display + 'a,
 {
     type State = State;
-    type Style = Style;
-    type Event = Vec<Event>;
+    type Style = widget::list::Style;
+    type Event = (Vec<Event>, widget::list::Items, Option<widget::list::Scrollbar>);
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -136,14 +218,14 @@ impl<'a, T> Widget for ListSelect<'a, T>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self) -> Self::State {
         State {
             list_idx: widget::IndexSlot::new(),
             last_selected_entry:None,
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -170,34 +252,26 @@ impl<'a, T> Widget for ListSelect<'a, T>
             }
         }
 
-        let unsel_rect_color = style.color(&ui.theme);
-        let unsel_text_color = style.text_color(&ui.theme);
-        let sel_rect_color = style.selected_color(&ui.theme);
-        let sel_text_color = style.selected_text_color(&ui.theme);
-
-        let font_size = style.font_size(&ui.theme);
-        let rect_h = font_size as Scalar * 2.0;
-
-        // Given an index, find the first and last indices of the enclosing selection.
-        //
-        // This is used when expanding an existing selection with the shift key.
-        fn selected_range(selected: &[bool], ix: usize) -> (usize, usize) {
-            let mut first = ix;
-            while selected[first] && first > 0 {
-                first -= 1;
-            }
-            if !selected[first] {
-                first += 1;
-            }
-            let mut last = ix;
-            while selected[last] && last < selected.len() - 1 {
-                last += 1;
-            }
-            if !selected[last] {
-                last -= 1;
-            }
-            (first, last)
-        }
+        // // Given an index, find the first and last indices of the enclosing selection.
+        // //
+        // // This is used when expanding an existing selection with the shift key.
+        // fn selected_range(selected: &[bool], ix: usize) -> (usize, usize) {
+        //     let mut first = ix;
+        //     while selected[first] && first > 0 {
+        //         first -= 1;
+        //     }
+        //     if !selected[first] {
+        //         first += 1;
+        //     }
+        //     let mut last = ix;
+        //     while selected[last] && last < selected.len() - 1 {
+        //         last += 1;
+        //     }
+        //     if !selected[last] {
+        //         last -= 1;
+        //     }
+        //     (first, last)
+        // }
 
         // Collect all relevant events that have occurred.
         let mut events = Vec::new();

@@ -104,6 +104,44 @@ fn main() {
                     widget::list_select::Event::DoubleClick(_double_click) => (),
                 }
             }
+
+            // Instantiate the `ListSelect` widget.
+            let num_items = list_items.len();
+            let item_h = 32.0;
+            let (events, mut items, scrollbar) =
+                widget::ListSelect::multiple(num_items, item_h, |i| list_selected[i])
+                    .w_h(350.0, 220.0)
+                    .top_left_with_margins_on(CANVAS, 40.0, 40.0)
+                    .scrollbar_next_to()
+                    .set(LIST_BOX, ui);
+
+            // Handle the `ListSelect`s events.
+            for event in events {
+                match event {
+                    widget::list_select::Event::Selection(selection) => {
+                        selection.update_bool_slice(&mut list_selected);
+                        println!("selected indices: {:?}", &selection);
+                    },
+                    widget::list_select::Event::Press(_press) => (),
+                    widget::list_select::Event::Release(_release) => (),
+                    widget::list_select::Event::Click(_click) => (),
+                    widget::list_select::Event::DoubleClick(_double_click) => (),
+                }
+            }
+
+            // Now we'll instantiate each item as a `Button`.
+            while let Some((events, item)) = items.next(ui) {
+                let label = &list_items[item.i];
+                let (color, label_color) = match list_selected[item.i] {
+                    true => (color::LIGHT_BLUE, color::YELLOW),
+                    false => (color::LIGHT_GREY, color::BLACK),
+                };
+                let button = Button::new().color(color).label(label).label_color(label_color);
+                item.set(button, ui);
+            }
+
+            // Instantiate the scrollbar for the list.
+            scrollbar.unwrap().set(ui);
         });
 
         window.draw_2d(&event, |c, g| {
