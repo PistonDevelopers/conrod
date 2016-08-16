@@ -107,10 +107,10 @@ fn main() {
                 .border(0.0)
                 .image_color_with_feedback(color::BLACK)
                 .set(BUTTON, ui)
-	        	.was_clicked()
-	        {
+                .was_clicked()
+            {
                 app.bg_color = color::rgb(rand::random(), rand::random(), rand::random());
-	        }
+            }
         });
 
         window.draw_2d(&event, |c, g| {
