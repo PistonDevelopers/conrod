@@ -15,26 +15,6 @@ extern crate rand; // for making a random color.
 use piston_window::{EventLoop, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
 
 
-/// This struct holds all of the variables used to demonstrate application data being passed
-/// through the widgets. If some of these seem strange, that's because they are! Most of these
-/// simply represent the aesthetic state of different parts of the GUI to offer visual feedback
-/// during interaction with the widgets.
-struct Context {
-    /// Background color (for demonstration of button and sliders).
-    bg_color: conrod::Color,
-}
-
-impl Context {
-    /// Constructor for the Demonstration Application model.
-    fn new() -> Context {
-        Context {
-            bg_color: conrod::color::rgb(0.2, 0.35, 0.45),
-        }
-    }
-
-}
-
-
 fn main() {
     const WIDTH: u32 = 1100;
     const HEIGHT: u32 = 560;
@@ -76,7 +56,7 @@ fn main() {
     let (w, h) = image_map.get(RUST_LOGO).unwrap().get_size();
 
     // Our demonstration app that we'll control with our GUI.
-    let mut app = Context::new();
+    let mut bg_color = conrod::color::LIGHT_BLUE;
 
     window.set_ups(60);
 
@@ -96,7 +76,7 @@ fn main() {
             // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
             widget::Canvas::new()
                 .pad(30.0)
-                .color(app.bg_color)
+                .color(bg_color)
                 .set(CANVAS, ui);
 
             // Button widget example button.
@@ -109,7 +89,7 @@ fn main() {
                 .set(BUTTON, ui)
                 .was_clicked()
             {
-                app.bg_color = color::rgb(rand::random(), rand::random(), rand::random());
+                bg_color = color::rgb(rand::random(), rand::random(), rand::random());
             }
         });
 
