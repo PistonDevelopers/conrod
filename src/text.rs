@@ -497,6 +497,75 @@ pub mod cursor {
 
     impl Index {
 
+        /// The cursor index of the beginning of the word (block of non-whitespace) before `self`.
+        ///
+        /// If `self` is at the beginning of the line, call previous, which returns the last
+        /// index position of the previous line, or None if it's the first line
+        ///
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// the start of the word that precedes the whitespace
+        ///
+        /// If `self` is in the middle or end of a word, return the index of the start of that word
+        pub fn previous_word<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+            where I: Iterator<Item=super::line::Info>,
+        {
+            let Index { line, char } = self;
+            if char > 0 {
+                line_infos.nth(line).and_then(|line_info| {
+                    let mut chars_rev = (&text[line_info.byte_range()]).chars().rev();
+                    let mut new_char = 0;
+                    let mut hit_non_whitespace = false;
+                    chars_rev.nth(line_info.char_range().count() - char);
+                    for (i, char_) in chars_rev.enumerate() {
+                        // loop until word starts, then continue until the word ends
+                        if !char_.is_whitespace() { hit_non_whitespace = true; }
+                        if char_.is_whitespace() && hit_non_whitespace {
+                            new_char = char - (i + 1);
+                            break
+                        }
+                    }
+                    Some(Index { line: line, char: new_char })
+                })
+            } else {
+                self.previous(line_infos)
+            }
+        }
+
+        /// The cursor index of the end of the first word (block of non-whitespace) after `self`.
+        ///
+        /// If `self` is at the end of the line, call previous, which returns the last
+        /// index position of the previous line, or None if it's the first line
+        ///
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// the end of the word after the whitespace
+        ///
+        /// If `self` is in the middle or start of a word, return the index of the end of that word
+        pub fn next_word<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+            where I: Iterator<Item=super::line::Info>,
+        {
+            let Index { line, char } = self;
+            line_infos.nth(line)
+                .and_then(|line_info| {
+                    if char < line_info.char_range().count() {
+                        let mut chars = (&text[line_info.byte_range()]).chars();
+                        let mut new_char = line_info.char_range().count();
+                        let mut hit_non_whitespace = false;
+                        chars.nth(char);
+                        for (i, char_) in chars.enumerate() {
+                            // loop until word starts, then continue until the word ends
+                            if !char_.is_whitespace() { hit_non_whitespace = true; }
+                            if char_.is_whitespace() && hit_non_whitespace {
+                                new_char = char + (i + 1);
+                                break
+                            }
+                        }
+                        Some(Index { line: line, char: new_char })
+                    } else {
+                        line_infos.next().map(|_| Index { line: line + 1, char: 0 })
+                    }
+                })
+        }
+
         /// The cursor index that comes before `self`.
         ///
         /// If `self` is at the beginning of the text, this returns `None`.
