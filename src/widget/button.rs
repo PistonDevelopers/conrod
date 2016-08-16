@@ -252,7 +252,7 @@ impl<'a, S> Widget for Button<'a, S>
                 .set(label_idx, &mut ui);
         }
 
-		// This instantiates the image widget if necessary.
+        // This instantiates the image widget if necessary.
         show.show(idx, &mut ui);
 
         TimesClicked(times_clicked)
