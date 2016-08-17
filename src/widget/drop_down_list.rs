@@ -253,7 +253,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                             .unwrap_or(10.0)
                     });
 
-                let (mut list_items, list_scrollbar) = widget::List::new(num_items, item_h)
+                let (mut events, scrollbar) = widget::ListSelect::single(num_items, item_h)
                     .w_h(w, list_h)
                     .and(|ls| match scrollbar_position {
                         Some(widget::list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
@@ -266,25 +266,34 @@ impl<'a, T> Widget for DropDownList<'a, T>
                     .floating(true)
                     .set(list_idx, &mut ui);
 
-                // Instiate the `Button` for each item.
-                while let Some(item) = list_items.next(&ui) {
-                    let i = item.i;
-                    let label = self.items[i].as_ref();
-                    let mut button = widget::Button::new().label(label);
-                    button.style = style.button_style(Some(i) == selected);
-                    if item.set(button, &mut ui).was_clicked() {
-                        clicked_item = Some(i);
+                while let Some(event) = events.next(ui, |i| Some(i) == selected) {
+                    use widget::list_select::Event;
+                    match event {
+
+                        // Instantiate a `Button` for each item.
+                        Event::Item(item) => {
+                            let i = item.i;
+                            let label = self.items[i].as_ref();
+                            let mut button = widget::Button::new().label(label);
+                            button.style = style.button_style(Some(i) == selected);
+                            item.set(button, &mut ui);
+                        },
+
+                        // The selection changed.
+                        Event::Selection(ix) => clicked_item = Some(ix),
+
+                        _ => (),
                     }
                 }
 
                 // Instantiate the `Scrollbar` if there is one.
-                if let Some(scrollbar) = list_scrollbar {
+                if let Some(scrollbar) = scrollbar {
                     scrollbar.set(&mut ui);
                 }
 
                 // Close the menu if the mouse is pressed and the currently pressed widget is
                 // not any of the drop down list's children.
-                let should_close =
+                let should_close = clicked_item.is_some() ||
                     clicked_item.is_none()
                     && ui.global_input.current.mouse.buttons.pressed().next().is_some()
                     && match ui.global_input.current.widget_capturing_mouse {
@@ -293,13 +302,10 @@ impl<'a, T> Widget for DropDownList<'a, T>
                             .does_recursive_depth_edge_exist(idx, capturing),
                     };
 
-                if should_close {
-                    // If a mouse button was pressed somewhere else, close the menu.
-                    MenuState::Closed
-                } else {
-                    // Otherwise, leave the menu open.
-                    MenuState::Open
-                }
+                // If a mouse button was pressed somewhere else, close the menu.
+                //
+                // Otherwise, leave the menu open.
+                if should_close { MenuState::Closed } else { MenuState::Open }
             }
         };
 
