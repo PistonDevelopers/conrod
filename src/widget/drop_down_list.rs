@@ -1,6 +1,7 @@
 //! The `DropDownList` and related items.
 
 use {
+    Align,
     Color,
     Colorable,
     FontSize,
@@ -45,6 +46,8 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// Font size for the item labels.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The label's alignment over the *x* axis.
+        - label_x_align: Align { Align::Middle }
         /// Maximum height of the Open menu before the scrollbar appears.
         - maybe_max_visible_height: Option<MaxHeight> { None }
         /// The position of the scrollbar in the case that the list is scrollable.
@@ -329,6 +332,7 @@ impl Style {
             border_color: self.border_color,
             label_color: self.label_color,
             label_font_size: self.label_font_size,
+            label_x_align: self.label_x_align,
         }
     }
 

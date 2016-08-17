@@ -1,6 +1,7 @@
 //! The `Button` widget and related items.
 
 use {
+    Align,
     Color,
     Colorable,
     FontSize,
@@ -41,6 +42,8 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// The font size of the Button's label.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The label's alignment over the *x* axis.
+        - label_x_align: Align { Align::Middle }
     }
 }
 
@@ -159,6 +162,26 @@ impl<'a> Button<'a, Flat> {
         Self::new_internal(Flat)
     }
 
+    /// Align the label to the mid-left of the `Button`'s surface.
+    pub fn align_label_left(mut self) -> Self {
+        self.style.label_x_align = Some(Align::Start);
+        self
+    }
+
+    /// Align the label to the mid-left of the `Button`'s surface.
+    ///
+    /// This is the default label alignment.
+    pub fn align_label_middle(mut self) -> Self {
+        self.style.label_x_align = Some(Align::Middle);
+        self
+    }
+
+    /// Align the label to the mid-left of the `Button`'s surface.
+    pub fn align_label_right(mut self) -> Self {
+        self.style.label_x_align = Some(Align::End);
+        self
+    }
+
 }
 
 
@@ -229,8 +252,8 @@ impl<'a, S> Widget for Button<'a, S>
         // BorderedRectangle widget.
         let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
-        let border = style.border(ui.theme());
-        let border_color = style.border_color(ui.theme());
+        let border = style.border(&ui.theme);
+        let border_color = style.border_color(&ui.theme);
         widget::BorderedRectangle::new(dim)
             .middle_of(idx)
             .graphics_for(idx)
@@ -242,10 +265,15 @@ impl<'a, S> Widget for Button<'a, S>
         // Label widget.
         if let Some(label) = maybe_label {
             let label_idx = state.label_idx.get(&mut ui);
-            let color = style.label_color(ui.theme());
-            let font_size = style.label_font_size(ui.theme());
+            let color = style.label_color(&ui.theme);
+            let font_size = style.label_font_size(&ui.theme);
+            let align = style.label_x_align(&ui.theme);
             widget::Text::new(label)
-                .middle_of(rectangle_idx)
+                .and(|b| match align {
+                    Align::Start => b.mid_left_with_margin_on(rectangle_idx, font_size as Scalar),
+                    Align::Middle => b.middle_of(rectangle_idx),
+                    Align::End => b.mid_right_with_margin_on(rectangle_idx, font_size as Scalar),
+                })
                 .graphics_for(idx)
                 .color(color)
                 .font_size(font_size)
