@@ -27,11 +27,14 @@ use widget;
 #[derive(Clone)]
 #[allow(missing_copy_implementations)]
 pub struct List {
-    common: widget::CommonBuilder,
-    style: Style,
+    /// Common widget building params for the `List`.
+    pub common: widget::CommonBuilder,
+    /// Unique styling for the `List`.
+    pub style: Style,
+    /// Whether all or only visible items should be instantiated.
+    pub item_instantiation: ItemInstantiation,
     item_h: Scalar,
-    num_items: u32,
-    item_instantiation: ItemInstantiation,
+    num_items: usize,
 }
 
 widget_style! {
@@ -114,7 +117,7 @@ pub struct Items {
 impl List {
 
     /// Create a List context to be built upon.
-    pub fn new(num_items: u32, item_height: Scalar) -> Self {
+    pub fn new(num_items: usize, item_height: Scalar) -> Self {
         List {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
@@ -242,7 +245,7 @@ impl Widget for List {
         // Determine the index range of the items that should be instantiated.
         let (item_idx_range, first_item_margin) = match item_instantiation {
             ItemInstantiation::All => {
-                let range = 0..num_items as usize;
+                let range = 0..num_items;
                 let margin = 0.0;
                 (range, margin)
             },
@@ -250,12 +253,12 @@ impl Widget for List {
                 let scroll_trigger_rect = ui.rect_of(scroll_trigger_idx).unwrap();
                 let hidden_range_length = scroll_trigger_rect.top() - rect.top();
                 let num_top_hidden_items = hidden_range_length / item_h;
-                let num_visible_items = (rect.h() / item_h + 1.0).floor() as usize;
+                let num_visible_items = (rect.h() / item_h + 1.0).ceil() as usize;
 
                 let first_visible_item_idx = num_top_hidden_items.floor() as usize;
                 let first_visible_item_margin = first_visible_item_idx as Scalar * item_h;
                 let end_of_visible_idx_range =
-                    std::cmp::min(first_visible_item_idx + num_visible_items, num_items as usize);
+                    std::cmp::min(first_visible_item_idx + num_visible_items, num_items);
                 let range = first_visible_item_idx..end_of_visible_idx_range;
                 (range, first_visible_item_margin)
             },
