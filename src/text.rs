@@ -512,15 +512,18 @@ pub mod cursor {
             let Index { line, char } = self;
             if char > 0 {
                 line_infos.nth(line).and_then(|line_info| {
+                    let line_count = line_info.char_range().count();
                     let mut chars_rev = (&text[line_info.byte_range()]).chars().rev();
+                    if char != line_count {
+                        chars_rev.nth(line_count - char - 1);
+                    }
                     let mut new_char = 0;
                     let mut hit_non_whitespace = false;
-                    chars_rev.nth(line_info.char_range().count() - char);
                     for (i, char_) in chars_rev.enumerate() {
                         // loop until word starts, then continue until the word ends
                         if !char_.is_whitespace() { hit_non_whitespace = true; }
                         if char_.is_whitespace() && hit_non_whitespace {
-                            new_char = char - (i + 1);
+                            new_char = char - i;
                             break
                         }
                     }
@@ -548,16 +551,19 @@ pub mod cursor {
             let Index { line, char } = self;
             line_infos.nth(line)
                 .and_then(|line_info| {
-                    if char < line_info.char_range().count() {
+                    let line_count = line_info.char_range().count();
+                    if char < line_count {
                         let mut chars = (&text[line_info.byte_range()]).chars();
-                        let mut new_char = line_info.char_range().count();
+                        let mut new_char = line_count;
                         let mut hit_non_whitespace = false;
-                        chars.nth(char);
+                        if char != 0 {
+                            chars.nth(char - 1);
+                        }
                         for (i, char_) in chars.enumerate() {
                             // loop until word starts, then continue until the word ends
                             if !char_.is_whitespace() { hit_non_whitespace = true; }
                             if char_.is_whitespace() && hit_non_whitespace {
-                                new_char = char + (i + 1);
+                                new_char = char + i;
                                 break
                             }
                         }
