@@ -488,8 +488,8 @@ impl<'a> Widget for TextEdit<'a> {
                                     let new_cursor_idx = {
                                         let line_infos = state.line_infos.iter().cloned();
                                         match (left_move, move_word) {
-                                            (true, true) => cursor_idx.previous_word(&text, line_infos).unwrap_or(cursor_idx),
-                                            (false, true) => cursor_idx.next_word(&text, line_infos).unwrap_or(cursor_idx),
+                                            (true, true) => cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx),
+                                            (false, true) => cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx),
                                             (true, false) => cursor_idx.previous(line_infos).unwrap_or(cursor_idx),
                                             (false, false) => cursor_idx.next(line_infos).unwrap_or(cursor_idx),
                                         }
@@ -506,9 +506,9 @@ impl<'a> Widget for TextEdit<'a> {
                                             // Move by word from the beginning or end of selection
                                             let line_infos = state.line_infos.iter().cloned();
                                             if left_move {
-                                                cursor_idx.previous_word(&text, line_infos).unwrap_or(cursor_idx)
+                                                cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx)
                                             } else {
-                                                cursor_idx.next_word(&text, line_infos).unwrap_or(cursor_idx)
+                                                cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx)
                                             }
                                         }
                                     };

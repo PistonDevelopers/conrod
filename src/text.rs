@@ -506,7 +506,7 @@ pub mod cursor {
         /// the start of the word that precedes the whitespace
         ///
         /// If `self` is in the middle or end of a word, return the index of the start of that word
-        pub fn previous_word<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+        pub fn previous_word_start<I>(self, text: &str, mut line_infos: I) -> Option<Self>
             where I: Iterator<Item=super::line::Info>,
         {
             let Index { line, char } = self;
@@ -533,14 +533,16 @@ pub mod cursor {
 
         /// The cursor index of the end of the first word (block of non-whitespace) after `self`.
         ///
-        /// If `self` is at the end of the line, call previous, which returns the last
-        /// index position of the previous line, or None if it's the first line
+        /// If `self` is at the end of the text, this returns `None`.
+        ///
+        /// If `self` is at the end of a line other than the last, this returns the first index of
+        /// the next line.
         ///
         /// If `self` points to whitespace, skip past that whitespace, then return the index of 
         /// the end of the word after the whitespace
         ///
         /// If `self` is in the middle or start of a word, return the index of the end of that word
-        pub fn next_word<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+        pub fn next_word_end<I>(self, text: &str, mut line_infos: I) -> Option<Self>
             where I: Iterator<Item=super::line::Info>,
         {
             let Index { line, char } = self;
