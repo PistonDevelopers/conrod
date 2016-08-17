@@ -240,7 +240,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 };
 
                 // The list of buttons.
-                let num_items = self.items.len() as u32;
+                let num_items = self.items.len();
                 let item_h = h;
                 let list_h = max_visible_height.min(num_items as Scalar * item_h);
                 let list_idx = state.list_idx.get(&mut ui);
@@ -269,10 +269,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 // Instiate the `Button` for each item.
                 while let Some(item) = list_items.next(&ui) {
                     let i = item.i;
-                    let label = match self.items.get(i) {
-                        Some(item) => item.as_ref(),
-                        None => continue,
-                    };
+                    let label = self.items[i].as_ref();
                     let mut button = widget::Button::new().label(label);
                     button.style = style.button_style(Some(i) == selected);
                     if item.set(button, &mut ui).was_clicked() {
