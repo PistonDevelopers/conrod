@@ -57,10 +57,7 @@ fn main() {
     ];
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
-    let mut list_selected = vec![false; list_items.len()];
-
-    // Make a default selection.
-    list_selected[3] = true;
+    let mut list_selected = std::collections::HashSet::new();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -71,52 +68,55 @@ fn main() {
         }
 
         event.update(|_| {
-            use conrod::{widget, color, Colorable, Positionable, Sizeable, Widget};
+            use conrod::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
 
             // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
             widget_ids!(CANVAS, LIST_SELECT);
 
-            widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
+            widget::Canvas::new().color(conrod::color::BLUE).set(CANVAS, ui);
 
             // Instantiate the `ListSelect` widget.
             let num_items = list_items.len();
             let item_h = 32.0;
-            let (mut events, scrollbar) =
-                widget::ListSelect::multiple(num_items, item_h)
-                    .w_h(350.0, 220.0)
-                    .top_left_with_margins_on(CANVAS, 40.0, 40.0)
-                    .scrollbar_next_to()
-                    .set(LIST_SELECT, ui);
+            let (mut events, scrollbar) = widget::ListSelect::multiple(num_items, item_h)
+                .scrollbar_next_to()
+                .w_h(350.0, 220.0)
+                .top_left_with_margins_on(CANVAS, 40.0, 40.0)
+                .scrollbar_next_to()
+                .set(LIST_SELECT, ui);
 
             // Handle the `ListSelect`s events.
-            while let Some(event) = events.next(ui, |i| list_selected[i]) {
-                use widget::list_selected::Event;
+            while let Some(event) = events.next(ui, |i| list_selected.contains(&i)) {
+                use conrod::widget::list_select::Event;
                 match event {
 
                     // For the `Item` events we instantiate the `List`'s items.
                     Event::Item(item) => {
                         let label = &list_items[item.i];
-                        let (color, label_color) = match list_selected[item.i] {
-                            true => (color::LIGHT_BLUE, color::YELLOW),
-                            false => (color::LIGHT_GREY, color::BLACK),
+                        let font_size = item_h as conrod::FontSize / 2;
+                        let (color, label_color) = match list_selected.contains(&item.i) {
+                            true => (conrod::color::LIGHT_BLUE, conrod::color::YELLOW),
+                            false => (conrod::color::LIGHT_GREY, conrod::color::BLACK),
                         };
-                        let button = Button::new().color(color).label(label).label_color(label_color);
+                        let button = widget::Button::new()
+                            .border(0.0)
+                            .color(color)
+                            .label(label)
+                            .label_font_size(font_size)
+                            .label_color(label_color);
                         item.set(button, ui);
                     },
 
                     // The selection has changed.
                     Event::Selection(selection) => {
-                        selection.update_bool_slice(&mut list_selected);
-                        println!("selected indices: {:?}", &selection);
+                        selection.update_index_set(&mut list_selected);
+                        println!("selected indices: {:?}", list_selected);
                     },
 
-                    // The following events indicate interactions with the `ListSelect` widget.
-                    Event::Press(_press) => (),
-                    Event::Release(_release) => (),
-                    Event::Click(_click) => (),
-                    Event::DoubleClick(_double_click) => (),
+                    // The remaining events indicate interactions with the `ListSelect` widget.
+                    event => println!("{:?}", &event),
                 }
             }
 
