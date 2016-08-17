@@ -61,6 +61,7 @@ fn main() {
                 .font_size(16)
                 .wh_of(CANVAS)
                 .middle_of(CANVAS)
+                //.show_hidden_files(true)  // Use this to show hidden files
                 .set(FILE_NAVIGATOR, ui)
             {
                 println!("{:?}", event);

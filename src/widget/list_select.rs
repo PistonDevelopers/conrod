@@ -232,8 +232,8 @@ impl<'a, T, F> Widget for ListSelect<'a, T, F>
             // If set, a widget event was generated. Set in inner closure
             let mut list_index_event: Option<usize> = None;
 
-            let mut txt_col = unsel_text_color;
-            let mut rect_col = unsel_rect_color;
+            let mut txt_col;
+            let mut rect_col;
 
             let num_items = self.entries.len() as u32;
             let (mut list_items, list_scrollbar) = widget::List::new(num_items, rect_h)
