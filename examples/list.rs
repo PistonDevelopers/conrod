@@ -67,7 +67,7 @@ fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool]) {
     widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
 
     const ITEM_HEIGHT: conrod::Scalar = 50.0;
-    let num_items = list.len() as u32;
+    let num_items = list.len();
 
     let (mut items, scrollbar) = widget::List::new(num_items, ITEM_HEIGHT)
         .scrollbar_on_top()

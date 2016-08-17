@@ -37,28 +37,27 @@ fn main() {
     let image_map = conrod::image::Map::new();
 
     // List of entries to display. They should implement the Display trait.
-    let list_items = vec!["African Sideneck Turtle".to_string(),
-                              "Alligator Snapping Turtle".to_string(),
-                              "Common Snapping Turtle".to_string(),
-                              "Indian Peacock Softshelled Turtle".to_string(),
-                              "Eastern River Cooter".to_string(),
-                              "Eastern Snake Necked Turtle".to_string(),
-                              "Diamond Terrapin".to_string(),
-                              "Indian Peacock Softshelled Turtle".to_string(),
-                              "Musk Turtle".to_string(),
-                              "Reeves Turtle".to_string(),
-                              "Eastern Spiny Softshell Turtle".to_string(),
-                              "Red Ear Slider Turtle".to_string(),
-                              "Indian Tent Turtle".to_string(),
-                              "Mud Turtle".to_string(),
-                              "Painted Turtle".to_string(),
-                              "Spotted Turtle".to_string()];
+    let list_items = [
+        "African Sideneck Turtle".to_string(),
+        "Alligator Snapping Turtle".to_string(),
+        "Common Snapping Turtle".to_string(),
+        "Indian Peacock Softshelled Turtle".to_string(),
+        "Eastern River Cooter".to_string(),
+        "Eastern Snake Necked Turtle".to_string(),
+        "Diamond Terrapin".to_string(),
+        "Indian Peacock Softshelled Turtle".to_string(),
+        "Musk Turtle".to_string(),
+        "Reeves Turtle".to_string(),
+        "Eastern Spiny Softshell Turtle".to_string(),
+        "Red Ear Slider Turtle".to_string(),
+        "Indian Tent Turtle".to_string(),
+        "Mud Turtle".to_string(),
+        "Painted Turtle".to_string(),
+        "Spotted Turtle".to_string()
+    ];
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
-    let mut list_selected = vec![false; list_items.len()];
-
-    // Make a default selection.
-    list_selected[3] = true;
+    let mut list_selected = std::collections::HashSet::new();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -69,37 +68,60 @@ fn main() {
         }
 
         event.update(|_| {
-            use conrod::{widget, color, Colorable, Positionable, Sizeable, Widget};
+            use conrod::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
 
             // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
-            widget_ids!(CANVAS, LIST_BOX);
+            widget_ids!(CANVAS, LIST_SELECT);
 
-            widget::Canvas::new().color(color::BLUE).set(CANVAS, ui);
+            widget::Canvas::new().color(conrod::color::BLUE).set(CANVAS, ui);
 
-            widget::ListSelect::multiple(&list_items, &mut list_selected)
+            // Instantiate the `ListSelect` widget.
+            let num_items = list_items.len();
+            let item_h = 32.0;
+            let (mut events, scrollbar) = widget::ListSelect::multiple(num_items, item_h)
+                .scrollbar_next_to()
                 .w_h(350.0, 220.0)
                 .top_left_with_margins_on(CANVAS, 40.0, 40.0)
-                .color(color::LIGHT_GREY)
-                .selected_color(color::LIGHT_BLUE)
-                .text_color(color::BLACK)
-                .selected_text_color(color::YELLOW)
-                .font_size(16)
-                .scrollbar_auto_hide(false)
-                .react(|event| {
-                    match event {
-                        widget::list_select::Event::SelectEntry(ix, name) =>
-                            println!("Select Entry: {}, {}", ix, name),
-                        widget::list_select::Event::SelectEntries(list)	=>
-                            println!("Select Entries: {:?}", list),
-                        widget::list_select::Event::DoubleClick(ix, name) =>
-                            println!("Double Click: {}, {}", ix, name),
-                        widget::list_select::Event::KeyPress(list, kp) =>
-                            println!("Keypress: {:?}, {:?}", kp, list),
-                    }
-                })
-                .set(LIST_BOX, ui);
+                .scrollbar_next_to()
+                .set(LIST_SELECT, ui);
+
+            // Handle the `ListSelect`s events.
+            while let Some(event) = events.next(ui, |i| list_selected.contains(&i)) {
+                use conrod::widget::list_select::Event;
+                match event {
+
+                    // For the `Item` events we instantiate the `List`'s items.
+                    Event::Item(item) => {
+                        let label = &list_items[item.i];
+                        let font_size = item_h as conrod::FontSize / 2;
+                        let (color, label_color) = match list_selected.contains(&item.i) {
+                            true => (conrod::color::LIGHT_BLUE, conrod::color::YELLOW),
+                            false => (conrod::color::LIGHT_GREY, conrod::color::BLACK),
+                        };
+                        let button = widget::Button::new()
+                            .border(0.0)
+                            .color(color)
+                            .label(label)
+                            .label_font_size(font_size)
+                            .label_color(label_color);
+                        item.set(button, ui);
+                    },
+
+                    // The selection has changed.
+                    Event::Selection(selection) => {
+                        selection.update_index_set(&mut list_selected);
+                        println!("selected indices: {:?}", list_selected);
+                    },
+
+                    // The remaining events indicate interactions with the `ListSelect` widget.
+                    event => println!("{:?}", &event),
+                }
+            }
+
+            // Instantiate the scrollbar for the list.
+            scrollbar.unwrap().set(ui);
         });
 
         window.draw_2d(&event, |c, g| {
