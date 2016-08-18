@@ -474,48 +474,46 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
-                        input::Key::Left => {
-                            if !press.modifiers.contains(input::keyboard::CTRL) {
-                                match cursor {
+                        input::Key::Left | input::Key::Right => {
+                            let left_move = match key {
+                                    input::Key::Left => true,
+                                    input::Key::Right => false,
+                                    _ => unreachable!()
+                            };
+                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
 
-                                    // Move the cursor to the previous position.
-                                    Cursor::Idx(cursor_idx) => {
-                                        let new_cursor_idx = {
+                            match cursor {
+                                // Move the cursor to the previous/next position or word.
+                                Cursor::Idx(cursor_idx) => {
+                                    let new_cursor_idx = {
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        match (left_move, move_word) {
+                                            (true, true) => cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx),
+                                            (false, true) => cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx),
+                                            (true, false) => cursor_idx.previous(line_infos).unwrap_or(cursor_idx),
+                                            (false, false) => cursor_idx.next(line_infos).unwrap_or(cursor_idx),
+                                        }
+                                    };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                },
+                                Cursor::Selection { start, end } => {
+                                    // Move the cursor to the start/end of the current selection.
+                                    let new_cursor_idx = {
+                                        let cursor_idx = if left_move { std::cmp::min(start, end) } else { std::cmp::max(start, end) };
+                                        if !move_word {
+                                            cursor_idx
+                                        } else {
+                                            // Move by word from the beginning or end of selection
                                             let line_infos = state.line_infos.iter().cloned();
-                                            cursor_idx.previous(line_infos).unwrap_or(cursor_idx)
-                                        };
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-
-                                    // Move the cursor to the start of the current selection.
-                                    Cursor::Selection { start, end } => {
-                                        let new_cursor_idx = std::cmp::min(start, end);
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-                                }
-                            }
-                        },
-
-                        input::Key::Right => {
-                            if !press.modifiers.contains(input::keyboard::CTRL) {
-                                match cursor {
-
-                                    // Move the cursor to the next position.
-                                    Cursor::Idx(cursor_idx) => {
-                                        let new_cursor_idx = {
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            cursor_idx.next(line_infos).unwrap_or(cursor_idx)
-                                        };
-
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-
-                                    // Move the cursor to the end of the current selection.
-                                    Cursor::Selection { start, end } => {
-                                        let new_cursor_idx = std::cmp::max(start, end);
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    },
-                                }
+                                            if left_move {
+                                                cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx)
+                                            } else {
+                                                cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx)
+                                            }
+                                        }
+                                    };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                },
                             }
                         },
 
@@ -554,8 +552,18 @@ impl<'a> Widget for TextEdit<'a> {
                         },
 
                         input::Key::E => {
-                            // If cursor is `Idx`, move cursor to end.
+                            // move cursor to end.
                             if press.modifiers.contains(input::keyboard::CTRL) {
+                                let mut line_infos = state.line_infos.iter().cloned();
+                                let line = line_infos.len() - 1;
+                                match line_infos.nth(line) {
+                                    Some(line_info) => {
+                                        let char = line_info.end_char() - line_info.start_char;
+                                        let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                    _ => (),
+                                }
                             }
                         },
 

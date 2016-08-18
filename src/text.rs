@@ -497,6 +497,83 @@ pub mod cursor {
 
     impl Index {
 
+        /// The cursor index of the beginning of the word (block of non-whitespace) before `self`.
+        ///
+        /// If `self` is at the beginning of the line, call previous, which returns the last
+        /// index position of the previous line, or None if it's the first line
+        ///
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// the start of the word that precedes the whitespace
+        ///
+        /// If `self` is in the middle or end of a word, return the index of the start of that word
+        pub fn previous_word_start<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+            where I: Iterator<Item=super::line::Info>,
+        {
+            let Index { line, char } = self;
+            if char > 0 {
+                line_infos.nth(line).and_then(|line_info| {
+                    let line_count = line_info.char_range().count();
+                    let mut chars_rev = (&text[line_info.byte_range()]).chars().rev();
+                    if char != line_count {
+                        chars_rev.nth(line_count - char - 1);
+                    }
+                    let mut new_char = 0;
+                    let mut hit_non_whitespace = false;
+                    for (i, char_) in chars_rev.enumerate() {
+                        // loop until word starts, then continue until the word ends
+                        if !char_.is_whitespace() { hit_non_whitespace = true; }
+                        if char_.is_whitespace() && hit_non_whitespace {
+                            new_char = char - i;
+                            break
+                        }
+                    }
+                    Some(Index { line: line, char: new_char })
+                })
+            } else {
+                self.previous(line_infos)
+            }
+        }
+
+        /// The cursor index of the end of the first word (block of non-whitespace) after `self`.
+        ///
+        /// If `self` is at the end of the text, this returns `None`.
+        ///
+        /// If `self` is at the end of a line other than the last, this returns the first index of
+        /// the next line.
+        ///
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// the end of the word after the whitespace
+        ///
+        /// If `self` is in the middle or start of a word, return the index of the end of that word
+        pub fn next_word_end<I>(self, text: &str, mut line_infos: I) -> Option<Self>
+            where I: Iterator<Item=super::line::Info>,
+        {
+            let Index { line, char } = self;
+            line_infos.nth(line)
+                .and_then(|line_info| {
+                    let line_count = line_info.char_range().count();
+                    if char < line_count {
+                        let mut chars = (&text[line_info.byte_range()]).chars();
+                        let mut new_char = line_count;
+                        let mut hit_non_whitespace = false;
+                        if char != 0 {
+                            chars.nth(char - 1);
+                        }
+                        for (i, char_) in chars.enumerate() {
+                            // loop until word starts, then continue until the word ends
+                            if !char_.is_whitespace() { hit_non_whitespace = true; }
+                            if char_.is_whitespace() && hit_non_whitespace {
+                                new_char = char + i;
+                                break
+                            }
+                        }
+                        Some(Index { line: line, char: new_char })
+                    } else {
+                        line_infos.next().map(|_| Index { line: line + 1, char: 0 })
+                    }
+                })
+        }
+
         /// The cursor index that comes before `self`.
         ///
         /// If `self` is at the beginning of the text, this returns `None`.
@@ -1043,6 +1120,8 @@ pub mod line {
     /// - A newline character.
     /// - A line wrap at the beginning of the whitespace that preceeds the first word
     /// exceeding the `max_width`.
+    /// - A line wrap at the beginning of the first character exceeding the `max_width`,
+    /// if no whitespace appears for `max_width` characters.
     ///
     /// Also returns the width the line alongside the Break.
     fn next_break_by_whitespace(text: &str,
@@ -1052,7 +1131,7 @@ pub mod line {
     {
         struct Last { byte: usize, char: usize, width_before: Scalar }
         let scale = super::pt_to_scale(font_size);
-        let mut last_whitespace_start = Last { byte: 0, char: 0, width_before: 0.0 };
+        let mut last_whitespace_start = None;
         let mut width = 0.0;
         let mut char_i = 0;
         let mut char_indices = text.char_indices().peekable();
@@ -1075,14 +1154,21 @@ pub mod line {
 
             // Check for a line wrap.
             if width > max_width {
-                let Last { byte, char, width_before } = last_whitespace_start;
-                let break_ = Break::Wrap { byte: byte, char: char, len_bytes: 1 };
-                return (break_, width_before);
+                match last_whitespace_start {
+                    Some(Last { byte, char, width_before }) => {
+                        let break_ = Break::Wrap { byte: byte, char: char, len_bytes: 1 };
+                        return (break_, width_before);
+                    },
+                    None => {
+                        let break_ = Break::Wrap { byte: byte_i, char: char_i, len_bytes: 0 };
+                        return (break_, width);
+                    }
+                }
             }
 
             // Check for a new whitespace.
             if ch.is_whitespace() {
-                last_whitespace_start = Last { byte: byte_i, char: char_i, width_before: width };
+                last_whitespace_start = Some(Last { byte: byte_i, char: char_i, width_before: width });
             }
 
             width = new_width;
@@ -1162,6 +1248,7 @@ pub mod line {
                     line_spacing: Scalar) -> Rects<I>
         where I: Iterator<Item=Info> + ExactSizeIterator,
     {
+        let num_lines = infos.len();
         let first_rect = infos.next().map(|first_info| {
 
             // Calculate the `x` `Range` of the first line `Rect`.
@@ -1173,7 +1260,6 @@ pub mod line {
             };
 
             // Calculate the `y` `Range` of the first line `Rect`.
-            let num_lines = infos.len();
             let total_text_height = super::height(num_lines, font_size, line_spacing);
             let total_text_y_range = Range::new(0.0, total_text_height);
             let total_text_y = match y_align {
