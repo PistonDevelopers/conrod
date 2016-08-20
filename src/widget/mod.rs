@@ -459,7 +459,7 @@ pub trait Widget: Sized {
     /// calls to `update`.
     ///
     /// Conrod will never clone the state, it will only ever be moved.
-    type State: std::any::Any;
+    type State: std::any::Any + Send;
     /// Every widget is required to have its own associated `Style` type. This type is intended to
     /// contain high-level styling information for the widget that can be *optionally specified* by
     /// a user of the widget.
@@ -515,7 +515,7 @@ pub trait Widget: Sized {
     /// style retrieval method implementations.
     ///
     /// [1]: ./macro.widget_style!.html
-    type Style: Style;
+    type Style: Style + Send;
     /// The type of event yielded by the widget, returned via the `Widget::set` function.
     ///
     /// For a `Toggle` widget, this might be a `bool`.

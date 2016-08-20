@@ -52,7 +52,7 @@ pub struct Theme {
 /// The defaults for a specific widget.
 pub struct WidgetDefault {
     /// The unique style of a widget.
-    pub style: Box<Any>,
+    pub style: Box<Any + Send>,
     /// The attributes commonly shared between widgets.
     pub common: widget::CommonStyle,
 }
@@ -68,7 +68,7 @@ pub struct UniqueDefault<'a, T: 'a> {
 
 impl WidgetDefault {
     /// Constructor for a WidgetDefault.
-    pub fn new(style: Box<Any>) -> WidgetDefault {
+    pub fn new(style: Box<Any + Send>) -> WidgetDefault {
         WidgetDefault {
             style: style,
             common: widget::CommonStyle::new(),

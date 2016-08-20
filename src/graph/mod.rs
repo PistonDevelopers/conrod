@@ -74,7 +74,7 @@ pub struct UniqueWidgetState<State, Style> where
 #[derive(Debug)]
 pub struct Container {
     /// Dynamically stored widget state.
-    pub maybe_state: Option<Box<Any>>,
+    pub maybe_state: Option<Box<Any + Send>>,
     /// The unique `TypeId` associated with the `Widget::State`.
     ///
     /// This is equal to `std::any::TypeId::of::<Widget::State>()`.
