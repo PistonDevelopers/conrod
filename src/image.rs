@@ -96,7 +96,7 @@ impl<Idx, Img> std::iter::Extend<(Idx, Img)> for Map<Img>
 
 /// A macro for simplifying the instantiation of an `image::Map`.
 ///
-/// See the [**Map**](./struct.Map.html) documentation for an example.
+/// See the [**Map**](./image/struct.Map.html) documentation for an example.
 #[macro_export]
 macro_rules! image_map {
     ($(($idx:expr, $img:expr)),* $(,)*) => {{
