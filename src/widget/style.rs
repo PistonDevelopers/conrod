@@ -159,7 +159,7 @@ macro_rules! impl_widget_style_retrieval_methods {
 /// `Style` type.
 ///
 /// For more information on the purpose of this `Style` type, see the associated `type Style` docs
-/// in the [`Widget` trait documentation](./trait.Widget.html).
+/// in the [`Widget` trait documentation](./widget/trait.Widget.html).
 ///
 /// Using the macro looks like this:
 ///
