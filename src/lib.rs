@@ -12,6 +12,7 @@ extern crate daggy;
 extern crate num;
 extern crate input as piston_input;
 extern crate rusttype;
+#[macro_use] extern crate json;
 
 
 pub use color::{Color, Colorable};

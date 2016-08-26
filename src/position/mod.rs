@@ -1,6 +1,7 @@
 
 use Ui;
 use widget;
+use json::JsonValue;
 
 pub use self::range::{Edge, Range};
 pub use self::rect::{Corner, Rect};
@@ -67,6 +68,37 @@ pub enum Position {
     Place(Place, Option<widget::Index>),
 }
 
+impl Position {
+
+    /// Converts this **Position** into a **JsonValue** representing it.
+    /// All **Option<widget::Index>** values are set to null because it doesn't make sense to store
+    /// them between sessions, since this is meant for using with themes.
+    pub fn into_json(self) -> JsonValue {
+        let mut value = JsonValue::new_object();
+        match self {
+            Position::Absolute(pos) => value["absolute"] = pos.into(),
+            Position::Relative(pos, _index) => value["relative"] = object!{
+                "offset" => pos,
+                "parent" => ::json::Null
+            },
+            Position::Align(align, _index) => value["align"] = object!{
+                "alignment" => align.into_json(),
+                "parent" => ::json::Null
+            },
+            Position::Direction(direction, pos, _index) => value["direction"] = object!{
+                "direction" => direction.into_json(),
+                "offset" => pos,
+                "parent" => ::json::Null
+            },
+            Position::Place(place, _index ) => value["place"] = object!{
+                "place" => place.into_json(),
+                "index" => ::json::Null
+            }
+        }
+        value
+    }
+}
+
 /// Directionally positioned, normally relative to some other widget.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Direction {
@@ -74,6 +106,16 @@ pub enum Direction {
     Forwards,
     /// Positioned backwards (*negative* **Scalar**) along some **Axis**.
     Backwards,
+}
+
+impl Direction {
+    /// Converts this **Direction** into a string representing it for use in theme serialization.
+    pub fn into_json(self) -> &'static str {
+        match self {
+            Direction::Forwards => "Forwards",
+            Direction::Backwards => "Backwards"
+        }
+    }
 }
 
 /// The orientation of **Align**ment along some **Axis**.
@@ -87,6 +129,17 @@ pub enum Align {
     End,
 }
 
+impl Align {
+    /// Converts this **Align** into a string representing it, for use in JSON
+    pub fn into_json(self) -> &'static str {
+        match self {
+            Align::Start => "Start",
+            Align::Middle => "Middle",
+            Align::End => "End"
+        }
+    }
+}
+
 /// Place the widget at a position on some other widget.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Place {
@@ -96,6 +149,19 @@ pub enum Place {
     Middle,
     /// Place upon the **End** of the Widget's `kid_area`.
     End(Option<Margin>),
+}
+
+impl Place {
+    /// Converts this **Place** into a **JsonValue** for use in theme serialization.
+    pub fn into_json(self) -> JsonValue {
+        let mut data = JsonValue::new_object();
+        match self {
+            Place::Start(margin) => data["start"] = margin.into(),
+            Place::Middle => data["middle"] = ::json::Null,
+            Place::End(margin) => data["end"] = margin.into()
+        }
+        data
+    }
 }
 
 /// The length of a **Widget** over either the *x* or *y* axes.
