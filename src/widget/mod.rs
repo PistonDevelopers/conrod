@@ -11,7 +11,7 @@ use theme::{self, Theme};
 use ui::{self, Ui, UiCell};
 
 
-pub use self::id::Id;
+//pub use self::id::Id;
 pub use self::index::Index;
 
 pub use self::primitive::line::{self, Line};
@@ -50,7 +50,7 @@ pub use self::xy_pad::XYPad;
 #[macro_use] mod style;
 
 // Widget functionality modules.
-mod id;
+//mod id;
 mod index;
 pub mod scroll;
 

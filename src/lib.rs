@@ -79,25 +79,25 @@ macro_rules! widget_ids {
 
     // Handle the first ID.
     ( $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public(0);
         widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle the first ID with some given step between it and the next ID.
     ( $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public(0);
         widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
     // Handle some consecutive ID.
     ( $prev_id:expr => $widget_id:ident , $($rest:tt)* ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public($prev_id + 1);
         widget_ids!($widget_id.0 => $($rest)*);
     );
 
     // Handle some consecutive ID with some given step between it and the next ID.
     ( $prev_id:expr => $widget_id:ident with $step:expr , $($rest:tt)* ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public($prev_id + 1);
         widget_ids!($widget_id.0 + $step => $($rest)*);
     );
 
@@ -117,22 +117,22 @@ macro_rules! widget_ids {
 
     // Handle a single ID without a trailing comma.
     ( $widget_id:ident ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public(0);
     );
 
     // Handle a single ID with some given step without a trailing comma.
     ( $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id(0);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public(0);
     );
 
     // Handle the last ID without a trailing comma.
     ( $prev_id:expr => $widget_id:ident ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public($prev_id + 1);
     );
 
     // Handle the last ID with some given step without a trailing comma.
     ( $prev_id:expr => $widget_id:ident with $step:expr ) => (
-        const $widget_id: $crate::widget::Id = $crate::widget::Id($prev_id + 1);
+        const $widget_id: $crate::widget::Index = $crate::widget::Index::Public($prev_id + 1);
     );
 
 }
