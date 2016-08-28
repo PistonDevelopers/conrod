@@ -8,20 +8,6 @@ pub use piston_input::GenericEvent;
 pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Raw>
     where E: GenericEvent,
 {
-    use piston_input::{
-        RenderEvent,
-        MouseCursorEvent,
-        MouseRelativeEvent,
-        MouseScrollEvent,
-        ControllerAxisEvent,
-        PressEvent,
-        ReleaseEvent,
-        ResizeEvent,
-        FocusEvent,
-        TextEvent,
-        CursorEvent,
-    };
-
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     let translate_coords = |xy: Point| (xy[0] - win_w / 2.0, -(xy[1] - win_h / 2.0));
 
