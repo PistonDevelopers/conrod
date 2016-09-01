@@ -47,10 +47,17 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+    }
+}
+
 /// The style of the `Button`, either `Flat` or `Image`.
 pub trait Show: Sized {
     /// Display the unique styling of the `Button`.
-    fn show(self, _button_idx: widget::Index, _ui: &mut UiCell) {}
+    fn show(self, _button_id: widget::Id, _ui: &mut UiCell) {}
 }
 
 /// The `Button` simply displays a flat color.
@@ -60,8 +67,8 @@ pub struct Flat;
 /// The `Button` displays an `Image` on top.
 #[derive(Copy, Clone)]
 pub struct Image {
-    /// The index of the `Image` to be used.
-    pub index: widget::Index,
+    /// The id of the `Image` to be used.
+    pub id: widget::Id,
     /// If `Some`, maps the image's luminance to this `Color`.
     pub color: ImageColor,
     /// The rectangular area of the original source image that should be displayed.
@@ -83,10 +90,8 @@ pub enum ImageColor {
 
 
 /// Represents the state of the Button widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// The `Event` type yielded by the `Button` widget.
@@ -119,11 +124,9 @@ impl Iterator for TimesClicked {
 impl<'a> Button<'a, Image> {
 
     /// Begin building a button displaying the given `Image` on top.
-    pub fn image<I>(image_idx: I) -> Self
-        where I: Into<widget::Index>,
-    {
+    pub fn image(image_id: widget::Id) -> Self {
         let image = Image {
-            index: image_idx.into(),
+            id: image_id,
             src_rect: None,
             color: ImageColor::None,
         };
@@ -221,8 +224,7 @@ impl<'a, S> Widget for Button<'a, S>
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -232,11 +234,11 @@ impl<'a, S> Widget for Button<'a, S>
 
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
 
         let (color, times_clicked) = {
-            let input = ui.widget_input(idx);
+            let input = ui.widget_input(id);
             let color = style.color(ui.theme());
             let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
@@ -250,38 +252,38 @@ impl<'a, S> Widget for Button<'a, S>
         };
 
         // BorderedRectangle widget.
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(&mut ui);
         let dim = rect.dim();
         let border = style.border(&ui.theme);
         let border_color = style.border_color(&ui.theme);
         widget::BorderedRectangle::new(dim)
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(rectangle_id, &mut ui);
 
         // Label widget.
         if let Some(label) = maybe_label {
-            let label_idx = state.label_idx.get(&mut ui);
+            let label_id = state.ids.label.get(&mut ui);
             let color = style.label_color(&ui.theme);
             let font_size = style.label_font_size(&ui.theme);
             let align = style.label_x_align(&ui.theme);
             widget::Text::new(label)
                 .and(|b| match align {
-                    Align::Start => b.mid_left_with_margin_on(rectangle_idx, font_size as Scalar),
-                    Align::Middle => b.middle_of(rectangle_idx),
-                    Align::End => b.mid_right_with_margin_on(rectangle_idx, font_size as Scalar),
+                    Align::Start => b.mid_left_with_margin_on(rectangle_id, font_size as Scalar),
+                    Align::Middle => b.middle_of(rectangle_id),
+                    Align::End => b.mid_right_with_margin_on(rectangle_id, font_size as Scalar),
                 })
-                .graphics_for(idx)
+                .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
-                .set(label_idx, &mut ui);
+                .set(label_id, &mut ui);
         }
 
         // This instantiates the image widget if necessary.
-        show.show(idx, &mut ui);
+        show.show(id, &mut ui);
 
         TimesClicked(times_clicked)
     }
@@ -312,14 +314,14 @@ impl<'a, S> Labelable<'a> for Button<'a, S> {
 impl Show for Flat {}
 
 impl Show for Image {
-    fn show(self, button_idx: widget::Index, ui: &mut UiCell) {
-        let Image { index, src_rect, color } = self;
-        let mut image = widget::Image::new().middle_of(button_idx).graphics_for(button_idx);
+    fn show(self, button_id: widget::Id, ui: &mut UiCell) {
+        let Image { id, src_rect, color } = self;
+        let mut image = widget::Image::new().middle_of(button_id).graphics_for(button_id);
         image.src_rect = src_rect;
         image.style.maybe_color = match color {
             ImageColor::Normal(color) => Some(Some(color)),
             ImageColor::WithFeedback(color) =>
-                ui.widget_input(button_idx).mouse()
+                ui.widget_input(button_id).mouse()
                     .map(|mouse| if mouse.buttons.left().is_down() {
                         Some(color.clicked())
                     } else {
@@ -328,6 +330,6 @@ impl Show for Image {
                     .or(Some(Some(color))),
             ImageColor::None => None,
         };
-        image.set(index, ui);
+        image.set(id, ui);
     }
 }

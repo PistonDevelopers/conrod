@@ -49,14 +49,19 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+        h_line,
+        v_line,
+        value_label,
+    }
+}
+
 /// The state of the XYPad.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
-    h_line_idx: widget::IndexSlot,
-    v_line_idx: widget::IndexSlot,
-    value_label_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 
@@ -100,11 +105,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
     fn init_state(&self) -> Self::State {
         State {
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
-            h_line_idx: widget::IndexSlot::new(),
-            v_line_idx: widget::IndexSlot::new(),
-            value_label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -116,7 +117,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use position::{Direction, Edge};
 
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let XYPad {
             x, min_x, max_x,
             y, min_y, max_y,
@@ -129,7 +130,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         let mut new_x = x;
         let mut new_y = y;
-        if let Some(mouse) = ui.widget_input(idx).mouse() {
+        if let Some(mouse) = ui.widget_input(id).mouse() {
             if mouse.buttons.left().is_down() {
                 let mouse_abs_xy = mouse.abs_xy();
                 let clamped_x = inner_rect.x.clamp_value(mouse_abs_xy[0]);
@@ -148,7 +149,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
         };
 
         let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(idx).mouse()
+            ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()
                 } else {
@@ -161,26 +162,26 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
         let color = interaction_color(&ui, style.color(ui.theme()));
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(ui);
         widget::BorderedRectangle::new(dim)
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(rectangle_id, ui);
 
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_idx = state.label_idx.get(&mut ui);
+            let label_id = state.ids.label.get(ui);
             let label_font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_idx)
-                .graphics_for(idx)
+                .middle_of(rectangle_id)
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(label_font_size)
-                .set(label_idx, &mut ui);
+                .set(label_id, ui);
         }
 
         // Crosshair **Line** widgets.
@@ -194,25 +195,25 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         let v_line_start = [0.0, -half_h];
         let v_line_end = [0.0, half_h];
-        let v_line_idx = state.v_line_idx.get(&mut ui);
+        let v_line_id = state.ids.v_line.get(ui);
         widget::Line::centred(v_line_start, v_line_end)
             .color(line_color)
             .thickness(thickness)
-            .x_y_relative_to(idx, v_line_x, 0.0)
-            .graphics_for(idx)
-            .parent(idx)
-            .set(v_line_idx, &mut ui);
+            .x_y_relative_to(id, v_line_x, 0.0)
+            .graphics_for(id)
+            .parent(id)
+            .set(v_line_id, ui);
 
         let h_line_start = [-half_w, 0.0];
         let h_line_end = [half_w, 0.0];
-        let h_line_idx = state.h_line_idx.get(&mut ui);
+        let h_line_id = state.ids.h_line.get(ui);
         widget::Line::centred(h_line_start, h_line_end)
             .color(line_color)
             .thickness(thickness)
-            .x_y_relative_to(idx, 0.0, h_line_y)
-            .graphics_for(idx)
-            .parent(idx)
-            .set(h_line_idx, &mut ui);
+            .x_y_relative_to(id, 0.0, h_line_y)
+            .graphics_for(id)
+            .parent(id)
+            .set(h_line_id, ui);
 
         // Crosshair value label **Text** widget.
         let x_string = val_to_string(new_x, max_x, max_x - min_x, rect.w() as usize);
@@ -229,15 +230,15 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
             Edge::Start => Direction::Forwards,
         };
         let value_font_size = style.value_font_size(ui.theme());
-        let value_label_idx = state.value_label_idx.get(&mut ui);
+        let value_label_id = state.ids.value_label.get(ui);
         widget::Text::new(&value_string)
-            .x_direction_from(v_line_idx, x_direction, VALUE_TEXT_PAD)
-            .y_direction_from(h_line_idx, y_direction, VALUE_TEXT_PAD)
+            .x_direction_from(v_line_id, x_direction, VALUE_TEXT_PAD)
+            .y_direction_from(h_line_id, y_direction, VALUE_TEXT_PAD)
             .color(line_color)
-            .graphics_for(idx)
-            .parent(idx)
+            .graphics_for(id)
+            .parent(id)
             .font_size(value_font_size)
-            .set(value_label_idx, &mut ui);
+            .set(value_label_id, ui);
 
         event
     }

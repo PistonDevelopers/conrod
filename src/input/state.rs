@@ -25,14 +25,14 @@ pub struct State {
     /// Mouse position and button state.
     pub mouse: Mouse,
     /// Which widget, if any, is currently capturing the keyboard
-    pub widget_capturing_keyboard: Option<widget::Index>,
+    pub widget_capturing_keyboard: Option<widget::Id>,
     /// Which widget, if any, is currently capturing the mouse
-    pub widget_capturing_mouse: Option<widget::Index>,
+    pub widget_capturing_mouse: Option<widget::Id>,
     /// The widget that is currently under the mouse cursor.
     ///
     /// If the mouse is currently over multiple widgets, this index will represent the top-most,
     /// non-graphic-child widget.
-    pub widget_under_mouse: Option<widget::Index>,
+    pub widget_under_mouse: Option<widget::Id>,
     /// Which modifier keys are being held down.
     pub modifiers: ModifierKey,
 }
@@ -89,8 +89,8 @@ pub mod mouse {
         /// The button is up (i.e. pressed).
         Up,
         /// The button is down and was originally pressed down at the given `Point` over the widget
-        /// at the given widget::Index.
-        Down(Point, Option<widget::Index>),
+        /// at the given widget::Id.
+        Down(Point, Option<widget::Id>),
     }
 
     /// Stores the state of all mouse buttons.
@@ -146,7 +146,7 @@ pub mod mouse {
 
         /// Returns the position at which the button was pressed along with the widget that was
         /// under the mouse at the time of pressing if the position is `Down`.
-        pub fn if_down(&self) -> Option<(Point, Option<widget::Index>)> {
+        pub fn if_down(&self) -> Option<(Point, Option<widget::Id>)> {
             match *self {
                 ButtonPosition::Down(xy, widget) => Some((xy, widget)),
                 _ => None,
@@ -196,7 +196,7 @@ pub mod mouse {
         }
 
         /// Sets the `Button` in the `Down` position.
-        pub fn press(&mut self, button: Button, xy: Point, widget: Option<widget::Index>) {
+        pub fn press(&mut self, button: Button, xy: Point, widget: Option<widget::Id>) {
             self.buttons[button_to_idx(button)] = ButtonPosition::Down(xy, widget);
         }
 
@@ -232,7 +232,7 @@ pub mod mouse {
     }
 
     impl<'a> Iterator for PressedButtons<'a> {
-        type Item = (Button, Point, Option<widget::Index>);
+        type Item = (Button, Point, Option<widget::Id>);
         fn next(&mut self) -> Option<Self::Item> {
             while let Some((idx, button_pos)) = self.buttons.next() {
                 if let ButtonPosition::Down(xy, widget) = *button_pos {

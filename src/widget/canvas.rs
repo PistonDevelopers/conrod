@@ -53,13 +53,18 @@ pub struct Canvas<'a> {
 }
 
 /// **Canvas** state to be cached.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: widget::IndexSlot,
-    title_bar_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
-widget_style!{
+widget_ids! {
+    Ids {
+        rectangle,
+        title_bar,
+    }
+}
+
+widget_style! {
     /// Unique styling for the Canvas.
     style Style {
         /// The color of the Canvas' rectangle surface.
@@ -226,8 +231,7 @@ impl<'a> Widget for Canvas<'a> {
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: widget::IndexSlot::new(),
-            title_bar_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -276,11 +280,11 @@ impl<'a> Widget for Canvas<'a> {
 
     /// Update the state of the Canvas.
     fn update(self, args: widget::UpdateArgs<Self>) {
-        let widget::UpdateArgs { idx, state, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, mut ui, .. } = args;
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
         // BorderedRectangle widget as the rectangle backdrop.
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
@@ -289,21 +293,21 @@ impl<'a> Widget for Canvas<'a> {
             .color(color)
             .border(border)
             .border_color(border_color)
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .place_on_kid_area(false)
-            .set(rectangle_idx, &mut ui);
+            .set(rectangle_id, &mut ui);
 
         // TitleBar widget if we were given some label.
         if let Some(label) = maybe_title_bar_label {
-            let title_bar_idx = state.title_bar_idx.get(&mut ui);
+            let title_bar_id = state.ids.title_bar.get(&mut ui);
             let color = style.title_bar_color(&ui.theme).unwrap_or(color);
             let font_size = style.title_bar_font_size(&ui.theme);
             let label_color = style.title_bar_text_color(&ui.theme);
             let text_align = style.title_bar_text_align(&ui.theme);
             let line_spacing = style.title_bar_line_spacing(&ui.theme);
             let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
-            widget::TitleBar::new(label, rectangle_idx)
+            widget::TitleBar::new(label, rectangle_id)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
                     title_bar.style.text_align = Some(text_align);
@@ -314,9 +318,9 @@ impl<'a> Widget for Canvas<'a> {
                 .label_font_size(font_size)
                 .label_color(label_color)
                 .line_spacing(line_spacing)
-                .graphics_for(idx)
+                .graphics_for(id)
                 .place_on_kid_area(false)
-                .set(title_bar_idx, &mut ui);
+                .set(title_bar_id, &mut ui);
         }
 
         // If we were given some child canvas splits, we should instantiate them.
@@ -331,7 +335,7 @@ impl<'a> Widget for Canvas<'a> {
                 });
 
             // No need to calculate kid_area again, we'll just get it from the graph.
-            let kid_area = ui.kid_area_of(idx).expect("No KidArea found");
+            let kid_area = ui.kid_area_of(id).expect("No KidArea found");
             let kid_area_range = match direction {
                 Direction::X(_) => kid_area.x,
                 Direction::Y(_) => kid_area.y,
@@ -349,7 +353,7 @@ impl<'a> Widget for Canvas<'a> {
             };
 
             let set_split = |split_id: widget::Id, split: Canvas<'a>, ui: &mut UiCell| {
-                split.parent(idx).set(split_id, ui);
+                split.parent(id).set(split_id, ui);
             };
 
             // Instantiate each of the splits, matching on the direction first for efficiency.
@@ -359,7 +363,7 @@ impl<'a> Widget for Canvas<'a> {
                     Forwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
                         let w = length(&split, &ui);
                         let split = match i {
-                            0 => split.h(kid_area.h()).mid_left_of(idx),
+                            0 => split.h(kid_area.h()).mid_left_of(id),
                             _ => split.right(0.0),
                         }.w(w);
                         set_split(split_id, split, &mut ui);
@@ -367,7 +371,7 @@ impl<'a> Widget for Canvas<'a> {
                     Backwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
                         let w = length(&split, &ui);
                         let split = match i {
-                            0 => split.h(kid_area.h()).mid_right_of(idx),
+                            0 => split.h(kid_area.h()).mid_right_of(id),
                             _ => split.left(0.0),
                         }.w(w);
                         set_split(split_id, split, &mut ui);
@@ -378,7 +382,7 @@ impl<'a> Widget for Canvas<'a> {
                     Forwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
                         let h = length(&split, &ui);
                         let split = match i {
-                            0 => split.w(kid_area.w()).mid_bottom_of(idx),
+                            0 => split.w(kid_area.w()).mid_bottom_of(id),
                             _ => split.up(0.0),
                         }.h(h);
                         set_split(split_id, split, &mut ui);
@@ -386,7 +390,7 @@ impl<'a> Widget for Canvas<'a> {
                     Backwards => for (i, &(split_id, split)) in splits.iter().enumerate() {
                         let h = length(&split, &ui);
                         let split = match i {
-                            0 => split.w(kid_area.w()).mid_top_of(idx),
+                            0 => split.w(kid_area.w()).mid_top_of(id),
                             _ => split.down(0.0),
                         }.h(h);
                         set_split(split_id, split, &mut ui);

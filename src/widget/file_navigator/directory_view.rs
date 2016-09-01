@@ -33,16 +33,16 @@ pub struct DirectoryView<'a> {
 }
 
 /// Unique state stored within the widget graph for each `FileNavigator`.
-#[derive(Debug, PartialEq)]
 pub struct State {
     /// The absolute path, `Rectangle` and `Text` indices for each file in the directory.
     entries: Vec<Entry>,
     /// The absolute path to the directory.
     directory: std::path::PathBuf,
-    /// The background color for the directory view.
-    rectangle_idx: widget::IndexSlot,
-    /// The index used to instantiate the `ListSelect` widget.
-    list_select_idx: widget::IndexSlot,
+    /// The `DirectoryView`'s children widgets:
+    /// 
+    /// - The background color for the directory view.
+    /// - The index used to instantiate the `ListSelect` widget.
+    ids: Ids,
 }
 
 /// Data stored for each `File` in the `State`.
@@ -52,7 +52,14 @@ pub struct Entry {
     is_selected: bool,
 }
 
-widget_style!{
+widget_ids! {
+    Ids {
+        rectangle,
+        list_select,
+    }
+}
+
+widget_style! {
     /// Unique styling for the widget.
     style Style {
         /// Color of the selected entries.
@@ -170,8 +177,7 @@ impl<'a> Widget for DirectoryView<'a> {
         State {
             entries: Vec::new(),
             directory: std::path::PathBuf::new(),
-            rectangle_idx: widget::IndexSlot::new(),
-            list_select_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -180,7 +186,7 @@ impl<'a> Widget for DirectoryView<'a> {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
         let DirectoryView { directory, types, .. } = self;
 
         if directory != &state.directory {
@@ -250,25 +256,25 @@ impl<'a> Widget for DirectoryView<'a> {
             .unwrap_or_else(|| color.plain_contrast());
 
         // Color the background of the directory view.
-        let rectangle_idx = state.rectangle_idx.get(ui);
+        let rectangle_id = state.ids.rectangle.get(ui);
         widget::Rectangle::fill(rect.dim())
             .color(unselected_rect_color)
             .xy(rect.xy())
-            .parent(idx)
-            .graphics_for(idx)
-            .set(rectangle_idx, ui);
+            .parent(id)
+            .graphics_for(id)
+            .set(rectangle_id, ui);
 
         // Collect any events that have occurred.
         let mut events = Vec::new();
 
         let list_h = rect.h().min(state.entries.len() as Scalar * file_h);
-        let list_select_idx = state.list_select_idx.get(ui);
+        let list_select_id = state.ids.list_select.get(ui);
         let (mut list_events, scrollbar) =
             widget::ListSelect::multiple(state.entries.len(), file_h)
                 .scrollbar_on_top()
                 .w_h(rect.w(), list_h)
-                .mid_top_of(idx)
-                .set(list_select_idx, ui);
+                .mid_top_of(id)
+                .set(list_select_id, ui);
 
         // A helper method for collecting all selected entries.
         let collect_selected = |entries: &[Entry]| entries.iter()
@@ -301,7 +307,7 @@ impl<'a> Widget for DirectoryView<'a> {
                     let rect_color = if is_selected {
                         color
                     } else {
-                        match ui.widget_input(item.widget_idx).mouse() {
+                        match ui.widget_input(item.widget_id).mouse() {
                             None => color::TRANSPARENT,
                             Some(_) => unselected_rect_color,
                         }
@@ -347,7 +353,7 @@ impl<'a> Widget for DirectoryView<'a> {
         scrollbar.map(|s| s.set(ui));
 
         // If the scrollable `Rectangle` was pressed, deselect all entries.
-        if ui.widget_input(idx).presses().mouse().left().next().is_some() {
+        if ui.widget_input(id).presses().mouse().left().next().is_some() {
             // Deselect all entries.
             state.update(|state| for entry in &mut state.entries {
                 entry.is_selected = false;

@@ -31,11 +31,11 @@ pub struct BorderedRectangle {
     pub style: Style,
 }
 
-/// Unique state for the `BorderedRectangle`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct State {
-    border_idx: widget::IndexSlot,
-    rectangle_idx: widget::IndexSlot,
+widget_ids! {
+    Ids {
+        border,
+        rectangle,
+    }
 }
 
 widget_style!{
@@ -48,6 +48,11 @@ widget_style!{
         /// The color of the border.
         - border_color: Color { theme.border_color }
     }
+}
+
+/// Unique state for the `BorderedRectangle`.
+pub struct State {
+    ids: Ids,
 }
 
 impl BorderedRectangle {
@@ -80,8 +85,7 @@ impl Widget for BorderedRectangle {
 
     fn init_state(&self) -> Self::State {
         State {
-            border_idx: widget::IndexSlot::new(),
-            rectangle_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -91,28 +95,28 @@ impl Widget for BorderedRectangle {
 
     /// Update the state of the Rectangle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
 
         let border = style.border(&ui.theme);
         if border > 0.0 {
             let border_color = style.border_color(&ui.theme);
-            let border_idx = state.border_idx.get(&mut ui);
+            let border_id = state.ids.border.get(ui);
             widget::Rectangle::fill(rect.dim())
                 .xy(rect.xy())
                 .color(border_color)
-                .parent(idx)
-                .graphics_for(idx)
-                .set(border_idx, &mut ui);
+                .parent(id)
+                .graphics_for(id)
+                .set(border_id, ui);
         }
 
         let color = style.color(&ui.theme);
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(ui);
         widget::Rectangle::fill(rect.pad(border).dim())
             .xy(rect.xy())
             .color(color)
-            .parent(idx)
-            .graphics_for(idx)
-            .set(rectangle_idx, &mut ui);
+            .parent(id)
+            .graphics_for(id)
+            .set(rectangle_id, ui);
     }
 
 }

@@ -44,10 +44,15 @@ pub trait Mode {
         where F: Fn(usize) -> bool;
 }
 
+widget_ids! {
+    Ids {
+        list,
+    }
+}
+
 /// Represents the state of the ListSelect.
-#[derive(PartialEq, Clone, Debug)]
 pub struct State {
-    list_idx: widget::IndexSlot,
+    ids: Ids,
     /// Tracking index of last selected entry that has been pressed in order to
     /// perform multi selection when `SHIFT` or `ALT`(Mac) / 'CTRL'(Other OS) is held.
     last_selected_entry: std::cell::Cell<Option<usize>>,
@@ -60,7 +65,7 @@ pub type PendingEvents<S> = std::collections::VecDeque<Event<S>>;
 pub struct Events<M>
     where M: Mode,
 {
-    idx: widget::Index,
+    id: widget::Id,
     items: widget::list::Items,
     num_items: usize,
     mode: M,
@@ -239,7 +244,7 @@ impl<M> Widget for ListSelect<M>
 
     fn init_state(&self) -> Self::State {
         State {
-            list_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
             last_selected_entry: std::cell::Cell::new(None),
         }
     }
@@ -250,7 +255,7 @@ impl<M> Widget for ListSelect<M>
 
     /// Update the state of the ListSelect.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, mut state, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, mut state, style, mut ui, .. } = args;
         let ListSelect { num_items, item_h, item_instantiation, mode, .. } = self;
 
         // Make sure that `last_selected_entry` refers to an actual selected value in the list.
@@ -261,17 +266,17 @@ impl<M> Widget for ListSelect<M>
             }
         }
 
-        let list_idx = state.list_idx.get(&mut ui);
+        let list_id = state.ids.list.get(&mut ui);
         let scrollbar_position = style.scrollbar_position(&ui.theme);
 
         let mut list = widget::List::new(num_items, item_h)
             .and_if(scrollbar_position.is_some(), |ls| ls.scroll_kids_vertically());
         list.item_instantiation = item_instantiation;
         list.style = style.clone();
-        let (items, scrollbar) = list.middle_of(idx).wh_of(idx).set(list_idx, &mut ui);
+        let (items, scrollbar) = list.middle_of(id).wh_of(id).set(list_id, &mut ui);
 
         let events = Events {
-            idx: idx,
+            id: id,
             items: items,
             num_items: num_items,
             mode: mode,
@@ -291,7 +296,7 @@ impl<M> Events<M>
         where F: Fn(usize) -> bool,
     {
         let Events {
-            idx,
+            id,
             num_items,
             ref mode,
             ref mut items,
@@ -310,7 +315,7 @@ impl<M> Events<M>
         // Borrow the `ListSelect::State` from the `Ui`'s widget graph.
         let state = || {
             ui.widget_graph()
-                .widget(idx)
+                .widget(id)
                 .and_then(|container| container.unique_widget_state::<ListSelect<M>>())
                 .map(|&graph::UniqueWidgetState { ref state, .. }| state)
                 .expect("couldn't find `ListSelect` state in the widget graph")
@@ -330,7 +335,7 @@ impl<M> Events<M>
         let i = item.i;
 
         // Check for any events that may have occurred to this widget.
-        for widget_event in ui.widget_input(item.widget_idx).events() {
+        for widget_event in ui.widget_input(item.widget_id).events() {
             match widget_event {
 
                 // Produce a `DoubleClick` event.

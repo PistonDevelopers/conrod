@@ -7,7 +7,6 @@ use {
     FontSize,
     Borderable,
     Labelable,
-    NodeIndex,
     Positionable,
     Scalar,
     Sizeable,
@@ -33,7 +32,7 @@ pub struct DropDownList<'a, T: 'a> {
     enabled: bool,
 }
 
-widget_style!{
+widget_style! {
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
@@ -57,13 +56,17 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        closed_menu,
+        list,
+    }
+}
+
 /// Represents the state of the DropDownList.
-#[derive(PartialEq, Clone, Debug)]
 pub struct State {
     menu_state: MenuState,
-    button_indices: Vec<NodeIndex>,
-    closed_menu: widget::IndexSlot,
-    list_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// Representations of the max height of the visible area of the DropDownList.
@@ -161,9 +164,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
     fn init_state(&self) -> State {
         State {
             menu_state: MenuState::Closed,
-            button_indices: Vec::new(),
-            list_idx: widget::IndexSlot::new(),
-            closed_menu: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -173,20 +174,13 @@ impl<'a, T> Widget for DropDownList<'a, T>
 
     /// Update the state of the DropDownList.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
 
         let num_items = self.items.len();
 
         // Check that the selected index, if given, is not greater than the number of items.
         let selected = self.selected.and_then(|idx| if idx < num_items { Some(idx) }
                                                     else { None });
-
-        // Ensure we have at least an index for each item in the list.
-        let num_buttons = state.button_indices.len();
-        if num_buttons < num_items {
-            let extension = (num_buttons..num_items).map(|_| ui.new_unique_node_index());
-            state.update(|state| state.button_indices.extend(extension));
-        }
 
         // Track whether or not a list item was clicked.
         let mut clicked_item = None;
@@ -198,17 +192,10 @@ impl<'a, T> Widget for DropDownList<'a, T>
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
                 // Get the button index and the label for the closed menu's button.
-                let (button_idx, label) = selected
-                    .map(|i| {
-                        let idx = state.button_indices[i];
-                        let label = self.items[i].as_ref();
-                        (idx, label)
-                    })
-                    .unwrap_or_else(|| {
-                        let closed_menu_idx = state.closed_menu.get(&mut ui);
-                        let label = self.maybe_label.unwrap_or("");
-                        (closed_menu_idx, label)
-                    });
+                let label = selected
+                    .map(|i| self.items[i].as_ref())
+                    .unwrap_or_else(|| self.maybe_label.unwrap_or(""));
+                let closed_menu_id = state.ids.closed_menu.get(ui);
 
                 let was_clicked = {
                     // use the pre-existing Button widget
@@ -216,9 +203,9 @@ impl<'a, T> Widget for DropDownList<'a, T>
                         .xy(rect.xy())
                         .wh(rect.dim())
                         .label(label)
-                        .parent(idx);
+                        .parent(id);
                     button.style = style.button_style(false);
-                    button.set(button_idx, &mut ui).was_clicked()
+                    button.set(closed_menu_id, ui).was_clicked()
                 };
 
                 // If the button was clicked, then open, otherwise stay closed
@@ -246,7 +233,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 let num_items = self.items.len();
                 let item_h = h;
                 let list_h = max_visible_height.min(num_items as Scalar * item_h);
-                let list_idx = state.list_idx.get(&mut ui);
+                let list_id = state.ids.list.get(ui);
                 let scrollbar_color = style.border_color(&ui.theme);
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
@@ -265,9 +252,9 @@ impl<'a, T> Widget for DropDownList<'a, T>
                     })
                     .scrollbar_color(scrollbar_color)
                     .scrollbar_width(scrollbar_width)
-                    .mid_top_of(idx)
+                    .mid_top_of(id)
                     .floating(true)
-                    .set(list_idx, &mut ui);
+                    .set(list_id, ui);
 
                 while let Some(event) = events.next(ui, |i| Some(i) == selected) {
                     use widget::list_select::Event;
@@ -279,7 +266,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                             let label = self.items[i].as_ref();
                             let mut button = widget::Button::new().label(label);
                             button.style = style.button_style(Some(i) == selected);
-                            item.set(button, &mut ui);
+                            item.set(button, ui);
                         },
 
                         // The selection changed.
@@ -291,7 +278,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
 
                 // Instantiate the `Scrollbar` if there is one.
                 if let Some(scrollbar) = scrollbar {
-                    scrollbar.set(&mut ui);
+                    scrollbar.set(ui);
                 }
 
                 // Close the menu if the mouse is pressed and the currently pressed widget is
@@ -302,7 +289,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                     && match ui.global_input.current.widget_capturing_mouse {
                         None => true,
                         Some(capturing) => !ui.widget_graph()
-                            .does_recursive_depth_edge_exist(idx, capturing),
+                            .does_recursive_depth_edge_exist(id, capturing),
                     };
 
                 // If a mouse button was pressed somewhere else, close the menu.

@@ -43,7 +43,7 @@ pub struct Slider<'a, T> {
     pub enabled: bool,
 }
 
-widget_style!{
+widget_style! {
     /// Graphical styling unique to the Slider widget.
     style Style {
         /// The color of the slidable rectangle.
@@ -59,12 +59,17 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        border,
+        slider,
+        label,
+    }
+}
+
 /// Represents the state of the Slider widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    border_idx: widget::IndexSlot,
-    slider_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 impl<'a, T> Slider<'a, T> {
@@ -107,9 +112,7 @@ impl<'a, T> Widget for Slider<'a, T>
 
     fn init_state(&self) -> Self::State {
         State {
-            border_idx: widget::IndexSlot::new(),
-            slider_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -132,14 +135,14 @@ impl<'a, T> Widget for Slider<'a, T>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{clamp, map_range, value_from_perc};
 
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let Slider { value, min, max, skew, maybe_label, .. } = self;
 
         let is_horizontal = rect.w() > rect.h();
         let border = style.border(ui.theme());
         let inner_rect = rect.pad(border);
 
-        let new_value = if let Some(mouse) = ui.widget_input(idx).mouse() {
+        let new_value = if let Some(mouse) = ui.widget_input(id).mouse() {
             if mouse.buttons.left().is_down() {
                 let mouse_abs_xy = mouse.abs_xy();
                 if is_horizontal {
@@ -167,10 +170,10 @@ impl<'a, T> Widget for Slider<'a, T>
         };
 
         // The **Rectangle** for the border.
-        let border_idx = state.border_idx.get(&mut ui);
+        let border_id = state.ids.border.get(ui);
 
         let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(idx).mouse()
+            ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()
                 } else {
@@ -178,12 +181,12 @@ impl<'a, T> Widget for Slider<'a, T>
                 })
                 .unwrap_or(color);
 
-        let border_color = interaction_color(&ui, style.border_color(ui.theme()));
+        let border_color = interaction_color(ui, style.border_color(ui.theme()));
         widget::Rectangle::fill(rect.dim())
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(border_color)
-            .set(border_idx, &mut ui);
+            .set(border_id, ui);
 
         // The **Rectangle** for the adjustable slider.
         let slider_rect = if is_horizontal {
@@ -199,29 +202,29 @@ impl<'a, T> Widget for Slider<'a, T>
             let y = Range::new(bottom, top);
             Rect { x: x, y: y }
         };
-        let color = interaction_color(&ui, style.color(ui.theme()));
-        let slider_idx = state.slider_idx.get(&mut ui);
+        let color = interaction_color(ui, style.color(ui.theme()));
+        let slider_id = state.ids.slider.get(ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         widget::Rectangle::fill(slider_rect.dim())
-            .xy_relative_to(idx, slider_xy_offset)
-            .graphics_for(idx)
-            .parent(idx)
+            .xy_relative_to(id, slider_xy_offset)
+            .graphics_for(id)
+            .parent(id)
             .color(color)
-            .set(slider_idx, &mut ui);
+            .set(slider_id, ui);
 
         // The **Text** for the slider's label (if it has one).
         if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
-            let label_idx = state.label_idx.get(&mut ui);
+            let label_id = state.ids.label.get(ui);
             widget::Text::new(label)
-                .and(|text| if is_horizontal { text.mid_left_of(idx) }
-                            else { text.mid_bottom_of(idx) })
-                .graphics_for(idx)
+                .and(|text| if is_horizontal { text.mid_left_of(id) }
+                            else { text.mid_bottom_of(id) })
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .set(label_idx, &mut ui);
+                .set(label_id, ui);
         }
 
         // If the value has just changed, return the new value.

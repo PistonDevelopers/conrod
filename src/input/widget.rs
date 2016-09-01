@@ -13,7 +13,7 @@ use widget;
 /// Provides only events and input state that are relevant to a specific widget.
 ///
 /// This type can be produced by calling the `UiCell::input` method with the target widget's
-/// `widget::Index`. This is particularly useful
+/// `widget::Id`. This is particularly useful
 ///
 /// Unlike `input::Global`, `input::Widget` methods are tailored to the widget for which they are
 /// produced.
@@ -21,7 +21,7 @@ use widget;
 pub struct Widget<'a> {
     global: &'a input::Global,
     rect: Rect,
-    idx: widget::Index,
+    idx: widget::Id,
 }
 
 /// A view of the `input::state::Mouse` that is specific to a single widget.
@@ -43,10 +43,10 @@ pub struct Mouse<'a> {
 #[derive(Clone)]
 pub struct Events<'a> {
     ui_events: input::global::UiEvents<'a>,
-    capturing_keyboard: Option<widget::Index>,
-    capturing_mouse: Option<widget::Index>,
+    capturing_keyboard: Option<widget::Id>,
+    capturing_mouse: Option<widget::Id>,
     rect: Rect,
-    idx: widget::Index,
+    idx: widget::Id,
 }
 
 /// An `Iterator` yielding all button presses occuring within the given sequence of
@@ -159,7 +159,7 @@ impl<'a> Widget<'a> {
     /// Filters out only the events that directly pertain to the widget.
     ///
     /// All events will also be made relative to the widget's own (0, 0) origin.
-    pub fn for_widget(idx: widget::Index, rect: Rect, global: &'a input::Global) -> Self {
+    pub fn for_widget(idx: widget::Id, rect: Rect, global: &'a input::Global) -> Self {
         Widget {
             global: global,
             rect: rect,

@@ -50,11 +50,16 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        text_edit,
+        rectangle,
+    }
+}
+
 /// The `State` of the `TextBox` widget that will be cached within the `Ui`.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    text_edit_idx: widget::IndexSlot,
-    rectangle_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 impl<'a> TextBox<'a> {
@@ -116,8 +121,7 @@ impl<'a> Widget for TextBox<'a> {
 
     fn init_state(&self) -> State {
         State {
-            text_edit_idx: widget::IndexSlot::new(),
-            rectangle_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -127,7 +131,7 @@ impl<'a> Widget for TextBox<'a> {
 
     /// Update the state of the TextEdit.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let TextBox { text, .. } = self;
 
         let font_size = style.font_size(ui.theme());
@@ -143,21 +147,21 @@ impl<'a> Widget for TextBox<'a> {
             Rect { x: x, y: y }
         };
 
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(ui);
         let color = style.color(ui.theme());
         let border_color = style.border_color(ui.theme());
         widget::BorderedRectangle::new(rect.dim())
             .xy(rect.xy())
-            .graphics_for(idx)
-            .parent(idx)
+            .graphics_for(id)
+            .parent(id)
             .border(border)
             .color(color)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(rectangle_id, &mut ui);
 
         let mut events = Vec::new();
 
-        let text_edit_idx = state.text_edit_idx.get(&mut ui);
+        let text_edit_id = state.ids.text_edit.get(ui);
         let text_color = style.text_color(ui.theme());
         if let Some(new_string) = widget::TextEdit::new(text)
             .wh(text_rect.dim())
@@ -165,8 +169,8 @@ impl<'a> Widget for TextBox<'a> {
             .font_size(font_size)
             .color(text_color)
             .x_align_text(x_align)
-            .parent(idx)
-            .set(text_edit_idx, &mut ui)
+            .parent(id)
+            .set(text_edit_id, &mut ui)
         {
             events.push(Event::Update(new_string));
         }
@@ -174,7 +178,7 @@ impl<'a> Widget for TextBox<'a> {
         // Produce an event for any `Enter`/`Return` presses.
         //
         // TODO: We should probably be doing this via the `TextEdit` widget.
-        for widget_event in ui.widget_input(text_edit_idx).events() {
+        for widget_event in ui.widget_input(text_edit_id).events() {
             match widget_event {
                 event::Widget::Press(press) => match press.button {
                     event::Button::Keyboard(key) => match key {

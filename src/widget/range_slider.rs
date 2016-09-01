@@ -44,13 +44,18 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        border,
+        slider,
+        label,
+    }
+}
+
 /// Represents the state of the Slider widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     drag: Option<Drag>,
-    border_idx: widget::IndexSlot,
-    slider_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// The part of the `RangeSlider` that is in the process of being dragged.
@@ -130,9 +135,7 @@ impl<'a, T> Widget for RangeSlider<'a, T>
     fn init_state(&self) -> Self::State {
         State {
             drag: None,
-            border_idx: widget::IndexSlot::new(),
-            slider_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -153,7 +156,7 @@ impl<'a, T> Widget for RangeSlider<'a, T>
 
     /// Update the state of the Slider.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let RangeSlider { start, end, min, max, maybe_label, .. } = self;
 
         let border = style.border(ui.theme());
@@ -165,7 +168,7 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         let mut maybe_drag = state.drag;
         let mut new_start = start;
         let mut new_end = utils::clamp(end, start, max);
-        for widget_event in ui.widget_input(idx).events() {
+        for widget_event in ui.widget_input(id).events() {
             use event;
             use input;
 
@@ -273,10 +276,10 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         }
 
         // The **Rectangle** for the border.
-        let border_idx = state.border_idx.get(&mut ui);
+        let border_id = state.ids.border.get(ui);
 
         let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(idx).mouse()
+            ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()
                 } else {
@@ -286,37 +289,37 @@ impl<'a, T> Widget for RangeSlider<'a, T>
 
         let border_color = interaction_color(&ui, style.border_color(ui.theme()));
         widget::Rectangle::fill(rect.dim())
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(border_color)
-            .set(border_idx, &mut ui);
+            .set(border_id, ui);
 
         // The **Rectangle** for the adjustable slider.
         let start_x = value_to_x(new_start);
         let end_x = value_to_x(new_end);
         let slider_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
         let color = interaction_color(&ui, style.color(ui.theme()));
-        let slider_idx = state.slider_idx.get(&mut ui);
+        let slider_id = state.ids.slider.get(ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         widget::Rectangle::fill(slider_rect.dim())
-            .xy_relative_to(idx, slider_xy_offset)
-            .graphics_for(idx)
-            .parent(idx)
+            .xy_relative_to(id, slider_xy_offset)
+            .graphics_for(id)
+            .parent(id)
             .color(color)
-            .set(slider_idx, &mut ui);
+            .set(slider_id, &mut ui);
 
         // The **Text** for the slider's label (if it has one).
         if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
-            let label_idx = state.label_idx.get(&mut ui);
+            let label_id = state.ids.label.get(ui);
             widget::Text::new(label)
-                .mid_left_of(idx)
-                .graphics_for(idx)
+                .mid_left_of(id)
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .set(label_idx, &mut ui);
+                .set(label_id, &mut ui);
         }
 
         event

@@ -4,7 +4,6 @@ use {
     color,
     Color,
     Colorable,
-    NodeIndex,
     Positionable,
     Scalar,
     Sizeable,
@@ -20,7 +19,7 @@ use widget;
 ///
 /// The `List` widget simplifies this process by:
 ///
-/// - Generating `NodeIndex`s.
+/// - Generating `widget::Id`s.
 /// - Simplifying the positioning and sizing of items.
 /// - Optimised widget instantiation by only instantiating visible items. This is very useful for
 ///   lists containing many items, i.e. a `FileNavigator` over a directory with thousands of files.
@@ -49,12 +48,17 @@ widget_style! {
     }
 }
 
+widget_ids! {
+    Ids {
+        scroll_trigger,
+        items[],
+        scrollbar,
+    }
+}
+
 /// Represents the state of the List widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    scroll_trigger_idx: widget::IndexSlot,
-    item_indices: Vec<NodeIndex>,
-    scrollbar_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// The data necessary for instantiating a single item within a `List`.
@@ -62,16 +66,16 @@ pub struct State {
 pub struct Item {
     /// The index of the item within the list.
     pub i: usize,
-    /// The index generated for the widget.
-    pub widget_idx: NodeIndex,
-    /// The index used for the previous item's widget.
-    pub last_idx: Option<NodeIndex>,
+    /// The id generated for the widget.
+    pub widget_id: widget::Id,
+    /// The id used for the previous item's widget.
+    pub last_id: Option<widget::Id>,
     /// The width of the item.
     pub w: Scalar,
     /// The height of the item.
     pub h: Scalar,
-    /// The index of the `scroll_trigger` rectangle, upon which this widget will be placed.
-    scroll_trigger_idx: NodeIndex,
+    /// The id of the `scroll_trigger` rectangle, upon which this widget will be placed.
+    scroll_trigger_id: widget::Id,
     /// The distance between the top of the first visible item and the top of the `scroll_trigger`
     /// `Rectangle`. This field is used for positioning the item's widget.
     first_item_margin: Scalar,
@@ -95,19 +99,19 @@ pub enum ScrollbarPosition {
     OnTop,
 }
 
-/// A wrapper around a `List`'s `Scrollbar` and its `NodeIndex`.
+/// A wrapper around a `List`'s `Scrollbar` and its `widget::Id`.
 pub struct Scrollbar {
     widget: widget::Scrollbar<widget::scroll::Y>,
-    idx: NodeIndex,
+    id: widget::Id,
 }
 
 /// An `Iterator` yielding each `Item` in the list.
 pub struct Items {
     item_indices: std::ops::Range<usize>,
     next_item_indices_index: usize,
-    list_idx: widget::Index,
-    last_idx: Option<NodeIndex>,
-    scroll_trigger_idx: NodeIndex,
+    list_id: widget::Id,
+    last_id: Option<widget::Id>,
+    scroll_trigger_id: widget::Id,
     first_item_margin: Scalar,
     item_w: Scalar,
     item_h: Scalar,
@@ -193,9 +197,7 @@ impl Widget for List {
 
     fn init_state(&self) -> State {
         State {
-            scroll_trigger_idx: widget::IndexSlot::new(),
-            scrollbar_idx: widget::IndexSlot::new(),
-            item_indices: Vec::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -204,7 +206,7 @@ impl Widget for List {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, prev, mut ui, style, .. } = args;
+        let widget::UpdateArgs { id, state, rect, prev, mut ui, style, .. } = args;
         let List { item_h, num_items, item_instantiation, .. } = self;
 
         // We need a positive item height in order to do anything useful.
@@ -235,12 +237,12 @@ impl Widget for List {
         //
         // By using one long `Rectangle` widget to trigger the scrolling, this allows us to only
         // instantiate the visible items.
-        let scroll_trigger_idx = state.scroll_trigger_idx.get(&mut ui);
+        let scroll_trigger_id = state.ids.scroll_trigger.get(&mut ui);
         widget::Rectangle::fill([rect.w(), total_item_h])
-            .mid_top_of(idx)
+            .mid_top_of(id)
             .color(color::TRANSPARENT)
-            .parent(idx)
-            .set(scroll_trigger_idx, &mut ui);
+            .parent(id)
+            .set(scroll_trigger_id, &mut ui);
 
         // Determine the index range of the items that should be instantiated.
         let (item_idx_range, first_item_margin) = match item_instantiation {
@@ -250,7 +252,7 @@ impl Widget for List {
                 (range, margin)
             },
             ItemInstantiation::OnlyVisible => {
-                let scroll_trigger_rect = ui.rect_of(scroll_trigger_idx).unwrap();
+                let scroll_trigger_rect = ui.rect_of(scroll_trigger_id).unwrap();
                 let hidden_range_length = scroll_trigger_rect.top() - rect.top();
                 let num_top_hidden_items = hidden_range_length / item_h;
                 let num_visible_items = (rect.h() / item_h + 1.0).ceil() as usize;
@@ -265,21 +267,16 @@ impl Widget for List {
         };
 
         // Ensure there are at least as many indices as there are visible items.
-        let num_indices = state.item_indices.len();
-        if num_indices < item_idx_range.len() {
-            state.update(|state| {
-                let extension = (num_indices..item_idx_range.len())
-                    .map(|_| ui.new_unique_node_index());
-                state.item_indices.extend(extension);
-            });
+        if state.ids.items.len() < item_idx_range.len() {
+            state.update(|state| state.ids.items.resize(item_idx_range.len(), ui));
         }
 
         let items = Items {
-            list_idx: idx,
+            list_id: id,
             item_indices: item_idx_range,
             next_item_indices_index: 0,
-            last_idx: None,
-            scroll_trigger_idx: scroll_trigger_idx,
+            last_id: None,
+            scroll_trigger_id: scroll_trigger_id,
             first_item_margin: first_item_margin,
             item_w: item_w,
             item_h: item_h,
@@ -292,15 +289,15 @@ impl Widget for List {
             None => return (items, None),
         };
         let scrollbar_color = style.scrollbar_color(&ui.theme);
-        let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-        let scrollbar = widget::Scrollbar::y_axis(idx)
+        let scrollbar_id = state.ids.scrollbar.get(&mut ui);
+        let scrollbar = widget::Scrollbar::y_axis(id)
             .and_if(prev.maybe_floating.is_some(), |s| s.floating(true))
             .color(scrollbar_color)
             .thickness(scrollbar_w)
             .auto_hide(auto_hide);
         let scrollbar = Scrollbar {
             widget: scrollbar,
-            idx: scrollbar_idx,
+            id: scrollbar_id,
         };
 
         (items, Some(scrollbar))
@@ -315,19 +312,19 @@ impl Items {
         let Items {
             ref mut item_indices,
             ref mut next_item_indices_index,
-            ref mut last_idx,
-            list_idx,
-            scroll_trigger_idx,
+            ref mut last_id,
+            list_id,
+            scroll_trigger_id,
             first_item_margin,
             item_w,
             item_h,
         } = *self;
 
         // Retrieve the `node_index` that was generated for the next `Item`.
-        let node_index = match ui.widget_graph().widget(list_idx)
+        let node_index = match ui.widget_graph().widget(list_id)
             .and_then(|container| container.unique_widget_state::<List>())
             .and_then(|&graph::UniqueWidgetState { ref state, .. }| {
-                state.item_indices.get(*next_item_indices_index).map(|&idx| idx)
+                state.ids.items.get(*next_item_indices_index).map(|&id| id)
             })
         {
             Some(node_index) => {
@@ -341,14 +338,14 @@ impl Items {
             (Some(i), Some(node_index)) => {
                 let item = Item {
                     i: i,
-                    last_idx: *last_idx,
-                    widget_idx: node_index,
-                    scroll_trigger_idx: scroll_trigger_idx,
+                    last_id: *last_id,
+                    widget_id: node_index,
+                    scroll_trigger_id: scroll_trigger_id,
                     w: item_w,
                     h: item_h,
                     first_item_margin: first_item_margin,
                 };
-                *last_idx = Some(node_index);
+                *last_id = Some(node_index);
                 Some(item)
             },
             _ => None,
@@ -370,17 +367,17 @@ impl Item {
     pub fn set<W>(self, widget: W, ui: &mut UiCell) -> W::Event
         where W: Widget,
     {
-        let Item { widget_idx, last_idx, w, h, scroll_trigger_idx, first_item_margin, .. } = self;
+        let Item { widget_id, last_id, w, h, scroll_trigger_id, first_item_margin, .. } = self;
 
         widget
             .w_h(w, h)
-            .and(|w| match last_idx {
-                None => w.mid_top_with_margin_on(scroll_trigger_idx, first_item_margin)
-                    .align_left_of(scroll_trigger_idx),
-                Some(idx) => w.down_from(idx, 0.0),
+            .and(|w| match last_id {
+                None => w.mid_top_with_margin_on(scroll_trigger_id, first_item_margin)
+                    .align_left_of(scroll_trigger_id),
+                Some(id) => w.down_from(id, 0.0),
             })
-            .parent(scroll_trigger_idx)
-            .set(widget_idx, ui)
+            .parent(scroll_trigger_id)
+            .set(widget_id, ui)
     }
 
 }
@@ -389,7 +386,7 @@ impl Item {
 impl Scrollbar {
     /// Set the `Scrollbar` within the given `Ui`.
     pub fn set(self, ui: &mut UiCell) {
-        let Scrollbar { widget, idx } = self;
-        widget.set(idx, ui);
+        let Scrollbar { widget, id } = self;
+        widget.set(id, ui);
     }
 }

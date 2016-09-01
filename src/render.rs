@@ -10,7 +10,7 @@
 
 
 use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
-use graph::{self, Graph, NodeIndex};
+use graph::{self, Graph};
 use std;
 use text;
 use theme::Theme;
@@ -26,8 +26,8 @@ use widget::{self, primitive, Widget};
 /// require ownership over the sequence of primitives, consider using the `OwnedPrimitives` type.
 /// The `OwnedPrimitives` type can be produced by calling the `Primitives::owned` method.
 pub struct Primitives<'a> {
-    crop_stack: Vec<(NodeIndex, Rect)>,
-    depth_order: std::slice::Iter<'a, NodeIndex>,
+    crop_stack: Vec<(widget::Id, Rect)>,
+    depth_order: std::slice::Iter<'a, widget::Id>,
     graph: &'a Graph,
     theme: &'a Theme,
     fonts: &'a text::font::Map,
@@ -76,8 +76,8 @@ impl<'a> PrimitiveWalker for WalkOwnedPrimitives<'a> {
 
 /// Data required for rendering a single primitive widget.
 pub struct Primitive<'a> {
-    /// The index of the widget within the widget graph.
-    pub index: widget::Index,
+    /// The id of the widget within the widget graph.
+    pub id: widget::Id,
     /// State and style for this primitive widget.
     pub kind: PrimitiveKind<'a>,
     /// The Rect to which the primitive widget should be cropped.
@@ -183,7 +183,7 @@ pub struct Text<'a> {
 
 #[derive(Clone)]
 struct OwnedPrimitive {
-    index: widget::Index,
+    id: widget::Id,
     kind: OwnedPrimitiveKind,
     scizzor: Rect,
     rect: Rect,
@@ -297,7 +297,7 @@ impl<'a> Primitives<'a> {
 
     /// Constructor for the `Primitives` iterator.
     pub fn new(graph: &'a Graph,
-               depth_order: &'a [NodeIndex],
+               depth_order: &'a [widget::Id],
                theme: &'a Theme,
                fonts: &'a text::font::Map,
                window_dim: Dimensions) -> Self
@@ -335,8 +335,7 @@ impl<'a> Primitives<'a> {
             use widget::primitive::shape::polygon::{State as PolygonState};
             use widget::primitive::shape::Style as ShapeStyle;
 
-            let (idx, scizzor, container) = widget;
-            let index = graph.widget_id(idx).map_or_else(|| idx.into(), Into::into);
+            let (id, scizzor, container) = widget;
             let rect = container.rect;
 
             fn state_type_id<W>() -> std::any::TypeId
@@ -353,7 +352,7 @@ impl<'a> Primitives<'a> {
                     match *style {
                         ShapeStyle::Fill(_) => {
                             let kind = PrimitiveKind::Rectangle { color: color };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                         ShapeStyle::Outline(ref line_style) => {
                             let (l, r, b, t) = rect.l_r_b_t();
@@ -370,7 +369,7 @@ impl<'a> Primitives<'a> {
                                 thickness: thickness,
                                 points: &points[..5],
                             };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                     }
                 }
@@ -394,7 +393,7 @@ impl<'a> Primitives<'a> {
                     match *style {
                         ShapeStyle::Fill(_) => {
                             let kind = PrimitiveKind::Polygon { color: color, points: points };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
@@ -405,7 +404,7 @@ impl<'a> Primitives<'a> {
                                 thickness: thickness,
                                 points: points,
                             };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                     }
                 }
@@ -420,7 +419,7 @@ impl<'a> Primitives<'a> {
                     match *style {
                         ShapeStyle::Fill(_) => {
                             let kind = PrimitiveKind::Polygon { color: color, points: points };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
@@ -431,7 +430,7 @@ impl<'a> Primitives<'a> {
                                 thickness: thickness,
                                 points: points,
                             };
-                            return Some(new_primitive(index, kind, scizzor, rect));
+                            return Some(new_primitive(id, kind, scizzor, rect));
                         },
                     }
                 }
@@ -451,7 +450,7 @@ impl<'a> Primitives<'a> {
                         thickness: thickness,
                         points: points,
                     };
-                    return Some(new_primitive(index, kind, scizzor, rect));
+                    return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
             } else if container.type_id == std::any::TypeId::of::<PointPathState>() {
@@ -467,7 +466,7 @@ impl<'a> Primitives<'a> {
                         thickness: thickness,
                         points: points,
                     };
-                    return Some(new_primitive(index, kind, scizzor, rect));
+                    return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
             } else if container.type_id == state_type_id::<widget::Text>() {
@@ -507,7 +506,7 @@ impl<'a> Primitives<'a> {
                         text: text,
                         font_id: font_id,
                     };
-                    return Some(new_primitive(index, kind, scizzor, rect));
+                    return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
             } else if container.type_id == state_type_id::<widget::Image>() {
@@ -519,13 +518,13 @@ impl<'a> Primitives<'a> {
                         color: color,
                         source_rect: state.src_rect,
                     };
-                    return Some(new_primitive(index, kind, scizzor, rect));
+                    return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
             // Return an `Other` variant for all non-primitive widgets.
             } else {
                 let kind = PrimitiveKind::Other(container);
-                return Some(new_primitive(index, kind, scizzor, rect));
+                return Some(new_primitive(id, kind, scizzor, rect));
             }
         }
 
@@ -542,9 +541,9 @@ impl<'a> Primitives<'a> {
         let mut texts_string = String::new();
         let mut max_glyphs = 0;
 
-        while let Some(Primitive { index, rect, scizzor, kind }) = self.next() {
+        while let Some(Primitive { id, rect, scizzor, kind }) = self.next() {
             let new = |kind| OwnedPrimitive {
-                index: index,
+                id: id,
                 rect: rect,
                 scizzor: scizzor,
                 kind: kind,
@@ -689,9 +688,9 @@ impl<'a> WalkOwnedPrimitives<'a> {
             texts_str,
         } = *self;
 
-        primitives.next().map(move |&OwnedPrimitive { index, rect, scizzor, ref kind }| {
+        primitives.next().map(move |&OwnedPrimitive { id, rect, scizzor, ref kind }| {
             let new = |kind| Primitive {
-                index: index,
+                id: id,
                 rect: rect,
                 scizzor: scizzor,
                 kind: kind,
@@ -775,9 +774,9 @@ impl<'a> WalkOwnedPrimitives<'a> {
 
 
 /// Simplify the constructor for a `Primitive`.
-fn new_primitive(index: widget::Index, kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
+fn new_primitive(id: widget::Id, kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
     Primitive {
-        index: index,
+        id: id,
         kind: kind,
         scizzor: scizzor,
         rect: rect,
@@ -786,13 +785,13 @@ fn new_primitive(index: widget::Index, kind: PrimitiveKind, scizzor: Rect, rect:
 
 /// Retrieves the next visible widget from the `depth_order`, updating the `crop_stack` as
 /// necessary.
-fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
+fn next_widget<'a>(depth_order: &mut std::slice::Iter<widget::Id>,
                    graph: &'a Graph,
-                   crop_stack: &mut Vec<(NodeIndex, Rect)>,
-                   window_rect: Rect) -> Option<(graph::NodeIndex, Rect, &'a graph::Container)>
+                   crop_stack: &mut Vec<(widget::Id, Rect)>,
+                   window_rect: Rect) -> Option<(widget::Id, Rect, &'a graph::Container)>
 {
-    while let Some(&node_index) = depth_order.next() {
-        let container = match graph.widget(node_index) {
+    while let Some(&id) = depth_order.next() {
+        let container = match graph.widget(id) {
             Some(container) => container,
             None => continue,
         };
@@ -801,7 +800,7 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
         // *not* a depth-wise parent of the widget at the current `idx`, we should pop that
         // cropped context from the stack as we are done with it.
         while let Some(&(crop_parent_idx, _)) = crop_stack.last() {
-            if graph.does_recursive_depth_edge_exist(crop_parent_idx, node_index) {
+            if graph.does_recursive_depth_edge_exist(crop_parent_idx, id) {
                 break;
             } else {
                 crop_stack.pop();
@@ -816,17 +815,17 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<NodeIndex>,
         if container.crop_kids {
             let scizzor_rect = container.kid_area.rect.overlap(scizzor)
                 .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]));
-            crop_stack.push((node_index, scizzor_rect));
+            crop_stack.push((id, scizzor_rect));
         }
 
         // We only want to return primitives that are actually visible.
         let is_visible = container.rect.overlap(window_rect).is_some()
-            && graph::algo::cropped_area_of_widget(graph, node_index).is_some();
+            && graph::algo::cropped_area_of_widget(graph, id).is_some();
         if !is_visible {
             continue;
         }
 
-        return Some((node_index, scizzor, container));
+        return Some((id, scizzor, container));
     }
 
     None

@@ -3,7 +3,7 @@
 //! This module contains items related to the implementation of the `Widget` trait. It also
 //! re-exports all widgets (and their modules) that are provided by conrod.
 
-use graph::{self, NodeIndex};
+use graph;
 use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
 use std;
 use text::font;
@@ -11,8 +11,8 @@ use theme::{self, Theme};
 use ui::{self, Ui, UiCell};
 
 
-//pub use self::id::Id;
-pub use self::index::Index;
+pub use self::id::Id;
+//pub use self::index::Index;
 
 pub use self::primitive::line::{self, Line};
 pub use self::primitive::image::{self, Image};
@@ -50,8 +50,7 @@ pub use self::xy_pad::XYPad;
 #[macro_use] mod style;
 
 // Widget functionality modules.
-//mod id;
-mod index;
+#[macro_use] pub mod id;
 pub mod scroll;
 
 // Primitive widget modules.
@@ -86,9 +85,9 @@ pub struct UpdateArgs<'a, 'b: 'a, 'c, 'd: 'c, W>
     where W: Widget,
 {
     /// The **Widget**'s unique index.
-    pub idx: Index,
+    pub id: Id,
     /// The **Widget**'s parent unique index, if there is one.
-    pub maybe_parent_idx: Option<Index>,
+    pub maybe_parent_id: Option<Id>,
     /// The **Widget**'s previous state. Specifically, the state that is common between all widgets,
     /// such as positioning, floatability, draggability, etc.
     pub prev: &'a CommonState,
@@ -111,18 +110,6 @@ pub struct UpdateArgs<'a, 'b: 'a, 'c, 'd: 'c, W>
     /// Provides methods for immutably accessing the `Ui`'s `Theme` and `GlyphCache`.  Also allows
     /// calling `Widget::set` within the `Widget::update` method.
     pub ui: &'c mut UiCell<'d>,
-}
-
-/// A small cache for a single unique **NodeIndex**.
-///
-/// This should be used by **Widget**s within their unique **State** for instantiating their own
-/// unique widgets.
-///
-/// This should reduce the need for users to directly call `UiCell::new_unique_node_index` and in
-/// turn reduce related mistakes (i.e. accidentally calling it and growing the graph unnecessarily).
-#[derive(Clone, Debug, PartialEq)]
-pub struct IndexSlot {
-    maybe_idx: std::cell::Cell<Option<NodeIndex>>,
 }
 
 /// Arguments to the [**Widget::kid_area**](./trait.Widget#method.kid_area) method in a struct to
@@ -155,24 +142,24 @@ pub enum MaybeParent {
     /// The user specified the widget should not have any parents, so the Root will be used.
     None,
     /// The user gave a specific parent widget.
-    Some(Index),
+    Some(Id),
     /// No parent widget was specified, so we will assume they want the last parent.
     Unspecified,
 }
 
 impl MaybeParent {
-    /// Convert the **MaybeParent** into an **Option<Index>**.
+    /// Convert the **MaybeParent** into an **Option<Id>**.
     ///
-    /// If `Unspecified`, check the positioning to retrieve the **Index** from there.
+    /// If `Unspecified`, check the positioning to retrieve the **Id** from there.
     ///
     /// If `None`, the `Ui`'s `window` widget will be used.
     ///
     /// **Note:** This method does not check whether or not using the `window` widget as the parent
     /// would cause a cycle. If it is important that the inferred parent should not cause a cycle,
     /// use `get` instead.
-    pub fn get_unchecked(&self, ui: &Ui, x_pos: Position, y_pos: Position) -> Index {
+    pub fn get_unchecked(&self, ui: &Ui, x_pos: Position, y_pos: Position) -> Id {
         match *self {
-            MaybeParent::Some(idx) => idx,
+            MaybeParent::Some(id) => id,
             MaybeParent::None => ui.window.into(),
             MaybeParent::Unspecified => ui::infer_parent_unchecked(ui, x_pos, y_pos),
         }
@@ -180,8 +167,8 @@ impl MaybeParent {
 
     /// The same as `get_unchecked`, but checks whether or not the widget that we're inferring the
     /// parent for is the `Ui`'s window (which cannot have a parent, without creating a cycle).
-    pub fn get(&self, idx: Index, ui: &Ui, x_pos: Position, y_pos: Position) -> Option<Index> {
-        if idx == ui.window.into() {
+    pub fn get(&self, id: Id, ui: &Ui, x_pos: Position, y_pos: Position) -> Option<Id> {
+        if id == ui.window {
             None
         } else {
             Some(self.get_unchecked(ui, x_pos, y_pos))
@@ -207,7 +194,7 @@ pub struct CommonBuilder {
     /// Styling and positioning data that is common between all widget types.
     pub style: CommonStyle,
     /// The parent widget of the Widget.
-    pub maybe_parent_idx: MaybeParent,
+    pub maybe_parent_id: MaybeParent,
     /// Whether or not the Widget is a "floating" Widget.
     pub is_floating: bool,
     /// Whether or not the children of this **Widget** should be cropped to its `kid_area`.
@@ -239,7 +226,7 @@ pub struct CommonBuilder {
     /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
     /// default.
     /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
-    pub maybe_graphics_for: Option<Index>,
+    pub maybe_graphics_for: Option<Id>,
 }
 
 /// Styling and positioning data that is common between all widget types.
@@ -302,16 +289,16 @@ pub struct CommonState {
 pub struct PreUpdateCache {
     /// The **Widget**'s unique type identifier.
     pub type_id: std::any::TypeId,
-    /// The **Widget**'s unique Index.
-    pub idx: Index,
+    /// The **Widget**'s unique Id.
+    pub id: Id,
     /// The **Widget**'s parent's unique index (if it has a parent).
-    pub maybe_parent_idx: Option<Index>,
+    pub maybe_parent_id: Option<Id>,
     /// If this **Widget** is relatively positioned to another **Widget**, this will be the index
     /// of the **Widget** to which this **Widget** is relatively positioned along the *x* axis.
-    pub maybe_x_positioned_relatively_idx: Option<Index>,
+    pub maybe_x_positioned_relatively_id: Option<Id>,
     /// If this **Widget** is relatively positioned to another **Widget**, this will be the index
     /// of the **Widget** to which this **Widget** is relatively positioned along the *y* axis.
-    pub maybe_y_positioned_relatively_idx: Option<Index>,
+    pub maybe_y_positioned_relatively_id: Option<Id>,
     /// The **Rect** describing the **Widget**'s position and dimensions.
     pub rect: Rect,
     /// The z-axis depth - affects the render order of sibling widgets.
@@ -328,7 +315,7 @@ pub struct PreUpdateCache {
     pub maybe_y_scroll_state: Option<scroll::StateY>,
     /// Whether or not the **Widget** has been instantiated as a graphical element for some other
     /// widget.
-    pub maybe_graphics_for: Option<Index>,
+    pub maybe_graphics_for: Option<Id>,
 }
 
 // **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
@@ -341,10 +328,10 @@ pub struct PreUpdateCache {
 pub struct PostUpdateCache<W>
     where W: Widget,
 {
-    /// The **Widget**'s unique **Index**.
-    pub idx: Index,
-    /// The **Widget**'s parent's unique **Index** (if it has a parent).
-    pub maybe_parent_idx: Option<Index>,
+    /// The **Widget**'s unique **Id**.
+    pub id: Id,
+    /// The **Widget**'s parent's unique **Id** (if it has a parent).
+    pub maybe_parent_id: Option<Id>,
     /// The newly produced unique **Widget::State** associated with the **Widget**.
     pub state: W::State,
     /// The newly produced unique **Widget::Style** associated with the **Widget**.
@@ -372,12 +359,12 @@ fn default_dimension<W, F>(widget: &W, ui: &Ui, f: F) -> Dimension
 {
     ui.theme.widget_style::<W::Style>()
         .and_then(f)
-        .or_else(|| ui.maybe_prev_widget().map(|idx| Dimension::Of(idx, None)))
+        .or_else(|| ui.maybe_prev_widget().map(|id| Dimension::Of(id, None)))
         .unwrap_or_else(|| {
             let x_pos = widget.get_x_position(ui);
             let y_pos = widget.get_y_position(ui);
-            let parent_idx = widget.common().maybe_parent_idx.get_unchecked(ui, x_pos, y_pos);
-            Dimension::Of(parent_idx, None)
+            let parent_id = widget.common().maybe_parent_id.get_unchecked(ui, x_pos, y_pos);
+            Dimension::Of(parent_id, None)
         })
 }
 
@@ -560,7 +547,7 @@ pub trait Widget: Sized {
     /// demonstration of this.
     ///
     /// # Arguments
-    /// * idx - The `Widget`'s unique index (whether `Public` or `Internal`).
+    /// * id - The `Widget`'s unique index (whether `Public` or `Internal`).
     /// * prev - The previous common state of the Widget. If this is the first time **update** is
     /// called, `Widget::init_state` will be used to produce some intial state instead.
     /// * state - A wrapper around the `Widget::State`. See the [**State** docs](./struct.State)
@@ -635,14 +622,14 @@ pub trait Widget: Sized {
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
     ///
     /// This will attach this Widget to the parent widget.
-    fn parent<I: Into<Index>>(mut self, parent_idx: I) -> Self {
-        self.common_mut().maybe_parent_idx = MaybeParent::Some(parent_idx.into());
+    fn parent(mut self, parent_id: Id) -> Self {
+        self.common_mut().maybe_parent_id = MaybeParent::Some(parent_id);
         self
     }
 
     /// Specify that this widget has no parent widgets.
     fn no_parent(mut self) -> Self {
-        self.common_mut().maybe_parent_idx = MaybeParent::None;
+        self.common_mut().maybe_parent_id = MaybeParent::None;
         self
     }
 
@@ -676,8 +663,8 @@ pub trait Widget: Sized {
     /// - *b* will always be placed upon *a*'s total area, rather than its kid_area which is the
     /// default.
     /// - Any **Graphic** child of *b* will be considered as a **Graphic** child of *a*.
-    fn graphics_for<I: Into<Index>>(mut self, idx: I) -> Self {
-        self.common_mut().maybe_graphics_for = Some(idx.into());
+    fn graphics_for(mut self, id: Id) -> Self {
+        self.common_mut().maybe_graphics_for = Some(id);
         self
     }
 
@@ -789,11 +776,8 @@ pub trait Widget: Sized {
     /// - If the widget's state or style has changed, the **Ui** will be notified that the widget
     /// needs to be re-drawn.
     /// - The new State and Style will be cached within the `Ui`.
-    fn set<'a, 'b, I>(self, idx: I, ui_cell: &'a mut UiCell<'b>) -> Self::Event
-        where I: Into<Index>,
-    {
-        let idx: Index = idx.into();
-        set_widget(self, idx, ui_cell)
+    fn set<'a, 'b>(self, id: Id, ui_cell: &'a mut UiCell<'b>) -> Self::Event {
+        set_widget(self, id, ui_cell)
     }
 
 }
@@ -810,7 +794,7 @@ pub trait Widget: Sized {
 /// users have a clear, consise, purely functional `Widget` API. As a result, we try to keep this
 /// as verbosely annotated as possible. If anything is unclear, feel free to post an issue or PR
 /// with concerns/improvements to the github repo.
-fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Event
+fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
     where W: Widget,
 {
     let type_id = std::any::TypeId::of::<W::State>();
@@ -818,7 +802,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
     // Take the previous state of the widget from the cache if there is some to collect.
     let (maybe_prev_unique_state, maybe_prev_common, maybe_prev_style) =
         ui::widget_graph_mut(ui::ref_mut_from_ui_cell(ui))
-            .widget_mut(idx)
+            .widget_mut(id)
             .and_then(|container| {
 
                 // If the cache is already initialised for a different widget type, warn the user.
@@ -828,7 +812,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
                              "A widget of a different type already exists at the given WidgetId \
                              ({:?}). You tried to insert a {:?}, however the existing widget is a \
                              {:?}. Check your widgets' `WidgetId`s for errors.",
-                              idx, type_id, container.type_id).unwrap();
+                              id, type_id, container.type_id).unwrap();
                     return None;
                 }
 
@@ -870,7 +854,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
     // We need to hold onto the current "previously set widget", as this may change during our
     // `Widget`'s update method (i.e. if it sets any of its own widgets, they will become the last
     // previous widget).
-    let maybe_prev_widget_idx = ui.maybe_prev_widget();
+    let maybe_prev_widget_id = ui.maybe_prev_widget();
 
     let new_style = widget.style();
     let depth = widget.get_depth();
@@ -881,7 +865,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
 
     // Determine the id of the canvas that the widget is attached to. If not given explicitly,
     // check the positioning to retrieve the Id from there.
-    let maybe_parent_idx = widget.common().maybe_parent_idx.get(idx, ui, x_pos, y_pos);
+    let maybe_parent_id = widget.common().maybe_parent_id.get(id, ui, x_pos, y_pos);
 
     // Calculate the `xy` location of the widget, considering drag.
     let xy = maybe_prev_common
@@ -889,7 +873,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
         .and_then(|prev| {
             let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
             maybe_drag_area.map(|drag_area| {
-                let mut left_mouse_drags = ui.widget_input(idx).drags().left();
+                let mut left_mouse_drags = ui.widget_input(id).drags().left();
                 let maybe_first_drag = left_mouse_drags.next();
                 let prev_xy = prev.rect.xy();
                 maybe_first_drag
@@ -910,7 +894,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
         // If there is no previous state to compare for dragging, return an initial state.
         //
         // A function for generating the xy coords from the given alignment and Position.
-        .unwrap_or_else(|| ui.calc_xy(Some(idx), x_pos, y_pos, dim, place_on_kid_area));
+        .unwrap_or_else(|| ui.calc_xy(Some(id), x_pos, y_pos, dim, place_on_kid_area));
 
     // Construct the rectangle describing our Widget's area.
     let rect = Rect::from_xy_dim(xy, dim);
@@ -925,7 +909,7 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
         // If it is floating, check to see if we need to update the last time it was clicked.
         match maybe_prev_common.as_ref() {
             Some(prev) => {
-                let maybe_mouse = ui.widget_input(idx).mouse();
+                let maybe_mouse = ui.widget_input(id).mouse();
                 match (prev.maybe_floating, maybe_mouse) {
                     (Some(prev_floating), Some(mouse)) => {
                         if mouse.buttons.left().is_down() {
@@ -969,23 +953,23 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
     // `maybe_initial_alignment` field.
     let mut maybe_x_scroll_state = widget.common().maybe_x_scroll.map(|_scroll_args| {
         let maybe_prev = maybe_prev_common.as_ref().and_then(|p| p.maybe_x_scroll_state);
-        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev, 0.0)
+        scroll::State::update(ui, id, &prev_kid_area, maybe_prev, 0.0)
     });
     let mut maybe_y_scroll_state = widget.common().maybe_y_scroll.map(|_scroll_args| {
         let maybe_prev = maybe_prev_common.as_ref().and_then(|p| p.maybe_y_scroll_state);
-        scroll::State::update(ui, idx, &prev_kid_area, maybe_prev, 0.0)
+        scroll::State::update(ui, id, &prev_kid_area, maybe_prev, 0.0)
     });
 
-    for scroll in ui.widget_input(idx).scrolls() {
+    for scroll in ui.widget_input(id).scrolls() {
 
         if widget.common().maybe_x_scroll.is_some() {
             maybe_x_scroll_state =
-                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_x_scroll_state, scroll.x))
+                Some(scroll::State::update(ui, id, &prev_kid_area, maybe_x_scroll_state, scroll.x))
         }
 
         if widget.common().maybe_y_scroll.is_some() {
             maybe_y_scroll_state =
-                Some(scroll::State::update(ui, idx, &prev_kid_area, maybe_y_scroll_state, scroll.y))
+                Some(scroll::State::update(ui, id, &prev_kid_area, maybe_y_scroll_state, scroll.y))
         }
     }
 
@@ -1000,15 +984,15 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
         use Position::{Place, Relative, Direction, Align, Absolute};
 
         // Some widget to which this widget is relatively positioned (if there is one).
-        let maybe_positioned_relatively_idx = |pos: Position| match pos {
-            Place(_, maybe_idx) | Relative(_, maybe_idx) |
-            Direction(_, _, maybe_idx) | Align(_, maybe_idx) =>
-                maybe_idx.or(maybe_prev_widget_idx),
+        let maybe_positioned_relatively_id = |pos: Position| match pos {
+            Place(_, maybe_id) | Relative(_, maybe_id) |
+            Direction(_, _, maybe_id) | Align(_, maybe_id) =>
+                maybe_id.or(maybe_prev_widget_id),
             Absolute(_) => None,
         };
 
-        let maybe_x_positioned_relatively_idx = maybe_positioned_relatively_idx(x_pos);
-        let maybe_y_positioned_relatively_idx = maybe_positioned_relatively_idx(y_pos);
+        let maybe_x_positioned_relatively_id = maybe_positioned_relatively_id(x_pos);
+        let maybe_y_positioned_relatively_id = maybe_positioned_relatively_id(y_pos);
 
         // Retrieve whether or not the widget's children should be cropped to it.
         let crop_kids = widget.common().crop_kids;
@@ -1017,10 +1001,10 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
         let ui: &mut Ui = ui::ref_mut_from_ui_cell(ui);
         ui::pre_update_cache(ui, PreUpdateCache {
             type_id: type_id,
-            idx: idx,
-            maybe_parent_idx: maybe_parent_idx,
-            maybe_x_positioned_relatively_idx: maybe_x_positioned_relatively_idx,
-            maybe_y_positioned_relatively_idx: maybe_y_positioned_relatively_idx,
+            id: id,
+            maybe_parent_id: maybe_parent_id,
+            maybe_x_positioned_relatively_id: maybe_x_positioned_relatively_id,
+            maybe_y_positioned_relatively_id: maybe_y_positioned_relatively_id,
             rect: rect,
             depth: depth,
             kid_area: kid_area,
@@ -1059,8 +1043,8 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
             };
 
             let event = widget.update(UpdateArgs {
-                idx: idx,
-                maybe_parent_idx: maybe_parent_idx,
+                id: id,
+                maybe_parent_id: maybe_parent_id,
                 state: &mut state,
                 prev: &prev_common,
                 rect: rect,
@@ -1101,39 +1085,13 @@ fn set_widget<'a, 'b, W>(widget: W, idx: Index, ui: &'a mut UiCell<'b>) -> W::Ev
     // Finally, cache the `Widget`'s newly updated `State` and `Style` within the `ui`'s
     // `widget_graph`.
     ui::post_update_cache::<W>(ui, PostUpdateCache {
-        idx: idx,
-        maybe_parent_idx: maybe_parent_idx,
+        id: id,
+        maybe_parent_id: maybe_parent_id,
         state: unique_state,
         style: new_style,
     });
 
     event
-}
-
-
-
-
-impl IndexSlot {
-
-    /// Construct a new empty **IndexSlot**.
-    pub fn new() -> Self {
-        IndexSlot {
-            maybe_idx: ::std::cell::Cell::new(None),
-        }
-    }
-
-    /// Returns the **NodeIndex** held by the **IndexSlot**.
-    ///
-    /// If the **IndexSlot** does not yet hold a **NodeIndex**, the **UiCell** will be used to
-    /// produce a `new_unique_node_index`.
-    pub fn get(&self, ui: &mut UiCell) -> NodeIndex {
-        if self.maybe_idx.get().is_none() {
-            let new_idx = ui.new_unique_node_index();
-            self.maybe_idx.set(Some(new_idx));
-        }
-        self.maybe_idx.get().unwrap()
-    }
-
 }
 
 
@@ -1167,7 +1125,7 @@ impl CommonBuilder {
     pub fn new() -> CommonBuilder {
         CommonBuilder {
             style: CommonStyle::new(),
-            maybe_parent_idx: MaybeParent::Unspecified,
+            maybe_parent_id: MaybeParent::Unspecified,
             place_on_kid_area: true,
             maybe_graphics_for: None,
             is_floating: false,
@@ -1234,9 +1192,9 @@ impl<W> Positionable for W
 /// This is used within the impl of **Positionable** for **Widget**.
 fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> Option<Position> {
     match other_pos {
-        Position::Direction(_, _, maybe_idx) => Some(Position::Align(dir_align, maybe_idx)),
-        Position::Place(_, maybe_idx) => Some(Position::Align(Align::Middle, maybe_idx)),
-        Position::Relative(_, maybe_idx) => Some(Position::Relative(0.0, maybe_idx)),
+        Position::Direction(_, _, maybe_id) => Some(Position::Align(dir_align, maybe_id)),
+        Position::Place(_, maybe_id) => Some(Position::Align(Align::Middle, maybe_id)),
+        Position::Relative(_, maybe_id) => Some(Position::Relative(0.0, maybe_id)),
         Position::Align(_, _) | Position::Absolute(_) => None,
     }
 }

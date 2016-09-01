@@ -1,6 +1,6 @@
 use color::Color;
 use event;
-use graph::{self, Graph, NodeIndex};
+use graph::{self, Graph};
 use input;
 use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
 use render;
@@ -35,7 +35,7 @@ pub struct UiBuilder {
 /// `Ui` is the most important type within Conrod and is necessary for rendering and maintaining
 /// widget state.
 /// # Ui Handles the following:
-/// * Contains the state of all widgets which can be indexed via their widget::Index.
+/// * Contains the state of all widgets which can be indexed via their widget::Id.
 /// * Stores rendering state for each widget until the end of each render cycle.
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
@@ -44,17 +44,17 @@ pub struct Ui {
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
     /// An index into the root widget of the graph, representing the entire window.
-    pub window: NodeIndex,
+    pub window: widget::Id,
     /// Handles aggregation of events and providing them to Widgets
     pub global_input: input::Global,
     /// Manages all fonts that have been loaded by the user.
     pub fonts: text::font::Map,
     /// The Widget cache, storing state for all widgets.
     widget_graph: Graph,
-    /// The widget::Index of the widget that was last updated/set.
-    maybe_prev_widget_idx: Option<widget::Index>,
-    /// The widget::Index of the last widget used as a parent for another widget.
-    maybe_current_parent_idx: Option<widget::Index>,
+    /// The widget::Id of the widget that was last updated/set.
+    maybe_prev_widget_id: Option<widget::Id>,
+    /// The widget::Id of the last widget used as a parent for another widget.
+    maybe_current_parent_id: Option<widget::Id>,
     /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
     num_redraw_frames: u8,
@@ -65,12 +65,12 @@ pub struct Ui {
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
     /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
-    updated_widgets: std::collections::HashSet<NodeIndex>,
+    updated_widgets: std::collections::HashSet<widget::Id>,
     /// The `updated_widgets` for the previous `set_widgets` stage.
     ///
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
-    prev_updated_widgets: std::collections::HashSet<NodeIndex>,
+    prev_updated_widgets: std::collections::HashSet<widget::Id>,
     /// Scroll events that have been emitted during a call to `Ui::set_widgets`. These are usually
     /// emitted by some widget like the `Scrollbar`.
     ///
@@ -173,8 +173,8 @@ impl Ui {
             window: window,
             win_w: 0.0,
             win_h: 0.0,
-            maybe_prev_widget_idx: None,
-            maybe_current_parent_idx: None,
+            maybe_prev_widget_id: None,
+            maybe_current_parent_id: None,
             num_redraw_frames: SAFE_REDRAW_COUNT,
             redraw_count: SAFE_REDRAW_COUNT,
             maybe_background_color: None,
@@ -187,69 +187,65 @@ impl Ui {
     }
 
     /// Returns a `input::Widget` for the given widget
-    pub fn widget_input<I: Into<widget::Index>>(&self, widget: I) -> input::Widget {
-        let idx = widget.into();
-
+    pub fn widget_input(&self, widget: widget::Id) -> input::Widget {
         // If there's no rectangle for a given widget, then we use one with zero area.
         // This means that the resulting `input::Widget` will not include any mouse events
         // unless it has captured the mouse, since none will have occured over that area.
-        let rect = self.rect_of(idx).unwrap_or_else(|| {
+        let rect = self.rect_of(widget).unwrap_or_else(|| {
             let right_edge = self.win_w / 2.0;
             let bottom_edge = self.win_h / 2.0;
             Rect::from_xy_dim([right_edge, bottom_edge], [0.0, 0.0])
         });
-        input::Widget::for_widget(idx, rect, &self.global_input)
+        input::Widget::for_widget(widget, rect, &self.global_input)
     }
 
     /// The **Rect** for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn rect_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
-        let idx: widget::Index = idx.into();
-        self.widget_graph.widget(idx).map(|widget| widget.rect)
+    pub fn rect_of(&self, id: widget::Id) -> Option<Rect> {
+        self.widget_graph.widget(id).map(|widget| widget.rect)
     }
 
     /// The absolute width of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn w_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
-        self.rect_of(idx).map(|rect| rect.w())
+    pub fn w_of(&self, id: widget::Id) -> Option<Scalar> {
+        self.rect_of(id).map(|rect| rect.w())
     }
 
     /// The absolute height of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn h_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Scalar> {
-        self.rect_of(idx).map(|rect| rect.h())
+    pub fn h_of(&self, id: widget::Id) -> Option<Scalar> {
+        self.rect_of(id).map(|rect| rect.h())
     }
 
     /// The absolute dimensions for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn wh_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Dimensions> {
-        self.rect_of(idx).map(|rect| rect.dim())
+    pub fn wh_of(&self, id: widget::Id) -> Option<Dimensions> {
+        self.rect_of(id).map(|rect| rect.dim())
     }
 
     /// The coordinates for the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn xy_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Point> {
-        self.rect_of(idx).map(|rect| rect.xy())
+    pub fn xy_of(&self, id: widget::Id) -> Option<Point> {
+        self.rect_of(id).map(|rect| rect.xy())
     }
 
     /// The `kid_area` of the widget at the given index.
     ///
     /// Returns `None` if there is no widget for the given index.
-    pub fn kid_area_of<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
-        let idx: widget::Index = idx.into();
-        self.widget_graph.widget(idx).map(|widget| {
+    pub fn kid_area_of(&self, id: widget::Id) -> Option<Rect> {
+        self.widget_graph.widget(id).map(|widget| {
             widget.kid_area.rect.padding(widget.kid_area.pad)
         })
     }
 
     /// An index to the previously updated widget if there is one.
-    pub fn maybe_prev_widget(&self) -> Option<widget::Index> {
-        self.maybe_prev_widget_idx
+    pub fn maybe_prev_widget(&self) -> Option<widget::Id> {
+        self.maybe_prev_widget_id
     }
 
     /// Borrow the **Ui**'s `widget_graph`.
@@ -261,7 +257,7 @@ impl Ui {
     ///
     /// This set indicates which widgets have been instantiated since the beginning of the most
     /// recent `Ui::set_widgets` call.
-    pub fn updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
+    pub fn updated_widgets(&self) -> &std::collections::HashSet<widget::Id> {
         &self.updated_widgets
     }
 
@@ -269,21 +265,18 @@ impl Ui {
     ///
     /// This set indicates which widgets have were instantiated during the previous call to
     /// `Ui::set_widgets`.
-    pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<NodeIndex> {
+    pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<widget::Id> {
         &self.prev_updated_widgets
     }
 
     /// Scroll the widget at the given index by the given offset amount.
     ///
     /// The produced `Scroll` event will be applied upon the next call to `Ui::set_widgets`.
-    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2])
-        where I: Into<widget::Index>,
-    {
-        let widget_idx = widget_idx.into();
+    pub fn scroll_widget(&mut self, widget_id: widget::Id, offset: [Scalar; 2]) {
         let (x, y) = (offset[0], offset[1]);
 
         if x != 0.0 || y != 0.0 {
-            let event = event::Ui::Scroll(Some(widget_idx), event::Scroll {
+            let event = event::Ui::Scroll(Some(widget_id), event::Scroll {
                 x: x,
                 y: y,
                 modifiers: self.global_input.current.modifiers,
@@ -805,13 +798,13 @@ impl Ui {
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///
-    /// If getting the xy for a specific widget, its `widget::Index` should be specified so that we
+    /// If getting the xy for a specific widget, its `widget::Id` should be specified so that we
     /// can also consider the scroll offset of the scrollable parent widgets.
     ///
     /// The `place_on_kid_area` argument specifies whether or not **Place** **Position** variants
     /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
     pub fn calc_xy(&self,
-                   maybe_idx: Option<widget::Index>,
+                   maybe_id: Option<widget::Id>,
                    x_position: Position,
                    y_position: Position,
                    dim: Dimensions,
@@ -836,14 +829,14 @@ impl Ui {
 
                 Position::Absolute(abs) => abs,
 
-                Position::Relative(rel, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
+                Position::Relative(rel, maybe_id) =>
+                    maybe_id.or(ui.maybe_prev_widget_id).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| other_range.middle() + rel)
                         .unwrap_or(rel),
 
-                Position::Direction(direction, amt, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx)
+                Position::Direction(direction, amt, maybe_id) =>
+                    maybe_id.or(ui.maybe_prev_widget_id)
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| {
                             let range = Range::from_pos_and_len(0.0, dim);
@@ -857,8 +850,8 @@ impl Ui {
                             Direction::Backwards => -amt,
                         }),
 
-                Position::Align(align, maybe_idx) =>
-                    maybe_idx.or(ui.maybe_prev_widget_idx).or(Some(ui.window.into()))
+                Position::Align(align, maybe_id) =>
+                    maybe_id.or(ui.maybe_prev_widget_id).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| {
                             let range = Range::from_pos_and_len(0.0, dim);
@@ -870,15 +863,15 @@ impl Ui {
                         })
                         .unwrap_or(0.0),
 
-                Position::Place(place, maybe_idx) => {
-                    let parent_idx = maybe_idx
-                        .or(ui.maybe_current_parent_idx)
+                Position::Place(place, maybe_id) => {
+                    let parent_id = maybe_id
+                        .or(ui.maybe_current_parent_id)
                         .unwrap_or(ui.window.into());
                     let maybe_area = match place_on_kid_area {
-                        true => ui.widget_graph.widget(parent_idx)
+                        true => ui.widget_graph.widget(parent_id)
                             .map(|w| w.kid_area)
                             .map(|k| (range_from_rect(k.rect), start_and_end_pad(k.pad))),
-                        false => ui.rect_of(parent_idx)
+                        false => ui.rect_of(parent_id)
                             .map(|rect| (range_from_rect(rect), Range::new(0.0, 0.0))),
                     };
                     maybe_area
@@ -909,7 +902,7 @@ impl Ui {
         let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
-        maybe_idx
+        maybe_id
             .map(|idx| vec2_add(xy, graph::algo::scroll_offset(&self.widget_graph, idx)))
             .unwrap_or(xy)
     }
@@ -918,8 +911,8 @@ impl Ui {
     /// A function within which all widgets are instantiated by the user, normally situated within
     /// the "update" stage of an event loop.
     pub fn set_widgets(&mut self) -> UiCell {
-        self.maybe_prev_widget_idx = None;
-        self.maybe_current_parent_idx = None;
+        self.maybe_prev_widget_id = None;
+        self.maybe_current_parent_id = None;
 
         // Move the previous `updated_widgets` to `prev_updated_widgets` and clear
         // `updated_widgets` so that we're ready to store the newly updated widgets.
@@ -947,7 +940,7 @@ impl Ui {
                 .set(ui_cell.window, &mut ui_cell);
         }
 
-        ui_cell.ui.maybe_current_parent_idx = Some(ui_cell.window.into());
+        ui_cell.ui.maybe_current_parent_id = Some(ui_cell.window.into());
 
         ui_cell
     }
@@ -1027,9 +1020,8 @@ impl Ui {
 
 
     /// The **Rect** that bounds the kids of the widget with the given index.
-    pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
-        let idx: widget::Index = idx.into();
-        graph::algo::kids_bounding_box(&self.widget_graph, &self.prev_updated_widgets, idx)
+    pub fn kids_bounding_box(&self, id: widget::Id) -> Option<Rect> {
+        graph::algo::kids_bounding_box(&self.widget_graph, &self.prev_updated_widgets, id)
     }
 
 
@@ -1037,9 +1029,8 @@ impl Ui {
     /// index, including consideration of cropped scroll area.
     ///
     /// Otherwise, return None if the widget is not visible.
-    pub fn visible_area<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
-        let idx: widget::Index = idx.into();
-        graph::algo::cropped_area_of_widget(&self.widget_graph, idx)
+    pub fn visible_area(&self, id: widget::Id) -> Option<Rect> {
+        graph::algo::cropped_area_of_widget(&self.widget_graph, id)
     }
 
 }
@@ -1070,41 +1061,38 @@ impl<'a> UiCell<'a> {
     /// Returns a `input::Widget` with input events for the widget.
     ///
     /// All coordinates in the `input::Widget` will be relative to the widget at the given index.
-    pub fn widget_input<I: Into<widget::Index>>(&self, idx: I) -> input::Widget {
-        self.ui.widget_input(idx.into())
+    pub fn widget_input(&self, id: widget::Id) -> input::Widget {
+        self.ui.widget_input(id)
     }
 
-    /// Generate a new, unique NodeIndex into a Placeholder node within the `Ui`'s widget graph.
-    /// This should only be called once for each unique widget needed to avoid unnecessary bloat
-    /// within the `Ui`'s widget graph.
+    /// Generate a new, unique widget::Id into a Placeholder node within the `Ui`'s widget
+    /// graph. This should only be called once for each unique widget needed to avoid unnecessary
+    /// bloat within the `Ui`'s widget graph.
     ///
     /// When using this method in your `Widget`'s `update` method, be sure to store the returned
-    /// NodeIndex somewhere within your `Widget::State` so that it can be re-used on next update.
+    /// widget::Id somewhere within your `Widget::State` so that it can be re-used on next update.
     ///
     /// **Panics** if adding another node would exceed the maximum capacity for node indices.
-    pub fn new_unique_node_index(&mut self) -> NodeIndex {
+    pub fn new_unique_widget_id(&mut self) -> widget::Id {
         widget_graph_mut(&mut self.ui).add_placeholder()
     }
 
     /// The **Rect** that bounds the kids of the widget with the given index.
     ///
     /// Returns `None` if the widget has no children or if there's is no widget for the given index.
-    pub fn kids_bounding_box<I: Into<widget::Index>>(&self, idx: I) -> Option<Rect> {
-        self.ui.kids_bounding_box(idx)
+    pub fn kids_bounding_box(&self, id: widget::Id) -> Option<Rect> {
+        self.ui.kids_bounding_box(id)
     }
 
     /// Scroll the widget at the given index by the given offset amount.
     ///
     /// The produced `Scroll` event will be pushed to the `pending_scroll_events` and will be
     /// applied to the widget during the next call to `Ui::set_widgets`.
-    pub fn scroll_widget<I>(&mut self, widget_idx: I, offset: [Scalar; 2])
-        where I: Into<widget::Index>
-    {
-        let widget_idx = widget_idx.into();
+    pub fn scroll_widget(&mut self, id: widget::Id, offset: [Scalar; 2]) {
         let (x, y) = (offset[0], offset[1]);
 
         if x != 0.0 || y != 0.0 {
-            let event = event::Ui::Scroll(Some(widget_idx), event::Scroll {
+            let event = event::Ui::Scroll(Some(id), event::Scroll {
                 x: x,
                 y: y,
                 modifiers: self.ui.global_input.current.modifiers,
@@ -1176,15 +1164,15 @@ pub fn widget_graph_mut(ui: &mut Ui) -> &mut Graph {
 /// Infer a widget's `Depth` parent by examining it's *x* and *y* `Position`s.
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
-pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Index> {
+pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Id> {
     use Position::{Place, Relative, Direction, Align};
     match (x, y) {
-        (Place(_, maybe_parent_idx), _) | (_, Place(_, maybe_parent_idx)) =>
-            maybe_parent_idx,
-        (Direction(_, _, maybe_idx), _) | (_, Direction(_, _, maybe_idx)) |
-        (Align(_, maybe_idx), _)        | (_, Align(_, maybe_idx))        |
-        (Relative(_, maybe_idx), _)     | (_, Relative(_, maybe_idx))     =>
-            maybe_idx.or(ui.maybe_prev_widget_idx)
+        (Place(_, maybe_parent_id), _) | (_, Place(_, maybe_parent_id)) =>
+            maybe_parent_id,
+        (Direction(_, _, maybe_id), _) | (_, Direction(_, _, maybe_id)) |
+        (Align(_, maybe_id), _)        | (_, Align(_, maybe_id))        |
+        (Relative(_, maybe_id), _)     | (_, Relative(_, maybe_id))     =>
+            maybe_id.or(ui.maybe_prev_widget_id)
                 .and_then(|idx| ui.widget_graph.depth_parent(idx)),
         _ => None,
     }
@@ -1194,15 +1182,15 @@ pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<w
 /// Attempts to infer the parent of a widget from its *x*/*y* `Position`s and the current state of
 /// the `Ui`.
 ///
-/// If no parent can be inferred via the `Position`s, the `maybe_current_parent_idx` will be used.
+/// If no parent can be inferred via the `Position`s, the `maybe_current_parent_id` will be used.
 ///
-/// If `maybe_current_parent_idx` is `None`, the `Ui`'s `window` widget will be used.
+/// If `maybe_current_parent_id` is `None`, the `Ui`'s `window` widget will be used.
 ///
 /// **Note:** This function does not check whether or not using the `window` widget would cause a
 /// cycle.
-pub fn infer_parent_unchecked(ui: &Ui, x_pos: Position, y_pos: Position) -> widget::Index {
+pub fn infer_parent_unchecked(ui: &Ui, x_pos: Position, y_pos: Position) -> widget::Id {
     infer_parent_from_position(ui, x_pos, y_pos)
-        .or(ui.maybe_current_parent_idx)
+        .or(ui.maybe_current_parent_id)
         .unwrap_or(ui.window.into())
 }
 
@@ -1211,14 +1199,13 @@ pub fn infer_parent_unchecked(ui: &Ui, x_pos: Position, y_pos: Position) -> widg
 /// Set the widget that is being cached as the new `prev_widget`.
 /// Set the widget's parent as the new `current_parent`.
 pub fn pre_update_cache(ui: &mut Ui, widget: widget::PreUpdateCache) {
-    ui.maybe_prev_widget_idx = Some(widget.idx);
-    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
-    let widget_idx = widget.idx;
+    ui.maybe_prev_widget_id = Some(widget.id);
+    ui.maybe_current_parent_id = widget.maybe_parent_id;
+    let widget_id = widget.id;
     ui.widget_graph.pre_update_cache(ui.window, widget, ui.updated_widgets.len());
 
-    // Add the widget's `NodeIndex` to the set of updated widgets.
-    let node_idx = ui.widget_graph.node_index(widget_idx).expect("No NodeIndex");
-    ui.updated_widgets.insert(node_idx);
+    // Add the widget's `widget::Id` to the set of updated widgets.
+    ui.updated_widgets.insert(widget_id);
 }
 
 /// Cache some `PostUpdateCache` widget data into the widget graph.
@@ -1229,7 +1216,7 @@ pub fn post_update_cache<W>(ui: &mut Ui, widget: widget::PostUpdateCache<W>)
           W::State: 'static,
           W::Style: 'static,
 {
-    ui.maybe_prev_widget_idx = Some(widget.idx);
-    ui.maybe_current_parent_idx = widget.maybe_parent_idx;
+    ui.maybe_prev_widget_id = Some(widget.id);
+    ui.maybe_current_parent_id = widget.maybe_parent_id;
     ui.widget_graph.post_update_cache(widget);
 }

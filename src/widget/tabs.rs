@@ -4,7 +4,6 @@ use {
     Color,
     Dimensions,
     FontSize,
-    NodeIndex,
     Point,
     Rect,
     Scalar,
@@ -25,14 +24,11 @@ pub struct Tabs<'a> {
 }
 
 /// The state to be cached within the Canvas.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// An owned, ordered list of the **Tab**s and their associated indices.
     tabs: Vec<Tab>,
     /// An index into the `tabs` slice that represents the currently selected Canvas.
     maybe_selected_tab_idx: Option<usize>,
-    /// The relative location of the tab bar to the centre of the **Tabs** widget.
-    tab_bar_rect: Rect,
 }
 
 /// A single **Tab** in the list owned by the **Tabs** **State**.
@@ -41,7 +37,7 @@ pub struct Tab {
     /// The public identifier, given by the user.
     id: widget::Id,
     /// The **Tab**'s selectable **Button**.
-    button_idx: NodeIndex,
+    button_id: widget::Id,
 }
 
 /// The padding between the edge of the title bar and the title bar's label.
@@ -182,7 +178,6 @@ impl<'a> Widget for Tabs<'a> {
         State {
             tabs: Vec::new(),
             maybe_selected_tab_idx: None,
-            tab_bar_rect: Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]),
         }
     }
 
@@ -221,7 +216,7 @@ impl<'a> Widget for Tabs<'a> {
 
     /// Update the state of the Tabs.
     fn update(self, args: widget::UpdateArgs<Self>) {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let Tabs { tabs, maybe_starting_tab_idx, .. } = self;
         let layout = style.layout(&ui.theme);
         let font_size = style.label_font_size(&ui.theme);
@@ -257,7 +252,7 @@ impl<'a> Widget for Tabs<'a> {
                 if num_tabs < num_new_tabs {
                     let extension = tabs[num_tabs..].iter().map(|&(id, _)| Tab {
                         id: id,
-                        button_idx: ui.new_unique_node_index(),
+                        button_id: ui.new_unique_widget_id(),
                     });
                     state.tabs.extend(extension);
                 }
@@ -284,14 +279,14 @@ impl<'a> Widget for Tabs<'a> {
                 // We'll instantiate each selectable **Tab** as a **Button** widget.
                 if widget::Button::new()
                     .wh(dim)
-                    .xy_relative_to(idx, xy)
+                    .xy_relative_to(id, xy)
                     .color(color)
                     .border(border)
                     .border_color(border_color)
                     .label(label)
                     .label_color(label_color)
-                    .parent(idx)
-                    .set(tab.button_idx, &mut ui)
+                    .parent(id)
+                    .set(tab.button_id, &mut ui)
                     .was_clicked()
                 {
                     maybe_selected_tab_idx = Some(i);
@@ -313,9 +308,9 @@ impl<'a> Widget for Tabs<'a> {
             let &(child_id, _) = &tabs[selected_idx];
             widget::Canvas::new()
                 .with_style(canvas_style)
-                .kid_area_wh_of(idx)
-                .middle_of(idx)
-                .parent(idx)
+                .kid_area_wh_of(id)
+                .middle_of(id)
+                .parent(id)
                 .set(child_id, &mut ui);
         }
 

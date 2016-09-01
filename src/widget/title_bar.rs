@@ -27,10 +27,15 @@ pub struct TitleBar<'a> {
 }
 
 /// Unique state for the **TitleBar** widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
+}
+
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+    }
 }
 
 widget_style!{
@@ -65,14 +70,12 @@ const LABEL_PADDING: f64 = 4.0;
 impl<'a> TitleBar<'a> {
 
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
-    pub fn new<I>(label: &'a str, idx: I) -> Self
-        where I: Into<widget::Index> + Copy,
-    {
+    pub fn new(label: &'a str, id: widget::Id) -> Self {
         TitleBar {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
             label: label,
-        }.w_of(idx).mid_top_of(idx)
+        }.w_of(id).mid_top_of(id)
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
@@ -121,8 +124,7 @@ impl<'a> Widget for TitleBar<'a> {
 
     fn init_state(&self) -> State {
         State {
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(),
         }
     }
 
@@ -137,11 +139,11 @@ impl<'a> Widget for TitleBar<'a> {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let TitleBar { label, .. } = self;
 
         // BorderedRectangle widget.
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
+        let rectangle_id = state.ids.rectangle.get(ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
@@ -150,12 +152,12 @@ impl<'a> Widget for TitleBar<'a> {
             .color(color)
             .border(border)
             .border_color(border_color)
-            .middle_of(idx)
-            .graphics_for(idx)
-            .set(rectangle_idx, &mut ui);
+            .middle_of(id)
+            .graphics_for(id)
+            .set(rectangle_id, ui);
 
         // Label widget.
-        let label_idx = state.label_idx.get(&mut ui);
+        let label_id = state.ids.label.get(ui);
         let text_color = style.text_color(ui.theme());
         let text_align = style.text_align(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -166,13 +168,13 @@ impl<'a> Widget for TitleBar<'a> {
                 text.style.maybe_wrap = Some(maybe_wrap);
                 text.style.text_align = Some(text_align);
             })
-            .padded_w_of(rectangle_idx, border)
-            .middle_of(rectangle_idx)
+            .padded_w_of(rectangle_id, border)
+            .middle_of(rectangle_id)
             .color(text_color)
             .font_size(font_size)
             .line_spacing(line_spacing)
-            .graphics_for(idx)
-            .set(label_idx, &mut ui);
+            .graphics_for(id)
+            .set(label_id, ui);
     }
 
 }

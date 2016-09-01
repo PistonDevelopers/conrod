@@ -154,7 +154,7 @@ impl<A> State<A>
     ///
     /// ```
     pub fn update(ui: &Ui,
-                  idx: super::Index,
+                  idx: super::Id,
                   kid_area: &super::KidArea,
                   maybe_prev_scroll_state: Option<Self>,
                   additional_offset: Scalar) -> Self

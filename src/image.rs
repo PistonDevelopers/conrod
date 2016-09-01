@@ -5,7 +5,7 @@
 use std;
 use widget;
 
-/// A type used to map the `widget::Index` of `Image` widgets to their associated `Img` data.
+/// A type used to map the `widget::Id` of `Image` widgets to their associated `Img` data.
 ///
 /// The `image::Map` type is usually instantiated and loaded during the "setup" stage of the
 /// application before the main loop begins. A macro is provided to simplify the construction of
@@ -26,7 +26,15 @@ pub struct Map<Img> {
 }
 
 /// The type of `std::collections::HashMap` used within the `image::Map`.
-pub type HashMap<Img> = std::collections::HashMap<widget::Index, Img>;
+pub type HashMap<Img> = std::collections::HashMap<widget::Id, Img>;
+
+
+impl<Img> std::ops::Deref for Map<Img> {
+    type Target = HashMap<Img>;
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
 
 
 impl<Img> Map<Img> {
@@ -39,20 +47,6 @@ impl<Img> Map<Img> {
         }
     }
 
-    /// Borrow the `Img` associated with the given widget.
-    pub fn get<I>(&self, idx: I) -> Option<&Img>
-        where I: Into<widget::Index>,
-    {
-        self.map.get(&idx.into())
-    }
-
-    /// Whether or not the map already contains a mapping for the given widget.
-    pub fn contains_index<I>(&self, idx: I) -> bool
-        where I: Into<widget::Index>,
-    {
-        self.map.contains_key(&idx.into())
-    }
-
 
     // Calling any of the following methods will trigger a redraw when using `Ui::draw_if_changed`.
 
@@ -60,10 +54,9 @@ impl<Img> Map<Img> {
     /// Uniquely borrow the `Img` associated with the given widget.
     ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
-    pub fn get_mut<I>(&mut self, idx: I) -> Option<&mut Img>
-        where I: Into<widget::Index>,
-    {
-        self.map.get_mut(&idx.into())
+    pub fn get_mut(&mut self, id: widget::Id) -> Option<&mut Img> {
+        self.trigger_redraw.set(true);
+        self.map.get_mut(&id)
     }
 
     /// Inserts the given widget-image pair into the map.
@@ -74,22 +67,19 @@ impl<Img> Map<Img> {
     /// from the map and returned.
     ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
-    pub fn insert<I>(&mut self, idx: I, img: Img) -> Option<Img>
-        where I: Into<widget::Index>,
-    {
+    pub fn insert(&mut self, id: widget::Id, img: Img) -> Option<Img> {
         self.trigger_redraw.set(true);
-        self.map.insert(idx.into(), img)
+        self.map.insert(id, img)
     }
 
 }
 
-impl<Idx, Img> std::iter::Extend<(Idx, Img)> for Map<Img>
-    where Idx: Into<widget::Index>,
-{
+impl<Img> std::iter::Extend<(widget::Id, Img)> for Map<Img> {
     fn extend<I>(&mut self, mappings: I)
-        where I: IntoIterator<Item=(Idx, Img)>,
+        where I: IntoIterator<Item=(widget::Id, Img)>,
     {
-        self.map.extend(mappings.into_iter().map(|(ix, img)| (ix.into(), img)));
+        self.trigger_redraw.set(true);
+        self.map.extend(mappings.into_iter().map(|(id, img)| (id, img)));
     }
 }
 
