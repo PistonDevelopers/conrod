@@ -29,16 +29,21 @@ fn main() {
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
 
     // The `WidgetId` for our background and `Image` widgets.
-    widget_ids!(BACKGROUND, RUST_LOGO);
+    widget_ids!(Ids { background, rust_logo });
+    let ids = Ids::new();
+    let (background, rust_logo) = {
+        let ui = &mut ui.set_widgets();
+        (ids.background.get(ui), ids.rust_logo.get(ui))
+    };
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (RUST_LOGO, rust_logo(&mut window)),
+        (rust_logo, load_rust_logo(&mut window)),
     };
 
     // We'll instantiate the `Image` at its full size, so we'll retrieve its dimensions.
-    let (w, h) = image_map.get(RUST_LOGO).unwrap().get_size();
+    let (w, h) = image_map.get(&rust_logo).unwrap().get_size();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -57,15 +62,15 @@ fn main() {
         event.update(|_| {
             let ui = &mut ui.set_widgets();
             // Draw a light blue background.
-            widget::Canvas::new().color(color::LIGHT_BLUE).set(BACKGROUND, ui);
+            widget::Canvas::new().color(color::LIGHT_BLUE).set(background, ui);
             // Instantiate the `Image` at its full size in the middle of the window.
-            widget::Image::new().w_h(w as f64, h as f64).middle().set(RUST_LOGO, ui);
+            widget::Image::new().w_h(w as f64, h as f64).middle().set(rust_logo, ui);
         });
     }
 }
 
 // Load the Rust logo from our assets folder.
-fn rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
+fn load_rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
     let factory = &mut window.factory;

@@ -40,20 +40,21 @@ fn main() {
         conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
-    widget_ids! {
-        CANVAS,
-        BUTTON,
-        RUST_LOGO
-    }
+    widget_ids!(Ids { canvas, button, rust_logo });
+    let ids = Ids::new();
+    let (canvas, button, rust_logo) = {
+        let ui = &mut ui.set_widgets();
+        (ids.canvas.get(ui), ids.button.get(ui), ids.rust_logo.get(ui))
+    };
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (RUST_LOGO, rust_logo(&mut window)),
+        (rust_logo, load_rust_logo(&mut window)),
     };
 
     // We'll instantiate the `Button` at the logo's full size, so we'll retrieve its dimensions.
-    let (w, h) = image_map.get(RUST_LOGO).unwrap().get_size();
+    let (w, h) = image_map.get(&rust_logo).unwrap().get_size();
 
     // Our demonstration app that we'll control with our GUI.
     let mut bg_color = conrod::color::LIGHT_BLUE;
@@ -77,16 +78,16 @@ fn main() {
             widget::Canvas::new()
                 .pad(30.0)
                 .color(bg_color)
-                .set(CANVAS, ui);
+                .set(canvas, ui);
 
             // Button widget example button.
-            if widget::Button::image(RUST_LOGO)
+            if widget::Button::image(rust_logo)
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
-                .middle_of(CANVAS)
+                .middle_of(canvas)
                 .color(color::TRANSPARENT)
                 .border(0.0)
                 .image_color_with_feedback(color::BLACK)
-                .set(BUTTON, ui)
+                .set(button, ui)
                 .was_clicked()
             {
                 bg_color = color::rgb(rand::random(), rand::random(), rand::random());
@@ -108,7 +109,7 @@ fn main() {
 
 // Load the Rust logo from our assets folder.
 use piston_window::{Flip, G2dTexture, Texture};
-fn rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
+fn load_rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
     let factory = &mut window.factory;

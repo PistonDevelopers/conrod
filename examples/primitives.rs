@@ -5,6 +5,22 @@ extern crate piston_window;
 use piston_window::*;
 
 
+// Generate a type that will produce a unique `widget::Id` for each widget.
+widget_ids! {
+    Ids {
+        canvas,
+        line,
+        point_path,
+        rectangle_fill,
+        rectangle_outline,
+        trapezoid,
+        oval_fill,
+        oval_outline,
+        circle,
+    }
+}
+
+
 fn main() {
 
     // Change this to OpenGL::V2_1 if not working.
@@ -18,6 +34,9 @@ fn main() {
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
+
+    // A unique identifier for each widget.
+    let ids = Ids::new();
 
     // No text to draw, so we'll just create an empty text texture cache.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
@@ -34,7 +53,7 @@ fn main() {
         }
 
         // Update the widgets.
-        event.update(|_| set_ui(ui.set_widgets()));
+        event.update(|_| set_ui(ui.set_widgets(), &ids));
 
         // Draw the `Ui`.
         window.draw_2d(&event, |c, g| {
@@ -51,49 +70,38 @@ fn main() {
 }
 
 
-fn set_ui(ref mut ui: conrod::UiCell) {
+fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
     use conrod::{Positionable, Widget};
     use conrod::widget::{Canvas, Circle, Line, Oval, PointPath, Polygon, Rectangle};
     use std::iter::once;
 
-    // Generate a unique const `WidgetId` for each widget.
-    widget_ids!{
-        CANVAS,
-        LINE,
-        POINT_PATH,
-        RECTANGLE_FILL,
-        RECTANGLE_OUTLINE,
-        TRAPEZOID,
-        OVAL_FILL,
-        OVAL_OUTLINE,
-        CIRCLE,
-    };
-
     // The background canvas upon which we'll place our widgets.
-    Canvas::new().pad(80.0).set(CANVAS, ui);
+    let canvas = ids.canvas.get(ui);
+    Canvas::new().pad(80.0).set(canvas, ui);
 
-    Line::centred([-40.0, -40.0], [40.0, 40.0]).top_left_of(CANVAS).set(LINE, ui);
+    let line = ids.line.get(ui);
+    Line::centred([-40.0, -40.0], [40.0, 40.0]).top_left_of(canvas).set(line, ui);
 
     let left = [-40.0, -40.0];
     let top = [0.0, 40.0];
     let right = [40.0, -40.0];
     let points = once(left).chain(once(top)).chain(once(right));
-    PointPath::centred(points).down(80.0).set(POINT_PATH, ui);
+    PointPath::centred(points).down(80.0).set(ids.point_path.get(ui), ui);
 
-    Rectangle::fill([80.0, 80.0]).down(80.0).set(RECTANGLE_FILL, ui);
+    Rectangle::fill([80.0, 80.0]).down(80.0).set(ids.rectangle_fill.get(ui), ui);
 
-    Rectangle::outline([80.0, 80.0]).down(80.0).set(RECTANGLE_OUTLINE, ui);
+    Rectangle::outline([80.0, 80.0]).down(80.0).set(ids.rectangle_outline.get(ui), ui);
 
     let bl = [-40.0, -40.0];
     let tl = [-20.0, 40.0];
     let tr = [20.0, 40.0];
     let br = [40.0, -40.0];
     let points = once(bl).chain(once(tl)).chain(once(tr)).chain(once(br));
-    Polygon::centred_fill(points).right_from(LINE, 80.0).set(TRAPEZOID, ui);
+    Polygon::centred_fill(points).right_from(line, 80.0).set(ids.trapezoid.get(ui), ui);
 
-    Oval::fill([40.0, 80.0]).down(80.0).align_middle_x().set(OVAL_FILL, ui);
+    Oval::fill([40.0, 80.0]).down(80.0).align_middle_x().set(ids.oval_fill.get(ui), ui);
 
-    Oval::outline([80.0, 40.0]).down(100.0).align_middle_x().set(OVAL_OUTLINE, ui);
+    Oval::outline([80.0, 40.0]).down(100.0).align_middle_x().set(ids.oval_outline.get(ui), ui);
 
-    Circle::fill(40.0).down(100.0).align_middle_x().set(CIRCLE, ui);
+    Circle::fill(40.0).down(100.0).align_middle_x().set(ids.circle.get(ui), ui);
 }

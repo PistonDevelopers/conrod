@@ -6,6 +6,10 @@ extern crate piston_window;
 
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
+widget_ids! {
+    Ids { canvas, list }
+}
+
 fn main() {
 
     // Construct the window.
@@ -16,8 +20,11 @@ fn main() {
             .opengl(OpenGL::V3_2).exit_on_esc(true).samples(4).vsync(true).build().unwrap();
     window.set_ups(60);
 
-    // construct our `Ui`.
+    // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
+
+    // Unique identifier for each widget.
+    let ids = Ids::new();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -42,7 +49,7 @@ fn main() {
         }
 
         event.update(|_| {
-            set_ui(ui.set_widgets(), &mut list);
+            set_ui(ui.set_widgets(), &mut list, &ids);
         });
 
         window.draw_2d(&event, |c, g| {
@@ -59,21 +66,20 @@ fn main() {
 }
 
 // Declare the `WidgetId`s and instantiate the widgets.
-fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool]) {
+fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool], ids: &Ids) {
     use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
-    widget_ids!{CANVAS, LIST};
-
-    widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+    let canvas = ids.canvas.get(ui);
+    widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(canvas, ui);
 
     const ITEM_HEIGHT: conrod::Scalar = 50.0;
     let num_items = list.len();
 
     let (mut items, scrollbar) = widget::List::new(num_items, ITEM_HEIGHT)
         .scrollbar_on_top()
-        .middle_of(CANVAS)
-        .wh_of(CANVAS)
-        .set(LIST, ui);
+        .middle_of(canvas)
+        .wh_of(canvas)
+        .set(ids.list.get(ui), ui);
 
     while let Some(item) = items.next(ui) {
         let i = item.i;
@@ -87,7 +93,5 @@ fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool]) {
         }
     }
 
-    if let Some(scrollbar) = scrollbar {
-        scrollbar.set(ui);
-    }
+    scrollbar.unwrap().set(ui);
 }

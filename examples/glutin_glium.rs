@@ -68,8 +68,10 @@ mod feature {
                 "
             }).unwrap();
 
-        // construct our `Ui`.
+        // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new().build();
+
+        let ids = Ids::new();
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
         let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -145,7 +147,7 @@ mod feature {
                 let mut vertices: Vec<Vertex> = Vec::new();
 
                 // Draw each primitive in order of depth.
-                while let Some(render::Primitive { index, kind, scizzor, rect }) = primitives.next() {
+                while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
 
                         render::PrimitiveKind::Rectangle { color } => {
@@ -264,8 +266,10 @@ mod feature {
                 }
             }
 
-            // Update all widgets within the `Ui`.
-            set_widgets(ui.set_widgets());
+            if ui.global_input.events().next().is_some() {
+                // Update all widgets within the `Ui`.
+                set_widgets(ui.set_widgets(), &ids);
+            }
 
             // Avoid hogging the CPU.
             std::thread::sleep(std::time::Duration::from_millis(10));
@@ -273,17 +277,21 @@ mod feature {
     }
 
 
+    // Generate a type which may produce unique identifier for each widget.
+    widget_ids! {
+        Ids {
+            canvas,
+            text,
+        }
+    }
+
+
     /// Instantiate the widgets.
-    fn set_widgets(ref mut ui: conrod::UiCell) {
+    fn set_widgets(ref mut ui: conrod::UiCell, ids: &Ids) {
         use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 
-        widget_ids!{
-            CANVAS,
-            BUTTON,
-            TEXT,
-        };
-
-        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+        let canvas = ids.canvas.get(ui);
+        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(canvas, ui);
 
         // Some starting text to edit.
         let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -296,12 +304,12 @@ mod feature {
 
         //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
         widget::Text::new(demo_text)
-            .middle_of(CANVAS)
-            .wh_of(CANVAS)
+            .middle_of(canvas)
+            .wh_of(canvas)
             .font_size(20)
             .color(conrod::color::BLACK)
             .align_text_middle()
-            .set(TEXT, ui);
+            .set(ids.text.get(ui), ui);
     }
 }
 

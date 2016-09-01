@@ -21,6 +21,10 @@ fn main() {
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
 
+    // Generate the widget identifiers.
+    widget_ids!(Ids { canvas, counter });
+    let ids = Ids::new();
+
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
@@ -47,18 +51,15 @@ fn main() {
         event.update(|_| {
             let ui = &mut ui.set_widgets();
 
-            // Generate the ID for the Button COUNTER.
-            widget_ids!(CANVAS, COUNTER);
-
             // Create a background canvas upon which we'll place the button.
-            widget::Canvas::new().pad(40.0).set(CANVAS, ui);
+            widget::Canvas::new().pad(40.0).set(ids.canvas.get(ui), ui);
 
             // Draw the button and increment `count` if pressed.
             for _click in widget::Button::new()
-                .middle_of(CANVAS)
+                .middle_of(ids.canvas.get(ui))
                 .w_h(80.0, 80.0)
                 .label(&count.to_string())
-                .set(COUNTER, ui)
+                .set(ids.counter.get(ui), ui)
             {
                 count += 1;
             }

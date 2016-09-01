@@ -6,6 +6,7 @@ extern crate piston_window;
 
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
+
 fn main() {
     const WIDTH: u32 = 800;
     const HEIGHT: u32 = 600;
@@ -34,6 +35,9 @@ fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
 
+    // Instantiate the generated list of widget identifiers.
+    let ids = &mut Ids::new();
+
     // Poll events from the window.
     while let Some(event) = window.next() {
 
@@ -43,7 +47,7 @@ fn main() {
         }
 
         event.update(|_| {
-            set_widgets(ui.set_widgets());
+            set_widgets(ui.set_widgets(), ids);
         });
 
         window.draw_2d(&event, |c, g| {
@@ -61,58 +65,73 @@ fn main() {
 
 
 // Draw the Ui.
-fn set_widgets(ref mut ui: conrod::UiCell) {
+fn set_widgets(ref mut ui: conrod::UiCell, ids: &mut Ids) {
     use conrod::{color, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
     // Construct our main `Canvas` tree.
+    let header = ids.header.get(ui);
+    let left_column = ids.left_column.get(ui);
+    let middle_column = ids.middle_column.get(ui);
+    let right_column = ids.right_column.get(ui);
+    let footer = ids.footer.get(ui);
     widget::Canvas::new().flow_down(&[
-        (HEADER, widget::Canvas::new().color(color::BLUE).pad_bottom(20.0)),
-        (BODY, widget::Canvas::new().length(300.0).flow_right(&[
-            (LEFT_COLUMN, widget::Canvas::new().color(color::LIGHT_ORANGE).pad(20.0)),
-            (MIDDLE_COLUMN, widget::Canvas::new().color(color::ORANGE)),
-            (RIGHT_COLUMN, widget::Canvas::new().color(color::DARK_ORANGE).pad(20.0)),
+        (header, widget::Canvas::new().color(color::BLUE).pad_bottom(20.0)),
+        (ids.body.get(ui), widget::Canvas::new().length(300.0).flow_right(&[
+            (left_column, widget::Canvas::new().color(color::LIGHT_ORANGE).pad(20.0)),
+            (middle_column, widget::Canvas::new().color(color::ORANGE)),
+            (right_column, widget::Canvas::new().color(color::DARK_ORANGE).pad(20.0)),
         ])),
-        (FOOTER, widget::Canvas::new().color(color::BLUE).scroll_kids_vertically()),
-    ]).set(MASTER, ui);
+        (footer, widget::Canvas::new().color(color::BLUE).scroll_kids_vertically()),
+    ]).set(ids.master.get(ui), ui);
 
     // A scrollbar for the `FOOTER` canvas.
-    widget::Scrollbar::y_axis(FOOTER).auto_hide(true).set(FOOTER_SCROLLBAR, ui);
+    widget::Scrollbar::y_axis(footer).auto_hide(true).set(ids.footer_scrollbar.get(ui), ui);
 
     // Now we'll make a couple floating `Canvas`ses.
     let floating = widget::Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
-    floating.middle_of(LEFT_COLUMN).title_bar("Blue").color(color::BLUE).set(FLOATING_A, ui);
-    floating.middle_of(RIGHT_COLUMN).title_bar("Orange").color(color::LIGHT_ORANGE).set(FLOATING_B, ui);
+    let (floating_a, floating_b) = (ids.floating_a.get(ui), ids.floating_b.get(ui));
+    floating.middle_of(left_column).title_bar("Blue").color(color::BLUE).set(floating_a, ui);
+    floating.middle_of(right_column).title_bar("Orange").color(color::LIGHT_ORANGE).set(floating_b, ui);
 
     // Here we make some canvas `Tabs` in the middle column.
-    widget::Tabs::new(&[(TAB_FOO, "FOO"), (TAB_BAR, "BAR"), (TAB_BAZ, "BAZ")])
-        .wh_of(MIDDLE_COLUMN)
+    let (tab_foo, tab_bar, tab_baz) = (ids.tab_foo.get(ui), ids.tab_bar.get(ui), ids.tab_baz.get(ui));
+    widget::Tabs::new(&[(tab_foo, "FOO"), (tab_bar, "BAR"), (tab_baz, "BAZ")])
+        .wh_of(middle_column)
         .color(color::BLUE)
         .label_color(color::WHITE)
-        .middle_of(MIDDLE_COLUMN)
-        .set(TABS, ui);
+        .middle_of(middle_column)
+        .set(ids.tabs.get(ui), ui);
 
-    widget::Text::new("Fancy Title").color(color::LIGHT_ORANGE).font_size(48).middle_of(HEADER).set(TITLE, ui);
-    widget::Text::new("Subtitle").color(color::BLUE.complement()).mid_bottom_of(HEADER).set(SUBTITLE, ui);
+    widget::Text::new("Fancy Title")
+        .color(color::LIGHT_ORANGE)
+        .font_size(48)
+        .middle_of(header)
+        .set(ids.title.get(ui), ui);
+    widget::Text::new("Subtitle")
+        .color(color::BLUE.complement())
+        .mid_bottom_of(header)
+        .set(ids.subtitle.get(ui), ui);
 
     widget::Text::new("Top Left")
         .color(color::LIGHT_ORANGE.complement())
-        .top_left_of(LEFT_COLUMN)
-        .set(TOP_LEFT, ui);
+        .top_left_of(left_column)
+        .set(ids.top_left.get(ui), ui);
 
     widget::Text::new("Bottom Right")
         .color(color::DARK_ORANGE.complement())
-        .bottom_right_of(RIGHT_COLUMN)
-        .set(BOTTOM_RIGHT, ui);
+        .bottom_right_of(right_column)
+        .set(ids.bottom_right.get(ui), ui);
 
-    widget::Text::new("Foo!").color(color::WHITE).font_size(36).middle_of(TAB_FOO).set(FOO_LABEL, ui);
-    widget::Text::new("Bar!").color(color::WHITE).font_size(36).middle_of(TAB_BAR).set(BAR_LABEL, ui);
-    widget::Text::new("BAZ!").color(color::WHITE).font_size(36).middle_of(TAB_BAZ).set(BAZ_LABEL, ui);
+    fn text (text: widget::Text) -> widget::Text { text.color(color::WHITE).font_size(36) }
+    text(widget::Text::new("Foo!")).middle_of(tab_foo).set(ids.foo_label.get(ui), ui);
+    text(widget::Text::new("Bar!")).middle_of(tab_bar).set(ids.bar_label.get(ui), ui);
+    text(widget::Text::new("BAZ!")).middle_of(tab_baz).set(ids.baz_label.get(ui), ui);
 
-    let footer_wh = ui.wh_of(FOOTER).unwrap();
+    let footer_wh = ui.wh_of(footer).unwrap();
     let mut elements = widget::Matrix::new(COLS, ROWS)
         .w_h(footer_wh[0], footer_wh[1] * 2.0)
-        .mid_top_of(FOOTER)
-        .set(BUTTON_MATRIX, ui);
+        .mid_top_of(footer)
+        .set(ids.button_matrix.get(ui), ui);
     while let Some(elem) = elements.next(ui) {
         let (r, c) = (elem.row, elem.col);
         let n = c + r * c;
@@ -124,10 +143,10 @@ fn set_widgets(ref mut ui: conrod::UiCell) {
     }
 
     let button = widget::Button::new().color(color::RED).w_h(30.0, 30.0);
-    for _click in button.clone().middle_of(FLOATING_A).set(BING, ui) {
+    for _click in button.clone().middle_of(floating_a).set(ids.bing.get(ui), ui) {
         println!("Bing!");
     }
-    for _click in button.middle_of(FLOATING_B).set(BONG, ui) {
+    for _click in button.middle_of(floating_b).set(ids.bong.get(ui), ui) {
         println!("Bong!");
     }
 }
@@ -137,36 +156,33 @@ fn set_widgets(ref mut ui: conrod::UiCell) {
 const ROWS: usize = 10;
 const COLS: usize = 24;
 
-
 // Generate a unique `WidgetId` for each widget.
 widget_ids! {
+    Ids {
+        master,
+        header,
+        body,
+        left_column,
+        middle_column,
+        right_column,
+        footer,
+        footer_scrollbar,
+        floating_a,
+        floating_b,
+        tabs,
+        tab_foo,
+        tab_bar,
+        tab_baz,
 
-    // Canvas IDs.
-    MASTER,
-    HEADER,
-    BODY,
-    LEFT_COLUMN,
-    MIDDLE_COLUMN,
-    RIGHT_COLUMN,
-    FOOTER,
-    FOOTER_SCROLLBAR,
-    FLOATING_A,
-    FLOATING_B,
-    TABS,
-    TAB_FOO,
-    TAB_BAR,
-    TAB_BAZ,
-
-    // Widget IDs.
-    TITLE,
-    SUBTITLE,
-    TOP_LEFT,
-    BOTTOM_RIGHT,
-    FOO_LABEL,
-    BAR_LABEL,
-    BAZ_LABEL,
-    BUTTON_MATRIX,
-    BING,
-    BONG,
-
+        title,
+        subtitle,
+        top_left,
+        bottom_right,
+        foo_label,
+        bar_label,
+        baz_label,
+        button_matrix,
+        bing,
+        bong,
+    }
 }
