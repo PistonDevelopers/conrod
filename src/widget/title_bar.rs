@@ -122,13 +122,13 @@ impl<'a> Widget for TitleBar<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -143,7 +143,6 @@ impl<'a> Widget for TitleBar<'a> {
         let TitleBar { label, .. } = self;
 
         // BorderedRectangle widget.
-        let rectangle_id = state.ids.rectangle.get(ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
@@ -154,10 +153,9 @@ impl<'a> Widget for TitleBar<'a> {
             .border_color(border_color)
             .middle_of(id)
             .graphics_for(id)
-            .set(rectangle_id, ui);
+            .set(state.ids.rectangle, ui);
 
         // Label widget.
-        let label_id = state.ids.label.get(ui);
         let text_color = style.text_color(ui.theme());
         let text_align = style.text_align(ui.theme());
         let font_size = style.font_size(ui.theme());
@@ -168,13 +166,13 @@ impl<'a> Widget for TitleBar<'a> {
                 text.style.maybe_wrap = Some(maybe_wrap);
                 text.style.text_align = Some(text_align);
             })
-            .padded_w_of(rectangle_id, border)
-            .middle_of(rectangle_id)
+            .padded_w_of(state.ids.rectangle, border)
+            .middle_of(state.ids.rectangle)
             .color(text_color)
             .font_size(font_size)
             .line_spacing(line_spacing)
             .graphics_for(id)
-            .set(label_id, ui);
+            .set(state.ids.label, ui);
     }
 
 }

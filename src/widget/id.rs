@@ -2,8 +2,8 @@
 //! simplify the process of generating them.
 
 use daggy;
+use graph::Graph;
 use std;
-use UiCell;
 
 /// Unique widget identifier.
 ///
@@ -16,8 +16,12 @@ use UiCell;
 /// `widget::Id`s may be generated via the `widget_ids!` macro.
 pub type Id = daggy::NodeIndex<u32>;
 
-/// A single lazily generated `widget::Id`.
-pub struct Single(std::cell::Cell<Option<Id>>);
+/// Used for generating new unique `widget::Id`s.
+///
+/// `Generator` is used by the `widget_ids!` macro and the types and fields that it generates in
+/// order to generate unique `widget::Id`s for each of the generated fields.
+pub struct Generator<'a> { widget_graph: &'a mut Graph }
+
 /// A list of lazily generated `widget::Id`s.
 pub struct List(Vec<Id>);
 /// An iterator-like type for producing indices from a `List`.
@@ -25,26 +29,29 @@ pub struct List(Vec<Id>);
 pub struct ListWalk { i: usize }
 
 
-impl Single {
+impl<'a> Generator<'a> {
 
-    /// Construct a cache for a single index.
-    pub fn new() -> Self {
-        Single(std::cell::Cell::new(None))
-    }
-
-    /// Retrieve the `widget::Id`, or generate a new one if one hasn't yet been retrieved.
-    pub fn get(&self, ui: &mut UiCell) -> Id {
-        match self.0.get() {
-            Some(id) => id,
-            None => {
-                let id = ui.new_unique_widget_id();
-                self.0.set(Some(id));
-                id
-            },
+    /// Constructor for a new `widget::Id` generator.
+    pub fn new(widget_graph: &'a mut Graph) -> Self {
+        Generator {
+            widget_graph: widget_graph,
         }
     }
 
+    /// Generate a new, unique `widget::Id` into a Placeholder node within the widget graph. This
+    /// should only be called once for each unique widget needed to avoid unnecessary bloat within
+    /// the `Ui`'s widget graph.
+    ///
+    /// When using this method, be sure to store the returned `widget::Id` somewhere so that it can
+    /// be re-used on next update.
+    ///
+    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
+    pub fn next(&mut self) -> Id {
+        self.widget_graph.add_placeholder()
+    }
+
 }
+
 
 impl List {
 
@@ -60,10 +67,12 @@ impl List {
 
     /// Resizes the `List`'s inner `Vec` to the given target length, using the given `UiCell` to
     /// generate new unique `widget::Id`s if necessary.
-    pub fn resize(&mut self, target_len: usize, ui: &mut UiCell) {
-        while self.len() < target_len {
-            let new_id = ui.new_unique_widget_id();
-            self.0.push(new_id);
+    pub fn resize(&mut self, target_len: usize, id_generator: &mut Generator) {
+        if self.len() < target_len {
+            self.0.reserve(target_len);
+            while self.len() < target_len {
+                self.0.push(id_generator.next());
+            }
         }
         while self.len() > target_len {
             self.0.pop();
@@ -82,9 +91,9 @@ impl std::ops::Deref for List {
 impl ListWalk {
 
     /// Yield the next index, generating one if it does not yet exist.
-    pub fn next(&mut self, &mut List(ref mut ids): &mut List, ui: &mut UiCell) -> Id {
+    pub fn next(&mut self, &mut List(ref mut ids): &mut List, id_gen: &mut Generator) -> Id {
         while self.i >= ids.len() {
-            ids.push(ui.new_unique_widget_id());
+            ids.push(id_gen.next());
         }
         let ix = ids[self.i];
         self.i += 1;
@@ -109,7 +118,7 @@ impl ListWalk {
 ///
 /// ```ignore
 /// struct Ids {
-///     button: conrod::widget::id::Single,
+///     button: conrod::widget::Id,
 ///     toggles: conrod::widget::id::List,
 /// }
 /// ```
@@ -130,13 +139,13 @@ macro_rules! widget_ids_define_struct {
         }
     };
 
-    // Converts `foo` tokens to `foo: conrod::widget::id::Single`.
+    // Converts `foo` tokens to `foo: conrod::widget::Id`.
     ($Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
         widget_ids_define_struct! {
             $Ids {
                 {
                     $($id_field: $T,)*
-                    $id: $crate::widget::id::Single,
+                    $id: $crate::widget::Id,
                 }
                 $($rest)*
             }
@@ -167,7 +176,7 @@ macro_rules! widget_ids_define_struct {
 ///
 /// ```ignore
 /// widget_ids_constructor! {
-///     Ids {
+///     Ids, generator {
 ///         button,
 ///         toggles[],
 ///     }
@@ -178,7 +187,7 @@ macro_rules! widget_ids_define_struct {
 ///
 /// ```ignore
 /// struct Ids {
-///     button: conrod::widget::id::Single::new(),
+///     button: generator.next(),
 ///     toggles: conrod::widget::id::List::new(),
 /// }
 /// ```
@@ -188,9 +197,9 @@ macro_rules! widget_ids_define_struct {
 macro_rules! widget_ids_constructor {
 
     // Converts `foo[]` to `foo: conrod::widget::id::List::new()`.
-    ($Ids:ident { { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)* }) => {
+    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)* }) => {
         widget_ids_constructor! {
-            $Ids {
+            $Ids, $generator {
                 {
                     $($id_field: $new,)*
                     $id: $crate::widget::id::List::new(),
@@ -200,13 +209,13 @@ macro_rules! widget_ids_constructor {
         }
     };
 
-    // Converts `foo` to `foo: conrod::widget::id::Single::new()`.
-    ($Ids:ident { { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)* }) => {
+    // Converts `foo` to `foo: generator.next()`.
+    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)* }) => {
         widget_ids_constructor! {
-            $Ids {
+            $Ids, $generator {
                 {
                     $($id_field: $new,)*
-                    $id: $crate::widget::id::Single::new(),
+                    $id: $generator.next(),
                 }
                 $($rest)*
             }
@@ -214,15 +223,15 @@ macro_rules! widget_ids_constructor {
     };
 
     // Same as above but without the trailing comma.
-    ($Ids:ident { { $($id_field:ident: $new:expr,)* } $id:ident[] }) => {
-        widget_ids_constructor! { $Ids { { $($id_field: $new,)* } $id[], } }
+    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[] }) => {
+        widget_ids_constructor! { $Ids, $generator { { $($id_field: $new,)* } $id[], } }
     };
-    ($Ids:ident { { $($id_field:ident: $new:expr,)* } $id:ident }) => {
-        widget_ids_constructor! { $Ids { { $($id_field: $new,)* } $id, } }
+    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident }) => {
+        widget_ids_constructor! { $Ids, $generator { { $($id_field: $new,)* } $id, } }
     };
 
     // Generatees the `$Ids` constructor using the `field: expr`s generated above.
-    ($Ids:ident { { $($id:ident: $new:expr,)* } }) => {
+    ($Ids:ident, $generator:ident { { $($id:ident: $new:expr,)* } }) => {
         $Ids {
             $(
                 $id: $new,
@@ -251,13 +260,13 @@ macro_rules! widget_ids_constructor {
 ///
 /// ```ignore
 /// struct Ids {
-///     button: conrod::widget::id::Single,
+///     button: conrod::widget::Id,
 ///     toggles: conrod::widget::id::List,
 /// }
 ///
 /// impl Ids {
-///     pub fn new() -> Self {
-///         button: conrod::widget::id::Single::new(),
+///     pub fn new(mut generator: conrod::id::Generator) -> Self {
+///         button: generator.next(),
 ///         toggles: conrod::widget::id::List::new(),
 ///     }
 /// }
@@ -266,7 +275,7 @@ macro_rules! widget_ids_constructor {
 /// The in the example above, the generated `Ids` type can be used as follows.
 ///
 /// ```ignore
-/// widget::Button::new().set(ids.button.get(ui), ui);
+/// widget::Button::new().set(ids.button, ui);
 /// 
 /// ids.toggles.resize(5, ui);
 /// for &id in &ids.toggles {
@@ -284,9 +293,9 @@ macro_rules! widget_ids {
         impl $Ids {
 
             /// Construct a new, empty `widget::Id` cache.
-            pub fn new() -> Self {
+            pub fn new(mut generator: $crate::widget::id::Generator) -> Self {
                 widget_ids_constructor! {
-                    $Ids { {} $($id)* }
+                    $Ids, generator { {} $($id)* }
                 }
             }
 
@@ -301,19 +310,24 @@ fn test() {
     use ui::UiBuilder;
     use widget::{self, Widget};
 
-    widget_ids!(Ids { button, toggles[] });
+    widget_ids! {
+        Ids {
+            button,
+            toggles[],
+        }
+    }
 
     let ui = &mut UiBuilder::new().build();
-    let ids = &mut Ids::new();
+    let ids = &mut Ids::new(ui.widget_id_generator());
 
     for _ in 0..10 {
         let ref mut ui = ui.set_widgets();
 
         // Single button index.
-        widget::Button::new().set(ids.button.get(ui), ui);
+        widget::Button::new().set(ids.button, ui);
 
         // Lazily generated toggle indices.
-        ids.toggles.resize(5, ui);
+        ids.toggles.resize(5, &mut ui.widget_id_generator());
         for &id in ids.toggles.iter() {
             widget::Toggle::new(true).set(id, ui);
         }

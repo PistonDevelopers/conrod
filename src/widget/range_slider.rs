@@ -132,14 +132,14 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             drag: None,
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -276,8 +276,6 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         }
 
         // The **Rectangle** for the border.
-        let border_id = state.ids.border.get(ui);
-
         let interaction_color = |ui: &::ui::UiCell, color: Color|
             ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
@@ -292,34 +290,32 @@ impl<'a, T> Widget for RangeSlider<'a, T>
             .middle_of(id)
             .graphics_for(id)
             .color(border_color)
-            .set(border_id, ui);
+            .set(state.ids.border, ui);
 
         // The **Rectangle** for the adjustable slider.
         let start_x = value_to_x(new_start);
         let end_x = value_to_x(new_end);
         let slider_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
         let color = interaction_color(&ui, style.color(ui.theme()));
-        let slider_id = state.ids.slider.get(ui);
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         widget::Rectangle::fill(slider_rect.dim())
             .xy_relative_to(id, slider_xy_offset)
             .graphics_for(id)
             .parent(id)
             .color(color)
-            .set(slider_id, &mut ui);
+            .set(state.ids.slider, ui);
 
         // The **Text** for the slider's label (if it has one).
         if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             //const TEXT_PADDING: f64 = 10.0;
-            let label_id = state.ids.label.get(ui);
             widget::Text::new(label)
                 .mid_left_of(id)
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .set(label_id, &mut ui);
+                .set(state.ids.label, ui);
         }
 
         event

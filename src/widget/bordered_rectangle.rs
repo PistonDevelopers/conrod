@@ -83,9 +83,9 @@ impl Widget for BorderedRectangle {
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -100,23 +100,21 @@ impl Widget for BorderedRectangle {
         let border = style.border(&ui.theme);
         if border > 0.0 {
             let border_color = style.border_color(&ui.theme);
-            let border_id = state.ids.border.get(ui);
             widget::Rectangle::fill(rect.dim())
                 .xy(rect.xy())
                 .color(border_color)
                 .parent(id)
                 .graphics_for(id)
-                .set(border_id, ui);
+                .set(state.ids.border, ui);
         }
 
         let color = style.color(&ui.theme);
-        let rectangle_id = state.ids.rectangle.get(ui);
         widget::Rectangle::fill(rect.pad(border).dim())
             .xy(rect.xy())
             .color(color)
             .parent(id)
             .graphics_for(id)
-            .set(rectangle_id, ui);
+            .set(state.ids.rectangle, ui);
     }
 
 }

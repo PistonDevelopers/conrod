@@ -125,11 +125,11 @@ impl Widget for Matrix {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State { indices: Vec::new() }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -150,8 +150,9 @@ impl Widget for Matrix {
         for col in 0..cols {
             let num_rows = state.indices[col].len();
             if num_rows < rows {
+                let mut id_gen = ui.widget_id_generator();
                 state.update(|state| {
-                    let extension = (num_rows..rows).map(|_| ui.new_unique_widget_id());
+                    let extension = (num_rows..rows).map(|_| id_gen.next());
                     state.indices[col].extend(extension);
                 });
             }

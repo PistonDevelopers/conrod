@@ -149,13 +149,13 @@ impl<A> Widget for Scrollbar<A>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -275,24 +275,22 @@ impl<A> Widget for Scrollbar<A>
         }
 
         // The `Track` widget along which the handle will slide.
-        let track_id = state.ids.track.get(ui);
         let track_color = color.alpha(0.25);
         widget::Rectangle::fill(rect.dim())
             .xy(rect.xy())
             .color(track_color)
             .graphics_for(id)
             .parent(id)
-            .set(track_id, ui);
+            .set(state.ids.track, ui);
 
         // The `Handle` widget used as a graphical representation of the part of the scrollbar that
         // can be dragged over the track.
-        let handle_id = state.ids.handle.get(ui);
         widget::Rectangle::fill(handle_rect.dim())
             .xy(handle_rect.xy())
             .color(color)
             .graphics_for(id)
             .parent(id)
-            .set(handle_id, ui);
+            .set(state.ids.handle, ui);
     }
 }
 

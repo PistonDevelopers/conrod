@@ -77,9 +77,9 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -90,7 +90,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
     /// Update the state of the PlotPath.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
 
-        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let PlotPath { min_x, max_x, min_y, max_y, mut f, .. } = self;
 
         let y_to_scalar =
@@ -107,7 +107,6 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
                 [x_scalar, y_scalar]
             });
 
-        let point_path_id = state.ids.point_path.get(&mut ui);
         let thickness = style.thickness(ui.theme());
         let color = style.color(ui.theme());
         widget::PointPath::new(point_iter)
@@ -117,7 +116,7 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
             .thickness(thickness)
             .parent(id)
             .graphics_for(id)
-            .set(point_path_id, &mut ui);
+            .set(state.ids.point_path, ui);
     }
 
 }

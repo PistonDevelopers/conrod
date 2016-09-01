@@ -23,7 +23,7 @@ fn main() {
 
     // Generate the widget identifiers.
     widget_ids!(Ids { canvas, counter });
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -52,14 +52,14 @@ fn main() {
             let ui = &mut ui.set_widgets();
 
             // Create a background canvas upon which we'll place the button.
-            widget::Canvas::new().pad(40.0).set(ids.canvas.get(ui), ui);
+            widget::Canvas::new().pad(40.0).set(ids.canvas, ui);
 
             // Draw the button and increment `count` if pressed.
             for _click in widget::Button::new()
-                .middle_of(ids.canvas.get(ui))
+                .middle_of(ids.canvas)
                 .w_h(80.0, 80.0)
                 .label(&count.to_string())
-                .set(ids.counter.get(ui), ui)
+                .set(ids.counter, ui)
             {
                 count += 1;
             }

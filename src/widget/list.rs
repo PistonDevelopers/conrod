@@ -195,13 +195,13 @@ impl Widget for List {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -237,12 +237,11 @@ impl Widget for List {
         //
         // By using one long `Rectangle` widget to trigger the scrolling, this allows us to only
         // instantiate the visible items.
-        let scroll_trigger_id = state.ids.scroll_trigger.get(&mut ui);
         widget::Rectangle::fill([rect.w(), total_item_h])
             .mid_top_of(id)
             .color(color::TRANSPARENT)
             .parent(id)
-            .set(scroll_trigger_id, &mut ui);
+            .set(state.ids.scroll_trigger, ui);
 
         // Determine the index range of the items that should be instantiated.
         let (item_idx_range, first_item_margin) = match item_instantiation {
@@ -252,7 +251,7 @@ impl Widget for List {
                 (range, margin)
             },
             ItemInstantiation::OnlyVisible => {
-                let scroll_trigger_rect = ui.rect_of(scroll_trigger_id).unwrap();
+                let scroll_trigger_rect = ui.rect_of(state.ids.scroll_trigger).unwrap();
                 let hidden_range_length = scroll_trigger_rect.top() - rect.top();
                 let num_top_hidden_items = hidden_range_length / item_h;
                 let num_visible_items = (rect.h() / item_h + 1.0).ceil() as usize;
@@ -268,7 +267,8 @@ impl Widget for List {
 
         // Ensure there are at least as many indices as there are visible items.
         if state.ids.items.len() < item_idx_range.len() {
-            state.update(|state| state.ids.items.resize(item_idx_range.len(), ui));
+            let id_gen = &mut ui.widget_id_generator();
+            state.update(|state| state.ids.items.resize(item_idx_range.len(), id_gen));
         }
 
         let items = Items {
@@ -276,7 +276,7 @@ impl Widget for List {
             item_indices: item_idx_range,
             next_item_indices_index: 0,
             last_id: None,
-            scroll_trigger_id: scroll_trigger_id,
+            scroll_trigger_id: state.ids.scroll_trigger,
             first_item_margin: first_item_margin,
             item_w: item_w,
             item_h: item_h,
@@ -289,7 +289,6 @@ impl Widget for List {
             None => return (items, None),
         };
         let scrollbar_color = style.scrollbar_color(&ui.theme);
-        let scrollbar_id = state.ids.scrollbar.get(&mut ui);
         let scrollbar = widget::Scrollbar::y_axis(id)
             .and_if(prev.maybe_floating.is_some(), |s| s.floating(true))
             .color(scrollbar_color)
@@ -297,7 +296,7 @@ impl Widget for List {
             .auto_hide(auto_hide);
         let scrollbar = Scrollbar {
             widget: scrollbar,
-            id: scrollbar_id,
+            id: state.ids.scrollbar,
         };
 
         (items, Some(scrollbar))

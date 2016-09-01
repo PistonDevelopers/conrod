@@ -41,20 +41,16 @@ fn main() {
 
     // Declare the ID for each of our widgets.
     widget_ids!(Ids { canvas, button, rust_logo });
-    let ids = Ids::new();
-    let (canvas, button, rust_logo) = {
-        let ui = &mut ui.set_widgets();
-        (ids.canvas.get(ui), ids.button.get(ui), ids.rust_logo.get(ui))
-    };
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (rust_logo, load_rust_logo(&mut window)),
+        (ids.rust_logo, load_rust_logo(&mut window)),
     };
 
     // We'll instantiate the `Button` at the logo's full size, so we'll retrieve its dimensions.
-    let (w, h) = image_map.get(&rust_logo).unwrap().get_size();
+    let (w, h) = image_map.get(&ids.rust_logo).unwrap().get_size();
 
     // Our demonstration app that we'll control with our GUI.
     let mut bg_color = conrod::color::LIGHT_BLUE;
@@ -78,16 +74,16 @@ fn main() {
             widget::Canvas::new()
                 .pad(30.0)
                 .color(bg_color)
-                .set(canvas, ui);
+                .set(ids.canvas, ui);
 
             // Button widget example button.
-            if widget::Button::image(rust_logo)
+            if widget::Button::image(ids.rust_logo)
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
-                .middle_of(canvas)
+                .middle_of(ids.canvas)
                 .color(color::TRANSPARENT)
                 .border(0.0)
                 .image_color_with_feedback(color::BLACK)
-                .set(button, ui)
+                .set(ids.button, ui)
                 .was_clicked()
             {
                 bg_color = color::rgb(rand::random(), rand::random(), rand::random());

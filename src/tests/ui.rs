@@ -79,13 +79,10 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     ui.win_w = 250.0;
     ui.win_h = 300.0;
 
-    let (canvas, button);
-
-    {
-        let ui = &mut ui.set_widgets();
-        canvas = ui.new_unique_widget_id();
-        button = ui.new_unique_widget_id();
-    }
+    let (canvas, button) = {
+        let mut id_generator = ui.widget_id_generator();
+        (id_generator.next(), id_generator.next())
+    };
 
     move_mouse_to_widget(button, ui);
     left_click_mouse(ui);

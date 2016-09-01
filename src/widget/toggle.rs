@@ -116,13 +116,13 @@ impl<'a> Widget for Toggle<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -137,7 +137,6 @@ impl<'a> Widget for Toggle<'a> {
         };
 
         // BorderedRectangle widget.
-        let rectangle_id = state.ids.rectangle.get(ui);
         let dim = rect.dim();
         let border = style.border(ui.theme());
         let color = {
@@ -158,19 +157,18 @@ impl<'a> Widget for Toggle<'a> {
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_id, ui);
+            .set(state.ids.rectangle, ui);
 
         // Label widget.
         if let Some(label) = maybe_label {
-            let label_id = state.ids.label.get(ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_id)
+                .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
-                .set(label_id, ui);
+                .set(state.ids.label, ui);
         }
 
         times_clicked

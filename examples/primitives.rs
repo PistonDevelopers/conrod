@@ -36,7 +36,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // No text to draw, so we'll just create an empty text texture cache.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
@@ -76,32 +76,30 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
     use std::iter::once;
 
     // The background canvas upon which we'll place our widgets.
-    let canvas = ids.canvas.get(ui);
-    Canvas::new().pad(80.0).set(canvas, ui);
+    Canvas::new().pad(80.0).set(ids.canvas, ui);
 
-    let line = ids.line.get(ui);
-    Line::centred([-40.0, -40.0], [40.0, 40.0]).top_left_of(canvas).set(line, ui);
+    Line::centred([-40.0, -40.0], [40.0, 40.0]).top_left_of(ids.canvas).set(ids.line, ui);
 
     let left = [-40.0, -40.0];
     let top = [0.0, 40.0];
     let right = [40.0, -40.0];
     let points = once(left).chain(once(top)).chain(once(right));
-    PointPath::centred(points).down(80.0).set(ids.point_path.get(ui), ui);
+    PointPath::centred(points).down(80.0).set(ids.point_path, ui);
 
-    Rectangle::fill([80.0, 80.0]).down(80.0).set(ids.rectangle_fill.get(ui), ui);
+    Rectangle::fill([80.0, 80.0]).down(80.0).set(ids.rectangle_fill, ui);
 
-    Rectangle::outline([80.0, 80.0]).down(80.0).set(ids.rectangle_outline.get(ui), ui);
+    Rectangle::outline([80.0, 80.0]).down(80.0).set(ids.rectangle_outline, ui);
 
     let bl = [-40.0, -40.0];
     let tl = [-20.0, 40.0];
     let tr = [20.0, 40.0];
     let br = [40.0, -40.0];
     let points = once(bl).chain(once(tl)).chain(once(tr)).chain(once(br));
-    Polygon::centred_fill(points).right_from(line, 80.0).set(ids.trapezoid.get(ui), ui);
+    Polygon::centred_fill(points).right_from(ids.line, 80.0).set(ids.trapezoid, ui);
 
-    Oval::fill([40.0, 80.0]).down(80.0).align_middle_x().set(ids.oval_fill.get(ui), ui);
+    Oval::fill([40.0, 80.0]).down(80.0).align_middle_x().set(ids.oval_fill, ui);
 
-    Oval::outline([80.0, 40.0]).down(100.0).align_middle_x().set(ids.oval_outline.get(ui), ui);
+    Oval::outline([80.0, 40.0]).down(100.0).align_middle_x().set(ids.oval_outline, ui);
 
-    Circle::fill(40.0).down(100.0).align_middle_x().set(ids.circle.get(ui), ui);
+    Circle::fill(40.0).down(100.0).align_middle_x().set(ids.circle, ui);
 }

@@ -187,16 +187,16 @@ impl<'a> Widget for TextEdit<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             cursor: Cursor::Idx(text::cursor::Index { line: 0, char: 0 }),
             drag: None,
             line_infos: Vec::new(),
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -223,7 +223,6 @@ impl<'a> Widget for TextEdit<'a> {
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let restrict_to_height = style.restrict_to_height(ui.theme());
-        let text_id = state.ids.text.get(ui);
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
         /// with the given styling.
@@ -698,7 +697,7 @@ impl<'a> Widget for TextEdit<'a> {
             .color(color)
             .line_spacing(line_spacing)
             .font_size(font_size)
-            .set(text_id, &mut ui);
+            .set(state.ids.text, ui);
 
         // Draw the line for the cursor.
         let cursor_idx = match cursor {
@@ -721,7 +720,6 @@ impl<'a> Widget for TextEdit<'a> {
                 })
         };
 
-        let cursor_line_id = state.ids.cursor.get(ui);
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
         widget::Line::centred(start, end)
@@ -729,7 +727,7 @@ impl<'a> Widget for TextEdit<'a> {
             .graphics_for(id)
             .parent(id)
             .color(color)
-            .set(cursor_line_id, ui);
+            .set(state.ids.cursor, ui);
 
         if let Cursor::Selection { start, end } = cursor {
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
@@ -746,7 +744,9 @@ impl<'a> Widget for TextEdit<'a> {
 
             // Ensure we have at least as many widgets as selected_rectangles.
             if state.ids.selected_rectangles.len() < selected_rects.len() {
-                state.update(|state| state.ids.selected_rectangles.resize(selected_rects.len(), ui));
+                let num_rects = selected_rects.len();
+                let id_gen = &mut ui.widget_id_generator();
+                state.update(|state| state.ids.selected_rectangles.resize(num_rects, id_gen));
             }
 
             // Draw a semi-transparent `Rectangle` for the selected range across each line.

@@ -188,15 +188,15 @@ impl<'a> Widget for FileNavigator<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             directory_stack: Vec::new(),
             starting_directory: std::path::PathBuf::new(),
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -222,20 +222,18 @@ impl<'a> Widget for FileNavigator<'a> {
         let text_color = style.text_color(&ui.theme)
             .unwrap_or_else(|| color.plain_contrast());
 
-        let scrollable_canvas_id = state.ids.scrollable_canvas.get(ui);
         widget::Rectangle::fill(rect.dim())
             .xy(rect.xy())
             .color(color::TRANSPARENT)
             .parent(id)
             .scroll_kids_horizontally()
-            .set(scrollable_canvas_id, ui);
+            .set(state.ids.scrollable_canvas, ui);
 
         // A scrollbar for the `FOOTER` canvas.
-        let scrollbar_id = state.ids.scrollbar.get(ui);
-        widget::Scrollbar::x_axis(scrollable_canvas_id)
+        widget::Scrollbar::x_axis(state.ids.scrollable_canvas)
             .color(color.plain_contrast())
             .auto_hide(true)
-            .set(scrollbar_id, ui);
+            .set(state.ids.scrollbar, ui);
 
         // Collect all events that might occur.
         let mut events = Vec::new();
@@ -248,7 +246,8 @@ impl<'a> Widget for FileNavigator<'a> {
             let view_id = match state.ids.directory_views.get(i) {
                 Some(&id) => id,
                 None => {
-                    state.update(|state| state.ids.directory_views.resize(i+1, ui));
+                    let id_gen = &mut ui.widget_id_generator();
+                    state.update(|state| state.ids.directory_views.resize(i+1, id_gen));
                     state.ids.directory_views[i]
                 },
             };
@@ -257,7 +256,8 @@ impl<'a> Widget for FileNavigator<'a> {
             let resize_id = match state.ids.directory_view_resizers.get(i) {
                 Some(&id) => id,
                 None => {
-                    state.update(|state| state.ids.directory_view_resizers.resize(i+1, ui));
+                    let id_gen = &mut ui.widget_id_generator();
+                    state.update(|state| state.ids.directory_view_resizers.resize(i+1, id_gen));
                     state.ids.directory_view_resizers[i]
                 },
             };
@@ -280,7 +280,7 @@ impl<'a> Widget for FileNavigator<'a> {
                     }
                 }
                 if scroll_x > 0.0 {
-                    ui.scroll_widget(scrollable_canvas_id, [-scroll_x, 0.0]);
+                    ui.scroll_widget(state.ids.scrollable_canvas, [-scroll_x, 0.0]);
                 }
             }
 
@@ -300,8 +300,8 @@ impl<'a> Widget for FileNavigator<'a> {
                 .text_color(text_color)
                 .font_size(font_size)
                 .show_hidden_files(self.show_hidden)
-                .parent(scrollable_canvas_id)
-                .set(view_id, &mut ui)
+                .parent(state.ids.scrollable_canvas)
+                .set(view_id, ui)
             {
                 match event {
 
@@ -377,7 +377,7 @@ impl<'a> Widget for FileNavigator<'a> {
                     let total_w = state.directory_stack.iter().fold(0.0, |t, d| t + d.column_width);
                     let overlap = total_w - rect.w();
                     if overlap > 0.0 {
-                        ui.scroll_widget(scrollable_canvas_id, [-overlap, 0.0]);
+                        ui.scroll_widget(state.ids.scrollable_canvas, [-overlap, 0.0]);
                     }
                 },
 
@@ -403,14 +403,14 @@ impl<'a> Widget for FileNavigator<'a> {
             widget::Rectangle::fill([resize_handle_width, rect.h()])
                 .color(resize_color)
                 .right(0.0)
-                .parent(scrollable_canvas_id)
-                .set(resize_id, &mut ui);
+                .parent(state.ids.scrollable_canvas)
+                .set(resize_id, ui);
 
             i += 1;
         }
 
         // If the canvas is pressed.
-        if ui.widget_input(scrollable_canvas_id).presses().mouse().left().next().is_some() {
+        if ui.widget_input(state.ids.scrollable_canvas).presses().mouse().left().next().is_some() {
             state.update(|state| {
                 // Unselect everything.
                 while state.directory_stack.len() > 1 {

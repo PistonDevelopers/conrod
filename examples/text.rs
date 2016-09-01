@@ -22,7 +22,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -81,13 +81,11 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
     use conrod::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
 
     // Our `Canvas` tree, upon which we will place our text widgets.
-    let (left_col, middle_col, right_col) =
-        (ids.left_col.get(ui), ids.middle_col.get(ui), ids.right_col.get(ui));
     widget::Canvas::new().flow_right(&[
-        (left_col, widget::Canvas::new().color(color::BLACK)),
-        (middle_col, widget::Canvas::new().color(color::DARK_CHARCOAL)),
-        (right_col, widget::Canvas::new().color(color::CHARCOAL)),
-    ]).set(ids.master.get(ui), ui);
+        (ids.left_col, widget::Canvas::new().color(color::BLACK)),
+        (ids.middle_col, widget::Canvas::new().color(color::DARK_CHARCOAL)),
+        (ids.right_col, widget::Canvas::new().color(color::CHARCOAL)),
+    ]).set(ids.master, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
@@ -101,25 +99,25 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_RED)
-        .padded_w_of(left_col, PAD)
-        .mid_top_with_margin_on(left_col, PAD)
+        .padded_w_of(ids.left_col, PAD)
+        .mid_top_with_margin_on(ids.left_col, PAD)
         .align_text_left()
         .line_spacing(10.0)
-        .set(ids.left_text.get(ui), ui);
+        .set(ids.left_text, ui);
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_GREEN)
-        .padded_w_of(middle_col, PAD)
-        .middle_of(middle_col)
+        .padded_w_of(ids.middle_col, PAD)
+        .middle_of(ids.middle_col)
         .align_text_middle()
         .line_spacing(2.5)
-        .set(ids.middle_text.get(ui), ui);
+        .set(ids.middle_text, ui);
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_BLUE)
-        .padded_w_of(right_col, PAD)
-        .mid_bottom_with_margin_on(right_col, PAD)
+        .padded_w_of(ids.right_col, PAD)
+        .mid_bottom_with_margin_on(ids.right_col, PAD)
         .align_text_right()
         .line_spacing(5.0)
-        .set(ids.right_text.get(ui), ui);
+        .set(ids.right_text, ui);
 }

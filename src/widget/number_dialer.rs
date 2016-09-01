@@ -162,15 +162,15 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             pressed_value_idx: None,
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
             glyph_slot_indices: Vec::new(),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -316,36 +316,35 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        let rectangle_id = state.ids.rectangle.get(&mut ui);
         widget::BorderedRectangle::new(rect.dim())
             .middle_of(id)
             .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_id, &mut ui);
+            .set(state.ids.rectangle, &mut ui);
 
         // The **Text** for the **NumberDialer**'s label.
         let label_color = style.label_color(ui.theme());
         let font_size = style.label_font_size(ui.theme());
         if maybe_label.is_some() {
-            let label_id = state.ids.label.get(&mut ui);
             widget::Text::new(&label_string)
                 .x_y_relative_to(id, label_rel_x, 0.0)
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
                 .parent(id)
-                .set(label_id, &mut ui);
+                .set(state.ids.label, &mut ui);
         }
 
         // Ensure we have at least as many glyph_slot_indices as there are chars in our val_string.
         if state.glyph_slot_indices.len() < val_string.chars().count() {
             state.update(|state| {
                 let range = state.glyph_slot_indices.len()..val_string.chars().count();
+                let mut id_gen = ui.widget_id_generator();
                 let extension = range.map(|_| GlyphSlot {
-                    rectangle_id: ui.new_unique_widget_id(),
-                    text_id: ui.new_unique_widget_id(),
+                    rectangle_id: id_gen.next(),
+                    text_id: id_gen.next(),
                 });
                 state.glyph_slot_indices.extend(extension);
             })
@@ -373,7 +372,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
                     .x_y_relative_to(id, rel_slot_x, 0.0)
                     .graphics_for(id)
                     .color(slot_color)
-                    .parent(rectangle_id)
+                    .parent(state.ids.rectangle)
                     .set(slot.rectangle_id, &mut ui);
             }
 

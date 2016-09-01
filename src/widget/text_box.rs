@@ -119,13 +119,13 @@ impl<'a> Widget for TextBox<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -147,7 +147,6 @@ impl<'a> Widget for TextBox<'a> {
             Rect { x: x, y: y }
         };
 
-        let rectangle_id = state.ids.rectangle.get(ui);
         let color = style.color(ui.theme());
         let border_color = style.border_color(ui.theme());
         widget::BorderedRectangle::new(rect.dim())
@@ -157,11 +156,10 @@ impl<'a> Widget for TextBox<'a> {
             .border(border)
             .color(color)
             .border_color(border_color)
-            .set(rectangle_id, &mut ui);
+            .set(state.ids.rectangle, ui);
 
         let mut events = Vec::new();
 
-        let text_edit_id = state.ids.text_edit.get(ui);
         let text_color = style.text_color(ui.theme());
         if let Some(new_string) = widget::TextEdit::new(text)
             .wh(text_rect.dim())
@@ -170,7 +168,7 @@ impl<'a> Widget for TextBox<'a> {
             .color(text_color)
             .x_align_text(x_align)
             .parent(id)
-            .set(text_edit_id, &mut ui)
+            .set(state.ids.text_edit, ui)
         {
             events.push(Event::Update(new_string));
         }
@@ -178,7 +176,7 @@ impl<'a> Widget for TextBox<'a> {
         // Produce an event for any `Enter`/`Return` presses.
         //
         // TODO: We should probably be doing this via the `TextEdit` widget.
-        for widget_event in ui.widget_input(text_edit_id).events() {
+        for widget_event in ui.widget_input(state.ids.text_edit).events() {
             match widget_event {
                 event::Widget::Press(press) => match press.button {
                     event::Button::Keyboard(key) => match key {

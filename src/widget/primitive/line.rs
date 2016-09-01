@@ -266,14 +266,14 @@ impl Widget for Line {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             start: [0.0, 0.0],
             end: [0.0, 0.0],
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 

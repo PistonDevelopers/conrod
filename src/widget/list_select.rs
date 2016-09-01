@@ -242,9 +242,9 @@ impl<M> Widget for ListSelect<M>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
             last_selected_entry: std::cell::Cell::new(None),
         }
     }
@@ -266,14 +266,13 @@ impl<M> Widget for ListSelect<M>
             }
         }
 
-        let list_id = state.ids.list.get(&mut ui);
         let scrollbar_position = style.scrollbar_position(&ui.theme);
 
         let mut list = widget::List::new(num_items, item_h)
             .and_if(scrollbar_position.is_some(), |ls| ls.scroll_kids_vertically());
         list.item_instantiation = item_instantiation;
         list.style = style.clone();
-        let (items, scrollbar) = list.middle_of(id).wh_of(id).set(list_id, &mut ui);
+        let (items, scrollbar) = list.middle_of(id).wh_of(id).set(state.ids.list, ui);
 
         let events = Events {
             id: id,

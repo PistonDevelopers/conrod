@@ -174,14 +174,14 @@ impl<'a> Widget for Tabs<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             tabs: Vec::new(),
             maybe_selected_tab_idx: None,
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -250,9 +250,10 @@ impl<'a> Widget for Tabs<'a> {
 
                 // If we have less tabs than we need, extend our `tabs` Vec.
                 if num_tabs < num_new_tabs {
+                    let id_gen = &mut ui.widget_id_generator();
                     let extension = tabs[num_tabs..].iter().map(|&(id, _)| Tab {
                         id: id,
-                        button_id: ui.new_unique_widget_id(),
+                        button_id: id_gen.next(),
                     });
                     state.tabs.extend(extension);
                 }

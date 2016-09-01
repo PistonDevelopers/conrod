@@ -269,6 +269,14 @@ impl Ui {
         &self.prev_updated_widgets
     }
 
+    /// Produces a type that may be used to generate new unique `widget::Id`s.
+    ///
+    /// See the [**widget::id::Generator**](../widget/id/struct.Generator.html) docs for details on
+    /// how to use this correctly.
+    pub fn widget_id_generator(&mut self) -> widget::id::Generator {
+        widget::id::Generator::new(&mut self.widget_graph)
+    }
+
     /// Scroll the widget at the given index by the given offset amount.
     ///
     /// The produced `Scroll` event will be applied upon the next call to `Ui::set_widgets`.
@@ -1065,16 +1073,12 @@ impl<'a> UiCell<'a> {
         self.ui.widget_input(id)
     }
 
-    /// Generate a new, unique widget::Id into a Placeholder node within the `Ui`'s widget
-    /// graph. This should only be called once for each unique widget needed to avoid unnecessary
-    /// bloat within the `Ui`'s widget graph.
+    /// Produces a type that may be used to generate new unique `widget::Id`s.
     ///
-    /// When using this method in your `Widget`'s `update` method, be sure to store the returned
-    /// widget::Id somewhere within your `Widget::State` so that it can be re-used on next update.
-    ///
-    /// **Panics** if adding another node would exceed the maximum capacity for node indices.
-    pub fn new_unique_widget_id(&mut self) -> widget::Id {
-        widget_graph_mut(&mut self.ui).add_placeholder()
+    /// See the [**widget::id::Generator**](../widget/id/struct.Generator.html) docs for details on
+    /// how to use this correctly.
+    pub fn widget_id_generator(&mut self) -> widget::id::Generator {
+        self.ui.widget_id_generator()
     }
 
     /// The **Rect** that bounds the kids of the widget with the given index.

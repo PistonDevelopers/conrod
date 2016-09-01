@@ -25,7 +25,7 @@ fn main() {
 
     // A unique identifier for each widget.
     widget_ids!(Ids { canvas, file_navigator });
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -55,17 +55,16 @@ fn main() {
             // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
-            let canvas = ids.canvas.get(ui);
-            widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(canvas, ui);
+            widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
             // Navigate the conrod directory only showing `.rs` and `.toml` files.
             for event in widget::FileNavigator::with_extension(&directory, &["rs", "toml"])
                 .color(conrod::color::LIGHT_BLUE)
                 .font_size(16)
-                .wh_of(canvas)
-                .middle_of(canvas)
+                .wh_of(ids.canvas)
+                .middle_of(ids.canvas)
                 //.show_hidden_files(true)  // Use this to show hidden files
-                .set(ids.file_navigator.get(ui), ui)
+                .set(ids.file_navigator, ui)
             {
                 println!("{:?}", event);
             }

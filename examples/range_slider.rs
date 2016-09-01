@@ -27,7 +27,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -72,20 +72,18 @@ fn main() {
 fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, oval_range: &mut (conrod::Scalar, conrod::Scalar)) {
     use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
-    let canvas = ids.canvas.get(ui);
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas.get(ui), ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
 
     const PAD: conrod::Scalar = 20.0;
     let (ref mut start, ref mut end) = *oval_range;
     let min = 0.0;
     let max = 1.0;
-    let range_slider = ids.range_slider.get(ui);
     for (edge, value) in widget::RangeSlider::new(*start, *end, min, max)
         .color(color::LIGHT_BLUE)
-        .padded_w_of(canvas, PAD)
+        .padded_w_of(ids.canvas, PAD)
         .h(30.0)
-        .mid_top_with_margin_on(canvas, PAD)
-        .set(range_slider, ui)
+        .mid_top_with_margin_on(ids.canvas, PAD)
+        .set(ids.range_slider, ui)
     {
         match edge {
             widget::range_slider::Edge::Start => *start = value,
@@ -93,12 +91,12 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, oval_range: &mut (conrod::Scala
         }
     }
 
-    let range_slider_w = ui.w_of(range_slider).unwrap();
+    let range_slider_w = ui.w_of(ids.range_slider).unwrap();
     let w = (*end - *start) * range_slider_w;
     let h = 200.0;
     widget::Oval::fill([w, h])
-        .mid_left_with_margin_on(canvas, PAD + *start * range_slider_w)
+        .mid_left_with_margin_on(ids.canvas, PAD + *start * range_slider_w)
         .color(color::LIGHT_BLUE)
         .down(50.0)
-        .set(ids.oval.get(ui), ui);
+        .set(ids.oval, ui);
 }

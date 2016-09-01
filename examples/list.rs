@@ -24,7 +24,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // Unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -69,17 +69,15 @@ fn main() {
 fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool], ids: &Ids) {
     use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
-    let canvas = ids.canvas.get(ui);
-    widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(canvas, ui);
+    widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
     const ITEM_HEIGHT: conrod::Scalar = 50.0;
-    let num_items = list.len();
 
-    let (mut items, scrollbar) = widget::List::new(num_items, ITEM_HEIGHT)
+    let (mut items, scrollbar) = widget::List::new(list.len(), ITEM_HEIGHT)
         .scrollbar_on_top()
-        .middle_of(canvas)
-        .wh_of(canvas)
-        .set(ids.list.get(ui), ui);
+        .middle_of(ids.canvas)
+        .wh_of(ids.canvas)
+        .set(ids.list, ui);
 
     while let Some(item) = items.next(ui) {
         let i = item.i;

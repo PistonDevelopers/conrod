@@ -22,7 +22,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -72,16 +72,15 @@ fn main() {
 fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, demo_text: &mut String) {
     use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
-    let canvas = ids.canvas.get(ui);
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(canvas, ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
 
     for edit in widget::TextEdit::new(demo_text)
         .color(color::LIGHT_BLUE)
-        .padded_wh_of(canvas, 20.0)
-        .mid_top_of(canvas)
+        .padded_wh_of(ids.canvas, 20.0)
+        .mid_top_of(ids.canvas)
         .align_text_x_middle()
         .line_spacing(2.5)
-        .set(ids.text_edit.get(ui), ui)
+        .set(ids.text_edit, ui)
     {
         *demo_text = edit;
     }

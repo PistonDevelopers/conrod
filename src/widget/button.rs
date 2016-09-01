@@ -222,9 +222,9 @@ impl<'a, S> Widget for Button<'a, S>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -234,7 +234,7 @@ impl<'a, S> Widget for Button<'a, S>
 
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
 
         let (color, times_clicked) = {
@@ -252,7 +252,6 @@ impl<'a, S> Widget for Button<'a, S>
         };
 
         // BorderedRectangle widget.
-        let rectangle_id = state.ids.rectangle.get(&mut ui);
         let dim = rect.dim();
         let border = style.border(&ui.theme);
         let border_color = style.border_color(&ui.theme);
@@ -262,28 +261,30 @@ impl<'a, S> Widget for Button<'a, S>
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_id, &mut ui);
+            .set(state.ids.rectangle, ui);
 
         // Label widget.
         if let Some(label) = maybe_label {
-            let label_id = state.ids.label.get(&mut ui);
             let color = style.label_color(&ui.theme);
             let font_size = style.label_font_size(&ui.theme);
             let align = style.label_x_align(&ui.theme);
             widget::Text::new(label)
                 .and(|b| match align {
-                    Align::Start => b.mid_left_with_margin_on(rectangle_id, font_size as Scalar),
-                    Align::Middle => b.middle_of(rectangle_id),
-                    Align::End => b.mid_right_with_margin_on(rectangle_id, font_size as Scalar),
+                    Align::Start =>
+                        b.mid_left_with_margin_on(state.ids.rectangle, font_size as Scalar),
+                    Align::Middle =>
+                        b.middle_of(state.ids.rectangle),
+                    Align::End =>
+                        b.mid_right_with_margin_on(state.ids.rectangle, font_size as Scalar),
                 })
                 .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
-                .set(label_id, &mut ui);
+                .set(state.ids.label, ui);
         }
 
         // This instantiates the image widget if necessary.
-        show.show(id, &mut ui);
+        show.show(id, ui);
 
         TimesClicked(times_clicked)
     }

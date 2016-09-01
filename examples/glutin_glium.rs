@@ -71,7 +71,7 @@ mod feature {
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new().build();
 
-        let ids = Ids::new();
+        let ids = Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
         let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -290,8 +290,7 @@ mod feature {
     fn set_widgets(ref mut ui: conrod::UiCell, ids: &Ids) {
         use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 
-        let canvas = ids.canvas.get(ui);
-        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(canvas, ui);
+        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
         // Some starting text to edit.
         let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -304,12 +303,12 @@ mod feature {
 
         //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
         widget::Text::new(demo_text)
-            .middle_of(canvas)
-            .wh_of(canvas)
+            .middle_of(ids.canvas)
+            .wh_of(ids.canvas)
             .font_size(20)
             .color(conrod::color::BLACK)
             .align_text_middle()
-            .set(ids.text.get(ui), ui);
+            .set(ids.text, ui);
     }
 }
 

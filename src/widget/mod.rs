@@ -526,9 +526,9 @@ pub trait Widget: Sized {
 
     /// Return the initial **State** of the Widget.
     ///
-    /// The `Ui` will only call this once, shortly prior to the first time that **Widget::update**
-    /// is first called.
-    fn init_state(&self) -> Self::State;
+    /// The `Ui` will only call this once, immediately prior to the first time that
+    /// **Widget::update** is first called.
+    fn init_state(&self, id::Generator) -> Self::State;
 
     /// Return the styling of the widget.
     ///
@@ -1032,7 +1032,9 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
 
         // Unwrap our unique widget state. If there is no previous state to unwrap, call the
         // `init_state` method to construct some initial state.
-        let mut unique_state = maybe_prev_unique_state.unwrap_or_else(|| widget.init_state());
+        let mut unique_state = maybe_prev_unique_state.unwrap_or_else(|| {
+            widget.init_state(ui.widget_id_generator())
+        });
         let (has_updated, event) = {
 
             // A wrapper around the widget's unique state in order to keep track of whether or not it

@@ -235,10 +235,10 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             pressed_point: None,
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -441,7 +441,6 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         }
 
         let inner_rect = rect.pad(border);
-        let rectangle_id = state.ids.rectangle.get(&mut ui);
         let dim = rect.dim();
         let border = style.border(ui.theme());
         let color = style.color(ui.theme());
@@ -456,23 +455,21 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_id, &mut ui);
+            .set(state.ids.rectangle, ui);
 
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_id = state.ids.label.get(&mut ui);
             let font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_id)
+                .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .set(label_id, &mut ui);
+                .set(state.ids.label, ui);
         }
 
         let line_color = label_color.with_alpha(1.0);
         {
-            let point_path_id = state.ids.point_path.get(&mut ui);
             let thickness = style.line_thickness(ui.theme());
             let points = env.iter().map(|point| {
                 let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
@@ -486,12 +483,12 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                 .parent(id)
                 .color(line_color)
                 .thickness(thickness)
-                .set(point_path_id, &mut ui);
+                .set(state.ids.point_path, ui);
         }
 
         // Ensure we have at least as many point widgets as there are points in the env.
         if state.ids.points.len() < env.len() {
-            state.update(|state| state.ids.points.resize(env.len(), ui));
+            state.update(|state| state.ids.points.resize(env.len(), &mut ui.widget_id_generator()));
         }
 
         let iter = state.ids.points.iter().zip(env.iter()).enumerate();
@@ -559,7 +556,6 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                 Edge::Start => Direction::Forwards,
             };
             let value_font_size = style.value_font_size(ui.theme());
-            let value_label_id = state.ids.value_label.get(ui);
             let closest_point_id = state.ids.points[closest_idx];
             const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
             widget::Text::new(&xy_string)
@@ -569,7 +565,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                 .graphics_for(id)
                 .parent(id)
                 .font_size(value_font_size)
-                .set(value_label_id, ui);
+                .set(state.ids.value_label, ui);
         }
 
         events

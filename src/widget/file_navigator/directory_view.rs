@@ -173,11 +173,11 @@ impl<'a> Widget for DirectoryView<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             entries: Vec::new(),
             directory: std::path::PathBuf::new(),
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -256,25 +256,23 @@ impl<'a> Widget for DirectoryView<'a> {
             .unwrap_or_else(|| color.plain_contrast());
 
         // Color the background of the directory view.
-        let rectangle_id = state.ids.rectangle.get(ui);
         widget::Rectangle::fill(rect.dim())
             .color(unselected_rect_color)
             .xy(rect.xy())
             .parent(id)
             .graphics_for(id)
-            .set(rectangle_id, ui);
+            .set(state.ids.rectangle, ui);
 
         // Collect any events that have occurred.
         let mut events = Vec::new();
 
         let list_h = rect.h().min(state.entries.len() as Scalar * file_h);
-        let list_select_id = state.ids.list_select.get(ui);
         let (mut list_events, scrollbar) =
             widget::ListSelect::multiple(state.entries.len(), file_h)
                 .scrollbar_on_top()
                 .w_h(rect.w(), list_h)
                 .mid_top_of(id)
-                .set(list_select_id, ui);
+                .set(state.ids.list_select, ui);
 
         // A helper method for collecting all selected entries.
         let collect_selected = |entries: &[Entry]| entries.iter()

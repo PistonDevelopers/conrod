@@ -103,13 +103,13 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -162,26 +162,24 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
         let color = interaction_color(&ui, style.color(ui.theme()));
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        let rectangle_id = state.ids.rectangle.get(ui);
         widget::BorderedRectangle::new(dim)
             .middle_of(id)
             .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_id, ui);
+            .set(state.ids.rectangle, ui);
 
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_id = state.ids.label.get(ui);
             let label_font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_id)
+                .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(label_font_size)
-                .set(label_id, ui);
+                .set(state.ids.label, ui);
         }
 
         // Crosshair **Line** widgets.
@@ -195,25 +193,23 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         let v_line_start = [0.0, -half_h];
         let v_line_end = [0.0, half_h];
-        let v_line_id = state.ids.v_line.get(ui);
         widget::Line::centred(v_line_start, v_line_end)
             .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(id, v_line_x, 0.0)
             .graphics_for(id)
             .parent(id)
-            .set(v_line_id, ui);
+            .set(state.ids.v_line, ui);
 
         let h_line_start = [-half_w, 0.0];
         let h_line_end = [half_w, 0.0];
-        let h_line_id = state.ids.h_line.get(ui);
         widget::Line::centred(h_line_start, h_line_end)
             .color(line_color)
             .thickness(thickness)
             .x_y_relative_to(id, 0.0, h_line_y)
             .graphics_for(id)
             .parent(id)
-            .set(h_line_id, ui);
+            .set(state.ids.h_line, ui);
 
         // Crosshair value label **Text** widget.
         let x_string = val_to_string(new_x, max_x, max_x - min_x, rect.w() as usize);
@@ -230,15 +226,14 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
             Edge::Start => Direction::Forwards,
         };
         let value_font_size = style.value_font_size(ui.theme());
-        let value_label_id = state.ids.value_label.get(ui);
         widget::Text::new(&value_string)
-            .x_direction_from(v_line_id, x_direction, VALUE_TEXT_PAD)
-            .y_direction_from(h_line_id, y_direction, VALUE_TEXT_PAD)
+            .x_direction_from(state.ids.v_line, x_direction, VALUE_TEXT_PAD)
+            .y_direction_from(state.ids.h_line, y_direction, VALUE_TEXT_PAD)
             .color(line_color)
             .graphics_for(id)
             .parent(id)
             .font_size(value_font_size)
-            .set(value_label_id, ui);
+            .set(state.ids.value_label, ui);
 
         event
     }

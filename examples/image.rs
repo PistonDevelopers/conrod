@@ -30,20 +30,16 @@ fn main() {
 
     // The `WidgetId` for our background and `Image` widgets.
     widget_ids!(Ids { background, rust_logo });
-    let ids = Ids::new();
-    let (background, rust_logo) = {
-        let ui = &mut ui.set_widgets();
-        (ids.background.get(ui), ids.rust_logo.get(ui))
-    };
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (rust_logo, load_rust_logo(&mut window)),
+        (ids.rust_logo, load_rust_logo(&mut window)),
     };
 
     // We'll instantiate the `Image` at its full size, so we'll retrieve its dimensions.
-    let (w, h) = image_map.get(&rust_logo).unwrap().get_size();
+    let (w, h) = image_map.get(&ids.rust_logo).unwrap().get_size();
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -62,9 +58,9 @@ fn main() {
         event.update(|_| {
             let ui = &mut ui.set_widgets();
             // Draw a light blue background.
-            widget::Canvas::new().color(color::LIGHT_BLUE).set(background, ui);
+            widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
             // Instantiate the `Image` at its full size in the middle of the window.
-            widget::Image::new().w_h(w as f64, h as f64).middle().set(rust_logo, ui);
+            widget::Image::new().w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
         });
     }
 }

@@ -121,11 +121,11 @@ mod circular_button {
             &mut self.common
         }
 
-        fn init_state(&self) -> State {
-            State { ids: Ids::new() }
+        fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
+            State { ids: Ids::new(id_gen) }
         }
 
-        fn style(&self) -> Style {
+        fn style(&self) -> Self::Style {
             self.style.clone()
         }
 
@@ -172,24 +172,22 @@ mod circular_button {
 
             // First, we'll draw the **Circle** with a radius that is half our given width.
             let radius = rect.w() / 2.0;
-            let circle_id = state.ids.circle.get(ui);
             widget::Circle::fill(radius)
                 .middle_of(id)
                 .graphics_for(id)
                 .color(color)
-                .set(circle_id, ui);
+                .set(state.ids.circle, ui);
 
             // Now we'll instantiate our label using the **Text** widget.
             if let Some(ref label) = self.maybe_label {
                 let label_color = style.label_color(&ui.theme);
                 let font_size = style.label_font_size(&ui.theme);
-                let text_id = state.ids.text.get(ui);
                 widget::Text::new(label)
                     .middle_of(id)
                     .font_size(font_size)
                     .graphics_for(id)
                     .color(label_color)
-                    .set(text_id, ui);
+                    .set(state.ids.text, ui);
             }
 
             event
@@ -256,7 +254,7 @@ pub fn main() {
             circle_button,
         }
     }
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -281,18 +279,18 @@ pub fn main() {
             let ui = &mut ui.set_widgets();
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            widget::Canvas::new().color(conrod::color::DARK_RED).set(ids.background.get(ui), ui);
+            widget::Canvas::new().color(conrod::color::DARK_RED).set(ids.background, ui);
 
             // Instantiate of our custom widget.
             for _click in CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
-                .middle_of(ids.background.get(ui))
+                .middle_of(ids.background)
                 .w_h(256.0, 256.0)
                 .label_color(conrod::color::WHITE)
                 .label("Circular Button")
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
                 // drawn when we call Ui::draw.
-                .set(ids.circle_button.get(ui), ui)
+                .set(ids.circle_button, ui)
             {
                 println!("Click!");
             }

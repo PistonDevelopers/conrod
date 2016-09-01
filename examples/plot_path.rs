@@ -24,7 +24,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    let ids = Ids::new();
+    let ids = Ids::new(ui.widget_id_generator());
 
     // No text to draw, so we'll just create an empty text texture cache.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
@@ -45,8 +45,7 @@ fn main() {
 
             let ui = &mut ui.set_widgets();
 
-            let canvas = ids.canvas.get(ui);
-            widget::Canvas::new().color(color::DARK_CHARCOAL).set(canvas, ui);
+            widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
 
             let min_x = 0.0;
             let max_x = std::f64::consts::PI * 2.0;
@@ -54,9 +53,9 @@ fn main() {
             let max_y = 1.0;
             widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
                 .color(color::LIGHT_BLUE)
-                .wh_of(canvas)
-                .middle_of(canvas)
-                .set(ids.plot.get(ui), ui);
+                .wh_of(ids.canvas)
+                .middle_of(ids.canvas)
+                .set(ids.plot, ui);
         });
 
         window.draw_2d(&event, |c, g| {

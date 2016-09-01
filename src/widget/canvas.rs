@@ -229,13 +229,13 @@ impl<'a> Widget for Canvas<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -284,7 +284,6 @@ impl<'a> Widget for Canvas<'a> {
         let Canvas { style, maybe_title_bar_label, maybe_splits, .. } = self;
 
         // BorderedRectangle widget as the rectangle backdrop.
-        let rectangle_id = state.ids.rectangle.get(&mut ui);
         let dim = rect.dim();
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
@@ -296,18 +295,17 @@ impl<'a> Widget for Canvas<'a> {
             .middle_of(id)
             .graphics_for(id)
             .place_on_kid_area(false)
-            .set(rectangle_id, &mut ui);
+            .set(state.ids.rectangle, &mut ui);
 
         // TitleBar widget if we were given some label.
         if let Some(label) = maybe_title_bar_label {
-            let title_bar_id = state.ids.title_bar.get(&mut ui);
             let color = style.title_bar_color(&ui.theme).unwrap_or(color);
             let font_size = style.title_bar_font_size(&ui.theme);
             let label_color = style.title_bar_text_color(&ui.theme);
             let text_align = style.title_bar_text_align(&ui.theme);
             let line_spacing = style.title_bar_line_spacing(&ui.theme);
             let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
-            widget::TitleBar::new(label, rectangle_id)
+            widget::TitleBar::new(label, state.ids.rectangle)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
                     title_bar.style.text_align = Some(text_align);
@@ -320,7 +318,7 @@ impl<'a> Widget for Canvas<'a> {
                 .line_spacing(line_spacing)
                 .graphics_for(id)
                 .place_on_kid_area(false)
-                .set(title_bar_id, &mut ui);
+                .set(state.ids.title_bar, &mut ui);
         }
 
         // If we were given some child canvas splits, we should instantiate them.

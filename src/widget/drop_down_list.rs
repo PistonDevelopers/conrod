@@ -161,14 +161,14 @@ impl<'a, T> Widget for DropDownList<'a, T>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             menu_state: MenuState::Closed,
-            ids: Ids::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -195,7 +195,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 let label = selected
                     .map(|i| self.items[i].as_ref())
                     .unwrap_or_else(|| self.maybe_label.unwrap_or(""));
-                let closed_menu_id = state.ids.closed_menu.get(ui);
 
                 let was_clicked = {
                     // use the pre-existing Button widget
@@ -205,7 +204,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                         .label(label)
                         .parent(id);
                     button.style = style.button_style(false);
-                    button.set(closed_menu_id, ui).was_clicked()
+                    button.set(state.ids.closed_menu, ui).was_clicked()
                 };
 
                 // If the button was clicked, then open, otherwise stay closed
@@ -233,7 +232,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 let num_items = self.items.len();
                 let item_h = h;
                 let list_h = max_visible_height.min(num_items as Scalar * item_h);
-                let list_id = state.ids.list.get(ui);
                 let scrollbar_color = style.border_color(&ui.theme);
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
@@ -254,7 +252,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                     .scrollbar_width(scrollbar_width)
                     .mid_top_of(id)
                     .floating(true)
-                    .set(list_id, ui);
+                    .set(state.ids.list, ui);
 
                 while let Some(event) = events.next(ui, |i| Some(i) == selected) {
                     use widget::list_select::Event;
