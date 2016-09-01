@@ -103,151 +103,13 @@ impl ListWalk {
 }
 
 
-/// From
-///
-/// ```ignore
-/// widget_ids_define_struct! {
-///     Ids {
-///         button,
-///         toggles[],
-///     }
-/// }
-/// ```
-///
-/// this macro generates
-///
-/// ```ignore
-/// struct Ids {
-///     button: conrod::widget::Id,
-///     toggles: conrod::widget::id::List,
-/// }
-/// ```
-#[doc(hidden)]
-#[macro_export]
-macro_rules! widget_ids_define_struct {
-
-    // Converts `foo[]` tokens to `foo: conrod::widget::id::List`.
-    ($Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)* }) => {
-        widget_ids_define_struct! {
-            $Ids {
-                {
-                    $($id_field: $T,)*
-                    $id: $crate::widget::id::List,
-                }
-                $($rest)*
-            }
-        }
-    };
-
-    // Converts `foo` tokens to `foo: conrod::widget::Id`.
-    ($Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
-        widget_ids_define_struct! {
-            $Ids {
-                {
-                    $($id_field: $T,)*
-                    $id: $crate::widget::Id,
-                }
-                $($rest)*
-            }
-        }
-    };
-
-    // Same as above but without the trailing comma.
-    ($Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
-        widget_ids_define_struct! { $Ids { { $($id_field: $T,)* } $id[], } }
-    };
-    ($Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident }) => {
-        widget_ids_define_struct! { $Ids { { $($id_field: $T,)* } $id, } }
-    };
-
-    // Generates the struct using all the `ident: path` combinations generated above.
-    ($Ids:ident { { $($id:ident: $T:path,)* } }) => {
-        struct $Ids {
-            $(
-                $id: $T,
-            )*
-        }
-    };
-
-}
-
-
-/// From
-///
-/// ```ignore
-/// widget_ids_constructor! {
-///     Ids, generator {
-///         button,
-///         toggles[],
-///     }
-/// }
-/// ```
-///
-/// this macro generates
-///
-/// ```ignore
-/// struct Ids {
-///     button: generator.next(),
-///     toggles: conrod::widget::id::List::new(),
-/// }
-/// ```
-///
-#[doc(hidden)]
-#[macro_export]
-macro_rules! widget_ids_constructor {
-
-    // Converts `foo[]` to `foo: conrod::widget::id::List::new()`.
-    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)* }) => {
-        widget_ids_constructor! {
-            $Ids, $generator {
-                {
-                    $($id_field: $new,)*
-                    $id: $crate::widget::id::List::new(),
-                }
-                $($rest)*
-            }
-        }
-    };
-
-    // Converts `foo` to `foo: generator.next()`.
-    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)* }) => {
-        widget_ids_constructor! {
-            $Ids, $generator {
-                {
-                    $($id_field: $new,)*
-                    $id: $generator.next(),
-                }
-                $($rest)*
-            }
-        }
-    };
-
-    // Same as above but without the trailing comma.
-    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[] }) => {
-        widget_ids_constructor! { $Ids, $generator { { $($id_field: $new,)* } $id[], } }
-    };
-    ($Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident }) => {
-        widget_ids_constructor! { $Ids, $generator { { $($id_field: $new,)* } $id, } }
-    };
-
-    // Generatees the `$Ids` constructor using the `field: expr`s generated above.
-    ($Ids:ident, $generator:ident { { $($id:ident: $new:expr,)* } }) => {
-        $Ids {
-            $(
-                $id: $new,
-            )*
-        }
-    };
-
-}
-
-
 /// A macro used to generate a struct with a field for each unique identifier given.
 /// Each field can then be used to generate unique `widget::Id`s.
 ///
 /// For example, given the following invocation:
 ///
-/// ```ignore
+/// ```
+/// # #[macro_use] extern crate conrod;
 /// widget_ids! {
 ///     Ids {
 ///         button,
@@ -258,7 +120,8 @@ macro_rules! widget_ids_constructor {
 ///
 /// The following will be produced:
 ///
-/// ```ignore
+/// ```
+/// # extern crate conrod;
 /// struct Ids {
 ///     button: conrod::widget::Id,
 ///     toggles: conrod::widget::id::List,
@@ -272,7 +135,7 @@ macro_rules! widget_ids_constructor {
 /// }
 /// ```
 ///
-/// The in the example above, the generated `Ids` type can be used as follows.
+/// In the example above, the generated `Ids` type can be used as follows.
 ///
 /// ```ignore
 /// widget::Button::new().set(ids.button, ui);
@@ -285,20 +148,161 @@ macro_rules! widget_ids_constructor {
 #[macro_export]
 macro_rules! widget_ids {
 
+
+    ///////////////////////
+    ///// widget_ids! /////
+    ///////////////////////
+
     ($Ids:ident { $($id:tt)* }) => {
-        widget_ids_define_struct! {
-            $Ids { {} $($id)* }
+        widget_ids! {
+            define_struct $Ids { {} $($id)* }
         }
 
         impl $Ids {
 
             /// Construct a new, empty `widget::Id` cache.
             pub fn new(mut generator: $crate::widget::id::Generator) -> Self {
-                widget_ids_constructor! {
-                    $Ids, generator { {} $($id)* }
+                widget_ids! {
+                    constructor $Ids, generator { {} $($id)* }
                 }
             }
 
+        }
+    };
+
+
+    /////////////////////////
+    ///// define_struct /////
+    /////////////////////////
+    //
+    // From
+    //
+    // ```ignore
+    // widget_ids! {
+    //     define_struct Ids {
+    //         button,
+    //         toggles[],
+    //     }
+    // }
+    // ```
+    //
+    // these branches generate
+    //
+    // ```ignore
+    // struct Ids {
+    //     button: conrod::widget::Id,
+    //     toggles: conrod::widget::id::List,
+    // }
+    // ```
+
+    // Converts `foo[]` tokens to `foo: conrod::widget::id::List`.
+    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)* }) => {
+        widget_ids! {
+            define_struct $Ids {
+                {
+                    $($id_field: $T,)*
+                    $id: $crate::widget::id::List,
+                }
+                $($rest)*
+            }
+        }
+    };
+
+    // Converts `foo` tokens to `foo: conrod::widget::Id`.
+    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
+        widget_ids! {
+            define_struct $Ids {
+                {
+                    $($id_field: $T,)*
+                    $id: $crate::widget::Id,
+                }
+                $($rest)*
+            }
+        }
+    };
+
+    // Same as above but without the trailing comma.
+    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
+        widget_ids! { define_struct $Ids { { $($id_field: $T,)* } $id[], } }
+    };
+    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident }) => {
+        widget_ids! { define_struct $Ids { { $($id_field: $T,)* } $id, } }
+    };
+
+    // Generates the struct using all the `ident: path` combinations generated above.
+    (define_struct $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+        struct $Ids {
+            $(
+                $id: $T,
+            )*
+        }
+    };
+
+
+    ///////////////////////
+    ///// constructor /////
+    ///////////////////////
+    //
+    // From
+    //
+    // ```ignore
+    // widget_ids! {
+    //     constructor Ids, generator {
+    //         button,
+    //         toggles[],
+    //     }
+    // }
+    // ```
+    //
+    // these branches generate
+    //
+    // ```ignore
+    // struct Ids {
+    //     button: generator.next(),
+    //     toggles: conrod::widget::id::List::new(),
+    // }
+    // ```
+
+    // Converts `foo[]` to `foo: conrod::widget::id::List::new()`.
+    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)* }) => {
+        widget_ids! {
+            constructor $Ids, $generator {
+                {
+                    $($id_field: $new,)*
+                    $id: $crate::widget::id::List::new(),
+                }
+                $($rest)*
+            }
+        }
+    };
+
+    // Converts `foo` to `foo: generator.next()`.
+    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)* }) => {
+        widget_ids! {
+            constructor $Ids, $generator {
+                {
+                    $($id_field: $new,)*
+                    $id: $generator.next(),
+                }
+                $($rest)*
+            }
+        }
+    };
+
+    // Same as above but without the trailing comma.
+    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[] }) => {
+        widget_ids! { constructor $Ids, $generator { { $($id_field: $new,)* } $id[], } }
+    };
+    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident }) => {
+        widget_ids! { constructor $Ids, $generator { { $($id_field: $new,)* } $id, } }
+    };
+
+    // Generatees the `$Ids` constructor using the `field: expr`s generated above.
+    (constructor $Ids:ident, $generator:ident { { $($id:ident: $new:expr,)* } }) => {
+        $Ids {
+            $(
+                $id: $new,
+            )*
         }
     };
 
