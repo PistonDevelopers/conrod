@@ -109,28 +109,34 @@ impl ListWalk {
 /// For example, given the following invocation:
 ///
 /// ```
-/// # #[macro_use] extern crate conrod;
+/// #[macro_use]
+/// extern crate conrod;
+///
 /// widget_ids! {
 ///     Ids {
 ///         button,
 ///         toggles[],
 ///     }
 /// }
+/// # fn main() {}
 /// ```
 ///
 /// The following will be produced:
 ///
 /// ```
 /// # extern crate conrod;
+/// # fn main() {}
 /// struct Ids {
 ///     button: conrod::widget::Id,
 ///     toggles: conrod::widget::id::List,
 /// }
 ///
 /// impl Ids {
-///     pub fn new(mut generator: conrod::id::Generator) -> Self {
-///         button: generator.next(),
-///         toggles: conrod::widget::id::List::new(),
+///     pub fn new(mut generator: conrod::widget::id::Generator) -> Self {
+///         Ids {
+///             button: generator.next(),
+///             toggles: conrod::widget::id::List::new(),
+///         }
 ///     }
 /// }
 /// ```
@@ -257,7 +263,7 @@ macro_rules! widget_ids {
     // these branches generate
     //
     // ```ignore
-    // struct Ids {
+    // Ids {
     //     button: generator.next(),
     //     toggles: conrod::widget::id::List::new(),
     // }
