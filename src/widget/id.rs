@@ -234,6 +234,8 @@ macro_rules! widget_ids {
         }
     };
 
+
+
     // Same as above but without the trailing comma.
     (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
         widget_ids! { define_struct [$($public)*] $Ids { { $($id_field: $T,)* } $id[], } }
@@ -245,7 +247,7 @@ macro_rules! widget_ids {
     // Generates the struct using all the `ident: path` combinations generated above.
     (define_struct [pub] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
         pub struct $Ids {
-            $($id: $T,
+            $(pub $id: $T,
             )*
         }
     };
@@ -253,7 +255,7 @@ macro_rules! widget_ids {
     // The same as the previous branch, but private.
     (define_struct [] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
         struct $Ids {
-            $($id: $T,
+            $(pub $id: $T,
             )*
         }
     };
@@ -335,9 +337,9 @@ fn test() {
     use widget::{self, Widget};
 
     widget_ids! {
-        pub Ids {
-            pub button,
-            pub toggles[],
+        Ids {
+            button,
+            toggles[],
         }
     }
 
