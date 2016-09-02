@@ -88,7 +88,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
           C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
           F: FnMut(&Img) -> &T,
 {
-    let render::Primitive { index, kind, scizzor, rect } = primitive;
+    let render::Primitive { id, kind, scizzor, rect } = primitive;
     let view_size = context.get_view_size();
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointing upwards).
     let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
@@ -188,7 +188,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
         },
 
         render::PrimitiveKind::Image { color, source_rect } => {
-            if let Some(img) = image_map.get(index) {
+            if let Some(img) = image_map.get(&id) {
                 let mut image = piston_graphics::image::Image::new();
                 image.color = color.map(|c| c.to_fsa());
                 if let Some(source_rect) = source_rect {

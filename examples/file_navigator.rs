@@ -23,6 +23,10 @@ fn main() {
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
 
+    // A unique identifier for each widget.
+    widget_ids!(Ids { canvas, file_navigator });
+    let ids = Ids::new(ui.widget_id_generator());
+
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
@@ -51,18 +55,16 @@ fn main() {
             // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
-            widget_ids!(CANVAS, FILE_NAVIGATOR);
-
-            widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(CANVAS, ui);
+            widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
             // Navigate the conrod directory only showing `.rs` and `.toml` files.
             for event in widget::FileNavigator::with_extension(&directory, &["rs", "toml"])
                 .color(conrod::color::LIGHT_BLUE)
                 .font_size(16)
-                .wh_of(CANVAS)
-                .middle_of(CANVAS)
+                .wh_of(ids.canvas)
+                .middle_of(ids.canvas)
                 //.show_hidden_files(true)  // Use this to show hidden files
-                .set(FILE_NAVIGATOR, ui)
+                .set(ids.file_navigator, ui)
             {
                 println!("{:?}", event);
             }

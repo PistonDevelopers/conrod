@@ -30,7 +30,7 @@ pub struct Toggle<'a> {
     pub enabled: bool,
 }
 
-widget_style!{
+widget_style! {
     /// Styling for the Toggle including coloring, bordering and labelling.
     style Style {
         /// Color of the Toggle's pressable area.
@@ -46,11 +46,16 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+    }
+}
+
 /// The state of the Toggle.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// The `Event` type yielded by the `Toggle` widget.
@@ -111,36 +116,34 @@ impl<'a> Widget for Toggle<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the Toggle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
         let Toggle { value, enabled, maybe_label, .. } = self;
 
         let times_clicked = TimesClicked {
             state: value,
-            count: if enabled { ui.widget_input(idx).clicks().left().count() as u16 } else { 0 },
+            count: if enabled { ui.widget_input(id).clicks().left().count() as u16 } else { 0 },
         };
 
         // BorderedRectangle widget.
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let border = style.border(ui.theme());
         let color = {
             let color = style.color(ui.theme());
             let new_value = times_clicked.clone().last().unwrap_or(value);
             let color = if new_value { color } else { color.with_luminance(0.1) };
-            match ui.widget_input(idx).mouse() {
+            match ui.widget_input(id).mouse() {
                 Some(mouse) =>
                     if mouse.buttons.left().is_down() { color.clicked() }
                     else { color.highlighted() },
@@ -149,24 +152,23 @@ impl<'a> Widget for Toggle<'a> {
         };
         let border_color = style.border_color(ui.theme());
         widget::BorderedRectangle::new(dim)
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(state.ids.rectangle, ui);
 
         // Label widget.
         if let Some(label) = maybe_label {
-            let label_idx = state.label_idx.get(&mut ui);
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_idx)
-                .graphics_for(idx)
+                .middle_of(state.ids.rectangle)
+                .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
-                .set(label_idx, &mut ui);
+                .set(state.ids.label, ui);
         }
 
         times_clicked

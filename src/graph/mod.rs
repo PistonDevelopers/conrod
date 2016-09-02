@@ -5,7 +5,6 @@
 
 use daggy;
 use position::{Axis, Depth, Rect};
-use self::index_map::IndexMap;
 use std;
 use std::any::Any;
 use std::ops::{Index, IndexMut};
@@ -13,21 +12,16 @@ use widget::{self, Widget};
 
 pub use daggy::Walker;
 pub use self::depth_order::DepthOrder;
-pub use self::index_map::GraphIndex;
 
 pub mod algo;
 pub mod depth_order;
-mod index_map;
 
-
-/// An alias for our Graph's Node Index.
-pub type NodeIndex = daggy::NodeIndex<u32>;
 
 /// An alias for our Graph's Edge Index.
 pub type EdgeIndex = daggy::EdgeIndex<u32>;
 
-/// An alias for a tuple containing an associated `Edge/NodeIndex` pair.
-pub type IndexPair = (EdgeIndex, NodeIndex);
+/// An alias for a tuple containing an associated `Edge/widget::Id` pair.
+pub type IndexPair = (EdgeIndex, widget::Id);
 
 /// A **Walker** over some node's parent nodes.
 pub type Parents = daggy::Parents<Node, Edge, u32>;
@@ -35,12 +29,12 @@ pub type Parents = daggy::Parents<Node, Edge, u32>;
 pub type Children = daggy::Children<Node, Edge, u32>;
 
 /// An alias for the iterator yielding both **X** and **Y** **Position** parents.
-pub type PositionParents<I> =
-    std::iter::Chain<std::option::IntoIter<I>, std::option::IntoIter<I>>;
+pub type PositionParents =
+    std::iter::Chain<std::option::IntoIter<widget::Id>, std::option::IntoIter<widget::Id>>;
 
 /// An alias for some filtered children walker.
 pub type FilteredChildren =
-    daggy::walker::Filter<Children, fn(&Graph, EdgeIndex, NodeIndex) -> bool>;
+    daggy::walker::Filter<Children, fn(&Graph, EdgeIndex, widget::Id) -> bool>;
 /// An alias for a **Walker** over a node's **Depth** children.
 pub type DepthChildren = FilteredChildren;
 /// An alias for a **Walker** over a node's **X Position** children.
@@ -150,13 +144,7 @@ pub struct Graph {
     /// Cached widget state in a directed acyclic graph whose edges describe the rendering tree and
     /// positioning.
     dag: Dag,
-    /// A map of the UiId to the graph's indices.
-    index_map: IndexMap,
 }
-
-
-/// A common argument when expecting that there is a `NodeIndex`.
-const NO_MATCHING_NODE_INDEX: &'static str = "No matching NodeIndex";
 
 
 impl Container {
@@ -198,7 +186,6 @@ impl Graph {
     pub fn new() -> Self {
         Graph {
             dag: Dag::new(),
-            index_map: IndexMap::new(),
         }
     }
 
@@ -211,7 +198,6 @@ impl Graph {
         let n_edges = n_nodes * NUM_EDGE_VARIANTS;
         Graph {
             dag: Dag::with_capacity(n_nodes, n_edges),
-            index_map: IndexMap::with_capacity(n_nodes),
         }
     }
 
@@ -228,7 +214,7 @@ impl Graph {
     /// The total number of **Node::Widget**s in the **Graph**.
     pub fn widget_count(&self) -> usize {
         (0..self.node_count())
-            .filter(|&i| self[NodeIndex::new(i)].is_widget())
+            .filter(|&i| self[widget::Id::new(i)].is_widget())
             .count()
     }
 
@@ -242,41 +228,12 @@ impl Graph {
         unimplemented!();
     }
 
-    /// Converts the given **GraphIndex** into an index of type **J**.
-    ///
-    /// Returns `None` if there is no direct mapping from the given index to an index of type
-    /// **J**.
-    pub fn convert_idx<I, J>(&self, idx: I) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
-        J::from_idx(idx, &self.index_map)
-    }
-
-    /// Get the **NodeIndex** for the given **GraphIndex**.
-    pub fn node_index<I: GraphIndex>(&self, idx: I) -> Option<NodeIndex> {
-        self.convert_idx(idx)
-    }
-
-    /// Get the **WidgetId** for the given **GraphIndex**.
-    pub fn widget_id<I: GraphIndex>(&self, idx: I) -> Option<widget::Id> {
-        self.convert_idx(idx)
-    }
-
-    /// Get the **widget::Index** for the given **GraphIndex**.
-    ///
-    /// First attempts to produce a **WidgetId**, then tries to produce a **NodeIndex**.
-    pub fn widget_index<I: GraphIndex>(&self, idx: I) -> Option<widget::Index> {
-        self.widget_id(idx).map(|id| widget::Index::Public(id))
-            .or_else(|| self.node_index(idx).map(|idx| widget::Index::Internal(idx)))
-    }
-
     /// Add the given **Node** to the graph.
     ///
     /// Computes in **O(1)** time.
     ///
     /// Returns the index of the new node.
-    fn add_node(&mut self, node: Node) -> NodeIndex {
+    fn add_node(&mut self, node: Node) -> widget::Id {
         self.dag.add_node(node)
     }
 
@@ -299,13 +256,7 @@ impl Graph {
     /// **Panics** if either `a` or `b` do not exist within the **Graph**.
     ///
     /// **Panics** if the **Graph** is at the maximum number of nodes for its index type.
-    fn set_edge<A, B>(&mut self, a: A, b: B, edge: Edge) -> Result<EdgeIndex, WouldCycle>
-        where A: GraphIndex,
-              B: GraphIndex,
-    {
-        let a = self.node_index(a).expect(NO_MATCHING_NODE_INDEX);
-        let b = self.node_index(b).expect(NO_MATCHING_NODE_INDEX);
-
+    fn set_edge(&mut self, a: widget::Id, b: widget::Id, edge: Edge) -> Result<EdgeIndex, WouldCycle> {
         // Check to see if the node already has some matching incoming edge.
         // Keep it if it's the one we want. Otherwise, remove any incoming edge that matches the given
         // edge kind but isn't coming from the node that we desire.
@@ -345,32 +296,30 @@ impl Graph {
     /// Returns `true` if an edge was removed.
     ///
     /// Returns `false` if no edges were removed.
-    fn remove_parent_edge<I: GraphIndex>(&mut self, idx: I, edge: Edge) -> bool {
-        self.node_index(idx).map(|idx| {
-            if let Some((edge_idx, _)) = self.parents(idx).find(self, |g, e, _| g[e] == edge) {
-                self.remove_edge(edge_idx);
-                return true;
-            }
-            false
-        }).unwrap_or(false)
+    fn remove_parent_edge(&mut self, id: widget::Id, edge: Edge) -> bool {
+        if let Some((edge_idx, _)) = self.parents(id).find(self, |g, e, _| g[e] == edge) {
+            self.remove_edge(edge_idx);
+            return true;
+        }
+        false
     }
 
-    /// Add a new placeholder node and return it's `NodeIndex` into the `Graph`.
+    /// Add a new placeholder node and return it's `widget::Id` into the `Graph`.
     ///
     /// This method is used by the `widget::set_widget` function when some internal widget does not
-    /// yet have it's own `NodeIndex`.
-    pub fn add_placeholder(&mut self) -> NodeIndex {
+    /// yet have it's own `widget::Id`.
+    pub fn add_placeholder(&mut self) -> widget::Id {
         self.add_node(Node::Placeholder)
     }
 
-    /// Borrow the node at the given **GraphIndex** if there is one.
-    pub fn node<I: GraphIndex>(&self, idx: I) -> Option<&Node> {
-        self.node_index(idx).and_then(|idx| self.dag.node_weight(idx))
+    /// Borrow the node at the given **widget::Id** if there is one.
+    pub fn node(&self, idx: widget::Id) -> Option<&Node> {
+        self.dag.node_weight(idx)
     }
 
-    /// Mutably borrow the node at the given **GraphIndex** if there is one.
-    pub fn node_mut<I: GraphIndex>(&mut self, idx: I) -> Option<&mut Node> {
-        self.node_index(idx).and_then(move |idx| self.dag.node_weight_mut(idx))
+    /// Mutably borrow the node at the given **widget::Id** if there is one.
+    pub fn node_mut(&mut self, idx: widget::Id) -> Option<&mut Node> {
+        self.dag.node_weight_mut(idx)
     }
 
     /// Borrow the edge at the given **EdgeIndex** if there is one.
@@ -384,12 +333,12 @@ impl Graph {
     }
 
     /// Return the parent and child nodes on either end of the **Edge** at the given index.
-    pub fn edge_endpoints(&self, idx: EdgeIndex) -> Option<(NodeIndex, NodeIndex)> {
+    pub fn edge_endpoints(&self, idx: EdgeIndex) -> Option<(widget::Id, widget::Id)> {
         self.dag.edge_endpoints(idx)
     }
 
     /// If there is a Widget for the given index, return a reference to it.
-    pub fn widget<I: GraphIndex>(&self, idx: I) -> Option<&Container> {
+    pub fn widget(&self, idx: widget::Id) -> Option<&Container> {
         self.node(idx).and_then(|node| match *node {
             Node::Widget(ref container) => Some(container),
             _ => None,
@@ -397,7 +346,7 @@ impl Graph {
     }
 
     /// If there is a Widget for the given Id, return a mutable reference to it.
-    pub fn widget_mut<I: GraphIndex>(&mut self, idx: I) -> Option<&mut Container> {
+    pub fn widget_mut(&mut self, idx: widget::Id) -> Option<&mut Container> {
         self.node_mut(idx).and_then(|node| match *node {
             Node::Widget(ref mut container) => Some(container),
             _ => None,
@@ -405,77 +354,56 @@ impl Graph {
     }
 
     /// A **Walker** type that may be used to step through the parents of the given child node.
-    pub fn parents<I: GraphIndex>(&self, child: I) -> Parents {
-        let idx = self.node_index(child).unwrap_or(NodeIndex::end());
-        self.dag.parents(idx)
+    pub fn parents(&self, child: widget::Id) -> Parents {
+        self.dag.parents(child)
     }
 
     /// A **Walker** type that recursively walks the **Graph** using the given `recursive_fn`.
     ///
     /// **Panics** If the given start index does not exist within the **Graph**.
-    pub fn recursive_walk<I, F>(&self, start: I, recursive_fn: F) -> RecursiveWalk<F>
-        where I: GraphIndex,
-              F: FnMut(&Self, NodeIndex) -> Option<(EdgeIndex, NodeIndex)>
+    pub fn recursive_walk<F>(&self, start: widget::Id, recursive_fn: F) -> RecursiveWalk<F>
+        where F: FnMut(&Self, widget::Id) -> Option<(EdgeIndex, widget::Id)>
     {
-        let start = self.node_index(start).expect(NO_MATCHING_NODE_INDEX);
         RecursiveWalk::new(start, recursive_fn)
     }
 
     /// If the widget at the given index has some parent along an **Edge** of the given variant,
     /// return an index to it.
-    pub fn edge_parent<I, J>(&self, idx: I, edge: Edge) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
-        self.parents(idx).find(self, |g, e, _| g[e] == edge).and_then(|(_, n)| self.convert_idx(n))
+    pub fn edge_parent(&self, idx: widget::Id, edge: Edge) -> Option<widget::Id> {
+        self.parents(idx).find(self, |g, e, _| g[e] == edge).map(|(_, n)| n)
     }
 
     /// Return the index of the parent along the given widget's **Depth** **Edge**.
-    pub fn depth_parent<I, J>(&self, idx: I) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
+    pub fn depth_parent(&self, idx: widget::Id) -> Option<widget::Id> {
         self.edge_parent(idx, Edge::Depth)
     }
 
     /// Return the index of the parent along the given widget's **Position** **Edge**.
-    pub fn x_position_parent<I, J>(&self, idx: I) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
+    pub fn x_position_parent(&self, idx: widget::Id) -> Option<widget::Id> {
         self.edge_parent(idx, Edge::Position(Axis::X))
     }
 
     /// Return the index of the parent along the given widget's **Position** **Edge**.
-    pub fn y_position_parent<I, J>(&self, idx: I) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
+    pub fn y_position_parent(&self, idx: widget::Id) -> Option<widget::Id> {
         self.edge_parent(idx, Edge::Position(Axis::Y))
     }
 
     /// Produces an iterator yielding the parents along both the **X** and **Y** **Position**
     /// **Edge**s respectively.
-    pub fn position_parents<I, J>(&self, idx: I) -> PositionParents<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
+    pub fn position_parents(&self, idx: widget::Id) -> PositionParents {
         self.x_position_parent(idx).into_iter().chain(self.y_position_parent(idx))
     }
 
     /// Return the index of the parent along the given widget's **Graphic** **Edge**.
-    pub fn graphic_parent<I, J>(&self, idx: I) -> Option<J>
-        where I: GraphIndex,
-              J: GraphIndex,
-    {
+    pub fn graphic_parent(&self, idx: widget::Id) -> Option<widget::Id> {
         self.edge_parent(idx, Edge::Graphic)
     }
 
     /// A **Walker** type that recursively walks **Depth** parents starting from the given node.
-    pub fn depth_parent_recursion<I: GraphIndex>(&self, idx: I)
-        -> RecursiveWalk<fn(&Graph, NodeIndex) -> Option<IndexPair>>
+    pub fn depth_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
     {
-        fn depth_edge_parent(graph: &Graph, idx: NodeIndex) -> Option<IndexPair> {
+        fn depth_edge_parent(graph: &Graph, idx: widget::Id) -> Option<IndexPair> {
             graph.parents(idx).find(graph, |g, e, _| g[e] == Edge::Depth)
         }
         self.recursive_walk(idx, depth_edge_parent)
@@ -483,10 +411,10 @@ impl Graph {
 
     /// A **Walker** type that recursively walks **X** **Position** parents starting from the given
     /// node.
-    pub fn x_position_parent_recursion<I: GraphIndex>(&self, idx: I)
-        -> RecursiveWalk<fn(&Graph, NodeIndex) -> Option<IndexPair>>
+    pub fn x_position_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
     {
-        fn x_position_edge_parent(graph: &Graph, idx: NodeIndex) -> Option<IndexPair> {
+        fn x_position_edge_parent(graph: &Graph, idx: widget::Id) -> Option<IndexPair> {
             graph.parents(idx).find(graph, |g, e, _| g[e] == Edge::Position(Axis::X))
         }
         self.recursive_walk(idx, x_position_edge_parent)
@@ -494,88 +422,77 @@ impl Graph {
 
     /// A **Walker** type that recursively walks **Y** **Position** parents starting from the given
     /// node.
-    pub fn y_position_parent_recursion<I: GraphIndex>(&self, idx: I)
-        -> RecursiveWalk<fn(&Graph, NodeIndex) -> Option<IndexPair>>
+    pub fn y_position_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
     {
-        fn y_position_edge_parent(graph: &Graph, idx: NodeIndex) -> Option<IndexPair> {
+        fn y_position_edge_parent(graph: &Graph, idx: widget::Id) -> Option<IndexPair> {
             graph.parents(idx).find(graph, |g, e, _| g[e] == Edge::Position(Axis::Y))
         }
         self.recursive_walk(idx, y_position_edge_parent)
     }
 
     /// A **Walker** type that recursively walks **Graphic** parents starting from the given node.
-    pub fn graphic_parent_recursion<I: GraphIndex>(&self, idx: I)
-        -> RecursiveWalk<fn(&Graph, NodeIndex) -> Option<IndexPair>>
+    pub fn graphic_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
     {
-        fn graphic_edge_parent(graph: &Graph, idx: NodeIndex) -> Option<IndexPair> {
+        fn graphic_edge_parent(graph: &Graph, idx: widget::Id) -> Option<IndexPair> {
             graph.parents(idx).find(graph, |g, e, _| g[e] == Edge::Graphic)
         }
         self.recursive_walk(idx, graphic_edge_parent)
     }
 
     /// A **Walker** type that may be used to step through the children of the given parent node.
-    pub fn children<I: GraphIndex>(&self, parent: I) -> Children {
-        let idx = self.node_index(parent).unwrap_or(NodeIndex::end());
-        self.dag.children(idx)
+    pub fn children(&self, parent: widget::Id) -> Children {
+        self.dag.children(parent)
     }
 
     /// For walking the **Depth** children of the given parent node.
-    pub fn depth_children<I: GraphIndex>(&self, idx: I) -> DepthChildren {
+    pub fn depth_children(&self, idx: widget::Id) -> DepthChildren {
         self.children(idx).filter(is_depth_edge)
     }
 
     /// For walking the **Position(X)** children of the given parent node.
-    pub fn x_position_children<I: GraphIndex>(&self, idx: I) -> XPositionChildren {
+    pub fn x_position_children(&self, idx: widget::Id) -> XPositionChildren {
         self.children(idx).filter(is_x_position_edge)
     }
 
     /// For walking the **Position(Y)** children of the given parent node.
-    pub fn y_position_children<I: GraphIndex>(&self, idx: I) -> YPositionChildren {
+    pub fn y_position_children(&self, idx: widget::Id) -> YPositionChildren {
         self.children(idx).filter(is_y_position_edge)
     }
 
     /// For walking the **Position** children of the given parent node.
     ///
     /// This first walks the **Axis::X** children, before walking the **Axis::Y** children.
-    pub fn position_children<I: GraphIndex>(&self, idx: I) -> PositionChildren {
+    pub fn position_children(&self, idx: widget::Id) -> PositionChildren {
         self.x_position_children(idx).chain(self.y_position_children(idx))
     }
 
     /// For walking the **Graphic** children of the given parent node.
-    pub fn graphic_children<I: GraphIndex>(&self, idx: I) -> GraphicChildren {
+    pub fn graphic_children(&self, idx: widget::Id) -> GraphicChildren {
         self.children(idx).filter(is_graphic_edge)
     }
 
     /// Does the given edge type exist between the nodes `parent` -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_edge_exist<P, C, F>(&self, parent: P, child: C, is_edge: F) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-              F: Fn(Edge) -> bool,
+    pub fn does_edge_exist<F>(&self, parent: widget::Id, child: widget::Id, is_edge: F) -> bool
+        where F: Fn(Edge) -> bool,
     {
-        self.node_index(parent).map(|parent| {
-            self.parents(child).any(self, |g, e, n| n == parent && is_edge(g[e]))
-        }).unwrap_or(false)
+        self.parents(child).any(self, |g, e, n| n == parent && is_edge(g[e]))
     }
 
     /// Does a **Edge::Depth** exist between the nodes `parent` -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_depth_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
+    pub fn does_depth_edge_exist(&self, parent: widget::Id, child: widget::Id) -> bool {
         self.does_edge_exist(parent, child, |e| e == Edge::Depth)
     }
 
     /// Does a **Edge::Position** exist between the nodes `parent` -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_position_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
+    pub fn does_position_edge_exist(&self, parent: widget::Id, child: widget::Id) -> bool {
         let is_edge = |e| e == Edge::Position(Axis::X) || e == Edge::Position(Axis::Y);
         self.does_edge_exist(parent, child, is_edge)
     }
@@ -583,10 +500,7 @@ impl Graph {
     /// Does a **Edge::Graphic** exist between the nodes `parent` -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_graphic_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
+    pub fn does_graphic_edge_exist(&self, parent: widget::Id, child: widget::Id) -> bool {
         self.does_edge_exist(parent, child, |e| e == Edge::Graphic)
     }
 
@@ -596,15 +510,14 @@ impl Graph {
     /// i.e. `parent` -> x -> y -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_recursive_edge_exist<P, C, F>(&self, parent: P, child: C, is_edge: F) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-              F: Fn(Edge) -> bool,
+    pub fn does_recursive_edge_exist<F>(&self,
+                                        parent: widget::Id,
+                                        child: widget::Id,
+                                        is_edge: F) -> bool
+        where F: Fn(Edge) -> bool,
     {
-        self.node_index(parent).map(|parent| {
-            self.recursive_walk(child, |g, n| g.parents(n).find(g, |g, e, _| is_edge(g[e])))
-                .any(self, |_, _, n| n == parent)
-        }).unwrap_or(false)
+        self.recursive_walk(child, |g, n| g.parents(n).find(g, |g, e, _| is_edge(g[e])))
+            .any(self, |_, _, n| n == parent)
     }
 
     /// Are the given `parent` and `child` nodes connected by a single chain of **Depth** edges?
@@ -612,10 +525,7 @@ impl Graph {
     /// i.e. `parent` -> x -> y -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_recursive_depth_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
+    pub fn does_recursive_depth_edge_exist(&self, parent: widget::Id, child: widget::Id) -> bool {
         self.does_recursive_edge_exist(parent, child, |e| e == Edge::Depth)
     }
 
@@ -641,10 +551,7 @@ impl Graph {
     /// i.e. `parent` -> x -> y -> `child`.
     ///
     /// Returns `false` if either of the given node indices do not exist.
-    pub fn does_recursive_graphic_edge_exist<P, C>(&self, parent: P, child: C) -> bool
-        where P: GraphIndex,
-              C: GraphIndex,
-    {
+    pub fn does_recursive_graphic_edge_exist(&self, parent: widget::Id, child: widget::Id) -> bool {
         self.does_recursive_edge_exist(parent, child, |e| e == Edge::Graphic)
     }
 
@@ -658,15 +565,17 @@ impl Graph {
     /// its own `update` method, this `Widget`s positioning and dimension data already exists
     /// within the `Graph` for reference.
     pub fn pre_update_cache(&mut self,
-                            root: NodeIndex,
+                            root: widget::Id,
                             widget: widget::PreUpdateCache,
                             instantiation_order_idx: usize)
     {
         let widget::PreUpdateCache {
-            type_id, idx, maybe_parent_idx, maybe_x_positioned_relatively_idx,
-            maybe_y_positioned_relatively_idx, rect, depth, kid_area, maybe_floating,
+            type_id, id, maybe_parent_id, maybe_x_positioned_relatively_id,
+            maybe_y_positioned_relatively_id, rect, depth, kid_area, maybe_floating,
             crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
         } = widget;
+
+        assert!(self.node(id).is_some(), "No node found for the given widget::Id {:?}", id);
 
         // Construct a new `Container` to place in the `Graph`.
         let new_container = || Container {
@@ -684,85 +593,55 @@ impl Graph {
 
         // Retrieves the widget's parent index.
         //
-        // If a parent index is given but does not yet exist within the **Graph**, add a temporary
-        // node to the graph at the given parent index so that we can add the edge even in the
-        // parent widget's absense. The temporary node should be replaced by the proper widget when
-        // it is updated later in the cycle.
+        // `panic!` if the widget does not exist within the graph. This should rarely be the case
+        // as all existing `widget::Id`s should be generated from the graph itself.
         //
-        // If no parent index is given, the **Graph**'s `root` index will be used as the parent.
-        let maybe_parent_idx = |graph: &mut Self| match maybe_parent_idx {
-            Some(parent_idx) => match graph.node_index(parent_idx) {
-                Some(idx) => Some(idx),
-                None => {
-                    // Add a temporary node to the graph at the given parent index so that we can
-                    // add the edge even in the parent widget's absense. The temporary node should
-                    // be replaced by the proper widget when it is updated later in the cycle.
-                    let parent_node_idx = graph.add_placeholder();
-                    // If the parent_idx is a **WidgetId**, add the mapping to our index_map.
-                    if let widget::Index::Public(parent_widget_id) = parent_idx {
-                        graph.index_map.insert(parent_widget_id, parent_node_idx);
-                    }
-                    Some(parent_node_idx)
-                },
+        // This should only be `None` if the widget is the `root` node (i.e. the `Window` widget).
+        let maybe_parent_id = |graph: &mut Self| match maybe_parent_id {
+            Some(parent_id) => match graph.node(parent_id).is_some() {
+                true => Some(parent_id),
+                false => panic!("No node found for the given parent widget::Id {:?}", parent_id),
             },
             // Check that this node is not the root node before using the root node as the parent.
-            None => graph.node_index(idx)
-                .and_then(|idx| if idx == root { None } else { Some(root) }),
+            None => if id == root { None } else { Some(root) },
         };
 
-        // If we already have a `Node` in the graph for the given `idx`, we need to update it.
-        if let Some(node_idx) = self.node_index(idx) {
+        // Ensure that we have an `Edge::Depth` in the graph representing the parent.
+        if let Some(parent_id) = maybe_parent_id(self) {
+            self.set_edge(parent_id, id, Edge::Depth).unwrap();
+        }
 
-            // Ensure that we have an `Edge::Depth` in the graph representing the parent.
-            if let Some(parent_idx) = maybe_parent_idx(self) {
-                self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
-            }
+        match &mut self.dag[id] {
 
-            match &mut self.dag[node_idx] {
+            // If the node is currently a `Placeholder`, construct a new container and use this
+            // to set it as the `Widget` variant.
+            node @ &mut Node::Placeholder => *node = Node::Widget(new_container()),
 
-                // If the node is currently a `Placeholder`, construct a new container and use this
-                // to set it as the `Widget` variant.
-                node @ &mut Node::Placeholder => *node = Node::Widget(new_container()),
+            // Otherwise, update the data in the container that already exists.
+            &mut Node::Widget(ref mut container) => {
 
-                // Otherwise, update the data in the container that already exists.
-                &mut Node::Widget(ref mut container) => {
+                // If the container already exists with the state of some other kind of
+                // widget, we can assume there's been a mistake with the given Id.
+                //
+                // TODO: It might be overkill to panic here.
+                assert!(container.type_id == type_id,
+                    "A widget of a different type already exists at the given id \
+                    ({:?}). You tried to insert a widget with state of type {:?}, \
+                    however the existing widget state is of type {:?}. Check your \
+                    `WidgetId`s for errors.",
+                    id, &type_id, container.type_id);
 
-                    // If the container already exists with the state of some other kind of
-                    // widget, we can assume there's been a mistake with the given Id.
-                    //
-                    // TODO: It might be overkill to panic here.
-                    if container.type_id != type_id {
-                        panic!("A widget of a different type already exists at the given idx \
-                                ({:?}). You tried to insert a widget with state of type {:?}, \
-                                however the existing widget state is of type {:?}. Check your \
-                                `WidgetId`s for errors.",
-                                idx, &type_id, container.type_id);
-                    }
+                container.type_id = type_id;
+                container.rect = rect;
+                container.depth = depth;
+                container.kid_area = kid_area;
+                container.maybe_floating = maybe_floating;
+                container.crop_kids = crop_kids;
+                container.maybe_x_scroll_state = maybe_x_scroll_state;
+                container.maybe_y_scroll_state = maybe_y_scroll_state;
+                container.instantiation_order_idx = instantiation_order_idx;
+            },
 
-                    container.type_id = type_id;
-                    container.rect = rect;
-                    container.depth = depth;
-                    container.kid_area = kid_area;
-                    container.maybe_floating = maybe_floating;
-                    container.crop_kids = crop_kids;
-                    container.maybe_x_scroll_state = maybe_x_scroll_state;
-                    container.maybe_y_scroll_state = maybe_y_scroll_state;
-                    container.instantiation_order_idx = instantiation_order_idx;
-                },
-
-            }
-
-        // Otherwise if there is no Widget for the given index we need to add one.
-        //
-        // If there is no widget for the given index we can assume that the index is a
-        // `widget::Id`, as the only way to procure a NodeIndex is by adding a Widget to the
-        // Graph.
-        } else if let Some(widget_id) = self.widget_id(idx) {
-            let node_idx = self.add_node(Node::Widget(new_container()));
-            self.index_map.insert(widget_id, node_idx);
-            if let Some(parent_idx) = maybe_parent_idx(self) {
-                self.set_edge(parent_idx, node_idx, Edge::Depth).unwrap();
-            }
         }
 
         // Now that we've updated the widget's cached data, we need to check if we should add any
@@ -772,25 +651,25 @@ impl Graph {
         // there are no incoming `Position` edges.
 
         // X
-        if let Some(relative_idx) = maybe_x_positioned_relatively_idx {
-            self.set_edge(relative_idx, idx, Edge::Position(Axis::X)).unwrap();
+        if let Some(relative_id) = maybe_x_positioned_relatively_id {
+            self.set_edge(relative_id, id, Edge::Position(Axis::X)).unwrap();
         } else {
-            self.remove_parent_edge(idx, Edge::Position(Axis::X));
+            self.remove_parent_edge(id, Edge::Position(Axis::X));
         }
 
         // Y
-        if let Some(relative_idx) = maybe_y_positioned_relatively_idx {
-            self.set_edge(relative_idx, idx, Edge::Position(Axis::Y)).unwrap();
+        if let Some(relative_id) = maybe_y_positioned_relatively_id {
+            self.set_edge(relative_id, id, Edge::Position(Axis::Y)).unwrap();
         } else {
-            self.remove_parent_edge(idx, Edge::Position(Axis::Y));
+            self.remove_parent_edge(id, Edge::Position(Axis::Y));
         }
 
         // Check whether or not the widget is a graphics element for some other widget.
-        if let Some(graphic_parent_idx) = maybe_graphics_for {
-            self.set_edge(graphic_parent_idx, idx, Edge::Graphic).unwrap();
+        if let Some(graphic_parent_id) = maybe_graphics_for {
+            self.set_edge(graphic_parent_id, id, Edge::Graphic).unwrap();
         // If not, ensure that there is no parent **Graphic** edge from the widget.
         } else {
-            self.remove_parent_edge(idx, Edge::Graphic);
+            self.remove_parent_edge(id, Edge::Graphic);
         }
 
     }
@@ -804,11 +683,11 @@ impl Graph {
               W::State: 'static,
               W::Style: 'static,
     {
-        let widget::PostUpdateCache { idx, state, style, .. } = widget;
+        let widget::PostUpdateCache { id, state, style, .. } = widget;
 
-        // We know that their must be a NodeIndex for this idx, as `Graph::pre_update_cache` will
+        // We know that their must be a widget::Id for this id, as `Graph::pre_update_cache` will
         // always be called prior to this method being called.
-        if let Some(ref mut container) = self.widget_mut(idx) {
+        if let Some(ref mut container) = self.widget_mut(id) {
 
             // Construct the `UniqueWidgetState` ready to store as an `Any` within the container.
             let unique_state: UniqueWidgetState<W::State, W::Style> = UniqueWidgetState {
@@ -823,19 +702,19 @@ impl Graph {
 }
 
 
-fn is_depth_edge(g: &Graph, e: EdgeIndex, _: NodeIndex) -> bool {
+fn is_depth_edge(g: &Graph, e: EdgeIndex, _: widget::Id) -> bool {
     g[e] == Edge::Depth
 }
 
-fn is_x_position_edge(g: &Graph, e: EdgeIndex, _: NodeIndex) -> bool {
+fn is_x_position_edge(g: &Graph, e: EdgeIndex, _: widget::Id) -> bool {
     g[e] == Edge::Position(Axis::X)
 }
 
-fn is_y_position_edge(g: &Graph, e: EdgeIndex, _: NodeIndex) -> bool {
+fn is_y_position_edge(g: &Graph, e: EdgeIndex, _: widget::Id) -> bool {
     g[e] == Edge::Position(Axis::Y)
 }
 
-fn is_graphic_edge(g: &Graph, e: EdgeIndex, _: NodeIndex) -> bool {
+fn is_graphic_edge(g: &Graph, e: EdgeIndex, _: widget::Id) -> bool {
     g[e] == Edge::Graphic
 }
 
@@ -843,7 +722,7 @@ fn is_graphic_edge(g: &Graph, e: EdgeIndex, _: NodeIndex) -> bool {
 impl Walker<Graph> for Children {
     type Index = u32;
     #[inline]
-    fn next(&mut self, graph: &Graph) -> Option<(EdgeIndex, NodeIndex)> {
+    fn next(&mut self, graph: &Graph) -> Option<(EdgeIndex, widget::Id)> {
         self.next(&graph.dag)
     }
 }
@@ -851,22 +730,22 @@ impl Walker<Graph> for Children {
 impl Walker<Graph> for Parents {
     type Index = u32;
     #[inline]
-    fn next(&mut self, graph: &Graph) -> Option<(EdgeIndex, NodeIndex)> {
+    fn next(&mut self, graph: &Graph) -> Option<(EdgeIndex, widget::Id)> {
         self.next(&graph.dag)
     }
 }
 
 
-impl<I: GraphIndex> ::std::ops::Index<I> for Graph {
+impl ::std::ops::Index<widget::Id> for Graph {
     type Output = Node;
-    fn index<'a>(&'a self, idx: I) -> &'a Node {
-        self.node(idx).unwrap()
+    fn index<'a>(&'a self, id: widget::Id) -> &'a Node {
+        self.node(id).unwrap()
     }
 }
 
-impl<I: GraphIndex> ::std::ops::IndexMut<I> for Graph {
-    fn index_mut<'a>(&'a mut self, idx: I) -> &'a mut Node {
-        self.node_mut(idx).unwrap()
+impl ::std::ops::IndexMut<widget::Id> for Graph {
+    fn index_mut<'a>(&'a mut self, id: widget::Id) -> &'a mut Node {
+        self.node_mut(id).unwrap()
     }
 }
 

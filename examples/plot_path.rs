@@ -4,6 +4,9 @@ extern crate piston_window;
 
 use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 
+widget_ids! {
+    Ids { canvas, plot }
+}
 
 fn main() {
 
@@ -17,8 +20,11 @@ fn main() {
             .unwrap();
     window.set_ups(60);
 
-    // construct our `Ui`.
+    // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
+
+    // A unique identifier for each widget.
+    let ids = Ids::new(ui.widget_id_generator());
 
     // No text to draw, so we'll just create an empty text texture cache.
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
@@ -34,7 +40,23 @@ fn main() {
             ui.handle_event(e);
         }
 
-        event.update(|_| set_ui(ui.set_widgets()));
+        event.update(|_| {
+            use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+
+            let ui = &mut ui.set_widgets();
+
+            widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
+
+            let min_x = 0.0;
+            let max_x = std::f64::consts::PI * 2.0;
+            let min_y = -1.0;
+            let max_y = 1.0;
+            widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
+                .color(color::LIGHT_BLUE)
+                .wh_of(ids.canvas)
+                .middle_of(ids.canvas)
+                .set(ids.plot, ui);
+        });
 
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
@@ -46,23 +68,4 @@ fn main() {
             }
         });
     }
-}
-
-// Declare the `WidgetId`s and instantiate the widgets.
-fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
-
-    widget_ids!{CANVAS, PLOT};
-
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
-
-    let min_x = 0.0;
-    let max_x = std::f64::consts::PI * 2.0;
-    let min_y = -1.0;
-    let max_y = 1.0;
-    widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
-        .color(color::LIGHT_BLUE)
-        .wh_of(CANVAS)
-        .middle_of(CANVAS)
-        .set(PLOT, ui);
 }

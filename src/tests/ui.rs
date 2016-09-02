@@ -11,7 +11,7 @@ use {
 use event::{self, Input, Motion};
 use input::{self, Button, Key, MouseButton};
 use input::keyboard::ModifierKey;
-use widget::{self, Index};
+use widget;
 use position::Point;
 
 
@@ -34,8 +34,8 @@ fn press_mouse_button(button: MouseButton, ui: &mut Ui) {
     ui.handle_event(event);
 }
 
-fn move_mouse_to_widget(widget_idx: Index, ui: &mut Ui) {
-    ui.xy_of(widget_idx).map(|point| {
+fn move_mouse_to_widget(widget_id: widget::Id, ui: &mut Ui) {
+    ui.xy_of(widget_id).map(|point| {
         let abs_xy = to_window_coordinates(point, ui);
         move_mouse_to_abs_coordinates(abs_xy[0], abs_xy[1], ui);
     });
@@ -74,29 +74,32 @@ fn windowless_ui() -> Ui {
 
 #[test]
 fn ui_should_reset_global_input_after_widget_are_set() {
-    let mut ui = windowless_ui();
+
+    let ui = &mut windowless_ui();
     ui.win_w = 250.0;
     ui.win_h = 300.0;
 
-    const CANVAS_ID: widget::Id = widget::Id(0);
-    const BUTTON_ID: widget::Id = widget::Id(1);
+    let (canvas, button) = {
+        let mut id_generator = ui.widget_id_generator();
+        (id_generator.next(), id_generator.next())
+    };
 
-    move_mouse_to_widget(Index::Public(BUTTON_ID), &mut ui);
-    left_click_mouse(&mut ui);
-
-    assert!(ui.global_input.events().next().is_some());
+    move_mouse_to_widget(button, ui);
+    left_click_mouse(ui);
 
     {
         let ui = &mut ui.set_widgets();
 
+        assert!(ui.global_input().events().next().is_some());
+
         widget::Canvas::new()
             .color(Color::Rgba(1.0, 1.0, 1.0, 1.0))
-            .set(CANVAS_ID, ui);
+            .set(canvas, ui);
         widget::Button::new()
             .w_h(100.0, 200.0)
             .label("MyButton")
-            .bottom_right_of(CANVAS_ID)
-            .set(BUTTON_ID, ui);
+            .bottom_right_of(canvas)
+            .set(button, ui);
     }
 
     assert!(ui.global_input.events().next().is_none());
@@ -105,14 +108,14 @@ fn ui_should_reset_global_input_after_widget_are_set() {
 
 #[test]
 fn ui_should_push_input_events_to_aggregator() {
-    let mut ui = windowless_ui();
+    let mut ui = &mut windowless_ui();
 
-    test_handling_basic_input_event(&mut ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
-    test_handling_basic_input_event(&mut ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));
-    test_handling_basic_input_event(&mut ui, Input::Text("my string".to_string()));
-    test_handling_basic_input_event(&mut ui, Input::Resize(55, 99));
-    test_handling_basic_input_event(&mut ui, Input::Focus(true));
-    test_handling_basic_input_event(&mut ui, Input::Cursor(true));
+    test_handling_basic_input_event(ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
+    test_handling_basic_input_event(ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));
+    test_handling_basic_input_event(ui, Input::Text("my string".to_string()));
+    test_handling_basic_input_event(ui, Input::Resize(55, 99));
+    test_handling_basic_input_event(ui, Input::Focus(true));
+    test_handling_basic_input_event(ui, Input::Cursor(true));
 }
 
 #[test]

@@ -5,7 +5,6 @@ use {
     Color,
     Colorable,
     FontSize,
-    NodeIndex,
     Point,
     Positionable,
     Range,
@@ -55,19 +54,22 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        selected_rectangles[],
+        text,
+        cursor,
+    }
+}
+
 /// The State of the TextEdit widget that will be cached within the Ui.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     cursor: Cursor,
     /// Track whether some sort of dragging is currently occurring.
     drag: Option<Drag>,
     /// Information about each line of text.
     line_infos: Vec<text::line::Info>,
-    selected_rectangle_indices: Vec<NodeIndex>,
-    rectangle_idx: widget::IndexSlot,
-    text_idx: widget::IndexSlot,
-    cursor_idx: widget::IndexSlot,
-    highlight_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 /// Track whether some sort of dragging is currently occurring.
@@ -185,26 +187,22 @@ impl<'a> Widget for TextEdit<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             cursor: Cursor::Idx(text::cursor::Index { line: 0, char: 0 }),
             drag: None,
             line_infos: Vec::new(),
-            selected_rectangle_indices: Vec::new(),
-            rectangle_idx: widget::IndexSlot::new(),
-            text_idx: widget::IndexSlot::new(),
-            cursor_idx: widget::IndexSlot::new(),
-            highlight_idx: widget::IndexSlot::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the TextEdit.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let TextEdit { text, .. } = self;
         let mut text = std::borrow::Cow::Borrowed(text);
 
@@ -225,7 +223,6 @@ impl<'a> Widget for TextEdit<'a> {
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let restrict_to_height = style.restrict_to_height(ui.theme());
-        let text_idx = state.text_idx.get(&mut ui);
 
         /// Returns an iterator yielding the `text::line::Info` for each line in the given text
         /// with the given styling.
@@ -379,7 +376,7 @@ impl<'a> Widget for TextEdit<'a> {
         //     - begin dragging selected text.
         // - Left mouse `Drag` for extending the end of the selection, or for dragging selected text.
         // - Key presses for cursor movement.
-        'events: for widget_event in ui.widget_input(idx).events() {
+        'events: for widget_event in ui.widget_input(id).events() {
             match widget_event {
 
                 event::Widget::Press(press) => match press.button {
@@ -488,10 +485,18 @@ impl<'a> Widget for TextEdit<'a> {
                                     let new_cursor_idx = {
                                         let line_infos = state.line_infos.iter().cloned();
                                         match (left_move, move_word) {
-                                            (true, true) => cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx),
-                                            (false, true) => cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx),
-                                            (true, false) => cursor_idx.previous(line_infos).unwrap_or(cursor_idx),
-                                            (false, false) => cursor_idx.next(line_infos).unwrap_or(cursor_idx),
+                                            (true, true) => cursor_idx
+                                                .previous_word_start(&text, line_infos)
+                                                .unwrap_or(cursor_idx),
+                                            (false, true) => cursor_idx
+                                                .next_word_end(&text, line_infos)
+                                                .unwrap_or(cursor_idx),
+                                            (true, false) => cursor_idx
+                                                .previous(line_infos)
+                                                .unwrap_or(cursor_idx),
+                                            (false, false) => cursor_idx
+                                                .next(line_infos)
+                                                .unwrap_or(cursor_idx),
                                         }
                                     };
                                     cursor = Cursor::Idx(new_cursor_idx);
@@ -499,16 +504,19 @@ impl<'a> Widget for TextEdit<'a> {
                                 Cursor::Selection { start, end } => {
                                     // Move the cursor to the start/end of the current selection.
                                     let new_cursor_idx = {
-                                        let cursor_idx = if left_move { std::cmp::min(start, end) } else { std::cmp::max(start, end) };
+                                        let cursor_idx = if left_move { std::cmp::min(start, end) }
+                                                         else { std::cmp::max(start, end) };
                                         if !move_word {
                                             cursor_idx
                                         } else {
                                             // Move by word from the beginning or end of selection
                                             let line_infos = state.line_infos.iter().cloned();
                                             if left_move {
-                                                cursor_idx.previous_word_start(&text, line_infos).unwrap_or(cursor_idx)
+                                                cursor_idx.previous_word_start(&text, line_infos)
+                                                          .unwrap_or(cursor_idx)
                                             } else {
-                                                cursor_idx.next_word_end(&text, line_infos).unwrap_or(cursor_idx)
+                                                cursor_idx.next_word_end(&text, line_infos)
+                                                          .unwrap_or(cursor_idx)
                                             }
                                         }
                                     };
@@ -685,11 +693,11 @@ impl<'a> Widget for TextEdit<'a> {
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .align_text_to(x_align)
-            .graphics_for(idx)
+            .graphics_for(id)
             .color(color)
             .line_spacing(line_spacing)
             .font_size(font_size)
-            .set(text_idx, &mut ui);
+            .set(state.ids.text, ui);
 
         // Draw the line for the cursor.
         let cursor_idx = match cursor {
@@ -698,7 +706,7 @@ impl<'a> Widget for TextEdit<'a> {
         };
 
         // If this widget is not capturing the keyboard, no need to draw cursor or selection.
-        if ui.global_input().current.widget_capturing_keyboard != Some(idx) {
+        if ui.global_input().current.widget_capturing_keyboard != Some(id) {
             return take_if_owned(text);
         }
 
@@ -712,15 +720,14 @@ impl<'a> Widget for TextEdit<'a> {
                 })
         };
 
-        let cursor_line_idx = state.cursor_idx.get(&mut ui);
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
         widget::Line::centred(start, end)
             .x_y(cursor_x, cursor_y_range.middle())
-            .graphics_for(idx)
-            .parent(idx)
+            .graphics_for(id)
+            .parent(id)
             .color(color)
-            .set(cursor_line_idx, &mut ui);
+            .set(state.ids.cursor, ui);
 
         if let Cursor::Selection { start, end } = cursor {
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
@@ -735,22 +742,23 @@ impl<'a> Widget for TextEdit<'a> {
                 text::line::selected_rects(lines_with_rects, font, font_size, start, end).collect()
             };
 
+            // Ensure we have at least as many widgets as selected_rectangles.
+            if state.ids.selected_rectangles.len() < selected_rects.len() {
+                let num_rects = selected_rects.len();
+                let id_gen = &mut ui.widget_id_generator();
+                state.update(|state| state.ids.selected_rectangles.resize(num_rects, id_gen));
+            }
+
             // Draw a semi-transparent `Rectangle` for the selected range across each line.
             let selected_rect_color = color.highlighted().alpha(0.25);
-            for (i, selected_rect) in selected_rects.iter().enumerate() {
-                if i == state.selected_rectangle_indices.len() {
-                    state.update(|state| {
-                        state.selected_rectangle_indices.push(ui.new_unique_node_index());
-                    });
-                }
-                let selected_rectangle_idx = state.selected_rectangle_indices[i];
-
+            let iter = state.ids.selected_rectangles.iter().zip(&selected_rects);
+            for (&selected_rectangle_id, selected_rect) in iter {
                 widget::Rectangle::fill(selected_rect.dim())
                     .xy(selected_rect.xy())
                     .color(selected_rect_color)
-                    .graphics_for(idx)
-                    .parent(idx)
-                    .set(selected_rectangle_idx, &mut ui);
+                    .graphics_for(id)
+                    .parent(id)
+                    .set(selected_rectangle_id, ui);
             }
         }
 

@@ -1,6 +1,6 @@
 //! A helper widget for laying out child widgets in the form of a grid.
 
-use {NodeIndex, Scalar, Ui, UiCell, Widget};
+use {Scalar, Ui, UiCell, Widget};
 use graph;
 use utils;
 use widget;
@@ -34,12 +34,11 @@ pub struct Matrix {
 }
 
 /// The state of the Matrix, to be cached within the `Ui`'s widget `Graph`.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
-    /// A `NodeIndex` for every Widget in the Matrix.
+    /// A `widget::Id` for every Widget in the Matrix.
     /// This matrix is column major, meaning the outer-most Vec represents each column, and each
     /// inner Vec represents a row.
-    indices: Vec<Vec<NodeIndex>>,
+    indices: Vec<Vec<widget::Id>>,
 }
 
 widget_style!{
@@ -62,7 +61,7 @@ pub struct Elements {
     num_cols: usize,
     row: usize,
     col: usize,
-    matrix_idx: widget::Index,
+    matrix_id: widget::Id,
     elem_w: Scalar,
     elem_h: Scalar,
     x_min: Scalar, x_max: Scalar,
@@ -72,8 +71,8 @@ pub struct Elements {
 /// Data necessary for instantiating a widget for a single `Matrix` element.
 #[derive(Copy, Clone, Debug)]
 pub struct Element {
-    /// The index generated for the widget.
-    pub widget_idx: NodeIndex,
+    /// The id generated for the widget.
+    pub widget_id: widget::Id,
     /// The row number for the `Element`.
     pub row: usize,
     /// The column number for the `Element`.
@@ -86,8 +85,8 @@ pub struct Element {
     pub rel_x: Scalar,
     /// The *y* position of the element relative to the centre of the `Matrix`.
     pub rel_y: Scalar,
-    /// The index of the `Matrix`, used for positioning.
-    matrix_idx: widget::Index,
+    /// The id of the `Matrix`, used for positioning.
+    matrix_id: widget::Id,
 }
 
 
@@ -126,17 +125,17 @@ impl Widget for Matrix {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State { indices: Vec::new() }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the Matrix.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let Matrix { cols, rows, .. } = self;
 
         // First, check that we have the correct number of columns.
@@ -151,8 +150,9 @@ impl Widget for Matrix {
         for col in 0..cols {
             let num_rows = state.indices[col].len();
             if num_rows < rows {
+                let mut id_gen = ui.widget_id_generator();
                 state.update(|state| {
-                    let extension = (num_rows..rows).map(|_| ui.new_unique_node_index());
+                    let extension = (num_rows..rows).map(|_| id_gen.next());
                     state.indices[col].extend(extension);
                 });
             }
@@ -174,7 +174,7 @@ impl Widget for Matrix {
             num_cols: cols,
             row: 0,
             col: 0,
-            matrix_idx: idx,
+            matrix_id: id,
             elem_w: elem_w - cell_pad_w * 2.0,
             elem_h: elem_h - cell_pad_h * 2.0,
             x_min: x_min,
@@ -198,7 +198,7 @@ impl Elements {
             ref mut col,
             num_rows,
             num_cols,
-            matrix_idx,
+            matrix_id,
             elem_w,
             elem_h,
             x_min, x_max,
@@ -207,14 +207,14 @@ impl Elements {
 
         let (r, c) = (*row, *col);
 
-        // Retrieve the `node_index` that was generated for the next `Element`.
-        let node_index = match ui.widget_graph().widget(matrix_idx)
+        // Retrieve the `widget::Id` that was generated for the next `Element`.
+        let widget_id = match ui.widget_graph().widget(matrix_id)
             .and_then(|container| container.unique_widget_state::<Matrix>())
             .and_then(|&graph::UniqueWidgetState { ref state, .. }| {
-                state.indices.get(c).and_then(|col| col.get(r).map(|&idx| idx))
+                state.indices.get(c).and_then(|col| col.get(r).map(|&id| id))
             })
         {
-            Some(node_index) => node_index,
+            Some(id) => id,
             None => return None,
         };
 
@@ -229,8 +229,8 @@ impl Elements {
         let rel_y = utils::map_range(r as Scalar, 0.0, num_rows as Scalar, y_max, y_min);
 
         Some(Element {
-            widget_idx: node_index,
-            matrix_idx: matrix_idx,
+            widget_id: widget_id,
+            matrix_id: matrix_id,
             col: c,
             row: r,
             w: elem_w,
@@ -256,11 +256,11 @@ impl Element {
         where W: Widget,
     {
         use {Positionable, Sizeable};
-        let Element { widget_idx, matrix_idx, w, h, rel_x, rel_y, .. } = self;
+        let Element { widget_id, matrix_id, w, h, rel_x, rel_y, .. } = self;
         widget
             .w_h(w, h)
-            .x_y_relative_to(matrix_idx, rel_x, rel_y)
-            .set(widget_idx, ui)
+            .x_y_relative_to(matrix_id, rel_x, rel_y)
+            .set(widget_id, ui)
     }
 
 }

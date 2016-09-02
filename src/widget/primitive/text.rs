@@ -154,14 +154,14 @@ impl<'a> Widget for Text<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             string: String::new(),
             line_infos: Vec::new(),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 

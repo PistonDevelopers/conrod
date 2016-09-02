@@ -51,13 +51,19 @@ mod circular_button {
         }
     }
 
+    // We'll create the widget using a `Circle` widget and a `Text` widget for its label.
+    //
+    // Here is where we generate the type that will produce these identifiers.
+    widget_ids! {
+        Ids {
+            circle,
+            text,
+        }
+    }
+
     /// Represents the unique, cached state for our CircularButton widget.
-    #[derive(Clone, Debug, PartialEq)]
     pub struct State {
-        /// An index to use for our **Circle** primitive graphics widget.
-        circle_idx: widget::IndexSlot,
-        /// An index to use for our **Text** primitive graphics widget (for the label).
-        text_idx: widget::IndexSlot,
+        ids: Ids,
     }
 
     /// Return whether or not a given point is over a circle at a given point on a
@@ -115,29 +121,26 @@ mod circular_button {
             &mut self.common
         }
 
-        fn init_state(&self) -> State {
-            State {
-                circle_idx: widget::IndexSlot::new(),
-                text_idx: widget::IndexSlot::new(),
-            }
+        fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
+            State { ids: Ids::new(id_gen) }
         }
 
-        fn style(&self) -> Style {
+        fn style(&self) -> Self::Style {
             self.style.clone()
         }
 
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
         fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-            let widget::UpdateArgs { idx, state, rect, mut ui, style, .. } = args;
+            let widget::UpdateArgs { id, state, rect, mut ui, style, .. } = args;
 
             let (color, event) = {
-                let input = ui.widget_input(idx);
+                let input = ui.widget_input(id);
 
                 // If the button was clicked, produce `Some` event.
                 let event = input.clicks().left().next().map(|_| ());
 
-                let color = style.color(ui.theme());
+                let color = style.color(&ui.theme);
                 let color = input.mouse().map_or(color, |mouse| {
                     if is_over_circ([0.0, 0.0], mouse.rel_xy(), rect.dim()) {
                         if mouse.buttons.left().is_down() {
@@ -169,24 +172,22 @@ mod circular_button {
 
             // First, we'll draw the **Circle** with a radius that is half our given width.
             let radius = rect.w() / 2.0;
-            let circle_idx = state.circle_idx.get(&mut ui);
             widget::Circle::fill(radius)
-                .middle_of(idx)
-                .graphics_for(idx)
+                .middle_of(id)
+                .graphics_for(id)
                 .color(color)
-                .set(circle_idx, &mut ui);
+                .set(state.ids.circle, ui);
 
             // Now we'll instantiate our label using the **Text** widget.
-            let label_color = style.label_color(ui.theme());
-            let font_size = style.label_font_size(ui.theme());
-            let text_idx = state.text_idx.get(&mut ui);
             if let Some(ref label) = self.maybe_label {
+                let label_color = style.label_color(&ui.theme);
+                let font_size = style.label_font_size(&ui.theme);
                 widget::Text::new(label)
-                    .middle_of(idx)
+                    .middle_of(id)
                     .font_size(font_size)
-                    .graphics_for(idx)
+                    .graphics_for(id)
                     .color(label_color)
-                    .set(text_idx, &mut ui);
+                    .set(state.ids.text, ui);
             }
 
             event
@@ -244,6 +245,17 @@ pub fn main() {
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
 
+    // The `widget_ids` macro is a easy, safe way of generating a type for producing `widget::Id`s.
+    widget_ids! {
+        Ids {
+            // An ID for the background widget, upon which we'll place our custom button.
+            background,
+            // The WidgetId we'll use to plug our widget into the `Ui`.
+            circle_button,
+        }
+    }
+    let ids = Ids::new(ui.widget_id_generator());
+
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
@@ -267,26 +279,18 @@ pub fn main() {
             let ui = &mut ui.set_widgets();
 
             // Sets a color to clear the background with before the Ui draws our widget.
-            widget::Canvas::new().color(conrod::color::DARK_RED).set(BACKGROUND, ui);
-
-            // The `widget_ids` macro is a easy, safe way of generating unique `WidgetId`s.
-            widget_ids! {
-                // An ID for the background widget, upon which we'll place our custom button.
-                BACKGROUND,
-                // The WidgetId we'll use to plug our widget into the `Ui`.
-                CIRCLE_BUTTON,
-            }
+            widget::Canvas::new().color(conrod::color::DARK_RED).set(ids.background, ui);
 
             // Instantiate of our custom widget.
             for _click in CircularButton::new()
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
-                .middle_of(BACKGROUND)
+                .middle_of(ids.background)
                 .w_h(256.0, 256.0)
                 .label_color(conrod::color::WHITE)
                 .label("Circular Button")
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
                 // drawn when we call Ui::draw.
-                .set(CIRCLE_BUTTON, ui)
+                .set(ids.circle_button, ui)
             {
                 println!("Click!");
             }

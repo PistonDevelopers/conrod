@@ -11,7 +11,6 @@ use {
     Color,
     Colorable,
     FontSize,
-    NodeIndex,
     Positionable,
     Scalar,
     Sizeable,
@@ -50,12 +49,7 @@ pub enum Types<'a> {
 }
 
 /// Unique state stored within the widget graph for each `FileNavigator`.
-#[derive(Debug, PartialEq)]
 pub struct State {
-    /// A canvas upon which we can scroll the `DirectoryView`s horizontally.
-    scrollable_canvas_idx: widget::IndexSlot,
-    /// Horizontal scrollbar for manually scrolling the canvas.
-    scrollbar_idx: widget::IndexSlot,
     /// The starting directory displayed by the `FileNavigator`.
     starting_directory: std::path::PathBuf,
     /// The stack of currently displayed directories.
@@ -63,10 +57,14 @@ pub struct State {
     /// Directories are laid out left to right, where the left-most directory is initially the
     /// `starting_directory`.
     directory_stack: Vec<Directory>,
-    /// The first `NodeIndex` is stored for the `DirectoryView` for each directory in the stack.
+    /// A canvas upon which we can scroll the `DirectoryView`s horizontally.
     ///
-    /// The second is for the width-resizing `Rectangle`.
-    directory_view_indices: Vec<(NodeIndex, NodeIndex)>,
+    /// A horizontal scrollbar for manually scrolling the canvas.
+    ///
+    /// An Id for each `DirectoryView` in the stack.
+    ///
+    /// An Id for each directory view width-resizing `Rectangle`.
+    ids: Ids,
 }
 
 /// Represents the state for a single directory.
@@ -78,7 +76,16 @@ pub struct Directory {
     column_width: Scalar,
 }
 
-widget_style!{
+widget_ids! {
+    Ids {
+        scrollable_canvas,
+        scrollbar,
+        directory_views[],
+        directory_view_resizers[],
+    }
+}
+
+widget_style! {
     /// Unique styling for the widget.
     style Style {
         /// Color of the selected entries.
@@ -181,23 +188,21 @@ impl<'a> Widget for FileNavigator<'a> {
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            scrollable_canvas_idx: widget::IndexSlot::new(),
-            scrollbar_idx: widget::IndexSlot::new(),
             directory_stack: Vec::new(),
-            directory_view_indices: Vec::new(),
             starting_directory: std::path::PathBuf::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
         let FileNavigator { starting_directory, types, .. } = self;
 
         if starting_directory != state.starting_directory {
@@ -217,20 +222,18 @@ impl<'a> Widget for FileNavigator<'a> {
         let text_color = style.text_color(&ui.theme)
             .unwrap_or_else(|| color.plain_contrast());
 
-        let scrollable_canvas_idx = state.scrollable_canvas_idx.get(&mut ui);
         widget::Rectangle::fill(rect.dim())
             .xy(rect.xy())
             .color(color::TRANSPARENT)
-            .parent(idx)
+            .parent(id)
             .scroll_kids_horizontally()
-            .set(scrollable_canvas_idx, &mut ui);
+            .set(state.ids.scrollable_canvas, ui);
 
         // A scrollbar for the `FOOTER` canvas.
-        let scrollbar_idx = state.scrollbar_idx.get(&mut ui);
-        widget::Scrollbar::x_axis(scrollable_canvas_idx)
+        widget::Scrollbar::x_axis(state.ids.scrollable_canvas)
             .color(color.plain_contrast())
             .auto_hide(true)
-            .set(scrollbar_idx, &mut ui);
+            .set(state.ids.scrollbar, ui);
 
         // Collect all events that might occur.
         let mut events = Vec::new();
@@ -239,15 +242,23 @@ impl<'a> Widget for FileNavigator<'a> {
         let mut i = 0;
         while i < state.directory_stack.len() {
 
-            // Retrive the NodeIndex, or create one if necessary.
-            let (view_idx, resize_idx) = match state.directory_view_indices.get(i) {
-                Some(&indices) => indices,
+            // Retrieve the `DirectoryView` `widget::Id`.
+            let view_id = match state.ids.directory_views.get(i) {
+                Some(&id) => id,
                 None => {
-                    let view_idx = ui.new_unique_node_index();
-                    let resize_idx = ui.new_unique_node_index();
-                    let new_indices = (view_idx, resize_idx);
-                    state.update(|state| state.directory_view_indices.push(new_indices));
-                    new_indices
+                    let id_gen = &mut ui.widget_id_generator();
+                    state.update(|state| state.ids.directory_views.resize(i+1, id_gen));
+                    state.ids.directory_views[i]
+                },
+            };
+
+            // Retrieve the directory view resizing bar `widget::Id`.
+            let resize_id = match state.ids.directory_view_resizers.get(i) {
+                Some(&id) => id,
+                None => {
+                    let id_gen = &mut ui.widget_id_generator();
+                    state.update(|state| state.ids.directory_view_resizers.resize(i+1, id_gen));
+                    state.ids.directory_view_resizers[i]
                 },
             };
 
@@ -255,9 +266,9 @@ impl<'a> Widget for FileNavigator<'a> {
             let mut column_width = state.directory_stack[i].column_width;
 
             // Check to see if the resize handle has received any events.
-            if let Some(resize_rect) = ui.rect_of(resize_idx) {
+            if let Some(resize_rect) = ui.rect_of(resize_id) {
                 let mut scroll_x = 0.0;
-                for drag in ui.widget_input(resize_idx).drags().left() {
+                for drag in ui.widget_input(resize_id).drags().left() {
                     let target_w = column_width + drag.delta_xy[0];
                     let min_w = resize_rect.w() * 3.0;
                     let end_w = column_width + (rect.right() - resize_rect.right());
@@ -269,7 +280,7 @@ impl<'a> Widget for FileNavigator<'a> {
                     }
                 }
                 if scroll_x > 0.0 {
-                    ui.scroll_widget(scrollable_canvas_idx, [-scroll_x, 0.0]);
+                    ui.scroll_widget(state.ids.scrollable_canvas, [-scroll_x, 0.0]);
                 }
             }
 
@@ -283,14 +294,14 @@ impl<'a> Widget for FileNavigator<'a> {
             for event in DirectoryView::new(&state.directory_stack[i].path, types)
                 .h(rect.h())
                 .w(directory_view_width)
-                .and(|view| if i == 0 { view.mid_left_of(idx) } else { view.right(0.0) })
+                .and(|view| if i == 0 { view.mid_left_of(id) } else { view.right(0.0) })
                 .color(color)
                 .unselected_color(unselected_color)
                 .text_color(text_color)
                 .font_size(font_size)
                 .show_hidden_files(self.show_hidden)
-                .parent(scrollable_canvas_idx)
-                .set(view_idx, &mut ui)
+                .parent(state.ids.scrollable_canvas)
+                .set(view_id, ui)
             {
                 match event {
 
@@ -366,7 +377,7 @@ impl<'a> Widget for FileNavigator<'a> {
                     let total_w = state.directory_stack.iter().fold(0.0, |t, d| t + d.column_width);
                     let overlap = total_w - rect.w();
                     if overlap > 0.0 {
-                        ui.scroll_widget(scrollable_canvas_idx, [-overlap, 0.0]);
+                        ui.scroll_widget(state.ids.scrollable_canvas, [-overlap, 0.0]);
                     }
                 },
 
@@ -382,7 +393,7 @@ impl<'a> Widget for FileNavigator<'a> {
 
             // Instantiate the width-resizing handle's `Rectangle`.
             let resize_color = color.plain_contrast().plain_contrast();
-            let resize_color = match ui.widget_input(resize_idx).mouse() {
+            let resize_color = match ui.widget_input(resize_id).mouse() {
                 Some(mouse) => match mouse.buttons.left().is_down() {
                     true => resize_color.clicked().alpha(0.5),
                     false => resize_color.highlighted().alpha(0.2),
@@ -392,14 +403,14 @@ impl<'a> Widget for FileNavigator<'a> {
             widget::Rectangle::fill([resize_handle_width, rect.h()])
                 .color(resize_color)
                 .right(0.0)
-                .parent(scrollable_canvas_idx)
-                .set(resize_idx, &mut ui);
+                .parent(state.ids.scrollable_canvas)
+                .set(resize_id, ui);
 
             i += 1;
         }
 
         // If the canvas is pressed.
-        if ui.widget_input(scrollable_canvas_idx).presses().mouse().left().next().is_some() {
+        if ui.widget_input(state.ids.scrollable_canvas).presses().mouse().left().next().is_some() {
             state.update(|state| {
                 // Unselect everything.
                 while state.directory_stack.len() > 1 {

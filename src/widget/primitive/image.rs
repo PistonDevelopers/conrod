@@ -95,7 +95,7 @@ impl Widget for Image {
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             src_rect: None,
         }

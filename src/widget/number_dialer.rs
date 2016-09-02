@@ -6,7 +6,6 @@ use {
     FontSize,
     Borderable,
     Labelable,
-    NodeIndex,
     Point,
     Positionable,
     Scalar,
@@ -54,13 +53,19 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+    }
+}
+
+
 /// The state of the NumberDialer.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// The index of the value that is currently pressed.
     pressed_value_idx: Option<usize>,
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
+    ids: Ids,
     glyph_slot_indices: Vec<GlyphSlot>,
 }
 
@@ -68,9 +73,9 @@ pub struct State {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct GlyphSlot {
     /// The highlightable **Rectangle** behind the glyph.
-    rectangle_idx: NodeIndex,
+    rectangle_id: widget::Id,
     /// The **Text** widget for the glyph itself.
-    text_idx: NodeIndex,
+    text_id: widget::Id,
 }
 
 
@@ -157,22 +162,21 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             pressed_value_idx: None,
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
+            ids: Ids::new(id_gen),
             glyph_slot_indices: Vec::new(),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
     /// Update the state of the NumberDialer.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let NumberDialer { value, min, max, precision, maybe_label, .. } = self;
 
         let rel_rect = rect.relative_to(rect.xy());
@@ -229,7 +233,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             None
         };
 
-        let value_under_mouse = ui.widget_input(idx).mouse()
+        let value_under_mouse = ui.widget_input(id).mouse()
             .and_then(|m| value_under_rel_xy(m.rel_xy()));
         let mut pressed_value_idx = state.pressed_value_idx;
         let mut new_value = value;
@@ -238,7 +242,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         // - If a value has been `Press`ed and is being dragged.
         // - `Drag`ging of the mouse while a button is pressed.
         // - `Scroll`ing of the mouse over a value.
-        'events: for widget_event in ui.widget_input(idx).events() {
+        'events: for widget_event in ui.widget_input(id).events() {
             use event;
             use input::{self, MouseButton};
 
@@ -312,36 +316,35 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         let color = style.color(ui.theme());
         let border = style.border(ui.theme());
         let border_color = style.border_color(ui.theme());
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         widget::BorderedRectangle::new(rect.dim())
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(state.ids.rectangle, &mut ui);
 
         // The **Text** for the **NumberDialer**'s label.
         let label_color = style.label_color(ui.theme());
         let font_size = style.label_font_size(ui.theme());
         if maybe_label.is_some() {
-            let label_idx = state.label_idx.get(&mut ui);
             widget::Text::new(&label_string)
-                .x_y_relative_to(idx, label_rel_x, 0.0)
-                .graphics_for(idx)
+                .x_y_relative_to(id, label_rel_x, 0.0)
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .parent(idx)
-                .set(label_idx, &mut ui);
+                .parent(id)
+                .set(state.ids.label, &mut ui);
         }
 
         // Ensure we have at least as many glyph_slot_indices as there are chars in our val_string.
         if state.glyph_slot_indices.len() < val_string.chars().count() {
             state.update(|state| {
                 let range = state.glyph_slot_indices.len()..val_string.chars().count();
+                let mut id_gen = ui.widget_id_generator();
                 let extension = range.map(|_| GlyphSlot {
-                    rectangle_idx: ui.new_unique_node_index(),
-                    text_idx: ui.new_unique_node_index(),
+                    rectangle_id: id_gen.next(),
+                    text_id: id_gen.next(),
                 });
                 state.glyph_slot_indices.extend(extension);
             })
@@ -366,22 +369,22 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             if let Some(slot_color) = maybe_slot_color {
                 widget::Rectangle::fill([slot_w, slot_h])
                     .depth(1.0)
-                    .x_y_relative_to(idx, rel_slot_x, 0.0)
-                    .graphics_for(idx)
+                    .x_y_relative_to(id, rel_slot_x, 0.0)
+                    .graphics_for(id)
                     .color(slot_color)
-                    .parent(rectangle_idx)
-                    .set(slot.rectangle_idx, &mut ui);
+                    .parent(state.ids.rectangle)
+                    .set(slot.rectangle_id, &mut ui);
             }
 
             // Now a **Text** widget for the character itself.
             widget::Text::new(glyph_string)
-                .x_y_relative_to(idx, rel_slot_x, 0.0)
-                .graphics_for(idx)
+                .x_y_relative_to(id, rel_slot_x, 0.0)
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
                 .align_text_middle()
-                .parent(idx)
-                .set(slot.text_idx, &mut ui);
+                .parent(id)
+                .set(slot.text_id, &mut ui);
 
             rel_slot_x += slot_w;
         }

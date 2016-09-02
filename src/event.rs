@@ -85,26 +85,26 @@ pub enum Event {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Ui {
     /// Entered text, along with the widget that was capturing the keyboard at the time.
-    Text(Option<widget::Index>, Text),
+    Text(Option<widget::Id>, Text),
     /// Some button was pressed, along with the widget that was capturing the device whose button
     /// which was pressed.
-    Press(Option<widget::Index>, Press),
+    Press(Option<widget::Id>, Press),
     /// Some button was released, along with the widget that was capturing the device whose button
     /// which was released.
-    Release(Option<widget::Index>, Release),
+    Release(Option<widget::Id>, Release),
     /// Represents all forms of motion input, alongside with the widget that was capturing the
     /// mouse at the time.
-    Move(Option<widget::Index>, Move),
+    Move(Option<widget::Id>, Move),
     /// The window's dimensions were resized.
     WindowResized(Dimensions),
     /// Represents a pointing device being pressed and subsequently released while over the same
     /// location.
-    Click(Option<widget::Index>, Click),
+    Click(Option<widget::Id>, Click),
     /// Two `Click` events with the same `button` and `xy` occurring within a duration that is less
     /// that the `theme.double_click_threshold`.
-    DoubleClick(Option<widget::Index>, DoubleClick),
+    DoubleClick(Option<widget::Id>, DoubleClick),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
-    Drag(Option<widget::Index>, Drag),
+    Drag(Option<widget::Id>, Drag),
     /// A generic scroll event.
     ///
     /// `Scroll` does not necessarily have to get created by a mouse wheel, it could be generated
@@ -113,15 +113,15 @@ pub enum Ui {
     /// Received `Scroll` events are first applied to all scrollable widgets under the mouse from
     /// top to bottom. The remainder will then be applied to either 1. whatever widget captures the
     /// device from which the scroll was emitted or 2. whatever widget was specified.
-    Scroll(Option<widget::Index>, Scroll),
+    Scroll(Option<widget::Id>, Scroll),
     /// Indicates that the given widget has captured the mouse.
-    WidgetCapturesMouse(widget::Index),
+    WidgetCapturesMouse(widget::Id),
     /// Indicates that the given widget has released the mouse from capturing.
-    WidgetUncapturesMouse(widget::Index),
+    WidgetUncapturesMouse(widget::Id),
     /// Indicates that the given widget has captured the keyboard.
-    WidgetCapturesKeyboard(widget::Index),
+    WidgetCapturesKeyboard(widget::Id),
     /// Indicates that the given widget has released the keyboard from capturing.
-    WidgetUncapturesKeyboard(widget::Index),
+    WidgetUncapturesKeyboard(widget::Id),
 }
 
 /// Events that apply to a specific widget.

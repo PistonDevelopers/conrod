@@ -4,6 +4,10 @@ extern crate piston_window;
 
 use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
+widget_ids! {
+    Ids { canvas, list_select }
+}
+
 fn main() {
 
     const WIDTH: u32 = 600;
@@ -21,8 +25,11 @@ fn main() {
 
     window.set_ups(60);
 
-    // construct our `Ui`.
+    // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
+
+    // A unique identifier for each widget.
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -73,9 +80,7 @@ fn main() {
             // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
-            widget_ids!(CANVAS, LIST_SELECT);
-
-            widget::Canvas::new().color(conrod::color::BLUE).set(CANVAS, ui);
+            widget::Canvas::new().color(conrod::color::BLUE).set(ids.canvas, ui);
 
             // Instantiate the `ListSelect` widget.
             let num_items = list_items.len();
@@ -83,9 +88,9 @@ fn main() {
             let (mut events, scrollbar) = widget::ListSelect::multiple(num_items, item_h)
                 .scrollbar_next_to()
                 .w_h(350.0, 220.0)
-                .top_left_with_margins_on(CANVAS, 40.0, 40.0)
+                .top_left_with_margins_on(ids.canvas, 40.0, 40.0)
                 .scrollbar_next_to()
-                .set(LIST_SELECT, ui);
+                .set(ids.list_select, ui);
 
             // Handle the `ListSelect`s events.
             while let Some(event) = events.next(ui, |i| list_selected.contains(&i)) {

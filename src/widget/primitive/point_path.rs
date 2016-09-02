@@ -167,7 +167,7 @@ impl<I> Widget for PointPath<I>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             points: Vec::new(),
         }

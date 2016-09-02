@@ -8,7 +8,6 @@ use {
     Borderable,
     FontSize,
     Labelable,
-    NodeIndex,
     Point,
     Positionable,
     Rect,
@@ -63,15 +62,20 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        rectangle,
+        label,
+        value_label,
+        point_path,
+        points[],
+    }
+}
+
 /// Represents the state of the EnvelopeEditor widget.
-#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     pressed_point: Option<usize>,
-    rectangle_idx: widget::IndexSlot,
-    label_idx: widget::IndexSlot,
-    value_label_idx: widget::IndexSlot,
-    point_path_idx: widget::IndexSlot,
-    point_indices: Vec<NodeIndex>,
+    ids: Ids,
 }
 
 
@@ -231,14 +235,10 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         &mut self.common
     }
 
-    fn init_state(&self) -> Self::State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             pressed_point: None,
-            rectangle_idx: widget::IndexSlot::new(),
-            label_idx: widget::IndexSlot::new(),
-            value_label_idx: widget::IndexSlot::new(),
-            point_path_idx: widget::IndexSlot::new(),
-            point_indices: Vec::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
@@ -249,7 +249,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
     /// Update the `EnvelopeEditor` in accordance to the latest input and call the given `react`
     /// function if necessary.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let EnvelopeEditor {
             env,
             skew_y_range,
@@ -320,7 +320,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         // - Remove points via right `Click`.
         // - Dragging points via left `Drag`.
         let mut events = Vec::new();
-        'events: for widget_event in ui.widget_input(idx).events() {
+        'events: for widget_event in ui.widget_input(id).events() {
             use event;
             use input::{self, MouseButton};
 
@@ -441,38 +441,35 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         }
 
         let inner_rect = rect.pad(border);
-        let rectangle_idx = state.rectangle_idx.get(&mut ui);
         let dim = rect.dim();
         let border = style.border(ui.theme());
         let color = style.color(ui.theme());
-        let color = ui.widget_input(idx).mouse()
+        let color = ui.widget_input(id).mouse()
             .and_then(|m| if inner_rect.is_over(m.abs_xy()) { Some(color.highlighted()) }
                           else { None })
             .unwrap_or(color);
         let border_color = style.border_color(ui.theme());
         widget::BorderedRectangle::new(dim)
-            .middle_of(idx)
-            .graphics_for(idx)
+            .middle_of(id)
+            .graphics_for(id)
             .color(color)
             .border(border)
             .border_color(border_color)
-            .set(rectangle_idx, &mut ui);
+            .set(state.ids.rectangle, ui);
 
         let label_color = style.label_color(ui.theme());
         if let Some(label) = maybe_label {
-            let label_idx = state.label_idx.get(&mut ui);
             let font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
-                .middle_of(rectangle_idx)
-                .graphics_for(idx)
+                .middle_of(state.ids.rectangle)
+                .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .set(label_idx, &mut ui);
+                .set(state.ids.label, ui);
         }
 
         let line_color = label_color.with_alpha(1.0);
         {
-            let point_path_idx = state.point_path_idx.get(&mut ui);
             let thickness = style.line_thickness(ui.theme());
             let points = env.iter().map(|point| {
                 let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
@@ -482,28 +479,26 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             widget::PointPath::new(points)
                 .wh(inner_rect.dim())
                 .xy(inner_rect.xy())
-                .graphics_for(idx)
-                .parent(idx)
+                .graphics_for(id)
+                .parent(id)
                 .color(line_color)
                 .thickness(thickness)
-                .set(point_path_idx, &mut ui);
+                .set(state.ids.point_path, ui);
         }
 
-        let num_point_indices = state.point_indices.len();
-        let len = env.len();
-        if num_point_indices < len {
-            let new_indices = (num_point_indices..len).map(|_| ui.new_unique_node_index());
-            state.update(|state| state.point_indices.extend(new_indices));
+        // Ensure we have at least as many point widgets as there are points in the env.
+        if state.ids.points.len() < env.len() {
+            state.update(|state| state.ids.points.resize(env.len(), &mut ui.widget_id_generator()));
         }
 
-        let iter = state.point_indices.iter().zip(env.iter()).enumerate();
-        for (i, (&point_idx, point)) in iter {
+        let iter = state.ids.points.iter().zip(env.iter()).enumerate();
+        for (i, (&point_id, point)) in iter {
             let x = map_x_to(point.get_x(), inner_rect.left(), inner_rect.right());
             let y = map_y_to(point.get_y(), inner_rect.bottom(), inner_rect.top());
             let point_color = if state.pressed_point == Some(i) {
                 line_color.clicked()
             } else {
-                ui.widget_input(idx).mouse()
+                ui.widget_input(id).mouse()
                     .and_then(|mouse| {
                         let mouse_abs_xy = mouse.abs_xy();
                         let distance = (mouse_abs_xy[0] - x).powf(2.0)
@@ -519,13 +514,13 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             widget::Circle::fill(point_radius)
                 .color(point_color)
                 .x_y(x, y)
-                .graphics_for(idx)
-                .parent(idx)
-                .set(point_idx, &mut ui);
+                .graphics_for(id)
+                .parent(id)
+                .set(point_id, &mut ui);
         }
 
         // Find the closest point to the mouse.
-        let maybe_closest_point = ui.widget_input(idx).mouse().and_then(|mouse| {
+        let maybe_closest_point = ui.widget_input(id).mouse().and_then(|mouse| {
             let mut closest_distance = ::std::f64::MAX;
             let mut closest_point = None;
             for (i, p) in env.iter().enumerate() {
@@ -561,17 +556,16 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                 Edge::Start => Direction::Forwards,
             };
             let value_font_size = style.value_font_size(ui.theme());
-            let value_label_idx = state.value_label_idx.get(&mut ui);
-            let closest_point_idx = state.point_indices[closest_idx];
+            let closest_point_id = state.ids.points[closest_idx];
             const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
             widget::Text::new(&xy_string)
-                .x_direction_from(closest_point_idx, x_direction, VALUE_TEXT_PAD)
-                .y_direction_from(closest_point_idx, y_direction, VALUE_TEXT_PAD)
+                .x_direction_from(closest_point_id, x_direction, VALUE_TEXT_PAD)
+                .y_direction_from(closest_point_id, y_direction, VALUE_TEXT_PAD)
                 .color(line_color)
-                .graphics_for(idx)
-                .parent(idx)
+                .graphics_for(id)
+                .parent(id)
                 .font_size(value_font_size)
-                .set(value_label_idx, &mut ui);
+                .set(state.ids.value_label, ui);
         }
 
         events

@@ -7,6 +7,11 @@ extern crate piston_window;
 use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 
 
+widget_ids! { 
+    Ids { canvas, oval, range_slider }
+}
+
+
 fn main() {
     const WIDTH: u32 = 360;
     const HEIGHT: u32 = 360;
@@ -20,6 +25,9 @@ fn main() {
 
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
+
+    // A unique identifier for each widget.
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -44,7 +52,7 @@ fn main() {
         }
 
         event.update(|_| {
-            set_ui(ui.set_widgets(), &mut oval_range);
+            set_ui(ui.set_widgets(), &ids, &mut oval_range);
         });
 
         window.draw_2d(&event, |c, g| {
@@ -61,12 +69,10 @@ fn main() {
 }
 
 // Declare the `WidgetId`s and instantiate the widgets.
-fn set_ui(ref mut ui: conrod::UiCell, oval_range: &mut (conrod::Scalar, conrod::Scalar)) {
+fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, oval_range: &mut (conrod::Scalar, conrod::Scalar)) {
     use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
-    widget_ids!{CANVAS, OVAL, RANGE_SLIDER};
-
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(CANVAS, ui);
+    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
 
     const PAD: conrod::Scalar = 20.0;
     let (ref mut start, ref mut end) = *oval_range;
@@ -74,10 +80,10 @@ fn set_ui(ref mut ui: conrod::UiCell, oval_range: &mut (conrod::Scalar, conrod::
     let max = 1.0;
     for (edge, value) in widget::RangeSlider::new(*start, *end, min, max)
         .color(color::LIGHT_BLUE)
-        .padded_w_of(CANVAS, PAD)
+        .padded_w_of(ids.canvas, PAD)
         .h(30.0)
-        .mid_top_with_margin_on(CANVAS, PAD)
-        .set(RANGE_SLIDER, ui)
+        .mid_top_with_margin_on(ids.canvas, PAD)
+        .set(ids.range_slider, ui)
     {
         match edge {
             widget::range_slider::Edge::Start => *start = value,
@@ -85,12 +91,12 @@ fn set_ui(ref mut ui: conrod::UiCell, oval_range: &mut (conrod::Scalar, conrod::
         }
     }
 
-    let range_slider_w = ui.w_of(RANGE_SLIDER).unwrap();
+    let range_slider_w = ui.w_of(ids.range_slider).unwrap();
     let w = (*end - *start) * range_slider_w;
     let h = 200.0;
     widget::Oval::fill([w, h])
-        .mid_left_with_margin_on(CANVAS, PAD + *start * range_slider_w)
+        .mid_left_with_margin_on(ids.canvas, PAD + *start * range_slider_w)
         .color(color::LIGHT_BLUE)
         .down(50.0)
-        .set(OVAL, ui);
+        .set(ids.oval, ui);
 }

@@ -21,6 +21,9 @@ fn main() {
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
 
+    // A unique identifier for each widget.
+    let ids = Ids::new(ui.widget_id_generator());
+
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
@@ -45,7 +48,7 @@ fn main() {
             ui.handle_event(e);
         }
 
-        event.update(|_| set_ui(ui.set_widgets()));
+        event.update(|_| set_ui(ui.set_widgets(), &ids));
 
         window.draw_2d(&event, |c, g| {
             // Only re-draw if there was some change in the `Ui`.
@@ -61,26 +64,28 @@ fn main() {
 
 }
 
-fn set_ui(ref mut ui: conrod::UiCell) {
-    use conrod::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
-
-    // Generate a unique const `WidgetId` for each widget.
-    widget_ids!{
-        MASTER,
-        LEFT_COL,
-        MIDDLE_COL,
-        RIGHT_COL,
-        LEFT_TEXT,
-        MIDDLE_TEXT,
-        RIGHT_TEXT,
+// Generate a unique const `WidgetId` for each widget.
+widget_ids!{
+    Ids {
+        master,
+        left_col,
+        middle_col,
+        right_col,
+        left_text,
+        middle_text,
+        right_text,
     }
+}
+
+fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
+    use conrod::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
 
     // Our `Canvas` tree, upon which we will place our text widgets.
     widget::Canvas::new().flow_right(&[
-        (LEFT_COL, widget::Canvas::new().color(color::BLACK)),
-        (MIDDLE_COL, widget::Canvas::new().color(color::DARK_CHARCOAL)),
-        (RIGHT_COL, widget::Canvas::new().color(color::CHARCOAL)),
-    ]).set(MASTER, ui);
+        (ids.left_col, widget::Canvas::new().color(color::BLACK)),
+        (ids.middle_col, widget::Canvas::new().color(color::DARK_CHARCOAL)),
+        (ids.right_col, widget::Canvas::new().color(color::CHARCOAL)),
+    ]).set(ids.master, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
@@ -94,25 +99,25 @@ fn set_ui(ref mut ui: conrod::UiCell) {
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_RED)
-        .padded_w_of(LEFT_COL, PAD)
-        .mid_top_with_margin_on(LEFT_COL, PAD)
+        .padded_w_of(ids.left_col, PAD)
+        .mid_top_with_margin_on(ids.left_col, PAD)
         .align_text_left()
         .line_spacing(10.0)
-        .set(LEFT_TEXT, ui);
+        .set(ids.left_text, ui);
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_GREEN)
-        .padded_w_of(MIDDLE_COL, PAD)
-        .middle_of(MIDDLE_COL)
+        .padded_w_of(ids.middle_col, PAD)
+        .middle_of(ids.middle_col)
         .align_text_middle()
         .line_spacing(2.5)
-        .set(MIDDLE_TEXT, ui);
+        .set(ids.middle_text, ui);
 
     widget::Text::new(DEMO_TEXT)
         .color(color::LIGHT_BLUE)
-        .padded_w_of(RIGHT_COL, PAD)
-        .mid_bottom_with_margin_on(RIGHT_COL, PAD)
+        .padded_w_of(ids.right_col, PAD)
+        .mid_bottom_with_margin_on(ids.right_col, PAD)
         .align_text_right()
         .line_spacing(5.0)
-        .set(RIGHT_TEXT, ui);
+        .set(ids.right_text, ui);
 }

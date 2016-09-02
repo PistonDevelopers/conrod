@@ -21,7 +21,7 @@ use widget::scroll::{self, X, Y};
 pub struct Scrollbar<A> {
     common: widget::CommonBuilder,
     style: Style,
-    widget: widget::Index,
+    widget: widget::Id,
     axis: std::marker::PhantomData<A>,
 }
 
@@ -45,7 +45,7 @@ pub trait Axis: scroll::Axis + Sized {
 }
 
 
-widget_style!{
+widget_style! {
     /// Styling for the DropDownList, necessary for constructing its renderable Element.
     style Style {
         /// Color of the widget.
@@ -60,17 +60,22 @@ widget_style!{
     }
 }
 
+widget_ids! {
+    Ids {
+        track,
+        handle,
+    }
+}
+
 /// The state of the `Scrollbar`.
-#[derive(PartialEq, Clone, Debug)]
 pub struct State {
-    track_idx: widget::IndexSlot,
-    handle_idx: widget::IndexSlot,
+    ids: Ids,
 }
 
 impl<A> Scrollbar<A> {
 
     /// Begin building a new scrollbar widget.
-    fn new(widget: widget::Index) -> Self {
+    fn new(widget: widget::Id) -> Self {
         Scrollbar {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
@@ -108,9 +113,8 @@ impl<A> Scrollbar<A> {
 impl Scrollbar<X> {
 
     /// Begin building a new scrollbar widget that scrolls along the *X* axis along the range of
-    /// the scrollable widget at the given index.
-    pub fn x_axis<I: Into<widget::Index> + Copy>(widget: I) -> Self {
-        let widget = widget.into();
+    /// the scrollable widget at the given Id.
+    pub fn x_axis(widget: widget::Id) -> Self {
         Scrollbar::new(widget)
             .align_middle_x_of(widget)
             .align_bottom_of(widget)
@@ -121,9 +125,8 @@ impl Scrollbar<X> {
 impl Scrollbar<Y> {
 
     /// Begin building a new scrollbar widget that scrolls along the *Y* axis along the range of
-    /// the scrollable widget at the given index.
-    pub fn y_axis<I: Into<widget::Index> + Copy>(widget: I) -> Self {
-        let widget = widget.into();
+    /// the scrollable widget at the given Id.
+    pub fn y_axis(widget: widget::Id) -> Self {
         Scrollbar::new(widget)
             .align_middle_y_of(widget)
             .align_right_of(widget)
@@ -146,14 +149,13 @@ impl<A> Widget for Scrollbar<A>
         &mut self.common
     }
 
-    fn init_state(&self) -> State {
+    fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
-            track_idx: widget::IndexSlot::new(),
-            handle_idx: widget::IndexSlot::new(),
+            ids: Ids::new(id_gen),
         }
     }
 
-    fn style(&self) -> Style {
+    fn style(&self) -> Self::Style {
         self.style.clone()
     }
 
@@ -166,7 +168,7 @@ impl<A> Widget for Scrollbar<A>
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { idx, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let Scrollbar { widget, .. } = self;
 
         let color = style.color(ui.theme());
@@ -214,7 +216,7 @@ impl<A> Widget for Scrollbar<A>
 
         // Sum all offset yielded by `Press` and `Drag` events.
         let mut additional_offset = 0.0;
-        for widget_event in ui.widget_input(idx).events() {
+        for widget_event in ui.widget_input(id).events() {
             use event;
             use input;
 
@@ -266,31 +268,29 @@ impl<A> Widget for Scrollbar<A>
         if auto_hide {
             let not_scrollable = offset_bounds.magnitude().is_sign_positive();
             let no_offset = additional_offset == 0.0;
-            let no_mouse_interaction = ui.widget_input(idx).mouse().is_none();
+            let no_mouse_interaction = ui.widget_input(id).mouse().is_none();
             if not_scrollable || (!is_scrolling && no_offset && no_mouse_interaction) {
                 return;
             }
         }
 
         // The `Track` widget along which the handle will slide.
-        let track_idx = state.track_idx.get(&mut ui);
         let track_color = color.alpha(0.25);
         widget::Rectangle::fill(rect.dim())
             .xy(rect.xy())
             .color(track_color)
-            .graphics_for(idx)
-            .parent(idx)
-            .set(track_idx, &mut ui);
+            .graphics_for(id)
+            .parent(id)
+            .set(state.ids.track, ui);
 
         // The `Handle` widget used as a graphical representation of the part of the scrollbar that
         // can be dragged over the track.
-        let handle_idx = state.handle_idx.get(&mut ui);
         widget::Rectangle::fill(handle_rect.dim())
             .xy(handle_rect.xy())
             .color(color)
-            .graphics_for(idx)
-            .parent(idx)
-            .set(handle_idx, &mut ui);
+            .graphics_for(id)
+            .parent(id)
+            .set(state.ids.handle, ui);
     }
 }
 
