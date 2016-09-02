@@ -159,14 +159,21 @@ macro_rules! widget_ids {
     ///// widget_ids! /////
     ///////////////////////
 
-    ($Ids:ident { $($id:tt)* }) => {
+    // The top-level branch, to be invoked by the user.
+    (    $Ids:ident { $($id:tt)* }) => { widget_ids! { implement []    $Ids { $($id)* } } };
+    // The same as above, but makes the generated `$Ids` type `pub`.
+    (pub $Ids:ident { $($id:tt)* }) => { widget_ids! { implement [pub] $Ids { $($id)* } } };
+
+    // Calls the `define_struct` and `constructor` branches, implementing the struct and
+    // constructor method respectively.
+    (implement [$($public:tt)*] $Ids:ident { $($id:tt)* }) => {
         widget_ids! {
-            define_struct $Ids { {} $($id)* }
+            define_struct [$($public)*] $Ids { {} $($id)* }
         }
 
         impl $Ids {
 
-            /// Construct a new, empty `widget::Id` cache.
+            /// Construct a new `widget::Id` container.
             pub fn new(mut generator: $crate::widget::id::Generator) -> Self {
                 widget_ids! {
                     constructor $Ids, generator { {} $($id)* }
@@ -202,9 +209,9 @@ macro_rules! widget_ids {
     // ```
 
     // Converts `foo[]` tokens to `foo: conrod::widget::id::List`.
-    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)* }) => {
+    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)* }) => {
         widget_ids! {
-            define_struct $Ids {
+            define_struct [$($public)*] $Ids {
                 {
                     $($id_field: $T,)*
                     $id: $crate::widget::id::List,
@@ -215,9 +222,9 @@ macro_rules! widget_ids {
     };
 
     // Converts `foo` tokens to `foo: conrod::widget::Id`.
-    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
+    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
         widget_ids! {
-            define_struct $Ids {
+            define_struct [$($public)*] $Ids {
                 {
                     $($id_field: $T,)*
                     $id: $crate::widget::Id,
@@ -228,18 +235,25 @@ macro_rules! widget_ids {
     };
 
     // Same as above but without the trailing comma.
-    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
-        widget_ids! { define_struct $Ids { { $($id_field: $T,)* } $id[], } }
+    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
+        widget_ids! { define_struct [$($public)*] $Ids { { $($id_field: $T,)* } $id[], } }
     };
-    (define_struct $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident }) => {
-        widget_ids! { define_struct $Ids { { $($id_field: $T,)* } $id, } }
+    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident }) => {
+        widget_ids! { define_struct [$($public)*] $Ids { { $($id_field: $T,)* } $id, } }
     };
 
     // Generates the struct using all the `ident: path` combinations generated above.
-    (define_struct $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+    (define_struct [pub] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+        pub struct $Ids {
+            $($id: $T,
+            )*
+        }
+    };
+
+    // The same as the previous branch, but private.
+    (define_struct [] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
         struct $Ids {
-            $(
-                $id: $T,
+            $($id: $T,
             )*
         }
     };
@@ -321,9 +335,9 @@ fn test() {
     use widget::{self, Widget};
 
     widget_ids! {
-        Ids {
-            button,
-            toggles[],
+        pub Ids {
+            pub button,
+            pub toggles[],
         }
     }
 
