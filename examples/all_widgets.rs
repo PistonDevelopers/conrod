@@ -163,11 +163,12 @@ fn main() {
 }
 
 
-// In conrod, each widget must have its own unique identifier so that the `Ui` can keep track
-// of its state between updates.
+// In conrod, each widget must have its own unique identifier so that the `Ui` can keep track of
+// its state between updates.
 //
-// To make this easier, conrod provides the `widget_ids` macro, which generates a unique
-// const `widget::Id` for each identifier given in the list.
+// To make this easier, conrod provides the `widget_ids` macro. This macro generates a new type
+// with a unique `widget::Id` field for each identifier given in the list. See the `widget_ids!`
+// documentation for more details.
 widget_ids! {
     Ids {
         canvas,
