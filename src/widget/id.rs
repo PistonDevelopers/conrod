@@ -174,6 +174,7 @@ macro_rules! widget_ids {
         impl $Ids {
 
             /// Construct a new `widget::Id` container.
+            #[allow(unused_mut, unused_variables)]
             pub fn new(mut generator: $crate::widget::id::Generator) -> Self {
                 widget_ids! {
                     constructor $Ids, generator { {} $($id)* }
