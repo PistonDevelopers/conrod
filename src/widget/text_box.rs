@@ -65,7 +65,7 @@ pub struct State {
 impl<'a> TextBox<'a> {
 
     /// Construct a TextBox widget.
-    pub fn new(text: &'a mut String) -> Self {
+    pub fn new(text: &'a str) -> Self {
         TextBox {
             common: widget::CommonBuilder::new(),
             text: text,
