@@ -252,16 +252,19 @@ impl Widget for List {
             },
             ItemInstantiation::OnlyVisible => {
                 let scroll_trigger_rect = ui.rect_of(state.ids.scroll_trigger).unwrap();
-                let hidden_range_length = scroll_trigger_rect.top() - rect.top();
+                let hidden_range_length = (scroll_trigger_rect.top() - rect.top()).max(0.0);
                 let num_top_hidden_items = hidden_range_length / item_h;
-                let num_visible_items = (rect.h() / item_h + 1.0).ceil() as usize;
+                let num_visible_items = rect.h() / item_h;
 
                 let first_visible_item_idx = num_top_hidden_items.floor() as usize;
-                let first_visible_item_margin = first_visible_item_idx as Scalar * item_h;
-                let end_of_visible_idx_range =
-                    std::cmp::min(first_visible_item_idx + num_visible_items, num_items);
-                let range = first_visible_item_idx..end_of_visible_idx_range;
-                (range, first_visible_item_margin)
+                let end_visible_item_idx = std::cmp::min(
+                    (num_top_hidden_items + num_visible_items).ceil() as usize,
+                    num_items,
+                );
+
+                let range = first_visible_item_idx..end_visible_item_idx;
+                let margin = first_visible_item_idx as Scalar * item_h;
+                (range, margin)
             },
         };
 
