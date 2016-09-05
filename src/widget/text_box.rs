@@ -51,7 +51,7 @@ widget_style!{
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         text_edit,
         rectangle,
     }

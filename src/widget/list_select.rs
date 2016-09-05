@@ -45,7 +45,7 @@ pub trait Mode {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         list,
     }
 }

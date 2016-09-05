@@ -24,7 +24,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // A unique identifier for each widget.
-    widget_ids!(Ids { canvas, file_navigator });
+    widget_ids!(struct Ids { canvas, file_navigator });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.

@@ -57,7 +57,7 @@ widget_style! {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         closed_menu,
         list,
     }

@@ -32,7 +32,7 @@ pub struct State {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         rectangle,
         label,
     }

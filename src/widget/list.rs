@@ -49,7 +49,7 @@ widget_style! {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         scroll_trigger,
         items[],
         scrollbar,

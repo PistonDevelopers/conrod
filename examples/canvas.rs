@@ -151,7 +151,7 @@ const COLS: usize = 24;
 
 // Generate a unique `WidgetId` for each widget.
 widget_ids! {
-    Ids {
+    struct Ids {
         master,
         header,
         body,

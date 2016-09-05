@@ -66,7 +66,7 @@ fn main() {
 
 // Generate a unique const `WidgetId` for each widget.
 widget_ids!{
-    Ids {
+    struct Ids {
         master,
         left_col,
         middle_col,

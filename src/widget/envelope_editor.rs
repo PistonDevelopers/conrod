@@ -63,7 +63,7 @@ widget_style!{
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         rectangle,
         label,
         value_label,

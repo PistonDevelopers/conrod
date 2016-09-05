@@ -31,7 +31,7 @@ widget_style! {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         point_path,
     }
 }

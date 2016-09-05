@@ -29,7 +29,7 @@ fn main() {
     let mut text_texture_cache = conrod::backend::piston_window::GlyphCache::new(&mut window, 0, 0);
 
     // The `WidgetId` for our background and `Image` widgets.
-    widget_ids!(Ids { background, rust_logo });
+    widget_ids!(struct Ids { background, rust_logo });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.

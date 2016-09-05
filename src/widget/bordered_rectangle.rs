@@ -32,7 +32,7 @@ pub struct BorderedRectangle {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         border,
         rectangle,
     }

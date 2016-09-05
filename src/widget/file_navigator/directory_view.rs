@@ -53,7 +53,7 @@ pub struct Entry {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         rectangle,
         list_select,
     }

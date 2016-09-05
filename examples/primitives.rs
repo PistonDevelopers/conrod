@@ -7,7 +7,7 @@ use piston_window::*;
 
 // Generate a type that will produce a unique `widget::Id` for each widget.
 widget_ids! {
-    Ids {
+    struct Ids {
         canvas,
         line,
         point_path,

@@ -8,7 +8,7 @@ use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 
 
 widget_ids! { 
-    Ids { canvas, oval, range_slider }
+    struct Ids { canvas, oval, range_slider }
 }
 
 

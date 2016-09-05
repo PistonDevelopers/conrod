@@ -55,7 +55,7 @@ widget_style!{
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         selected_rectangles[],
         text,
         cursor,
