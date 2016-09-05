@@ -50,7 +50,7 @@ widget_style!{
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         rectangle,
         label,
         h_line,

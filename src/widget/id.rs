@@ -113,7 +113,7 @@ impl ListWalk {
 /// extern crate conrod;
 ///
 /// widget_ids! {
-///     Ids {
+///     struct Ids {
 ///         button,
 ///         toggles[],
 ///     }
@@ -160,15 +160,19 @@ macro_rules! widget_ids {
     ///////////////////////
 
     // The top-level branch, to be invoked by the user.
-    (    $Ids:ident { $($id:tt)* }) => { widget_ids! { implement []    $Ids { $($id)* } } };
+    ($(#[$attr:meta])*     struct $Ids:ident { $($id:tt)* }) => {
+        widget_ids! { implement $(#[$attr])* []    $Ids { $($id)* } }
+    };
     // The same as above, but makes the generated `$Ids` type `pub`.
-    (pub $Ids:ident { $($id:tt)* }) => { widget_ids! { implement [pub] $Ids { $($id)* } } };
+    ($(#[$attr:meta])* pub struct $Ids:ident { $($id:tt)* }) => {
+        widget_ids! { implement $(#[$attr])* [pub] $Ids { $($id)* } }
+    };
 
     // Calls the `define_struct` and `constructor` branches, implementing the struct and
     // constructor method respectively.
-    (implement [$($public:tt)*] $Ids:ident { $($id:tt)* }) => {
+    (implement $(#[$attr:meta])* [$($public:tt)*] $Ids:ident { $($id:tt)* }) => {
         widget_ids! {
-            define_struct [$($public)*] $Ids { {} $($id)* }
+            define_struct $(#[$attr])* [$($public)*] $Ids { {} $($id)* }
         }
 
         impl $Ids {
@@ -210,9 +214,11 @@ macro_rules! widget_ids {
     // ```
 
     // Converts `foo[]` tokens to `foo: conrod::widget::id::List`.
-    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)* }) => {
+    (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
+        { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)*
+    }) => {
         widget_ids! {
-            define_struct [$($public)*] $Ids {
+            define_struct $(#[$attr])* [$($public)*] $Ids {
                 {
                     $($id_field: $T,)*
                     $id: $crate::widget::id::List,
@@ -223,9 +229,11 @@ macro_rules! widget_ids {
     };
 
     // Converts `foo` tokens to `foo: conrod::widget::Id`.
-    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)* }) => {
+    (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
+        { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)*
+    }) => {
         widget_ids! {
-            define_struct [$($public)*] $Ids {
+            define_struct $(#[$attr])* [$($public)*] $Ids {
                 {
                     $($id_field: $T,)*
                     $id: $crate::widget::Id,
@@ -235,18 +243,25 @@ macro_rules! widget_ids {
         }
     };
 
-
-
     // Same as above but without the trailing comma.
-    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident[] }) => {
-        widget_ids! { define_struct [$($public)*] $Ids { { $($id_field: $T,)* } $id[], } }
+    (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
+        { $($id_field:ident: $T:path,)* } $id:ident[]
+    }) => {
+        widget_ids! {
+            define_struct $(#[$atta])* [$($public)*] $Ids { { $($id_field: $T,)* } $id[], }
+        }
     };
-    (define_struct [$($public:tt)*] $Ids:ident { { $($id_field:ident: $T:path,)* } $id:ident }) => {
-        widget_ids! { define_struct [$($public)*] $Ids { { $($id_field: $T,)* } $id, } }
+    (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
+        { $($id_field:ident: $T:path,)* } $id:ident
+    }) => {
+        widget_ids! {
+            define_struct $(#[$attr])* [$($public)*] $Ids { { $($id_field: $T,)* } $id, }
+        }
     };
 
     // Generates the struct using all the `ident: path` combinations generated above.
-    (define_struct [pub] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+    (define_struct $(#[$attr:meta])* [pub] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+        $(#[$attr])*
         pub struct $Ids {
             $(pub $id: $T,
             )*
@@ -287,7 +302,9 @@ macro_rules! widget_ids {
     // ```
 
     // Converts `foo[]` to `foo: conrod::widget::id::List::new()`.
-    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)* }) => {
+    (constructor $Ids:ident, $generator:ident {
+        { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)*
+    }) => {
         widget_ids! {
             constructor $Ids, $generator {
                 {
@@ -300,7 +317,9 @@ macro_rules! widget_ids {
     };
 
     // Converts `foo` to `foo: generator.next()`.
-    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)* }) => {
+    (constructor $Ids:ident, $generator:ident {
+        { $($id_field:ident: $new:expr,)* } $id:ident, $($rest:tt)*
+    }) => {
         widget_ids! {
             constructor $Ids, $generator {
                 {
@@ -313,10 +332,14 @@ macro_rules! widget_ids {
     };
 
     // Same as above but without the trailing comma.
-    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident[] }) => {
+    (constructor $Ids:ident, $generator:ident {
+        { $($id_field:ident: $new:expr,)* } $id:ident[]
+    }) => {
         widget_ids! { constructor $Ids, $generator { { $($id_field: $new,)* } $id[], } }
     };
-    (constructor $Ids:ident, $generator:ident { { $($id_field:ident: $new:expr,)* } $id:ident }) => {
+    (constructor $Ids:ident, $generator:ident {
+        { $($id_field:ident: $new:expr,)* } $id:ident
+    }) => {
         widget_ids! { constructor $Ids, $generator { { $($id_field: $new,)* } $id, } }
     };
 
@@ -338,7 +361,7 @@ fn test() {
     use widget::{self, Widget};
 
     widget_ids! {
-        Ids {
+        struct Ids {
             button,
             toggles[],
         }

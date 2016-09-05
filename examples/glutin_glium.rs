@@ -279,7 +279,7 @@ mod feature {
 
     // Generate a type which may produce unique identifier for each widget.
     widget_ids! {
-        Ids {
+        struct Ids {
             canvas,
             text,
         }

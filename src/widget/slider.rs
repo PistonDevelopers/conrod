@@ -60,7 +60,7 @@ widget_style! {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         border,
         slider,
         label,

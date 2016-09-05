@@ -40,7 +40,7 @@ fn main() {
         conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
-    widget_ids!(Ids { canvas, button, rust_logo });
+    widget_ids!(struct Ids { canvas, button, rust_logo });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.

@@ -170,7 +170,7 @@ fn main() {
 // with a unique `widget::Id` field for each identifier given in the list. See the `widget_ids!`
 // documentation for more details.
 widget_ids! {
-    Ids {
+    struct Ids {
         canvas,
         canvas_x_scrollbar,
         canvas_y_scrollbar,

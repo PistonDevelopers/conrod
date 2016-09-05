@@ -5,7 +5,7 @@ extern crate piston_window;
 use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 
 widget_ids! {
-    Ids { canvas, plot }
+    struct Ids { canvas, plot }
 }
 
 fn main() {

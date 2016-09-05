@@ -55,7 +55,7 @@ mod circular_button {
     //
     // Here is where we generate the type that will produce these identifiers.
     widget_ids! {
-        Ids {
+        struct Ids {
             circle,
             text,
         }
@@ -247,7 +247,7 @@ pub fn main() {
 
     // The `widget_ids` macro is a easy, safe way of generating a type for producing `widget::Id`s.
     widget_ids! {
-        Ids {
+        struct Ids {
             // An ID for the background widget, upon which we'll place our custom button.
             background,
             // The WidgetId we'll use to plug our widget into the `Ui`.

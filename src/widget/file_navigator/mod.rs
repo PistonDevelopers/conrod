@@ -77,7 +77,7 @@ pub struct Directory {
 }
 
 widget_ids! {
-    Ids {
+    struct Ids {
         scrollable_canvas,
         scrollbar,
         directory_views[],
