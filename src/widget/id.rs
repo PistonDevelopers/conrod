@@ -249,7 +249,7 @@ macro_rules! widget_ids {
         { $($id_field:ident: $T:path,)* } $id:ident[]
     }) => {
         widget_ids! {
-            define_struct $(#[$atta])* [$($public)*] $Ids { { $($id_field: $T,)* } $id[], }
+            define_struct $(#[$attr])* [$($public)*] $Ids { { $($id_field: $T,)* } $id[], }
         }
     };
     (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
@@ -371,8 +371,8 @@ fn test() {
         }
     }
 
-    let ui = &mut UiBuilder::new().build();
-    let ids = &mut Ids::new(ui.widget_id_generator());
+    let mut ui = UiBuilder::new().build();
+    let mut ids = Ids::new(ui.widget_id_generator());
 
     for _ in 0..10 {
         let ref mut ui = ui.set_widgets();
@@ -386,4 +386,30 @@ fn test() {
             widget::Toggle::new(true).set(id, ui);
         }
     }
+}
+
+#[test]
+#[allow(unused_variables)]
+fn test_invocation_variations() {
+    use ui::UiBuilder;
+
+    widget_ids! { struct A { foo, bar } }
+    widget_ids! { pub struct B { foo, bar } }
+    widget_ids! { struct C { foo, bar, } }
+    widget_ids! { pub struct D { foo, bar, } }
+    widget_ids! { struct E { foo[], bar } }
+    widget_ids! { pub struct F { foo, bar[] } }
+    widget_ids! { struct G { foo[], bar, } }
+    widget_ids! { pub struct H { foo, bar[], } }
+
+    let mut ui = UiBuilder::new().build();
+    let mut ui = ui.set_widgets();
+    let a = A::new(ui.widget_id_generator());
+    let b = B::new(ui.widget_id_generator());
+    let c = C::new(ui.widget_id_generator());
+    let d = D::new(ui.widget_id_generator());
+    let e = E::new(ui.widget_id_generator());
+    let f = F::new(ui.widget_id_generator());
+    let g = G::new(ui.widget_id_generator());
+    let h = H::new(ui.widget_id_generator());
 }
