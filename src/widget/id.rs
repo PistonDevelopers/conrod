@@ -23,6 +23,7 @@ pub type Id = daggy::NodeIndex<u32>;
 pub struct Generator<'a> { widget_graph: &'a mut Graph }
 
 /// A list of lazily generated `widget::Id`s.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct List(Vec<Id>);
 /// An iterator-like type for producing indices from a `List`.
 #[allow(missing_copy_implementations)]
@@ -269,7 +270,8 @@ macro_rules! widget_ids {
     };
 
     // The same as the previous branch, but private.
-    (define_struct [] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+    (define_struct $(#[$attr:meta])* [] $Ids:ident { { $($id:ident: $T:path,)* } }) => {
+        $(#[$attr])*
         struct $Ids {
             $(pub $id: $T,
             )*
@@ -361,7 +363,9 @@ fn test() {
     use widget::{self, Widget};
 
     widget_ids! {
-        struct Ids {
+        /// Testing generated Ids doc comments.
+        #[derive(Clone)]
+        pub struct Ids {
             button,
             toggles[],
         }
