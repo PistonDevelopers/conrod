@@ -348,7 +348,7 @@ impl<'a> Widget for DirectoryView<'a> {
             }
         }
 
-        scrollbar.map(|s| s.set(ui));
+        if let Some(s) = scrollbar { s.set(ui); }
 
         // If the scrollable `Rectangle` was pressed, deselect all entries.
         if ui.widget_input(id).presses().mouse().left().next().is_some() {
