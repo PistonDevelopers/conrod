@@ -471,6 +471,76 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
+                        // If `Cursor::Idx`, remove the `char` at the cursor.
+                        // If `Cursor::Selection`, remove the selected text.
+                        input::Key::Delete => {
+                            match cursor {
+
+                                Cursor::Idx(cursor_idx) => {
+                                    let idx_after_cursor = {
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        text::glyph::index_after_cursor(line_infos, cursor_idx)
+                                    };
+                                    if let Some(idx) = idx_after_cursor {
+                                        let idx_to_remove = idx;
+
+                                        *text.to_mut() = text.chars().take(idx_to_remove)
+                                            .chain(text.chars().skip(idx_to_remove + 1))
+                                            .collect();
+
+                                        state.update(|state| {
+                                            let font = ui.fonts.get(font_id).unwrap();
+                                            let w = rect.w();
+                                            state.line_infos =
+                                                line_infos(&text, font, font_size, line_wrap, w)
+                                                    .collect();
+                                        });
+
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        let new_cursor_idx =
+                                             text::cursor::index_before_char(line_infos,
+                                                                             idx_to_remove)
+                                             // in case we removed the last character
+                                            .unwrap_or(text::cursor::Index {line: 0, char: 0});
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    }
+                                },
+
+                                Cursor::Selection { start, end } => {
+                                    let (start_idx, end_idx) = {
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        (text::glyph::index_after_cursor(line_infos.clone(), start)
+                                            .expect("text::cursor::Index was out of range"),
+                                         text::glyph::index_after_cursor(line_infos, end)
+                                            .expect("text::cursor::Index was out of range"))
+                                    };
+                                    let (start_idx, end_idx) =
+                                        if start_idx <= end_idx { (start_idx, end_idx) }
+                                        else                    { (end_idx, start_idx) };
+                                    let new_cursor_char_idx =
+                                        if start_idx > 0 { start_idx } else { 0 };
+                                    let new_cursor_idx = {
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        text::cursor::index_before_char(line_infos,
+                                                                        new_cursor_char_idx)
+                                            .expect("char index was out of range")
+                                    };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                    *text.to_mut() = text.chars().take(start_idx)
+                                        .chain(text.chars().skip(end_idx))
+                                        .collect();
+                                    state.update(|state| {
+                                        let font = ui.fonts.get(font_id).unwrap();
+                                        let w = rect.w();
+                                        state.line_infos =
+                                            line_infos(&text, font, font_size, line_wrap, w)
+                                                .collect();
+                                    });
+                                },
+
+                            }
+                        },
+
                         input::Key::Left | input::Key::Right => {
                             let left_move = match key {
                                     input::Key::Left => true,
@@ -572,6 +642,38 @@ impl<'a> Widget for TextEdit<'a> {
                                     },
                                     _ => (),
                                 }
+                            }
+                        },
+
+                        input::Key::End => { // move cursor to end.
+                            let mut line_infos = state.line_infos.iter().cloned();
+                            let line = match cursor {
+                                Cursor::Idx(idx) => idx.line,
+                                Cursor::Selection {end, ..} => end.line, // use last line of selection
+                            };
+                            match line_infos.nth(line) {
+                                Some(line_info) => {
+                                    let char = line_info.end_char() - line_info.start_char;
+                                    let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                },
+                                _ => (),
+                            }
+                        },
+
+                        input::Key::Home => { // move cursor to beginning.
+                            let mut line_infos = state.line_infos.iter().cloned();
+                            let line = match cursor {
+                                Cursor::Idx(idx) => idx.line,
+                                Cursor::Selection {start, ..} => start.line, // use first line of selection
+                            };
+                            match line_infos.nth(line) {
+                                Some(_) => {
+                                    let char = 0;
+                                    let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                },
+                                _ => (),
                             }
                         },
 
