@@ -285,11 +285,11 @@ impl Widget for List {
             item_h: item_h,
         };
 
-        // Instantiate the `Scrollbar` if necessary.
-        let auto_hide = match scrollbar_position {
-            Some(ScrollbarPosition::NextTo) => false,
-            Some(ScrollbarPosition::OnTop) => true,
-            None => return (items, None),
+        // Instantiate the `Scrollbar` only if necessary.
+        let auto_hide = match (is_scrollable, scrollbar_position) {
+            (false, _) | (true, None) => return (items, None),
+            (_, Some(ScrollbarPosition::NextTo)) => false,
+            (_, Some(ScrollbarPosition::OnTop)) => true,
         };
         let scrollbar_color = style.scrollbar_color(&ui.theme);
         let scrollbar = widget::Scrollbar::y_axis(id)

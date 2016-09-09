@@ -91,5 +91,5 @@ fn set_ui(ref mut ui: conrod::UiCell, list: &mut [bool], ids: &Ids) {
         }
     }
 
-    scrollbar.unwrap().set(ui);
+    if let Some(s) = scrollbar { s.set(ui) }
 }

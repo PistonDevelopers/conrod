@@ -89,7 +89,6 @@ fn main() {
                 .scrollbar_next_to()
                 .w_h(350.0, 220.0)
                 .top_left_with_margins_on(ids.canvas, 40.0, 40.0)
-                .scrollbar_next_to()
                 .set(ids.list_select, ui);
 
             // Handle the `ListSelect`s events.
@@ -126,7 +125,7 @@ fn main() {
             }
 
             // Instantiate the scrollbar for the list.
-            scrollbar.unwrap().set(ui);
+            if let Some(s) = scrollbar { s.set(ui); }
         });
 
         window.draw_2d(&event, |c, g| {
