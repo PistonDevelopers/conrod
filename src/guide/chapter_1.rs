@@ -51,9 +51,9 @@ Here's [another youtube demo](https://www.youtube.com/watch?v=_ZXLCVibI8c) of co
     - Relative - `.down(20.0)`, `.right_from(BUTTON, 40.0)`, `.x_y_relative(20.0, 42.0)`, etc.
     - Absolute - `.x_y(6.0, 7.0)`
     - Draggable pop-up / floating canvasses - `.floating(true)`.
-    - **WidgetMatrix** and **PositionMatrix** for instantiating a grid of widgets. 
-- **Theme**s for unique style and layout defaults.
-- **widget_ids!** macro for easily and safely generating unique widget identifiers.
+    - **WidgetMatrix** and **PositionMatrix** for instantiating a grid of widgets.
+- **[Theme]**s for unique style and layout defaults.
+- **[widget_ids!]** macro for easily and safely generating unique widget identifiers.
 - Generic over events and graphics backends - compatible with:
     - [glutin][7], [sdl2][8] and [glfw][9] [**Window**][10] backends.
     - [gfx][11], [glium][12] and raw [opengl][13] [**Graphics**][14] backends.
@@ -89,7 +89,6 @@ The following are the primitive widgets provided by conrod:
     - **[Rectangle]**
     - **[Oval]**
     - **[Polygon]**
-    - **[BorderedRectangle]**
 - **[Text]** - automatic line-wrapping, line spacing, etc.
 - **[Image]**
 
@@ -107,6 +106,7 @@ with conrod itself.
 
 The following are the common use widgets provided by conrod:
 
+- **[BorderedRectangle]**
 - **[Button]**
 - **[Canvas]** - a container-like widget
 - **[DropDownList]**
@@ -292,42 +292,41 @@ of the guide.
 [7]:  https://github.com/PistonDevelopers/glutin_window             "glutin_window crate"
 [8]:  https://github.com/PistonDevelopers/sdl2_window               "sdl2_window crate"
 [9]:  https://github.com/PistonDevelopers/glfw_window               "glfw_window crate"
-[10]: http://docs.piston.rs/piston/piston/window/trait.Window.html  "piston Window trait"
+[10]: http://docs.piston.rs/piston/window/trait.Window.html         "piston Window trait"
 [11]: https://github.com/PistonDevelopers/gfx_graphics              "gfx_graphics crate"
 [12]: https://github.com/PistonDevelopers/glium_graphics            "glium_graphics crate"
 [13]: https://github.com/PistonDevelopers/opengl_graphics           "opengl_graphics crate"
 [14]: http://docs.piston.rs/graphics/graphics/trait.Graphics.html   "piston Graphics trait"
 
-[Widget]:               ../../trait.Widget.html             "Widget trait"
-[Positionable]:         ../../trait.Positionable.html       "Positionable trait"
-[Theme]:                ../../struct.Theme.html             "Theme struct"
+[Widget]:               ../../widget/trait.Widget.html      "Widget trait"
+[Theme]:                ../../theme/struct.Theme.html       "Theme struct"
 [builder_methods!]:     ../../macro.builder_methods!.html   "builder_methods! macro"
 [widget_ids!]:          ../../macro.widget_ids!.html        "widget_ids! macro"
 
-[Line]:             ../../struct.Line.html              "Line Widget"
-[PointPath]:        ../../struct.PointPath.html         "PointPath Widget"
-[Circle]:           ../../struct.Circle.html            "Circle Widget"
-[Rectangle]:        ../../struct.Rectangle.html         "Rectangle Widget"
-[Oval]:             ../../struct.Oval.html              "Oval Widget"
-[Polygon]:          ../../struct.Polygon.html           "Polygon Widget"
-[BorderedRectangle]:  ../../struct.BorderedRectangle.html   "BorderedRectangle Widget"
-[Text]:             ../../struct.Text.html              "Text Widget"
-[Image]:            ../../struct.Image.html             "Image Widget"
+[Line]:      ../../widget/primitive/line/struct.Line.html                 "Line Widget"
+[PointPath]: ../../widget/primitive/point_path/struct.PointPath.html      "PointPath Widget"
+[Circle]:    ../../widget/primitive/shape/circle/struct.Circle.html       "Circle Widget"
+[Rectangle]: ../../widget/primitive/shape/rectangle/struct.Rectangle.html "Rectangle Widget"
+[Oval]:      ../../widget/primitive/shape/oval/struct.Oval.html           "Oval Widget"
+[Polygon]:   ../../widget/primitive/shape/polygon/struct.Polygon.html     "Polygon Widget"
+[Text]:      ../../widget/primitive/text/struct.Text.html                 "Text Widget"
+[Image]:     ../../widget/primitive/image/struct.Image.html               "Image Widget"
 
-[Button]:           ../../struct.Button.html            "Button Widget"
-[Canvas]:           ../../struct.Canvas.html            "Canvas Widget"
-[DropDownList]:     ../../struct.DropDownList.html      "DropDownList Widget"
-[EnvelopeEditor]:   ../../struct.EnvelopeEditor.html    "EnvelopeEditor Widget"
-[NumberDialer]:     ../../struct.NumberDialer.html      "NumberDialer Widget"
-[PlotPath]:         ../../struct.PlotPath.html          "PlotPath Widget"
-[Scrollbar]:        ../../struct.Scrollbar.html         "Scrollbar Widget"
-[Slider]:           ../../struct.Slider.html            "Slider Widget"
-[Tabs]:             ../../struct.Tabs.html              "Tabs Widget"
-[TextBox]:          ../../struct.TextBox.html           "TextBox Widget"
-[TextEdit]:         ../../struct.TextEdit.html          "TextBox Widget"
-[TitleBar]:         ../../struct.TitleBar.html          "TitleBar Widget"
-[Toggle]:           ../../struct.Toggle.html            "Toggle Widget"
-[Matrix]:           ../../struct.Matrix.html            "Matrix Widget"
-[XYPad]:            ../../struct.XYPad.html             "XYPad Widget"
+[BorderedRectangle]: ../../widget/bordered_rectangle/struct.BorderedRectangle.html "BorderedRectangle Widget"
+[Button]:            ../../widget/button/struct.Button.html                        "Button Widget"
+[Canvas]:            ../../widget/canvas/struct.Canvas.html                        "Canvas Widget"
+[DropDownList]:      ../../widget/drop_down_list/struct.DropDownList.html          "DropDownList Widget"
+[EnvelopeEditor]:    ../../widget/envelope_editor/struct.EnvelopeEditor.html       "EnvelopeEditor Widget"
+[NumberDialer]:      ../../widget/number_dialer/struct.NumberDialer.html           "NumberDialer Widget"
+[PlotPath]:          ../../widget/plot_path/struct.PlotPath.html                   "PlotPath Widget"
+[Scrollbar]:         ../../widget/scrollbar/struct.Scrollbar.html                  "Scrollbar Widget"
+[Slider]:            ../../widget/slider/struct.Slider.html                        "Slider Widget"
+[Tabs]:              ../../widget/tabs/struct.Tabs.html                            "Tabs Widget"
+[TextBox]:           ../../widget/text_box/struct.TextBox.html                     "TextBox Widget"
+[TextEdit]:          ../../widget/text_edit/struct.TextEdit.html                   "TextBox Widget"
+[TitleBar]:          ../../widget/title_bar/struct.TitleBar.html                   "TitleBar Widget"
+[Toggle]:            ../../widget/toggle/struct.Toggle.html                        "Toggle Widget"
+[Matrix]:            ../../widget/matrix/struct.Matrix.html                        "Matrix Widget"
+[XYPad]:             ../../widget/xy_pad/struct.XYPad.html                         "XYPad Widget"
 
 */
