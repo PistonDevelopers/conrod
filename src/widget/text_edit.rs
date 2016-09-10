@@ -651,13 +651,10 @@ impl<'a> Widget for TextEdit<'a> {
                                 Cursor::Idx(idx) => idx.line,
                                 Cursor::Selection {end, ..} => end.line, // use last line of selection
                             };
-                            match line_infos.nth(line) {
-                                Some(line_info) => {
-                                    let char = line_info.end_char() - line_info.start_char;
-                                    let new_cursor_idx = text::cursor::Index { line: line, char: char };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                                _ => (),
+                            if let Some(line_info) = line_infos.nth(line) {
+                                let char = line_info.end_char() - line_info.start_char;
+                                let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                cursor = Cursor::Idx(new_cursor_idx);
                             }
                         },
 
@@ -667,13 +664,10 @@ impl<'a> Widget for TextEdit<'a> {
                                 Cursor::Idx(idx) => idx.line,
                                 Cursor::Selection {start, ..} => start.line, // use first line of selection
                             };
-                            match line_infos.nth(line) {
-                                Some(_) => {
-                                    let char = 0;
-                                    let new_cursor_idx = text::cursor::Index { line: line, char: char };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                                _ => (),
+                            if line_infos.nth(line).is_some() {
+                                let char = 0;
+                                let new_cursor_idx = text::cursor::Index { line: line, char: char };
+                                cursor = Cursor::Idx(new_cursor_idx);
                             }
                         },
 
