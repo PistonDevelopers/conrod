@@ -11,3 +11,4 @@
 #[cfg(feature="glutin")] pub mod glutin;
 #[cfg(feature="piston")] pub mod piston;
 #[cfg(feature="piston")] #[cfg(feature="piston_window")] pub mod piston_window;
+#[cfg(feature="piston")] #[cfg(feature="piston_window")] #[cfg(feature="event_loop")] pub mod events;
