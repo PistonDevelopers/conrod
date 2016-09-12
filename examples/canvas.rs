@@ -4,7 +4,8 @@
 extern crate find_folder;
 extern crate piston_window;
 
-use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use piston_window::{OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::events::{WindowEvents, EventWindow};
 
 
 fn main() {
@@ -18,7 +19,9 @@ fn main() {
     let mut window: PistonWindow =
         WindowSettings::new("Canvas Demo", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
-    window.set_ups(60);
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -39,7 +42,7 @@ fn main() {
     let ids = &mut Ids::new(ui.widget_id_generator());
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = window.next_event(&mut events, false) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
