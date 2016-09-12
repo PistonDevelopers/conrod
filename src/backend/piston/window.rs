@@ -70,7 +70,6 @@
 //! For more information about sRGB, see
 //! https://github.com/PistonDevelopers/piston/issues/1014
 
-extern crate event_loop;
 extern crate window as pistoncore_window;
 extern crate glutin_window;
 
@@ -82,7 +81,7 @@ use std::time::Duration;
 use super::gfx::{GfxContext, G2d};
 use super::shader_version::OpenGL;
 
-pub use self::event_loop::WindowEvents;
+pub use super::events::WindowEvents;
 pub use self::pistoncore_window::{AdvancedWindow, Position, Size, OpenGLWindow, 
                                   WindowSettings, BuildFromWindowSettings};
 pub use super::gfx::{draw, GlyphCache};
@@ -220,7 +219,7 @@ pub trait EventWindow<E>: BasicWindow {
 
 impl EventWindow<WindowEvents> for Window {
     fn next(&mut self, events: &mut WindowEvents) -> Option<Event> {
-        events.next(&mut self.window).map(|e| {
+        events.next(self).map(|e| {
             self.handle_event(&e);
             e
         })
