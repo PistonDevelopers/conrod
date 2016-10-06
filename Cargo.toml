@@ -51,23 +51,18 @@ rusttype = "0.2.0"
 # Note: Use the `piston` feature for `piston_window` event conversions.
 #
 # `event_loop`
-# Enables use of piston_window backend with a non-polling event loop
+# Enables use of piston_window backend with a non-polling event loop, only compatible with glutin_window
 glium = { version = "0.15.0", optional = true }
 glutin = { version = "0.6.1", optional = true }
 piston2d-graphics = { version = "0.17", optional = true }
-piston_window = { version = "0.53", optional = true }
+piston_window = { version = "0.54.0", optional = true }
 pistoncore-glutin_window = { version = "0.30.0", optional = true }
 pistoncore-window = { version = "0.22.0", optional = true }
-gfx = { version = "0.12.0", optional = true }
-gfx_core = { version = "0.4.0", optional = true }
-gfx_device_gl = { version = "0.11.0", optional = true }
-
-
 
 [features]
 default = ["piston", "piston_window", "event_loop"]
 piston = ["piston2d-graphics"]
-event_loop = ["pistoncore-window", "pistoncore-glutin_window", "glutin", "gfx", "gfx_core", "gfx_device_gl"]
+event_loop = ["pistoncore-window", "pistoncore-glutin_window", "glutin"]
 
 [dev-dependencies]
 find_folder = "0.3.0"

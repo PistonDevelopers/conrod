@@ -5,12 +5,8 @@
 #![deny(missing_copy_implementations)]
 
 extern crate glutin_window;
-extern crate glutin;
 extern crate window;
 extern crate piston_window;
-extern crate gfx;
-extern crate gfx_core;
-extern crate gfx_device_gl;
 
 use std::thread;
 use std::thread::sleep;
@@ -18,10 +14,7 @@ use std::time::{Duration, Instant};
 
 use self::window::Window;
 use piston_input::*;
-use self::glutin_window::*;
-
-use self::gfx_core::Device;
-use self::gfx_core::factory::Typed;
+use self::glutin_window::GlutinWindow;
 
 use self::piston_window::PistonWindow;
 
@@ -148,58 +141,18 @@ impl WindowEvents
     }
 }
 
-// TODO: below code can be cleaned up/removed if piston_window is refactored
-fn create_main_targets(dim: gfx::tex::Dimensions) ->
-(gfx::handle::RenderTargetView<
-    gfx_device_gl::Resources, gfx::format::Srgba8>,
- gfx::handle::DepthStencilView<
-    gfx_device_gl::Resources, gfx::format::DepthStencil>) {
-    use self::gfx_core::factory::Typed;
-    use self::gfx::format::{DepthStencil, Format, Formatted, Srgba8};
-
-    let color_format: Format = <Srgba8 as Formatted>::get_format();
-    let depth_format: Format = <DepthStencil as Formatted>::get_format();
-    let (output_color, output_stencil) =
-        gfx_device_gl::create_main_targets_raw(dim,
-                                               color_format.0,
-                                               depth_format.0);
-    let output_color = Typed::new(output_color);
-    let output_stencil = Typed::new(output_stencil);
-    (output_color, output_stencil)
-}
-
 /// Allows a window to use an external event loop
 pub trait EventWindow {
     /// receive next event from event loop and handle it
     fn next_event(&mut self, events: &mut WindowEvents, animating: bool) -> Option<Event>;
-    /// handle new event and update window
-    fn handle_event(&mut self, event: &Event);
 }
 
 impl EventWindow for PistonWindow {
     fn next_event(&mut self, events: &mut WindowEvents, animating: bool) -> Option<Event> {
         let event = events.next(&mut self.window, animating);
         if let Some(e) = event {
-            self.handle_event(&e);
+            self.event(&e);
             Some(e)
         } else { None }
-    }
-    fn handle_event(&mut self, event: &Event) {
-        if let Some(_) = event.after_render_args() {
-            // After swapping buffers.
-            self.device.cleanup();
-        }
-        // Check whether window has resized and update the output.
-        let dim = self.output_color.raw().get_dimensions();
-        let (w, h) = (dim.0, dim.1);
-        let draw_size = self.window.draw_size();
-        if w != draw_size.width as u16 || h != draw_size.height as u16 {
-            let dim = (draw_size.width as u16,
-                       draw_size.height as u16,
-                       dim.2, dim.3);
-            let (output_color, output_stencil) = create_main_targets(dim);
-            self.output_color = output_color;
-            self.output_stencil = output_stencil;
-        }
     }
 }
