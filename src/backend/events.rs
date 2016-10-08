@@ -35,6 +35,9 @@ pub struct WindowEvents {
     /// if true, an update should be triggered in time for the next frame,
     /// either because an input event happened, or the UI is animating
     idle: bool,
+    /// set externally to prevent the event loop from setting `idle` to
+    /// true after the current frame, in case the UI needs to update or animate
+    updating: bool,
     last_frame_time: Instant,
     next_frame_time: Instant,
     dt_frame: Duration,
@@ -75,6 +78,7 @@ impl WindowEvents
         WindowEvents {
             state: State::Waiting,
             idle: true,
+            updating: false,
             last_frame_time: start,
             next_frame_time: start + frame_length,
             dt_frame: frame_length,
@@ -85,8 +89,14 @@ impl WindowEvents
         WindowEvents::new_with_fps(DEFAULT_MAX_FPS)
     }
 
+    /// Use to trigger an update event by preventing the event loop from going idle.
+    /// Call once per update loop for continuous animation, or call once to refresh the UI.
+    pub fn update(&mut self) {
+        self.updating = true;
+    }
+
     /// Returns the next event.
-    pub fn next(&mut self, window: &mut GlutinWindow, animating: bool) -> Option<Event>
+    pub fn next(&mut self, window: &mut GlutinWindow) -> Option<Event>
     {
         if window.should_close() { return None; }
 
@@ -96,8 +106,8 @@ impl WindowEvents
                 self.last_frame_time = Instant::now();
                 self.next_frame_time = self.last_frame_time + self.dt_frame;
                 self.state = State::Waiting;
-                // never go idle as long as an animation is running
-                self.idle = !animating;
+                self.idle = !self.updating;
+                self.updating = false;
                 return Some(Event::AfterRender(AfterRenderArgs));
             },
             State::Updated => {
@@ -144,12 +154,12 @@ impl WindowEvents
 /// Allows a window to use an external event loop
 pub trait EventWindow {
     /// receive next event from event loop and handle it
-    fn next_event(&mut self, events: &mut WindowEvents, animating: bool) -> Option<Event>;
+    fn next_event(&mut self, events: &mut WindowEvents) -> Option<Event>;
 }
 
 impl EventWindow for PistonWindow {
-    fn next_event(&mut self, events: &mut WindowEvents, animating: bool) -> Option<Event> {
-        let event = events.next(&mut self.window, animating);
+    fn next_event(&mut self, events: &mut WindowEvents) -> Option<Event> {
+        let event = events.next(&mut self.window);
         if let Some(e) = event {
             self.event(&e);
             Some(e)

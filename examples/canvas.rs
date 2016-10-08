@@ -42,7 +42,7 @@ fn main() {
     let ids = &mut Ids::new(ui.widget_id_generator());
 
     // Poll events from the window.
-    while let Some(event) = window.next_event(&mut events, false) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {

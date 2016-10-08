@@ -45,7 +45,7 @@ fn main() {
     let (w, h) = image_map.get(&ids.rust_logo).unwrap().get_size();
 
     // Poll events from the window.
-    while let Some(event) = window.next_event(&mut events, false) {
+    while let Some(event) = window.next_event(&mut events) {
         ui.handle_event(event.clone());
 
         window.draw_2d(&event, |c, g| {
