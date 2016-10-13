@@ -21,6 +21,7 @@ script:
     - cargo build --verbose
     - cargo test --verbose
     - cargo build --no-default-features --features "glutin glium" --example glutin_glium
+    - cargo build --no-default-features --features "glutin" --example glutin_gfx
     - cargo doc --verbose
 
 after_success:
