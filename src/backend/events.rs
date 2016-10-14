@@ -4,17 +4,13 @@
 #![deny(missing_docs)]
 #![deny(missing_copy_implementations)]
 
-extern crate glutin_window;
 extern crate window;
 extern crate piston_window;
 
-use std::thread;
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use self::window::Window;
-use piston_input::*;
-use self::glutin_window::GlutinWindow;
+use piston_input::{Event, UpdateArgs, RenderArgs, AfterRenderArgs};
 
 use self::piston_window::PistonWindow;
 
@@ -59,7 +55,7 @@ fn duration_to_seconds(dur: Duration) -> f64 {
 /// The default maximum frames per second.
 pub const DEFAULT_MAX_FPS: u64 = 60;
 
-fn render_args(window: &GlutinWindow, duration: f64) -> RenderArgs {
+fn render_args(window: &PistonWindow, duration: f64) -> RenderArgs {
     RenderArgs {
         ext_dt: duration,
         width: window.size().width,
@@ -96,7 +92,7 @@ impl WindowEvents
     }
 
     /// Returns the next event.
-    pub fn next(&mut self, window: &mut GlutinWindow) -> Option<Event>
+    pub fn next(&mut self, window: &mut PistonWindow) -> Option<Event>
     {
         if window.should_close() { return None; }
 
@@ -119,34 +115,27 @@ impl WindowEvents
                 }
             }, _ => ()
         }
-        loop {
+        if self.idle {
+            // block and wait until an event is received
+            let event = window.wait_event();
+            self.idle = false;
+            return Some(Event::Input(event));
+        } else {
+            let current_time = Instant::now();
+            if current_time < self.next_frame_time {
+                let event = window.wait_event_timeout(self.next_frame_time - current_time);
+                if let Some(e) = event {
+                    return Some(Event::Input(e));
+                }
+            }
             // handle any pending input before updating
             if let Some(e) = window.poll_event() {
                 self.idle = false;
                 return Some(Event::Input(e));
             }
-            if !self.idle {
-                let current_time = Instant::now();
-                if current_time >= self.next_frame_time {
-                    self.state = State::Updated;
-                    let duration = duration_to_seconds(current_time - self.last_frame_time);
-                    return Some(Event::Update(UpdateArgs{ dt: duration }));
-                } else {
-                    // schedule wake up from `wait_event` in time for the next frame
-                    let window_proxy = window.window.create_window_proxy();
-                    let sleep_time = self.next_frame_time - current_time;
-                    thread::spawn(move || {
-                        sleep(sleep_time);
-                        window_proxy.wakeup_event_loop();
-                    });
-                }
-            }
-            // block and wait until an event is received, or it's time to update
-            let event = window.wait_event();
-            if let Some(e) = event {
-                self.idle = false;
-                return Some(Event::Input(e));
-            }
+            self.state = State::Updated;
+            let duration = duration_to_seconds(current_time - self.last_frame_time);
+            return Some(Event::Update(UpdateArgs{ dt: duration }));
         }
     }
 }
@@ -159,7 +148,7 @@ pub trait EventWindow {
 
 impl EventWindow for PistonWindow {
     fn next_event(&mut self, events: &mut WindowEvents) -> Option<Event> {
-        let event = events.next(&mut self.window);
+        let event = events.next(self);
         if let Some(e) = event {
             self.event(&e);
             Some(e)
