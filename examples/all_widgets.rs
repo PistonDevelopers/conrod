@@ -321,7 +321,7 @@ fn set_widgets(ui: &mut conrod::UiCell, app: &mut DemoApp, ids: &mut Ids) {
     for new_width in widget::NumberDialer::new(app.border_width, 0.0, 15.0, 2)
         .w_h(260.0, 60.0)
         .down(20.0)
-        .color(app.bg_color.invert().plain_contrast())
+        .color(app.bg_color.plain_contrast().invert())
         .border(app.border_width)
         .border_color(app.bg_color.plain_contrast())
         .label("Border Width (px)")

@@ -123,7 +123,18 @@ impl Color {
     /// Return either black or white, depending which contrasts the Color the most. This will be
     /// useful for determining a readable color for text on any given background Color.
     pub fn plain_contrast(self) -> Color {
-        if self.luminance() > 0.5 { BLACK } else { WHITE }
+        match self {
+            Color::Hsla(h, s, l, _) => {
+                let (r, g, b) = hsl_to_rgb(h, s, l);
+                rgb(r, g, b).plain_contrast()
+            },
+            Color::Rgba(r, g, b, _) => {
+                let l = 0.2126 * r
+                      + 0.7152 * g
+                      + 0.0722 * b;
+                if l > 0.5 { BLACK } else { WHITE }
+            }
+        }
     }
 
     /// Extract the components of a color in the HSL format.
@@ -471,3 +482,41 @@ pub trait Colorable: Sized {
 
 }
 
+#[test]
+fn plain_contrast_should_weight_colors() {
+
+    // Contrast tests.
+    // Black and white : Simple tests.
+    let white_contrast = rgb(1.0, 1.0, 1.0).plain_contrast();
+    let Rgba(r, g, b, _) = white_contrast.to_rgb();
+
+    assert_eq!(r, 0.0);
+    assert_eq!(g, 0.0);
+    assert_eq!(b, 0.0);
+
+    let black_contrast = rgb(0.0, 0.0, 0.0).plain_contrast();
+    let Rgba(r, g, b, _) = black_contrast.to_rgb();
+
+    assert_eq!(r, 1.0);
+    assert_eq!(g, 1.0);
+    assert_eq!(b, 1.0);
+
+    // Weighting for greenish colors.
+    // 0.29+0.9+0.29 = 1.48 -> Non-weighted contrast would be white.
+    let greenish = rgb(0.29, 0.90, 0.29).plain_contrast();
+    let Rgba(r, g, b, _) = greenish.to_rgb();
+
+    assert_eq!(r, 0.0);
+    assert_eq!(g, 0.0);
+    assert_eq!(b, 0.0);
+
+    // Weighting for non-greenish colors.
+    // 0.71+0.1+0.71 = 1.52 -> Non-weighted contrast would be black.
+    let purplish = rgb(0.71, 0.10, 0.71).plain_contrast();
+    let Rgba(r, g, b, _) = purplish.to_rgb();
+
+    assert_eq!(r, 1.0);
+    assert_eq!(g, 1.0);
+    assert_eq!(b, 1.0);
+
+}
