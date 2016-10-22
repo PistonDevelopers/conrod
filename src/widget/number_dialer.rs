@@ -368,7 +368,6 @@ impl<'a, T> Widget for NumberDialer<'a, T>
 
             if let Some(slot_color) = maybe_slot_color {
                 widget::Rectangle::fill([slot_w, slot_h])
-                    .depth(1.0)
                     .x_y_relative_to(id, rel_slot_x, 0.0)
                     .graphics_for(id)
                     .color(slot_color)
