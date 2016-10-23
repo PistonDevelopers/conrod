@@ -156,6 +156,11 @@ mod feature {
 
                         render::PrimitiveKind::Polygon { color, points } => {
                             // TODO
+                            let color = color.to_fsa();
+                            for point in points.iter() {
+                                let v = Vertex {  position: [point[0] as f32, point[1] as f32],  tex_coords: [0.2, 0.2], colour: color };
+                                vertices.push(v);
+                            };
                         },
 
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {
@@ -242,6 +247,7 @@ mod feature {
                 let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
                 let blend = glium::Blend::alpha_blending();
                 let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+                //let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::LineStrip);
                 let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
                 target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
                 target.finish().unwrap();
@@ -281,6 +287,7 @@ mod feature {
     widget_ids! {
         struct Ids {
             canvas,
+            line,
             text,
         }
     }
@@ -293,13 +300,7 @@ mod feature {
         widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
         // Some starting text to edit.
-        let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-            Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
-            finibus odio nec elit condimentum, rhoncus fermentum purus lacinia. Interdum et malesuada \
-            fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
-            Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
-            Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
-            magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
+        let demo_text = "Some fish.";
 
         //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
         widget::Text::new(demo_text)
@@ -309,6 +310,14 @@ mod feature {
             .color(conrod::color::BLACK)
             .align_text_middle()
             .set(ids.text, ui);
+
+        let vertexes =  vec![[-0.698435, 0.327139], [-0.908714, 0.200846], [-1.000000, 0.045003], [-0.882569, -0.153804], [-0.716302, -0.243929], [-0.419474, -0.310119], [-0.086611, -0.607857], [0.091828, -0.619086], [-0.041731, -0.307105], [0.322430, -0.227440], [0.544011, -0.121772], [0.642794, -0.220526], [0.809389, -0.322116], [1.000000, -0.378260], [0.800696, -0.049199], [0.797215, 0.151499], [0.965221, 0.456860], [0.755156, 0.402490], [0.573567, 0.255689], [0.397194, 0.317920], [0.513037, 0.371109], [0.473372, 0.466375], [0.340141, 0.466375], [0.152681, 0.354088], [-0.125625, 0.399003], [0.053142, 0.551713], [-0.009126, 0.619086], [-0.206692, 0.619086], [-0.420234, 0.381569], [-0.698439, 0.324244], [-0.698435, 0.327139]];
+
+        //  [40.0, 40.0], [-15.0, -15.0],
+        widget::Polygon::fill(vertexes).top_left_of(ids.canvas)
+            .color(conrod::color::RED)
+            .set(ids.line, ui);
+
     }
 }
 
