@@ -150,10 +150,6 @@ mod feature {
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
 
-                        render::PrimitiveKind::Rectangle { color } => {
-                            // TODO
-                        },
-
                         render::PrimitiveKind::Polygon { color, points } => {
                             // TODO
                         },

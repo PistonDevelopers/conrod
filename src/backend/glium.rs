@@ -9,9 +9,6 @@ pub fn primitives(mut primitives: render::Primitives) {
     while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
         match kind {
 
-            render::PrimitiveKind::Rectangle { color } => {
-            },
-
             render::PrimitiveKind::Polygon { color, points } => {
             },
 

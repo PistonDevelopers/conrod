@@ -241,8 +241,6 @@ mod feature {
                 // Create vertices
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
-                        render::PrimitiveKind::Rectangle { color } => {
-                        },
                         render::PrimitiveKind::Polygon { color, points } => {
                         },
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {

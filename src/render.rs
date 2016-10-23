@@ -91,16 +91,6 @@ pub struct Primitive<'a> {
 /// The unique kind for each primitive element in the Ui.
 pub enum PrimitiveKind<'a> {
 
-    /// A filled `Rectangle`.
-    ///
-    /// These are produced by the `Rectangle` and `BorderedRectangle` primitive widgets. A `Filled`
-    /// `Rectangle` widget produces a single `Rectangle`. The `BorderedRectangle` produces two
-    /// `Rectangle`s, the first for the outer border and the second for the inner on top.
-    Rectangle {
-        /// The fill colour for the rectangle. 
-        color: Color
-    },
-
     /// A filled `Polygon`.
     ///
     /// These are produced by the `Oval` and `Polygon` primitive widgets.
@@ -191,9 +181,6 @@ struct OwnedPrimitive {
 
 #[derive(Clone)]
 enum OwnedPrimitiveKind {
-    Rectangle {
-        color: Color,
-    },
     Polygon {
         color: Color,
         point_range: std::ops::Range<usize>,
@@ -351,7 +338,13 @@ impl<'a> Primitives<'a> {
                     let color = style.get_color(theme);
                     match *style {
                         ShapeStyle::Fill(_) => {
-                            let kind = PrimitiveKind::Rectangle { color: color };
+                            points[0] = rect.top_left();
+                            points[1] = rect.top_right();
+                            points[2] = rect.bottom_right();
+                            points[3] = rect.bottom_left();
+                            points[4] = rect.top_left();
+                            let points = &points[0..5];
+                            let kind = PrimitiveKind::Polygon { color: color, points: points };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
                         ShapeStyle::Outline(ref line_style) => {
@@ -551,11 +544,6 @@ impl<'a> Primitives<'a> {
 
             match kind {
 
-                PrimitiveKind::Rectangle { color } => {
-                    let kind = OwnedPrimitiveKind::Rectangle { color: color };
-                    primitives.push(new(kind));
-                },
-
                 PrimitiveKind::Polygon { color, points } => {
                     let start = primitive_points.len();
                     primitive_points.extend(points.iter().cloned());
@@ -697,11 +685,6 @@ impl<'a> WalkOwnedPrimitives<'a> {
             };
 
             match *kind {
-
-                OwnedPrimitiveKind::Rectangle { color } => {
-                    let kind = PrimitiveKind::Rectangle { color: color };
-                    new(kind)
-                },
 
                 OwnedPrimitiveKind::Polygon { color, ref point_range } => {
                     let kind = PrimitiveKind::Polygon {
