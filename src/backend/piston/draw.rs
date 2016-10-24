@@ -96,13 +96,6 @@ pub fn primitive<'a, Img, G, T, C, F>(
 
     match kind {
 
-        render::PrimitiveKind::Rectangle { color } => {
-            let (l, b, w, h) = rect.l_b_w_h();
-            let lbwh = [l, b, w, h];
-            let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
-            rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
-        },
-
         render::PrimitiveKind::Polygon { color, points } => {
             let color = color.to_fsa();
             let polygon = piston_graphics::Polygon::new(color);
