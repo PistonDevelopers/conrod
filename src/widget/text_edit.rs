@@ -92,6 +92,9 @@ pub enum Cursor {
         /// The `start` is always the "anchor" point.
         start: text::cursor::Index,
         /// The `end` may be either greater or less than the `start`.
+        ///
+        /// The `end` is always the logical cursor position, if one is required. For example, when
+        /// selecting text using `Shift+Right`, `end` is moved.
         end: text::cursor::Index,
     },
 }
@@ -478,79 +481,84 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
-                        input::Key::Left | input::Key::Right => {
-                            let left_move = match key {
-                                    input::Key::Left => true,
-                                    input::Key::Right => false,
-                                    _ => unreachable!()
-                            };
-                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
-
-                            match cursor {
-                                // Move the cursor to the previous/next position or word.
-                                Cursor::Idx(cursor_idx) => {
-                                    let new_cursor_idx = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        match (left_move, move_word) {
-                                            (true, true) => cursor_idx
-                                                .previous_word_start(&text, line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (false, true) => cursor_idx
-                                                .next_word_end(&text, line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (true, false) => cursor_idx
-                                                .previous(line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (false, false) => cursor_idx
-                                                .next(line_infos)
-                                                .unwrap_or(cursor_idx),
-                                        }
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                                Cursor::Selection { start, end } => {
-                                    // Move the cursor to the start/end of the current selection.
-                                    let new_cursor_idx = {
-                                        let cursor_idx = if left_move { std::cmp::min(start, end) }
-                                                         else { std::cmp::max(start, end) };
-                                        if !move_word {
-                                            cursor_idx
-                                        } else {
-                                            // Move by word from the beginning or end of selection
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            if left_move {
-                                                cursor_idx.previous_word_start(&text, line_infos)
-                                                          .unwrap_or(cursor_idx)
-                                            } else {
-                                                cursor_idx.next_word_end(&text, line_infos)
-                                                          .unwrap_or(cursor_idx)
-                                            }
-                                        }
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                            }
-                        },
-
-                        input::Key::Up | input::Key::Down => {
-                            let cursor_idx = match cursor {
-                                Cursor::Idx(cursor_idx) => cursor_idx,
-                                Cursor::Selection { start, .. } => start,
-                            };
+                        input::Key::Left | input::Key::Right | input::Key::Up | input::Key::Down => {
                             let font = ui.fonts.get(font_id).unwrap();
-                            let infos = &state.line_infos;
-                            let new_cursor_idx = cursor_xy_at(cursor_idx, &text, infos, font)
-                                .and_then(|(x_pos,_)| {
-                                    let text::cursor::Index { line, .. } = cursor_idx;
-                                    let next_line = match key {
-                                        input::Key::Up => if line > 0 { line - 1 } else { 0 },
-                                        input::Key::Down => line + 1,
-                                        _ => unreachable!()
-                                    };
-                                    closest_cursor_index_on_line(x_pos, next_line, &text, infos, font)
-                                })
-                                .unwrap_or(cursor_idx);
-                            cursor = Cursor::Idx(new_cursor_idx);
+                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
+                            let select = press.modifiers.contains(input::keyboard::SHIFT);
+
+                            let (old_selection_start, cursor_idx) = match cursor {
+                                Cursor::Idx(idx) => (idx, idx),
+                                Cursor::Selection { start, end } => (start, end),
+                            };
+
+                            let new_cursor_idx = {
+                                let line_infos = state.line_infos.iter().cloned();
+                                match (key, move_word) {
+                                    (input::Key::Left, true) => cursor_idx
+                                        .previous_word_start(&text, line_infos),
+                                    (input::Key::Right, true) => cursor_idx
+                                        .next_word_end(&text, line_infos),
+                                    (input::Key::Left, false) => cursor_idx
+                                        .previous(line_infos),
+                                    (input::Key::Right, false) => cursor_idx
+                                        .next(line_infos),
+
+                                    // Up/Down movement
+                                    _ => cursor_xy_at(cursor_idx, &text, &state.line_infos, font)
+                                        .and_then(|(x_pos, _)| {
+                                            let text::cursor::Index { line, .. } = cursor_idx;
+                                            let next_line = match key {
+                                                input::Key::Up => line.saturating_sub(1),
+                                                input::Key::Down => line + 1,
+                                                _ => unreachable!(),
+                                            };
+                                            closest_cursor_index_on_line(x_pos, next_line, &text, &state.line_infos, font)
+                                        })
+                                }.unwrap_or(cursor_idx)
+                            };
+
+                            if select {
+                                // Expand the selection (or create a new one)
+                                cursor = Cursor::Selection {
+                                    start: old_selection_start,
+                                    end: new_cursor_idx,
+                                };
+                            } else {
+                                match cursor {
+                                    Cursor::Idx(_) => {
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                    Cursor::Selection { start, end } => {
+                                        // Move the cursor to the start/end of the current selection.
+                                        let new_cursor_idx = {
+                                            let cursor_idx = match key {
+                                                input::Key::Left | input::Key::Up =>
+                                                    std::cmp::min(start, end),
+                                                input::Key::Right | input::Key::Down =>
+                                                    std::cmp::max(start, end),
+                                                _ => unreachable!(),
+                                            };
+
+                                            if !move_word {
+                                                cursor_idx
+                                            } else {
+                                                // Move by word from the beginning or end of selection
+                                                let line_infos = state.line_infos.iter().cloned();
+                                                match key {
+                                                    input::Key::Left | input::Key::Up => {
+                                                        cursor_idx.previous_word_start(&text, line_infos)
+                                                    },
+                                                    input::Key::Right | input::Key::Down => {
+                                                        cursor_idx.next_word_end(&text, line_infos)
+                                                    }
+                                                    _ => unreachable!(),
+                                                }.unwrap_or(cursor_idx)
+                                            }
+                                        };
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                }
+                            }
                         },
 
                         input::Key::A => {
