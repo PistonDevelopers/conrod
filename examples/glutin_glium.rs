@@ -151,20 +151,42 @@ mod feature {
                     match kind {
 
                         render::PrimitiveKind::Rectangle { color } => {
-                            // TODO
+
+                            let (l, b, w, h) = rect.l_b_w_h();
+                            let lbwh = [l, b, w, h];
+
+                            let color = color.to_fsa();
+
+                            let btmlft = Vertex {  position: [l as f32, b as f32],  tex_coords: [0.2, 0.2], colour: color };
+                            let btmrgt = Vertex {  position: [l as f32, (b+w) as f32],  tex_coords: [0.2, 0.2], colour: color };
+                            let toplft = Vertex {  position: [(l+h) as f32, b as f32],  tex_coords: [0.2, 0.2], colour: color };
+                            let toprgt = Vertex {  position: [(l+h) as f32, (b+w) as f32],  tex_coords: [0.2, 0.2], colour: color };
+
+                            vertices.push(btmlft);
+                            vertices.push(toplft);
+                            vertices.push(toprgt);
+
+                            vertices.push(toprgt);
+                            vertices.push(btmrgt);
+                            vertices.push(btmlft);
                         },
 
                         render::PrimitiveKind::Polygon { color, points } => {
                             // TODO
+                            println!("Got polygon with {} points", points.len());
                             let color = color.to_fsa();
                             for point in points.iter() {
-                                let v = Vertex {  position: [point[0] as f32, point[1] as f32],  tex_coords: [0.2, 0.2], colour: color };
+                                let new_x = (1.0 + point[0] as f32) / screen_width * 2.0;
+                                let new_y = (1.0 + point[1] as f32) / screen_height * 2.0;
+
+                                let v = Vertex {  position: [new_x, new_y],  tex_coords: [0.2, 0.2], colour: color };
                                 vertices.push(v);
                             };
                         },
 
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {
                             // TODO
+                            println!("PK::Lines")
                         },
 
                         render::PrimitiveKind::Text { color, text, font_id } => {
@@ -228,11 +250,11 @@ mod feature {
                         },
 
                         render::PrimitiveKind::Image { color, source_rect } => {
-                            // TODO
+                            println!("PK::Image")
                         },
 
                         // We have no special case widgets to handle.
-                        render::PrimitiveKind::Other(_) => (),
+                        render::PrimitiveKind::Other(_) => ( println!("PK::Other.") ),
                     }
 
                 }
@@ -246,8 +268,8 @@ mod feature {
                 target.clear_color(1.0, 1.0, 1.0, 0.0);
                 let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
                 let blend = glium::Blend::alpha_blending();
-                let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-                //let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::LineStrip);
+                //let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+                let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::LineStrip);
                 let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
                 target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
                 target.finish().unwrap();
@@ -287,7 +309,8 @@ mod feature {
     widget_ids! {
         struct Ids {
             canvas,
-            line,
+            fish,
+            circle,
             text,
         }
     }
@@ -311,12 +334,27 @@ mod feature {
             .align_text_middle()
             .set(ids.text, ui);
 
-        let vertexes =  vec![[-0.698435, 0.327139], [-0.908714, 0.200846], [-1.000000, 0.045003], [-0.882569, -0.153804], [-0.716302, -0.243929], [-0.419474, -0.310119], [-0.086611, -0.607857], [0.091828, -0.619086], [-0.041731, -0.307105], [0.322430, -0.227440], [0.544011, -0.121772], [0.642794, -0.220526], [0.809389, -0.322116], [1.000000, -0.378260], [0.800696, -0.049199], [0.797215, 0.151499], [0.965221, 0.456860], [0.755156, 0.402490], [0.573567, 0.255689], [0.397194, 0.317920], [0.513037, 0.371109], [0.473372, 0.466375], [0.340141, 0.466375], [0.152681, 0.354088], [-0.125625, 0.399003], [0.053142, 0.551713], [-0.009126, 0.619086], [-0.206692, 0.619086], [-0.420234, 0.381569], [-0.698439, 0.324244], [-0.698435, 0.327139]];
+        let mut fish_vertexes =  vec![[-0.698435, 0.327139], [-0.908714, 0.200846], [-1.000000, 0.045003], [-0.882569, -0.153804], [-0.716302, -0.243929], [-0.419474, -0.310119], [-0.086611, -0.607857], [0.091828, -0.619086], [-0.041731, -0.307105], [0.322430, -0.227440], [0.544011, -0.121772], [0.642794, -0.220526], [0.809389, -0.322116], [1.000000, -0.378260], [0.800696, -0.049199], [0.797215, 0.151499], [0.965221, 0.456860], [0.755156, 0.402490], [0.573567, 0.255689], [0.397194, 0.317920], [0.513037, 0.371109], [0.473372, 0.466375], [0.340141, 0.466375], [0.152681, 0.354088], [-0.125625, 0.399003], [0.053142, 0.551713], [-0.009126, 0.619086], [-0.206692, 0.619086], [-0.420234, 0.381569], [-0.698439, 0.324244], [-0.698435, 0.327139]];
+
+        let fish_scale = ui.window_dim();
+        for n in 0..fish_vertexes.len() {
+            fish_vertexes[n][0] = fish_vertexes[n][0] * fish_scale[0] / 2.0;
+            fish_vertexes[n][1] = fish_vertexes[n][1] * fish_scale[1] / 2.0;
+        };
+
 
         //  [40.0, 40.0], [-15.0, -15.0],
-        widget::Polygon::fill(vertexes).top_left_of(ids.canvas)
+        widget::Polygon::fill(fish_vertexes)
+            .top_left_of(ids.canvas)
             .color(conrod::color::RED)
-            .set(ids.line, ui);
+            .set(ids.fish, ui);
+
+
+        // Draw a circle at the app's circle_pos.
+        widget::Circle::fill(25.0)
+            .middle_of(ids.canvas)
+            .color(conrod::color::GREEN)
+            .set(ids.circle, ui);
 
     }
 }
