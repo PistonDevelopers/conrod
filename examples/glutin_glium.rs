@@ -3,6 +3,7 @@
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 
+#[cfg(feature="glutin")]
 mod support;
 
 fn main() {

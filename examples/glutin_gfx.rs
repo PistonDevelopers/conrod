@@ -10,6 +10,7 @@ extern crate glutin;
 #[macro_use]
 extern crate gfx;
 
+#[cfg(feature="glutin")]
 mod support;
 
 
