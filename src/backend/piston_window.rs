@@ -91,7 +91,6 @@ use self::glutin_window::GlutinWindow;
 pub use self::shader_version::OpenGL;
 pub use self::graphics::{ImageSize};
 pub use self::pistoncore_window::*;
-pub use self::pistoncore_event_loop::*;
 pub use piston_input::*;
 pub use self::gfx_graphics::{ GlyphError, Texture, TextureSettings, Flip };
 
@@ -133,8 +132,6 @@ pub struct PistonWindow<W: Window = GlutinWindow> {
         gfx_device_gl::Resources, gfx::format::DepthStencil>,
     /// Gfx2d.
     pub g2d: Gfx2d<gfx_device_gl::Resources>,
-    /// Event loop state.
-    pub events: WindowEvents,
     /// The factory that was created along with the device.
     pub factory: gfx_device_gl::Factory,
 }
@@ -196,7 +193,6 @@ impl<W> PistonWindow<W>
 
         let g2d = Gfx2d::new(opengl, &mut factory);
         let encoder = factory.create_command_buffer().into();
-        let events = window.events();
         PistonWindow {
             window: window,
             encoder: encoder,
@@ -204,7 +200,6 @@ impl<W> PistonWindow<W>
             output_color: output_color,
             output_stencil: output_stencil,
             g2d: g2d,
-            events: events,
             factory: factory,
         }
     }
@@ -242,17 +237,6 @@ impl<W> PistonWindow<W>
             let res = f(self);
             self.encoder.flush(&mut self.device);
             Some(res)
-        } else {
-            None
-        }
-    }
-
-    /// Returns next event.
-    /// Cleans up after rendering and resizes frame buffers.
-    pub fn next(&mut self) -> Option<Event<<W as Window>::Event>> {
-        if let Some(e) = self.events.next(&mut self.window) {
-            self.event(&e);
-            Some(e)
         } else {
             None
         }
@@ -332,23 +316,28 @@ impl<W> AdvancedWindow for PistonWindow<W>
     }
 }
 
-impl<W> EventLoop for PistonWindow<W>
-    where W: Window
-{
-    fn set_ups(&mut self, frames: u64) {
-        self.events.set_ups(frames);
-    }
+/// Used to integrate `PistonWindow` with an event loop, enables
+/// `PistonWindow` to handle some events, if necessary
+pub trait EventWindow {
+    /// receive next event from event loop and handle it
+    fn next(&mut self, events: &mut PistonWindow) -> Option<Event>;
+}
 
-    fn set_max_fps(&mut self, frames: u64) {
-        self.events.set_max_fps(frames);
-    }
+/// This module allows use of `WindowEvents` from `pistoncore_event_loop` with `PistonWindow`
+pub mod piston_event_loop {
+    extern crate event_loop;
 
-    fn set_swap_buffers(&mut self, enable: bool) {
-        self.events.set_swap_buffers(enable);
-    }
+    pub use self::event_loop::{WindowEvents, EventLoop};
+    use super::{PistonWindow, EventWindow};
+    use piston_input::Event;
 
-    fn set_bench_mode(&mut self, enable: bool) {
-        self.events.set_bench_mode(enable);
+    impl EventWindow for WindowEvents {
+        fn next(&mut self, window: &mut PistonWindow) -> Option<Event> {
+            if let Some(e) = self.next(window) {
+                window.event(&e);
+                Some(e)
+            } else { None }
+        }
     }
 }
 

@@ -2,7 +2,9 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-use conrod::backend::piston_window::{self, EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::piston_event_loop::{EventLoop, WindowEvents};
+
 
 mod support;
 
@@ -20,7 +22,10 @@ fn main() {
             .vsync(true)
             .build()
             .unwrap();
-    window.set_ups(60);
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
+    events.set_ups(60);
 
     // A demonstration of some state that we'd like to control with the App.
     let mut app = support::DemoApp::new();
@@ -47,7 +52,7 @@ fn main() {
     };
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {

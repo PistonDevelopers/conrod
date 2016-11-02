@@ -3,7 +3,8 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 
-use conrod::backend::piston_window::{self, EventLoop, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::piston_event_loop::{EventLoop, WindowEvents};
 
 
 widget_ids! { 
@@ -20,7 +21,10 @@ fn main() {
         WindowSettings::new("RangeSlider Demo", [WIDTH, HEIGHT])
             .opengl(piston_window::OpenGL::V3_2)
             .exit_on_esc(true).samples(4).vsync(true).build().unwrap();
-    window.set_ups(60);
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
+    events.set_ups(60);
 
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -43,7 +47,7 @@ fn main() {
     let mut oval_range = (0.25, 0.75);
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {

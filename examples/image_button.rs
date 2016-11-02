@@ -11,7 +11,8 @@
 extern crate find_folder;
 extern crate rand; // for making a random color.
 
-use conrod::backend::piston_window::{self, EventLoop, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::piston_event_loop::{EventLoop, WindowEvents};
 
 
 fn main() {
@@ -25,6 +26,9 @@ fn main() {
     let mut window: PistonWindow =
         WindowSettings::new("A button with an image", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -54,10 +58,10 @@ fn main() {
     // Our demonstration app that we'll control with our GUI.
     let mut bg_color = conrod::color::LIGHT_BLUE;
 
-    window.set_ups(60);
+    events.set_ups(60);
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
