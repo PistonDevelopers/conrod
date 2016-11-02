@@ -3,6 +3,8 @@
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 
+mod support;
+
 fn main() {
     feature::main();
 }
@@ -13,6 +15,7 @@ mod feature {
     extern crate find_folder;
     use conrod;
     use glium;
+    use support;
     use std;
 
     use glium::{DisplayBuild, Surface};
@@ -21,8 +24,8 @@ mod feature {
     use std::borrow::Cow;
 
     // The width and height in "points".
-    const WIN_W: u32 = 512;
-    const WIN_H: u32 = 512;
+    const WIN_W: u32 = support::WIN_W;
+    const WIN_H: u32 = support::WIN_H;
 
     pub fn main() {
 
@@ -69,9 +72,13 @@ mod feature {
             }).unwrap();
 
         // Construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new().build();
+        let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
 
-        let ids = Ids::new(ui.widget_id_generator());
+        // A demonstration of some app state that we want to control with the conrod GUI.
+        let mut app = support::DemoApp::new();
+
+        // The `widget::Id` of each widget instantiated in `gui`.
+        let ids = support::Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
         let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -238,7 +245,7 @@ mod feature {
                 };
 
                 let mut target = display.draw();
-                target.clear_color(1.0, 1.0, 1.0, 0.0);
+                target.clear_color(0.0, 0.0, 0.0, 0.0);
                 let vertex_buffer = glium::VertexBuffer::new(&display, &vertices).unwrap();
                 let blend = glium::Blend::alpha_blending();
                 let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -267,8 +274,9 @@ mod feature {
             }
 
             if ui.global_input.events().next().is_some() {
-                // Update all widgets within the `Ui`.
-                set_widgets(ui.set_widgets(), &ids);
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                let mut ui = ui.set_widgets();
+                support::gui(&mut ui, &ids, &mut app);
             }
 
             // Avoid hogging the CPU.
@@ -276,40 +284,6 @@ mod feature {
         }
     }
 
-
-    // Generate a type which may produce unique identifier for each widget.
-    widget_ids! {
-        struct Ids {
-            canvas,
-            text,
-        }
-    }
-
-
-    /// Instantiate the widgets.
-    fn set_widgets(ref mut ui: conrod::UiCell, ids: &Ids) {
-        use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
-
-        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
-
-        // Some starting text to edit.
-        let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-            Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
-            finibus odio nec elit condimentum, rhoncus fermentum purus lacinia. Interdum et malesuada \
-            fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
-            Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
-            Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
-            magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
-
-        //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
-        widget::Text::new(demo_text)
-            .middle_of(ids.canvas)
-            .wh_of(ids.canvas)
-            .font_size(20)
-            .color(conrod::color::BLACK)
-            .align_text_middle()
-            .set(ids.text, ui);
-    }
 }
 
 #[cfg(not(feature="glutin"))]
