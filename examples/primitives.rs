@@ -1,8 +1,7 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
-use piston_window::*;
+use conrod::backend::piston_window::*;
 
 
 // Generate a type that will produce a unique `widget::Id` for each widget.

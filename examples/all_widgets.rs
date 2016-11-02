@@ -2,9 +2,7 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
-
-use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
 mod support;
 

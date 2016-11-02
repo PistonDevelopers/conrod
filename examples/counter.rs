@@ -1,6 +1,5 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
 
 fn main() {
@@ -8,7 +7,7 @@ fn main() {
     const HEIGHT: u32 = 200;
 
     use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
-    use piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
+    use conrod::backend::piston_window::{EventLoop, OpenGL, PistonWindow, UpdateEvent, WindowSettings};
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;

@@ -4,10 +4,9 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
 use conrod::{widget, Colorable, Positionable, Sizeable, Widget, color};
-use piston_window::{EventLoop, Flip, ImageSize, G2dTexture, PistonWindow, Texture, UpdateEvent};
+use conrod::backend::piston_window::{self, EventLoop, Flip, ImageSize, G2dTexture, PistonWindow, Texture, UpdateEvent};
 
 fn main() {
     const WIDTH: u32 = 800;

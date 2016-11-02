@@ -9,10 +9,9 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 extern crate rand; // for making a random color.
 
-use piston_window::{EventLoop, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, EventLoop, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
 
 
 fn main() {
@@ -104,7 +103,7 @@ fn main() {
 
 
 // Load the Rust logo from our assets folder.
-use piston_window::{Flip, G2dTexture, Texture};
+use conrod::backend::piston_window::{Flip, G2dTexture, Texture};
 fn load_rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");

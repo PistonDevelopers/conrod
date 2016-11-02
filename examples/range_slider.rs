@@ -2,9 +2,8 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
-use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
+use conrod::backend::piston_window::{self, EventLoop, PistonWindow, UpdateEvent, WindowSettings};
 
 
 widget_ids! { 

@@ -13,7 +13,6 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
 
 /// The module in which we'll implement our own custom circular button.
@@ -223,7 +222,7 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
+    use conrod::backend::piston_window::{EventLoop, PistonWindow, OpenGL, UpdateEvent, WindowSettings};
     use self::circular_button::CircularButton;
 
     const WIDTH: u32 = 1200;
