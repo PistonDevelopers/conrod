@@ -10,6 +10,9 @@ extern crate glutin;
 #[macro_use]
 extern crate gfx;
 
+mod support;
+
+
 fn main() {
     feature::main();
 }
@@ -22,6 +25,7 @@ mod feature {
     use conrod;
     use glutin;
     use gfx;
+    use support;
 
     use gfx::{Factory, Device, tex};
     use gfx::traits::FactoryExt;
@@ -93,16 +97,9 @@ mod feature {
         }
     }
 
-    const WIN_W: u32 = 800;
-    const WIN_H: u32 = 600;
-    const CLEAR_COLOR: [f32; 4] = [1.0; 4];
-
-    widget_ids! {
-        struct Ids {
-            canvas,
-            text,
-        }
-    }
+    const WIN_W: u32 = support::WIN_W;
+    const WIN_H: u32 = support::WIN_H;
+    const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
     // Creates a gfx texture with the given data
     fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
@@ -137,29 +134,6 @@ mod feature {
         encoder.update_texture::<SurfaceFormat, FullFormat>(texture, None, info, data).unwrap();
     }
 
-    fn set_widgets(ui: &mut conrod::UiCell, ids: &Ids) {
-        use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
-
-        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
-
-        // Text to draw
-        let demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-            Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
-            finibus odio nec elit condimentum, rhoncus fermentum purus lacinia. Interdum et malesuada \
-            fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
-            Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
-            Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
-            magna est, efficitur suscipit dolor eu, consectetur consectetur urna.";
-
-        widget::Text::new(demo_text)
-            .middle_of(ids.canvas)
-            .wh_of(ids.canvas)
-            .font_size(20)
-            .color(conrod::color::BLACK)
-            .align_text_middle()
-            .set(ids.text, ui);
-    }
-
     pub fn main() {
         // Builder for window
         let builder = glutin::WindowBuilder::new()
@@ -189,9 +163,12 @@ mod feature {
         // Compile GL program
         let pso = factory.create_pipeline_simple(VERTEX_SHADER, FRAGMENT_SHADER, pipe::new()).unwrap();
 
-        // Create Ui and ID generator
-        let mut ui = conrod::UiBuilder::new().build();
-        let ids = Ids::new(ui.widget_id_generator());
+        // Demonstration app state that we'll control with our conrod GUI.
+        let mut app = support::DemoApp::new();
+
+        // Create Ui and Ids of widgets to instantiate
+        let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
+        let ids = support::Ids::new(ui.widget_id_generator());
 
         // Load font from file
         let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -339,7 +316,8 @@ mod feature {
 
             // Update widgets if any event has happened
             if ui.global_input.events().next().is_some() {
-                set_widgets(&mut ui.set_widgets(), &ids);
+                let mut ui = ui.set_widgets();
+                support::gui(&mut ui, &ids, &mut app);
             }
         }
     }
