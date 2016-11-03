@@ -11,9 +11,10 @@
 extern crate find_folder;
 extern crate rand; // for making a random color.
 
-use conrod::backend::piston_window::{self, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
-use conrod::backend::piston_window::piston_event_loop::{EventLoop, WindowEvents};
-
+use conrod::backend::piston::window::{ImageSize, Flip, G2dTexture, Texture};
+use conrod::backend::piston::{Window, UpdateEvent};
+use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+use conrod::backend::piston::window as piston_window;
 
 fn main() {
     const WIDTH: u32 = 1100;
@@ -23,8 +24,8 @@ fn main() {
     let opengl = piston_window::OpenGL::V3_2;
 
     // Construct the window.
-    let mut window: PistonWindow =
-        WindowSettings::new("A button with an image", [WIDTH, HEIGHT])
+    let mut window: Window =
+        piston_window::WindowSettings::new("A button with an image", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // Create the event loop.
@@ -40,7 +41,7 @@ fn main() {
 
     // Create a texture to use for efficiently caching text on the GPU.
     let mut text_texture_cache =
-        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+        piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
     widget_ids!(struct Ids { canvas, button, rust_logo });
@@ -64,7 +65,7 @@ fn main() {
     while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -96,19 +97,17 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                conrod::backend::piston_window::draw(c, g, primitives,
-                                                     &mut text_texture_cache,
-                                                     &image_map,
-                                                     texture_from_image);
+                piston_window::draw(c, g, primitives,
+                                    &mut text_texture_cache,
+                                    &image_map,
+                                    texture_from_image);
             }
         });
     }
 }
 
-
 // Load the Rust logo from our assets folder.
-use conrod::backend::piston_window::{Flip, G2dTexture, Texture};
-fn load_rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
+fn load_rust_logo(window: &mut Window) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
     let factory = &mut window.factory;

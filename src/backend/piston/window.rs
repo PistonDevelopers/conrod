@@ -18,14 +18,19 @@
 //!
 //! ```no_run
 //! extern crate conrod;
+//! extern crate graphics;
 //!
-//! use conrod::backend::piston_window::*;
+//! use conrod::backend::piston::Window;
+//! use conrod::backend::piston::window as piston_window;
+//! use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+//! use graphics::*;
 //!
 //! fn main() {
-//!     let mut window: PistonWindow =
-//!         WindowSettings::new("Hello World!", [512; 2])
+//!     let mut window: Window =
+//!         piston_window::WindowSettings::new("Hello World!", [512; 2])
 //!             .build().unwrap();
-//!     while let Some(e) = window.next() {
+//!     let mut events = WindowEvents::new();
+//!     while let Some(e) = events.next(&mut window) {
 //!         window.draw_2d(&e, |c, g| {
 //!             clear([0.5, 0.5, 0.5, 1.0], g);
 //!             rectangle([1.0, 0.0, 0.0, 1.0], // red
@@ -44,13 +49,14 @@
 //! extern crate conrod;
 //! extern crate sdl2_window;
 //!
-//! use conrod::backend::piston_window::*;
+//! use conrod::backend::piston::Window;
+//! use conrod::backend::piston::window as piston_window;
 //! use sdl2_window::Sdl2Window;
 //!
 //! # fn main() {
 //!
-//! let window: PistonWindow<Sdl2Window> =
-//!     WindowSettings::new("title", [512; 2])
+//! let window: Window<Sdl2Window> =
+//!     piston_window::WindowSettings::new("title", [512; 2])
 //!         .build().unwrap();
 //!
 //! # }
@@ -90,14 +96,16 @@ pub extern crate texture;
 use self::glutin_window::GlutinWindow;
 pub use self::shader_version::OpenGL;
 pub use self::graphics::{ImageSize};
-pub use self::pistoncore_window::*;
+use self::pistoncore_window::Window as BasicWindow;
+pub use self::pistoncore_window::{AdvancedWindow, Position, Size, OpenGLWindow, 
+                                  WindowSettings, BuildFromWindowSettings};
 pub use piston_input::*;
 pub use self::gfx_graphics::{ GlyphError, Texture, TextureSettings, Flip };
 
 use self::gfx_graphics::{ Gfx2d, GfxGraphics };
 use std::time::Duration;
 
-use super::piston::draw;
+use super::draw;
 use event;
 use image;
 use render;
@@ -117,7 +125,7 @@ pub type G2d<'a> = GfxGraphics<'a,
 pub type G2dTexture<'a> = Texture<gfx_device_gl::Resources>;
 
 /// Contains everything required for controlling window, graphics, event loop.
-pub struct PistonWindow<W: Window = GlutinWindow> {
+pub struct Window<W: BasicWindow = GlutinWindow> {
     /// The window.
     pub window: W,
     /// GFX encoder.
@@ -136,11 +144,11 @@ pub struct PistonWindow<W: Window = GlutinWindow> {
     pub factory: gfx_device_gl::Factory,
 }
 
-impl<W> BuildFromWindowSettings for PistonWindow<W>
-    where W: Window + OpenGLWindow + BuildFromWindowSettings,
+impl<W> BuildFromWindowSettings for Window<W>
+    where W: BasicWindow + OpenGLWindow + BuildFromWindowSettings,
           W::Event: GenericEvent
 {
-    fn build_from_window_settings(settings: &WindowSettings) -> Result<PistonWindow<W>, String> {
+    fn build_from_window_settings(settings: &WindowSettings) -> Result<Window<W>, String> {
         // Turn on sRGB.
         let settings = settings.clone().srgb(true);
 
@@ -149,7 +157,7 @@ impl<W> BuildFromWindowSettings for PistonWindow<W>
         let opengl = settings.get_maybe_opengl().unwrap_or(OpenGL::V3_2);
         let samples = settings.get_samples();
 
-        Ok(PistonWindow::new(opengl, samples, try!(settings.build())))
+        Ok(Window::new(opengl, samples, try!(settings.build())))
     }
 }
 
@@ -172,8 +180,8 @@ fn create_main_targets(dim: gfx::tex::Dimensions) ->
     (output_color, output_stencil)
 }
 
-impl<W> PistonWindow<W>
-    where W: Window, W::Event: GenericEvent
+impl<W> Window<W>
+    where W: BasicWindow, W::Event: GenericEvent
 {
     /// Creates a new piston window.
     pub fn new(opengl: OpenGL, samples: u8, mut window: W) -> Self
@@ -193,7 +201,7 @@ impl<W> PistonWindow<W>
 
         let g2d = Gfx2d::new(opengl, &mut factory);
         let encoder = factory.create_command_buffer().into();
-        PistonWindow {
+        Window {
             window: window,
             encoder: encoder,
             device: device,
@@ -244,7 +252,7 @@ impl<W> PistonWindow<W>
 
     /// Let window handle new event.
     /// Cleans up after rendering and resizes frame buffers.
-    pub fn event(&mut self, event: &Event<<W as Window>::Event>) {
+    pub fn event(&mut self, event: &Event<<W as BasicWindow>::Event>) {
         use piston_input::*;
         use self::gfx_core::factory::Typed;
         use self::gfx::Device;
@@ -269,10 +277,10 @@ impl<W> PistonWindow<W>
     }
 }
 
-impl<W> Window for PistonWindow<W>
-    where W: Window
+impl<W> BasicWindow for Window<W>
+    where W: BasicWindow
 {
-    type Event = <W as Window>::Event;
+    type Event = <W as BasicWindow>::Event;
 
     fn should_close(&self) -> bool { self.window.should_close() }
     fn set_should_close(&mut self, value: bool) {
@@ -282,17 +290,17 @@ impl<W> Window for PistonWindow<W>
     fn draw_size(&self) -> Size { self.window.draw_size() }
     fn swap_buffers(&mut self) { self.window.swap_buffers() }
     fn wait_event(&mut self) -> Self::Event {
-        Window::wait_event(&mut self.window)
+        BasicWindow::wait_event(&mut self.window)
     }
     fn wait_event_timeout(&mut self, timeout: Duration) -> Option<Self::Event> {
-        Window::wait_event_timeout(&mut self.window, timeout)
+        BasicWindow::wait_event_timeout(&mut self.window, timeout)
     }
     fn poll_event(&mut self) -> Option<Self::Event> {
-        Window::poll_event(&mut self.window)
+        BasicWindow::poll_event(&mut self.window)
     }
 }
 
-impl<W> AdvancedWindow for PistonWindow<W>
+impl<W> AdvancedWindow for Window<W>
     where W: AdvancedWindow
 {
     fn get_title(&self) -> String { self.window.get_title() }
@@ -320,25 +328,7 @@ impl<W> AdvancedWindow for PistonWindow<W>
 /// `PistonWindow` to handle some events, if necessary
 pub trait EventWindow {
     /// receive next event from event loop and handle it
-    fn next(&mut self, events: &mut PistonWindow) -> Option<Event>;
-}
-
-/// This module allows use of `WindowEvents` from `pistoncore_event_loop` with `PistonWindow`
-pub mod piston_event_loop {
-    extern crate event_loop;
-
-    pub use self::event_loop::{WindowEvents, EventLoop};
-    use super::{PistonWindow, EventWindow};
-    use piston_input::Event;
-
-    impl EventWindow for WindowEvents {
-        fn next(&mut self, window: &mut PistonWindow) -> Option<Event> {
-            if let Some(e) = self.next(window) {
-                window.event(&e);
-                Some(e)
-            } else { None }
-        }
-    }
+    fn next(&mut self, events: &mut Window) -> Option<Event>;
 }
 
 /// A wrapper around a `G2dTexture` and a rusttype GPU `Cache`
@@ -361,8 +351,8 @@ impl GlyphCache {
     /// The `width` and `height` arguments are in pixel values.
     ///
     /// If you need to resize the `GlyphCache`, construct a new one and discard the old one.
-    pub fn new<B>(window: &mut PistonWindow<B>, width: u32, height: u32) -> GlyphCache 
-        where B: Window {
+    pub fn new<B>(window: &mut Window<B>, width: u32, height: u32) -> GlyphCache 
+        where B: BasicWindow {
 
         // Construct the rusttype GPU cache with the tolerances recommended by their documentation.
         const SCALE_TOLERANCE: f32 = 0.1;
@@ -387,15 +377,15 @@ impl GlyphCache {
 
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.
-pub fn convert_event<E, B>(event: E, window: &PistonWindow<B>) -> Option<event::Raw>
+pub fn convert_event<E, B>(event: E, window: &Window<B>) -> Option<event::Raw>
     where E: GenericEvent,
-          B: Window,
+          B: BasicWindow,
 {
     use Scalar;
 
     let size = window.size();
     let (w, h) = (size.width as Scalar, size.height as Scalar);
-    super::piston::event::convert(event, w, h)
+    super::event::convert(event, w, h)
 }
 
 
