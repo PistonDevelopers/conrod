@@ -10,8 +10,7 @@ fn main() {
     feature::main();
 }
 
-#[cfg(feature="glutin")]
-#[cfg(feature="glium")]
+#[cfg(all(feature="glutin", feature="glium"))]
 mod feature {
     extern crate find_folder;
     use conrod;
@@ -287,8 +286,7 @@ mod feature {
 
 }
 
-#[cfg(not(feature="glutin"))]
-#[cfg(not(feature="glium"))]
+#[cfg(not(all(feature="glutin", feature="glium")))]
 mod feature {
     pub fn main() {
         println!("This example requires the `glutin` and `glium` features. \
