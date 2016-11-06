@@ -1,5 +1,6 @@
 //! A demonstration using glutin to provide events and glium for drawing the Ui.
 
+
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate graphics;
@@ -10,6 +11,7 @@ mod support;
 fn main() {
     feature::main();
 }
+
 
 #[cfg(feature="glutin")]
 #[cfg(feature="glium")]
@@ -23,6 +25,7 @@ mod feature {
     use glium;
     use support;
     use std;
+
 
 
     use glium::{DisplayBuild, Surface};
@@ -47,7 +50,9 @@ mod feature {
         LazySetGLMode { gl_primitive_mode: glium::index::PrimitiveType },
 
         // TODO: Figure out lifetimes so that we can put uniform refs in here.
-        LazySetUniform {  gl_uniform_id : String }
+        LazySetUniform {  gl_uniform_id : String },
+        //LazySetUniform2 {  gl_uniform : &'static glium::uniforms::Sampler<'static, glium::uniforms::SamplerBehavior> }
+        //LazySetUniform2 {  gl_uniform : &'static Box<glium::uniforms::UniformsStorage> }
 
     }
 
@@ -66,6 +71,11 @@ mod feature {
         [new_x, new_y]
     }
 
+    //fn print_type_of<T>(_: &T) {
+    //    println!("{}", unsafe { std::intrinsics::type_name::<T>() });
+    // }
+
+
     fn printed_xy_to_glcoord(x : f32, y : f32, w : f32, h : f32) -> [f32;2] {
         // TODO: Figure out non-println debugging.
         let toreturn = xy_to_glcoord(x,y,w,h);
@@ -75,7 +85,6 @@ mod feature {
 
 
     pub fn main() {
-
         // Build the window.
         let display = glutin::WindowBuilder::new()
             .with_vsync()
@@ -84,10 +93,17 @@ mod feature {
             .build_glium()
             .unwrap();
 
+        main_with_lifetime(&display);
+
+    }
+
+     pub fn main_with_lifetime<'a>(display : &'a glium::Display) {
+
+
 
         // Create the `GL` program.
         let program = program!(
-            &display,
+            display,
             140 => {
                 vertex: "
                     #version 140
@@ -160,7 +176,7 @@ mod feature {
                 format: glium::texture::ClientFormat::U8
             };
             let texture = glium::texture::Texture2d::with_format(
-                &display,
+                display,
                 grey_image,
                 glium::texture::UncompressedFloatFormat::U8,
                 glium::texture::MipmapsOption::NoMipmap
@@ -173,10 +189,10 @@ mod feature {
 
         // Create our `conrod::image::Map` which describes each of our widget->image mappings.
         // In our case we only have one image, however the macro may be used to list multiple.
-        let image_map = image_map! {
-            (ids.rust_logo, load_rust_logo(&display)),
-        };
 
+        let image_map = image_map! {
+            (ids.rust_logo, load_rust_logo(display)),
+        };
 
         // Start the loop:
         //
@@ -437,7 +453,9 @@ mod feature {
                         .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 };
 
-                let tex : &glium::texture::SrgbTexture2d = image_map.get(&ids.rust_logo).unwrap();
+                //let tex : &glium::texture::SrgbTexture2d = image_map.get(&ids.rust_logo).unwrap();
+
+                let tex : &glium::texture::SrgbTexture2d = &load_rust_logo(display);
 
                 let uniform_textured = uniform! {
                     matrix: [
@@ -449,6 +467,7 @@ mod feature {
                     tex: glium::uniforms::Sampler::new(tex).magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear)
                 };
 
+                //println!("{:?}", uniform_lt);
 
                 // Select primitive type (tristrip, lines etc).
                 //let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -493,7 +512,7 @@ mod feature {
                                 };
 
                                 // Fetch vertices.
-                                let vertex_buffer = glium::VertexBuffer::new(&display, &queued_vertices).unwrap();
+                                let vertex_buffer = glium::VertexBuffer::new(display, &queued_vertices).unwrap();
                                 queued_vertices.truncate(0); // Throw away all vertices... Assume this is more efficient than creating a new Vec.
 
                                 // Actual draw call. The number of calls should be minimized, but unknown how.
@@ -529,7 +548,7 @@ mod feature {
                             };
 
                             // Fetch vertices.
-                            let vertex_buffer = glium::VertexBuffer::new(&display, &queued_vertices).unwrap();
+                            let vertex_buffer = glium::VertexBuffer::new(display, &queued_vertices).unwrap();
                             queued_vertices.truncate(0); // Throw away all vertices... Assume this is more efficient than creating a new Vec.
 
                             // TODO:
@@ -587,7 +606,7 @@ mod feature {
         let rgba_image = image::open(&Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
-        let rust_logo_texture = glium::texture::SrgbTexture2d::new(display, raw_image).unwrap();
+        let rust_logo_texture : glium::texture::SrgbTexture2d = glium::texture::SrgbTexture2d::new(display, raw_image).unwrap();
         rust_logo_texture
     }
 
