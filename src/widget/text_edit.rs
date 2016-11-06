@@ -92,6 +92,9 @@ pub enum Cursor {
         /// The `start` is always the "anchor" point.
         start: text::cursor::Index,
         /// The `end` may be either greater or less than the `start`.
+        ///
+        /// The `end` is always the logical cursor position, if one is required. For example, when
+        /// selecting text using `Shift+Right`, `end` is moved.
         end: text::cursor::Index,
     },
 }
@@ -401,219 +404,145 @@ impl<'a> Widget for TextEdit<'a> {
 
                         // If `Cursor::Idx`, remove the `char` behind the cursor.
                         // If `Cursor::Selection`, remove the selected text.
-                        input::Key::Backspace => {
-                            match cursor {
+                        input::Key::Backspace | input::Key::Delete => {
+                            let delete_word = press.modifiers.contains(input::keyboard::CTRL);
 
+                            // Calculate start/end indices of text to remove
+                            let (start, end) = match cursor {
                                 Cursor::Idx(cursor_idx) => {
-                                    let idx_after_cursor = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        text::glyph::index_after_cursor(line_infos, cursor_idx)
-                                    };
-                                    if let Some(idx) = idx_after_cursor {
-                                        if idx > 0 {
-                                            let idx_to_remove = idx - 1;
+                                    let line_infos = state.line_infos.iter().cloned();
 
-                                            *text.to_mut() = text.chars().take(idx_to_remove)
-                                                .chain(text.chars().skip(idx))
-                                                .collect();
-
-                                            state.update(|state| {
-                                                let font = ui.fonts.get(font_id).unwrap();
-                                                let w = rect.w();
-                                                state.line_infos =
-                                                    line_infos(&text, font, font_size, line_wrap, w)
-                                                        .collect();
-                                            });
-
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            let new_cursor_idx =
-                                                 text::cursor::index_before_char(line_infos,
-                                                                                 idx_to_remove)
-                                                 // in case we removed the last character
-                                                .unwrap_or(text::cursor::Index {line: 0, char: 0});
-                                            cursor = Cursor::Idx(new_cursor_idx);
+                                    let end = match (key, delete_word) {
+                                        (input::Key::Backspace, false) => {
+                                            cursor_idx.previous(line_infos)
                                         }
-                                    }
-                                },
+                                        (input::Key::Backspace, true) => {
+                                            cursor_idx.previous_word_start(&text, line_infos)
+                                        }
+                                        (input::Key::Delete, false) => {
+                                            cursor_idx.next(line_infos)
+                                        }
+                                        (input::Key::Delete, true) => {
+                                            cursor_idx.next_word_end(&text, line_infos)
+                                        }
+                                        _ => unreachable!(),
+                                    }.unwrap_or(cursor_idx);
 
-                                Cursor::Selection { start, end } => {
-                                    let (start_idx, end_idx) = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        (text::glyph::index_after_cursor(line_infos.clone(), start)
-                                            .expect("text::cursor::Index was out of range"),
-                                         text::glyph::index_after_cursor(line_infos, end)
-                                            .expect("text::cursor::Index was out of range"))
-                                    };
-                                    let (start_idx, end_idx) =
-                                        if start_idx <= end_idx { (start_idx, end_idx) }
-                                        else                    { (end_idx, start_idx) };
-                                    let new_cursor_char_idx =
-                                        if start_idx > 0 { start_idx } else { 0 };
-                                    let new_cursor_idx = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        text::cursor::index_before_char(line_infos,
-                                                                        new_cursor_char_idx)
-                                            .expect("char index was out of range")
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                    *text.to_mut() = text.chars().take(start_idx)
-                                        .chain(text.chars().skip(end_idx))
-                                        .collect();
-                                    state.update(|state| {
-                                        let font = ui.fonts.get(font_id).unwrap();
-                                        let w = rect.w();
-                                        state.line_infos =
-                                            line_infos(&text, font, font_size, line_wrap, w)
-                                                .collect();
-                                    });
-                                },
+                                    (cursor_idx, end)
+                                }
+                                Cursor::Selection { start, end } => (start, end),
+                            };
 
-                            }
-                        },
+                            let (start_idx, end_idx) = {
+                                let line_infos = state.line_infos.iter().cloned();
+                                (text::glyph::index_after_cursor(line_infos.clone(), start),
+                                 text::glyph::index_after_cursor(line_infos, end))
+                            };
 
-                        // If `Cursor::Idx`, remove the `char` at the cursor.
-                        // If `Cursor::Selection`, remove the selected text.
-                        input::Key::Delete => {
-                            match cursor {
+                            if let (Some(start_idx), Some(end_idx)) = (start_idx, end_idx) {
+                                let (start_idx, end_idx) = (std::cmp::min(start_idx, end_idx),
+                                                            std::cmp::max(start_idx, end_idx));
 
-                                Cursor::Idx(cursor_idx) => {
-                                    let idx_after_cursor = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        text::glyph::index_after_cursor(line_infos, cursor_idx)
-                                    };
-                                    if let Some(idx) = idx_after_cursor {
-                                        let idx_to_remove = idx;
-
-                                        *text.to_mut() = text.chars().take(idx_to_remove)
-                                            .chain(text.chars().skip(idx_to_remove + 1))
+                                let new_cursor_char_idx =
+                                    if start_idx > 0 { start_idx } else { 0 };
+                                let new_cursor_idx = {
+                                    let line_infos = state.line_infos.iter().cloned();
+                                    text::cursor::index_before_char(line_infos,
+                                                                    new_cursor_char_idx)
+                                        .expect("char index was out of range")
+                                };
+                                cursor = Cursor::Idx(new_cursor_idx);
+                                *text.to_mut() = text.chars().take(start_idx)
+                                    .chain(text.chars().skip(end_idx))
+                                    .collect();
+                                state.update(|state| {
+                                    let font = ui.fonts.get(font_id).unwrap();
+                                    let w = rect.w();
+                                    state.line_infos =
+                                        line_infos(&text, font, font_size, line_wrap, w)
                                             .collect();
-
-                                        state.update(|state| {
-                                            let font = ui.fonts.get(font_id).unwrap();
-                                            let w = rect.w();
-                                            state.line_infos =
-                                                line_infos(&text, font, font_size, line_wrap, w)
-                                                    .collect();
-                                        });
-
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        let new_cursor_idx =
-                                             text::cursor::index_before_char(line_infos,
-                                                                             idx_to_remove)
-                                             // in case we removed the last character
-                                            .unwrap_or(text::cursor::Index {line: 0, char: 0});
-                                        cursor = Cursor::Idx(new_cursor_idx);
-                                    }
-                                },
-
-                                Cursor::Selection { start, end } => {
-                                    let (start_idx, end_idx) = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        (text::glyph::index_after_cursor(line_infos.clone(), start)
-                                            .expect("text::cursor::Index was out of range"),
-                                         text::glyph::index_after_cursor(line_infos, end)
-                                            .expect("text::cursor::Index was out of range"))
-                                    };
-                                    let (start_idx, end_idx) =
-                                        if start_idx <= end_idx { (start_idx, end_idx) }
-                                        else                    { (end_idx, start_idx) };
-                                    let new_cursor_char_idx =
-                                        if start_idx > 0 { start_idx } else { 0 };
-                                    let new_cursor_idx = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        text::cursor::index_before_char(line_infos,
-                                                                        new_cursor_char_idx)
-                                            .expect("char index was out of range")
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                    *text.to_mut() = text.chars().take(start_idx)
-                                        .chain(text.chars().skip(end_idx))
-                                        .collect();
-                                    state.update(|state| {
-                                        let font = ui.fonts.get(font_id).unwrap();
-                                        let w = rect.w();
-                                        state.line_infos =
-                                            line_infos(&text, font, font_size, line_wrap, w)
-                                                .collect();
-                                    });
-                                },
-
+                                });
                             }
                         },
 
-                        input::Key::Left | input::Key::Right => {
-                            let left_move = match key {
-                                    input::Key::Left => true,
-                                    input::Key::Right => false,
-                                    _ => unreachable!()
-                            };
-                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
-
-                            match cursor {
-                                // Move the cursor to the previous/next position or word.
-                                Cursor::Idx(cursor_idx) => {
-                                    let new_cursor_idx = {
-                                        let line_infos = state.line_infos.iter().cloned();
-                                        match (left_move, move_word) {
-                                            (true, true) => cursor_idx
-                                                .previous_word_start(&text, line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (false, true) => cursor_idx
-                                                .next_word_end(&text, line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (true, false) => cursor_idx
-                                                .previous(line_infos)
-                                                .unwrap_or(cursor_idx),
-                                            (false, false) => cursor_idx
-                                                .next(line_infos)
-                                                .unwrap_or(cursor_idx),
-                                        }
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                                Cursor::Selection { start, end } => {
-                                    // Move the cursor to the start/end of the current selection.
-                                    let new_cursor_idx = {
-                                        let cursor_idx = if left_move { std::cmp::min(start, end) }
-                                                         else { std::cmp::max(start, end) };
-                                        if !move_word {
-                                            cursor_idx
-                                        } else {
-                                            // Move by word from the beginning or end of selection
-                                            let line_infos = state.line_infos.iter().cloned();
-                                            if left_move {
-                                                cursor_idx.previous_word_start(&text, line_infos)
-                                                          .unwrap_or(cursor_idx)
-                                            } else {
-                                                cursor_idx.next_word_end(&text, line_infos)
-                                                          .unwrap_or(cursor_idx)
-                                            }
-                                        }
-                                    };
-                                    cursor = Cursor::Idx(new_cursor_idx);
-                                },
-                            }
-                        },
-
-                        input::Key::Up | input::Key::Down => {
-                            let cursor_idx = match cursor {
-                                Cursor::Idx(cursor_idx) => cursor_idx,
-                                Cursor::Selection { start, .. } => start,
-                            };
+                        input::Key::Left | input::Key::Right | input::Key::Up | input::Key::Down => {
                             let font = ui.fonts.get(font_id).unwrap();
-                            let infos = &state.line_infos;
-                            let new_cursor_idx = cursor_xy_at(cursor_idx, &text, infos, font)
-                                .and_then(|(x_pos,_)| {
-                                    let text::cursor::Index { line, .. } = cursor_idx;
-                                    let next_line = match key {
-                                        input::Key::Up => if line > 0 { line - 1 } else { 0 },
-                                        input::Key::Down => line + 1,
-                                        _ => unreachable!()
-                                    };
-                                    closest_cursor_index_on_line(x_pos, next_line, &text, infos, font)
-                                })
-                                .unwrap_or(cursor_idx);
-                            cursor = Cursor::Idx(new_cursor_idx);
+                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
+                            let select = press.modifiers.contains(input::keyboard::SHIFT);
+
+                            let (old_selection_start, cursor_idx) = match cursor {
+                                Cursor::Idx(idx) => (idx, idx),
+                                Cursor::Selection { start, end } => (start, end),
+                            };
+
+                            let new_cursor_idx = {
+                                let line_infos = state.line_infos.iter().cloned();
+                                match (key, move_word) {
+                                    (input::Key::Left, true) => cursor_idx
+                                        .previous_word_start(&text, line_infos),
+                                    (input::Key::Right, true) => cursor_idx
+                                        .next_word_end(&text, line_infos),
+                                    (input::Key::Left, false) => cursor_idx
+                                        .previous(line_infos),
+                                    (input::Key::Right, false) => cursor_idx
+                                        .next(line_infos),
+
+                                    // Up/Down movement
+                                    _ => cursor_xy_at(cursor_idx, &text, &state.line_infos, font)
+                                        .and_then(|(x_pos, _)| {
+                                            let text::cursor::Index { line, .. } = cursor_idx;
+                                            let next_line = match key {
+                                                input::Key::Up => line.saturating_sub(1),
+                                                input::Key::Down => line + 1,
+                                                _ => unreachable!(),
+                                            };
+                                            closest_cursor_index_on_line(x_pos, next_line, &text, &state.line_infos, font)
+                                        })
+                                }.unwrap_or(cursor_idx)
+                            };
+
+                            if select {
+                                // Expand the selection (or create a new one)
+                                cursor = Cursor::Selection {
+                                    start: old_selection_start,
+                                    end: new_cursor_idx,
+                                };
+                            } else {
+                                match cursor {
+                                    Cursor::Idx(_) => {
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                    Cursor::Selection { start, end } => {
+                                        // Move the cursor to the start/end of the current selection.
+                                        let new_cursor_idx = {
+                                            let cursor_idx = match key {
+                                                input::Key::Left | input::Key::Up =>
+                                                    std::cmp::min(start, end),
+                                                input::Key::Right | input::Key::Down =>
+                                                    std::cmp::max(start, end),
+                                                _ => unreachable!(),
+                                            };
+
+                                            if !move_word {
+                                                cursor_idx
+                                            } else {
+                                                // Move by word from the beginning or end of selection
+                                                let line_infos = state.line_infos.iter().cloned();
+                                                match key {
+                                                    input::Key::Left | input::Key::Up => {
+                                                        cursor_idx.previous_word_start(&text, line_infos)
+                                                    },
+                                                    input::Key::Right | input::Key::Down => {
+                                                        cursor_idx.next_word_end(&text, line_infos)
+                                                    }
+                                                    _ => unreachable!(),
+                                                }.unwrap_or(cursor_idx)
+                                            }
+                                        };
+                                        cursor = Cursor::Idx(new_cursor_idx);
+                                    },
+                                }
+                            }
                         },
 
                         input::Key::A => {

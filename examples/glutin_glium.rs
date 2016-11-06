@@ -4,6 +4,8 @@
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate graphics;
 
+#[cfg(feature="glutin")]
+mod support;
 
 fn main() {
     feature::main();
@@ -19,6 +21,7 @@ mod feature {
 
     use conrod;
     use glium;
+    use support;
     use std;
 
 
@@ -28,8 +31,8 @@ mod feature {
     use std::borrow::Cow;
 
     // The width and height in "points".
-    const WIN_W: u32 = 512;
-    const WIN_H: u32 = 512;
+    const WIN_W: u32 = support::WIN_W;
+    const WIN_H: u32 = support::WIN_H;
 
 
     #[derive(Copy, Clone, PartialEq)]
@@ -82,9 +85,6 @@ mod feature {
             .unwrap();
 
 
-        let rust_logo_texture = load_rust_logo(&display);
-
-
         // Create the `GL` program.
         let program = program!(
             &display,
@@ -117,7 +117,7 @@ mod feature {
                         vec3 tex_part = texture(tex, v_tex_coords).rgb;
                         vec3 vrt_part = v_colour.rgb;
 
-                        vec3 mixed_colour = mix(tex_part, vrt_part, 0.5);
+                        vec3 mixed_colour = mix(tex_part, vrt_part, 1.0);
                         f_colour = vec4(mixed_colour, 1.0);
                     }
                 "
@@ -125,9 +125,13 @@ mod feature {
             // f_colour = v_colour * vec4(1.0, 1.0, 1.0, texture(tex, v_tex_coords).r);
 
         // Construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new().build();
+        let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
 
-        let ids = Ids::new(ui.widget_id_generator());
+        // A demonstration of some app state that we want to control with the conrod GUI.
+        let mut app = support::DemoApp::new();
+
+        // The `widget::Id` of each widget instantiated in `gui`.
+        let ids = support::Ids::new(ui.widget_id_generator());
 
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -170,7 +174,7 @@ mod feature {
         // Create our `conrod::image::Map` which describes each of our widget->image mappings.
         // In our case we only have one image, however the macro may be used to list multiple.
         let image_map = image_map! {
-            (ids.rust_logo_texture, rust_logo_texture),
+            (ids.rust_logo, load_rust_logo(&display)),
         };
 
 
@@ -212,7 +216,7 @@ mod feature {
                 // TODO : Figure out why window BG and canvas fail when the window
                 // is resized to non-square shapes (i.e aspect ratio != 1:1).
                 let mut target = display.draw();
-                target.clear_color(0.4, 0.4, 0.8, 0.4);
+                target.clear_color(0.0, 0.0, 0.0, 0.0);
 
                 let mut queued_events: Vec<GliumQueuedEvent> = Vec::new();
 
@@ -433,7 +437,7 @@ mod feature {
                         .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 };
 
-                let tex : &glium::texture::SrgbTexture2d = image_map.get(&ids.rust_logo_texture).unwrap();
+                let tex : &glium::texture::SrgbTexture2d = image_map.get(&ids.rust_logo).unwrap();
 
                 let uniform_textured = uniform! {
                     matrix: [
@@ -564,113 +568,14 @@ mod feature {
             }
 
             if ui.global_input.events().next().is_some() {
-                // Update all widgets within the `Ui`.
-                set_widgets(ui.set_widgets(), &ids);
+                 // Instantiate a GUI demonstrating every widget type provided by conrod.
+                 let mut ui = ui.set_widgets();
+                 support::gui(&mut ui, &ids, &mut app);
             }
 
             // Avoid hogging the CPU.
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-    }
-
-
-    // Generate a type which may produce unique identifier for each widget.
-    widget_ids! {
-        struct Ids {
-            canvas,
-            fish,
-            rust_logo,
-            rust_logo_texture,
-            circle,
-            toggle,
-            button,
-            text,
-        }
-    }
-
-
-    /// Instantiate the widgets.
-    fn set_widgets(ref mut ui: conrod::UiCell, ids: &Ids) {
-        use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
-
-        widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
-
-        // Some starting text to edit.
-        let demo_text = "Some fish.";
-
-        //conrod::Text::new("Foo! Bar! Baz!\nFloozy Woozy\nQux Flux")
-        widget::Text::new(demo_text)
-            .middle_of(ids.canvas)
-            .wh_of(ids.canvas)
-            .font_size(20)
-            .color(conrod::color::BLACK)
-            .align_text_middle()
-            .set(ids.text, ui);
-
-        // Fish polygon.
-        let mut fish_vertexes =  vec![[-0.698435, 0.327139], [-0.908714, 0.200846], [-1.000000, 0.045003], [-0.882569, -0.153804], [-0.716302, -0.243929], [-0.419474, -0.310119], [-0.086611, -0.607857], [0.091828, -0.619086], [-0.041731, -0.307105], [0.322430, -0.227440], [0.544011, -0.121772], [0.642794, -0.220526], [0.809389, -0.322116], [1.000000, -0.378260], [0.800696, -0.049199], [0.797215, 0.151499], [0.965221, 0.456860], [0.755156, 0.402490], [0.573567, 0.255689], [0.397194, 0.317920], [0.513037, 0.371109], [0.473372, 0.466375], [0.340141, 0.466375], [0.152681, 0.354088], [-0.125625, 0.399003], [0.053142, 0.551713], [-0.009126, 0.619086], [-0.206692, 0.619086], [-0.420234, 0.381569], [-0.698439, 0.324244], [-0.698435, 0.327139]];
-
-        let fish_scale = ui.window_dim();
-        for n in 0..fish_vertexes.len() {
-            fish_vertexes[n][0] = fish_vertexes[n][0] * fish_scale[0] / 2.0;
-            fish_vertexes[n][1] = fish_vertexes[n][1] * fish_scale[1] / 2.0;
-        };
-
-        widget::Polygon::fill(fish_vertexes)
-            .top_left_of(ids.canvas) // TODO: Figure out why move & scale does nothing.
-            .color(conrod::color::RED)
-            .set(ids.fish, ui);
-
-
-        // Logo
-        widget::Image::new()
-            .w_h(128.0 as f64, 128.0 as f64)
-            .top_right_of(ids.canvas)
-            //.down(0.01).left(0.01)  // TODO: Figure out why this row makes the logo disappear.
-            .set(ids.rust_logo, ui);
-
-
-        // Draw a circle at the app's circle_pos.
-        widget::Circle::fill(64.0)
-            .top_left_of(ids.canvas)
-            .color(conrod::color::GREEN)
-            .set(ids.circle, ui);
-
-        let mut toggle_value = false;
-        let mut toggle_label = "OFF".to_string();
-
-        if let Some(value) = widget::Toggle::new(toggle_value)
-            .w_h(75.0, 75.0)
-            .bottom_left_of(ids.canvas)
-            .down(20.0)
-            .rgb(0.6, 0.25, 0.75)
-            //.border(2.0)  // TODO: Figure out why these rows don't compile.
-            //.label(&toggle_label)
-            //.label_color(conrod::color::WHITE)
-            .set(ids.toggle, ui)
-            .last()
-        {
-            toggle_label = match toggle_value {
-                true => "ON".to_string(),
-                false => "OFF".to_string()
-            }
-        };
-
-
-        // Button widget example button.
-        if widget::Button::new()
-            .w_h(200.0, 50.0)
-            .bottom_right_of(ids.canvas)
-            .rgb(0.4, 0.75, 0.6)
-            //.border(2.0)
-            //.label("PRESS")
-            .set(ids.button, ui)
-            .was_clicked()
-        {
-            println!("Click!");
-        }
-
-
     }
 
     // Load the Rust logo from our assets folder.
@@ -734,4 +639,3 @@ mod feature {
                  Try running `cargo run --release --no-default-features --features=\"glutin glium\" --example <example_name>`");
     }
 }
-
