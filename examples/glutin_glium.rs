@@ -302,7 +302,23 @@ mod feature {
 
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {
                             // TODO
-                            println!("PK::Lines")
+                            println!("PK::Lines");
+
+                            queued_events.push(GliumQueuedEvent::LazySetGLMode { gl_primitive_mode : glium::index::PrimitiveType::LineStrip });
+                            queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "textured".to_string() });
+
+                            let color = color.to_fsa();
+
+                            let mut vertices: Vec<Vertex> = Vec::new();
+
+                            for point in points.iter() {
+                                let pos = xy_to_glcoord(point[0] as f32, point[1] as f32, screen_width , screen_height);
+
+                                let v = Vertex {  position: pos,  tex_coords: [0.2, 0.2], colour: color, texweight : 0.0f32 };
+                                vertices.push(v);
+                            };
+                            queued_events.push(GliumQueuedEvent::QueuedVertexes { vertices : vertices });
+
                         },
 
                         render::PrimitiveKind::Text { color, text, font_id } => {
