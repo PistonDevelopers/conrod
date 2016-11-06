@@ -136,11 +136,11 @@ mod feature {
                     out vec4 f_colour;
 
                     void main() {
-                        vec3 tex_part = texture(tex, v_tex_coords).rgb;
-                        vec3 vrt_part = v_colour.rgb;
+                        vec4 tex_part = texture(tex, v_tex_coords).rgba;
+                        vec4 vrt_part = v_colour.rgba;
 
-                        vec3 mixed_colour = mix(vrt_part, tex_part, v_texweight);
-                        f_colour = vec4(mixed_colour, 1.0);
+                        vec4 mixed_colour = mix(vrt_part, tex_part, v_texweight);
+                        f_colour = mixed_colour;
                     }
                 "
             }).unwrap();
@@ -231,9 +231,6 @@ mod feature {
                     (w as f32, h as f32)
                 };
 
-
-
-
                 // Get render surface + color it.
                 // TODO : Figure out why window BG and canvas fail when the window
                 // is resized to non-square shapes (i.e aspect ratio != 1:1).
@@ -241,8 +238,6 @@ mod feature {
                 target.clear_color(0.0, 0.0, 0.0, 0.0);
 
                 let mut queued_events: Vec<GliumQueuedEvent> = Vec::new();
-
-
 
                 // Draw each primitive in order of depth.
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
@@ -256,10 +251,10 @@ mod feature {
 
                             let color = color.to_fsa();
 
-                            let pos_bl = printed_xy_to_glcoord(l as f32, b as f32, screen_width , screen_height);
-                            let pos_br = printed_xy_to_glcoord(l as f32, (b+w) as f32, screen_width , screen_height);
-                            let pos_tl = printed_xy_to_glcoord((l+h) as f32, b as f32, screen_width , screen_height);
-                            let pos_tr = printed_xy_to_glcoord((l+h) as f32, (b+w) as f32, screen_width , screen_height);
+                            let pos_bl = printed_xy_to_glcoord( l    as f32,  b    as f32, screen_width , screen_height);
+                            let pos_br = printed_xy_to_glcoord((l+w) as f32,  b    as f32, screen_width , screen_height);
+                            let pos_tl = printed_xy_to_glcoord( l    as f32, (b+h) as f32, screen_width , screen_height);
+                            let pos_tr = printed_xy_to_glcoord((l+w) as f32, (b+h) as f32, screen_width , screen_height);
 
                             let btmlft = Vertex {  position: pos_bl, tex_coords: [0.0, 0.0], colour: color, texweight : 0.0f32 };
                             let btmrgt = Vertex {  position: pos_br, tex_coords: [0.2, 0.0], colour: color, texweight : 0.0f32 };
@@ -304,8 +299,9 @@ mod feature {
                             // TODO
                             println!("PK::Lines");
 
+                            queued_events.push(GliumQueuedEvent::LazySetGLMode { gl_primitive_mode : glium::index::PrimitiveType::TrianglesList });
                             queued_events.push(GliumQueuedEvent::LazySetGLMode { gl_primitive_mode : glium::index::PrimitiveType::LineStrip });
-                            queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "textured".to_string() });
+                            queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "flat".to_string() });
 
                             let color = color.to_fsa();
 
@@ -322,6 +318,7 @@ mod feature {
                         },
 
                         render::PrimitiveKind::Text { color, text, font_id } => {
+                            queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "flat".to_string() });
                             let positioned_glyphs = text.positioned_glyphs(dpi_factor);
 
                             // Queue the glyphs to be cached.
@@ -487,7 +484,7 @@ mod feature {
                         [0.0, 0.0, 1.0, 0.0],
                         [0.0, 0.0, 0.0, 1.0f32],
                     ],
-                    tex: glium::uniforms::Sampler::new(tex).magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear),
+                    tex: glium::uniforms::Sampler::new(tex).magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
                 };
 
                 //println!("{:?}", uniform_lt);
@@ -625,7 +622,8 @@ mod feature {
     // TODO: Figure out if we can replace image opening. Do we really need image in the .toml file?
     fn load_rust_logo(display : &glium::Display) -> glium::texture::SrgbTexture2d {
         let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-        let path = assets.join("images/eyesore.png");
+        //let path = assets.join("images/eyesore.png");
+        let path = assets.join("images/rust.png");
         let rgba_image = image::open(&Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
