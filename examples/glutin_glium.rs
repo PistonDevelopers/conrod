@@ -568,9 +568,9 @@ mod feature {
             }
 
             if ui.global_input.events().next().is_some() {
-                 // Instantiate a GUI demonstrating every widget type provided by conrod.
-                 let mut ui = ui.set_widgets();
-                 support::gui(&mut ui, &ids, &mut app);
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                let mut ui = ui.set_widgets();
+                support::gui(&mut ui, &ids, &mut app);
             }
 
             // Avoid hogging the CPU.
