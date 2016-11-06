@@ -42,7 +42,8 @@ mod feature {
     struct Vertex {
         position: [f32; 2],
         tex_coords: [f32; 2],
-        colour: [f32; 4]
+        colour: [f32; 4],
+        texweight: f32,
     }
 
     enum GliumQueuedEvent  {
@@ -111,29 +112,34 @@ mod feature {
                     in vec2 position;
                     in vec2 tex_coords;
                     in vec4 colour;
+                    in float texweight;
 
                     out vec2 v_tex_coords;
                     out vec4 v_colour;
+                    out float v_texweight;
 
                     void main() {
                         gl_Position = vec4(position, 0.0, 1.0);
                         v_tex_coords = tex_coords;
                         v_colour = colour;
+                        v_texweight = texweight;
                     }
                 ",
 
                 fragment: "
                     #version 140
                     uniform sampler2D tex;
+
                     in vec2 v_tex_coords;
                     in vec4 v_colour;
+                    in float v_texweight;
                     out vec4 f_colour;
 
                     void main() {
                         vec3 tex_part = texture(tex, v_tex_coords).rgb;
                         vec3 vrt_part = v_colour.rgb;
 
-                        vec3 mixed_colour = mix(tex_part, vrt_part, 1.0);
+                        vec3 mixed_colour = mix(vrt_part, tex_part, v_texweight);
                         f_colour = vec4(mixed_colour, 1.0);
                     }
                 "
@@ -218,7 +224,7 @@ mod feature {
 
 
 
-                implement_vertex!(Vertex, position, tex_coords, colour);
+                implement_vertex!(Vertex, position, tex_coords, colour, texweight);
 
                 let (screen_width, screen_height) = {
                     let (w, h) = display.get_framebuffer_dimensions();
@@ -255,10 +261,10 @@ mod feature {
                             let pos_tl = printed_xy_to_glcoord((l+h) as f32, b as f32, screen_width , screen_height);
                             let pos_tr = printed_xy_to_glcoord((l+h) as f32, (b+w) as f32, screen_width , screen_height);
 
-                            let btmlft = Vertex {  position: pos_bl, tex_coords: [0.0, 0.0], colour: color };
-                            let btmrgt = Vertex {  position: pos_br, tex_coords: [0.2, 0.0], colour: color };
-                            let toplft = Vertex {  position: pos_tl, tex_coords: [0.0, 0.2], colour: color };
-                            let toprgt = Vertex {  position: pos_tr, tex_coords: [0.2, 0.2], colour: color };
+                            let btmlft = Vertex {  position: pos_bl, tex_coords: [0.0, 0.0], colour: color, texweight : 0.0f32 };
+                            let btmrgt = Vertex {  position: pos_br, tex_coords: [0.2, 0.0], colour: color, texweight : 0.0f32 };
+                            let toplft = Vertex {  position: pos_tl, tex_coords: [0.0, 0.2], colour: color, texweight : 0.0f32 };
+                            let toprgt = Vertex {  position: pos_tr, tex_coords: [0.2, 0.2], colour: color, texweight : 0.0f32 };
 
                             let mut vertices: Vec<Vertex> = Vec::new();
 
@@ -283,7 +289,7 @@ mod feature {
                                 // Translate points to OGL coords.
                                 let pos = xy_to_glcoord(point[0] as f32, point[1] as f32, screen_width , screen_height);
 
-                                let v = Vertex {  position: pos,  tex_coords: [0.2, 0.2], colour: color };
+                                let v = Vertex {  position: pos,  tex_coords: [0.2, 0.2], colour: color, texweight : 0.0f32 };
                                 vertices.push(v);
                             };
 
@@ -349,6 +355,7 @@ mod feature {
                                         position: p,
                                         tex_coords: t,
                                         colour: color,
+                                        texweight : 1.0f32,
                                     });
                                     v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y])
                                         .chain(v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]))
@@ -384,10 +391,10 @@ mod feature {
                             let pos_tl = printed_xy_to_glcoord((l+h) as f32, b as f32, screen_width , screen_height);
                             let pos_tr = printed_xy_to_glcoord((l+h) as f32, (b+w) as f32, screen_width , screen_height);
 
-                            let btmlft = Vertex {  position: pos_bl, tex_coords: [0.0, 0.0], colour: color };
-                            let btmrgt = Vertex {  position: pos_br, tex_coords: [0.0, 1.0], colour: color };
-                            let toplft = Vertex {  position: pos_tl, tex_coords: [1.0, 0.0], colour: color };
-                            let toprgt = Vertex {  position: pos_tr, tex_coords: [1.0, 1.0], colour: color };
+                            let btmlft = Vertex {  position: pos_bl, tex_coords: [0.0, 0.0], colour: color, texweight : 1.0f32};
+                            let btmrgt = Vertex {  position: pos_br, tex_coords: [0.0, 1.0], colour: color, texweight : 1.0f32 };
+                            let toplft = Vertex {  position: pos_tl, tex_coords: [1.0, 0.0], colour: color, texweight : 1.0f32 };
+                            let toprgt = Vertex {  position: pos_tr, tex_coords: [1.0, 1.0], colour: color, texweight : 1.0f32 };
 
                             let mut vertices: Vec<Vertex> = Vec::new();
 
@@ -415,26 +422,26 @@ mod feature {
                 queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "flat".to_string() });
 
                 // Left
-                vertices.push(Vertex { position: [-0.9 as f32, 0.2 as f32 ], tex_coords: [0.0, 0.0], colour: conrod::color::BLACK.to_fsa() });
-                vertices.push(Vertex { position: [-0.9 as f32, -0.2 as f32 ], tex_coords: [1.0, 0.0], colour: conrod::color::BLACK.to_fsa() });
-                vertices.push(Vertex { position: [-0.8 as f32, 0.0 as f32 ], tex_coords: [0.5, 0.5], colour: conrod::color::BLACK.to_fsa() });
+                vertices.push(Vertex { position: [-0.9 as f32, 0.2 as f32 ], tex_coords: [0.0, 0.0], texweight : 0.0f32,colour: conrod::color::PURPLE.to_fsa() });
+                vertices.push(Vertex { position: [-0.9 as f32, -0.2 as f32 ], tex_coords: [1.0, 0.0], texweight : 0.0f32,colour: conrod::color::PURPLE.to_fsa() });
+                vertices.push(Vertex { position: [-0.8 as f32, 0.0 as f32 ], tex_coords: [0.5, 0.5], texweight : 0.0f32,colour: conrod::color::PURPLE.to_fsa() });
 
                 // Right
                 queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "textured".to_string() });
-                vertices.push(Vertex { position: [0.9 as f32, 0.2 as f32 ], tex_coords: [1.0, 0.0], colour: conrod::color::GREEN.to_fsa() });
-                vertices.push(Vertex { position: [0.9 as f32, -0.2 as f32 ], tex_coords: [0.0, 1.0], colour: conrod::color::GREEN.to_fsa() });
-                vertices.push(Vertex { position: [0.8 as f32, 0.0 as f32 ], tex_coords: [0.5, 0.5], colour: conrod::color::GREEN.to_fsa() });
+                vertices.push(Vertex { position: [0.9 as f32, 0.2 as f32 ], tex_coords: [1.0, 0.0], texweight : 1.0f32, colour: conrod::color::GREEN.to_fsa() });
+                vertices.push(Vertex { position: [0.9 as f32, -0.2 as f32 ], tex_coords: [0.0, 1.0], texweight : 1.0f32, colour: conrod::color::GREEN.to_fsa() });
+                vertices.push(Vertex { position: [0.8 as f32, 0.0 as f32 ], tex_coords: [0.5, 0.5], texweight : 1.0f32, colour: conrod::color::GREEN.to_fsa() });
 
                 // Top
-                vertices.push(Vertex { position: [-0.2 as f32, 0.9 as f32 ], tex_coords: [1.0, 0.0], colour: conrod::color::BLUE.to_fsa() });
-                vertices.push(Vertex { position: [0.2 as f32, 0.9 as f32 ], tex_coords: [0.0, 1.0], colour: conrod::color::BLUE.to_fsa() });
-                vertices.push(Vertex { position: [0.0 as f32, 0.8 as f32 ], tex_coords: [0.5, 0.5], colour: conrod::color::BLUE.to_fsa() });
+                vertices.push(Vertex { position: [-0.2 as f32, 0.9 as f32 ], tex_coords: [1.0, 0.0], texweight : 1.0f32, colour: conrod::color::BLUE.to_fsa() });
+                vertices.push(Vertex { position: [0.2 as f32, 0.9 as f32 ], tex_coords: [0.0, 1.0], texweight : 1.0f32, colour: conrod::color::BLUE.to_fsa() });
+                vertices.push(Vertex { position: [0.0 as f32, 0.8 as f32 ], tex_coords: [0.5, 0.5], texweight : 1.0f32, colour: conrod::color::BLUE.to_fsa() });
                 queued_events.push(GliumQueuedEvent::LazySetUniform { gl_uniform_id : "flat".to_string() });
 
                 // Bottom
-                vertices.push(Vertex { position: [-0.2 as f32, -0.9 as f32 ], tex_coords: [1.0, 0.0], colour: conrod::color::RED.to_fsa() });
-                vertices.push(Vertex { position: [0.2 as f32,  -0.9 as f32 ], tex_coords: [0.0, 1.0], colour: conrod::color::RED.to_fsa() });
-                vertices.push(Vertex { position: [-0.0 as f32, -0.8 as f32 ], tex_coords: [0.5, 0.5], colour: conrod::color::RED.to_fsa() });
+                vertices.push(Vertex { position: [-0.2 as f32, -0.9 as f32 ], tex_coords: [1.0, 0.0], texweight : 0.0f32, colour: conrod::color::YELLOW.to_fsa() });
+                vertices.push(Vertex { position: [0.2 as f32,  -0.9 as f32 ], tex_coords: [0.0, 1.0], texweight : 0.0f32, colour: conrod::color::YELLOW.to_fsa() });
+                vertices.push(Vertex { position: [-0.0 as f32, -0.8 as f32 ], tex_coords: [0.5, 0.5], texweight : 0.0f32, colour: conrod::color::YELLOW.to_fsa() });
 
                 queued_events.push(GliumQueuedEvent::QueuedVertexes { vertices : vertices });
 
@@ -450,7 +457,7 @@ mod feature {
                 // Uniforms are different for each texture.
                 let uniform_flat = uniform! {
                     tex: text_texture_cache.sampled()
-                        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
                 };
 
                 //let tex : &glium::texture::SrgbTexture2d = image_map.get(&ids.rust_logo).unwrap();
@@ -464,7 +471,7 @@ mod feature {
                         [0.0, 0.0, 1.0, 0.0],
                         [0.0, 0.0, 0.0, 1.0f32],
                     ],
-                    tex: glium::uniforms::Sampler::new(tex).magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear)
+                    tex: glium::uniforms::Sampler::new(tex).magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear),
                 };
 
                 //println!("{:?}", uniform_lt);
@@ -505,7 +512,7 @@ mod feature {
 
                                 if queued_vertices.len() < 10 {
                                     for &ver in &queued_vertices {
-                                        let Vertex { position, tex_coords, colour} = ver;
+                                        let Vertex { position, tex_coords, colour, texweight } = ver;
                                         println!("Vertex at coord {}, {}", position[0], position[1])
 
                                     }
@@ -541,7 +548,7 @@ mod feature {
 
                             if queued_vertices.len() < 10 {
                                 for &ver in &queued_vertices {
-                                    let Vertex { position, tex_coords, colour} = ver;
+                                    let Vertex { position, tex_coords, colour, texweight} = ver;
                                     println!("Vertex at coord {}, {}", position[0], position[1])
 
                                 }
@@ -620,7 +627,7 @@ mod feature {
         let mut average_y = 0.0;
 
         for vert in &vertices {
-            let Vertex { position, tex_coords, colour } = *vert;
+            let Vertex { position, tex_coords, colour, texweight } = *vert;
             average_x = average_x + position[0];
             average_y = average_y + position[1];
         };
@@ -633,8 +640,8 @@ mod feature {
         for vert in vertices {
 
             if vert == last_vert { continue }
-            let Vertex { position, tex_coords, colour } = vert;
-            let center = Vertex { position : [average_x, average_y] , tex_coords : tex_coords, colour : colour };
+            let Vertex { position, tex_coords, colour, texweight} = vert;
+            let center = Vertex { position : [average_x, average_y] , tex_coords : tex_coords, colour : colour, texweight : texweight };
 
             // Every segment in the poly outline is triangulated
             // to a (center, last_vertex, current_vertex) triangle.
