@@ -14,6 +14,7 @@ fn main() {
 #[cfg(feature="glium")]
 mod feature {
     extern crate find_folder;
+    extern crate image;
     use conrod;
     use glium;
     use support;
@@ -118,6 +119,19 @@ mod feature {
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
+        // Load the Rust logo from our assets folder to use as an example image.
+        fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
+            let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+            let path = assets.join("images/rust.png");
+            let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+            let image_dimensions = rgba_image.dimensions();
+            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+            let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
+            texture
+        }
+
+        let image_map = support::image_map(&ids, load_rust_logo(&display));
+
         // Build the glyph cache and a texture for caching glyphs on the GPU.
         let (mut glyph_cache, text_texture_cache) = {
             let dpi = display.get_window().unwrap().hidpi_factor();
@@ -147,6 +161,7 @@ mod feature {
 
             (cache, texture)
         };
+
 
         // Start the loop:
         //
@@ -195,14 +210,19 @@ mod feature {
                 let half_win_h = win_h as conrod::Scalar / 2.0;
 
                 pub enum Command {
-                    /// A range of vertices representing textured triangles.
-                    Textured(std::ops::Range<usize>),
+                    /// A range of vertices representing triangles textured with the
+                    /// `text_texture_cache`.
+                    Text(std::ops::Range<usize>),
+                    /// A range of vertices representing triangles textured with the image in the
+                    /// image_map at the given `widget::Id`..
+                    Image(conrod::widget::Id, std::ops::Range<usize>),
                     /// A range of vertices representing plain triangles.
                     Plain(std::ops::Range<usize>),
                 }
 
                 pub enum State {
-                    Textured { start: usize },
+                    Text { start: usize },
+                    Image { id: conrod::widget::Id, start: usize },
                     Plain { start: usize },
                 }
 
@@ -223,16 +243,24 @@ mod feature {
                 let mut commands: Vec<Command> = Vec::new();
                 let mut current_state = State::Plain { start: 0 };
 
+                // Functions for converting for conrod coords to GL vertex coords (-1.0 to 1.0).
+                let vx = |x: conrod::Scalar| (x * dpi_factor as conrod::Scalar / half_win_w) as f32;
+                let vy = |y: conrod::Scalar| (y * dpi_factor as conrod::Scalar / half_win_h) as f32;
+
                 // Draw each primitive in order of depth.
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
 
                         render::PrimitiveKind::Rectangle { color } => {
-                            // Ensure we're in the `Rectangle` state.
+                            // Switch to `Plain` state if we're not in it already.
                             match current_state {
                                 State::Plain { .. } => (),
-                                State::Textured { start } => {
-                                    commands.push(Command::Textured(start..textured_vertices.len()));
+                                State::Text { start } => {
+                                    commands.push(Command::Text(start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
+                                },
+                                State::Image { id, start } => {
+                                    commands.push(Command::Image(id, start..textured_vertices.len()));
                                     current_state = State::Plain { start: plain_vertices.len() };
                                 },
                             }
@@ -242,10 +270,8 @@ mod feature {
 
                             let v = |x, y| {
                                 // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                                let x = (x * dpi_factor as conrod::Scalar / half_win_w) as f32;
-                                let y = (y * dpi_factor as conrod::Scalar / half_win_h) as f32;
                                 PlainVertex {
-                                    position: [x, y],
+                                    position: [vx(x), vy(y)],
                                     colour: color,
                                 }
                             };
@@ -264,23 +290,130 @@ mod feature {
                         },
 
                         render::PrimitiveKind::Polygon { color, points } => {
+                            // If we don't at least have a triangle, keep looping.
+                            if points.len() < 3 {
+                                continue;
+                            }
+
+                            // Switch to `Plain` state if we're not in it already.
+                            match current_state {
+                                State::Plain { .. } => (),
+                                State::Text { start } => {
+                                    commands.push(Command::Text(start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
+                                },
+                                State::Image { id, start } => {
+                                    commands.push(Command::Image(id, start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
+                                },
+                            }
 
                             let color = gamma_srgb_to_linear(color.to_fsa());
 
-                            // TODO
+                            let v = |p: [conrod::Scalar; 2]| {
+                                PlainVertex {
+                                    position: [vx(p[0]), vy(p[1])],
+                                    colour: color,
+                                }
+                            };
+
+                            // Triangulate the polygon.
+                            //
+                            // Make triangles between the first point and every following pair of
+                            // points.
+                            //
+                            // For example, for a polygon with 6 points (a to f), this makes the
+                            // following triangles: abc, acd, ade, aef.
+                            let first = points[0];
+                            let first_v = v(first);
+                            let mut prev_v = v(points[1]);
+                            let mut push_v = |v| plain_vertices.push(v);
+                            for &p in &points[2..] {
+                                let v = v(p);
+                                push_v(first_v);
+                                push_v(prev_v);
+                                push_v(v);
+                                prev_v = v;
+                            }
                         },
 
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {
-                            // TODO
+
+                            // We need at least two points to draw any lines.
+                            if points.len() < 2 {
+                                continue;
+                            }
+
+                            // Switch to `Plain` state if we're not in it already.
+                            match current_state {
+                                State::Plain { .. } => (),
+                                State::Text { start } => {
+                                    commands.push(Command::Text(start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
+                                },
+                                State::Image { id, start } => {
+                                    commands.push(Command::Image(id, start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
+                                },
+                            }
+
+                            let color = gamma_srgb_to_linear(color.to_fsa());
+
+                            let v = |p: [conrod::Scalar; 2]| {
+                                PlainVertex {
+                                    position: [vx(p[0]), vy(p[1])],
+                                    colour: color,
+                                }
+                            };
+
+                            // Convert each line to a rectangle for triangulation.
+                            //
+                            // TODO: handle `cap` and properly join consecutive lines considering
+                            // the miter. Discussion here:
+                            // https://forum.libcinder.org/topic/smooth-thick-lines-using-geometry-shader#23286000001269127
+                            let mut a = points[0];
+                            for &b in &points[1..] {
+
+                                let direction = [b[0] - a[0], b[1] - a[1]];
+                                let mag = (direction[0].powi(2) + direction[1].powi(2)).sqrt();
+                                let unit = [direction[0] / mag, direction[1] / mag];
+                                let normal = [-unit[1], unit[0]];
+                                let half_thickness = thickness / 2.0;
+
+                                // A perpendicular line with length half the thickness.
+                                let n = [normal[0] * half_thickness, normal[1] * half_thickness];
+
+                                // The corners of the rectangle as GL vertices.
+                                let (r1, r2, r3, r4);
+                                r1 = v([a[0] + n[0], a[1] + n[1]]);
+                                r2 = v([a[0] - n[0], a[1] - n[1]]);
+                                r3 = v([b[0] + n[0], b[1] + n[1]]);
+                                r4 = v([b[0] - n[0], b[1] - n[1]]);
+
+                                // Push the rectangle's vertices.
+                                let mut push_v = |v| plain_vertices.push(v);
+                                push_v(r1);
+                                push_v(r4);
+                                push_v(r2);
+                                push_v(r1);
+                                push_v(r4);
+                                push_v(r3);
+
+                                a = b;
+                            }
                         },
 
                         render::PrimitiveKind::Text { color, text, font_id } => {
-                            // Switch to the `Text` state if we're not in it already.
+                            // Switch to the `Textured` state if we're not in it already.
                             match current_state {
-                                State::Textured { .. } => (),
+                                State::Text { .. } => (),
+                                State::Image { id, start } => {
+                                    commands.push(Command::Image(id, start..textured_vertices.len()));
+                                    current_state = State::Text { start: textured_vertices.len() };
+                                },
                                 State::Plain { start } => {
                                     commands.push(Command::Plain(start..plain_vertices.len()));
-                                    current_state = State::Textured { start: textured_vertices.len() };
+                                    current_state = State::Text { start: textured_vertices.len() };
                                 },
                             }
 
@@ -322,29 +455,83 @@ mod feature {
                                             1.0 - screen_rect.max.y as f32 / screen_height - 0.5)) * 2.0
                             };
 
-                            let extension = positioned_glyphs.into_iter()
-                                .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
-                                .flat_map(|(uv_rect, screen_rect)| {
-                                    use std::iter::once;
+                            for g in positioned_glyphs {
+                                if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
                                     let gl_rect = to_gl_rect(screen_rect);
-                                    let v = |p, t| once(TexturedVertex {
+                                    let v = |p, t| TexturedVertex {
                                         position: p,
                                         tex_coords: t,
                                         colour: color,
-                                    });
-                                    v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y])
-                                        .chain(v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]))
-                                        .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
-                                        .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
-                                        .chain(v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]))
-                                        .chain(v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]))
-                                });
-
-                            textured_vertices.extend(extension);
+                                    };
+                                    let mut push_v = |p, t| textured_vertices.push(v(p, t));
+                                    push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                                    push_v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
+                                    push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                                    push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                                    push_v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
+                                    push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                                }
+                            }
                         },
 
                         render::PrimitiveKind::Image { color, source_rect } => {
-                            // TODO
+                            // Switch to the `Textured` state if we're not in it already.
+                            match current_state {
+                                State::Text { start } =>
+                                    commands.push(Command::Text(start..textured_vertices.len())),
+                                State::Plain { start } =>
+                                    commands.push(Command::Plain(start..plain_vertices.len())),
+                                State::Image { id, start } =>
+                                    commands.push(Command::Image(id, start..textured_vertices.len())),
+                            }
+                            current_state = State::Image { id: id, start: textured_vertices.len() };
+
+                            let color = gamma_srgb_to_linear(color.unwrap_or(conrod::color::WHITE).to_fsa());
+
+                            let image = image_map.get(&id).unwrap();
+                            let image_w = image.get_width() as conrod::Scalar;
+                            let image_h = image.get_height().unwrap() as conrod::Scalar;
+
+                            // Get the sides of the source rectangle as uv coordinates.
+                            //
+                            // Texture coordinates range:
+                            // - left to right: 0.0 to 1.0
+                            // - bottom to top: 0.0 to 1.0
+                            let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
+                                Some(src_rect) => {
+                                    let (l, r, b, t) = src_rect.l_r_b_t();
+                                    ((l / image_w) as f32,
+                                     (r / image_w) as f32,
+                                     (b / image_h) as f32,
+                                     (t / image_h) as f32)
+                                },
+                                None => (0.0, 1.0, 0.0, 1.0),
+                            };
+
+                            let v = |x, y, t| {
+                                // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                                let x = (x * dpi_factor as conrod::Scalar / half_win_w) as f32;
+                                let y = (y * dpi_factor as conrod::Scalar / half_win_h) as f32;
+                                TexturedVertex {
+                                    position: [x, y],
+                                    tex_coords: t,
+                                    colour: color,
+                                }
+                            };
+
+                            let mut push_v = |x, y, t| textured_vertices.push(v(x, y, t));
+
+                            let (l, r, b, t) = rect.l_r_b_t();
+
+                            // Bottom left triangle.
+                            push_v(l, t, [uv_l, uv_t]);
+                            push_v(r, b, [uv_r, uv_b]);
+                            push_v(l, b, [uv_l, uv_b]);
+
+                            // Top right triangle.
+                            push_v(l, t, [uv_l, uv_t]);
+                            push_v(r, b, [uv_r, uv_b]);
+                            push_v(r, t, [uv_r, uv_t]);
                         },
 
                         // We have no special case widgets to handle.
@@ -356,7 +543,8 @@ mod feature {
                 // Enter the final command.
                 match current_state {
                     State::Plain { start } => commands.push(Command::Plain(start..plain_vertices.len())),
-                    State::Textured { start } => commands.push(Command::Textured(start..textured_vertices.len())),
+                    State::Text { start } => commands.push(Command::Text(start..textured_vertices.len())),
+                    State::Image { id, start } => commands.push(Command::Image(id, start..textured_vertices.len())),
                 }
 
                 let text_uniforms = uniform! {
@@ -367,27 +555,35 @@ mod feature {
 
                 let blend = glium::Blend::alpha_blending();
                 let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
+                let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
                 let mut target = display.draw();
                 target.clear_color(0.0, 0.0, 0.0, 1.0);
 
-                println!("draw");
                 for command in commands {
                     match command {
 
-                        Command::Textured(range) => {
-                            println!("\ttext: {:?}", &range);
+                        Command::Text(range) => {
                             let slice = &textured_vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
-                            let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
                             target.draw(&vertex_buffer, no_indices, &program_textured, &text_uniforms, &draw_params).unwrap();
                         },
 
+                        Command::Image(id, range) => {
+                            let slice = &textured_vertices[range];
+                            let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
+                            let image = image_map.get(&id).unwrap();
+                            let uniforms = uniform! {
+                                tex: image.sampled()
+                                    .wrap_function(glium::uniforms::SamplerWrapFunction::Clamp)
+                                    .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
+                            };
+                            target.draw(&vertex_buffer, no_indices, &program_textured, &uniforms, &draw_params).unwrap();
+                        },
+
                         Command::Plain(range) => {
-                            println!("\trectangles: {:?}", &range);
                             let slice = &plain_vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
-                            let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
                             target.draw(&vertex_buffer, no_indices, &program, &rect_uniforms, &draw_params).unwrap();
                         },
 
