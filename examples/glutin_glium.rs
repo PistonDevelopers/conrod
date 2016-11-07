@@ -195,15 +195,15 @@ mod feature {
                 let half_win_h = win_h as conrod::Scalar / 2.0;
 
                 pub enum Command {
-                    /// A range of vertices representing triangulated text.
-                    Text(std::ops::Range<usize>),
-                    /// A range of vertices representing triangulated rectangles.
-                    Rectangles(std::ops::Range<usize>),
+                    /// A range of vertices representing textured triangles.
+                    Textured(std::ops::Range<usize>),
+                    /// A range of vertices representing plain triangles.
+                    Plain(std::ops::Range<usize>),
                 }
 
                 pub enum State {
-                    Text { start: usize },
-                    Rectangles { start: usize },
+                    Textured { start: usize },
+                    Plain { start: usize },
                 }
 
                 fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
@@ -221,7 +221,7 @@ mod feature {
                 let mut textured_vertices: Vec<TexturedVertex> = Vec::new();
                 let mut plain_vertices: Vec<PlainVertex> = Vec::new();
                 let mut commands: Vec<Command> = Vec::new();
-                let mut current_state = State::Rectangles { start: 0 };
+                let mut current_state = State::Plain { start: 0 };
 
                 // Draw each primitive in order of depth.
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
@@ -230,10 +230,10 @@ mod feature {
                         render::PrimitiveKind::Rectangle { color } => {
                             // Ensure we're in the `Rectangle` state.
                             match current_state {
-                                State::Rectangles { .. } => (),
-                                State::Text { start } => {
-                                    commands.push(Command::Text(start..textured_vertices.len()));
-                                    current_state = State::Rectangles { start: plain_vertices.len() };
+                                State::Plain { .. } => (),
+                                State::Textured { start } => {
+                                    commands.push(Command::Textured(start..textured_vertices.len()));
+                                    current_state = State::Plain { start: plain_vertices.len() };
                                 },
                             }
 
@@ -277,10 +277,10 @@ mod feature {
                         render::PrimitiveKind::Text { color, text, font_id } => {
                             // Switch to the `Text` state if we're not in it already.
                             match current_state {
-                                State::Text { .. } => (),
-                                State::Rectangles { start } => {
-                                    commands.push(Command::Rectangles(start..plain_vertices.len()));
-                                    current_state = State::Text { start: textured_vertices.len() };
+                                State::Textured { .. } => (),
+                                State::Plain { start } => {
+                                    commands.push(Command::Plain(start..plain_vertices.len()));
+                                    current_state = State::Textured { start: textured_vertices.len() };
                                 },
                             }
 
@@ -355,8 +355,8 @@ mod feature {
 
                 // Enter the final command.
                 match current_state {
-                    State::Rectangles { start } => commands.push(Command::Rectangles(start..plain_vertices.len())),
-                    State::Text { start } => commands.push(Command::Text(start..textured_vertices.len())),
+                    State::Plain { start } => commands.push(Command::Plain(start..plain_vertices.len())),
+                    State::Textured { start } => commands.push(Command::Textured(start..textured_vertices.len())),
                 }
 
                 let text_uniforms = uniform! {
@@ -375,7 +375,7 @@ mod feature {
                 for command in commands {
                     match command {
 
-                        Command::Text(range) => {
+                        Command::Textured(range) => {
                             println!("\ttext: {:?}", &range);
                             let slice = &textured_vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
@@ -383,7 +383,7 @@ mod feature {
                             target.draw(&vertex_buffer, no_indices, &program_textured, &text_uniforms, &draw_params).unwrap();
                         },
 
-                        Command::Rectangles(range) => {
+                        Command::Plain(range) => {
                             println!("\trectangles: {:?}", &range);
                             let slice = &plain_vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
