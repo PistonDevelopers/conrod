@@ -69,7 +69,8 @@ piston = ["piston2d-graphics", "pistoncore-window", "pistoncore-event_loop", "gf
           "pistoncore-glutin_window", "piston-texture"]
 
 [dev-dependencies]
+find_folder = "0.3.0"
 gfx = "0.12.0"
 gfx_window_glutin = "0.12.0"
-find_folder = "0.3.0"
+image = "0.10.3"
 rand = "0.3.13"
