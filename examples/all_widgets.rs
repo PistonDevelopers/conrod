@@ -5,6 +5,7 @@ extern crate find_folder;
 
 mod support;
 
+use conrod::backend::piston::gfx::*;
 use conrod::backend::piston::{Window, UpdateEvent};
 use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
@@ -48,7 +49,7 @@ fn main() {
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (ids.rust_logo, load_rust_logo(&mut window)),
+        (ids.rust_logo, load_rust_logo(&mut window.context)),
     };
 
     // Poll events from the window.
@@ -77,10 +78,10 @@ fn main() {
 }
 
 // Load the Rust logo from our assets folder.
-fn load_rust_logo(window: &mut Window) -> piston_window::G2dTexture<'static> {
+fn load_rust_logo(context: &mut GfxContext) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
-    let factory = &mut window.factory;
-    let settings = piston_window::TextureSettings::new();
-    piston_window::Texture::from_path(factory, &path, piston_window::Flip::None, &settings).unwrap()
+    let factory = &mut context.factory;
+    let settings = TextureSettings::new();
+    Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
 }

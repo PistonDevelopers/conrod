@@ -3,8 +3,9 @@
 pub mod draw;
 pub mod event;
 pub mod window;
+pub mod gfx;
 pub use self::window::Window;
-pub use self::window::UpdateEvent;
+pub use piston_input::UpdateEvent;
 
 /// This module allows use of the default piston game event loop from `pistoncore_event_loop` with `Window`
 pub mod core_event_loop {

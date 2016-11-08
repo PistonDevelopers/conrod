@@ -11,7 +11,7 @@
 extern crate find_folder;
 extern crate rand; // for making a random color.
 
-use conrod::backend::piston::window::{ImageSize, Flip, G2dTexture, Texture};
+use conrod::backend::piston::gfx::*;
 use conrod::backend::piston::{Window, UpdateEvent};
 use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
@@ -40,8 +40,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache =
-        piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
     widget_ids!(struct Ids { canvas, button, rust_logo });
@@ -50,7 +49,7 @@ fn main() {
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (ids.rust_logo, load_rust_logo(&mut window)),
+        (ids.rust_logo, load_rust_logo(&mut window.context)),
     };
 
     // We'll instantiate the `Button` at the logo's full size, so we'll retrieve its dimensions.
@@ -107,10 +106,10 @@ fn main() {
 }
 
 // Load the Rust logo from our assets folder.
-fn load_rust_logo(window: &mut Window) -> G2dTexture<'static> {
+fn load_rust_logo(context: &mut GfxContext) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
-    let factory = &mut window.factory;
-    let settings = piston_window::TextureSettings::new();
+    let factory = &mut context.factory;
+    let settings = TextureSettings::new();
     Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
 }
