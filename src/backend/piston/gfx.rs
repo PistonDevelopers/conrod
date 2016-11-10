@@ -9,6 +9,7 @@ extern crate gfx_graphics;
 extern crate shader_version;
 extern crate texture;
 
+use self::shader_version::OpenGL;
 use self::gfx_graphics::{Gfx2d, GfxGraphics};
 use self::gfx_core::factory::Typed;
 use self::gfx::Device;
@@ -22,8 +23,7 @@ use render;
 use text;
 
 pub use self::piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
-pub use self::gfx_graphics::{ GlyphError, Texture, TextureSettings, Flip };
-pub use self::shader_version::OpenGL;
+pub use self::gfx_graphics::{GlyphError, Texture, TextureSettings, Flip};
 
 /// Actual gfx::Stream implementation carried by the window.
 pub type GfxEncoder = gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>;

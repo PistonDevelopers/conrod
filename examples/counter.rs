@@ -8,12 +8,12 @@ fn main() {
 
     use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
 
-    use conrod::backend::piston::{Window, UpdateEvent};
-    use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+    use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+    use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
     use conrod::backend::piston::window as piston_window;
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = piston_window::OpenGL::V3_2;
+    let opengl = OpenGL::V3_2;
     
     // Construct the window.
     let mut window: Window = piston_window::WindowSettings::new("Click me!", [WIDTH, HEIGHT])

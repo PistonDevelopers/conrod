@@ -6,8 +6,8 @@ extern crate find_folder;
 mod support;
 
 use conrod::backend::piston::gfx::*;
-use conrod::backend::piston::{Window, UpdateEvent};
-use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
 
@@ -18,7 +18,7 @@ fn main() {
     // Construct the window.
     let mut window: Window =
         piston_window::WindowSettings::new("Canvas Demo", [WIDTH, HEIGHT])
-            .opengl(piston_window::OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
+            .opengl(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
             .samples(4)
             .exit_on_esc(true)
             .vsync(true)

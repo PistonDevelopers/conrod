@@ -20,7 +20,7 @@
 //!
 //! use conrod::backend::piston::Window;
 //! use conrod::backend::piston::window as piston_window;
-//! use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+//! use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 //! use graphics::*;
 //!
 //! fn main() {
@@ -74,7 +74,6 @@
 //! https://github.com/PistonDevelopers/piston/issues/1014
 
 extern crate window as pistoncore_window;
-extern crate shader_version;
 extern crate glutin_window;
 
 use std::time::Duration;
@@ -86,12 +85,12 @@ use self::pistoncore_window::Window as BasicWindow;
 
 use super::draw;
 use super::gfx::{GfxContext, G2d};
+use super::shader_version::OpenGL;
 use event;
 
 pub use self::pistoncore_window::{AdvancedWindow, Position, Size, OpenGLWindow, 
                                   WindowSettings, BuildFromWindowSettings};
 pub use super::gfx::{draw, GlyphCache};
-pub use self::shader_version::OpenGL;
 
 /// Contains everything required for controlling window, graphics, event loop.
 pub struct Window<W: BasicWindow = GlutinWindow> {

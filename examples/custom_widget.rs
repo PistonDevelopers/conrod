@@ -222,8 +222,8 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use conrod::backend::piston::{Window, UpdateEvent};
-    use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+    use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+    use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
     use conrod::backend::piston::window as piston_window;
 
     use self::circular_button::CircularButton;
@@ -232,7 +232,7 @@ pub fn main() {
     const HEIGHT: u32 = 800;
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = piston_window::OpenGL::V3_2;
+    let opengl = OpenGL::V3_2;
 
     // PistonWindow has two type parameters, but the default type is
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,

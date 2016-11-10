@@ -3,8 +3,8 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 
-use conrod::backend::piston::{Window, UpdateEvent};
-use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
 widget_ids! {
@@ -18,7 +18,7 @@ fn main() {
     const HEIGHT: u32 = 600;
     let mut window: Window =
         piston_window::WindowSettings::new("List Demo", [WIDTH, HEIGHT])
-            .opengl(piston_window::OpenGL::V3_2).exit_on_esc(true).samples(4).vsync(true).build().unwrap();
+            .opengl(OpenGL::V3_2).exit_on_esc(true).samples(4).vsync(true).build().unwrap();
 
     // Create the event loop.
     let mut events = WindowEvents::new();

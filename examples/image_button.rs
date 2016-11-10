@@ -12,8 +12,8 @@ extern crate find_folder;
 extern crate rand; // for making a random color.
 
 use conrod::backend::piston::gfx::*;
-use conrod::backend::piston::{Window, UpdateEvent};
-use conrod::backend::piston::core_event_loop::{EventLoop, WindowEvents};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
 fn main() {
@@ -21,7 +21,7 @@ fn main() {
     const HEIGHT: u32 = 560;
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = piston_window::OpenGL::V3_2;
+    let opengl = OpenGL::V3_2;
 
     // Construct the window.
     let mut window: Window =
@@ -40,7 +40,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
     widget_ids!(struct Ids { canvas, button, rust_logo });
