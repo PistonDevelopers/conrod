@@ -41,7 +41,7 @@ mod feature {
 
         // Create the `GL` program used for drawing textured stuff (i.e. `Image`s or `Text` from
         // the cache).
-        let program_textured = program!(
+        let program = program!(
             &display,
             140 => {
                 vertex: "
@@ -50,60 +50,50 @@ mod feature {
                     in vec2 position;
                     in vec2 tex_coords;
                     in vec4 colour;
+                    // Describes the mode of rendering:
+                    //     0 -> text
+                    //     1 -> image
+                    //     2 -> geometry
+                    in uint mode;
 
                     out vec2 v_tex_coords;
                     out vec4 v_colour;
+                    flat out uint v_mode;
 
                     void main() {
                         gl_Position = vec4(position, 0.0, 1.0);
                         v_tex_coords = tex_coords;
                         v_colour = colour;
+                        v_mode = mode;
                     }
                 ",
-
                 fragment: "
                     #version 140
                     uniform sampler2D tex;
+
                     in vec2 v_tex_coords;
                     in vec4 v_colour;
+                    flat in uint v_mode;
+
                     out vec4 f_colour;
 
                     void main() {
-                        f_colour = v_colour * vec4(1.0, 1.0, 1.0, texture(tex, v_tex_coords).r);
-                    }
-                "
-            }).unwrap();
 
-        // Create the `GL` program used for drawing basic coloured geometry (i.e. `Rectangle`s,
-        // `Line`s or `Polygon`s).
-        let program = program!(
-            &display,
-            140 => {
-                vertex: "
-                    #version 140
+                        // Text
+                        if (v_mode == uint(0)) {
+                            f_colour = v_colour * vec4(1.0, 1.0, 1.0, texture(tex, v_tex_coords).r);
 
-                    in vec2 position;
-                    in vec4 colour;
+                        // Image
+                        } else if (v_mode == uint(1)) {
+                            f_colour = texture(tex, v_tex_coords);
 
-                    out vec4 v_colour;
-
-                    void main() {
-                        gl_Position = vec4(position, 0.0, 1.0);
-                        v_colour = colour;
+                        // 2D Geometry
+                        } else if (v_mode == uint(2)) {
+                            f_colour = v_colour;
+                        }
                     }
                 ",
-
-                fragment: "
-                    #version 140
-                    in vec4 v_colour;
-                    out vec4 f_colour;
-
-                    void main() {
-                        f_colour = v_colour;
-                    }
-                "
             }).unwrap();
-
 
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
@@ -162,7 +152,6 @@ mod feature {
             (cache, texture)
         };
 
-
         // Start the loop:
         //
         // - Render the current state of the `Ui`.
@@ -180,26 +169,50 @@ mod feature {
             let dt_secs = 0.0;
             ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi_factor as conrod::Scalar));
 
+            // Poll for events.
+            for event in display.poll_events() {
+
+                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
+                let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
+                let dpi_factor = dpi_factor as conrod::Scalar;
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi_factor) {
+                    ui.handle_event(event);
+                }
+
+                match event {
+                    // Break from the loop upon `Escape`.
+                    glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
+                    glutin::Event::Closed =>
+                        break 'main,
+
+                    _ => {},
+                }
+            }
+
+            if ui.global_input.events().next().is_some() {
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                let mut ui = ui.set_widgets();
+                support::gui(&mut ui, &ids, &mut app);
+            }
+
             // Draw the `Ui`.
             if let Some(mut primitives) = ui.draw_if_changed() {
                 use conrod::render;
                 use conrod::text::rt;
 
+                const MODE_TEXT: u32 = 0;
+                const MODE_IMAGE: u32 = 1;
+                const MODE_GEOMETRY: u32 = 2;
+
                 #[derive(Copy, Clone)]
-                struct TexturedVertex {
+                struct Vertex {
                     position: [f32; 2],
                     tex_coords: [f32; 2],
-                    colour: [f32; 4]
-                }
-
-                #[derive(Copy, Clone)]
-                struct PlainVertex {
-                    position: [f32; 2],
                     colour: [f32; 4],
+                    mode: u32,
                 }
 
-                implement_vertex!(TexturedVertex, position, tex_coords, colour);
-                implement_vertex!(PlainVertex, position, colour);
+                implement_vertex!(Vertex, position, tex_coords, colour, mode);
 
                 let (screen_width, screen_height) = {
                     let (w, h) = display.get_framebuffer_dimensions();
@@ -210,9 +223,6 @@ mod feature {
                 let half_win_h = win_h as conrod::Scalar / 2.0;
 
                 pub enum Command {
-                    /// A range of vertices representing triangles textured with the
-                    /// `text_texture_cache`.
-                    Text(std::ops::Range<usize>),
                     /// A range of vertices representing triangles textured with the image in the
                     /// image_map at the given `widget::Id`..
                     Image(conrod::widget::Id, std::ops::Range<usize>),
@@ -221,7 +231,6 @@ mod feature {
                 }
 
                 pub enum State {
-                    Text { start: usize },
                     Image { id: conrod::widget::Id, start: usize },
                     Plain { start: usize },
                 }
@@ -238,8 +247,7 @@ mod feature {
                     [component(c[0]), component(c[1]), component(c[2]), c[3]]
                 }
 
-                let mut textured_vertices: Vec<TexturedVertex> = Vec::new();
-                let mut plain_vertices: Vec<PlainVertex> = Vec::new();
+                let mut vertices: Vec<Vertex> = Vec::new();
                 let mut commands: Vec<Command> = Vec::new();
                 let mut current_state = State::Plain { start: 0 };
 
@@ -255,13 +263,9 @@ mod feature {
                             // Switch to `Plain` state if we're not in it already.
                             match current_state {
                                 State::Plain { .. } => (),
-                                State::Text { start } => {
-                                    commands.push(Command::Text(start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
-                                },
                                 State::Image { id, start } => {
-                                    commands.push(Command::Image(id, start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
+                                    commands.push(Command::Image(id, start..vertices.len()));
+                                    current_state = State::Plain { start: vertices.len() };
                                 },
                             }
 
@@ -270,13 +274,15 @@ mod feature {
 
                             let v = |x, y| {
                                 // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                                PlainVertex {
+                                Vertex {
                                     position: [vx(x), vy(y)],
+                                    tex_coords: [0.0, 0.0],
                                     colour: color,
+                                    mode: MODE_GEOMETRY,
                                 }
                             };
 
-                            let mut push_v = |x, y| plain_vertices.push(v(x, y));
+                            let mut push_v = |x, y| vertices.push(v(x, y));
 
                             // Bottom left triangle.
                             push_v(l, t);
@@ -298,22 +304,20 @@ mod feature {
                             // Switch to `Plain` state if we're not in it already.
                             match current_state {
                                 State::Plain { .. } => (),
-                                State::Text { start } => {
-                                    commands.push(Command::Text(start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
-                                },
                                 State::Image { id, start } => {
-                                    commands.push(Command::Image(id, start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
+                                    commands.push(Command::Image(id, start..vertices.len()));
+                                    current_state = State::Plain { start: vertices.len() };
                                 },
                             }
 
                             let color = gamma_srgb_to_linear(color.to_fsa());
 
                             let v = |p: [conrod::Scalar; 2]| {
-                                PlainVertex {
+                                Vertex {
                                     position: [vx(p[0]), vy(p[1])],
+                                    tex_coords: [0.0, 0.0],
                                     colour: color,
+                                    mode: MODE_GEOMETRY,
                                 }
                             };
 
@@ -327,7 +331,7 @@ mod feature {
                             let first = points[0];
                             let first_v = v(first);
                             let mut prev_v = v(points[1]);
-                            let mut push_v = |v| plain_vertices.push(v);
+                            let mut push_v = |v| vertices.push(v);
                             for &p in &points[2..] {
                                 let v = v(p);
                                 push_v(first_v);
@@ -347,22 +351,20 @@ mod feature {
                             // Switch to `Plain` state if we're not in it already.
                             match current_state {
                                 State::Plain { .. } => (),
-                                State::Text { start } => {
-                                    commands.push(Command::Text(start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
-                                },
                                 State::Image { id, start } => {
-                                    commands.push(Command::Image(id, start..textured_vertices.len()));
-                                    current_state = State::Plain { start: plain_vertices.len() };
+                                    commands.push(Command::Image(id, start..vertices.len()));
+                                    current_state = State::Plain { start: vertices.len() };
                                 },
                             }
 
                             let color = gamma_srgb_to_linear(color.to_fsa());
 
                             let v = |p: [conrod::Scalar; 2]| {
-                                PlainVertex {
+                                Vertex {
                                     position: [vx(p[0]), vy(p[1])],
+                                    tex_coords: [0.0, 0.0],
                                     colour: color,
+                                    mode: MODE_GEOMETRY,
                                 }
                             };
 
@@ -391,7 +393,7 @@ mod feature {
                                 r4 = v([b[0] - n[0], b[1] - n[1]]);
 
                                 // Push the rectangle's vertices.
-                                let mut push_v = |v| plain_vertices.push(v);
+                                let mut push_v = |v| vertices.push(v);
                                 push_v(r1);
                                 push_v(r4);
                                 push_v(r2);
@@ -406,14 +408,10 @@ mod feature {
                         render::PrimitiveKind::Text { color, text, font_id } => {
                             // Switch to the `Textured` state if we're not in it already.
                             match current_state {
-                                State::Text { .. } => (),
+                                State::Plain { .. } => (),
                                 State::Image { id, start } => {
-                                    commands.push(Command::Image(id, start..textured_vertices.len()));
-                                    current_state = State::Text { start: textured_vertices.len() };
-                                },
-                                State::Plain { start } => {
-                                    commands.push(Command::Plain(start..plain_vertices.len()));
-                                    current_state = State::Text { start: textured_vertices.len() };
+                                    commands.push(Command::Image(id, start..vertices.len()));
+                                    current_state = State::Plain { start: vertices.len() };
                                 },
                             }
 
@@ -458,12 +456,13 @@ mod feature {
                             for g in positioned_glyphs {
                                 if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
                                     let gl_rect = to_gl_rect(screen_rect);
-                                    let v = |p, t| TexturedVertex {
+                                    let v = |p, t| Vertex {
                                         position: p,
                                         tex_coords: t,
                                         colour: color,
+                                        mode: MODE_TEXT,
                                     };
-                                    let mut push_v = |p, t| textured_vertices.push(v(p, t));
+                                    let mut push_v = |p, t| vertices.push(v(p, t));
                                     push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
                                     push_v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
                                     push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
@@ -476,15 +475,18 @@ mod feature {
 
                         render::PrimitiveKind::Image { color, source_rect } => {
                             // Switch to the `Textured` state if we're not in it already.
+                            let widget_id = id;
                             match current_state {
-                                State::Text { start } =>
-                                    commands.push(Command::Text(start..textured_vertices.len())),
-                                State::Plain { start } =>
-                                    commands.push(Command::Plain(start..plain_vertices.len())),
-                                State::Image { id, start } =>
-                                    commands.push(Command::Image(id, start..textured_vertices.len())),
+                                State::Image { id, .. } if id == widget_id => (),
+                                State::Plain { start } => {
+                                    commands.push(Command::Plain(start..vertices.len()));
+                                    current_state = State::Image { id: id, start: vertices.len() };
+                                },
+                                State::Image { id, start } => {
+                                    commands.push(Command::Image(id, start..vertices.len()));
+                                    current_state = State::Image { id: id, start: vertices.len() };
+                                },
                             }
-                            current_state = State::Image { id: id, start: textured_vertices.len() };
 
                             let color = gamma_srgb_to_linear(color.unwrap_or(conrod::color::WHITE).to_fsa());
 
@@ -512,14 +514,15 @@ mod feature {
                                 // Convert from conrod Scalar range to GL range -1.0 to 1.0.
                                 let x = (x * dpi_factor as conrod::Scalar / half_win_w) as f32;
                                 let y = (y * dpi_factor as conrod::Scalar / half_win_h) as f32;
-                                TexturedVertex {
+                                Vertex {
                                     position: [x, y],
                                     tex_coords: t,
                                     colour: color,
+                                    mode: MODE_IMAGE,
                                 }
                             };
 
-                            let mut push_v = |x, y, t| textured_vertices.push(v(x, y, t));
+                            let mut push_v = |x, y, t| vertices.push(v(x, y, t));
 
                             let (l, r, b, t) = rect.l_r_b_t();
 
@@ -542,35 +545,33 @@ mod feature {
 
                 // Enter the final command.
                 match current_state {
-                    State::Plain { start } => commands.push(Command::Plain(start..plain_vertices.len())),
-                    State::Text { start } => commands.push(Command::Text(start..textured_vertices.len())),
-                    State::Image { id, start } => commands.push(Command::Image(id, start..textured_vertices.len())),
+                    State::Plain { start } => commands.push(Command::Plain(start..vertices.len())),
+                    State::Image { id, start } => commands.push(Command::Image(id, start..vertices.len())),
                 }
 
                 let text_uniforms = uniform! {
                     tex: text_texture_cache.sampled()
                         .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
                 };
-                let rect_uniforms = glium::uniforms::EmptyUniforms;
 
                 let blend = glium::Blend::alpha_blending();
                 let draw_params = glium::DrawParameters { blend: blend, ..Default::default() };
                 let no_indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
                 let mut target = display.draw();
-                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                target.clear_color(0.0, 0.0, 1.0, 1.0);
 
                 for command in commands {
                     match command {
 
-                        Command::Text(range) => {
-                            let slice = &textured_vertices[range];
+                        Command::Plain(range) => {
+                            let slice = &vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
-                            target.draw(&vertex_buffer, no_indices, &program_textured, &text_uniforms, &draw_params).unwrap();
+                            target.draw(&vertex_buffer, no_indices, &program, &text_uniforms, &draw_params).unwrap();
                         },
 
                         Command::Image(id, range) => {
-                            let slice = &textured_vertices[range];
+                            let slice = &vertices[range];
                             let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
                             let image = image_map.get(&id).unwrap();
                             let uniforms = uniform! {
@@ -578,13 +579,7 @@ mod feature {
                                     .wrap_function(glium::uniforms::SamplerWrapFunction::Clamp)
                                     .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
                             };
-                            target.draw(&vertex_buffer, no_indices, &program_textured, &uniforms, &draw_params).unwrap();
-                        },
-
-                        Command::Plain(range) => {
-                            let slice = &plain_vertices[range];
-                            let vertex_buffer = glium::VertexBuffer::new(&display, slice).unwrap();
-                            target.draw(&vertex_buffer, no_indices, &program, &rect_uniforms, &draw_params).unwrap();
+                            target.draw(&vertex_buffer, no_indices, &program, &uniforms, &draw_params).unwrap();
                         },
 
                     }
@@ -593,33 +588,8 @@ mod feature {
                 target.finish().unwrap();
             }
 
-            for event in display.poll_events() {
-
-                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
-                let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
-                let dpi_factor = dpi_factor as conrod::Scalar;
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi_factor) {
-                    ui.handle_event(event);
-                }
-
-                match event {
-                    // Break from the loop upon `Escape`.
-                    glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                    glutin::Event::Closed =>
-                        break 'main,
-
-                    _ => {},
-                }
-            }
-
-            if ui.global_input.events().next().is_some() {
-                // Instantiate a GUI demonstrating every widget type provided by conrod.
-                let mut ui = ui.set_widgets();
-                support::gui(&mut ui, &ids, &mut app);
-            }
-
             // Avoid hogging the CPU.
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            std::thread::sleep(std::time::Duration::from_millis(16));
         }
     }
 
