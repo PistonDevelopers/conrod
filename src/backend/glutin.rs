@@ -7,24 +7,34 @@ extern crate glutin;
 use Scalar;
 use event::{self, Input, Motion};
 use input;
+use std;
 
 /// A function for converting a `glutin::Event` to a `conrod::event::Raw`.
-pub fn convert(e: glutin::Event, win_w: Scalar, win_h: Scalar, dpi: Scalar) -> Option<event::Raw> {
+pub fn convert<W>(e: glutin::Event, window: &W) -> Option<event::Raw>
+    where W: std::ops::Deref<Target=glutin::Window>,
+{
 
-    // Divide the screen width and height by the `dpi` to maintain a consistent view size.
-    let tw = |w: Scalar| w / dpi;
-    let th = |w: Scalar| w / dpi;
-    let win_w = tw(win_w);
-    let win_h = th(win_h);
+    // The window size in points.
+    let (win_w, win_h) = match window.get_inner_size() {
+        Some((w, h)) => (w as Scalar, h as Scalar),
+        None => return None,
+    };
+
+    // The "dots per inch" factor. Multiplying this by `win_w` and `win_h` gives the framebuffer
+    // width and height.
+    let dpi_factor = window.hidpi_factor() as Scalar;
 
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
-    let tx = |x: Scalar| (x / dpi) - win_w / 2.0;
-    let ty = |y: Scalar| -((y / dpi) - win_h / 2.0);
+    //
+    // Glutin produces input events in pixels, so these positions need to be divided by the widht
+    // and height of the window in order to be DPI agnostic.
+    let tx = |x: Scalar| (x / dpi_factor) - win_w / 2.0;
+    let ty = |y: Scalar| -((y / dpi_factor) - win_h / 2.0);
 
     match e {
 
         glutin::Event::Resized(w, h) =>
-            Some(Input::Resize(tw(w as Scalar) as u32, th(h as Scalar) as u32).into()),
+            Some(Input::Resize(w, h).into()),
 
         glutin::Event::ReceivedCharacter(ch) => {
             let string = match ch {
@@ -60,13 +70,21 @@ pub fn convert(e: glutin::Event, win_w: Scalar, win_h: Scalar, dpi: Scalar) -> O
         }
 
         glutin::Event::MouseMoved(x, y) =>
-            Some(Input::Move(Motion::MouseCursor(tx(x as f64), ty(y as f64))).into()),
+            Some(Input::Move(Motion::MouseCursor(tx(x as Scalar), ty(y as Scalar))).into()),
 
-        glutin::Event::MouseWheel(glutin::MouseScrollDelta::PixelDelta(x, y), _) =>
-            Some(Input::Move(Motion::MouseScroll(tx(x as f64), ty(y as f64))).into()),
+        glutin::Event::MouseWheel(glutin::MouseScrollDelta::PixelDelta(x, y), _) => {
+            let x = x as Scalar / dpi_factor;
+            let y = -y as Scalar / dpi_factor;
+            Some(Input::Move(Motion::MouseScroll(x, y)).into())
+        },
 
-        glutin::Event::MouseWheel(glutin::MouseScrollDelta::LineDelta(x, y), _) =>
-            Some(Input::Move(Motion::MouseScroll(tx(x as f64), ty(y as f64))).into()),
+        glutin::Event::MouseWheel(glutin::MouseScrollDelta::LineDelta(x, y), _) => {
+            // This should be configurable (we should provide a LineDelta event to allow for this).
+            const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
+            let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
+            let y = ARBITRARY_POINTS_PER_LINE_FACTOR * -y as Scalar;
+            Some(Input::Move(Motion::MouseScroll(x, y)).into())
+        },
 
         glutin::Event::MouseInput(glutin::ElementState::Pressed, button) =>
             Some(Input::Press(input::Button::Mouse(map_mouse(button))).into()),
@@ -76,6 +94,21 @@ pub fn convert(e: glutin::Event, win_w: Scalar, win_h: Scalar, dpi: Scalar) -> O
 
         _ => None,
     }
+}
+
+/// Creates a `event::Raw::Render`.
+///
+/// Returns `None` if the window is no longer open.
+///
+/// NOTE: This will be removed in a future version of conrod as Render events shouldn't be
+/// necessary.
+pub fn render_event<W>(window: &W) -> Option<event::Raw>
+    where W: std::ops::Deref<Target=glutin::Window>,
+{
+    window.get_inner_size_pixels().map(|(win_w, win_h)| {
+        let dpi_factor = window.hidpi_factor();
+        event::render(0.0, win_w, win_h, dpi_factor as Scalar)
+    })
 }
 
 /// Maps Glutin's key to a conrod `Key`.
