@@ -3,7 +3,6 @@
 //! Note that the `glium` crate is re-exported via the `conrod::backend::glium` module.
 
 #[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
-#[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate glium;
 
 #[cfg(feature="glutin")] #[cfg(feature="glium")] mod support;
 
@@ -17,13 +16,12 @@ mod feature {
     extern crate find_folder;
     extern crate image;
     use conrod;
-    use glium;
+    use conrod::backend::glium::glium;
+    use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use support;
     use std;
 
-    use glium::{DisplayBuild, Surface};
-
-    // The width and height in "points".
+    // The initial width and height in "points".
     const WIN_W: u32 = support::WIN_W;
     const WIN_H: u32 = support::WIN_H;
 
@@ -33,7 +31,7 @@ mod feature {
         let display = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
-            .with_title("Conrod with glutin & glium!")
+            .with_title("Conrod with glium!")
             .build_glium()
             .unwrap();
 
@@ -43,7 +41,7 @@ mod feature {
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
 
-        // The `widget::Id` of each widget instantiated in `gui`.
+        // The `widget::Id` of each widget instantiated in `support::gui`.
         let ids = support::Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -65,7 +63,7 @@ mod feature {
         let image_map = support::image_map(&ids, load_rust_logo(&display));
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
-        // for drawing to a glium surface.
+        // for drawing to the glium `Surface`.
         //
         // Internally, the `Renderer` maintains:
         // - a `backend::glium::GlyphCache` for caching text onto a `glium::texture::Texture2d`.
@@ -82,11 +80,11 @@ mod feature {
         // - Poll the window for available events.
         // - Repeat.
         'main: loop {
-            let window = display.get_window().unwrap();
 
             // Construct a render event for conrod at the beginning of rendering.
             // NOTE: This will be removed in a future version of conrod as Render events shouldn't
             // be necessary.
+            let window = display.get_window().unwrap();
             ui.handle_event(conrod::backend::glutin::render_event(&window).unwrap());
 
             // Poll for events.
@@ -107,6 +105,20 @@ mod feature {
                 }
             }
 
+            // We must manually track the window width and height as it is currently not possible to
+            // receive `Resize` events from glium on Mac OS any other way.
+            //
+            // TODO: Once the following PR lands, we should stop tracking size like this and use the
+            // `window_resize_callback`. https://github.com/tomaka/winit/pull/88
+            if let Some(win_rect) = ui.rect_of(ui.window) {
+                let (win_w, win_h) = (win_rect.w() as u32, win_rect.h() as u32);
+                let (w, h) = window.get_inner_size_points().unwrap();
+                if w != win_w || h != win_h {
+                    let event: conrod::event::Raw = conrod::event::Input::Resize(w, h).into();
+                    ui.handle_event(event);
+                }
+            }
+
             // If some input event has been received, update the GUI.
             if ui.global_input.events().next().is_some() {
                 // Instantiate a GUI demonstrating every widget type provided by conrod.
@@ -118,7 +130,7 @@ mod feature {
             if let Some(primitives) = ui.draw_if_changed() {
                 renderer.fill(&display, primitives, &image_map);
                 let mut target = display.draw();
-                target.clear_color(0.0, 0.0, 1.0, 1.0);
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
                 renderer.draw(&display, &mut target, &image_map).unwrap();
                 target.finish().unwrap();
             }
