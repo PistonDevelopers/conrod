@@ -85,13 +85,14 @@ mod feature {
             // NOTE: This will be removed in a future version of conrod as Render events shouldn't
             // be necessary.
             let window = display.get_window().unwrap();
-            ui.handle_event(conrod::backend::glutin::render_event(&window).unwrap());
+            ui.handle_event(conrod::backend::glutin::render_event(window).unwrap());
 
             // Poll for events.
             for event in display.poll_events() {
 
                 // Use the `glutin` backend feature to convert the glutin event to a conrod one.
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), &window) {
+                let window = display.get_window().unwrap();
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
                     ui.handle_event(event);
                 }
 
@@ -112,7 +113,7 @@ mod feature {
             // `window_resize_callback`. https://github.com/tomaka/winit/pull/88
             if let Some(win_rect) = ui.rect_of(ui.window) {
                 let (win_w, win_h) = (win_rect.w() as u32, win_rect.h() as u32);
-                let (w, h) = window.get_inner_size_points().unwrap();
+                let (w, h) = display.get_window().unwrap().get_inner_size_points().unwrap();
                 if w != win_w || h != win_h {
                     let event: conrod::event::Raw = conrod::event::Input::Resize(w, h).into();
                     ui.handle_event(event);

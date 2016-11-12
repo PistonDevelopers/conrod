@@ -10,7 +10,7 @@ use input;
 use std;
 
 /// A function for converting a `glutin::Event` to a `conrod::event::Raw`.
-pub fn convert<W>(e: glutin::Event, window: &W) -> Option<event::Raw>
+pub fn convert<W>(e: glutin::Event, window: W) -> Option<event::Raw>
     where W: std::ops::Deref<Target=glutin::Window>,
 {
 
@@ -102,7 +102,7 @@ pub fn convert<W>(e: glutin::Event, window: &W) -> Option<event::Raw>
 ///
 /// NOTE: This will be removed in a future version of conrod as Render events shouldn't be
 /// necessary.
-pub fn render_event<W>(window: &W) -> Option<event::Raw>
+pub fn render_event<W>(window: W) -> Option<event::Raw>
     where W: std::ops::Deref<Target=glutin::Window>,
 {
     window.get_inner_size_pixels().map(|(win_w, win_h)| {
