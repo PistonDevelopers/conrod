@@ -145,7 +145,7 @@ impl<W> Window<W>
     }
 
     /// Let window handle new event.
-    pub fn event(&mut self, event: &Event) {
+    pub fn event(&mut self, event: &Event<W::Event>) {
         if let Some(_) = event.after_render_args() {
             self.context.after_render();
         }
@@ -207,11 +207,11 @@ impl GlyphCache {
     }
 }
 
-/// Used to integrate `PistonWindow` with an event loop, enables
-/// `PistonWindow` to handle some events, if necessary
-pub trait EventWindow {
+/// Used to integrate a window with an event loop, enables
+/// the window to handle some events, if necessary
+pub trait EventWindow<E>: BasicWindow {
     /// receive next event from event loop and handle it
-    fn next(&mut self, events: &mut Window) -> Option<Event>;
+    fn next(&mut self, events: &mut E) -> Option<Event>;
 }
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.

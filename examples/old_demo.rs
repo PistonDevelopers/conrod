@@ -11,7 +11,7 @@
 extern crate find_folder;
 extern crate rand; // for making a random color.
 
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
 use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
@@ -130,7 +130,7 @@ fn main() {
     let mut app = DemoApp::new();
 
     // Poll events from the window.
-    while let Some(event) = events.next(&mut window) {
+    while let Some(event) = window.next(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston_window::convert_event(event.clone(), &window) {

@@ -7,7 +7,7 @@ pub mod event;
 pub mod window;
 pub mod gfx;
 
-pub use self::window::Window;
+pub use self::window::{Window, EventWindow};
 pub use self::shader_version::OpenGL;
 pub use piston_input::UpdateEvent;
 
@@ -19,10 +19,10 @@ pub mod core_events {
     use super::window::{Window, EventWindow};
     use piston_input::Event;
 
-    impl EventWindow for WindowEvents {
-        fn next(&mut self, window: &mut Window) -> Option<Event> {
-            if let Some(e) = self.next(window) {
-                window.event(&e);
+    impl EventWindow<WindowEvents> for Window {
+        fn next(&mut self, events: &mut WindowEvents) -> Option<Event> {
+            if let Some(e) = events.next(&mut self.window) {
+                self.event(&e);
                 Some(e)
             } else { None }
         }

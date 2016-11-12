@@ -1,7 +1,7 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
 use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
@@ -49,7 +49,7 @@ fn main() {
         magna est, efficitur suscipit dolor eu, consectetur consectetur urna.".to_owned();
 
     // Poll events from the window.
-    while let Some(event) = events.next(&mut window) {
+    while let Some(event) = window.next(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston_window::convert_event(event.clone(), &window) {
