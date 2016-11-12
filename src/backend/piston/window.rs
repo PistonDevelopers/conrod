@@ -228,7 +228,7 @@ impl EventWindow<WindowEvents> for Window {
 }
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.
-pub fn convert_event<E, B>(event: E, window: &Window<B>) -> Option<event::Raw>
+pub fn convert_event<E, B>(event: E, window: &Window<B>) -> Option<event::Input>
     where E: GenericEvent,
           B: BasicWindow,
 {
