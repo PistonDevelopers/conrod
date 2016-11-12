@@ -31,7 +31,9 @@ fn main() {
     let mut app = support::DemoApp::new();
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64])
+        .theme(support::theme())
+        .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
