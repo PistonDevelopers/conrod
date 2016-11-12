@@ -10,4 +10,3 @@
 #[cfg(feature="glium")] pub mod glium;
 #[cfg(feature="glutin")] pub mod glutin;
 #[cfg(feature="piston")] pub mod piston;
-#[cfg(feature="piston")] #[cfg(feature="piston_window")] pub mod piston_window;

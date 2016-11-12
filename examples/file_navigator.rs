@@ -1,24 +1,27 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 
-use piston_window::{EventLoop, PistonWindow, UpdateEvent, WindowSettings};
-
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
+use conrod::backend::piston::window as piston_window;
 
 fn main() {
     const WIDTH: u32 = 600;
     const HEIGHT: u32 = 300;
 
     // Construct the window.
-    let mut window: PistonWindow =
-        WindowSettings::new("FileNavigator Demo", [WIDTH, HEIGHT])
-            .opengl(piston_window::OpenGL::V3_2)
+    let mut window: Window =
+        piston_window::WindowSettings::new("FileNavigator Demo", [WIDTH, HEIGHT])
+            .opengl(OpenGL::V3_2)
             .vsync(true)
             .samples(4)
             .exit_on_esc(true)
             .build()
             .unwrap();
-    window.set_ups(60);
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
+    events.set_ups(60);
 
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -33,8 +36,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache =
-        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
@@ -42,10 +44,10 @@ fn main() {
     let directory = find_folder::Search::KidsThenParents(3, 5).for_folder("conrod").unwrap();
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -73,10 +75,10 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                conrod::backend::piston_window::draw(c, g, primitives,
-                                                     &mut text_texture_cache,
-                                                     &image_map,
-                                                     texture_from_image);
+                piston_window::draw(c, g, primitives,
+                                    &mut text_texture_cache,
+                                    &image_map,
+                                    texture_from_image);
             }
         });
     }

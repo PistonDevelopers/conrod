@@ -9,23 +9,27 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-extern crate piston_window;
 extern crate rand; // for making a random color.
 
-use piston_window::{EventLoop, ImageSize, PistonWindow, UpdateEvent, WindowSettings};
-
+use conrod::backend::piston::gfx::*;
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
+use conrod::backend::piston::window as piston_window;
 
 fn main() {
     const WIDTH: u32 = 1100;
     const HEIGHT: u32 = 560;
 
     // Change this to OpenGL::V2_1 if not working.
-    let opengl = piston_window::OpenGL::V3_2;
+    let opengl = OpenGL::V3_2;
 
     // Construct the window.
-    let mut window: PistonWindow =
-        WindowSettings::new("A button with an image", [WIDTH, HEIGHT])
+    let mut window: Window =
+        piston_window::WindowSettings::new("A button with an image", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
+
+    // Create the event loop.
+    let mut events = WindowEvents::new();
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -36,8 +40,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache =
-        conrod::backend::piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
     widget_ids!(struct Ids { canvas, button, rust_logo });
@@ -46,7 +49,7 @@ fn main() {
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
-        (ids.rust_logo, load_rust_logo(&mut window)),
+        (ids.rust_logo, load_rust_logo(&mut window.context)),
     };
 
     // We'll instantiate the `Button` at the logo's full size, so we'll retrieve its dimensions.
@@ -55,13 +58,13 @@ fn main() {
     // Our demonstration app that we'll control with our GUI.
     let mut bg_color = conrod::color::LIGHT_BLUE;
 
-    window.set_ups(60);
+    events.set_ups(60);
 
     // Poll events from the window.
-    while let Some(event) = window.next() {
+    while let Some(event) = events.next(&mut window) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = conrod::backend::piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -93,22 +96,20 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                conrod::backend::piston_window::draw(c, g, primitives,
-                                                     &mut text_texture_cache,
-                                                     &image_map,
-                                                     texture_from_image);
+                piston_window::draw(c, g, primitives,
+                                    &mut text_texture_cache,
+                                    &image_map,
+                                    texture_from_image);
             }
         });
     }
 }
 
-
 // Load the Rust logo from our assets folder.
-use piston_window::{Flip, G2dTexture, Texture};
-fn load_rust_logo(window: &mut PistonWindow) -> G2dTexture<'static> {
+fn load_rust_logo(context: &mut GfxContext) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
-    let factory = &mut window.factory;
-    let settings = piston_window::TextureSettings::new();
+    let factory = &mut context.factory;
+    let settings = TextureSettings::new();
     Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
 }
