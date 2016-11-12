@@ -65,6 +65,14 @@ pub fn theme() -> conrod::Theme {
 }
 
 
+/// Create an image map that maps the `ids.rust_logo` to the `rust_logo` image.
+pub fn image_map<T>(ids: &Ids, rust_logo: T) -> conrod::image::Map<T> {
+    image_map! {
+        (ids.rust_logo, rust_logo)
+    }
+}
+
+
 // Generate a unique `WidgetId` for each widget.
 widget_ids! {
     pub struct Ids {

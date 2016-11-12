@@ -301,7 +301,7 @@ mod feature {
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
                 // Convert glutin event to conrod event, requires conrod to be built with the `glutin` feature
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), w, h, dpi_factor) {
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), &window) {
                     ui.handle_event(event);
                 }
 

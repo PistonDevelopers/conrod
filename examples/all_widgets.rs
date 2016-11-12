@@ -48,9 +48,7 @@ fn main() {
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
-    let image_map = image_map! {
-        (ids.rust_logo, load_rust_logo(&mut window.context)),
-    };
+    let image_map = support::image_map(&ids, load_rust_logo(&mut window.context));
 
     // Poll events from the window.
     while let Some(event) = events.next(&mut window) {
