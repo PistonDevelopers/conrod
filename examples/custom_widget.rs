@@ -247,7 +247,7 @@ pub fn main() {
     let mut events = WindowEvents::new();
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // The `widget_ids` macro is a easy, safe way of generating a type for producing `widget::Id`s.
     widget_ids! {

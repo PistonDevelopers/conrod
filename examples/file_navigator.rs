@@ -22,7 +22,7 @@ fn main() {
     let mut events = WindowEvents::new();
 
     // Construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // A unique identifier for each widget.
     widget_ids!(struct Ids { canvas, file_navigator });

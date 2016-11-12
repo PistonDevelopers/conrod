@@ -27,7 +27,7 @@ fn main() {
     let mut events = WindowEvents::new();
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Create an empty texture to pass for the text cache as we're not drawing any text.
     let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, 0, 0);
@@ -47,7 +47,11 @@ fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next_event(&mut events) {
-        ui.handle_event(event.clone());
+
+        // Convert the piston event to a conrod input event.
+        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+            ui.handle_event(e);
+        }
 
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {

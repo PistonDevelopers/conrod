@@ -21,7 +21,7 @@ fn main() {
     let mut events = WindowEvents::new();
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Generate the widget identifiers.
     widget_ids!(struct Ids { canvas, counter });

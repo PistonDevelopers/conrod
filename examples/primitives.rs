@@ -21,20 +21,22 @@ widget_ids! {
 
 
 fn main() {
+    const WIDTH: u32 = 400;
+    const HEIGHT: u32 = 720;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
     // Construct the window.
     let mut window: Window =
-        piston::window::WindowSettings::new("Primitives Demo", [400, 720])
+        piston::window::WindowSettings::new("Primitives Demo", [WIDTH, HEIGHT])
             .opengl(opengl).samples(4).exit_on_esc(true).build().unwrap();
 
     // Create the event loop.
     let mut events = WindowEvents::new();
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // A unique identifier for each widget.
     let ids = Ids::new(ui.widget_id_generator());
