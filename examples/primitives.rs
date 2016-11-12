@@ -1,9 +1,8 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
-use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
-use conrod::backend::piston::window as piston_window;
+use conrod::backend::piston::{self, Window, OpenGL};
+use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
 
 // Generate a type that will produce a unique `widget::Id` for each widget.
 widget_ids! {
@@ -28,7 +27,7 @@ fn main() {
 
     // Construct the window.
     let mut window: Window =
-        piston_window::WindowSettings::new("Primitives Demo", [400, 720])
+        piston::window::WindowSettings::new("Primitives Demo", [400, 720])
             .opengl(opengl).samples(4).exit_on_esc(true).build().unwrap();
 
     // Create the event loop.
@@ -42,7 +41,7 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // No text to draw, so we'll just create an empty text texture cache.
-    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, 0, 0);
+    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, 0, 0);
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
@@ -51,7 +50,7 @@ fn main() {
     while let Some(event) = window.next(&mut events) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -62,10 +61,10 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                piston_window::draw(c, g, primitives,
-                                    &mut text_texture_cache,
-                                    &image_map,
-                                    texture_from_image);
+                piston::window::draw(c, g, primitives,
+                                     &mut text_texture_cache,
+                                     &image_map,
+                                     texture_from_image);
             }
         });
     }

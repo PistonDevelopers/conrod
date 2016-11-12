@@ -6,10 +6,10 @@
 extern crate find_folder;
 
 use conrod::{widget, Colorable, Positionable, Sizeable, Widget, color};
-use conrod::backend::piston::gfx::*;
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
-use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
-use conrod::backend::piston::window as piston_window;
+use conrod::backend::piston::gfx::{GfxContext, G2dTexture, Texture, TextureSettings, Flip};
+use conrod::backend::piston::{self, Window, OpenGL};
+use conrod::backend::piston::draw::ImageSize;
+use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
 
 fn main() {
     const WIDTH: u32 = 800;
@@ -20,7 +20,7 @@ fn main() {
 
     // Construct the window.
     let mut window: Window =
-        piston_window::WindowSettings::new("Image Widget Demonstration", [WIDTH, HEIGHT])
+        piston::window::WindowSettings::new("Image Widget Demonstration", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).samples(4).build().unwrap();
 
     // Create the event loop.
@@ -31,7 +31,7 @@ fn main() {
     let mut ui = conrod::UiBuilder::new().build();
 
     // Create an empty texture to pass for the text cache as we're not drawing any text.
-    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, 0, 0);
+    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, 0, 0);
 
     // The `WidgetId` for our background and `Image` widgets.
     widget_ids!(struct Ids { background, rust_logo });
@@ -53,10 +53,10 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                piston_window::draw(c, g, primitives,
-                                    &mut text_texture_cache,
-                                    &image_map,
-                                    texture_from_image);
+                piston::window::draw(c, g, primitives,
+                                     &mut text_texture_cache,
+                                     &image_map,
+                                     texture_from_image);
             }
         });
 

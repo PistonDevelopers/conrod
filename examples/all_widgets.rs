@@ -5,10 +5,9 @@ extern crate find_folder;
 
 mod support;
 
-use conrod::backend::piston::gfx::*;
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
-use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
-use conrod::backend::piston::window as piston_window;
+use conrod::backend::piston::gfx::{GfxContext, G2dTexture, Texture, TextureSettings, Flip};
+use conrod::backend::piston::{self, Window, OpenGL};
+use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
 
 
 fn main() {
@@ -17,7 +16,7 @@ fn main() {
 
     // Construct the window.
     let mut window: Window =
-        piston_window::WindowSettings::new("Canvas Demo", [WIDTH, HEIGHT])
+        piston::window::WindowSettings::new("All Widgets - Piston Backend", [WIDTH, HEIGHT])
             .opengl(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
             .samples(4)
             .exit_on_esc(true)
@@ -41,7 +40,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Instantiate the generated list of widget identifiers.
     let ids = support::Ids::new(ui.widget_id_generator());
@@ -54,7 +53,7 @@ fn main() {
     while let Some(event) = window.next(&mut events) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -66,10 +65,10 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                piston_window::draw(c, g, primitives,
-                                    &mut text_texture_cache,
-                                    &image_map,
-                                    texture_from_image);
+                piston::window::draw(c, g, primitives,
+                                     &mut text_texture_cache,
+                                     &image_map,
+                                     texture_from_image);
             }
         });
     }

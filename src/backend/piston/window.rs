@@ -18,14 +18,13 @@
 //! extern crate conrod;
 //! extern crate graphics;
 //!
-//! use conrod::backend::piston::Window;
-//! use conrod::backend::piston::window as piston_window;
-//! use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
+//! use conrod::backend::piston::{self, Window};
+//! use conrod::backend::piston::event::{EventLoop, WindowEvents};
 //! use graphics::*;
 //!
 //! fn main() {
 //!     let mut window: Window =
-//!         piston_window::WindowSettings::new("Hello World!", [512; 2])
+//!         piston::window::WindowSettings::new("Hello World!", [512; 2])
 //!             .build().unwrap();
 //!     let mut events = WindowEvents::new();
 //!     while let Some(e) = events.next(&mut window) {
@@ -47,14 +46,13 @@
 //! extern crate conrod;
 //! extern crate sdl2_window;
 //!
-//! use conrod::backend::piston::Window;
-//! use conrod::backend::piston::window as piston_window;
+//! use conrod::backend::piston::{self, Window};
 //! use sdl2_window::Sdl2Window;
 //!
 //! # fn main() {
 //!
 //! let window: Window<Sdl2Window> =
-//!     piston_window::WindowSettings::new("title", [512; 2])
+//!     piston::window::WindowSettings::new("title", [512; 2])
 //!         .build().unwrap();
 //!
 //! # }
@@ -83,7 +81,6 @@ use piston_input::{Event, GenericEvent, AfterRenderEvent};
 use self::glutin_window::GlutinWindow;
 use self::pistoncore_window::Window as BasicWindow;
 
-use super::draw;
 use super::gfx::{GfxContext, G2d};
 use super::shader_version::OpenGL;
 use event;
@@ -134,7 +131,7 @@ impl<W> Window<W>
     pub fn draw_2d<E, F, U>(&mut self, e: &E, f: F) -> Option<U> where
         W: OpenGLWindow,
         E: GenericEvent,
-        F: FnOnce(draw::Context, &mut G2d) -> U
+        F: FnOnce(super::draw::Context, &mut G2d) -> U
     {
         self.window.make_current();
         if let Some(args) = e.render_args() {
