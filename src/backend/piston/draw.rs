@@ -79,7 +79,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
     text_texture_cache: &'a mut T,
     glyph_cache: &'a mut text::GlyphCache,
     image_map: &'a image::Map<Img>,
-    glyph_rectangles: &mut Vec<([f64; 4], [i32; 4])>,
+    glyph_rectangles: &mut Vec<([f64; 4], [f64; 4])>,
     mut cache_queued_glyphs: C,
     mut texture_from_image: F,
 )
@@ -169,10 +169,10 @@ pub fn primitive<'a, Img, G, T, C, F>(
                         [left, top, w, h]
                     };
                     let source_rectangle = {
-                        let x = (uv_rect.min.x * tex_w as f32).round() as i32;
-                        let y = (uv_rect.min.y * tex_h as f32).round() as i32;
-                        let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32).round() as i32;
-                        let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32).round() as i32;
+                        let x = (uv_rect.min.x * tex_w as f32) as f64;
+                        let y = (uv_rect.min.y * tex_h as f32) as f64;
+                        let w = ((uv_rect.max.x - uv_rect.min.x) * tex_w as f32) as f64;
+                        let h = ((uv_rect.max.y - uv_rect.min.y) * tex_h as f32) as f64;
                         [x, y, w, h]
                     };
                     (rectangle, source_rectangle)
@@ -193,7 +193,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
                 image.color = color.map(|c| c.to_fsa());
                 if let Some(source_rect) = source_rect {
                     let (x, y, w, h) = source_rect.x_y_w_h();
-                    image.source_rectangle = Some([x as i32, y as i32, w as i32, h as i32]);
+                    image.source_rectangle = Some([x, y, w, h]);
                 }
                 let (left, top, w, h) = rect.l_t_w_h();
                 image.rectangle = Some([0.0, 0.0, w, h]);
