@@ -9,10 +9,12 @@ widget_ids! {
 }
 
 fn main() {
+    const WIDTH: u32 = 720;
+    const HEIGHT: u32 = 360;
 
     // Construct the window.
     let mut window: Window =
-        piston::window::WindowSettings::new("PlotPath Demo", [720, 360])
+        piston::window::WindowSettings::new("PlotPath Demo", [WIDTH, HEIGHT])
             .opengl(OpenGL::V3_2)
             .samples(4)
             .exit_on_esc(true)
@@ -23,7 +25,7 @@ fn main() {
     let mut events = WindowEvents::new();
 
     // Construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // A unique identifier for each widget.
     let ids = Ids::new(ui.widget_id_generator());

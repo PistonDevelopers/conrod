@@ -1,16 +1,16 @@
-//! A function for converting a `glutin::Event` to a `conrod::event::Raw`.
+//! A function for converting a `glutin::Event` to a `conrod::event::Input`.
 //!
 //! The following is adapted from the piston `glutin_window` crate.
 
 extern crate glutin;
 
 use Scalar;
-use event::{self, Input, Motion};
+use event::{Input, Motion};
 use input;
 use std;
 
-/// A function for converting a `glutin::Event` to a `conrod::event::Raw`.
-pub fn convert<W>(e: glutin::Event, window: W) -> Option<event::Raw>
+/// A function for converting a `glutin::Event` to a `conrod::event::Input`.
+pub fn convert<W>(e: glutin::Event, window: W) -> Option<Input>
     where W: std::ops::Deref<Target=glutin::Window>,
 {
 
@@ -94,21 +94,6 @@ pub fn convert<W>(e: glutin::Event, window: W) -> Option<event::Raw>
 
         _ => None,
     }
-}
-
-/// Creates a `event::Raw::Render`.
-///
-/// Returns `None` if the window is no longer open.
-///
-/// NOTE: This will be removed in a future version of conrod as Render events shouldn't be
-/// necessary.
-pub fn render_event<W>(window: W) -> Option<event::Raw>
-    where W: std::ops::Deref<Target=glutin::Window>,
-{
-    window.get_inner_size_pixels().map(|(win_w, win_h)| {
-        let dpi_factor = window.hidpi_factor();
-        event::render(0.0, win_w, win_h, dpi_factor as Scalar)
-    })
 }
 
 /// Maps Glutin's key to a conrod `Key`.

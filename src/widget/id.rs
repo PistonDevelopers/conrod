@@ -371,7 +371,7 @@ fn test() {
         }
     }
 
-    let mut ui = UiBuilder::new().build();
+    let mut ui = UiBuilder::new([800.0, 600.0]).build();
     let mut ids = Ids::new(ui.widget_id_generator());
 
     for _ in 0..10 {
@@ -402,7 +402,7 @@ fn test_invocation_variations() {
     widget_ids! { struct G { foo[], bar, } }
     widget_ids! { pub struct H { foo, bar[], } }
 
-    let mut ui = UiBuilder::new().build();
+    let mut ui = UiBuilder::new([800.0, 600.0]).build();
     let mut ui = ui.set_widgets();
     let a = A::new(ui.widget_id_generator());
     let b = B::new(ui.widget_id_generator());

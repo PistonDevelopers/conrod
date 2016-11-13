@@ -168,7 +168,7 @@ mod feature {
         let mut app = support::DemoApp::new();
 
         // Create Ui and Ids of widgets to instantiate
-        let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
+        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
         let ids = support::Ids::new(ui.widget_id_generator());
 
         // Load font from file
@@ -208,9 +208,6 @@ mod feature {
             };
 
             let dpi_factor = window.hidpi_factor();
-
-            let dt_secs = 0.0;
-            ui.handle_event(conrod::event::render(dt_secs, win_w, win_h, dpi_factor as conrod::Scalar));
 
             if let Some(mut primitives) = ui.draw_if_changed() {
                 let (screen_width, screen_height) = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);

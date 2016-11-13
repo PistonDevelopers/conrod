@@ -39,7 +39,7 @@ mod feature {
         let mut app = support::DemoApp::new();
 
         // Construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new().theme(support::theme()).build();
+        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
 
         // The `widget::Id` of each widget instantiated in `support::gui`.
         let ids = support::Ids::new(ui.widget_id_generator());
@@ -81,12 +81,6 @@ mod feature {
         // - Repeat.
         'main: loop {
 
-            // Construct a render event for conrod at the beginning of rendering.
-            // NOTE: This will be removed in a future version of conrod as Render events shouldn't
-            // be necessary.
-            let window = display.get_window().unwrap();
-            ui.handle_event(conrod::backend::glutin::render_event(window).unwrap());
-
             // Poll for events.
             for event in display.poll_events() {
 
@@ -115,7 +109,7 @@ mod feature {
                 let (win_w, win_h) = (win_rect.w() as u32, win_rect.h() as u32);
                 let (w, h) = display.get_window().unwrap().get_inner_size_points().unwrap();
                 if w != win_w || h != win_h {
-                    let event: conrod::event::Raw = conrod::event::Input::Resize(w, h).into();
+                    let event = conrod::event::Input::Resize(w, h);
                     ui.handle_event(event);
                 }
             }

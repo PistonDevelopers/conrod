@@ -12,6 +12,8 @@ use widget::{self, Widget};
 
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
+    /// The initial dimensions of the window in which the `Ui` exists.
+    pub window_dimensions: Dimensions,
     /// The theme used to set default styling for widgets.
     ///
     /// If this field is `None` when `build` is called, `Theme::default` will be used.
@@ -111,8 +113,12 @@ pub const SAFE_REDRAW_COUNT: u8 = 3;
 impl UiBuilder {
 
     /// Begin building a new `Ui` instance.
-    pub fn new() -> Self {
+    ///
+    /// Give the initial dimensions of the window within which the `Ui` will be instantiated as a
+    /// `Scalar` (DPI agnostic) value.
+    pub fn new(window_dimensions: Dimensions) -> Self {
         UiBuilder {
+            window_dimensions: window_dimensions,
             maybe_theme: None,
             maybe_widgets_capacity: None
         }
@@ -155,8 +161,15 @@ impl Ui {
 
     /// A new, empty **Ui**.
     fn new(builder: UiBuilder) -> Self {
+
+        let UiBuilder {
+            window_dimensions,
+            maybe_widgets_capacity,
+            maybe_theme,
+        } = builder;
+
         let (mut widget_graph, depth_order, updated_widgets) =
-            builder.maybe_widgets_capacity.map_or_else(
+            maybe_widgets_capacity.map_or_else(
                 || (Graph::new(),
                    graph::DepthOrder::new(),
                    std::collections::HashSet::new()),
@@ -168,11 +181,11 @@ impl Ui {
         let prev_updated_widgets = updated_widgets.clone();
         Ui {
             widget_graph: widget_graph,
-            theme: builder.maybe_theme.unwrap_or_else(|| Theme::default()),
+            theme: maybe_theme.unwrap_or_else(|| Theme::default()),
             fonts: text::font::Map::new(),
             window: window,
-            win_w: 0.0,
-            win_h: 0.0,
+            win_w: window_dimensions[0],
+            win_h: window_dimensions[1],
             maybe_prev_widget_id: None,
             maybe_current_parent_id: None,
             num_redraw_frames: SAFE_REDRAW_COUNT,
@@ -309,9 +322,10 @@ impl Ui {
     ///
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
-    pub fn handle_event<E: Into<event::Raw>>(&mut self, event: E) {
-        use event::{Input, Motion};
-        use input::{Key, ModifierKey};
+    pub fn handle_event(&mut self, event: event::Input) {
+        use event::{self, Input, Motion};
+        use input::{Button, Key, ModifierKey};
+        use input::state::mouse::Button as MouseButton;
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
         // `input::Global`'s `input::State`.
@@ -370,434 +384,404 @@ impl Ui {
             }
         }
 
-        // Convert the user given event to a `RawEvent` or return early if we cannot.
-        let event: event::Raw = event.into();
-
+        // Here we handle all user input given to conrod.
+        //
+        // Not only do we store the `Input` event as an `Event::Raw`, we also use them to
+        // interpret higher level events such as `Click` or `Drag`.
+        //
+        // Finally, we also ensure that the `current_state` is up-to-date.
+        self.global_input.push_event(event.clone().into());
         match event {
 
-            // On each `Render` we should check that our window dimensions are up to date.
-            //
-            // This event is also the first time that we receive the proper dimensions of the
-            // window (when the `Ui` is created, the dimensions are set to `0`).
-            event::RawEvent::Render(args) => {
-                let (w, h) = (args.width as Scalar, args.height as Scalar);
-                if self.win_w != w || self.win_h != h {
-                    self.win_w = w;
-                    self.win_h = h;
-                    track_widget_under_mouse_and_update_capturing(self);
-                }
+            // Some button was pressed, whether keyboard, mouse or some other device.
+            Input::Press(button_type) => match button_type {
+
+                // Check to see whether we need to (un)capture the keyboard or mouse.
+                Button::Mouse(mouse_button) => {
+
+                    // Create a mouse `Press` event.
+                    let mouse_xy = self.global_input.current.mouse.xy;
+                    let press = event::Press {
+                        button: event::Button::Mouse(mouse_button, mouse_xy),
+                        modifiers: self.global_input.current.modifiers,
+                    };
+                    let widget = self.global_input.current.widget_capturing_mouse;
+                    let press_event = event::Ui::Press(widget, press).into();
+                    self.global_input.push_event(press_event);
+
+                    if let MouseButton::Left = mouse_button {
+                        // Check to see if we need to uncapture the keyboard.
+                        if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
+                            if Some(idx) != self.global_input.current.widget_under_mouse {
+                                let event = event::Ui::WidgetUncapturesKeyboard(idx).into();
+                                self.global_input.push_event(event);
+                                self.global_input.current.widget_capturing_keyboard = None;
+                            }
+                        }
+
+                        // Check to see if we need to capture the keyboard.
+                        if let Some(idx) = self.global_input.current.widget_under_mouse {
+                            let event = event::Ui::WidgetCapturesKeyboard(idx).into();
+                            self.global_input.push_event(event);
+                            self.global_input.current.widget_capturing_keyboard = Some(idx);
+                        }
+                    }
+
+                    // Keep track of pressed buttons in the current input::State.
+                    let xy = self.global_input.current.mouse.xy;
+                    let widget = self.global_input.current.widget_under_mouse;
+                    self.global_input.current.mouse.buttons.press(mouse_button, xy, widget);
+                },
+
+                Button::Keyboard(key) => {
+
+                    // Create a keyboard `Press` event.
+                    let press = event::Press {
+                        button: event::Button::Keyboard(key),
+                        modifiers: self.global_input.current.modifiers,
+                    };
+                    let widget = self.global_input.current.widget_capturing_keyboard;
+                    let press_event = event::Ui::Press(widget, press).into();
+                    self.global_input.push_event(press_event);
+
+                    // If some modifier key was pressed, add it to the current modifiers.
+                    if let Some(modifier) = filter_modifier(key) {
+                        self.global_input.current.modifiers.insert(modifier);
+                    }
+
+                    // If `Esc` was pressed, check to see if we need to cancel a `Drag` or
+                    // uncapture a widget.
+                    if let Key::Escape = key {
+                        // TODO:
+                        // 1. Cancel `Drag` if currently under way.
+                        // 2. If mouse is captured due to pinning widget with left mouse button,
+                        //    cancel capturing.
+                    }
+                },
+
+                _ => {}
             },
 
-            // Here we handle all user input given to conrod.
+            // Some button was released.
             //
-            // Not only do we store the `Input` event as a `Event::Raw`, we also use them to
-            // interpret higher level events such as `Click` or `Drag`.
-            //
-            // Finally, we also ensure that the `current_state` is up-to-date.
-            event::RawEvent::Input(input_event) => {
-                use event;
-                use input::Button;
-                use input::state::mouse::Button as MouseButton;
+            // Checks for events in the following order:
+            // 1. Click
+            // 2. DoubleClick
+            // 2. WidgetUncapturesMouse
+            Input::Release(button_type) => match button_type {
+                Button::Mouse(mouse_button) => {
 
-                // Update our global_input with the raw input event.
-                self.global_input.push_event(input_event.clone().into());
+                    // Create a `Release` event.
+                    let mouse_xy = self.global_input.current.mouse.xy;
+                    let release = event::Release {
+                        button: event::Button::Mouse(mouse_button, mouse_xy),
+                        modifiers: self.global_input.current.modifiers,
+                    };
+                    let widget = self.global_input.current.widget_capturing_mouse;
+                    let release_event = event::Ui::Release(widget, release).into();
+                    self.global_input.push_event(release_event);
 
-                match input_event {
+                    // Check for `Click` and `DoubleClick` events.
+                    let down = self.global_input.current.mouse.buttons[mouse_button].if_down();
+                    if let Some((_, widget)) = down {
 
-                    // Some button was pressed, whether keyboard, mouse or some other device.
-                    Input::Press(button_type) => match button_type {
+                        // The widget that's being clicked.
+                        let clicked_widget = self.global_input.current.widget_under_mouse
+                            .and_then(|released| widget.and_then(|pressed| {
+                                if pressed == released { Some(released) } else { None }
+                            }));
 
-                        // Check to see whether we need to (un)capture the keyboard or mouse.
-                        Button::Mouse(mouse_button) => {
-
-                            // Create a mouse `Press` event.
-                            let mouse_xy = self.global_input.current.mouse.xy;
-                            let press = event::Press {
-                                button: event::Button::Mouse(mouse_button, mouse_xy),
-                                modifiers: self.global_input.current.modifiers,
-                            };
-                            let widget = self.global_input.current.widget_capturing_mouse;
-                            let press_event = event::Ui::Press(widget, press).into();
-                            self.global_input.push_event(press_event);
-
-                            if let MouseButton::Left = mouse_button {
-                                // Check to see if we need to uncapture the keyboard.
-                                if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
-                                    if Some(idx) != self.global_input.current.widget_under_mouse {
-                                        let event = event::Ui::WidgetUncapturesKeyboard(idx).into();
-                                        self.global_input.push_event(event);
-                                        self.global_input.current.widget_capturing_keyboard = None;
-                                    }
-                                }
-
-                                // Check to see if we need to capture the keyboard.
-                                if let Some(idx) = self.global_input.current.widget_under_mouse {
-                                    let event = event::Ui::WidgetCapturesKeyboard(idx).into();
-                                    self.global_input.push_event(event);
-                                    self.global_input.current.widget_capturing_keyboard = Some(idx);
-                                }
-                            }
-
-                            // Keep track of pressed buttons in the current input::State.
-                            let xy = self.global_input.current.mouse.xy;
-                            let widget = self.global_input.current.widget_under_mouse;
-                            self.global_input.current.mouse.buttons.press(mouse_button, xy, widget);
-                        },
-
-                        Button::Keyboard(key) => {
-
-                            // Create a keyboard `Press` event.
-                            let press = event::Press {
-                                button: event::Button::Keyboard(key),
-                                modifiers: self.global_input.current.modifiers,
-                            };
-                            let widget = self.global_input.current.widget_capturing_keyboard;
-                            let press_event = event::Ui::Press(widget, press).into();
-                            self.global_input.push_event(press_event);
-
-                            // If some modifier key was pressed, add it to the current modifiers.
-                            if let Some(modifier) = filter_modifier(key) {
-                                self.global_input.current.modifiers.insert(modifier);
-                            }
-
-                            // If `Esc` was pressed, check to see if we need to cancel a `Drag` or
-                            // uncapture a widget.
-                            if let Key::Escape = key {
-                                // TODO:
-                                // 1. Cancel `Drag` if currently under way.
-                                // 2. If mouse is captured due to pinning widget with left mouse button,
-                                //    cancel capturing.
-                            }
-                        },
-
-                        _ => {}
-                    },
-
-                    // Some button was released.
-                    //
-                    // Checks for events in the following order:
-                    // 1. Click
-                    // 2. DoubleClick
-                    // 2. WidgetUncapturesMouse
-                    Input::Release(button_type) => match button_type {
-                        Button::Mouse(mouse_button) => {
-
-                            // Create a `Release` event.
-                            let mouse_xy = self.global_input.current.mouse.xy;
-                            let release = event::Release {
-                                button: event::Button::Mouse(mouse_button, mouse_xy),
-                                modifiers: self.global_input.current.modifiers,
-                            };
-                            let widget = self.global_input.current.widget_capturing_mouse;
-                            let release_event = event::Ui::Release(widget, release).into();
-                            self.global_input.push_event(release_event);
-
-                            // Check for `Click` and `DoubleClick` events.
-                            let down = self.global_input.current.mouse.buttons[mouse_button].if_down();
-                            if let Some((_, widget)) = down {
-
-                                // The widget that's being clicked.
-                                let clicked_widget = self.global_input.current.widget_under_mouse
-                                    .and_then(|released| widget.and_then(|pressed| {
-                                        if pressed == released { Some(released) } else { None }
-                                    }));
-
-                                let click = event::Click {
-                                    button: mouse_button,
-                                    xy: self.global_input.current.mouse.xy,
-                                    modifiers: self.global_input.current.modifiers,
-                                };
-
-                                let click_event = event::Ui::Click(clicked_widget, click).into();
-                                self.global_input.push_event(click_event);
-
-                                let now = std::time::Instant::now();
-                                let double_click = self.global_input.last_click
-                                    .and_then(|(last_time, last_click)| {
-
-                                        // If the button of this click is different to the button
-                                        // of last click, don't create a `DoubleClick`.
-                                        if click.button != last_click.button {
-                                            return None;
-                                        }
-
-                                        // If the mouse has moved since the last click, don't
-                                        // create a `DoubleClick`.
-                                        if click.xy != last_click.xy {
-                                            return None;
-                                        }
-
-                                        // If the duration since the last click is longer than the
-                                        // double_click_threshold, don't create a `DoubleClick`.
-                                        let duration = now.duration_since(last_time);
-                                        // TODO: Work out how to get this threshold from the user's
-                                        // system preferences.
-                                        let threshold = self.theme.double_click_threshold;
-                                        if duration >= threshold {
-                                            return None;
-                                        }
-
-                                        Some(event::DoubleClick {
-                                            button: click.button,
-                                            xy: click.xy,
-                                            modifiers: click.modifiers,
-                                        })
-                                    });
-
-                                if let Some(double_click) = double_click {
-                                    // Reset the `last_click` to `None`, as to not register another
-                                    // `DoubleClick` on the next consecutive `Click`.
-                                    self.global_input.last_click = None;
-                                    let double_click_event =
-                                        event::Ui::DoubleClick(clicked_widget, double_click).into();
-                                    self.global_input.push_event(double_click_event);
-
-                                } else {
-                                    // Set the `Click` that we just stored as the `last_click`.
-                                    self.global_input.last_click = Some((now, click));
-                                }
-                            }
-
-                            // Uncapture widget capturing mouse if MouseButton::Left is down and
-                            // widget_under_mouse != capturing widget.
-                            if let MouseButton::Left = mouse_button {
-                                if let Some(idx) = self.global_input.current.widget_capturing_mouse {
-                                    if Some(idx) != self.global_input.current.widget_under_mouse {
-                                        let event = event::Ui::WidgetUncapturesMouse(idx).into();
-                                        self.global_input.push_event(event);
-                                        self.global_input.current.widget_capturing_mouse = None;
-                                    }
-                                }
-                            }
-
-                            // Release the given mouse_button from the input::State.
-                            self.global_input.current.mouse.buttons.release(mouse_button);
-                        },
-                        
-                        Button::Keyboard(key) => {
-
-                            // Create a `Release` event.
-                            let release = event::Release {
-                                button: event::Button::Keyboard(key),
-                                modifiers: self.global_input.current.modifiers,
-                            };
-                            let widget = self.global_input.current.widget_capturing_keyboard;
-                            let release_event = event::Ui::Release(widget, release).into();
-                            self.global_input.push_event(release_event);
-
-                            // If a modifier key was released, remove it from the current set.
-                            if let Some(modifier) = filter_modifier(key) {
-                                self.global_input.current.modifiers.remove(modifier);
-                            }
-                        },
-
-                        _ => (),
-                    },
-
-                    // The window was resized.
-                    Input::Resize(w, h) => {
-
-                        // Create a `WindowResized` event.
-                        let (w, h) = (w as Scalar, h as Scalar);
-                        let window_resized = event::Ui::WindowResized([w, h]).into();
-                        self.global_input.push_event(window_resized);
-
-                        self.win_w = w;
-                        self.win_h = h;
-                        self.needs_redraw();
-                    },
-
-                    // The mouse cursor was moved to a new position.
-                    //
-                    // Checks for events in the following order:
-                    // 1. `Drag`
-                    // 2. `WidgetUncapturesMouse`
-                    // 3. `WidgetCapturesMouse`
-                    Input::Move(motion) => {
-
-                        // Create a `Move` event.
-                        let move_ = event::Move {
-                            motion: motion,
+                        let click = event::Click {
+                            button: mouse_button,
+                            xy: self.global_input.current.mouse.xy,
                             modifiers: self.global_input.current.modifiers,
                         };
-                        let widget = self.global_input.current.widget_capturing_mouse;
-                        let move_event = event::Ui::Move(widget, move_).into();
-                        self.global_input.push_event(move_event);
 
-                        match motion {
+                        let click_event = event::Ui::Click(clicked_widget, click).into();
+                        self.global_input.push_event(click_event);
 
-                            Motion::MouseCursor(x, y) => {
+                        let now = std::time::Instant::now();
+                        let double_click = self.global_input.last_click
+                            .and_then(|(last_time, last_click)| {
 
-                                // Check for drag events.
-                                let last_mouse_xy = self.global_input.current.mouse.xy;
-                                let mouse_xy = [x, y];
-                                let delta_xy = utils::vec2_sub(mouse_xy, last_mouse_xy);
-                                let distance = (delta_xy[0] + delta_xy[1]).abs().sqrt();
-                                if distance > self.theme.mouse_drag_threshold {
-                                    // For each button that is down, trigger a drag event.
-                                    let buttons = self.global_input.current.mouse.buttons.clone();
-                                    for (btn, btn_xy, widget) in buttons.pressed() {
-                                        let total_delta_xy = utils::vec2_sub(mouse_xy, btn_xy);
-                                        let event = event::Ui::Drag(widget, event::Drag {
-                                            button: btn,
-                                            origin: btn_xy,
-                                            from: last_mouse_xy,
-                                            to: mouse_xy,
-                                            delta_xy: delta_xy,
-                                            total_delta_xy: total_delta_xy,
-                                            modifiers: self.global_input.current.modifiers,
-                                        }).into();
-                                        self.global_input.push_event(event);
-                                    }
+                                // If the button of this click is different to the button
+                                // of last click, don't create a `DoubleClick`.
+                                if click.button != last_click.button {
+                                    return None;
                                 }
 
-                                // Update the position of the mouse within the global_input's
-                                // input::State.
-                                self.global_input.current.mouse.xy = mouse_xy;
+                                // If the mouse has moved since the last click, don't
+                                // create a `DoubleClick`.
+                                if click.xy != last_click.xy {
+                                    return None;
+                                }
 
-                                track_widget_under_mouse_and_update_capturing(self);
-                            },
+                                // If the duration since the last click is longer than the
+                                // double_click_threshold, don't create a `DoubleClick`.
+                                let duration = now.duration_since(last_time);
+                                // TODO: Work out how to get this threshold from the user's
+                                // system preferences.
+                                let threshold = self.theme.double_click_threshold;
+                                if duration >= threshold {
+                                    return None;
+                                }
 
-                            // The mouse was scrolled.
-                            Motion::MouseScroll(x, y) => {
+                                Some(event::DoubleClick {
+                                    button: click.button,
+                                    xy: click.xy,
+                                    modifiers: click.modifiers,
+                                })
+                            });
 
-                                let mut scrollable_widgets = {
-                                    let depth_order = &self.depth_order.indices;
-                                    let mouse_xy = self.global_input.current.mouse.xy;
-                                    graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
+                        if let Some(double_click) = double_click {
+                            // Reset the `last_click` to `None`, as to not register another
+                            // `DoubleClick` on the next consecutive `Click`.
+                            self.global_input.last_click = None;
+                            let double_click_event =
+                                event::Ui::DoubleClick(clicked_widget, double_click).into();
+                            self.global_input.push_event(double_click_event);
+
+                        } else {
+                            // Set the `Click` that we just stored as the `last_click`.
+                            self.global_input.last_click = Some((now, click));
+                        }
+                    }
+
+                    // Uncapture widget capturing mouse if MouseButton::Left is down and
+                    // widget_under_mouse != capturing widget.
+                    if let MouseButton::Left = mouse_button {
+                        if let Some(idx) = self.global_input.current.widget_capturing_mouse {
+                            if Some(idx) != self.global_input.current.widget_under_mouse {
+                                let event = event::Ui::WidgetUncapturesMouse(idx).into();
+                                self.global_input.push_event(event);
+                                self.global_input.current.widget_capturing_mouse = None;
+                            }
+                        }
+                    }
+
+                    // Release the given mouse_button from the input::State.
+                    self.global_input.current.mouse.buttons.release(mouse_button);
+                },
+
+                Button::Keyboard(key) => {
+
+                    // Create a `Release` event.
+                    let release = event::Release {
+                        button: event::Button::Keyboard(key),
+                        modifiers: self.global_input.current.modifiers,
+                    };
+                    let widget = self.global_input.current.widget_capturing_keyboard;
+                    let release_event = event::Ui::Release(widget, release).into();
+                    self.global_input.push_event(release_event);
+
+                    // If a modifier key was released, remove it from the current set.
+                    if let Some(modifier) = filter_modifier(key) {
+                        self.global_input.current.modifiers.remove(modifier);
+                    }
+                },
+
+                _ => (),
+            },
+
+            // The window was resized.
+            Input::Resize(w, h) => {
+                // Create a `WindowResized` event.
+                let (w, h) = (w as Scalar, h as Scalar);
+                let window_resized = event::Ui::WindowResized([w, h]).into();
+                self.global_input.push_event(window_resized);
+
+                self.win_w = w;
+                self.win_h = h;
+                self.needs_redraw();
+                track_widget_under_mouse_and_update_capturing(self);
+            },
+
+            // The mouse cursor was moved to a new position.
+            //
+            // Checks for events in the following order:
+            // 1. `Drag`
+            // 2. `WidgetUncapturesMouse`
+            // 3. `WidgetCapturesMouse`
+            Input::Move(motion) => {
+
+                // Create a `Move` event.
+                let move_ = event::Move {
+                    motion: motion,
+                    modifiers: self.global_input.current.modifiers,
+                };
+                let widget = self.global_input.current.widget_capturing_mouse;
+                let move_event = event::Ui::Move(widget, move_).into();
+                self.global_input.push_event(move_event);
+
+                match motion {
+
+                    Motion::MouseCursor(x, y) => {
+
+                        // Check for drag events.
+                        let last_mouse_xy = self.global_input.current.mouse.xy;
+                        let mouse_xy = [x, y];
+                        let delta_xy = utils::vec2_sub(mouse_xy, last_mouse_xy);
+                        let distance = (delta_xy[0] + delta_xy[1]).abs().sqrt();
+                        if distance > self.theme.mouse_drag_threshold {
+                            // For each button that is down, trigger a drag event.
+                            let buttons = self.global_input.current.mouse.buttons.clone();
+                            for (btn, btn_xy, widget) in buttons.pressed() {
+                                let total_delta_xy = utils::vec2_sub(mouse_xy, btn_xy);
+                                let event = event::Ui::Drag(widget, event::Drag {
+                                    button: btn,
+                                    origin: btn_xy,
+                                    from: last_mouse_xy,
+                                    to: mouse_xy,
+                                    delta_xy: delta_xy,
+                                    total_delta_xy: total_delta_xy,
+                                    modifiers: self.global_input.current.modifiers,
+                                }).into();
+                                self.global_input.push_event(event);
+                            }
+                        }
+
+                        // Update the position of the mouse within the global_input's
+                        // input::State.
+                        self.global_input.current.mouse.xy = mouse_xy;
+
+                        track_widget_under_mouse_and_update_capturing(self);
+                    },
+
+                    // The mouse was scrolled.
+                    Motion::MouseScroll(x, y) => {
+
+                        let mut scrollable_widgets = {
+                            let depth_order = &self.depth_order.indices;
+                            let mouse_xy = self.global_input.current.mouse.xy;
+                            graph::algo::pick_scrollable_widgets(depth_order, mouse_xy)
+                        };
+
+                        // Iterate through the scrollable widgets from top to bottom.
+                        //
+                        // A scroll event will be created for the first scrollable widget
+                        // that hasn't already reached the bound of the scroll event's
+                        // direction.
+                        while let Some(idx) =
+                            scrollable_widgets.next(&self.widget_graph,
+                                                    &self.depth_order.indices)
+                        {
+
+                            let (kid_area, maybe_x_scroll, maybe_y_scroll) =
+                                match self.widget_graph.widget(idx) {
+                                    Some(widget) => {
+                                        (widget.kid_area,
+                                         widget.maybe_x_scroll_state,
+                                         widget.maybe_y_scroll_state)
+                                    },
+                                    None => continue,
                                 };
 
-                                // Iterate through the scrollable widgets from top to bottom.
-                                //
-                                // A scroll event will be created for the first scrollable widget
-                                // that hasn't already reached the bound of the scroll event's
-                                // direction.
-                                while let Some(idx) =
-                                    scrollable_widgets.next(&self.widget_graph,
-                                                            &self.depth_order.indices)
-                                {
+                            fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
+                                                     additional_offset: Scalar) -> bool
+                            {
+                                use utils;
 
-                                    let (kid_area, maybe_x_scroll, maybe_y_scroll) =
-                                        match self.widget_graph.widget(idx) {
-                                            Some(widget) => {
-                                                (widget.kid_area,
-                                                 widget.maybe_x_scroll_state,
-                                                 widget.maybe_y_scroll_state)
-                                            },
-                                            None => continue,
-                                        };
+                                fn approx_eq(a: Scalar, b: Scalar) -> bool {
+                                    (a - b).abs() < 0.000001
+                                }
 
-                                    fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
-                                                             additional_offset: Scalar) -> bool
-                                    {
-                                        use utils;
+                                if additional_offset.is_sign_positive() {
+                                    let max = utils::partial_max(scroll.offset_bounds.start,
+                                                                 scroll.offset_bounds.end);
+                                    approx_eq(scroll.offset, max)
+                                } else {
+                                    let min = utils::partial_min(scroll.offset_bounds.start,
+                                                                 scroll.offset_bounds.end);
+                                    approx_eq(scroll.offset, min)
+                                }
+                            }
 
-                                        fn approx_eq(a: Scalar, b: Scalar) -> bool {
-                                            (a - b).abs() < 0.000001
-                                        }
+                            let mut scroll_x = false;
+                            let mut scroll_y = false;
 
-                                        if additional_offset.is_sign_positive() {
-                                            let max = utils::partial_max(scroll.offset_bounds.start,
-                                                                         scroll.offset_bounds.end);
-                                            approx_eq(scroll.offset, max)
-                                        } else {
-                                            let min = utils::partial_min(scroll.offset_bounds.start,
-                                                                         scroll.offset_bounds.end);
-                                            approx_eq(scroll.offset, min)
-                                        }
-                                    }
+                            // Check whether the x axis is scrollable.
+                            if x != 0.0 {
+                                let new_scroll =
+                                    widget::scroll::State::update(self, idx, &kid_area,
+                                                                  maybe_x_scroll, x);
+                                if let Some(prev_scroll) = maybe_x_scroll {
+                                    let (prev_is_at_bound, new_is_at_bound) =
+                                        (offset_is_at_bound(&prev_scroll, x),
+                                         offset_is_at_bound(&new_scroll, x));
+                                    scroll_x = !prev_is_at_bound || !new_is_at_bound;
+                                }
+                            }
 
-                                    let mut scroll_x = false;
-                                    let mut scroll_y = false;
+                            // Check whether the y axis is scrollable.
+                            if y != 0.0 {
+                                let new_scroll =
+                                    widget::scroll::State::update(self, idx, &kid_area,
+                                                                  maybe_y_scroll, y);
+                                if let Some(prev_scroll) = maybe_y_scroll {
+                                    let (prev_is_at_bound, new_is_at_bound) =
+                                        (offset_is_at_bound(&prev_scroll, y),
+                                         offset_is_at_bound(&new_scroll, y));
+                                    scroll_y = !prev_is_at_bound || !new_is_at_bound;
+                                }
+                            }
 
-                                    // Check whether the x axis is scrollable.
-                                    if x != 0.0 {
-                                        let new_scroll =
-                                            widget::scroll::State::update(self, idx, &kid_area,
-                                                                          maybe_x_scroll, x);
-                                        if let Some(prev_scroll) = maybe_x_scroll {
-                                            let (prev_is_at_bound, new_is_at_bound) =
-                                                (offset_is_at_bound(&prev_scroll, x),
-                                                 offset_is_at_bound(&new_scroll, x));
-                                            scroll_x = !prev_is_at_bound || !new_is_at_bound;
-                                        }
-                                    }
+                            // Create a `Scroll` event if either axis is scrollable.
+                            if scroll_x || scroll_y {
+                                let event = event::Ui::Scroll(Some(idx), event::Scroll {
+                                    x: x,
+                                    y: y,
+                                    modifiers: self.global_input.current.modifiers,
+                                }).into();
+                                self.global_input.push_event(event);
 
-                                    // Check whether the y axis is scrollable.
-                                    if y != 0.0 {
-                                        let new_scroll =
-                                            widget::scroll::State::update(self, idx, &kid_area,
-                                                                          maybe_y_scroll, y);
-                                        if let Some(prev_scroll) = maybe_y_scroll {
-                                            let (prev_is_at_bound, new_is_at_bound) =
-                                                (offset_is_at_bound(&prev_scroll, y),
-                                                 offset_is_at_bound(&new_scroll, y));
-                                            scroll_y = !prev_is_at_bound || !new_is_at_bound;
-                                        }
-                                    }
+                                // Now that we've scrolled the top, scrollable widget,
+                                // we're done with the loop.
+                                break;
+                            }
+                        }
 
-                                    // Create a `Scroll` event if either axis is scrollable.
-                                    if scroll_x || scroll_y {
-                                        let event = event::Ui::Scroll(Some(idx), event::Scroll {
+                        // If no scrollable widgets could be scrolled, emit the event to
+                        // the widget that currently captures the mouse.
+                        if x != 0.0 || y != 0.0 {
+                            let widget = self.global_input.current.widget_capturing_mouse;
+                            if let Some(idx) = widget {
+                                if let Some(widget) = self.widget_graph.widget(idx) {
+                                    // Only create the event if the widget is not
+                                    // scrollable, as the event would have already been
+                                    // created within the above loop.
+                                    if widget.maybe_x_scroll_state.is_none()
+                                    && widget.maybe_y_scroll_state.is_none() {
+                                        let scroll = event::Scroll {
                                             x: x,
                                             y: y,
                                             modifiers: self.global_input.current.modifiers,
-                                        }).into();
-                                        self.global_input.push_event(event);
-
-                                        // Now that we've scrolled the top, scrollable widget,
-                                        // we're done with the loop.
-                                        break;
+                                        };
+                                        let event = event::Ui::Scroll(Some(idx), scroll);
+                                        self.global_input.push_event(event.into());
                                     }
                                 }
-
-                                // If no scrollable widgets could be scrolled, emit the event to
-                                // the widget that currently captures the mouse.
-                                if x != 0.0 || y != 0.0 {
-                                    let widget = self.global_input.current.widget_capturing_mouse;
-                                    if let Some(idx) = widget {
-                                        if let Some(widget) = self.widget_graph.widget(idx) {
-                                            // Only create the event if the widget is not
-                                            // scrollable, as the event would have already been
-                                            // created within the above loop.
-                                            if widget.maybe_x_scroll_state.is_none()
-                                            && widget.maybe_y_scroll_state.is_none() {
-                                                let scroll = event::Scroll {
-                                                    x: x,
-                                                    y: y,
-                                                    modifiers: self.global_input.current.modifiers,
-                                                };
-                                                let event = event::Ui::Scroll(Some(idx), scroll);
-                                                self.global_input.push_event(event.into());
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Now that there might be a different widget under the mouse, we
-                                // must update the capturing state.
-                                track_widget_under_mouse_and_update_capturing(self);
-                            },
-
-                            _ => (),
-
+                            }
                         }
-                    },
 
-                    Input::Text(string) => {
-                        // Create a `Text` event.
-                        let text = event::Text {
-                            string: string,
-                            modifiers: self.global_input.current.modifiers,
-                        };
-                        let widget = self.global_input.current.widget_capturing_keyboard;
-                        let text_event = event::Ui::Text(widget, text).into();
-                        self.global_input.push_event(text_event);
+                        // Now that there might be a different widget under the mouse, we
+                        // must update the capturing state.
+                        track_widget_under_mouse_and_update_capturing(self);
                     },
 
                     _ => (),
-                }
 
+                }
+            },
+
+            Input::Text(string) => {
+                // Create a `Text` event.
+                let text = event::Text {
+                    string: string,
+                    modifiers: self.global_input.current.modifiers,
+                };
+                let widget = self.global_input.current.widget_capturing_keyboard;
+                let text_event = event::Ui::Text(widget, text).into();
+                self.global_input.push_event(text_event);
             },
 
             _ => (),

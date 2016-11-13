@@ -60,7 +60,7 @@ pistoncore-event_loop = { version = "0.26.0", optional = true }
 piston2d-gfx_graphics = { version = "0.31.1", optional = true }
 piston-texture = { version = "0.5.0", optional = true }
 shader_version = { version = "0.2.0", optional = true }
-pistoncore-glutin_window = { version = "0.31.0", optional = true }
+pistoncore-glutin_window = { version = "0.32.0", optional = true }
 
 [features]
 default = ["piston"]

@@ -23,7 +23,7 @@ fn main() {
     let mut events = WindowEvents::new();
 
     // Construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new().build();
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Unique identifier for each widget.
     let ids = Ids::new(ui.widget_id_generator());
