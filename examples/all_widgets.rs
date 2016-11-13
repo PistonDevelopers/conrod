@@ -6,8 +6,8 @@ extern crate find_folder;
 mod support;
 
 use conrod::backend::piston::gfx::{GfxContext, G2dTexture, Texture, TextureSettings, Flip};
-use conrod::backend::piston::{self, Window, OpenGL};
-use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
+use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+use conrod::backend::piston::event::UpdateEvent;
 
 
 fn main() {
@@ -26,7 +26,6 @@ fn main() {
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // A demonstration of some state that we'd like to control with the App.
     let mut app = support::DemoApp::new();
@@ -50,7 +49,7 @@ fn main() {
     let image_map = support::image_map(&ids, load_rust_logo(&mut window.context));
 
     // Poll events from the window.
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {

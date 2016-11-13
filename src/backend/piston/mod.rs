@@ -7,5 +7,5 @@ pub mod event;
 pub mod window;
 pub mod gfx;
 
-pub use self::window::{Window, EventWindow};
+pub use self::window::{EventWindow, Window, WindowEvents};
 pub use self::shader_version::OpenGL;

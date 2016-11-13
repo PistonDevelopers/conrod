@@ -7,8 +7,8 @@ fn main() {
     const HEIGHT: u32 = 200;
 
     use conrod::{widget, Labelable, Positionable, Sizeable, Widget};
-    use conrod::backend::piston::{self, Window, OpenGL};
-    use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
+    use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+    use conrod::backend::piston::event::UpdateEvent;
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -19,7 +19,6 @@ fn main() {
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -42,7 +41,7 @@ fn main() {
     let mut count = 0;
 
     // Poll events from the window.
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {

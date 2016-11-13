@@ -18,8 +18,7 @@
 //! extern crate conrod;
 //! extern crate graphics;
 //!
-//! use conrod::backend::piston::{self, Window};
-//! use conrod::backend::piston::event::{EventLoop, WindowEvents};
+//! use conrod::backend::piston::{self, Window, WindowEvents};
 //! use graphics::*;
 //!
 //! fn main() {
@@ -27,7 +26,7 @@
 //!         piston::window::WindowSettings::new("Hello World!", [512; 2])
 //!             .build().unwrap();
 //!     let mut events = WindowEvents::new();
-//!     while let Some(e) = events.next(&mut window) {
+//!     while let Some(e) = window.next_event(&mut events) {
 //!         window.draw_2d(&e, |c, g| {
 //!             clear([0.5, 0.5, 0.5, 1.0], g);
 //!             rectangle([1.0, 0.0, 0.0, 1.0], // red
@@ -71,23 +70,23 @@
 //! For more information about sRGB, see
 //! https://github.com/PistonDevelopers/piston/issues/1014
 
+extern crate event_loop;
 extern crate window as pistoncore_window;
 extern crate glutin_window;
 
-use std::time::Duration;
-
+use event;
 use piston_input::{Event, GenericEvent, AfterRenderEvent};
-
 use self::glutin_window::GlutinWindow;
 use self::pistoncore_window::Window as BasicWindow;
-
+use std::time::Duration;
 use super::gfx::{GfxContext, G2d};
 use super::shader_version::OpenGL;
-use event;
 
+pub use self::event_loop::WindowEvents;
 pub use self::pistoncore_window::{AdvancedWindow, Position, Size, OpenGLWindow, 
                                   WindowSettings, BuildFromWindowSettings};
 pub use super::gfx::{draw, GlyphCache};
+
 
 /// Contains everything required for controlling window, graphics, event loop.
 pub struct Window<W: BasicWindow = GlutinWindow> {
@@ -141,8 +140,16 @@ impl<W> Window<W>
         }
     }
 
+    /// A wrapper around the `EventWindow::next` trait method. This avoids the need for users to
+    /// import the `EventWindow` trait in most cases.
+    pub fn next_event<E>(&mut self, events: &mut E) -> Option<Event>
+        where Self: EventWindow<E>,
+    {
+        EventWindow::next(self, events)
+    }
+
     /// Let window handle new event.
-    pub fn event(&mut self, event: &Event<W::Event>) {
+    pub fn handle_event(&mut self, event: &Event<W::Event>) {
         if let Some(_) = event.after_render_args() {
             self.context.after_render();
         }
@@ -209,6 +216,15 @@ impl GlyphCache {
 pub trait EventWindow<E>: BasicWindow {
     /// receive next event from event loop and handle it
     fn next(&mut self, events: &mut E) -> Option<Event>;
+}
+
+impl EventWindow<WindowEvents> for Window {
+    fn next(&mut self, events: &mut WindowEvents) -> Option<Event> {
+        events.next(&mut self.window).map(|e| {
+            self.handle_event(&e);
+            e
+        })
+    }
 }
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.

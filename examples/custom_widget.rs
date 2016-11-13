@@ -222,8 +222,8 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use conrod::backend::piston::{self, Window, OpenGL};
-    use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
+    use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+    use conrod::backend::piston::event::UpdateEvent;
 
     use self::circular_button::CircularButton;
 
@@ -245,7 +245,6 @@ pub fn main() {
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -272,7 +271,7 @@ pub fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
 
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {

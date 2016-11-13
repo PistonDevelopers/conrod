@@ -12,9 +12,9 @@ extern crate find_folder;
 extern crate rand; // for making a random color.
 
 use conrod::backend::piston::gfx::{GfxContext, G2dTexture, Texture, TextureSettings, Flip};
-use conrod::backend::piston::{self, Window, OpenGL};
+use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
 use conrod::backend::piston::draw::ImageSize;
-use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
+use conrod::backend::piston::event::UpdateEvent;
 
 fn main() {
     const WIDTH: u32 = 1100;
@@ -58,10 +58,8 @@ fn main() {
     // Our demonstration app that we'll control with our GUI.
     let mut bg_color = conrod::color::LIGHT_BLUE;
 
-    events.set_ups(60);
-
     // Poll events from the window.
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {

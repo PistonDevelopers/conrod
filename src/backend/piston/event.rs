@@ -3,14 +3,12 @@
 //! The module also allows provides an `EventWindow` impl for the default piston game event loop
 //! from pistoncore-event_loop, allowing compatibility with conrod's custom piston `Window`.
 
-pub extern crate event_loop;
-
 use {Point, Scalar};
 use event::{self, Input, Motion, RawEvent};
-use super::window::{Window, EventWindow};
+//use super::window::{Window, EventWindow};
 
 pub use piston_input::{GenericEvent, UpdateEvent};
-pub use self::event_loop::{WindowEvents, EventLoop};
+//pub use self::event_loop::{WindowEvents, EventLoop};
 
 
 
@@ -70,13 +68,4 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Raw>
     }
 
     None
-}
-
-impl EventWindow for WindowEvents {
-    fn next(&mut self, window: &mut Window) -> Option<RawEvent> {
-        if let Some(e) = self.next(window) {
-            window.event(&e);
-            Some(e)
-        } else { None }
-    }
 }

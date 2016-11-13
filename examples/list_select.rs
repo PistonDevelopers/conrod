@@ -1,8 +1,8 @@
 #[macro_use] extern crate conrod;
 extern crate find_folder;
 
-use conrod::backend::piston::{self, Window, OpenGL};
-use conrod::backend::piston::event::{EventLoop, UpdateEvent, WindowEvents};
+use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+use conrod::backend::piston::event::UpdateEvent;
 
 widget_ids! {
     struct Ids { canvas, list_select }
@@ -25,7 +25,6 @@ fn main() {
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -68,7 +67,7 @@ fn main() {
     let mut list_selected = std::collections::HashSet::new();
 
     // Poll events from the window.
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {
