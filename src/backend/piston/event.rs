@@ -5,11 +5,8 @@
 
 use {Point, Scalar};
 use event::{self, Input, Motion, RawEvent};
-//use super::window::{Window, EventWindow};
 
 pub use piston_input::{GenericEvent, UpdateEvent};
-//pub use self::event_loop::{WindowEvents, EventLoop};
-
 
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.
