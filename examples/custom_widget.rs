@@ -6,7 +6,7 @@
 //!
 //! We'll *use* our fancy circular button in the `main` function (below the circular_button module).
 //!
-//! Note that in this case, we use `piston_window` to draw our widget, however in practise you may
+//! Note that in this case, we use `backend::piston` to draw our widget, however in practise you may
 //! use any backend you wish.
 //!
 //! For more information, please see the `Widget` trait documentation.
@@ -222,9 +222,8 @@ mod circular_button {
 
 pub fn main() {
     use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
-    use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
-    use conrod::backend::piston::window as piston_window;
+    use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+    use conrod::backend::piston::event::UpdateEvent;
 
     use self::circular_button::CircularButton;
 
@@ -238,14 +237,14 @@ pub fn main() {
     // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
     // specify a different type in the let binding, e.g.
     // let window: PistonWindow<(), Sdl2Window>.
-    let mut window: Window = piston_window::WindowSettings::new("Control Panel", [WIDTH, HEIGHT])
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .build().unwrap();
+    let mut window: Window =
+        piston::window::WindowSettings::new("Control Panel", [WIDTH, HEIGHT])
+            .opengl(opengl)
+            .exit_on_esc(true)
+            .build().unwrap();
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -267,15 +266,15 @@ pub fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
 
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -304,10 +303,10 @@ pub fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                piston_window::draw(c, g, primitives,
-                                    &mut text_texture_cache,
-                                    &image_map,
-                                    texture_from_image);
+                piston::window::draw(c, g, primitives,
+                                     &mut text_texture_cache,
+                                     &image_map,
+                                     texture_from_image);
             }
         });
     }

@@ -11,9 +11,8 @@
 extern crate find_folder;
 extern crate rand; // for making a random color.
 
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
-use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
-use conrod::backend::piston::window as piston_window;
+use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
+use conrod::backend::piston::event::UpdateEvent;
 
 /// This struct holds all of the variables used to demonstrate application data being passed
 /// through the widgets. If some of these seem strange, that's because they are! Most of these
@@ -102,12 +101,11 @@ fn main() {
     
     // Construct the window.
     let mut window: Window =
-        piston_window::WindowSettings::new("All The Widgets!", [WIDTH, HEIGHT])
+        piston::window::WindowSettings::new("All The Widgets!", [WIDTH, HEIGHT])
             .opengl(opengl).exit_on_esc(true).vsync(true).build().unwrap();
 
     // Create the event loop.
     let mut events = WindowEvents::new();
-    events.set_ups(60);
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new().build();
@@ -121,7 +119,7 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = piston_window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::new();
@@ -130,10 +128,10 @@ fn main() {
     let mut app = DemoApp::new();
 
     // Poll events from the window.
-    while let Some(event) = window.next(&mut events) {
+    while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod event.
-        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
@@ -154,10 +152,10 @@ fn main() {
         window.draw_2d(&event, |c, g| {
             if let Some(primitives) = ui.draw_if_changed() {
                 fn texture_from_image<T>(img: &T) -> &T { img };
-                piston_window::draw(c, g, primitives,
-                                    &mut text_texture_cache,
-                                    &image_map,
-                                    texture_from_image);
+                piston::window::draw(c, g, primitives,
+                                     &mut text_texture_cache,
+                                     &image_map,
+                                     texture_from_image);
             }
         });
     }

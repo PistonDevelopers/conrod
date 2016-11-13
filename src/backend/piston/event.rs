@@ -1,8 +1,13 @@
 //! A backend for converting piston events to conrod's `event::Raw` type.
+//!
+//! The module also allows provides an `EventWindow` impl for the default piston game event loop
+//! from pistoncore-event_loop, allowing compatibility with conrod's custom piston `Window`.
 
 use {Point, Scalar};
 use event::{self, Input, Motion, RawEvent};
-pub use piston_input::GenericEvent;
+
+pub use piston_input::{GenericEvent, UpdateEvent};
+
 
 /// Converts any `GenericEvent` to a `Raw` conrod event.
 pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Raw>
