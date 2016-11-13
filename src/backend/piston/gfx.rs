@@ -211,7 +211,7 @@ pub fn draw_primitive<'a, 'b, Img, F>(context: draw::Context,
                                       primitive: render::Primitive,
                                       glyph_cache: &'a mut GlyphCache,
                                       image_map: &'a image::Map<Img>,
-                                      glyph_rectangles: &mut Vec<([f64; 4], [i32; 4])>,
+                                      glyph_rectangles: &mut Vec<([f64; 4], [f64; 4])>,
                                       texture_from_image: F)
     where F: FnMut(&Img) -> &G2dTexture<'static>,
 {

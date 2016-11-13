@@ -81,9 +81,9 @@ mod feature {
         }
 
         pipeline pipe {
-            vbuf: gfx::VertexBuffer<Vertex> = (),
-            color: gfx::TextureSampler<[f32; 4]> = "t_Color",
-            out: gfx::BlendTarget<ColorFormat> = ("f_Color", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+            vbuf: ::gfx::VertexBuffer<Vertex> = (),
+            color: ::gfx::TextureSampler<[f32; 4]> = "t_Color",
+            out: ::gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
         }
     }
 
