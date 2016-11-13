@@ -49,7 +49,7 @@ fn main() {
     while let Some(event) = window.next_event(&mut events) {
 
         // Convert the piston event to a conrod input event.
-        if let Some(e) = piston_window::convert_event(event.clone(), &window) {
+        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
         }
 
