@@ -312,9 +312,9 @@ impl Renderer {
         // Framebuffer dimensions and the "dots per inch" factor.
         let (screen_w, screen_h) = display.get_framebuffer_dimensions();
         let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
-        let dpi_factor = display.get_window().map(|w| w.hidpi_factor()).unwrap_or(1.0) as Scalar;
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
+        let dpi_factor = display.get_window().map(|w| w.hidpi_factor()).unwrap_or(1.0) as Scalar;
 
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
@@ -329,13 +329,15 @@ impl Renderer {
 
         let rect_to_glium_rect = |rect: Rect| {
             let (w, h) = rect.w_h();
-            let half_w = w / 2.0;
-            let half_h = h / 2.0;
+            let left = (rect.left() * dpi_factor + half_win_w) as u32;
+            let bottom = (rect.bottom() * dpi_factor + half_win_h) as u32;
+            let width = (w * dpi_factor) as u32;
+            let height = (h * dpi_factor) as u32;
             glium::Rect {
-                left: ((rect.left() + half_w) * dpi_factor) as u32,
-                bottom: ((rect.bottom() + half_h) * dpi_factor) as u32,
-                width: (w * dpi_factor) as u32,
-                height: (h * dpi_factor) as u32,
+                left: std::cmp::max(left, 0),
+                bottom: std::cmp::max(bottom, 0),
+                width: std::cmp::min(width, screen_w),
+                height: std::cmp::min(height, screen_h),
             }
         };
 
@@ -343,6 +345,7 @@ impl Renderer {
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { id, kind, scizzor, rect } = primitive;
 
+            // Check for a `Scizzor` command.
             let new_scizzor = rect_to_glium_rect(scizzor);
             if new_scizzor != current_scizzor {
                 // Finish the current command.
