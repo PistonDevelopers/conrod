@@ -7,7 +7,7 @@ extern crate find_folder;
 
 use conrod::{widget, Colorable, Positionable, Sizeable, Widget, color};
 use conrod::backend::piston::gfx::*;
-use conrod::backend::piston::{Window, UpdateEvent, OpenGL};
+use conrod::backend::piston::{Window, UpdateEvent, OpenGL, EventWindow};
 use conrod::backend::piston::core_events::{EventLoop, WindowEvents};
 use conrod::backend::piston::window as piston_window;
 
@@ -47,7 +47,7 @@ fn main() {
     let (w, h) = image_map.get(&ids.rust_logo).unwrap().get_size();
 
     // Poll events from the window.
-    while let Some(event) = events.next(&mut window) {
+    while let Some(event) = window.next(&mut events) {
         ui.handle_event(event.clone());
 
         window.draw_2d(&event, |c, g| {
