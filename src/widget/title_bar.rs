@@ -13,6 +13,7 @@ use {
     Sizeable,
     Ui,
 };
+use text;
 use widget::{self, Widget};
 
 
@@ -58,6 +59,8 @@ widget_style!{
         - line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
         - text_align: Align { Align::Middle }
+        /// The font used for the `Text`.
+        - font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -93,6 +96,12 @@ impl<'a> TitleBar<'a> {
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
     pub fn align_text_right(mut self) -> Self {
         self.style.text_align = Some(Align::End);
+        self
+    }
+
+    /// Specify the font used for displaying the text.
+    pub fn font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.font_id = Some(Some(font_id));
         self
     }
 
@@ -161,11 +170,13 @@ impl<'a> Widget for TitleBar<'a> {
         let font_size = style.font_size(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let maybe_wrap = style.maybe_wrap(ui.theme());
+        let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
         widget::Text::new(label)
             .and_mut(|text| {
                 text.style.maybe_wrap = Some(maybe_wrap);
                 text.style.text_align = Some(text_align);
             })
+            .and_then(font_id, widget::Text::font_id)
             .padded_w_of(state.ids.rectangle, border)
             .middle_of(state.ids.rectangle)
             .color(text_color)

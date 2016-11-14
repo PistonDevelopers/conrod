@@ -13,6 +13,7 @@ use {
     UiCell,
     Widget,
 };
+use text;
 use widget;
 
 
@@ -44,6 +45,8 @@ widget_style!{
         - label_font_size: FontSize { theme.font_size_medium }
         /// The label's alignment over the *x* axis.
         - label_x_align: Align { Align::Middle }
+        /// The ID of the font used to display the label.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -201,6 +204,12 @@ impl<'a, S> Button<'a, S> {
         }
     }
 
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
+    }
+
     builder_methods!{
         pub enabled { enabled = bool }
     }
@@ -268,7 +277,9 @@ impl<'a, S> Widget for Button<'a, S>
             let color = style.label_color(&ui.theme);
             let font_size = style.label_font_size(&ui.theme);
             let align = style.label_x_align(&ui.theme);
+            let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
             widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
                 .and(|b| match align {
                     Align::Start =>
                         b.mid_left_with_margin_on(state.ids.rectangle, font_size as Scalar),

@@ -10,6 +10,7 @@ use {
     Scalar,
     Widget,
 };
+use text;
 use widget;
 
 
@@ -43,6 +44,8 @@ widget_style! {
         - label_color: Color { theme.label_color }
         /// The font size for the Toggle's Text label.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The ID of the font used to display the label.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -95,6 +98,12 @@ impl<'a> Toggle<'a> {
             style: Style::new(),
             enabled: true,
         }
+    }
+
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
     }
 
     builder_methods!{
@@ -163,7 +172,9 @@ impl<'a> Widget for Toggle<'a> {
         if let Some(label) = maybe_label {
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
+            let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
             widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
                 .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(color)

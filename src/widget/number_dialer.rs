@@ -142,6 +142,12 @@ impl<'a, T> NumberDialer<'a, T>
         }
     }
 
+    /// Specify the font used for displaying the label.
+    pub fn font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.font_id = Some(Some(font_id));
+        self
+    }
+
     builder_methods!{
         pub enabled { enabled = bool }
     }
@@ -186,10 +192,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
         // If we've no font to use for text logic, bail out without updating.
-        let font_id = match style.font_id(&ui.theme)
-            .or(ui.fonts.ids().next())
-            .and_then(|id| ui.fonts.get(id).map(|_| id))
-        {
+        let font_id = match style.font_id(&ui.theme).or(ui.fonts.ids().next()) {
             Some(font_id) => font_id,
             None => return None,
         };
@@ -329,6 +332,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         let font_size = style.label_font_size(ui.theme());
         if maybe_label.is_some() {
             widget::Text::new(&label_string)
+                .font_id(font_id)
                 .x_y_relative_to(id, label_rel_x, 0.0)
                 .graphics_for(id)
                 .color(label_color)
@@ -377,6 +381,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
 
             // Now a **Text** widget for the character itself.
             widget::Text::new(glyph_string)
+                .font_id(font_id)
                 .x_y_relative_to(id, rel_slot_x, 0.0)
                 .graphics_for(id)
                 .color(label_color)
