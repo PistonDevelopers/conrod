@@ -10,6 +10,7 @@ use {
     Rect,
     Positionable,
     Scalar,
+    Sizeable,
     UiCell,
     Widget,
 };
@@ -272,6 +273,9 @@ impl<'a, S> Widget for Button<'a, S>
             .border_color(border_color)
             .set(state.ids.rectangle, ui);
 
+        // This instantiates the image widget if necessary.
+        show.show(id, ui);
+
         // Label widget.
         if let Some(label) = maybe_label {
             let color = style.label_color(&ui.theme);
@@ -288,14 +292,12 @@ impl<'a, S> Widget for Button<'a, S>
                     Align::End =>
                         b.mid_right_with_margin_on(state.ids.rectangle, font_size as Scalar),
                 })
+                .parent(id)
                 .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
                 .set(state.ids.label, ui);
         }
-
-        // This instantiates the image widget if necessary.
-        show.show(id, ui);
 
         TimesClicked(times_clicked)
     }
@@ -328,7 +330,11 @@ impl Show for Flat {}
 impl Show for Image {
     fn show(self, button_id: widget::Id, ui: &mut UiCell) {
         let Image { id, src_rect, color } = self;
-        let mut image = widget::Image::new().middle_of(button_id).graphics_for(button_id);
+        let mut image = widget::Image::new()
+            .middle_of(button_id)
+            .wh_of(button_id)
+            .parent(button_id)
+            .graphics_for(button_id);
         image.src_rect = src_rect;
         image.style.maybe_color = match color {
             ImageColor::Normal(color) => Some(Some(color)),
