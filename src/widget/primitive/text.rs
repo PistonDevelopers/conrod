@@ -46,8 +46,6 @@ widget_style!{
         - text_align: Align { Align::Start }
         /// The id of the font to use for rendring and layout.
         - font_id: Option<text::font::Id> { theme.font_id }
-        // /// The typeface with which the Text is rendered.
-        // - typeface: Path,
         // /// The line styling for the text.
         // - line: Option<Line> { None },
     }
@@ -108,6 +106,12 @@ impl<'a> Text<'a> {
     /// Line wrap the **Text** at the beginning of the first character that exceeds the width.
     pub fn wrap_by_character(mut self) -> Self {
         self.style.maybe_wrap = Some(Some(Wrap::Character));
+        self
+    }
+
+    /// A method for specifying the `Font` used for displaying the `Text`.
+    pub fn font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.font_id =  Some(Some(font_id));
         self
     }
 
@@ -233,7 +237,7 @@ impl<'a> Widget for Text<'a> {
         let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_size = style.font_size(ui.theme());
 
-        let font = match self.style.font_id(&ui.theme)
+        let font = match style.font_id(&ui.theme)
             .or(ui.fonts.ids().next())
             .and_then(|id| ui.fonts.get(id))
         {

@@ -17,6 +17,7 @@ use {
 };
 use num::Float;
 use std;
+use text;
 use utils::{clamp, map_range, percentage, val_to_string};
 use widget;
 
@@ -59,6 +60,8 @@ widget_style!{
         - point_radius: Scalar { 6.0 }
         /// The thickness of the envelope lines.
         - line_thickness: Scalar { 2.0 }
+        /// The ID of the font used to display the label.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -134,6 +137,12 @@ impl<'a, E> EnvelopeEditor<'a, E>
             style: Style::new(),
             enabled: true,
         }
+    }
+
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
     }
 
     builder_methods!{
@@ -457,10 +466,12 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             .border_color(border_color)
             .set(state.ids.rectangle, ui);
 
-        let label_color = style.label_color(ui.theme());
+        let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
+        let label_color = style.label_color(&ui.theme);
         if let Some(label) = maybe_label {
-            let font_size = style.label_font_size(ui.theme());
+            let font_size = style.label_font_size(&ui.theme);
             widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
                 .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(label_color)
@@ -559,6 +570,7 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
             let closest_point_id = state.ids.points[closest_idx];
             const VALUE_TEXT_PAD: f64 = 5.0; // Slight padding between the point and the text.
             widget::Text::new(&xy_string)
+                .and_then(font_id, widget::Text::font_id)
                 .x_direction_from(closest_point_id, x_direction, VALUE_TEXT_PAD)
                 .y_direction_from(closest_point_id, y_direction, VALUE_TEXT_PAD)
                 .color(line_color)

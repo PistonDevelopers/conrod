@@ -15,6 +15,7 @@ use {
 };
 use event;
 use input;
+use text;
 use widget;
 
 /// A widget for displaying and mutating a small, one-line field of text, given by the user in the
@@ -47,6 +48,8 @@ widget_style!{
         - font_size: FontSize { theme.font_size_medium }
         /// The horizontal alignment of the text.
         - x_align: Align { Align::Start }
+        /// The font used for the `Text`.
+        - font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -86,6 +89,12 @@ impl<'a> TextBox<'a> {
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
     pub fn align_text_right(self) -> Self {
         self.x_align_text(Align::End)
+    }
+
+    /// Specify the font used for displaying the text.
+    pub fn font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.font_id = Some(Some(font_id));
+        self
     }
 
     builder_methods!{
@@ -161,7 +170,9 @@ impl<'a> Widget for TextBox<'a> {
         let mut events = Vec::new();
 
         let text_color = style.text_color(ui.theme());
+        let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
         if let Some(new_string) = widget::TextEdit::new(text)
+            .and_then(font_id, widget::TextEdit::font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .font_size(font_size)

@@ -11,8 +11,9 @@ use {
     Widget,
 };
 use num::Float;
-use widget;
+use text;
 use utils::{map_range, val_to_string};
+use widget;
 
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
@@ -42,6 +43,8 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// The font size for the XYPad's label.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The ID of the font used to display the label.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
         /// The font size for the XYPad's *value* label.
         - value_font_size: FontSize { 14 }
         /// The thickness of the XYPad's crosshair lines.
@@ -77,6 +80,12 @@ impl<'a, X, Y> XYPad<'a, X, Y> {
             style: Style::new(),
             enabled: true,
         }
+    }
+
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
     }
 
     builder_methods!{
@@ -172,9 +181,11 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         // Label **Text** widget.
         let label_color = style.label_color(ui.theme());
+        let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
         if let Some(label) = maybe_label {
             let label_font_size = style.label_font_size(ui.theme());
             widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
                 .middle_of(state.ids.rectangle)
                 .graphics_for(id)
                 .color(label_color)
@@ -227,6 +238,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
         };
         let value_font_size = style.value_font_size(ui.theme());
         widget::Text::new(&value_string)
+            .and_then(font_id, widget::Text::font_id)
             .x_direction_from(state.ids.v_line, x_direction, VALUE_TEXT_PAD)
             .y_direction_from(state.ids.h_line, y_direction, VALUE_TEXT_PAD)
             .color(line_color)

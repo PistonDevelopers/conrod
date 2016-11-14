@@ -162,6 +162,12 @@ impl<'a> TextEdit<'a> {
         self.align_text_x_middle().align_text_y_middle()
     }
 
+    /// Specify the font used for displaying the text.
+    pub fn font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.font_id = Some(Some(font_id));
+        self
+    }
+
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
         pub x_align_text { style.x_align = Some(Align) }
@@ -715,6 +721,7 @@ impl<'a> Widget for TextEdit<'a> {
             Wrap::Whitespace => widget::Text::new(&text).wrap_by_word(),
             Wrap::Character => widget::Text::new(&text).wrap_by_character(),
         }
+            .font_id(font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .align_text_to(x_align)

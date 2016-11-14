@@ -11,6 +11,7 @@ use {
     Scalar,
     Sizeable,
 };
+use text;
 use utils;
 use widget::{self, Widget};
 
@@ -53,6 +54,8 @@ widget_style! {
         - scrollbar_position: Option<widget::list::ScrollbarPosition> { None }
         /// The width of the scrollbar in the case that the list is scrollable.
         - scrollbar_width: Option<Scalar> { None }
+        /// The ID of the font used to display the labels.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -142,6 +145,13 @@ impl<'a, T> DropDownList<'a, T> {
         self.style.scrollbar_width = Some(Some(w));
         self
     }
+
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
+    }
+
 
 }
 
@@ -318,6 +328,7 @@ impl Style {
             label_color: self.label_color,
             label_font_size: self.label_font_size,
             label_x_align: self.label_x_align,
+            label_font_id: self.label_font_id,
         }
     }
 

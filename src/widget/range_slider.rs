@@ -14,6 +14,7 @@ use {
     Widget,
 };
 use num::{Float, NumCast, ToPrimitive};
+use text;
 use utils;
 use widget;
 
@@ -41,6 +42,8 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// The font-size for the Slider's label.
         - label_font_size: FontSize { theme.font_size_medium }
+        /// The ID of the font used to display the label.
+        - label_font_id: Option<text::font::Id> { theme.font_id }
     }
 }
 
@@ -113,6 +116,12 @@ impl<'a, T> RangeSlider<'a, T> {
             maybe_label: None,
             style: Style::new(),
         }
+    }
+
+    /// Specify the font used for displaying the label.
+    pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
+        self.style.label_font_id = Some(Some(font_id));
+        self
     }
 
 }
@@ -309,8 +318,10 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         if let Some(label) = maybe_label {
             let label_color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
+            let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
             //const TEXT_PADDING: f64 = 10.0;
             widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
                 .mid_left_of(id)
                 .graphics_for(id)
                 .color(label_color)
