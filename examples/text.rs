@@ -4,6 +4,7 @@ extern crate find_folder;
 use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
 use conrod::backend::piston::event::UpdateEvent;
 
+
 fn main() {
     const WIDTH: u32 = 1080;
     const HEIGHT: u32 = 720;
@@ -27,8 +28,19 @@ fn main() {
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
-    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    ui.fonts.insert_from_file(font_path).unwrap();
+    let noto_sans = assets.join("fonts/NotoSans");
+    let regular = ui.fonts.insert_from_file(noto_sans.join("NotoSans-Regular.ttf")).unwrap();
+    let italic = ui.fonts.insert_from_file(noto_sans.join("NotoSans-Italic.ttf")).unwrap();
+    let bold = ui.fonts.insert_from_file(noto_sans.join("NotoSans-Bold.ttf")).unwrap();
+
+    // Store our `font::Id`s in a list for easy access in the `set_ui` function.
+    let font_ids = [regular, italic, bold];
+
+    // Specify the default font to use when none is specified by the widget.
+    //
+    // By default, the theme's font_id field is `None`. In this case, the first font that is found
+    // within the `Ui`'s `font::Map` will be used.
+    ui.theme.font_id = Some(regular);
 
     // Create a texture cache in which we can cache text on the GPU.
     //
@@ -48,7 +60,7 @@ fn main() {
             ui.handle_event(e);
         }
 
-        event.update(|_| set_ui(ui.set_widgets(), &ids));
+        event.update(|_| set_ui(ui.set_widgets(), &ids, &font_ids));
 
         window.draw_2d(&event, |c, g| {
             // Only re-draw if there was some change in the `Ui`.
@@ -77,7 +89,7 @@ widget_ids!{
     }
 }
 
-fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
+fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, font_ids: &[conrod::text::font::Id; 3]) {
     use conrod::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
 
     // Our `Canvas` tree, upon which we will place our text widgets.
@@ -97,7 +109,12 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
 
     const PAD: Scalar = 20.0;
 
+    const FONT_REGULAR: usize = 0;
+    const FONT_ITALIC: usize = 1;
+    const FONT_BOLD: usize = 2;
+
     widget::Text::new(DEMO_TEXT)
+        .font_id(font_ids[FONT_REGULAR])
         .color(color::LIGHT_RED)
         .padded_w_of(ids.left_col, PAD)
         .mid_top_with_margin_on(ids.left_col, PAD)
@@ -106,6 +123,7 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
         .set(ids.left_text, ui);
 
     widget::Text::new(DEMO_TEXT)
+        .font_id(font_ids[FONT_ITALIC])
         .color(color::LIGHT_GREEN)
         .padded_w_of(ids.middle_col, PAD)
         .middle_of(ids.middle_col)
@@ -114,6 +132,7 @@ fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids) {
         .set(ids.middle_text, ui);
 
     widget::Text::new(DEMO_TEXT)
+        .font_id(font_ids[FONT_BOLD])
         .color(color::LIGHT_BLUE)
         .padded_w_of(ids.right_col, PAD)
         .mid_bottom_with_margin_on(ids.right_col, PAD)
