@@ -47,6 +47,8 @@ mod circular_button {
             - label_color: conrod::Color { theme.label_color }
             /// Font size of the button's label.
             - label_font_size: conrod::FontSize { theme.font_size_medium }
+            /// Specify a unique font for the label.
+            - label_font_id: Option<conrod::text::font::Id> { theme.font_id }
         }
     }
 
@@ -80,14 +82,21 @@ mod circular_button {
     }
 
     impl<'a> CircularButton<'a> {
+
         /// Create a button context to be built upon.
-        pub fn new() -> CircularButton<'a> {
+        pub fn new() -> Self {
             CircularButton {
                 common: widget::CommonBuilder::new(),
                 maybe_label: None,
                 style: Style::new(),
                 enabled: true,
             }
+        }
+
+        /// Specify the font used for displaying the label.
+        pub fn label_font_id(mut self, font_id: conrod::text::font::Id) -> Self {
+            self.style.label_font_id = Some(Some(font_id));
+            self
         }
 
         /// If true, will allow user inputs.  If false, will disallow user inputs.  Like
@@ -98,6 +107,7 @@ mod circular_button {
             self.enabled = flag;
             self
         }
+
     }
 
     /// A custom Conrod widget must implement the Widget trait. See the **Widget** trait
@@ -181,7 +191,9 @@ mod circular_button {
             if let Some(ref label) = self.maybe_label {
                 let label_color = style.label_color(&ui.theme);
                 let font_size = style.label_font_size(&ui.theme);
+                let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
                 widget::Text::new(label)
+                    .and_then(font_id, widget::Text::font_id)
                     .middle_of(id)
                     .font_size(font_size)
                     .graphics_for(id)
@@ -263,7 +275,7 @@ pub fn main() {
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    ui.fonts.insert_from_file(font_path).unwrap();
+    let regular = ui.fonts.insert_from_file(font_path).unwrap();
 
     // Create a texture to use for efficiently caching text on the GPU.
     let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
@@ -289,6 +301,7 @@ pub fn main() {
                 .color(conrod::color::rgb(0.0, 0.3, 0.1))
                 .middle_of(ids.background)
                 .w_h(256.0, 256.0)
+                .label_font_id(regular)
                 .label_color(conrod::color::WHITE)
                 .label("Circular Button")
                 // Add the widget to the conrod::Ui. This schedules the widget it to be
