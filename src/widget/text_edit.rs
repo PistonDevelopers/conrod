@@ -4,6 +4,7 @@ use {
     Align,
     Color,
     Colorable,
+    Dimension,
     FontSize,
     Point,
     Positionable,
@@ -12,6 +13,7 @@ use {
     Scalar,
     Sizeable,
     Widget,
+    Ui,
 };
 use event;
 use input;
@@ -207,6 +209,43 @@ impl<'a> Widget for TextEdit<'a> {
 
     fn style(&self) -> Self::Style {
         self.style.clone()
+    }
+
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
+        // If the user has specified `restrict_to_height = true`, then we should infer the height
+        // using the previous widget as is the default case.
+        if self.style.restrict_to_height(&ui.theme) {
+            return widget::default_y_dimension(self, ui);
+        }
+
+        // Otherwise the height is unrestricted, and we should infer the height as the total height
+        // of the fully styled, wrapped text.
+        let font = match self.style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+        {
+            Some(font) => font,
+            None => return Dimension::Absolute(0.0),
+        };
+
+        let text = &self.text;
+        let font_size = self.style.font_size(&ui.theme);
+        let num_lines = match self.get_w(ui) {
+            None => text.lines().count(),
+            Some(max_w) => match self.style.line_wrap(&ui.theme) {
+                Wrap::Character =>
+                    text::line::infos(text, font, font_size)
+                        .wrap_by_character(max_w)
+                        .count(),
+                Wrap::Whitespace =>
+                    text::line::infos(text, font, font_size)
+                        .wrap_by_whitespace(max_w)
+                        .count(),
+            },
+        };
+        let line_spacing = self.style.line_spacing(&ui.theme);
+        let height = text::height(std::cmp::max(num_lines, 1), font_size, line_spacing);
+        Dimension::Absolute(height)
     }
 
     /// Update the state of the TextEdit.
@@ -694,7 +733,8 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        if state.cursor != cursor {
+        let cursor_has_changed = state.cursor != cursor;
+        if cursor_has_changed {
             state.update(|state| state.cursor = cursor);
         }
 
@@ -725,6 +765,7 @@ impl<'a> Widget for TextEdit<'a> {
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .align_text_to(x_align)
+            .parent(id)
             .graphics_for(id)
             .color(color)
             .line_spacing(line_spacing)
@@ -754,12 +795,38 @@ impl<'a> Widget for TextEdit<'a> {
 
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
+        let prev_cursor_rect = ui.rect_of(state.ids.cursor);
         widget::Line::centred(start, end)
             .x_y(cursor_x, cursor_y_range.middle())
             .graphics_for(id)
             .parent(id)
             .color(color)
             .set(state.ids.cursor, ui);
+
+        // If the cursor position has changed due to input AND one of our parent widgets are
+        // scrollable AND the change in cursor position would cause the cursor to fall outside the
+        // scrollable parent's `Rect`, attempt to scroll the scrollable parent so that the cursor
+        // would be visible.
+        if cursor_has_changed {
+            let cursor_rect = ui.rect_of(state.ids.cursor).unwrap();
+            if prev_cursor_rect != Some(cursor_rect) {
+                use graph::Walker;
+                let mut scrollable_parents = ui.widget_graph().scrollable_y_parent_recursion(id);
+                if let Some(parent_id) = scrollable_parents.next_node(ui.widget_graph()) {
+                    if let Some(parent_rect) = ui.rect_of(parent_id) {
+                        // If cursor is below, scroll down.
+                        if cursor_rect.bottom() < parent_rect.bottom() {
+                            let distance = parent_rect.bottom() - cursor_rect.bottom();
+                            ui.scroll_widget(parent_id, [0.0, distance]);
+                        // If cursor is above, scroll up.
+                        } else if cursor_rect.top() > parent_rect.top() {
+                            let distance = cursor_rect.top() - parent_rect.top();
+                            ui.scroll_widget(parent_id, [0.0, -distance]);
+                        }
+                    }
+                }
+            }
+        }
 
         if let Cursor::Selection { start, end } = cursor {
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));

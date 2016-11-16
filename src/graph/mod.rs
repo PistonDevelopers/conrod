@@ -441,6 +441,44 @@ impl Graph {
         self.recursive_walk(idx, graphic_edge_parent)
     }
 
+    /// A **Walker** type that recursively walks **Depth** parents that are scrollable along the
+    /// *y* axis for the given node.
+    pub fn scrollable_y_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
+    {
+        fn scrollable_y_parent(graph: &Graph, id: widget::Id) -> Option<IndexPair> {
+            let mut depth_parents = graph.depth_parent_recursion(id);
+            while let Some((e, n)) = depth_parents.next(graph) {
+                if let Some(parent) = graph.widget(n) {
+                    if parent.maybe_y_scroll_state.is_some() {
+                        return Some((e, n));
+                    }
+                }
+            }
+            None
+        }
+        self.recursive_walk(idx, scrollable_y_parent)
+    }
+
+    /// A **Walker** type that recursively walks **Depth** parents that are scrollable along the
+    /// *x* axis for the given node.
+    pub fn scrollable_x_parent_recursion(&self, idx: widget::Id)
+        -> RecursiveWalk<fn(&Graph, widget::Id) -> Option<IndexPair>>
+    {
+        fn scrollable_x_parent(graph: &Graph, id: widget::Id) -> Option<IndexPair> {
+            let mut depth_parents = graph.depth_parent_recursion(id);
+            while let Some((e, n)) = depth_parents.next(graph) {
+                if let Some(parent) = graph.widget(n) {
+                    if parent.maybe_x_scroll_state.is_some() {
+                        return Some((e, n));
+                    }
+                }
+            }
+            None
+        }
+        self.recursive_walk(idx, scrollable_x_parent)
+    }
+
     /// A **Walker** type that may be used to step through the children of the given parent node.
     pub fn children(&self, parent: widget::Id) -> Children {
         self.dag.children(parent)
