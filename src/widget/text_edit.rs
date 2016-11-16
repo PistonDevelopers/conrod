@@ -814,18 +814,14 @@ impl<'a> Widget for TextEdit<'a> {
                 let mut scrollable_parents = ui.widget_graph().scrollable_y_parent_recursion(id);
                 if let Some(parent_id) = scrollable_parents.next_node(ui.widget_graph()) {
                     if let Some(parent_rect) = ui.rect_of(parent_id) {
-                        if parent_rect.overlap(cursor_rect) != Some(parent_rect) {
-
-                            // If cursor is below, scroll down.
-                            if cursor_rect.bottom() < parent_rect.bottom() {
-                                let distance = parent_rect.bottom() - cursor_rect.bottom();
-                                ui.scroll_widget(parent_id, [0.0, distance]);
-
-                            // If cursor is above, scroll up.
-                            } else if cursor_rect.top() > parent_rect.top() {
-                                let distance = cursor_rect.top() - parent_rect.top();
-                                ui.scroll_widget(parent_id, [0.0, -distance]);
-                            }
+                        // If cursor is below, scroll down.
+                        if cursor_rect.bottom() < parent_rect.bottom() {
+                            let distance = parent_rect.bottom() - cursor_rect.bottom();
+                            ui.scroll_widget(parent_id, [0.0, distance]);
+                        // If cursor is above, scroll up.
+                        } else if cursor_rect.top() > parent_rect.top() {
+                            let distance = cursor_rect.top() - parent_rect.top();
+                            ui.scroll_widget(parent_id, [0.0, -distance]);
                         }
                     }
                 }
