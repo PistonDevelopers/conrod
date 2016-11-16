@@ -4,6 +4,7 @@ use {
     Align,
     Color,
     Colorable,
+    Dimension,
     FontSize,
     Point,
     Positionable,
@@ -12,6 +13,7 @@ use {
     Scalar,
     Sizeable,
     Widget,
+    Ui,
 };
 use event;
 use input;
@@ -207,6 +209,43 @@ impl<'a> Widget for TextEdit<'a> {
 
     fn style(&self) -> Self::Style {
         self.style.clone()
+    }
+
+    fn default_y_dimension(&self, ui: &Ui) -> Dimension {
+        // If the user has specified `restrict_to_height = true`, then we should infer the height
+        // using the previous widget as is the default case.
+        if self.style.restrict_to_height(&ui.theme) {
+            return widget::default_y_dimension(self, ui);
+        }
+
+        // Otherwise the height is unrestricted, and we should infer the height as the total height
+        // of the fully styled, wrapped text.
+        let font = match self.style.font_id(&ui.theme)
+            .or(ui.fonts.ids().next())
+            .and_then(|id| ui.fonts.get(id))
+        {
+            Some(font) => font,
+            None => return Dimension::Absolute(0.0),
+        };
+
+        let text = &self.text;
+        let font_size = self.style.font_size(&ui.theme);
+        let num_lines = match self.get_w(ui) {
+            None => text.lines().count(),
+            Some(max_w) => match self.style.line_wrap(&ui.theme) {
+                Wrap::Character =>
+                    text::line::infos(text, font, font_size)
+                        .wrap_by_character(max_w)
+                        .count(),
+                Wrap::Whitespace =>
+                    text::line::infos(text, font, font_size)
+                        .wrap_by_whitespace(max_w)
+                        .count(),
+            },
+        };
+        let line_spacing = self.style.line_spacing(&ui.theme);
+        let height = text::height(std::cmp::max(num_lines, 1), font_size, line_spacing);
+        Dimension::Absolute(height)
     }
 
     /// Update the state of the TextEdit.
@@ -725,6 +764,7 @@ impl<'a> Widget for TextEdit<'a> {
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .align_text_to(x_align)
+            .parent(id)
             .graphics_for(id)
             .color(color)
             .line_spacing(line_spacing)
