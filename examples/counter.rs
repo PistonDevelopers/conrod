@@ -46,6 +46,7 @@ fn main() {
         // Convert the piston event to a conrod event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
+            events.update();
         }
 
         // `Update` the widgets.

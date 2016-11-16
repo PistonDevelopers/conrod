@@ -51,6 +51,7 @@ fn main() {
         // Convert the piston event to a conrod input event.
         if let Some(e) = piston::window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
+            events.update();
         }
 
         window.draw_2d(&event, |c, g| {
