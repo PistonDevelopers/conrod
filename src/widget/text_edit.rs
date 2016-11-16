@@ -733,7 +733,8 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        if state.cursor != cursor {
+        let cursor_has_changed = state.cursor != cursor;
+        if cursor_has_changed {
             state.update(|state| state.cursor = cursor);
         }
 
@@ -794,12 +795,42 @@ impl<'a> Widget for TextEdit<'a> {
 
         let start = [0.0, cursor_y_range.start];
         let end = [0.0, cursor_y_range.end];
+        let prev_cursor_rect = ui.rect_of(state.ids.cursor);
         widget::Line::centred(start, end)
             .x_y(cursor_x, cursor_y_range.middle())
             .graphics_for(id)
             .parent(id)
             .color(color)
             .set(state.ids.cursor, ui);
+
+        // If the cursor position has changed due to input AND one of our parent widgets are
+        // scrollable AND the change in cursor position would cause the cursor to fall outside the
+        // scrollable parent's `Rect`, attempt to scroll the scrollable parent so that the cursor
+        // would be visible.
+        if cursor_has_changed {
+            let cursor_rect = ui.rect_of(state.ids.cursor).unwrap();
+            if prev_cursor_rect != Some(cursor_rect) {
+                use graph::Walker;
+                let mut scrollable_parents = ui.widget_graph().scrollable_y_parent_recursion(id);
+                if let Some(parent_id) = scrollable_parents.next_node(ui.widget_graph()) {
+                    if let Some(parent_rect) = ui.rect_of(parent_id) {
+                        if parent_rect.overlap(cursor_rect) != Some(parent_rect) {
+
+                            // If cursor is below, scroll down.
+                            if cursor_rect.bottom() < parent_rect.bottom() {
+                                let distance = parent_rect.bottom() - cursor_rect.bottom();
+                                ui.scroll_widget(parent_id, [0.0, distance]);
+
+                            // If cursor is above, scroll up.
+                            } else if cursor_rect.top() > parent_rect.top() {
+                                let distance = cursor_rect.top() - parent_rect.top();
+                                ui.scroll_widget(parent_id, [0.0, -distance]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         if let Cursor::Selection { start, end } = cursor {
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
