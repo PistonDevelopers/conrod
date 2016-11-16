@@ -5,7 +5,7 @@ use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
 use conrod::backend::piston::event::UpdateEvent;
 
 widget_ids! { 
-    struct Ids { canvas, text_edit }
+    struct Ids { canvas, text_edit, scrollbar }
 }
 
 fn main() {
@@ -73,16 +73,22 @@ fn main() {
 fn set_ui(ref mut ui: conrod::UiCell, ids: &Ids, demo_text: &mut String) {
     use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
+    widget::Canvas::new()
+        .scroll_kids_vertically()
+        .color(color::DARK_CHARCOAL)
+        .set(ids.canvas, ui);
 
     for edit in widget::TextEdit::new(demo_text)
         .color(color::LIGHT_BLUE)
-        .padded_wh_of(ids.canvas, 20.0)
+        .padded_w_of(ids.canvas, 20.0)
         .mid_top_of(ids.canvas)
         .align_text_x_middle()
         .line_spacing(2.5)
+        .restrict_to_height(false) // Let the height grow infinitely and scroll.
         .set(ids.text_edit, ui)
     {
         *demo_text = edit;
     }
+
+    widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.scrollbar, ui);
 }
