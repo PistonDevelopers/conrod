@@ -335,7 +335,11 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
 
             match widget_event {
 
-                // Check to see if a point was pressed in case it is later dragged.
+                // Upon mouse press, check for:
+                //
+                // - Point insertion
+                // - Point removal
+                // - The beggining of a point drag
                 event::Widget::Press(press) => match press.button {
 
                     // Left mouse press:
