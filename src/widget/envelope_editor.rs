@@ -345,13 +345,11 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
                     //
                     // Otherwise, if the mouse is not over an existing point, we want to insert
                     // a new point and begin dragging it.
-                    //
-                    // In this loop, we find the points on either side of the mouse, while
-                    // checking if we need to break early in the case that the mouse is already
-                    // over a point.
                     event::Button::Mouse(MouseButton::Left, xy) => {
 
-
+                        // In this loop, we find the points on either side of the mouse to
+                        // determine the insertion index, while checking if we need to break early
+                        // in the case that the mouse is already over a point.
                         let mut maybe_left = None;
                         let mut maybe_right = None;
                         for (i, p) in env.iter().enumerate() {
