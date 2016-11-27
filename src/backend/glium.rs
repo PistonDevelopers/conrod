@@ -114,8 +114,8 @@ pub const MODE_IMAGE: u32 = 1;
 pub const MODE_GEOMETRY: u32 = 2;
 
 
-/// The vertex shader used within the `glium::Program`.
-pub const VERTEX_SHADER: &'static str = "
+/// The vertex shader used within the `glium::Program` for OpenGL.
+pub const VERTEX_SHADER_GL: &'static str = "
     #version 140
 
     in vec2 position;
@@ -135,8 +135,8 @@ pub const VERTEX_SHADER: &'static str = "
     }
 ";
 
-/// The fragment shader used within the `glium::Program`.
-pub const FRAGMENT_SHADER: &'static str = "
+/// The fragment shader used within the `glium::Program` for OpenGL.
+pub const FRAGMENT_SHADER_GL: &'static str = "
     #version 140
     uniform sampler2D tex;
 
@@ -162,6 +162,55 @@ pub const FRAGMENT_SHADER: &'static str = "
     }
 ";
 
+/// The vertex shader used within the `glium::Program` for OpenGL ES.
+pub const VERTEX_SHADER_GLES: &'static str = "
+    #version 300 es
+    precision mediump float;
+
+    in vec2 position;
+    in vec2 tex_coords;
+    in vec4 color;
+    in uint mode;
+
+    out vec2 v_tex_coords;
+    out vec4 v_color;
+    flat out uint v_mode;
+
+    void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+        v_tex_coords = tex_coords;
+        v_color = color;
+        v_mode = mode;
+    }
+";
+
+/// The fragment shader used within the `glium::Program` for OpenGL ES.
+pub const FRAGMENT_SHADER_GLES: &'static str = "
+    #version 300 es
+    precision mediump float;
+    uniform sampler2D tex;
+
+    in vec2 v_tex_coords;
+    in vec4 v_color;
+    flat in uint v_mode;
+
+    out vec4 f_color;
+
+    void main() {
+        // Text
+        if (v_mode == uint(0)) {
+            f_color = v_color * vec4(1.0, 1.0, 1.0, texture(tex, v_tex_coords).r);
+
+        // Image
+        } else if (v_mode == uint(1)) {
+            f_color = texture(tex, v_tex_coords);
+
+        // 2D Geometry
+        } else if (v_mode == uint(2)) {
+            f_color = v_color;
+        }
+    }
+";
 
 /// Glium textures that have two dimensions.
 pub trait TextureDimensions {
@@ -182,7 +231,8 @@ impl<T> TextureDimensions for T
 pub fn program<F>(facade: &F) -> Result<glium::Program, glium::program::ProgramChooserCreationError>
     where F: glium::backend::Facade,
 {
-    program!(facade, 140 => { vertex: VERTEX_SHADER, fragment: FRAGMENT_SHADER })
+    program!(facade, 140 => { vertex: VERTEX_SHADER_GL, fragment: FRAGMENT_SHADER_GL },
+             300 es => { vertex: VERTEX_SHADER_GLES, fragment: FRAGMENT_SHADER_GLES })
 }
 
 /// Default glium `DrawParameters` with alpha blending enabled.
