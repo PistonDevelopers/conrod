@@ -148,9 +148,8 @@ impl WindowEvents
                 }
             },
             State::Rendered => {
-                // Just rendered, swap buffers, send `AfterRender`, initialize for next frame
+                // Just rendered, send `AfterRender`, initialize for next frame
                 // and resume `Waiting`
-                window.swap_buffers();
                 self.last_frame_time = Instant::now();
                 self.next_frame_time = self.last_frame_time + self.dt_frame;
                 self.state = State::Waiting;

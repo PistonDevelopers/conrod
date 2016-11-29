@@ -150,6 +150,7 @@ impl<W> Window<W>
     /// Let window handle new event.
     pub fn handle_event(&mut self, event: &Event<W::Event>) {
         if let Some(_) = event.after_render_args() {
+            self.swap_buffers();
             self.context.after_render();
         }
         self.context.check_resize(self.window.draw_size());
