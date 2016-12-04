@@ -27,7 +27,7 @@ widget_ids! {
 }
 
 /// The default resolution of the circle used to draw the rounded corners.
-pub const DEFAULT_CORNER_RESOLUTION: usize = 48;
+pub const DEFAULT_CORNER_RESOLUTION: usize = 12;
 
 /// Unique state for the `RoundedRectangle`.
 pub struct State {
