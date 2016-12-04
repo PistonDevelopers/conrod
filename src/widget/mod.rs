@@ -12,7 +12,6 @@ use ui::{self, Ui, UiCell};
 
 
 pub use self::id::Id;
-//pub use self::index::Index;
 
 pub use self::primitive::line::{self, Line};
 pub use self::primitive::image::{self, Image};
@@ -35,6 +34,7 @@ pub use self::matrix::Matrix;
 pub use self::number_dialer::NumberDialer;
 pub use self::plot_path::PlotPath;
 pub use self::range_slider::RangeSlider;
+pub use self::rounded_rectangle::RoundedRectangle;
 pub use self::scrollbar::Scrollbar;
 pub use self::slider::Slider;
 pub use self::tabs::Tabs;
@@ -57,18 +57,19 @@ pub mod scroll;
 pub mod primitive;
 
 // Widget modules.
+pub mod bordered_rectangle;
 pub mod button;
 pub mod canvas;
 pub mod drop_down_list;
-pub mod list_select;
 pub mod envelope_editor;
 pub mod file_navigator;
-pub mod bordered_rectangle;
 pub mod list;
+pub mod list_select;
 pub mod matrix;
 pub mod number_dialer;
 pub mod plot_path;
 pub mod range_slider;
+pub mod rounded_rectangle;
 pub mod scrollbar;
 pub mod slider;
 pub mod tabs;

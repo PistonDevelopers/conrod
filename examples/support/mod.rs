@@ -86,6 +86,7 @@ widget_ids! {
 
         // Shapes.
         shapes_canvas,
+        rounded_rectangle,
         shapes_left_col,
         shapes_right_col,
         shapes_title,
@@ -190,6 +191,15 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
             (ids.shapes_right_col, widget::Canvas::new()),
         ])
         .set(ids.shapes_canvas, ui);
+
+    let shapes_canvas_rect = ui.rect_of(ids.shapes_canvas).unwrap();
+    let w = shapes_canvas_rect.w();
+    let h = shapes_canvas_rect.h() * 5.0 / 6.0;
+    let radius = 10.0;
+    widget::RoundedRectangle::fill([w, h], radius)
+        .color(conrod::color::CHARCOAL.alpha(0.25))
+        .middle_of(ids.shapes_canvas)
+        .set(ids.rounded_rectangle, ui);
 
     let start = [-40.0, -40.0];
     let end = [40.0, 40.0];
