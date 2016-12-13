@@ -305,6 +305,25 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
+        // Validate the position of the cursor. Ensure the indices lie within the text.
+        match state.cursor {
+            Cursor::Idx(index) => {
+                let new_index = index.clamp_to_lines(state.line_infos.iter().cloned());
+                if index != new_index {
+                    let new_cursor = Cursor::Idx(new_index);
+                    state.update(|state| state.cursor = new_cursor);
+                }
+            },
+            Cursor::Selection { start, end } => {
+                let new_start = start.clamp_to_lines(state.line_infos.iter().cloned());
+                let new_end = end.clamp_to_lines(state.line_infos.iter().cloned());
+                if start != new_start || end != new_end {
+                    let new_cursor = Cursor::Selection { start: new_start, end: new_end };
+                    state.update(|state| state.cursor = new_cursor);
+                }
+            },
+        }
+
         // Find the position of the cursor at the given index over the given text.
         let cursor_xy_at = |cursor_idx: text::cursor::Index,
                             text: &str,

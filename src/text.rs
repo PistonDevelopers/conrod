@@ -630,6 +630,33 @@ pub mod cursor {
                 })
         }
 
+        /// Clamps `self` to the given lines.
+        ///
+        /// If `self` would lie after the end of the last line, return the index at the end of the
+        /// last line.
+        ///
+        /// If `line_infos` is empty, returns cursor at line=0 char=0.
+        pub fn clamp_to_lines<I>(self, line_infos: I) -> Self
+            where I: Iterator<Item=super::line::Info>,
+        {
+            let mut last = None;
+            for (i, info) in line_infos.enumerate() {
+                if i == self.line {
+                    let num_chars = info.char_range().len();
+                    let char = std::cmp::min(self.char, num_chars);
+                    return Index { line: i, char: char };
+                }
+                last = Some((i, info));
+            }
+            match last {
+                Some((i, info)) => Index {
+                    line: i,
+                    char: info.char_range().len(),
+                },
+                None => Index { line: 0, char: 0 },
+            }
+        }
+
     }
 
 
