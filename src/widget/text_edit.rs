@@ -349,6 +349,23 @@ impl<'a> Widget for TextEdit<'a> {
             })
         };
 
+        // Validate the position of the cursor. Ensure it is a valid position within the text.
+        match state.cursor {
+            Cursor::Idx(index) => {
+                let new_index = index.clamp_to_lines(state.line_infos.iter().cloned());
+                if index != new_index {
+                    state.update(|state| state.cursor = Cursor::Idx(index));
+                }
+            },
+            Cursor::Selection { start, end } => {
+                let new_start = start.clamp_to_lines(state.line_infos.iter().cloned());
+                let new_end = end.clamp_to_lines(state.line_infos.iter().cloned());
+                if start != new_start || end != new_end {
+                    state.update(|state| state.cursor = Cursor::Selection { start: start, end: end });
+                }
+            },
+        }
+
         let mut cursor = state.cursor;
         let mut drag = state.drag;
 
