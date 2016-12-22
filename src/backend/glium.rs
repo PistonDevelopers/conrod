@@ -604,17 +604,24 @@ impl Renderer {
                 },
 
                 render::PrimitiveKind::Image { color, source_rect } => {
-                    // Switch to the `Textured` state if we're not in it already.
+
+                    // Switch to the `Image` state for this image if we're not in it already.
                     let widget_id = id;
                     match current_state {
+
+                        // If we're already in the drawing mode for this image, we're done.
                         State::Image { id, .. } if id == widget_id => (),
+
+                        // If we were in the `Plain` drawing state, switch to Image drawing state.
                         State::Plain { start } => {
                             commands.push(PreparedCommand::Plain(start..vertices.len()));
                             current_state = State::Image { id: id, start: vertices.len() };
                         },
+
+                        // If we were drawing a different image, switch state to draw *this* image.
                         State::Image { id, start } => {
                             commands.push(PreparedCommand::Image(id, start..vertices.len()));
-                            current_state = State::Image { id: id, start: vertices.len() };
+                            current_state = State::Image { id: widget_id, start: vertices.len() };
                         },
                     }
 
