@@ -207,15 +207,15 @@ impl Widget for List {
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, rect, prev, mut ui, style, .. } = args;
-        let List { item_h, num_items, item_instantiation, .. } = self;
+        let List { common, item_h, num_items, item_instantiation, .. } = self;
 
         // We need a positive item height in order to do anything useful.
         assert!(item_h > 0.0, "the given item height was {:?} however it must be > 0", item_h);
 
-        // Determine whther or not the list is scrollable.
-        let is_scrollable = prev.maybe_y_scroll_state.as_ref()
-            .map(|scroll_state| scroll_state.offset_bounds.magnitude().is_sign_negative())
-            .unwrap_or(false);
+        let total_item_h = num_items as Scalar * item_h;
+
+        // Determine whether or not the list is currently scrollable.
+        let is_scrollable = common.maybe_y_scroll.is_some() && total_item_h > rect.h();
 
         // The width of the scrollbar.
         let scrollbar_w = style.scrollbar_width(&ui.theme)
@@ -230,8 +230,6 @@ impl Widget for List {
             (true, Some(ScrollbarPosition::NextTo)) => rect.w() - scrollbar_w,
             _ => rect.w(),
         };
-
-        let total_item_h = num_items as Scalar * item_h;
 
         // The widget used to scroll the `List`'s range.
         //
