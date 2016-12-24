@@ -6,6 +6,7 @@ pub mod draw;
 pub mod event;
 pub mod window;
 pub mod gfx;
+pub mod events;
 
 pub use self::window::{EventWindow, Window, WindowEvents};
 pub use self::shader_version::OpenGL;

@@ -44,6 +44,7 @@ fn main() {
         // Convert the piston event to a conrod event.
         if let Some(e) = window::convert_event(event.clone(), &window) {
             ui.handle_event(e);
+            events.update();
         }
 
         event.update(|_| {
