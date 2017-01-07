@@ -11,7 +11,7 @@ extern crate texture;
 
 use self::shader_version::OpenGL;
 use self::gfx_graphics::{Gfx2d, GfxGraphics};
-use self::gfx_core::factory::Typed;
+use self::gfx::memory::Typed;
 use self::gfx::Device;
 
 use self::pistoncore_window::{OpenGLWindow, Size};
@@ -52,11 +52,11 @@ pub struct GfxContext {
     pub factory: gfx_device_gl::Factory,
 }
 
-fn create_main_targets(dim: gfx::tex::Dimensions) ->
+fn create_main_targets(dim: gfx::texture::Dimensions) ->
     (gfx::handle::RenderTargetView<gfx_device_gl::Resources, gfx::format::Srgba8>,
      gfx::handle::DepthStencilView<gfx_device_gl::Resources, gfx::format::DepthStencil>)
  {
-    use self::gfx_core::factory::Typed;
+    use self::gfx::memory::Typed;
     use self::gfx::format::{DepthStencil, Format, Formatted, Srgba8};
 
     let color_format: Format = <Srgba8 as Formatted>::get_format();
@@ -73,13 +73,13 @@ fn create_main_targets(dim: gfx::tex::Dimensions) ->
 impl GfxContext {
     /// Constructor for a new `GfxContext`
     pub fn new<W>(window: &mut W, opengl: OpenGL, samples: u8) -> Self
-        where W: OpenGLWindow 
+        where W: OpenGLWindow
     {
         let (device, mut factory) = gfx_device_gl::create(|s| window.get_proc_address(s) as *const _);
 
         let draw_size = window.draw_size();
         let (output_color, output_stencil) = {
-            let aa = samples as gfx::tex::NumSamples;
+            let aa = samples as gfx::texture::NumSamples;
             let dim = (draw_size.width as u16, draw_size.height as u16,
                        1, aa.into());
             create_main_targets(dim)
