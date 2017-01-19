@@ -391,7 +391,7 @@ pub const ORANGE         :  Color = make_color!(245, 121, 0);
 pub const DARK_ORANGE    :  Color = make_color!(206, 92, 0);
 
 /// Butter - Light - #FCE94F                              
-pub const LIGHT_YELLOW   :  Color = make_color!(1, 233, 79);
+pub const LIGHT_YELLOW   :  Color = make_color!(252, 233, 79);
 /// Butter - Regular - #EDD400                            
 pub const YELLOW         :  Color = make_color!(237, 212, 0);
 /// Butter - Dark - #C4A000                               

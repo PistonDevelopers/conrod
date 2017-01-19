@@ -28,7 +28,7 @@ mod feature {
     use gfx;
     use support;
 
-    use gfx::{Factory, Device, tex};
+    use gfx::{Factory, Device, texture};
     use gfx::traits::FactoryExt;
     use conrod::render;
     use conrod::text::rt;
@@ -81,9 +81,9 @@ mod feature {
         }
 
         pipeline pipe {
-            vbuf: ::gfx::VertexBuffer<Vertex> = (),
-            color: ::gfx::TextureSampler<[f32; 4]> = "t_Color",
-            out: ::gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
+            vbuf: gfx::VertexBuffer<Vertex> = (),
+            color: gfx::TextureSampler<[f32; 4]> = "t_Color",
+            out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
         }
     }
 
@@ -108,8 +108,12 @@ mod feature {
 
         where R: gfx::Resources, F: gfx::Factory<R>
     {
-        let kind = tex::Kind::D2(width as tex::Size, height as tex::Size, tex::AaMode::Single);
-        factory.create_texture_const_u8::<ColorFormat>(kind, &[data]).unwrap()
+        let kind = texture::Kind::D2(
+            width as texture::Size,
+            height as texture::Size,
+            texture::AaMode::Single
+        );
+        factory.create_texture_immutable_u8::<ColorFormat>(kind, &[data]).unwrap()
     }
 
     // Updates a texture with the given data (used for updating the GlyphCache texture)
@@ -121,7 +125,7 @@ mod feature {
 
         where R: gfx::Resources, C: gfx::CommandBuffer<R>
     {
-        let info = tex::ImageInfoCommon {
+        let info = texture::ImageInfoCommon {
                 xoffset: offset[0],
                 yoffset: offset[1],
                 zoffset: 0,
@@ -148,7 +152,10 @@ mod feature {
 
 
         // Create texture sampler
-        let sampler_info = tex::SamplerInfo::new(tex::FilterMethod::Bilinear, tex::WrapMode::Clamp);
+        let sampler_info = texture::SamplerInfo::new(
+            texture::FilterMethod::Bilinear,
+            texture::WrapMode::Clamp
+        );
         let sampler = factory.create_sampler(sampler_info);
 
         // Dummy values for initialization
@@ -192,7 +199,7 @@ mod feature {
             let data = vec![0; (width * height * 4) as usize];
 
             let (texture, texture_view) = create_texture(&mut factory, width, height, &data);
-            
+
             (cache, texture, texture_view)
         };
 
