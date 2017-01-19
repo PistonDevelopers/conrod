@@ -43,13 +43,14 @@ fn main() {
     let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
 
     // Declare the ID for each of our widgets.
-    widget_ids!(struct Ids { canvas, button, rust_logo });
+    widget_ids!(struct Ids { canvas, button, rust_logo, rust_logo_alt });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let image_map = image_map! {
         (ids.rust_logo, load_rust_logo(&mut window.context)),
+        (ids.rust_logo_alt, load_rust_logo_alt(&mut window.context)),
     };
 
     // We'll instantiate the `Button` at the logo's full size, so we'll retrieve its dimensions.
@@ -78,12 +79,14 @@ fn main() {
                 .set(ids.canvas, ui);
 
             // Button widget example button.
-            if widget::Button::image(ids.rust_logo)
+            if widget::Button::image(ids.rust_logo,Some(ids.rust_logo_alt))
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
                 .middle_of(ids.canvas)
                 .color(color::TRANSPARENT)
                 .border(0.0)
-                .image_color_with_feedback(color::BLACK)
+                //.image_color_with_feedback(color::BLACK)
+                .hover_color(Some(color::TRANSPARENT))
+                .clicked_color(Some(color::TRANSPARENT))
                 .set(ids.button, ui)
                 .was_clicked()
             {
@@ -107,6 +110,14 @@ fn main() {
 fn load_rust_logo(context: &mut GfxContext) -> G2dTexture<'static> {
     let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
     let path = assets.join("images/rust.png");
+    let factory = &mut context.factory;
+    let settings = TextureSettings::new();
+    Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
+}
+
+fn load_rust_logo_alt(context: &mut GfxContext) -> G2dTexture<'static> {
+    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+    let path = assets.join("images/rust_alt.png");
     let factory = &mut context.factory;
     let settings = TextureSettings::new();
     Texture::from_path(factory, &path, Flip::None, &settings).unwrap()

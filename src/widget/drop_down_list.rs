@@ -329,6 +329,8 @@ impl Style {
             label_font_size: self.label_font_size,
             label_x_align: self.label_x_align,
             label_font_id: self.label_font_id,
+            hover_color: self.color.map(|c|c.highlighted()),
+            clicked_color:self.color.map(|c|c.clicked()),
         }
     }
 

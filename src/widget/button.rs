@@ -15,6 +15,7 @@ use {
     Widget,
 };
 use text;
+use color;
 use widget;
 
 
@@ -29,7 +30,8 @@ pub struct Button<'a, S> {
     pub style: Style,
     /// Whether or not user input is enabled.
     enabled: bool,
-    
+    // True if the button is currently down
+    //is_down: bool,
 }
 
 widget_style!{
@@ -49,10 +51,10 @@ widget_style!{
         - label_x_align: Align { Align::Middle }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
-        //The color of the hover effect
-        - hover_color: Option<Color> {None}
-        //The color of the clicked effect
-        - clicked_color: Option<Color> {None}
+        /// The color of the hover effect
+        - hover_color: Color { color::TRANSPARENT }
+        /// The color of the clicked effect
+        - clicked_color: Color { color::TRANSPARENT }
     
     }
 }
@@ -67,7 +69,7 @@ widget_ids! {
 /// The style of the `Button`, either `Flat` or `Image`.
 pub trait Show: Sized {
     /// Display the unique styling of the `Button`.
-    fn show(self, _button_id: widget::Id, _ui: &mut UiCell) {}
+    fn show(self, _button_id: widget::Id, _ui: &mut UiCell, is_down: bool) {}
 }
 
 /// The `Button` simply displays a flat color.
@@ -83,6 +85,8 @@ pub struct Image {
     pub color: ImageColor,
     /// The rectangular area of the original source image that should be displayed.
     pub src_rect: Option<Rect>,
+    /// The id of an Alternate image to show when pressed
+    pub alt_id: Option<widget::Id>,
 }
 
 /// The coloring of the `Image`.
@@ -220,6 +224,8 @@ impl<'a, S> Button<'a, S> {
 
     builder_methods!{
         pub enabled { enabled = bool }
+        pub hover_color { style.hover_color = Option<Color> }
+        pub clicked_color { style.clicked_color = Option<Color> }
     }
 }
 
@@ -254,17 +260,20 @@ impl<'a, S> Widget for Button<'a, S>
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
 
-        let (color, times_clicked) = {
+        let (color, times_clicked,is_down) = {
             let input = ui.widget_input(id);
             let color = style.color(ui.theme());
+            let mut is_down = false;
             let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
-                    if let Some(clicked_color) = style.clicked_color {
-                        clicked_color
+                    is_down = true;
+                    if let Some(clicked_color_destruct) = style.clicked_color {
+                        clicked_color_destruct
                     } else {
                         color.clicked()
                     }
                 } else {
+                    is_down = false;
                     if let Some(hover_color) = style.hover_color {
                         hover_color
                     } else {
@@ -273,7 +282,7 @@ impl<'a, S> Widget for Button<'a, S>
                 }
             });
             let times_clicked = input.clicks().left().count() as u16;
-            (color, times_clicked)
+            (color, times_clicked,is_down)
         };
 
         // BorderedRectangle widget.
@@ -289,7 +298,7 @@ impl<'a, S> Widget for Button<'a, S>
             .set(state.ids.rectangle, ui);
 
         // This instantiates the image widget if necessary.
-        show.show(id, ui, mouse.buttons.left().is_down());
+        show.show(id, ui, is_down);
 
         // Label widget.
         if let Some(label) = maybe_label {
@@ -343,7 +352,7 @@ impl<'a, S> Labelable<'a> for Button<'a, S> {
 impl Show for Flat {}
 
 impl Show for Image {
-    fn show(self, button_id: widget::Id, ui: &mut UiCell, is_pressed: bool) {
+    fn show(self, button_id: widget::Id, ui: &mut UiCell, is_down: bool) {
         let Image { id, src_rect, color, alt_id } = self;
         let mut image = widget::Image::new()
             .middle_of(button_id)
@@ -364,11 +373,11 @@ impl Show for Image {
             ImageColor::None => None,
         };
 
-        let image_id;
+        let mut image_id = id;
         if let Some(alt_image) = alt_id {
-            image_id = alt_image;
-        } else {
-            image_id = id;
+            if is_down {
+                image_id = alt_image;
+            }
         }
 
         image.set(image_id, ui);
