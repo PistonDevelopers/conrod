@@ -30,8 +30,6 @@ pub struct Button<'a, S> {
     pub style: Style,
     /// Whether or not user input is enabled.
     enabled: bool,
-    // True if the button is currently down
-    //is_down: bool,
 }
 
 widget_style!{
