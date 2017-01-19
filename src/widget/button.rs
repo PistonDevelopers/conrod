@@ -29,6 +29,7 @@ pub struct Button<'a, S> {
     pub style: Style,
     /// Whether or not user input is enabled.
     enabled: bool,
+    
 }
 
 widget_style!{
@@ -48,6 +49,11 @@ widget_style!{
         - label_x_align: Align { Align::Middle }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
+        //The color of the hover effect
+        - hover_color: Option<Color> {None}
+        //The color of the clicked effect
+        - clicked_color: Option<Color> {None}
+    
     }
 }
 
@@ -128,11 +134,12 @@ impl Iterator for TimesClicked {
 impl<'a> Button<'a, Image> {
 
     /// Begin building a button displaying the given `Image` on top.
-    pub fn image(image_id: widget::Id) -> Self {
+    pub fn image(image_id: widget::Id, alt_image_id: Option<widget::Id>) -> Self {
         let image = Image {
             id: image_id,
             src_rect: None,
             color: ImageColor::None,
+            alt_id: alt_image_id,
         };
         Self::new_internal(image)
     }
@@ -252,9 +259,17 @@ impl<'a, S> Widget for Button<'a, S>
             let color = style.color(ui.theme());
             let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
-                    color.clicked()
+                    if let Some(clicked_color) = style.clicked_color {
+                        clicked_color
+                    } else {
+                        color.clicked()
+                    }
                 } else {
-                    color.highlighted()
+                    if let Some(hover_color) = style.hover_color {
+                        hover_color
+                    } else {
+                        color.highlighted()
+                    }                   
                 }
             });
             let times_clicked = input.clicks().left().count() as u16;
@@ -274,7 +289,7 @@ impl<'a, S> Widget for Button<'a, S>
             .set(state.ids.rectangle, ui);
 
         // This instantiates the image widget if necessary.
-        show.show(id, ui);
+        show.show(id, ui, mouse.buttons.left().is_down());
 
         // Label widget.
         if let Some(label) = maybe_label {
@@ -328,8 +343,8 @@ impl<'a, S> Labelable<'a> for Button<'a, S> {
 impl Show for Flat {}
 
 impl Show for Image {
-    fn show(self, button_id: widget::Id, ui: &mut UiCell) {
-        let Image { id, src_rect, color } = self;
+    fn show(self, button_id: widget::Id, ui: &mut UiCell, is_pressed: bool) {
+        let Image { id, src_rect, color, alt_id } = self;
         let mut image = widget::Image::new()
             .middle_of(button_id)
             .wh_of(button_id)
@@ -348,6 +363,15 @@ impl Show for Image {
                     .or(Some(Some(color))),
             ImageColor::None => None,
         };
-        image.set(id, ui);
+
+        let image_id;
+        if let Some(alt_image) = alt_id {
+            image_id = alt_image;
+        } else {
+            image_id = id;
+        }
+
+        image.set(image_id, ui);
+
     }
 }
