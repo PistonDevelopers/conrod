@@ -84,7 +84,7 @@ pub struct Image {
     /// The rectangular area of the original source image that should be displayed.
     pub src_rect: Option<Rect>,
     /// The id of an Alternate image to show when pressed
-    pub alt_id: Option<widget::Id>,
+    pub pressed_id: Option<widget::Id>,
 }
 
 /// The coloring of the `Image`.
@@ -136,12 +136,12 @@ impl Iterator for TimesClicked {
 impl<'a> Button<'a, Image> {
 
     /// Begin building a button displaying the given `Image` on top.
-    pub fn image(image_id: widget::Id, alt_image_id: Option<widget::Id>) -> Self {
+    pub fn image(image_id: widget::Id) -> Self {
         let image = Image {
             id: image_id,
             src_rect: None,
             color: ImageColor::None,
-            alt_id: alt_image_id,
+            pressed_id: None,
         };
         Self::new_internal(image)
     }
@@ -169,6 +169,9 @@ impl<'a> Button<'a, Image> {
         self
     }
 
+    builder_methods!{
+        pub press_image { show.pressed_id = Some(widget::Id) }
+    }
 }
 
 impl<'a> Button<'a, Flat> {
@@ -222,8 +225,8 @@ impl<'a, S> Button<'a, S> {
 
     builder_methods!{
         pub enabled { enabled = bool }
-        pub hover_color { style.hover_color = Option<Color> }
-        pub clicked_color { style.clicked_color = Option<Color> }
+        pub hover_color { style.hover_color = Some(Color) }
+        pub clicked_color { style.clicked_color = Some(Color) }
     }
 }
 
@@ -265,18 +268,16 @@ impl<'a, S> Widget for Button<'a, S>
             let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
                     is_down = true;
-                    if let Some(clicked_color_destruct) = style.clicked_color {
-                        clicked_color_destruct
-                    } else {
-                        color.clicked()
+                    match style.clicked_color {
+                        Some(clicked_color) => clicked_color,
+                        None => color.clicked(),
                     }
                 } else {
                     is_down = false;
-                    if let Some(hover_color) = style.hover_color {
-                        hover_color
-                    } else {
-                        color.highlighted()
-                    }                   
+                    match style.hover_color {
+                        Some(hover_color) => hover_color,
+                        None => color.highlighted(),
+                    }                
                 }
             });
             let times_clicked = input.clicks().left().count() as u16;
@@ -351,7 +352,7 @@ impl Show for Flat {}
 
 impl Show for Image {
     fn show(self, button_id: widget::Id, ui: &mut UiCell, is_down: bool) {
-        let Image { id, src_rect, color, alt_id } = self;
+        let Image { id, src_rect, color, pressed_id } = self;
         let mut image = widget::Image::new()
             .middle_of(button_id)
             .wh_of(button_id)
@@ -371,12 +372,10 @@ impl Show for Image {
             ImageColor::None => None,
         };
 
-        let mut image_id = id;
-        if let Some(alt_image) = alt_id {
-            if is_down {
-                image_id = alt_image;
-            }
-        }
+        let image_id = match pressed_id {
+            Some(pressed_id) if is_down => pressed_id,
+            None | Some(_)=> id,
+        };
 
         image.set(image_id, ui);
 
