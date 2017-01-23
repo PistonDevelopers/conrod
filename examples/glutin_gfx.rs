@@ -9,6 +9,7 @@ extern crate conrod;
 extern crate glutin;
 #[macro_use]
 extern crate gfx;
+extern crate gfx_core;
 
 #[cfg(feature="glutin")]
 mod support;
@@ -108,12 +109,49 @@ mod feature {
 
         where R: gfx::Resources, F: gfx::Factory<R>
     {
+        // Modified `Factory::create_texture_immutable_u8` for dynamic texture.
+        fn create_texture<T, F, R>(
+            factory: &mut F,
+            kind: gfx::texture::Kind,
+            data: &[&[u8]]
+        ) -> Result<(
+            gfx::handle::Texture<R, T::Surface>,
+            gfx::handle::ShaderResourceView<R, T::View>
+        ), gfx::CombinedError>
+            where F: gfx::Factory<R>,
+                  R: gfx::Resources,
+                  T: gfx::format::TextureFormat
+        {
+            use gfx::{format, texture};
+            use gfx::memory::{Usage, SHADER_RESOURCE};
+            use gfx_core::memory::Typed;
+
+            let surface = <T::Surface as format::SurfaceTyped>::get_surface_type();
+            let num_slices = kind.get_num_slices().unwrap_or(1) as usize;
+            let num_faces = if kind.is_cube() {6} else {1};
+            let desc = texture::Info {
+                kind: kind,
+                levels: (data.len() / (num_slices * num_faces)) as texture::Level,
+                format: surface,
+                bind: SHADER_RESOURCE,
+                usage: Usage::Dynamic,
+            };
+            let cty = <T::Channel as format::ChannelTyped>::get_channel_type();
+            let raw = try!(factory.create_texture_raw(desc, Some(cty), Some(data)));
+            let levels = (0, raw.get_info().levels - 1);
+            let tex = Typed::new(raw);
+            let view = try!(factory.view_texture_as_shader_resource::<T>(
+                &tex, levels, format::Swizzle::new()
+            ));
+            Ok((tex, view))
+        }
+
         let kind = texture::Kind::D2(
             width as texture::Size,
             height as texture::Size,
             texture::AaMode::Single
         );
-        factory.create_texture_immutable_u8::<ColorFormat>(kind, &[data]).unwrap()
+        create_texture::<ColorFormat, F, R>(factory, kind, &[data]).unwrap()
     }
 
     // Updates a texture with the given data (used for updating the GlyphCache texture)
