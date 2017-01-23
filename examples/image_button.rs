@@ -79,14 +79,15 @@ fn main() {
                 .set(ids.canvas, ui);
 
             // Button widget example button.
-            if widget::Button::image(ids.rust_logo,Some(ids.rust_logo_alt))
+            if widget::Button::image(ids.rust_logo)
+                .press_image(ids.rust_logo_alt)
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
                 .middle_of(ids.canvas)
                 .color(color::TRANSPARENT)
                 .border(0.0)
                 //.image_color_with_feedback(color::BLACK)
-                .hover_color(Some(color::TRANSPARENT))
-                .clicked_color(Some(color::TRANSPARENT))
+                .hover_color(color::TRANSPARENT)
+                .clicked_color(color::TRANSPARENT)
                 .set(ids.button, ui)
                 .was_clicked()
             {
