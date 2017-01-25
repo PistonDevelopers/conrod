@@ -13,6 +13,7 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
+#[cfg(all(feature="glutin", feature="glium"))] mod support;
 
 
 /// The module in which we'll implement our own custom circular button.
@@ -232,31 +233,25 @@ mod circular_button {
     }
 }
 
-pub fn main() {
-    use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
-    use conrod::backend::piston::event::UpdateEvent;
 
+#[cfg(all(feature="glutin", feature="glium"))]
+fn main() {
+    use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
+    use conrod::backend::glium::glium;
+    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use support;
     use self::circular_button::CircularButton;
 
     const WIDTH: u32 = 1200;
     const HEIGHT: u32 = 800;
 
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
-
-    // PistonWindow has two type parameters, but the default type is
-    // PistonWindow<T = (), W: Window = GlutinWindow>. To change the Piston backend,
-    // specify a different type in the let binding, e.g.
-    // let window: PistonWindow<(), Sdl2Window>.
-    let mut window: Window =
-        piston::window::WindowSettings::new("Control Panel", [WIDTH, HEIGHT])
-            .opengl(opengl)
-            .exit_on_esc(true)
-            .build().unwrap();
-
-    // Create the event loop.
-    let mut events = WindowEvents::new();
+    // Build the window.
+    let display = glium::glutin::WindowBuilder::new()
+        .with_vsync()
+        .with_dimensions(WIDTH, HEIGHT)
+        .with_title("Control Panel")
+        .build_glium()
+        .unwrap();
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -277,21 +272,39 @@ pub fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     let regular = ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+    // for drawing to the glium `Surface`.
+    let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
-    let image_map = conrod::image::Map::new();
+    let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-    while let Some(event) = window.next_event(&mut events) {
+    // Poll events from the window.
+    let mut event_loop = support::EventLoop::new();
+    'main: loop {
 
-        // Convert the piston event to a conrod event.
-        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
-            ui.handle_event(e);
+        // Handle all events.
+        for event in event_loop.next(&display) {
+
+            // Use the `glutin` backend feature to convert the glutin event to a conrod one.
+            let window = display.get_window().unwrap();
+            if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+                ui.handle_event(event);
+                event_loop.needs_update();
+            }
+
+            match event {
+                // Break from the loop upon `Escape`.
+                glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
+                glium::glutin::Event::Closed =>
+                    break 'main,
+                _ => {},
+            }
         }
 
-        event.update(|_| {
-            let ui = &mut ui.set_widgets();
+        // Instantiate the widgets.
+        {
+           let ui = &mut ui.set_widgets();
 
             // Sets a color to clear the background with before the Ui draws our widget.
             widget::Canvas::new().color(conrod::color::DARK_RED).set(ids.background, ui);
@@ -310,17 +323,21 @@ pub fn main() {
             {
                 println!("Click!");
             }
-        });
+        }
 
-        // Draws the whole Ui (in this case, just our widget) whenever a change occurs.
-        window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-                fn texture_from_image<T>(img: &T) -> &T { img };
-                piston::window::draw(c, g, primitives,
-                                     &mut text_texture_cache,
-                                     &image_map,
-                                     texture_from_image);
-            }
-        });
+        // Render the `Ui` and then display it on the screen.
+        if let Some(primitives) = ui.draw_if_changed() {
+            renderer.fill(&display, primitives, &image_map);
+            let mut target = display.draw();
+            target.clear_color(0.0, 0.0, 0.0, 1.0);
+            renderer.draw(&display, &mut target, &image_map).unwrap();
+            target.finish().unwrap();
+        }
     }
+}
+
+#[cfg(not(all(feature="glutin", feature="glium")))]
+fn main() {
+    println!("This example requires the `glutin` and `glium` features. \
+             Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
 }
