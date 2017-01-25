@@ -126,6 +126,6 @@ mod feature {
 mod feature {
     pub fn main() {
         println!("This example requires the `glutin` and `glium` features. \
-                 Try running `cargo run --release --no-default-features --features=\"glutin glium\" --example <example_name>`");
+                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
     }
 }
