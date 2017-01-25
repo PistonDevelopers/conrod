@@ -420,24 +420,3 @@ impl EventLoop {
     }
 
 }
-
-
-/// We must manually track the window width and height as it is currently not possible to
-/// receive `Resize` events from glium on Mac OS any other way.
-///
-/// TODO: Remove this once the following PR lands and is published
-/// https://github.com/tomaka/winit/pull/118
-#[cfg(feature="glium")]
-pub fn check_for_window_resize(ui: &conrod::Ui, display: &glium::Display)
-    -> Option<conrod::event::Input>
-{
-    ui.rect_of(ui.window).and_then(|win_rect| {
-        let (win_w, win_h) = (win_rect.w() as u32, win_rect.h() as u32);
-        let (w, h) = display.get_window().unwrap().get_inner_size_points().unwrap();
-        if w != win_w || h != win_h {
-            Some(conrod::event::Input::Resize(w, h))
-        } else {
-            None
-        }
-    })
-}

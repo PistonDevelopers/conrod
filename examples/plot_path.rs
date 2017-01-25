@@ -65,12 +65,6 @@ mod feature {
                 }
             }
 
-            // TODO: Remove this once the following PR lands and is published
-            // https://github.com/tomaka/winit/pull/118
-            if let Some(resize) = support::check_for_window_resize(&ui, &display) {
-                ui.handle_event(resize);
-            }
-
             // Instantiate the widgets.
             {
                 use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};

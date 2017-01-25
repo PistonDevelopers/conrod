@@ -79,12 +79,6 @@ mod feature {
                 }
             }
 
-            // TODO: Remove this once the following PR lands and is published
-            // https://github.com/tomaka/winit/pull/118
-            if let Some(resize) = support::check_for_window_resize(&ui, &display) {
-                ui.handle_event(resize);
-            }
-
             // Instnatiate all widgets in the GUI.
             set_ui(ui.set_widgets(), &ids, &mut demo_text);
 
