@@ -118,7 +118,53 @@ pub const MODE_GEOMETRY: u32 = 2;
 
 
 /// The vertex shader used within the `glium::Program` for OpenGL.
-pub const VERTEX_SHADER_GL: &'static str = "
+pub const VERTEX_SHADER_120: &'static str = "
+    #version 120
+
+    attribute vec2 position;
+    attribute vec2 tex_coords;
+    attribute vec4 color;
+    attribute float mode;
+
+    varying vec2 v_tex_coords;
+    varying vec4 v_color;
+    varying float v_mode;
+
+    void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+        v_tex_coords = tex_coords;
+        v_color = color;
+        v_mode = mode;
+    }
+";
+
+/// The fragment shader used within the `glium::Program` for OpenGL.
+pub const FRAGMENT_SHADER_120: &'static str = "
+    #version 120
+    uniform sampler2D tex;
+
+    varying vec2 v_tex_coords;
+    varying vec4 v_color;
+    varying float v_mode;
+
+    void main() {
+        // Text
+        if (v_mode == 0) {
+            gl_FragColor = v_color * vec4(1.0, 1.0, 1.0, texture2D(tex, v_tex_coords).r);
+
+        // Image
+        } else if (v_mode == 1) {
+            gl_FragColor = texture2D(tex, v_tex_coords);
+
+        // 2D Geometry
+        } else if (v_mode == 2) {
+            gl_FragColor = v_color;
+        }
+    }
+";
+
+/// The vertex shader used within the `glium::Program` for OpenGL.
+pub const VERTEX_SHADER_140: &'static str = "
     #version 140
 
     in vec2 position;
@@ -139,7 +185,7 @@ pub const VERTEX_SHADER_GL: &'static str = "
 ";
 
 /// The fragment shader used within the `glium::Program` for OpenGL.
-pub const FRAGMENT_SHADER_GL: &'static str = "
+pub const FRAGMENT_SHADER_140: &'static str = "
     #version 140
     uniform sampler2D tex;
 
@@ -234,7 +280,9 @@ impl<T> TextureDimensions for T
 pub fn program<F>(facade: &F) -> Result<glium::Program, glium::program::ProgramChooserCreationError>
     where F: glium::backend::Facade,
 {
-    program!(facade, 140 => { vertex: VERTEX_SHADER_GL, fragment: FRAGMENT_SHADER_GL },
+    program!(facade,
+             120 => { vertex: VERTEX_SHADER_120, fragment: FRAGMENT_SHADER_120 },
+             140 => { vertex: VERTEX_SHADER_140, fragment: FRAGMENT_SHADER_140 },
              300 es => { vertex: VERTEX_SHADER_GLES, fragment: FRAGMENT_SHADER_GLES })
 }
 
@@ -715,6 +763,7 @@ impl Renderer {
             tex: self.glyph_cache.texture()
                 .sampled()
                 .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
+                .minify_filter(glium::uniforms::MinifySamplerFilter::Linear)
         };
 
         for command in self.commands() {
