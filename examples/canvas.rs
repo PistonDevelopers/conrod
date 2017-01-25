@@ -35,8 +35,8 @@ mod feature {
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
-        // A type used for converting `conrod::render::Primitives` into `Command`s that can be used for
-        // drawing to the glium `Surface`.
+        // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+        // for drawing to the glium `Surface`.
         let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
         // The image map describing each of our widget->image mappings (in our case, none).
@@ -86,7 +86,6 @@ mod feature {
                 target.finish().unwrap();
             }
         }
-
     }
 
     // Draw the Ui.
