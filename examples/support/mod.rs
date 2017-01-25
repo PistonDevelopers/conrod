@@ -9,6 +9,7 @@
 //!
 //! By sharing these items between these examples, we can test and ensure that the different events
 //! and drawing backends behave in the same manner.
+#![allow(dead_code)]
 
 extern crate rand;
 
