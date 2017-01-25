@@ -2,82 +2,119 @@
 //! A simple demonstration of how to instantiate an `Image` widget.
 //!
 
-#[macro_use] extern crate conrod;
-extern crate find_folder;
-
-use conrod::{widget, Colorable, Positionable, Sizeable, Widget, color};
-use conrod::backend::piston::gfx::{GfxContext, G2dTexture, Texture, TextureSettings, Flip};
-use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
-use conrod::backend::piston::draw::ImageSize;
-use conrod::backend::piston::event::UpdateEvent;
+#[cfg(all(feature="glutin", feature="glium"))] #[macro_use] extern crate conrod;
+#[cfg(all(feature="glutin", feature="glium"))] mod support;
 
 fn main() {
-    const WIDTH: u32 = 800;
-    const HEIGHT: u32 = 600;
+    feature::main();
+}
 
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
+#[cfg(all(feature="glutin", feature="glium"))]
+mod feature {
+    extern crate find_folder;
+    extern crate image;
+    use conrod::{self, widget, Colorable, Positionable, Sizeable, Widget, color};
+    use conrod::backend::glium::glium;
+    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use std;
+    use support;
 
-    // Construct the window.
-    let mut window: Window =
-        piston::window::WindowSettings::new("Image Widget Demonstration", [WIDTH, HEIGHT])
-            .opengl(opengl).exit_on_esc(true).vsync(true).samples(4).build().unwrap();
+    pub fn main() {
+        const WIDTH: u32 = 800;
+        const HEIGHT: u32 = 600;
 
-    // Create the event loop.
-    let mut events = WindowEvents::new();
+        // Build the window.
+        let display = glium::glutin::WindowBuilder::new()
+            .with_vsync()
+            .with_dimensions(WIDTH, HEIGHT)
+            .with_title("Image Widget Demonstration")
+            .build_glium()
+            .unwrap();
 
-    // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+        // construct our `Ui`.
+        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-    // Create an empty texture to pass for the text cache as we're not drawing any text.
-    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, 0, 0);
+        // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+        // for drawing to the glium `Surface`.
+        let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
-    // The `WidgetId` for our background and `Image` widgets.
-    widget_ids!(struct Ids { background, rust_logo });
-    let ids = Ids::new(ui.widget_id_generator());
+        // The `WidgetId` for our background and `Image` widgets.
+        widget_ids!(struct Ids { background, rust_logo });
+        let ids = Ids::new(ui.widget_id_generator());
 
-    // Create our `conrod::image::Map` which describes each of our widget->image mappings.
-    // In our case we only have one image, however the macro may be used to list multiple.
-    let image_map = image_map! {
-        (ids.rust_logo, load_rust_logo(&mut window.context)),
-    };
+        // Create our `conrod::image::Map` which describes each of our widget->image mappings.
+        // In our case we only have one image, however the macro may be used to list multiple.
+        let rust_logo = load_rust_logo(&display);
+        let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
+        let image_map = image_map! {
+            (ids.rust_logo, rust_logo),
+        };
 
-    // We'll instantiate the `Image` at its full size, so we'll retrieve its dimensions.
-    let (w, h) = image_map.get(&ids.rust_logo).unwrap().get_size();
+        // Poll events from the window.
+        let mut event_loop = support::EventLoop::new();
+        'main: loop {
 
-    // Poll events from the window.
-    while let Some(event) = window.next_event(&mut events) {
+            // Handle all events.
+            for event in event_loop.next(&display) {
 
-        // Convert the piston event to a conrod input event.
-        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
-            ui.handle_event(e);
-        }
+                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
+                let window = display.get_window().unwrap();
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+                    ui.handle_event(event);
+                    event_loop.needs_update();
+                }
 
-        window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-                fn texture_from_image<T>(img: &T) -> &T { img };
-                piston::window::draw(c, g, primitives,
-                                     &mut text_texture_cache,
-                                     &image_map,
-                                     texture_from_image);
+                match event {
+                    // Break from the loop upon `Escape`.
+                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
+                    glium::glutin::Event::Closed =>
+                        break 'main,
+                    _ => {},
+                }
             }
-        });
 
-        event.update(|_| {
-            let ui = &mut ui.set_widgets();
-            // Draw a light blue background.
-            widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
-            // Instantiate the `Image` at its full size in the middle of the window.
-            widget::Image::new().w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
-        });
+            // TODO: Remove this once the following PR lands and is published
+            // https://github.com/tomaka/winit/pull/118
+            if let Some(resize) = support::check_for_window_resize(&ui, &display) {
+                ui.handle_event(resize);
+            }
+
+            // Instantiate the widgets.
+            {
+                let ui = &mut ui.set_widgets();
+                // Draw a light blue background.
+                widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
+                // Instantiate the `Image` at its full size in the middle of the window.
+                widget::Image::new().w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
+            }
+
+            // Render the `Ui` and then display it on the screen.
+            if let Some(primitives) = ui.draw_if_changed() {
+                renderer.fill(&display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(&display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
+            }
+        }
+    }
+
+    // Load the Rust logo from our assets folder to use as an example image.
+    fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
+        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let path = assets.join("images/rust.png");
+        let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+        let image_dimensions = rgba_image.dimensions();
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+        let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
+        texture
     }
 }
 
-// Load the Rust logo from our assets folder.
-fn load_rust_logo(context: &mut GfxContext) -> G2dTexture<'static> {
-    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-    let path = assets.join("images/rust.png");
-    let factory = &mut context.factory;
-    let settings = TextureSettings::new();
-    Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
+#[cfg(not(all(feature="glutin", feature="glium")))]
+mod feature {
+    pub fn main() {
+        println!("This example requires the `glutin` and `glium` features. \
+                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
+    }
 }
