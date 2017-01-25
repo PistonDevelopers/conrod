@@ -2,16 +2,15 @@
 //!
 //! Note that the `glium` crate is re-exported via the `conrod::backend::glium` module.
 
-#[cfg(feature="glutin")] #[cfg(feature="glium")] #[macro_use] extern crate conrod;
+#[cfg(all(feature="glutin", feature="glium"))] #[macro_use] extern crate conrod;
 
-#[cfg(feature="glutin")] #[cfg(feature="glium")] mod support;
+#[cfg(all(feature="glutin", feature="glium"))] mod support;
 
 fn main() {
     feature::main();
 }
 
-#[cfg(feature="glutin")]
-#[cfg(feature="glium")]
+#[cfg(all(feature="glutin", feature="glium"))]
 mod feature {
     extern crate find_folder;
     extern crate image;
@@ -75,19 +74,21 @@ mod feature {
 
         // Start the loop:
         //
-        // - Render the current state of the `Ui`.
-        // - Update the widgets via the `support::gui` fn.
         // - Poll the window for available events.
+        // - Update the widgets via the `support::gui` fn.
+        // - Render the current state of the `Ui`.
         // - Repeat.
+        let mut event_loop = support::EventLoop::new();
         'main: loop {
 
-            // Poll for events.
-            for event in display.poll_events() {
+            // Handle all events.
+            for event in event_loop.next(&display) {
 
                 // Use the `glutin` backend feature to convert the glutin event to a conrod one.
                 let window = display.get_window().unwrap();
                 if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
                     ui.handle_event(event);
+                    event_loop.needs_update();
                 }
 
                 match event {
@@ -95,31 +96,18 @@ mod feature {
                     glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
                     glium::glutin::Event::Closed =>
                         break 'main,
-
                     _ => {},
                 }
             }
 
-            // We must manually track the window width and height as it is currently not possible to
-            // receive `Resize` events from glium on Mac OS any other way.
-            //
-            // TODO: Once the following PR lands, we should stop tracking size like this and use the
-            // `window_resize_callback`. https://github.com/tomaka/winit/pull/88
-            if let Some(win_rect) = ui.rect_of(ui.window) {
-                let (win_w, win_h) = (win_rect.w() as u32, win_rect.h() as u32);
-                let (w, h) = display.get_window().unwrap().get_inner_size_points().unwrap();
-                if w != win_w || h != win_h {
-                    let event = conrod::event::Input::Resize(w, h);
-                    ui.handle_event(event);
-                }
+            // TODO: Remove this once the following PR lands and is published
+            // https://github.com/tomaka/winit/pull/118
+            if let Some(resize) = support::check_for_window_resize(&ui, &display) {
+                ui.handle_event(resize);
             }
 
-            // If some input event has been received, update the GUI.
-            if ui.global_input.events().next().is_some() {
-                // Instantiate a GUI demonstrating every widget type provided by conrod.
-                let mut ui = ui.set_widgets();
-                support::gui(&mut ui, &ids, &mut app);
-            }
+            // Instantiate a GUI demonstrating every widget type provided by conrod.
+            support::gui(&mut ui.set_widgets(), &ids, &mut app);
 
             // Draw the `Ui`.
             if let Some(primitives) = ui.draw_if_changed() {
@@ -129,16 +117,12 @@ mod feature {
                 renderer.draw(&display, &mut target, &image_map).unwrap();
                 target.finish().unwrap();
             }
-
-            // Avoid hogging the CPU.
-            std::thread::sleep(std::time::Duration::from_millis(16));
         }
     }
 
 }
 
-#[cfg(not(feature="glutin"))]
-#[cfg(not(feature="glium"))]
+#[cfg(not(all(feature="glutin", feature="glium")))]
 mod feature {
     pub fn main() {
         println!("This example requires the `glutin` and `glium` features. \
