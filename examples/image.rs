@@ -61,7 +61,6 @@ mod feature {
                 let window = display.get_window().unwrap();
                 if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
                     ui.handle_event(event);
-                    event_loop.needs_update();
                 }
 
                 match event {

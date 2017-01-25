@@ -1,75 +1,111 @@
-#[macro_use] extern crate conrod;
-extern crate find_folder;
-
-use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
-use conrod::backend::piston::event::UpdateEvent;
-
-widget_ids! {
-    struct Ids { canvas, plot }
-}
+#[cfg(all(feature="glutin", feature="glium"))] #[macro_use] extern crate conrod;
+#[cfg(all(feature="glutin", feature="glium"))] mod support;
 
 fn main() {
-    const WIDTH: u32 = 720;
-    const HEIGHT: u32 = 360;
+    feature::main();
+}
 
-    // Construct the window.
-    let mut window: Window =
-        piston::window::WindowSettings::new("PlotPath Demo", [WIDTH, HEIGHT])
-            .opengl(OpenGL::V3_2)
-            .samples(4)
-            .exit_on_esc(true)
-            .build()
+#[cfg(all(feature="glutin", feature="glium"))]
+mod feature {
+    extern crate find_folder;
+    use conrod;
+    use conrod::backend::glium::glium;
+    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use std;
+    use support;
+
+    widget_ids! {
+        struct Ids { canvas, plot }
+    }
+
+    pub fn main() {
+        const WIDTH: u32 = 720;
+        const HEIGHT: u32 = 360;
+
+        // Build the window.
+        let display = glium::glutin::WindowBuilder::new()
+            .with_vsync()
+            .with_dimensions(WIDTH, HEIGHT)
+            .with_title("PlotPath Demo")
+            .build_glium()
             .unwrap();
 
-    // Create the event loop.
-    let mut events = WindowEvents::new();
+        // Construct our `Ui`.
+        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-    // Construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+        // A unique identifier for each widget.
+        let ids = Ids::new(ui.widget_id_generator());
 
-    // A unique identifier for each widget.
-    let ids = Ids::new(ui.widget_id_generator());
+        // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+        // for drawing to the glium `Surface`.
+        let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
-    // No text to draw, so we'll just create an empty text texture cache.
-    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, 0, 0);
+        // The image map describing each of our widget->image mappings (in our case, none).
+        let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-    // The image map describing each of our widget->image mappings (in our case, none).
-    let image_map = conrod::image::Map::new();
+        // Poll events from the window.
+        let mut event_loop = support::EventLoop::new();
+        'main: loop {
 
-    // Poll events from the window.
-    while let Some(event) = window.next_event(&mut events) {
+            // Handle all events.
+            for event in event_loop.next(&display) {
 
-        // Convert the piston event to a conrod event.
-        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
-            ui.handle_event(e);
-        }
+                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
+                let window = display.get_window().unwrap();
+                if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+                    ui.handle_event(event);
+                }
 
-        event.update(|_| {
-            use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
-
-            let ui = &mut ui.set_widgets();
-
-            widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
-
-            let min_x = 0.0;
-            let max_x = std::f64::consts::PI * 2.0;
-            let min_y = -1.0;
-            let max_y = 1.0;
-            widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
-                .color(color::LIGHT_BLUE)
-                .wh_of(ids.canvas)
-                .middle_of(ids.canvas)
-                .set(ids.plot, ui);
-        });
-
-        window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-                fn texture_from_image<T>(img: &T) -> &T { img };
-                piston::window::draw(c, g, primitives,
-                                     &mut text_texture_cache,
-                                     &image_map,
-                                     texture_from_image);
+                match event {
+                    // Break from the loop upon `Escape`.
+                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
+                    glium::glutin::Event::Closed =>
+                        break 'main,
+                    _ => {},
+                }
             }
-        });
+
+            // TODO: Remove this once the following PR lands and is published
+            // https://github.com/tomaka/winit/pull/118
+            if let Some(resize) = support::check_for_window_resize(&ui, &display) {
+                ui.handle_event(resize);
+            }
+
+            // Instantiate the widgets.
+            {
+                use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+
+                let ui = &mut ui.set_widgets();
+
+                widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
+
+                let min_x = 0.0;
+                let max_x = std::f64::consts::PI * 2.0;
+                let min_y = -1.0;
+                let max_y = 1.0;
+                widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
+                    .color(color::LIGHT_BLUE)
+                    .wh_of(ids.canvas)
+                    .middle_of(ids.canvas)
+                    .set(ids.plot, ui);
+            }
+
+            // Render the `Ui` and then display it on the screen.
+            if let Some(primitives) = ui.draw_if_changed() {
+                renderer.fill(&display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(&display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
+            }
+        }
+    }
+}
+
+#[cfg(not(all(feature="glutin", feature="glium")))]
+mod feature {
+    pub fn main() {
+        println!("This example requires the `glutin` and `glium` features. \
+                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
     }
 }
