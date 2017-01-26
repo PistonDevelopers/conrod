@@ -1,17 +1,16 @@
-//! A demonstration of using glutin to provide events and GFX to draw the UI
+//! A demonstration of using `winit` to provide events and GFX to draw the UI.
+//!
+//! `winit` is used via the `glutin` crate which also provides an OpenGL context for drawing
+//! `conrod::render::Primitives` to the screen.
 
 #![allow(unused_variables)]
 
-#[cfg(feature="glutin")]
-#[macro_use]
-extern crate conrod;
-#[cfg(feature="glutin")]
-extern crate glutin;
-#[macro_use]
-extern crate gfx;
+#[cfg(feature="winit")] #[macro_use] extern crate conrod;
+#[cfg(feature="winit")] extern crate glutin;
+#[macro_use] extern crate gfx;
 extern crate gfx_core;
 
-#[cfg(feature="glutin")]
+#[cfg(feature="winit")]
 mod support;
 
 
@@ -19,7 +18,7 @@ fn main() {
     feature::main();
 }
 
-#[cfg(feature="glutin")]
+#[cfg(feature="winit")]
 mod feature {
     extern crate gfx_window_glutin;
     extern crate find_folder;
@@ -342,8 +341,8 @@ mod feature {
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
-                // Convert glutin event to conrod event, requires conrod to be built with the `glutin` feature
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), &window) {
+                // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
+                if let Some(event) = conrod::backend::winit::convert(event.clone(), window.as_winit_window()) {
                     ui.handle_event(event);
                 }
 
@@ -366,10 +365,10 @@ mod feature {
     }
 }
 
-#[cfg(not(feature="glutin"))]
+#[cfg(not(feature="winit"))]
 mod feature {
     pub fn main() {
-        println!("This example requires the `glutin` feature. \
-                 Try running `cargo run --release --no-default-features --features=\"glutin\" --example <example_name>`");
+        println!("This example requires the `winit` feature. \
+                 Try running `cargo run --release --no-default-features --features=\"winit\" --example <example_name>`");
     }
 }
