@@ -1,25 +1,23 @@
-#[macro_use] extern crate conrod;
 extern crate find_folder;
+#[cfg(all(feature="glutin", feature="glium"))] #[macro_use] extern crate conrod;
+#[cfg(all(feature="glutin", feature="glium"))] mod support;
 
-use conrod::backend::piston::{self, Window, WindowEvents, OpenGL};
-use conrod::backend::piston::event::UpdateEvent;
 
+#[cfg(all(feature="glutin", feature="glium"))]
 fn main() {
+    use conrod::backend::glium::glium;
+    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+
     const WIDTH: u32 = 600;
     const HEIGHT: u32 = 300;
 
-    // Construct the window.
-    let mut window: Window =
-        piston::window::WindowSettings::new("FileNavigator Demo", [WIDTH, HEIGHT])
-            .opengl(OpenGL::V3_2)
-            .vsync(true)
-            .samples(4)
-            .exit_on_esc(true)
-            .build()
-            .unwrap();
-
-    // Create the event loop.
-    let mut events = WindowEvents::new();
+    // Build the window.
+    let display = glium::glutin::WindowBuilder::new()
+        .with_vsync()
+        .with_dimensions(WIDTH, HEIGHT)
+        .with_title("FileNavigator Demo")
+        .build_glium()
+        .unwrap();
 
     // Construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -33,26 +31,41 @@ fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_texture_cache = piston::window::GlyphCache::new(&mut window, WIDTH, HEIGHT);
+    // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+    // for drawing to the glium `Surface`.
+    let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
-    let image_map = conrod::image::Map::new();
+    let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
     let directory = find_folder::Search::KidsThenParents(3, 5).for_folder("conrod").unwrap();
 
     // Poll events from the window.
-    while let Some(event) = window.next_event(&mut events) {
+    let mut event_loop = support::EventLoop::new();
+    'main: loop {
 
-        // Convert the piston event to a conrod event.
-        if let Some(e) = piston::window::convert_event(event.clone(), &window) {
-            ui.handle_event(e);
+        // Handle all events.
+        for event in event_loop.next(&display) {
+
+            // Use the `glutin` backend feature to convert the glutin event to a conrod one.
+            let window = display.get_window().unwrap();
+            if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+                ui.handle_event(event);
+                event_loop.needs_update();
+            }
+
+            match event {
+                // Break from the loop upon `Escape`.
+                glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
+                glium::glutin::Event::Closed =>
+                    break 'main,
+                _ => {},
+            }
         }
 
-        event.update(|_| {
+        // Instantiate the conrod widgets.
+        {
             use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
-
-            // Instantiate the conrod widgets.
             let ui = &mut ui.set_widgets();
 
             widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
@@ -68,17 +81,21 @@ fn main() {
             {
                 println!("{:?}", event);
             }
-        });
+        }
 
-        window.draw_2d(&event, |c, g| {
-            if let Some(primitives) = ui.draw_if_changed() {
-                fn texture_from_image<T>(img: &T) -> &T { img };
-                piston::window::draw(c, g, primitives,
-                                     &mut text_texture_cache,
-                                     &image_map,
-                                     texture_from_image);
-            }
-        });
+        // Render the `Ui` and then display it on the screen.
+        if let Some(primitives) = ui.draw_if_changed() {
+            renderer.fill(&display, primitives, &image_map);
+            let mut target = display.draw();
+            target.clear_color(0.0, 0.0, 0.0, 1.0);
+            renderer.draw(&display, &mut target, &image_map).unwrap();
+            target.finish().unwrap();
+        }
     }
+}
 
+#[cfg(not(all(feature="glutin", feature="glium")))]
+fn main() {
+    println!("This example requires the `glutin` and `glium` features. \
+             Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
 }
