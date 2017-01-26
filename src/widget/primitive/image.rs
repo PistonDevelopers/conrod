@@ -1,6 +1,7 @@
 //! A simple, non-interactive widget for drawing an `Image`.
 
 use {Color, Dimension, Rect, Widget, Ui};
+use image;
 use widget;
 
 
@@ -9,6 +10,8 @@ use widget;
 pub struct Image {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
+    /// The unique identifier for the image that will be drawn.
+    pub image_id: image::Id,
     /// The rectangle area of the original source image that should be used.
     pub src_rect: Option<Rect>,
     /// Unique styling.
@@ -22,6 +25,8 @@ pub struct State {
     ///
     /// If `None`, the entire image will be used.
     pub src_rect: Option<Rect>,
+    /// The unique identifier for the image's associated data that will be drawn.
+    pub image_id: image::Id,
 }
 
 widget_style!{
@@ -38,7 +43,7 @@ impl Image {
     /// Construct a new `Image`.
     ///
     /// Note that the `Image` widget does not require borrowing or owning any image data directly.
-    /// Instead, image data is stored within a `conrod::image::Map` where widget indices are mapped
+    /// Instead, image data is stored within a `conrod::image::Map` where `image::Id`s are mapped
     /// to their associated data.
     ///
     /// This is done for a few reasons:
@@ -59,9 +64,10 @@ impl Image {
     /// 1. use an enum with a variant for each type
     /// 2. use a trait object, where the trait is implemented for each of your image types or
     /// 3. use an index type which may be mapped to your various image types.
-    pub fn new() -> Self {
+    pub fn new(image_id: image::Id) -> Self {
         Image {
             common: widget::CommonBuilder::new(),
+            image_id: image_id,
             src_rect: None,
             style: Style::new(),
         }
@@ -98,6 +104,7 @@ impl Widget for Image {
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             src_rect: None,
+            image_id: self.image_id,
         }
     }
 
@@ -121,8 +128,11 @@ impl Widget for Image {
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { state, .. } = args;
-        let Image { src_rect, .. } = self;
+        let Image { image_id, src_rect, .. } = self;
 
+        if state.image_id != image_id {
+            state.update(|state| state.image_id = image_id);
+        }
         if state.src_rect != src_rect {
             state.update(|state| state.src_rect = src_rect);
         }

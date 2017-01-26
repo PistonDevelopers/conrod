@@ -3,7 +3,14 @@
 //! - [Map](./struct.Map.html)
 
 use std;
-use widget;
+
+/// Unique image identifier.
+///
+/// Throughout conrod, images are referred to via their unique `Id`. By referring to images via
+/// `Id`s, conrod can remain agnostic of the actual image or texture types used to represent each
+/// image.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Id(u32);
 
 /// A type used to map the `widget::Id` of `Image` widgets to their associated `Img` data.
 ///
@@ -18,6 +25,7 @@ use widget;
 /// };
 /// ```
 pub struct Map<Img> {
+    next_index: u32,
     map: HashMap<Img>,
     /// Whether or not the `image::Map` will trigger a redraw the next time `Ui::draw` is called.
     ///
@@ -26,7 +34,13 @@ pub struct Map<Img> {
 }
 
 /// The type of `std::collections::HashMap` used within the `image::Map`.
-pub type HashMap<Img> = std::collections::HashMap<widget::Id, Img>;
+pub type HashMap<Img> = std::collections::HashMap<Id, Img>;
+
+/// An iterator yielding an `Id` for each new `Img` inserted into the `Map` via the `extend`
+/// method.
+pub struct NewIds {
+    index_range: std::ops::Range<u32>,
+}
 
 
 impl<Img> std::ops::Deref for Map<Img> {
@@ -42,19 +56,18 @@ impl<Img> Map<Img> {
     /// Construct a new, empty `image::Map`.
     pub fn new() -> Self {
         Map {
+            next_index: 0,
             map: std::collections::HashMap::new(),
             trigger_redraw: std::cell::Cell::new(true),
         }
     }
 
-
     // Calling any of the following methods will trigger a redraw when using `Ui::draw_if_changed`.
-
 
     /// Uniquely borrow the `Img` associated with the given widget.
     ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
-    pub fn get_mut(&mut self, id: widget::Id) -> Option<&mut Img> {
+    pub fn get_mut(&mut self, id: Id) -> Option<&mut Img> {
         self.trigger_redraw.set(true);
         self.map.get_mut(&id)
     }
@@ -67,33 +80,46 @@ impl<Img> Map<Img> {
     /// from the map and returned.
     ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
-    pub fn insert(&mut self, id: widget::Id, img: Img) -> Option<Img> {
+    pub fn insert(&mut self, img: Img) -> Id {
         self.trigger_redraw.set(true);
-        self.map.insert(id, img)
+        let index = self.next_index;
+        self.next_index = index.wrapping_add(1);
+        let id = Id(index);
+        self.map.insert(id, img);
+        id
     }
 
-}
-
-impl<Img> std::iter::Extend<(widget::Id, Img)> for Map<Img> {
-    fn extend<I>(&mut self, mappings: I)
-        where I: IntoIterator<Item=(widget::Id, Img)>,
+    /// Insert each of the images yielded by the given iterator and produce an iterator yielding
+    /// their generated `Ids` in the same order.
+    ///
+    /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
+    pub fn extend<I>(&mut self, images: I) -> NewIds
+        where I: IntoIterator<Item=Img>,
     {
         self.trigger_redraw.set(true);
-        self.map.extend(mappings.into_iter().map(|(id, img)| (id, img)));
+        let start_index = self.next_index;
+        let mut end_index = start_index;
+        for image in images {
+            self.map.insert(Id(end_index), image);
+            end_index += 1;
+        }
+        NewIds { index_range: start_index..end_index }
+    }
+
+}
+
+impl Iterator for NewIds {
+    type Item = Id;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.index_range.next().map(|i| Id(i))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.len()))
     }
 }
 
-
-/// A macro for simplifying the instantiation of an `image::Map`.
-///
-/// See the [**Map**](./image/struct.Map.html) documentation for an example.
-#[macro_export]
-macro_rules! image_map {
-    ($(($idx:expr, $img:expr)),* $(,)*) => {{
-        let mut map = $crate::image::Map::new();
-        $(
-            map.insert($idx, $img);
-        )*
-        map
-    }};
+impl ExactSizeIterator for NewIds {
+    fn len(&self) -> usize {
+        self.index_range.len()
+    }
 }

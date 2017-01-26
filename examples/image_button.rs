@@ -57,9 +57,8 @@ mod feature {
         // In our case we only have one image, however the macro may be used to list multiple.
         let rust_logo = load_rust_logo(&display);
         let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
-        let image_map = image_map! {
-            (ids.rust_logo, rust_logo),
-        };
+        let mut image_map = conrod::image::Map::new();
+        let rust_logo = image_map.insert(rust_logo);
 
         // We'll change the background colour with the image button.
         let mut bg_color = conrod::color::LIGHT_BLUE;
@@ -96,7 +95,7 @@ mod feature {
                     .set(ids.canvas, ui);
 
                 // Button widget example button.
-                if widget::Button::image(ids.rust_logo)
+                if widget::Button::image(rust_logo)
                     .w_h(w as conrod::Scalar, h as conrod::Scalar)
                     .middle_of(ids.canvas)
                     .color(color::TRANSPARENT)

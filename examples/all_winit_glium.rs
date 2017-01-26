@@ -34,9 +34,6 @@ mod feature {
             .build_glium()
             .unwrap();
 
-        // A demonstration of some app state that we want to control with the conrod GUI.
-        let mut app = support::DemoApp::new();
-
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
 
@@ -59,7 +56,11 @@ mod feature {
             texture
         }
 
-        let image_map = support::image_map(&ids, load_rust_logo(&display));
+        let mut image_map = conrod::image::Map::new();
+        let rust_logo = image_map.insert(load_rust_logo(&display));
+
+        // A demonstration of some app state that we want to control with the conrod GUI.
+        let mut app = support::DemoApp::new(rust_logo);
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
         // for drawing to the glium `Surface`.
