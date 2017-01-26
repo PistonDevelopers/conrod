@@ -149,15 +149,15 @@ pub const FRAGMENT_SHADER_120: &'static str = "
 
     void main() {
         // Text
-        if (v_mode == 0) {
+        if (v_mode == 0.0) {
             gl_FragColor = v_color * vec4(1.0, 1.0, 1.0, texture2D(tex, v_tex_coords).r);
 
         // Image
-        } else if (v_mode == 1) {
+        } else if (v_mode == 1.0) {
             gl_FragColor = texture2D(tex, v_tex_coords);
 
         // 2D Geometry
-        } else if (v_mode == 2) {
+        } else if (v_mode == 2.0) {
             gl_FragColor = v_color;
         }
     }
@@ -212,7 +212,7 @@ pub const FRAGMENT_SHADER_140: &'static str = "
 ";
 
 /// The vertex shader used within the `glium::Program` for OpenGL ES.
-pub const VERTEX_SHADER_GLES: &'static str = "
+pub const VERTEX_SHADER_300_ES: &'static str = "
     #version 300 es
     precision mediump float;
 
@@ -234,7 +234,7 @@ pub const VERTEX_SHADER_GLES: &'static str = "
 ";
 
 /// The fragment shader used within the `glium::Program` for OpenGL ES.
-pub const FRAGMENT_SHADER_GLES: &'static str = "
+pub const FRAGMENT_SHADER_300_ES: &'static str = "
     #version 300 es
     precision mediump float;
     uniform sampler2D tex;
@@ -283,7 +283,7 @@ pub fn program<F>(facade: &F) -> Result<glium::Program, glium::program::ProgramC
     program!(facade,
              120 => { vertex: VERTEX_SHADER_120, fragment: FRAGMENT_SHADER_120 },
              140 => { vertex: VERTEX_SHADER_140, fragment: FRAGMENT_SHADER_140 },
-             300 es => { vertex: VERTEX_SHADER_GLES, fragment: FRAGMENT_SHADER_GLES })
+             300 es => { vertex: VERTEX_SHADER_300_ES, fragment: FRAGMENT_SHADER_300_ES })
 }
 
 /// Default glium `DrawParameters` with alpha blending enabled.
