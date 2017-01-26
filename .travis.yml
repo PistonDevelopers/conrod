@@ -20,7 +20,7 @@ addons:
 script:
     - cargo build --verbose
     - cargo test --verbose
-    - cargo test --features "glutin glium" --verbose
+    - cargo test --features "winit glium" --verbose
     - cargo test --features "piston" --verbose
     - cargo doc --verbose
 
