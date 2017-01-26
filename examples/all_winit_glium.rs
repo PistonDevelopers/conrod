@@ -1,16 +1,16 @@
-//! A demonstration using glutin to provide events and glium for drawing the Ui.
+//! A demonstration using winit to provide events and glium for drawing the Ui.
 //!
 //! Note that the `glium` crate is re-exported via the `conrod::backend::glium` module.
 
-#[cfg(all(feature="glutin", feature="glium"))] #[macro_use] extern crate conrod;
+#[cfg(all(feature="winit", feature="glium"))] #[macro_use] extern crate conrod;
 
-#[cfg(all(feature="glutin", feature="glium"))] mod support;
+#[cfg(all(feature="winit", feature="glium"))] mod support;
 
 fn main() {
     feature::main();
 }
 
-#[cfg(all(feature="glutin", feature="glium"))]
+#[cfg(all(feature="winit", feature="glium"))]
 mod feature {
     extern crate find_folder;
     extern crate image;
@@ -84,9 +84,8 @@ mod feature {
             // Handle all events.
             for event in event_loop.next(&display) {
 
-                // Use the `glutin` backend feature to convert the glutin event to a conrod one.
-                let window = display.get_window().unwrap();
-                if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
                     ui.handle_event(event);
                     event_loop.needs_update();
                 }
@@ -116,10 +115,10 @@ mod feature {
 
 }
 
-#[cfg(not(all(feature="glutin", feature="glium")))]
+#[cfg(not(all(feature="winit", feature="glium")))]
 mod feature {
     pub fn main() {
-        println!("This example requires the `glutin` and `glium` features. \
-                 Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
+        println!("This example requires the `winit` and `glium` features. \
+                 Try running `cargo run --release --features=\"winit glium\" --example <example_name>`");
     }
 }

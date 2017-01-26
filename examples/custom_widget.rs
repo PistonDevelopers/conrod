@@ -13,10 +13,11 @@
 
 #[macro_use] extern crate conrod;
 extern crate find_folder;
-#[cfg(all(feature="glutin", feature="glium"))] mod support;
+#[cfg(all(feature="winit", feature="glium"))] mod support;
 
 
 /// The module in which we'll implement our own custom circular button.
+#[cfg(all(feature="winit", feature="glium"))]
 mod circular_button {
     use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
@@ -234,7 +235,7 @@ mod circular_button {
 }
 
 
-#[cfg(all(feature="glutin", feature="glium"))]
+#[cfg(all(feature="winit", feature="glium"))]
 fn main() {
     use conrod::{self, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
     use conrod::backend::glium::glium;
@@ -286,9 +287,8 @@ fn main() {
         // Handle all events.
         for event in event_loop.next(&display) {
 
-            // Use the `glutin` backend feature to convert the glutin event to a conrod one.
-            let window = display.get_window().unwrap();
-            if let Some(event) = conrod::backend::glutin::convert(event.clone(), window) {
+            // Use the `winit` backend feature to convert the winit event to a conrod one.
+            if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }
@@ -336,8 +336,8 @@ fn main() {
     }
 }
 
-#[cfg(not(all(feature="glutin", feature="glium")))]
+#[cfg(not(all(feature="winit", feature="glium")))]
 fn main() {
-    println!("This example requires the `glutin` and `glium` features. \
-             Try running `cargo run --release --features=\"glutin glium\" --example <example_name>`");
+    println!("This example requires the `winit` and `glium` features. \
+             Try running `cargo run --release --features=\"winit glium\" --example <example_name>`");
 }
