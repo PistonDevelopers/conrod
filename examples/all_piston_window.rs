@@ -34,9 +34,6 @@ mod feature {
                 .build()
                 .unwrap();
 
-        // A demonstration of some state that we'd like to control with the App.
-        let mut app = support::DemoApp::new();
-
         // construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64])
             .theme(support::theme())
@@ -75,7 +72,11 @@ mod feature {
 
         // Create our `conrod::image::Map` which describes each of our widget->image mappings.
         // In our case we only have one image, however the macro may be used to list multiple.
-        let image_map = support::image_map(&ids, rust_logo);
+        let mut image_map = conrod::image::Map::new();
+        let rust_logo = image_map.insert(rust_logo);
+
+        // A demonstration of some state that we'd like to control with the App.
+        let mut app = support::DemoApp::new(rust_logo);
 
         // Poll events from the window.
         while let Some(event) = window.next() {

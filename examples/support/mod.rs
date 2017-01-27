@@ -28,17 +28,19 @@ pub struct DemoApp {
     ball_xy: conrod::Point,
     ball_color: conrod::Color,
     sine_frequency: f32,
+    rust_logo: conrod::image::Id,
 }
 
 
 impl DemoApp {
 
     /// Simple constructor for the `DemoApp`.
-    pub fn new() -> Self {
+    pub fn new(rust_logo: conrod::image::Id) -> Self {
         DemoApp {
             ball_xy: [0.0, 0.0],
             ball_color: conrod::color::WHITE,
             sine_frequency: 1.0,
+            rust_logo: rust_logo,
         }
     }
 
@@ -64,14 +66,6 @@ pub fn theme() -> conrod::Theme {
         widget_styling: std::collections::HashMap::new(),
         mouse_drag_threshold: 0.0,
         double_click_threshold: std::time::Duration::from_millis(500),
-    }
-}
-
-
-/// Create an image map that maps the `ids.rust_logo` to the `rust_logo` image.
-pub fn image_map<T>(ids: &Ids, rust_logo: T) -> conrod::image::Map<T> {
-    image_map! {
-        (ids.rust_logo, rust_logo)
     }
 }
 
@@ -244,7 +238,7 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
         .set(ids.image_title, ui);
 
     const LOGO_SIDE: conrod::Scalar = 144.0;
-    widget::Image::new()
+    widget::Image::new(app.rust_logo)
         .w_h(LOGO_SIDE, LOGO_SIDE)
         .down(60.0)
         .align_middle_x_of(ids.canvas)

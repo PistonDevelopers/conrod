@@ -208,9 +208,6 @@ mod feature {
         // Compile GL program
         let pso = factory.create_pipeline_simple(VERTEX_SHADER, FRAGMENT_SHADER, pipe::new()).unwrap();
 
-        // Demonstration app state that we'll control with our conrod GUI.
-        let mut app = support::DemoApp::new();
-
         // Create Ui and Ids of widgets to instantiate
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
         let ids = support::Ids::new(ui.widget_id_generator());
@@ -240,6 +237,15 @@ mod feature {
             (cache, texture, texture_view)
         };
 
+        // FIXME: We don't yet load the rust logo, so just insert nothing for now so we can get an
+        // identifier used to construct the DemoApp. This should be changed to *actually* load a
+        // gfx texture for the rust logo and insert it into the map.
+        let mut image_map = conrod::image::Map::new();
+        let rust_logo = image_map.insert(());
+
+        // Demonstration app state that we'll control with our conrod GUI.
+        let mut app = support::DemoApp::new(rust_logo);
+
         // Event loop
         let mut events = window.poll_events();
 
@@ -266,7 +272,7 @@ mod feature {
                         },
                         render::PrimitiveKind::Lines { color, cap, thickness, points } => {
                         },
-                        render::PrimitiveKind::Image { color, source_rect } => {
+                        render::PrimitiveKind::Image { image_id, color, source_rect } => {
                         },
                         render::PrimitiveKind::Text { color, text, font_id } => {
                             let positioned_glyphs = text.positioned_glyphs(dpi_factor);

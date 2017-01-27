@@ -8,7 +8,6 @@ use image;
 use render;
 use std;
 use text;
-use widget;
 
 
 /// A `Command` describing a step in the drawing process.
@@ -27,13 +26,13 @@ pub enum Command<'a> {
 pub enum Draw<'a> {
     /// A range of vertices representing triangles textured with the image in the
     /// image_map at the given `widget::Id`.
-    Image(widget::Id, &'a [Vertex]),
+    Image(image::Id, &'a [Vertex]),
     /// A range of vertices representing plain triangles.
     Plain(&'a [Vertex]),
 }
 
 enum PreparedCommand {
-    Image(widget::Id, std::ops::Range<usize>),
+    Image(image::Id, std::ops::Range<usize>),
     Plain(std::ops::Range<usize>),
     Scizzor(glium::Rect),
 }
@@ -339,7 +338,7 @@ impl Renderer {
         vertices.clear();
 
         enum State {
-            Image { id: widget::Id, start: usize },
+            Image { image_id: image::Id, start: usize },
             Plain { start: usize },
         }
 
@@ -351,8 +350,8 @@ impl Renderer {
             () => {
                 match current_state {
                     State::Plain { .. } => (),
-                    State::Image { id, start } => {
-                        commands.push(PreparedCommand::Image(id, start..vertices.len()));
+                    State::Image { image_id, start } => {
+                        commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
                         current_state = State::Plain { start: vertices.len() };
                     },
                 }
@@ -393,7 +392,7 @@ impl Renderer {
 
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
-            let render::Primitive { id, kind, scizzor, rect } = primitive;
+            let render::Primitive { kind, scizzor, rect, .. } = primitive;
 
             // Check for a `Scizzor` command.
             let new_scizzor = rect_to_glium_rect(scizzor);
@@ -402,8 +401,8 @@ impl Renderer {
                 match current_state {
                     State::Plain { start } =>
                         commands.push(PreparedCommand::Plain(start..vertices.len())),
-                    State::Image { id, start } =>
-                        commands.push(PreparedCommand::Image(id, start..vertices.len())),
+                    State::Image { image_id, start } =>
+                        commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
                 }
 
                 // Update the scizzor and produce a command.
@@ -603,31 +602,37 @@ impl Renderer {
                     }
                 },
 
-                render::PrimitiveKind::Image { color, source_rect } => {
+                render::PrimitiveKind::Image { image_id, color, source_rect } => {
 
                     // Switch to the `Image` state for this image if we're not in it already.
-                    let widget_id = id;
+                    let new_image_id = image_id;
                     match current_state {
 
                         // If we're already in the drawing mode for this image, we're done.
-                        State::Image { id, .. } if id == widget_id => (),
+                        State::Image { image_id, .. } if image_id == new_image_id => (),
 
                         // If we were in the `Plain` drawing state, switch to Image drawing state.
                         State::Plain { start } => {
                             commands.push(PreparedCommand::Plain(start..vertices.len()));
-                            current_state = State::Image { id: id, start: vertices.len() };
+                            current_state = State::Image {
+                                image_id: new_image_id,
+                                start: vertices.len(),
+                            };
                         },
 
                         // If we were drawing a different image, switch state to draw *this* image.
-                        State::Image { id, start } => {
-                            commands.push(PreparedCommand::Image(id, start..vertices.len()));
-                            current_state = State::Image { id: widget_id, start: vertices.len() };
+                        State::Image { image_id, start } => {
+                            commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                            current_state = State::Image {
+                                image_id: new_image_id,
+                                start: vertices.len(),
+                            };
                         },
                     }
 
                     let color = gamma_srgb_to_linear(color.unwrap_or(color::WHITE).to_fsa());
 
-                    let (image_w, image_h) = image_map.get(&id).unwrap().dimensions();
+                    let (image_w, image_h) = image_map.get(&image_id).unwrap().dimensions();
                     let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
 
                     // Get the sides of the source rectangle as uv coordinates.
@@ -683,8 +688,8 @@ impl Renderer {
         match current_state {
             State::Plain { start } =>
                 commands.push(PreparedCommand::Plain(start..vertices.len())),
-            State::Image { id, start } =>
-                commands.push(PreparedCommand::Image(id, start..vertices.len())),
+            State::Image { image_id, start } =>
+                commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
         }
     }
 
@@ -725,9 +730,9 @@ impl Renderer {
 
                     // Draw an image whose texture data lies within the `image_map` at the
                     // given `id`.
-                    Draw::Image(id, slice) => {
+                    Draw::Image(image_id, slice) => {
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice).unwrap();
-                        let image = image_map.get(&id).unwrap();
+                        let image = image_map.get(&image_id).unwrap();
                         let image_uniforms = uniform! {
                             tex: glium::uniforms::Sampler::new(image)
                                 .wrap_function(glium::uniforms::SamplerWrapFunction::Clamp)

@@ -46,9 +46,8 @@ mod feature {
         // In our case we only have one image, however the macro may be used to list multiple.
         let rust_logo = load_rust_logo(&display);
         let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
-        let image_map = image_map! {
-            (ids.rust_logo, rust_logo),
-        };
+        let mut image_map = conrod::image::Map::new();
+        let rust_logo = image_map.insert(rust_logo);
 
         // Poll events from the window.
         let mut event_loop = support::EventLoop::new();
@@ -77,7 +76,7 @@ mod feature {
                 // Draw a light blue background.
                 widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
                 // Instantiate the `Image` at its full size in the middle of the window.
-                widget::Image::new().w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
+                widget::Image::new(rust_logo).w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
             }
 
             // Render the `Ui` and then display it on the screen.
