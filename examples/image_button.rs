@@ -64,7 +64,7 @@ mod feature {
         let mut bg_color = conrod::color::LIGHT_BLUE;
 
         // Poll events from the window.
-        let mut event_loop = support::EventLoop::new();
+        let event_loop = support::EventLoop::new();
         'main: loop {
 
             // Handle all events.

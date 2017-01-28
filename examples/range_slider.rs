@@ -52,7 +52,7 @@ mod feature {
         let mut oval_range = (0.25, 0.75);
 
         // Poll events from the window.
-        let mut event_loop = support::EventLoop::new();
+        let event_loop = support::EventLoop::new();
         'main: loop {
 
             // Handle all events.

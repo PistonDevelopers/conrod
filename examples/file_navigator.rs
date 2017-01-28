@@ -41,7 +41,7 @@ fn main() {
     let directory = find_folder::Search::KidsThenParents(3, 5).for_folder("conrod").unwrap();
 
     // Poll events from the window.
-    let mut event_loop = support::EventLoop::new();
+    let event_loop = support::EventLoop::new();
     'main: loop {
 
         // Handle all events.
