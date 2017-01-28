@@ -58,13 +58,25 @@ pub enum Position {
     /// A specific position.
     Absolute(Scalar),
     /// A position relative to some other Widget.
-    Relative(Scalar, Option<widget::Id>),
-    /// A position aligned with some other Widget.
-    Align(Align, Option<widget::Id>),
-    /// A direction relative to some other Widget.
-    Direction(Direction, Scalar, Option<widget::Id>),
-    /// A position at a place on some other Widget.
-    Place(Place, Option<widget::Id>),
+    Relative(Relative, Option<widget::Id>),
+}
+
+/// Positions that are described as **Relative** to some other **Widget**.
+///
+/// **Relative** describes a relative position along a single axis.
+pub enum Relative {
+    /// A relative scalar distance.
+    Scalar(Scalar),
+    /// Aligned to either the `Start`, `Middle` or `End`.
+    Align(Align),
+    /// A distance as a `Scalar` value over the given `Direction`.
+    Direction(Direction, Scalar),
+    /// Some place on top of another widget.
+    ///
+    /// Similar to `Align`, but represents the `Start`/`End` of the other widget's `kid_area`.
+    ///
+    /// Also allows for specifying a `Margin` from either end.
+    Place(Place),
 }
 
 /// Directionally positioned, normally relative to some other widget.
