@@ -20,7 +20,7 @@ path = "./src/lib.rs"
 [dependencies]
 daggy = "0.4.0"
 num = "0.1.30"
-pistoncore-input = "0.16.0"
+pistoncore-input = "0.17.0"
 rusttype = "0.2.0"
 
 # Optional dependencies and features
@@ -59,4 +59,4 @@ gfx_core = "0.6.0"
 gfx_window_glutin = "0.14.0"
 glutin = "0.7.0"
 # piston_window.rs example dependencies
-piston_window = "0.62.0"
+piston_window = "0.63.0"
