@@ -169,7 +169,7 @@ mod feature {
 
             // Draw the most recently received `conrod::render::Primitives` sent from the `Ui`.
             if let Ok(mut primitives) = render_rx.try_recv() {
-                while let Ok(mut newest) = render_rx.try_recv() {
+                while let Ok(newest) = render_rx.try_recv() {
                     primitives = newest;
                 }
 
