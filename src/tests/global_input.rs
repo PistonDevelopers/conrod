@@ -1,5 +1,5 @@
-use event::{self, Input, Motion};
-use input::{self, Key, MouseButton};
+use event::{self, Input};
+use input::{self, Key, Motion, MouseButton};
 use input::Button::Keyboard;
 use input::Button::Mouse;
 use position::Scalar;

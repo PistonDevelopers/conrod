@@ -56,9 +56,21 @@ use widget;
 /// with the origin in the top left with *y* pointing down, so you might need to translate these
 /// co-ordinates when converting to this event. Also be sure to invert the *y* axis of MouseScroll
 /// events.
-pub use piston_input::Input;
-#[doc(inline)]
-pub use piston_input::Motion;
+#[derive(Clone, Debug, PartialEq)]
+pub enum Input {
+    /// A button on some input device was pressed.
+    Press(input::Button),
+    /// A button on some input device was released.
+    Release(input::Button),
+    /// The window was received to the given dimensions.
+    Resize(u32, u32),
+    /// Some motion input was received (e.g. moving mouse, joystick or touch pad).
+    Move(input::Motion),
+    /// Text input was received, usually via the keyboard.
+    Text(String),
+    /// The window was focused or lost focus.
+    Focus(bool),
+}
 
 
 /// Enum containing all the events that the `Ui` may provide.
@@ -167,7 +179,7 @@ pub struct Text {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Move {
     /// The type of `Motion` that occurred.
-    pub motion: Motion,
+    pub motion: input::Motion,
     /// The modifier keys that were down at the time.
     pub modifiers: input::keyboard::ModifierKey,
 }
@@ -301,7 +313,7 @@ impl Move {
     /// Returns a copy of the `Move` relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Move {
         let motion = match self.motion {
-            Motion::MouseCursor(x, y) => Motion::MouseCursor(x - xy[0], y - xy[1]),
+            input::Motion::MouseCursor(x, y) => input::Motion::MouseCursor(x - xy[0], y - xy[1]),
             motion => motion,
         };
         Move {

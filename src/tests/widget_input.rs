@@ -1,5 +1,5 @@
-use event::{self, Input, Motion};
-use input::{self, Button, MouseButton};
+use event::{self, Input};
+use input::{self, Button, Motion, MouseButton};
 use input::keyboard::NO_MODIFIER;
 use widget;
 use position::Rect;

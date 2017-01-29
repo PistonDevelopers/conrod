@@ -3,7 +3,7 @@
 extern crate winit;
 
 use Scalar;
-use event::{Input, Motion};
+use event::Input;
 use input;
 #[cfg(feature = "glium")] use glium;
 
@@ -109,16 +109,16 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
             };
             let xy = [tx(location.0), ty(location.1)];
             let args = input::TouchArgs::new(0, id as i64, xy, 1.0, phase);
-            Some(Input::Move(Motion::Touch(args)).into())
+            Some(Input::Move(input::Motion::Touch(args)).into())
         }
 
         winit::Event::MouseMoved(x, y) =>
-            Some(Input::Move(Motion::MouseCursor(tx(x as Scalar), ty(y as Scalar))).into()),
+            Some(Input::Move(input::Motion::MouseCursor(tx(x as Scalar), ty(y as Scalar))).into()),
 
         winit::Event::MouseWheel(winit::MouseScrollDelta::PixelDelta(x, y), _) => {
             let x = x as Scalar / dpi_factor;
             let y = -y as Scalar / dpi_factor;
-            Some(Input::Move(Motion::MouseScroll(x, y)).into())
+            Some(Input::Move(input::Motion::MouseScroll(x, y)).into())
         },
 
         winit::Event::MouseWheel(winit::MouseScrollDelta::LineDelta(x, y), _) => {
@@ -126,7 +126,7 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
             const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
             let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
             let y = ARBITRARY_POINTS_PER_LINE_FACTOR * -y as Scalar;
-            Some(Input::Move(Motion::MouseScroll(x, y)).into())
+            Some(Input::Move(input::Motion::MouseScroll(x, y)).into())
         },
 
         winit::Event::MouseInput(winit::ElementState::Pressed, button) =>

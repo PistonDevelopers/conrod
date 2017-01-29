@@ -323,8 +323,8 @@ impl Ui {
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
     pub fn handle_event(&mut self, event: event::Input) {
-        use event::{self, Input, Motion};
-        use input::{Button, Key, ModifierKey};
+        use event::{self, Input};
+        use input::{Button, Key, ModifierKey, Motion};
         use input::state::mouse::Button as MouseButton;
 
         // Determines which widget is currently under the mouse and sets it within the `Ui`'s
