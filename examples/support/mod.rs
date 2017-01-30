@@ -49,11 +49,12 @@ impl DemoApp {
 
 /// A set of reasonable stylistic defaults that works for the `gui` below.
 pub fn theme() -> conrod::Theme {
+    use conrod::position::{Align, Direction, Padding, Position, Relative};
     conrod::Theme {
         name: "Demo Theme".to_string(),
-        padding: conrod::Padding::none(),
-        x_position: conrod::Position::Align(conrod::Align::Start, None),
-        y_position: conrod::Position::Direction(conrod::Direction::Backwards, 20.0, None),
+        padding: Padding::none(),
+        x_position: Position::Relative(Relative::Align(Align::Start), None),
+        y_position: Position::Relative(Relative::Direction(Direction::Backwards, 20.0), None),
         background_color: conrod::color::DARK_CHARCOAL,
         shape_color: conrod::color::LIGHT_CHARCOAL,
         border_color: conrod::color::BLACK,

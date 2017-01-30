@@ -1,20 +1,9 @@
 //! A widget for displaying and mutating a one-line field of text.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Positionable,
-    Range,
-    Rect,
-    Scalar,
-    Sizeable,
-    Widget,
-};
+use {Color, Colorable, FontSize, Borderable, Positionable, Sizeable, Widget};
 use event;
 use input;
+use position::{Align, Range, Rect, Scalar};
 use text;
 use widget;
 

@@ -9,9 +9,10 @@
 //! This is the only module in which the piston graphics crate will be used directly.
 
 
-use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
+use {Color, FontSize, Point, Rect, Scalar};
 use graph::{self, Graph};
 use image;
+use position::{Align, Dimensions};
 use std;
 use text;
 use theme::Theme;

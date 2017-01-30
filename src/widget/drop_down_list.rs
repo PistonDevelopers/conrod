@@ -1,16 +1,7 @@
 //! The `DropDownList` and related items.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Labelable,
-    Positionable,
-    Scalar,
-    Sizeable,
-};
+use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable};
+use position::{Align, Scalar};
 use text;
 use utils;
 use widget::{self, Widget};

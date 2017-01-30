@@ -1,27 +1,19 @@
 //! The `Canvas` widget and related items.
 
 use {
-    Align,
     Color,
     Colorable,
-    Dimensions,
     FontSize,
     Borderable,
     Labelable,
-    Padding,
-    Place,
-    Position,
     Positionable,
-    Range,
-    Rect,
-    Scalar,
     Sizeable,
     Theme,
     Ui,
     UiCell,
     Widget,
 };
-use position;
+use position::{self, Align, Dimensions, Padding, Place, Position, Range, Rect, Scalar};
 use position::Direction::{Forwards, Backwards};
 use widget;
 
@@ -240,11 +232,11 @@ impl<'a> Widget for Canvas<'a> {
     }
 
     fn default_x_position(&self, _ui: &Ui) -> Position {
-        Position::Place(Place::Middle, None)
+        Position::Relative(position::Relative::Place(Place::Middle), None)
     }
 
     fn default_y_position(&self, _ui: &Ui) -> Position {
-        Position::Place(Place::Middle, None)
+        Position::Relative(position::Relative::Place(Place::Middle), None)
     }
 
     /// The title bar area at which the Canvas can be clicked and dragged.

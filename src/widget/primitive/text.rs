@@ -1,15 +1,7 @@
 //! The primitive widget used for displaying text.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    Dimension,
-    FontSize,
-    Scalar,
-    Ui,
-    Widget,
-};
+use {Color, Colorable, FontSize, Ui, Widget};
+use position::{Align, Dimension, Scalar};
 use std;
 use text;
 use utils;

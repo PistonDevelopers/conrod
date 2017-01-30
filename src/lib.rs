@@ -17,8 +17,7 @@ extern crate rusttype;
 pub use color::{Color, Colorable};
 pub use border::{Bordering, Borderable};
 pub use label::{FontSize, Labelable};
-pub use position::{Align, Axis, Corner, Depth, Direction, Dimension, Dimensions, Edge, Margin,
-                   Padding, Place, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
+pub use position::{Dimensions, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use theme::Theme;
 pub use ui::{Ui, UiCell, UiBuilder};
 pub use widget::{scroll, Widget};
@@ -32,7 +31,7 @@ pub mod guide;
 pub mod image;
 pub mod input;
 mod label;
-mod position;
+pub mod position;
 pub mod render;
 pub mod text;
 pub mod theme;
