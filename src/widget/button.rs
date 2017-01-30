@@ -1,20 +1,8 @@
 //! The `Button` widget and related items.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Labelable,
-    Rect,
-    Positionable,
-    Scalar,
-    Sizeable,
-    UiCell,
-    Widget,
-};
+use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, UiCell, Widget};
 use image;
+use position::{Align, Rect, Scalar};
 use text;
 use widget;
 

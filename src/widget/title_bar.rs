@@ -1,18 +1,7 @@
 //! A simple title bar widget that automatically sizes itself to the top of some other widget.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    Dimension,
-    FontSize,
-    Borderable,
-    Labelable,
-    Positionable,
-    Scalar,
-    Sizeable,
-    Ui,
-};
+use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, Ui};
+use position::{Align, Dimension, Scalar};
 use text;
 use widget::{self, Widget};
 

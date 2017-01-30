@@ -1,19 +1,8 @@
 //! A widget for selecting a single value along some linear range.
 
-use {
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Labelable,
-    Padding,
-    Positionable,
-    Range,
-    Rect,
-    Scalar,
-    Widget,
-};
+use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
 use num::{Float, NumCast, ToPrimitive};
+use position::{Padding, Range, Rect, Scalar};
 use text;
 use widget;
 

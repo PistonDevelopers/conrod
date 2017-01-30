@@ -2,7 +2,7 @@ use color::Color;
 use event;
 use graph::{self, Graph};
 use input;
-use position::{Align, Direction, Dimensions, Padding, Place, Point, Position, Range, Rect, Scalar};
+use position::{self, Align, Direction, Dimensions, Padding, Point, Position, Range, Rect, Scalar};
 use render;
 use std;
 use text;
@@ -817,17 +817,20 @@ impl Ui {
             where R: FnOnce(Rect) -> Range,
                   P: FnOnce(Padding) -> Range,
         {
-            match position {
+            let (relative, maybe_id) = match position {
+                Position::Absolute(abs) => return abs,
+                Position::Relative(relative, maybe_id) => (relative, maybe_id),
+            };
 
-                Position::Absolute(abs) => abs,
+            match relative {
 
-                Position::Relative(rel, maybe_id) =>
+                position::Relative::Scalar(scalar) =>
                     maybe_id.or(ui.maybe_prev_widget_id).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
-                        .map(|other_range| other_range.middle() + rel)
-                        .unwrap_or(rel),
+                        .map(|other_range| other_range.middle() + scalar)
+                        .unwrap_or(scalar),
 
-                Position::Direction(direction, amt, maybe_id) =>
+                position::Relative::Direction(direction, amt) =>
                     maybe_id.or(ui.maybe_prev_widget_id)
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| {
@@ -842,7 +845,7 @@ impl Ui {
                             Direction::Backwards => -amt,
                         }),
 
-                Position::Align(align, maybe_id) =>
+                position::Relative::Align(align) =>
                     maybe_id.or(ui.maybe_prev_widget_id).or(Some(ui.window.into()))
                         .and_then(|idx| ui.rect_of(idx).map(range_from_rect))
                         .map(|other_range| {
@@ -855,7 +858,7 @@ impl Ui {
                         })
                         .unwrap_or(0.0),
 
-                Position::Place(place, maybe_id) => {
+                position::Relative::Place(place) => {
                     let parent_id = maybe_id
                         .or(ui.maybe_current_parent_id)
                         .unwrap_or(ui.window.into());
@@ -871,17 +874,16 @@ impl Ui {
                             let range = Range::from_pos_and_len(0.0, dim);
                             let parent_range = parent_range.pad_start(pad.start).pad_end(pad.end);
                             match place {
-                                Place::Start(maybe_mgn) =>
+                                position::Place::Start(maybe_mgn) =>
                                     range.align_start_of(parent_range).middle() + maybe_mgn.unwrap_or(0.0),
-                                Place::Middle =>
+                                position::Place::Middle =>
                                     parent_range.middle(),
-                                Place::End(maybe_mgn) =>
+                                position::Place::End(maybe_mgn) =>
                                     range.align_end_of(parent_range).middle() - maybe_mgn.unwrap_or(0.0),
                             }
                         })
                         .unwrap_or(0.0)
                 },
-
             }
         }
 
@@ -1153,13 +1155,14 @@ pub fn widget_graph_mut(ui: &mut Ui) -> &mut Graph {
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
 pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Id> {
-    use Position::{Place, Relative, Direction, Align};
+    use Position::Relative;
+    use position::Relative::{Align, Direction, Place, Scalar};
     match (x, y) {
-        (Place(_, maybe_parent_id), _) | (_, Place(_, maybe_parent_id)) =>
+        (Relative(Place(_), maybe_parent_id), _) | (_, Relative(Place(_), maybe_parent_id)) =>
             maybe_parent_id,
-        (Direction(_, _, maybe_id), _) | (_, Direction(_, _, maybe_id)) |
-        (Align(_, maybe_id), _)        | (_, Align(_, maybe_id))        |
-        (Relative(_, maybe_id), _)     | (_, Relative(_, maybe_id))     =>
+        (Relative(Direction(_, _), maybe_id), _) | (_, Relative(Direction(_, _), maybe_id)) |
+        (Relative(Align(_), maybe_id), _)        | (_, Relative(Align(_), maybe_id))        |
+        (Relative(Scalar(_), maybe_id), _)       | (_, Relative(Scalar(_), maybe_id))       =>
             maybe_id.or(ui.maybe_prev_widget_id)
                 .and_then(|idx| ui.widget_graph.depth_parent(idx)),
         _ => None,

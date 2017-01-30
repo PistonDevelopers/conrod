@@ -442,7 +442,8 @@ pub mod glyph {
 
 /// Logic related to the positioning of the cursor within text.
 pub mod cursor {
-    use {FontSize, Range, Rect, Scalar, Point, Align};
+    use FontSize;
+    use position::{Range, Rect, Scalar, Point, Align};
     use std;
 
     /// Every possible cursor position within each line of text yielded by the given iterator.
@@ -860,7 +861,8 @@ pub mod cursor {
 ///
 /// This module is the core of multi-line text handling.
 pub mod line {
-    use {Align, FontSize, Range, Rect, Scalar};
+    use FontSize;
+    use position::{Align, Range, Rect, Scalar};
     use std;
 
     /// The two types of **Break** indices returned by the **WrapIndicesBy** iterators.

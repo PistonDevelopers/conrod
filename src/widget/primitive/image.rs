@@ -1,7 +1,8 @@
 //! A simple, non-interactive widget for drawing an `Image`.
 
-use {Color, Dimension, Rect, Widget, Ui};
+use {Color, Widget, Ui};
 use image;
+use position::{Dimension, Rect};
 use widget;
 
 

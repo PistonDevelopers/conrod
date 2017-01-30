@@ -613,7 +613,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::{Edge, Range};
+    /// use conrod::position::{Edge, Range};
     ///
     /// assert_eq!(Range::new(0.0, 10.0).closest_edge(4.0), Edge::Start);
     /// assert_eq!(Range::new(0.0, 10.0).closest_edge(7.0), Edge::End);

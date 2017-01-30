@@ -4,7 +4,8 @@
 //! re-exports all widgets (and their modules) that are provided by conrod.
 
 use graph;
-use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Positionable, Rect, Sizeable};
+use position::{Align, Depth, Dimension, Dimensions, Padding, Position,
+               Positionable, Rect, Relative, Sizeable};
 use std;
 use text::font;
 use theme::{self, Theme};
@@ -982,14 +983,10 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
     // We do this so that if this widget were to internally `set` some other `Widget`s, this
     // `Widget`s positioning and dimension data already exists within the `Graph`.
     {
-        use Position::{Place, Relative, Direction, Align, Absolute};
-
         // Some widget to which this widget is relatively positioned (if there is one).
         let maybe_positioned_relatively_id = |pos: Position| match pos {
-            Place(_, maybe_id) | Relative(_, maybe_id) |
-            Direction(_, _, maybe_id) | Align(_, maybe_id) =>
-                maybe_id.or(maybe_prev_widget_id),
-            Absolute(_) => None,
+            Position::Relative(_, maybe_id) => maybe_id.or(maybe_prev_widget_id),
+            Position::Absolute(_) => None,
         };
 
         let maybe_x_positioned_relatively_id = maybe_positioned_relatively_id(x_pos);
@@ -1195,10 +1192,14 @@ impl<W> Positionable for W
 /// This is used within the impl of **Positionable** for **Widget**.
 fn infer_position_from_other_position(other_pos: Position, dir_align: Align) -> Option<Position> {
     match other_pos {
-        Position::Direction(_, _, maybe_id) => Some(Position::Align(dir_align, maybe_id)),
-        Position::Place(_, maybe_id) => Some(Position::Align(Align::Middle, maybe_id)),
-        Position::Relative(_, maybe_id) => Some(Position::Relative(0.0, maybe_id)),
-        Position::Align(_, _) | Position::Absolute(_) => None,
+        Position::Relative(Relative::Direction(_, _), maybe_id) =>
+            Some(Position::Relative(Relative::Align(dir_align), maybe_id)),
+        Position::Relative(Relative::Place(_), maybe_id) =>
+            Some(Position::Relative(Relative::Align(Align::Middle), maybe_id)),
+        Position::Relative(Relative::Scalar(_), maybe_id) =>
+            Some(Position::Relative(Relative::Scalar(0.0), maybe_id)),
+        Position::Relative(Relative::Align(_), _) |
+        Position::Absolute(_) => None,
     }
 }
 

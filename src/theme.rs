@@ -4,7 +4,7 @@
 
 use Scalar;
 use color::{Color, BLACK, WHITE};
-use position::{Align, Direction, Padding, Position};
+use position::{Align, Direction, Padding, Position, Relative};
 use std;
 use std::any::Any;
 use text;
@@ -83,8 +83,8 @@ impl Theme {
         Theme {
             name: "Demo Theme".to_string(),
             padding: Padding::none(),
-            x_position: Position::Align(Align::Start, None),
-            y_position: Position::Direction(Direction::Backwards, 20.0, None),
+            x_position: Position::Relative(Relative::Align(Align::Start), None),
+            y_position: Position::Relative(Relative::Direction(Direction::Backwards, 20.0), None),
             background_color: BLACK,
             shape_color: WHITE,
             border_color: BLACK,

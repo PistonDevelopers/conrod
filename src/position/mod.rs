@@ -1,3 +1,4 @@
+//! Items related to 2D positioning, used throughout conrod.
 
 use Ui;
 use widget;
@@ -64,6 +65,7 @@ pub enum Position {
 /// Positions that are described as **Relative** to some other **Widget**.
 ///
 /// **Relative** describes a relative position along a single axis.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Relative {
     /// A relative scalar distance.
     Scalar(Scalar),
@@ -76,6 +78,9 @@ pub enum Relative {
     /// Similar to `Align`, but represents the `Start`/`End` of the other widget's `kid_area`.
     ///
     /// Also allows for specifying a `Margin` from either end.
+    ///
+    /// Using `Place` allows the `Ui` to infer the widget's parent as the widget upon which it is
+    /// `Placed`, though this inferrence only occurs if the `parent` was not specifically set.
     Place(Place),
 }
 
@@ -178,34 +183,69 @@ pub trait Positionable: Sized {
 
     // Relative positioning.
 
-    /// Set the **Position** along the *x* axis **Relative** to the previous widget.
-    fn x_relative(self, x: Scalar) -> Self {
+    /// Set the *x* **Position** **Relative** to the previous widget.
+    fn x_position_relative(self, x: Relative) -> Self {
         self.x_position(Position::Relative(x, None))
     }
 
-    /// Set the **Position** along the *y* axis **Relative** to the previous widget.
-    fn y_relative(self, y: Scalar) -> Self {
+    /// Set the *y* **Position** **Relative** to the previous widget.
+    fn y_position_relative(self, y: Relative) -> Self {
         self.y_position(Position::Relative(y, None))
     }
 
-    /// Set the **Position** **Relative** to the previous widget.
+    /// Set the *x* and *y* **Position**s **Relative** to the previous widget.
+    fn x_y_position_relative(self, x: Relative, y: Relative) -> Self {
+        self.x_position_relative(x).y_position_relative(y)
+    }
+
+    /// Set the *x* **Position** **Relative** to the given widget.
+    fn x_position_relative_to(self, other: widget::Id, x: Relative) -> Self {
+        self.x_position(Position::Relative(x, Some(other)))
+    }
+
+    /// Set the *y* **Position** **Relative** to the given widget.
+    fn y_position_relative_to(self, other: widget::Id, y: Relative) -> Self {
+        self.y_position(Position::Relative(y, Some(other)))
+    }
+
+    /// Set the *x* and *y* **Position**s **Relative** to the given widget.
+    fn x_y_position_relative_to(self, other: widget::Id, x: Relative, y: Relative) -> Self {
+        self.x_position_relative_to(other, x).y_position_relative_to(other, y)
+    }
+
+    // Relative `Scalar` positioning.
+
+    /// Set the **Position** as a **Scalar** along the *x* axis **Relative** to the middle of
+    /// previous widget.
+    fn x_relative(self, x: Scalar) -> Self {
+        self.x_position_relative(Relative::Scalar(x))
+    }
+
+    /// Set the **Position** as a **Scalar** along the *y* axis **Relative** to the middle of
+    /// previous widget.
+    fn y_relative(self, y: Scalar) -> Self {
+        self.y_position_relative(Relative::Scalar(y))
+    }
+
+    /// Set the **Position** as a **Point** **Relative** to the middle of the previous widget.
     fn xy_relative(self, point: Point) -> Self {
         self.x_relative(point[0]).y_relative(point[1])
     }
 
-    /// Set the **Position** **Relative** to the previous widget.
+    /// Set the **Position** as **Scalar**s along the *x* and *y* axes **Relative** to the middle
+    /// of the previous widget.
     fn x_y_relative(self, x: Scalar, y: Scalar) -> Self {
         self.xy_relative([x, y])
     }
 
     /// Set the position relative to the widget with the given widget::Id.
     fn x_relative_to(self, other: widget::Id, x: Scalar) -> Self {
-        self.x_position(Position::Relative(x, Some(other.into())))
+        self.x_position_relative_to(other, Relative::Scalar(x))
     }
 
     /// Set the position relative to the widget with the given widget::Id.
     fn y_relative_to(self, other: widget::Id, y: Scalar) -> Self {
-        self.y_position(Position::Relative(y, Some(other.into())))
+        self.y_position_relative_to(other, Relative::Scalar(y))
     }
 
     /// Set the position relative to the widget with the given widget::Id.
@@ -222,12 +262,12 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from another widget.
     fn x_direction(self, direction: Direction, x: Scalar) -> Self {
-        self.x_position(Position::Direction(direction, x, None))
+        self.x_position_relative(Relative::Direction(direction, x))
     }
 
     /// Build with the **Position** along the *y* axis as some distance from another widget.
     fn y_direction(self, direction: Direction, y: Scalar) -> Self {
-        self.y_position(Position::Direction(direction, y, None))
+        self.y_position_relative(Relative::Direction(direction, y))
     }
 
     /// Build with the **Position** as some distance below another widget.
@@ -252,12 +292,12 @@ pub trait Positionable: Sized {
 
     /// Build with the **Position** along the *x* axis as some distance from the given widget.
     fn x_direction_from(self, other: widget::Id, direction: Direction, x: Scalar) -> Self {
-        self.x_position(Position::Direction(direction, x, Some(other.into())))
+        self.x_position_relative_to(other, Relative::Direction(direction, x))
     }
 
     /// Build with the **Position** along the *y* axis as some distance from the given widget.
     fn y_direction_from(self, other: widget::Id, direction: Direction, y: Scalar) -> Self {
-        self.y_position(Position::Direction(direction, y, Some(other.into())))
+        self.y_position_relative_to(other, Relative::Direction(direction, y))
     }
 
     /// Build with the **Position** as some distance below the given widget.
@@ -284,12 +324,12 @@ pub trait Positionable: Sized {
 
     /// Align the **Position** of the widget along the *x* axis.
     fn x_align(self, align: Align) -> Self {
-        self.x_position(Position::Align(align, None))
+        self.x_position_relative(Relative::Align(align))
     }
 
     /// Align the **Position** of the widget along the *y* axis.
     fn y_align(self, align: Align) -> Self {
-        self.y_position(Position::Align(align, None))
+        self.y_position_relative(Relative::Align(align))
     }
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
@@ -324,12 +364,12 @@ pub trait Positionable: Sized {
 
     /// Align the **Position** of the widget with the given widget along the *x* axis.
     fn x_align_to(self, other: widget::Id, align: Align) -> Self {
-        self.x_position(Position::Align(align, Some(other.into())))
+        self.x_position_relative_to(other, Relative::Align(align))
     }
 
     /// Align the **Position** of the widget with the given widget along the *y* axis.
     fn y_align_to(self, other: widget::Id, align: Align) -> Self {
-        self.y_position(Position::Align(align, Some(other.into())))
+        self.y_position_relative_to(other, Relative::Align(align))
     }
 
     /// Align the position to the left (only effective for Up or Down `Direction`s).
@@ -366,12 +406,12 @@ pub trait Positionable: Sized {
 
     /// Place the widget at some position on the `other` Widget along the *x* axis.
     fn x_place_on(self, other: widget::Id, place: Place) -> Self {
-        self.x_position(Position::Place(place, Some(other.into())))
+        self.x_position_relative_to(other, Relative::Place(place))
     }
 
     /// Place the widget at some position on the `other` Widget along the *y* axis.
     fn y_place_on(self, other: widget::Id, place: Place) -> Self {
-        self.y_position(Position::Place(place, Some(other.into())))
+        self.y_position_relative_to(other, Relative::Place(place))
     }
 
     /// Place the widget in the middle of the given Widget.
@@ -493,12 +533,12 @@ pub trait Positionable: Sized {
 
     /// Place the widget at some position on the Widget along the *x* axis.
     fn x_place(self, place: Place) -> Self {
-        self.x_position(Position::Place(place, None))
+        self.x_position_relative(Relative::Place(place))
     }
 
     /// Place the widget at some position on the Widget along the *y* axis.
     fn y_place(self, place: Place) -> Self {
-        self.y_position(Position::Place(place, None))
+        self.y_position_relative(Relative::Place(place))
     }
 
     /// Place the widget in the middle of the current parent Widget.
