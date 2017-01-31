@@ -5,7 +5,7 @@ use image;
 use position::{Align, Rect, Scalar};
 use text;
 use widget;
-
+use color;
 
 /// A pressable button widget whose reaction is triggered upon release.
 #[derive(Clone)]
@@ -128,7 +128,7 @@ impl<'a> Button<'a, Image> {
             image_id: image_id,
             src_rect: None,
             color: ImageColor::None,
-            pressed_image: None,
+            pressed_image_id: None,
         };
         Self::new_internal(image)
     }
@@ -157,7 +157,7 @@ impl<'a> Button<'a, Image> {
     }
 
     builder_methods!{
-        pub press_image { show.pressed_id = Some(widget::Id) }
+        pub press_image { show.pressed_image_id = Some(image::Id) }
     }
 }
 
@@ -292,11 +292,11 @@ impl<'a> Widget for Button<'a, Image> {
         let Image { image_id, src_rect, color, pressed_image_id } = show;
 
         let is_down = ui.widget_input(id).mouse()
-            .map(|mouse| if mouse.buttons.left().is_down() {
+            .map_or(false,|mouse| if mouse.buttons.left().is_down() {
                 true
             } else {
                 false
-            }
+            });
 
         let image_id = match pressed_image_id {
             Some(pressed_image_id) if is_down => pressed_image_id,
@@ -321,9 +321,6 @@ impl<'a> Widget for Button<'a, Image> {
                     .or(Some(Some(color))),
             ImageColor::None => None,
         };
-
-
-        image.set(image_id, ui);
 
         image.set(state.image, ui);
 
