@@ -57,9 +57,8 @@ widget_ids! {
     /// Identifiers for an image button.
     #[allow(missing_docs, missing_copy_implementations)]
     pub struct ImageIds {
-        rectangle,
-        label,
         image,
+        label,
     }
 }
 
