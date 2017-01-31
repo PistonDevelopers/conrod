@@ -6,7 +6,6 @@ use position::{Align, Rect, Scalar};
 use text;
 use color;
 use widget;
-use color;
 
 /// A pressable button widget whose reaction is triggered upon release.
 #[derive(Clone)]
@@ -353,7 +352,7 @@ fn color_and_times_clicked(button_id: widget::Id, style: &Style, ui: &UiCell) ->
                 }
             });
             let times_clicked = input.clicks().left().count() as u16;
-            (color, times_clicked,is_down)
+            (color, times_clicked)
 }
 
 fn bordered_rectangle(button_id: widget::Id, rectangle_id: widget::Id,
