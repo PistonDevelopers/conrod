@@ -50,15 +50,17 @@ mod feature {
         let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
     // Declare the ID for each of our widgets.
-    widget_ids!(struct Ids { canvas, button, rust_logo, rust_logo_alt });
+    widget_ids!(struct Ids { canvas, button, rust_logo });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
         let rust_logo = load_rust_logo(&display);
+        let rust_logo_alt = load_rust_logo_alt(&display);
         let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
         let mut image_map = conrod::image::Map::new();
         let rust_logo = image_map.insert(rust_logo);
+        let rust_logo_alt = image_map.insert(rust_logo_alt);
 
         // We'll change the background colour with the image button.
     let mut bg_color = conrod::color::LIGHT_BLUE;
@@ -96,7 +98,7 @@ mod feature {
 
             // Button widget example button.
                 if widget::Button::image(rust_logo)
-                .press_image(ids.rust_logo_alt)
+                .press_image(rust_logo_alt)
                 .w_h(w as conrod::Scalar, h as conrod::Scalar)
                 .middle_of(ids.canvas)
                 .color(color::TRANSPARENT)
@@ -124,8 +126,19 @@ mod feature {
 
     // Load the Rust logo from our assets folder to use as an example image.
     fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-    let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-    let path = assets.join("images/rust.png");
+        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let path = assets.join("images/rust.png");
+        let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+        let image_dimensions = rgba_image.dimensions();
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+        let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
+        texture
+    }
+
+    // Load the Rust logo from our assets folder to use as an example image.
+    fn load_rust_logo_alt(display: &glium::Display) -> glium::texture::Texture2d {
+        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let path = assets.join("images/rust_alt.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);

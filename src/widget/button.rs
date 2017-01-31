@@ -337,7 +337,6 @@ impl<'a> Widget for Button<'a, Image> {
 fn color_and_times_clicked(button_id: widget::Id, style: &Style, ui: &UiCell) -> (Color, u16) {
     let input = ui.widget_input(button_id);
             let color = style.color(ui.theme());
-            let mut is_down = false;
             let color = input.mouse().map_or(color, |mouse| {
                 if mouse.buttons.left().is_down() {
             match style.clicked_color {
