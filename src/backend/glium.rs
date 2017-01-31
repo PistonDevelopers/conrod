@@ -103,7 +103,11 @@ pub struct Vertex {
     pub color: [f32; 4],
 }
 
-implement_vertex!(Vertex, position, tex_coords, color, mode);
+#[allow(unsafe_code)]
+mod vertex_impl {
+    use super::Vertex;
+    implement_vertex!(Vertex, position, tex_coords, color, mode);
+}
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
