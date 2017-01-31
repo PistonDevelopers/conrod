@@ -4,6 +4,7 @@
 //!
 //! If you are new to Conrod, we recommend checking out [The Guide](./guide/index.html).
 
+#![forbid(unsafe_code)]
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
