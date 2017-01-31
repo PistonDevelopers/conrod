@@ -1,22 +1,9 @@
 //! A widget for displaying and mutating multi-line text, given as a `String`.
 
-use {
-    Align,
-    Color,
-    Colorable,
-    Dimension,
-    FontSize,
-    Point,
-    Positionable,
-    Range,
-    Rect,
-    Scalar,
-    Sizeable,
-    Widget,
-    Ui,
-};
+use {Color, Colorable, FontSize, Positionable, Sizeable, Widget, Ui};
 use event;
 use input;
+use position::{Align, Dimension, Point, Range, Rect, Scalar};
 use std;
 use text;
 use utils;

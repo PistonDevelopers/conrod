@@ -32,6 +32,7 @@ pub use piston_input::{
     ControllerAxisArgs,
     keyboard,
     Key,
+    Motion,
     MouseButton,
     RenderArgs,
     Touch,

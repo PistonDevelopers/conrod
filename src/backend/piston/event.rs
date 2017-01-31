@@ -1,7 +1,8 @@
 //! A backend for converting piston events to conrod's `Input` type.
 
 use {Point, Scalar};
-use event::{Input, Motion};
+use event::Input;
+use input;
 pub use piston_input::{GenericEvent, UpdateEvent};
 
 /// Converts any `GenericEvent` to an `Input` event for conrod.
@@ -15,22 +16,22 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<Input>
 
     if let Some(xy) = event.mouse_cursor_args() {
         let (x, y) = translate_coords(xy);
-        return Some(Input::Move(Motion::MouseCursor(x, y)));
+        return Some(Input::Move(input::Motion::MouseCursor(x, y)));
     }
 
     if let Some(rel_xy) = event.mouse_relative_args() {
         let (rel_x, rel_y) = translate_coords(rel_xy);
-        return Some(Input::Move(Motion::MouseRelative(rel_x, rel_y)));
+        return Some(Input::Move(input::Motion::MouseRelative(rel_x, rel_y)));
     }
 
     if let Some(xy) = event.mouse_scroll_args() {
         // Invert the scrolling of the *y* axis as *y* is up in conrod.
         let (x, y) = (xy[0], -xy[1]);
-        return Some(Input::Move(Motion::MouseScroll(x, y)));
+        return Some(Input::Move(input::Motion::MouseScroll(x, y)));
     }
 
     if let Some(args) = event.controller_axis_args() {
-        return Some(Input::Move(Motion::ControllerAxis(args)));
+        return Some(Input::Move(input::Motion::ControllerAxis(args)));
     }
 
     if let Some(button) = event.press_args() {
@@ -51,10 +52,6 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<Input>
 
     if let Some(b) = event.focus_args() {
         return Some(Input::Focus(b));
-    }
-
-    if let Some(b) = event.cursor_args() {
-        return Some(Input::Cursor(b));
     }
 
     None

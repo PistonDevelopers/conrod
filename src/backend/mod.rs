@@ -8,5 +8,5 @@
 //! from this module, feel free to open an issue or pull request at the conrod repository.
 
 #[cfg(feature="glium")] pub mod glium;
-#[cfg(feature="glutin")] pub mod glutin;
+#[cfg(feature="winit")] pub mod winit;
 #[cfg(feature="piston")] pub mod piston;

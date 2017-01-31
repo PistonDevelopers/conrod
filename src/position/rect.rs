@@ -1,3 +1,4 @@
+//! Defines the scalar `Rect` type used throughout conrod.
 
 use super::{Dimensions, Padding, Point, Range, Scalar};
 

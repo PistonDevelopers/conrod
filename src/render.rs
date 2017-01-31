@@ -9,8 +9,10 @@
 //! This is the only module in which the piston graphics crate will be used directly.
 
 
-use {Align, Color, Dimensions, FontSize, Point, Rect, Scalar};
+use {Color, FontSize, Point, Rect, Scalar};
 use graph::{self, Graph};
+use image;
+use position::{Align, Dimensions};
 use std;
 use text;
 use theme::Theme;
@@ -131,6 +133,8 @@ pub enum PrimitiveKind<'a> {
 
     /// A single `Image`, produced by the primitive `Image` widget.
     Image {
+        /// The unique identifier of the image that will be drawn.
+        image_id: image::Id,
         /// When `Some`, colours the `Image`. When `None`, the `Image` uses its regular colours.
         color: Option<Color>,
         /// The area of the texture that will be drawn to the `Image`'s `Rect`.
@@ -205,6 +209,7 @@ enum OwnedPrimitiveKind {
         point_range: std::ops::Range<usize>,
     },
     Image {
+        image_id: image::Id,
         color: Option<Color>,
         source_rect: Option<Rect>,
     },
@@ -516,6 +521,7 @@ impl<'a> Primitives<'a> {
                     let color = style.maybe_color(theme);
                     let kind = PrimitiveKind::Image {
                         color: color,
+                        image_id: state.image_id,
                         source_rect: state.src_rect,
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
@@ -580,8 +586,9 @@ impl<'a> Primitives<'a> {
                     primitives.push(new(kind));
                 },
 
-                PrimitiveKind::Image { color, source_rect } => {
+                PrimitiveKind::Image { image_id, color, source_rect } => {
                     let kind = OwnedPrimitiveKind::Image {
+                        image_id: image_id,
                         color: color,
                         source_rect: source_rect,
                     };
@@ -758,8 +765,9 @@ impl<'a> WalkOwnedPrimitives<'a> {
                     new(kind)
                 },
 
-                OwnedPrimitiveKind::Image { color, source_rect } => {
+                OwnedPrimitiveKind::Image { image_id, color, source_rect } => {
                     let kind = PrimitiveKind::Image {
+                        image_id: image_id,
                         color: color,
                         source_rect: source_rect,
                     };
