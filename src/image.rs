@@ -72,13 +72,7 @@ impl<Img> Map<Img> {
         self.map.get_mut(&id)
     }
 
-    /// Inserts the given widget-image pair into the map.
-    ///
-    /// If the map did not already have an image associated with this widget, `None` is returned.
-    ///
-    /// If the map did already have an image associated with this widget, the old value is removed
-    /// from the map and returned.
-    ///
+    /// Inserts the given image pair into the map.
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
     pub fn insert(&mut self, img: Img) -> Id {
         self.trigger_redraw.set(true);
@@ -87,6 +81,20 @@ impl<Img> Map<Img> {
         let id = Id(index);
         self.map.insert(id, img);
         id
+    }
+
+    /// Replaces the given image in the map if it exists. Returns the image or None.
+    /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
+    pub fn replace(&mut self, id: Id, img: Img) -> Option<Img> {
+        self.trigger_redraw.set(true);
+        self.map.insert(id, img)
+    }
+
+    /// Removes the given image from the map if it exists. Returns the image or None.
+    /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
+    pub fn remove(&mut self, id: Id) -> Option<Img> {
+        self.trigger_redraw.set(true);
+        self.map.remove(&id)
     }
 
     /// Insert each of the images yielded by the given iterator and produce an iterator yielding
