@@ -37,6 +37,10 @@ widget_style!{
         - label_x_align: Align { Align::Middle }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
+        /// The color of the hover effect
+        - hover_color: Color { color::TRANSPARENT }
+        /// The color of the clicked effect
+        - clicked_color: Color { color::TRANSPARENT }
     }
 }
 
@@ -72,6 +76,8 @@ pub struct Image {
     pub color: ImageColor,
     /// The rectangular area of the original source image that should be displayed.
     pub src_rect: Option<Rect>,
+    /// The id of an Alternate image to show when pressed
+    pub pressed_image_id: Option<image::Id>,
 }
 
 /// The coloring of the `Image`.
@@ -122,6 +128,7 @@ impl<'a> Button<'a, Image> {
             image_id: image_id,
             src_rect: None,
             color: ImageColor::None,
+            pressed_image: None,
         };
         Self::new_internal(image)
     }
@@ -149,6 +156,9 @@ impl<'a> Button<'a, Image> {
         self
     }
 
+    builder_methods!{
+        pub press_image { show.pressed_id = Some(widget::Id) }
+    }
 }
 
 impl<'a> Button<'a, Flat> {
@@ -202,6 +212,8 @@ impl<'a, S> Button<'a, S> {
 
     builder_methods!{
         pub enabled { enabled = bool }
+        pub hover_color { style.hover_color = Some(Color) }
+        pub clicked_color { style.clicked_color = Some(Color) }
     }
 }
 
@@ -277,7 +289,20 @@ impl<'a> Widget for Button<'a, Image> {
         bordered_rectangle(id, state.rectangle, rect, color, style, ui);
 
         // Instantiate the image.
-        let Image { image_id, src_rect, color } = show;
+        let Image { image_id, src_rect, color, pressed_image_id } = show;
+
+        let is_down = ui.widget_input(id).mouse()
+            .map(|mouse| if mouse.buttons.left().is_down() {
+                true
+            } else {
+                false
+            }
+
+        let image_id = match pressed_image_id {
+            Some(pressed_image_id) if is_down => pressed_image_id,
+            None | Some(_)=> image_id,
+        };
+
         let mut image = widget::Image::new(image_id)
             .middle_of(id)
             .wh_of(id)
@@ -296,6 +321,10 @@ impl<'a> Widget for Button<'a, Image> {
                     .or(Some(Some(color))),
             ImageColor::None => None,
         };
+
+
+        image.set(image_id, ui);
+
         image.set(state.image, ui);
 
         if let Some(s) = maybe_label {
@@ -313,9 +342,15 @@ fn color_and_times_clicked(button_id: widget::Id, style: &Style, ui: &UiCell) ->
     let color = style.color(ui.theme());
     let color = input.mouse().map_or(color, |mouse| {
         if mouse.buttons.left().is_down() {
-            color.clicked()
+            match style.clicked_color {
+                Some(clicked_color) => clicked_color,
+                None => color.clicked(),
+            }
         } else {
-            color.highlighted()
+            match style.hover_color {
+                Some(hover_color) => hover_color,
+                None => color.highlighted(),
+            }                
         }
     });
     let times_clicked = input.clicks().left().count() as u16;
