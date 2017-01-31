@@ -4,8 +4,8 @@ use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, 
 use image;
 use position::{Align, Rect, Scalar};
 use text;
+use color;
 use widget;
-
 
 /// A pressable button widget whose reaction is triggered upon release.
 #[derive(Clone)]
@@ -37,6 +37,10 @@ widget_style!{
         - label_x_align: Align { Align::Middle }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
+        /// The color of the hover effect
+        - hover_color: Color { color::TRANSPARENT }
+        /// The color of the clicked effect
+        - clicked_color: Color { color::TRANSPARENT }
     }
 }
 
@@ -72,6 +76,8 @@ pub struct Image {
     pub color: ImageColor,
     /// The rectangular area of the original source image that should be displayed.
     pub src_rect: Option<Rect>,
+    /// The id of an Alternate image to show when pressed
+    pub pressed_image_id: Option<image::Id>,
 }
 
 /// The coloring of the `Image`.
@@ -122,6 +128,7 @@ impl<'a> Button<'a, Image> {
             image_id: image_id,
             src_rect: None,
             color: ImageColor::None,
+            pressed_image_id: None,
         };
         Self::new_internal(image)
     }
@@ -149,6 +156,9 @@ impl<'a> Button<'a, Image> {
         self
     }
 
+    builder_methods!{
+        pub press_image { show.pressed_image_id = Some(image::Id) }
+    }
 }
 
 impl<'a> Button<'a, Flat> {
@@ -202,6 +212,8 @@ impl<'a, S> Button<'a, S> {
 
     builder_methods!{
         pub enabled { enabled = bool }
+        pub hover_color { style.hover_color = Some(Color) }
+        pub clicked_color { style.clicked_color = Some(Color) }
     }
 }
 
@@ -221,7 +233,7 @@ impl<'a> Widget for Button<'a, Flat> {
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         FlatIds::new(id_gen)
-    }
+        }
 
     fn style(&self) -> Style {
         self.style.clone()
@@ -277,7 +289,20 @@ impl<'a> Widget for Button<'a, Image> {
         bordered_rectangle(id, state.rectangle, rect, color, style, ui);
 
         // Instantiate the image.
-        let Image { image_id, src_rect, color } = show;
+        let Image { image_id, src_rect, color, pressed_image_id } = show;
+
+        let is_down = ui.widget_input(id).mouse()
+            .map_or(false,|mouse| if mouse.buttons.left().is_down() {
+                true
+            } else {
+                false
+            });
+
+        let image_id = match pressed_image_id {
+            Some(pressed_image_id) if is_down => pressed_image_id,
+            None | Some(_)=> image_id,
+        };
+
         let mut image = widget::Image::new(image_id)
             .middle_of(id)
             .wh_of(id)
@@ -296,6 +321,7 @@ impl<'a> Widget for Button<'a, Image> {
                     .or(Some(Some(color))),
             ImageColor::None => None,
         };
+
         image.set(state.image, ui);
 
         if let Some(s) = maybe_label {
@@ -310,55 +336,61 @@ impl<'a> Widget for Button<'a, Image> {
 
 fn color_and_times_clicked(button_id: widget::Id, style: &Style, ui: &UiCell) -> (Color, u16) {
     let input = ui.widget_input(button_id);
-    let color = style.color(ui.theme());
-    let color = input.mouse().map_or(color, |mouse| {
-        if mouse.buttons.left().is_down() {
-            color.clicked()
-        } else {
-            color.highlighted()
-        }
-    });
-    let times_clicked = input.clicks().left().count() as u16;
-    (color, times_clicked)
+            let color = style.color(ui.theme());
+            let color = input.mouse().map_or(color, |mouse| {
+                if mouse.buttons.left().is_down() {
+            match style.clicked_color {
+                Some(clicked_color) => clicked_color,
+                None => color.clicked(),
+            }
+                } else {
+            match style.hover_color {
+                Some(hover_color) => hover_color,
+                None => color.highlighted(),
+            }                
+                }
+            });
+            let times_clicked = input.clicks().left().count() as u16;
+            (color, times_clicked)
 }
 
 fn bordered_rectangle(button_id: widget::Id, rectangle_id: widget::Id,
                       rect: Rect, color: Color, style: &Style, ui: &mut UiCell)
 {
-    // BorderedRectangle widget.
-    let dim = rect.dim();
-    let border = style.border(&ui.theme);
-    let border_color = style.border_color(&ui.theme);
-    widget::BorderedRectangle::new(dim)
+        // BorderedRectangle widget.
+        let dim = rect.dim();
+        let border = style.border(&ui.theme);
+        let border_color = style.border_color(&ui.theme);
+        widget::BorderedRectangle::new(dim)
         .middle_of(button_id)
         .graphics_for(button_id)
-        .color(color)
-        .border(border)
-        .border_color(border_color)
+            .color(color)
+            .border(border)
+            .border_color(border_color)
         .set(rectangle_id, ui);
 }
 
 fn label(button_id: widget::Id, label_id: widget::Id, rectangle_id: widget::Id,
          label: &str, style: &Style, ui: &mut UiCell)
 {
-    let color = style.label_color(&ui.theme);
-    let font_size = style.label_font_size(&ui.theme);
-    let align = style.label_x_align(&ui.theme);
-    let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
-    widget::Text::new(label)
-        .and_then(font_id, widget::Text::font_id)
-        .and(|b| match align {
-            Align::Start =>
+            let color = style.label_color(&ui.theme);
+            let font_size = style.label_font_size(&ui.theme);
+            let align = style.label_x_align(&ui.theme);
+            let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
+            widget::Text::new(label)
+                .and_then(font_id, widget::Text::font_id)
+                .and(|b| match align {
+                    Align::Start =>
                 b.mid_left_with_margin_on(rectangle_id, font_size as Scalar),
-            Align::Middle =>
+                    Align::Middle =>
                 b.middle_of(rectangle_id),
-            Align::End =>
+                    Align::End =>
                 b.mid_right_with_margin_on(rectangle_id, font_size as Scalar),
-        })
+                })
         .parent(button_id)
         .graphics_for(button_id)
-        .color(color)
-        .font_size(font_size)
+                .color(color)
+                .font_size(font_size)
         .set(label_id, ui);
 }
 

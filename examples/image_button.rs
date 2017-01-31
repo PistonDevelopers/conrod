@@ -26,8 +26,8 @@ mod feature {
     use support;
 
     pub fn main() {
-        const WIDTH: u32 = 1100;
-        const HEIGHT: u32 = 560;
+    const WIDTH: u32 = 1100;
+    const HEIGHT: u32 = 560;
 
         // Build the window.
         let display = glium::glutin::WindowBuilder::new()
@@ -37,33 +37,35 @@ mod feature {
             .build_glium()
             .unwrap();
 
-        // construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+    // construct our `Ui`.
+    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-        // Add a `Font` to the `Ui`'s `font::Map` from file.
-        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        ui.fonts.insert_from_file(font_path).unwrap();
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
         // for drawing to the glium `Surface`.
         let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 
-        // Declare the ID for each of our widgets.
-        widget_ids!(struct Ids { canvas, button, rust_logo });
-        let ids = Ids::new(ui.widget_id_generator());
+    // Declare the ID for each of our widgets.
+    widget_ids!(struct Ids { canvas, button, rust_logo });
+    let ids = Ids::new(ui.widget_id_generator());
 
-        // Create our `conrod::image::Map` which describes each of our widget->image mappings.
-        // In our case we only have one image, however the macro may be used to list multiple.
+    // Create our `conrod::image::Map` which describes each of our widget->image mappings.
+    // In our case we only have one image, however the macro may be used to list multiple.
         let rust_logo = load_rust_logo(&display);
+        let rust_logo_alt = load_rust_logo_alt(&display);
         let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
         let mut image_map = conrod::image::Map::new();
         let rust_logo = image_map.insert(rust_logo);
+        let rust_logo_alt = image_map.insert(rust_logo_alt);
 
         // We'll change the background colour with the image button.
-        let mut bg_color = conrod::color::LIGHT_BLUE;
+    let mut bg_color = conrod::color::LIGHT_BLUE;
 
-        // Poll events from the window.
+    // Poll events from the window.
         let mut event_loop = support::EventLoop::new();
         'main: loop {
 
@@ -74,7 +76,7 @@ mod feature {
                 if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
                     ui.handle_event(event);
                     event_loop.needs_update();
-                }
+        }
 
                 match event {
                     // Break from the loop upon `Escape`.
@@ -86,26 +88,29 @@ mod feature {
             }
 
             {
-                let ui = &mut ui.set_widgets();
+            let ui = &mut ui.set_widgets();
 
-                // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
-                widget::Canvas::new()
-                    .pad(30.0)
-                    .color(bg_color)
-                    .set(ids.canvas, ui);
+            // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
+            widget::Canvas::new()
+                .pad(30.0)
+                .color(bg_color)
+                .set(ids.canvas, ui);
 
-                // Button widget example button.
+            // Button widget example button.
                 if widget::Button::image(rust_logo)
-                    .w_h(w as conrod::Scalar, h as conrod::Scalar)
-                    .middle_of(ids.canvas)
-                    .color(color::TRANSPARENT)
-                    .border(0.0)
-                    .image_color_with_feedback(color::BLACK)
-                    .set(ids.button, ui)
-                    .was_clicked()
-                {
-                    bg_color = color::rgb(rand::random(), rand::random(), rand::random());
-                }
+                .press_image(rust_logo_alt)
+                .w_h(w as conrod::Scalar, h as conrod::Scalar)
+                .middle_of(ids.canvas)
+                .color(color::TRANSPARENT)
+                .border(0.0)
+                //.image_color_with_feedback(color::BLACK)
+                .hover_color(color::TRANSPARENT)
+                .clicked_color(color::TRANSPARENT)
+                .set(ids.button, ui)
+                .was_clicked()
+            {
+                bg_color = color::rgb(rand::random(), rand::random(), rand::random());
+            }
             }
 
             // Render the `Ui` and then display it on the screen.
@@ -116,13 +121,24 @@ mod feature {
                 renderer.draw(&display, &mut target, &image_map).unwrap();
                 target.finish().unwrap();
             }
-        }
+    }
     }
 
     // Load the Rust logo from our assets folder to use as an example image.
     fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
         let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
         let path = assets.join("images/rust.png");
+        let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+        let image_dimensions = rgba_image.dimensions();
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+        let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
+        texture
+    }
+
+    // Load the Rust logo from our assets folder to use as an example image.
+    fn load_rust_logo_alt(display: &glium::Display) -> glium::texture::Texture2d {
+        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let path = assets.join("images/rust_alt.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);

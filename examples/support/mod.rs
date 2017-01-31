@@ -269,6 +269,8 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
         .label("PRESS ME")
         .mid_left_with_margin_on(ids.canvas, MARGIN)
         .down_from(ids.button_title, 60.0)
+        .hover_color(conrod::color::BLUE)
+        .clicked_color(conrod::color::RED)
         .w_h(side, side)
         .set(ids.button, ui)
     {
