@@ -179,7 +179,7 @@ pub struct Text<'a> {
     font: &'a text::Font,
     font_size: FontSize,
     rect: Rect,
-    x_align: Align,
+    justify: text::Justify,
     y_align: Align,
     line_spacing: Scalar,
 }
@@ -228,7 +228,7 @@ struct OwnedText {
     font: text::Font,
     font_size: FontSize,
     rect: Rect,
-    x_align: Align,
+    justify: text::Justify,
     y_align: Align,
     line_spacing: Scalar,
 }
@@ -265,7 +265,7 @@ impl<'a> Text<'a> {
             font,
             font_size,
             rect,
-            x_align,
+            justify,
             y_align,
             line_spacing,
         } = self;
@@ -278,7 +278,7 @@ impl<'a> Text<'a> {
         let line_infos = line_infos.iter().cloned();
         let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
         let line_rects = text::line::rects(line_infos, font_size, rect,
-                                           x_align, y_align, line_spacing);
+                                           justify, y_align, line_spacing);
 
         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
         positioned_glyphs.clear();
@@ -490,7 +490,7 @@ impl<'a> Primitives<'a> {
                     let color = style.color(theme);
                     let font_size = style.font_size(theme);
                     let line_spacing = style.line_spacing(theme);
-                    let x_align = style.text_align(theme);
+                    let justify = style.justify(theme);
                     let y_align = Align::End;
 
                     let text = Text {
@@ -501,7 +501,7 @@ impl<'a> Primitives<'a> {
                         font: font,
                         font_size: font_size,
                         rect: rect,
-                        x_align: x_align,
+                        justify: justify,
                         y_align: y_align,
                         line_spacing: line_spacing,
                     };
@@ -603,7 +603,7 @@ impl<'a> Primitives<'a> {
                         font,
                         font_size,
                         rect,
-                        x_align,
+                        justify,
                         y_align,
                         line_spacing,
                         ..
@@ -630,7 +630,7 @@ impl<'a> Primitives<'a> {
                         font: font.clone(),
                         font_size: font_size,
                         rect: rect,
-                        x_align: x_align,
+                        justify: justify,
                         y_align: y_align,
                         line_spacing: line_spacing,
                     };
@@ -736,7 +736,7 @@ impl<'a> WalkOwnedPrimitives<'a> {
                         window_dim,
                         font_size,
                         rect,
-                        x_align,
+                        justify,
                         y_align,
                         line_spacing,
                     } = *text;
@@ -752,7 +752,7 @@ impl<'a> WalkOwnedPrimitives<'a> {
                         font: font,
                         font_size: font_size,
                         rect: rect,
-                        x_align: x_align,
+                        justify: justify,
                         y_align: y_align,
                         line_spacing: line_spacing,
                     };

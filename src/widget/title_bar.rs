@@ -1,7 +1,7 @@
 //! A simple title bar widget that automatically sizes itself to the top of some other widget.
 
 use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, Ui};
-use position::{Align, Dimension, Scalar};
+use position::{self, Align, Dimension, Scalar};
 use text;
 use widget::{self, Widget};
 
@@ -37,7 +37,6 @@ widget_style!{
         - border: Scalar { theme.border_width }
         /// The color of the TitleBar's border.
         - border_color: Color { theme.border_color }
-
         /// The color of the title bar's text.
         - text_color: Color { theme.label_color }
         /// The font size for the title bar's text.
@@ -47,7 +46,11 @@ widget_style!{
         /// The distance between lines for multi-line title bar text.
         - line_spacing: Scalar { 1.0 }
         /// The horizontal alignment of the title bar text.
-        - text_align: Align { Align::Middle }
+        - justify: text::Justify { text::Justify::Center }
+        /// The position of the title bar's `Label` widget over the *x* axis.
+        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
+        /// The position of the title bar's `Label` widget over the *y* axis.
+        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
         /// The font used for the `Text`.
         - font_id: Option<text::font::Id> { theme.font_id }
     }
@@ -71,20 +74,32 @@ impl<'a> TitleBar<'a> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(mut self) -> Self {
-        self.style.text_align = Some(Align::Start);
+    pub fn left_justify_label(mut self) -> Self {
+        self.style.justify = Some(text::Justify::Left);
         self
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_middle(mut self) -> Self {
-        self.style.text_align = Some(Align::Middle);
+    pub fn center_justify_label(mut self) -> Self {
+        self.style.justify = Some(text::Justify::Center);
         self
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(mut self) -> Self {
-        self.style.text_align = Some(Align::End);
+    pub fn right_justify_label(mut self) -> Self {
+        self.style.justify = Some(text::Justify::Right);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *x* axis.
+    pub fn label_x(mut self, x: position::Relative) -> Self {
+        self.style.label_x = Some(x);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *y* axis.
+    pub fn label_y(mut self, y: position::Relative) -> Self {
+        self.style.label_y = Some(y);
         self
     }
 
@@ -155,19 +170,22 @@ impl<'a> Widget for TitleBar<'a> {
 
         // Label widget.
         let text_color = style.text_color(ui.theme());
-        let text_align = style.text_align(ui.theme());
+        let justify = style.justify(ui.theme());
         let font_size = style.font_size(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
+        let label_x = style.label_x(&ui.theme);
+        let label_y = style.label_y(&ui.theme);
         widget::Text::new(label)
             .and_mut(|text| {
                 text.style.maybe_wrap = Some(maybe_wrap);
-                text.style.text_align = Some(text_align);
+                text.style.justify = Some(justify);
             })
             .and_then(font_id, widget::Text::font_id)
             .padded_w_of(state.ids.rectangle, border)
-            .middle_of(state.ids.rectangle)
+            .x_position_relative_to(state.ids.rectangle, label_x)
+            .y_position_relative_to(state.ids.rectangle, label_y)
             .color(text_color)
             .font_size(font_size)
             .line_spacing(line_spacing)

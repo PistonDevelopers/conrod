@@ -386,7 +386,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
-                .align_text_middle()
+                .center_justify()
                 .parent(id)
                 .set(slot.text_id, &mut ui);
 

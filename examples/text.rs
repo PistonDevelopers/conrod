@@ -132,7 +132,7 @@ mod feature {
             .color(color::LIGHT_RED)
             .padded_w_of(ids.left_col, PAD)
             .mid_top_with_margin_on(ids.left_col, PAD)
-            .align_text_left()
+            .left_justify()
             .line_spacing(10.0)
             .set(ids.left_text, ui);
 
@@ -141,7 +141,7 @@ mod feature {
             .color(color::LIGHT_GREEN)
             .padded_w_of(ids.middle_col, PAD)
             .middle_of(ids.middle_col)
-            .align_text_middle()
+            .center_justify()
             .line_spacing(2.5)
             .set(ids.middle_text, ui);
 
@@ -150,7 +150,7 @@ mod feature {
             .color(color::LIGHT_BLUE)
             .padded_w_of(ids.right_col, PAD)
             .mid_bottom_with_margin_on(ids.right_col, PAD)
-            .align_text_right()
+            .right_justify()
             .line_spacing(5.0)
             .set(ids.right_text, ui);
     }

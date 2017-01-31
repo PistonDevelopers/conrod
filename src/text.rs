@@ -28,6 +28,21 @@ pub struct Lines<'a, I> {
     ranges: I,
 }
 
+/// A type used for referring to typographic alignment of `Text`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Justify {
+    /// Align text to the start of the bounding `Rect`'s *x* axis.
+    Left,
+    /// Symmetrically align text along the *y* axis.
+    Center,
+    /// Align text to the end of the bounding `Rect`'s *x* axis.
+    Right,
+    // /// Align wrapped text to both the start and end of the bounding `Rect`s *x* axis.
+    // ///
+    // /// Extra space is added between words in order to achieve this alignment.
+    // TODO: Full,
+}
+
 
 /// Determine the total height of a block of text with the given number of lines, font size and
 /// `line_spacing` (the space that separates each line of text).
@@ -691,7 +706,7 @@ pub mod cursor {
                                       line_infos: &'a [super::line::Info],
                                       font: &'a super::Font,
                                       font_size: FontSize,
-                                      x_align: Align,
+                                      x_align: super::Justify,
                                       y_align: Align,
                                       line_spacing: Scalar,
                                       rect: Rect) -> XysPerLineFromText<'a>
@@ -941,7 +956,7 @@ pub mod line {
     #[derive(Clone)]
     pub struct Rects<I> {
         infos: I,
-        x_align: Align,
+        x_align: super::Justify,
         line_spacing: Scalar,
         next: Option<Rect>,
     }
@@ -1272,7 +1287,7 @@ pub mod line {
     pub fn rects<I>(mut infos: I,
                     font_size: FontSize,
                     bounding_rect: Rect,
-                    x_align: Align,
+                    x_align: super::Justify,
                     y_align: Align,
                     line_spacing: Scalar) -> Rects<I>
         where I: Iterator<Item=Info> + ExactSizeIterator,
@@ -1283,9 +1298,9 @@ pub mod line {
             // Calculate the `x` `Range` of the first line `Rect`.
             let range = Range::new(0.0, first_info.width);
             let x = match x_align {
-                Align::Start => range.align_start_of(bounding_rect.x),
-                Align::Middle => range.align_middle_of(bounding_rect.x),
-                Align::End => range.align_end_of(bounding_rect.x),
+                super::Justify::Left => range.align_start_of(bounding_rect.x),
+                super::Justify::Center => range.align_middle_of(bounding_rect.x),
+                super::Justify::Right => range.align_end_of(bounding_rect.x),
             };
 
             // Calculate the `y` `Range` of the first line `Rect`.
@@ -1437,9 +1452,9 @@ pub mod line {
                     let x = {
                         let range = Range::new(0.0, info.width);
                         match x_align {
-                            Align::Start => range.align_start_of(line_rect.x),
-                            Align::Middle => range.align_middle_of(line_rect.x),
-                            Align::End => range.align_end_of(line_rect.x),
+                            super::Justify::Left => range.align_start_of(line_rect.x),
+                            super::Justify::Center => range.align_middle_of(line_rect.x),
+                            super::Justify::Right => range.align_end_of(line_rect.x),
                         }
                     };
 

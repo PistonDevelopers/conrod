@@ -2,7 +2,7 @@
 
 use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, UiCell, Widget};
 use image;
-use position::{Align, Rect, Scalar};
+use position::{self, Align, Rect, Scalar};
 use text;
 use widget;
 
@@ -33,10 +33,14 @@ widget_style!{
         - label_color: Color { theme.label_color }
         /// The font size of the Button's label.
         - label_font_size: FontSize { theme.font_size_medium }
-        /// The label's alignment over the *x* axis.
-        - label_x_align: Align { Align::Middle }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
+        /// The label's typographic alignment over the *x* axis.
+        - label_justify: text::Justify { text::Justify::Center }
+        /// The position of the title bar's `Label` widget over the *x* axis.
+        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
+        /// The position of the title bar's `Label` widget over the *y* axis.
+        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
     }
 }
 
@@ -158,26 +162,6 @@ impl<'a> Button<'a, Flat> {
         Self::new_internal(Flat)
     }
 
-    /// Align the label to the mid-left of the `Button`'s surface.
-    pub fn align_label_left(mut self) -> Self {
-        self.style.label_x_align = Some(Align::Start);
-        self
-    }
-
-    /// Align the label to the mid-left of the `Button`'s surface.
-    ///
-    /// This is the default label alignment.
-    pub fn align_label_middle(mut self) -> Self {
-        self.style.label_x_align = Some(Align::Middle);
-        self
-    }
-
-    /// Align the label to the mid-left of the `Button`'s surface.
-    pub fn align_label_right(mut self) -> Self {
-        self.style.label_x_align = Some(Align::End);
-        self
-    }
-
 }
 
 
@@ -197,6 +181,38 @@ impl<'a, S> Button<'a, S> {
     /// Specify the font used for displaying the label.
     pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
         self.style.label_font_id = Some(Some(font_id));
+        self
+    }
+
+    /// Align the label to the left of the `Button`'s surface.
+    pub fn left_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Left);
+        self
+    }
+
+    /// Align the label to the mid-left of the `Button`'s surface.
+    ///
+    /// This is the default label alignment.
+    pub fn center_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Center);
+        self
+    }
+
+    /// Align the label to the mid-left of the `Button`'s surface.
+    pub fn right_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Right);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *x* axis.
+    pub fn label_x(mut self, x: position::Relative) -> Self {
+        self.style.label_x = Some(x);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *y* axis.
+    pub fn label_y(mut self, y: position::Relative) -> Self {
+        self.style.label_y = Some(y);
         self
     }
 
@@ -238,7 +254,7 @@ impl<'a> Widget for Button<'a, Flat> {
 
         // Label widget.
         if let Some(l) = maybe_label {
-            label(id, state.label, state.rectangle, l, style, ui);
+            label(id, state.label, l, style, ui);
         }
 
         TimesClicked(times_clicked)
@@ -299,7 +315,7 @@ impl<'a> Widget for Button<'a, Image> {
         image.set(state.image, ui);
 
         if let Some(s) = maybe_label {
-            label(id, state.label, state.rectangle, s, style, ui);
+            label(id, state.label, s, style, ui);
         }
 
         TimesClicked(times_clicked)
@@ -338,23 +354,20 @@ fn bordered_rectangle(button_id: widget::Id, rectangle_id: widget::Id,
         .set(rectangle_id, ui);
 }
 
-fn label(button_id: widget::Id, label_id: widget::Id, rectangle_id: widget::Id,
+fn label(button_id: widget::Id, label_id: widget::Id,
          label: &str, style: &Style, ui: &mut UiCell)
 {
     let color = style.label_color(&ui.theme);
     let font_size = style.label_font_size(&ui.theme);
-    let align = style.label_x_align(&ui.theme);
+    let x = style.label_x(&ui.theme);
+    let y = style.label_y(&ui.theme);
+    let justify = style.label_justify(&ui.theme);
     let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
     widget::Text::new(label)
         .and_then(font_id, widget::Text::font_id)
-        .and(|b| match align {
-            Align::Start =>
-                b.mid_left_with_margin_on(rectangle_id, font_size as Scalar),
-            Align::Middle =>
-                b.middle_of(rectangle_id),
-            Align::End =>
-                b.mid_right_with_margin_on(rectangle_id, font_size as Scalar),
-        })
+        .x_position_relative_to(button_id, x)
+        .y_position_relative_to(button_id, y)
+        .justify(justify)
         .parent(button_id)
         .graphics_for(button_id)
         .color(color)

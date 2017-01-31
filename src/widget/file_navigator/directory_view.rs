@@ -286,6 +286,7 @@ impl<'a> Widget for DirectoryView<'a> {
 
                 // Instantiate a `Button` for each item.
                 list_select::Event::Item(item) => {
+                    use position::{Place, Relative};
                     let entry = &state.entries[item.i];
                     let is_selected = entry.is_selected;
                     let is_directory = entry.path.is_dir();
@@ -317,7 +318,8 @@ impl<'a> Widget for DirectoryView<'a> {
                         .label(&entry_name)
                         .label_color(text_color)
                         .label_font_size(font_size)
-                        .align_label_left();
+                        .label_x(Relative::Place(Place::Start(Some(font_size as Scalar))))
+                        .left_justify_label();
                     item.set(button, ui);
                 },
 

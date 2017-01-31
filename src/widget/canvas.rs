@@ -13,8 +13,9 @@ use {
     UiCell,
     Widget,
 };
-use position::{self, Align, Dimensions, Padding, Place, Position, Range, Rect, Scalar};
+use position::{self, Dimensions, Padding, Place, Position, Range, Rect, Scalar};
 use position::Direction::{Forwards, Backwards};
+use text;
 use widget;
 
 
@@ -87,8 +88,8 @@ widget_style! {
         - title_bar_maybe_wrap: Option<widget::text::Wrap> { Some(widget::text::Wrap::Whitespace) }
         /// The distance between lines for multi-line title bar text.
         - title_bar_line_spacing: Scalar { 1.0 }
-        /// The horizontal alignment of the title bar text.
-        - title_bar_text_align: Align { Align::Middle }
+        /// The label's typographic alignment over the *x* axis.
+        - title_bar_justify: text::Justify { text::Justify::Center }
     }
 }
 
@@ -294,13 +295,13 @@ impl<'a> Widget for Canvas<'a> {
             let color = style.title_bar_color(&ui.theme).unwrap_or(color);
             let font_size = style.title_bar_font_size(&ui.theme);
             let label_color = style.title_bar_text_color(&ui.theme);
-            let text_align = style.title_bar_text_align(&ui.theme);
+            let justify = style.title_bar_justify(&ui.theme);
             let line_spacing = style.title_bar_line_spacing(&ui.theme);
             let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
             widget::TitleBar::new(label, state.ids.rectangle)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
-                    title_bar.style.text_align = Some(text_align);
+                    title_bar.style.justify = Some(justify);
                 })
                 .color(color)
                 .border(border)
