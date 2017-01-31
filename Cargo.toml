@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.51.0"
+version = "0.51.1"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -12,6 +12,7 @@ readme = "README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
 documentation = "http://docs.piston.rs/conrod/conrod/"
+categories = ["gui"]
 
 [lib]
 name = "conrod"
