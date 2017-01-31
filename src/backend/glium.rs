@@ -630,7 +630,7 @@ impl Renderer {
                         },
                     }
 
-                    let color = gamma_srgb_to_linear(color.unwrap_or(color::WHITE).to_fsa());
+                    let color = color.unwrap_or(color::WHITE).to_fsa();
 
                     let (image_w, image_h) = image_map.get(&image_id).unwrap().dimensions();
                     let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
