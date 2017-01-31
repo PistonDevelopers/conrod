@@ -72,7 +72,9 @@ impl<Img> Map<Img> {
         self.map.get_mut(&id)
     }
 
-    /// Inserts the given image pair into the map.
+    /// Inserts the given image into the map, returning its associated `image::Id`. The user *must*
+    /// store the returned `image::Id` in order to use, modify or remove the inserted image.
+    ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
     pub fn insert(&mut self, img: Img) -> Id {
         self.trigger_redraw.set(true);
@@ -84,6 +86,7 @@ impl<Img> Map<Img> {
     }
 
     /// Replaces the given image in the map if it exists. Returns the image or None.
+    ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
     pub fn replace(&mut self, id: Id, img: Img) -> Option<Img> {
         self.trigger_redraw.set(true);
@@ -91,6 +94,9 @@ impl<Img> Map<Img> {
     }
 
     /// Removes the given image from the map if it exists. Returns the image or None.
+    ///
+    /// Any future use of the given `image::Id` will be invalid.
+    ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
     pub fn remove(&mut self, id: Id) -> Option<Img> {
         self.trigger_redraw.set(true);
