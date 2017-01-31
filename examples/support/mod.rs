@@ -157,7 +157,7 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
         .padded_w_of(ids.canvas, MARGIN)
         .down(60.0)
         .align_middle_x_of(ids.canvas)
-        .align_text_middle()
+        .center_justify()
         .line_spacing(5.0)
         .set(ids.introduction, ui);
 

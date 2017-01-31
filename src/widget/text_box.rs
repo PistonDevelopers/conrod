@@ -3,7 +3,7 @@
 use {Color, Colorable, FontSize, Borderable, Positionable, Sizeable, Widget};
 use event;
 use input;
-use position::{Align, Range, Rect, Scalar};
+use position::{Range, Rect, Scalar};
 use text;
 use widget;
 
@@ -35,8 +35,8 @@ widget_style!{
         - text_color: Color { theme.label_color }
         /// The font size for the text.
         - font_size: FontSize { theme.font_size_medium }
-        /// The horizontal alignment of the text.
-        - x_align: Align { Align::Start }
+        /// The typographic alignment of the text.
+        - justify: text::Justify { text::Justify::Left }
         /// The font used for the `Text`.
         - font_id: Option<text::font::Id> { theme.font_id }
     }
@@ -66,18 +66,18 @@ impl<'a> TextBox<'a> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(self) -> Self {
-        self.x_align_text(Align::Start)
+    pub fn left_justify(self) -> Self {
+        self.justify(text::Justify::Left)
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_middle(self) -> Self {
-        self.x_align_text(Align::Middle)
+    pub fn center_justify(self) -> Self {
+        self.justify(text::Justify::Center)
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(self) -> Self {
-        self.x_align_text(Align::End)
+    pub fn right_justify(self) -> Self {
+        self.justify(text::Justify::Right)
     }
 
     /// Specify the font used for displaying the text.
@@ -89,7 +89,7 @@ impl<'a> TextBox<'a> {
     builder_methods!{
         pub text_color { style.text_color = Some(Color) }
         pub font_size { style.font_size = Some(FontSize) }
-        pub x_align_text { style.x_align = Some(Align) }
+        pub justify { style.justify = Some(text::Justify) }
         pub pad_text { style.text_padding = Some(Scalar) }
     }
 
@@ -135,7 +135,7 @@ impl<'a> Widget for TextBox<'a> {
         let font_size = style.font_size(ui.theme());
         let border = style.border(ui.theme());
         let text_padding = style.text_padding(ui.theme());
-        let x_align = style.x_align(ui.theme());
+        let justify = style.justify(ui.theme());
 
         let text_rect = {
             let w = rect.x.pad(border + text_padding).len();
@@ -166,7 +166,7 @@ impl<'a> Widget for TextBox<'a> {
             .xy(text_rect.xy())
             .font_size(font_size)
             .color(text_color)
-            .x_align_text(x_align)
+            .justify(justify)
             .parent(id)
             .set(state.ids.text_edit, ui)
         {

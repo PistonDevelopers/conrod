@@ -29,7 +29,7 @@ widget_style!{
         /// The font size for the text.
         - font_size: FontSize { theme.font_size_medium }
         /// The horizontal alignment of the text.
-        - x_align: Align { Align::Start }
+        - justify: text::Justify { text::Justify::Left }
         /// The vertical alignment of the text.
         - y_align: Align { Align::End }
         /// The vertical space between each line of text.
@@ -117,18 +117,18 @@ impl<'a> TextEdit<'a> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(self) -> Self {
-        self.x_align_text(Align::Start)
+    pub fn left_justify(self) -> Self {
+        self.justify(text::Justify::Left)
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_x_middle(self) -> Self {
-        self.x_align_text(Align::Middle)
+    pub fn center_justify(self) -> Self {
+        self.justify(text::Justify::Center)
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(self) -> Self {
-        self.x_align_text(Align::End)
+    pub fn right_justify(self) -> Self {
+        self.justify(text::Justify::Right)
     }
 
     /// Align the text to the left of its bounding **Rect**'s *y* axis range.
@@ -148,7 +148,7 @@ impl<'a> TextEdit<'a> {
 
     /// Align the text to the middle of its bounding **Rect**.
     pub fn align_text_middle(self) -> Self {
-        self.align_text_x_middle().align_text_y_middle()
+        self.center_justify().align_text_y_middle()
     }
 
     /// Specify the font used for displaying the text.
@@ -159,7 +159,7 @@ impl<'a> TextEdit<'a> {
 
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
-        pub x_align_text { style.x_align = Some(Align) }
+        pub justify { style.justify = Some(text::Justify) }
         pub y_align_text { style.y_align = Some(Align) }
         pub line_wrap { style.line_wrap = Some(Wrap) }
         pub line_spacing { style.line_spacing = Some(Scalar) }
@@ -254,7 +254,7 @@ impl<'a> Widget for TextEdit<'a> {
 
         let font_size = style.font_size(ui.theme());
         let line_wrap = style.line_wrap(ui.theme());
-        let x_align = style.x_align(ui.theme());
+        let justify = style.justify(ui.theme());
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
         let restrict_to_height = style.restrict_to_height(ui.theme());
@@ -319,7 +319,7 @@ impl<'a> Widget for TextEdit<'a> {
             -> Option<(Scalar, Range)>
         {
             let xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
-                                                                    font_size, x_align, y_align,
+                                                                    font_size, justify, y_align,
                                                                     line_spacing, rect);
             text::cursor::xy_at(xys_per_line, cursor_idx)
         };
@@ -334,7 +334,7 @@ impl<'a> Widget for TextEdit<'a> {
             -> Option<(text::cursor::Index, Point)>
         {
             let xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
-                                                                    font_size, x_align, y_align,
+                                                                    font_size, justify, y_align,
                                                                     line_spacing, rect);
             text::cursor::closest_cursor_index_and_xy(xy, xys_per_line)
         };
@@ -347,7 +347,7 @@ impl<'a> Widget for TextEdit<'a> {
                                             font: &text::Font| -> Option<text::cursor::Index>
         {
             let mut xys_per_line = text::cursor::xys_per_line_from_text(text, line_infos, font,
-                                                                        font_size, x_align, y_align,
+                                                                        font_size, justify, y_align,
                                                                         line_spacing, rect);
             xys_per_line.nth(line_idx).and_then(|(line_xs,_)| {
                 let (char_idx,_) = text::cursor::closest_cursor_index_on_line(x_pos,line_xs);
@@ -770,7 +770,7 @@ impl<'a> Widget for TextEdit<'a> {
             .font_id(font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
-            .align_text_to(x_align)
+            .justify(justify)
             .parent(id)
             .graphics_for(id)
             .color(color)
@@ -841,7 +841,7 @@ impl<'a> Widget for TextEdit<'a> {
                 let line_infos = state.line_infos.iter().cloned();
                 let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
                 let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
-                                                   x_align, y_align, line_spacing);
+                                                   justify, y_align, line_spacing);
                 let lines_with_rects = lines.zip(line_rects.clone());
                 let font = ui.fonts.get(font_id).unwrap();
                 text::line::selected_rects(lines_with_rects, font, font_size, start, end).collect()

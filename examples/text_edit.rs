@@ -105,7 +105,7 @@ mod feature {
             .color(color::WHITE)
             .padded_w_of(ids.canvas, 20.0)
             .mid_top_of(ids.canvas)
-            .align_text_x_middle()
+            .center_justify()
             .line_spacing(2.5)
             .restrict_to_height(false) // Let the height grow infinitely and scroll.
             .set(ids.text_edit, ui)

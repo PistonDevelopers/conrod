@@ -1,7 +1,7 @@
 //! The `DropDownList` and related items.
 
 use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable};
-use position::{Align, Scalar};
+use position::{self, Align, Scalar};
 use text;
 use utils;
 use widget::{self, Widget};
@@ -37,8 +37,12 @@ widget_style! {
         - label_color: Color { theme.label_color }
         /// Font size for the item labels.
         - label_font_size: FontSize { theme.font_size_medium }
-        /// The label's alignment over the *x* axis.
-        - label_x_align: Align { Align::Middle }
+        /// The label's typographic alignment over the *x* axis.
+        - label_justify: text::Justify { text::Justify::Center }
+        /// The label's position relative to its `Button` along the *x* axis.
+        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
+        /// The label's position relative to its `Button` along the *y* axis.
+        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
         /// Maximum height of the Open menu before the scrollbar appears.
         - maybe_max_visible_height: Option<MaxHeight> { None }
         /// The position of the scrollbar in the case that the list is scrollable.
@@ -143,6 +147,35 @@ impl<'a, T> DropDownList<'a, T> {
         self
     }
 
+    /// Align the labels to the left of their `Button`s' surface.
+    pub fn left_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Left);
+        self
+    }
+
+    /// Align the labels to the right of their `Button`s' surface.
+    pub fn right_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Right);
+        self
+    }
+
+    /// Center the labels to the their `Button`s' surface.
+    pub fn center_justify_label(mut self) -> Self {
+        self.style.label_justify = Some(text::Justify::Center);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *x* axis.
+    pub fn label_x(mut self, x: position::Relative) -> Self {
+        self.style.label_x = Some(x);
+        self
+    }
+
+    /// Specify the label's position relatively to `Button` along the *y* axis.
+    pub fn label_y(mut self, y: position::Relative) -> Self {
+        self.style.label_y = Some(y);
+        self
+    }
 
 }
 
@@ -318,7 +351,9 @@ impl Style {
             border_color: self.border_color,
             label_color: self.label_color,
             label_font_size: self.label_font_size,
-            label_x_align: self.label_x_align,
+            label_justify: self.label_justify,
+            label_x: self.label_x,
+            label_y: self.label_y,
             label_font_id: self.label_font_id,
         }
     }

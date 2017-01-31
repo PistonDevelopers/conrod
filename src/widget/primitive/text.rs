@@ -1,19 +1,19 @@
 //! The primitive widget used for displaying text.
 
 use {Color, Colorable, FontSize, Ui, Widget};
-use position::{Align, Dimension, Scalar};
+use position::{Dimension, Scalar};
 use std;
 use text;
 use utils;
 use widget;
 
 
-/// Displays some given text centred within a rectangular area.
+/// Displays some given text centered within a rectangular area.
 ///
 /// By default, the rectangular dimensions are fit to the area occuppied by the text.
 ///
 /// If some horizontal dimension is given, the text will automatically wrap to the width and align
-/// in accordance with the produced **Align**.
+/// in accordance with the produced **Alignment**.
 pub struct Text<'a> {
     /// Data necessary and common for all widget builder types.
     pub common: widget::CommonBuilder,
@@ -35,7 +35,7 @@ widget_style!{
         /// The spacing between consecutive lines.
         - line_spacing: Scalar { 1.0 }
         /// Alignment of the text along the *x* axis.
-        - text_align: Align { Align::Start }
+        - justify: text::Justify { text::Justify::Left }
         /// The id of the font to use for rendring and layout.
         - font_id: Option<text::font::Id> { theme.font_id }
         // /// The line styling for the text.
@@ -114,23 +114,23 @@ impl<'a> Text<'a> {
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_left(self) -> Self {
-        self.align_text_to(Align::Start)
+    pub fn left_justify(self) -> Self {
+        self.justify(text::Justify::Left)
     }
 
     /// Align the text to the middle of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_middle(self) -> Self {
-        self.align_text_to(Align::Middle)
+    pub fn center_justify(self) -> Self {
+        self.justify(text::Justify::Center)
     }
 
     /// Align the text to the right of its bounding **Rect**'s *x* axis range.
-    pub fn align_text_right(self) -> Self {
-        self.align_text_to(Align::End)
+    pub fn right_justify(self) -> Self {
+        self.justify(text::Justify::Right)
     }
 
     builder_methods!{
         pub font_size { style.font_size = Some(FontSize) }
-        pub align_text_to { style.text_align = Some(Align) }
+        pub justify { style.justify = Some(text::Justify) }
         pub line_spacing { style.line_spacing = Some(Scalar) }
     }
 
