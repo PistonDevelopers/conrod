@@ -72,6 +72,10 @@ pub struct Flat;
 pub struct Image {
     /// The id of the `Image` to be used.
     pub image_id: image::Id,
+    /// The image displayed when the mouse hovers over the button.
+    pub hover_image_id: Option<image::Id>,
+    /// The image displayed when the mouse has captured and is pressing the button.
+    pub press_image_id: Option<image::Id>,
     /// If `Some`, maps the image's luminance to this `Color`.
     pub color: ImageColor,
     /// The rectangular area of the original source image that should be displayed.
@@ -90,6 +94,9 @@ pub enum ImageColor {
     /// The image's regular color will be used.
     None,
 }
+
+#[derive(Copy, Clone)]
+enum Interaction { Idle, Hover, Press }
 
 /// The `Event` type yielded by the `Button` widget.
 ///
@@ -124,6 +131,8 @@ impl<'a> Button<'a, Image> {
     pub fn image(image_id: image::Id) -> Self {
         let image = Image {
             image_id: image_id,
+            hover_image_id: None,
+            press_image_id: None,
             src_rect: None,
             color: ImageColor::None,
         };
@@ -150,6 +159,18 @@ impl<'a> Button<'a, Image> {
     /// some visual feedback.
     pub fn image_color_with_feedback(mut self, color: Color) -> Self {
         self.show.color = ImageColor::WithFeedback(color);
+        self
+    }
+
+    /// The image displayed while the mouse hovers over the `Button`.
+    pub fn hover_image(mut self, id: image::Id) -> Self {
+        self.show.hover_image_id = Some(id);
+        self
+    }
+
+    /// The image displayed while the `Button` is pressed.
+    pub fn press_image(mut self, id: image::Id) -> Self {
+        self.show.press_image_id = Some(id);
         self
     }
 
@@ -248,7 +269,8 @@ impl<'a> Widget for Button<'a, Flat> {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { maybe_label, .. } = self;
 
-        let (color, times_clicked) = color_and_times_clicked(id, &style, ui);
+        let (interaction, times_clicked) = interaction_and_times_clicked(id, ui);
+        let color = color_from_interaction(style.color(&ui.theme), interaction);
 
         bordered_rectangle(id, state.rectangle, rect, color, style, ui);
 
@@ -288,15 +310,22 @@ impl<'a> Widget for Button<'a, Image> {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
 
-        let (color, times_clicked) = color_and_times_clicked(id, &style, ui);
-
-        bordered_rectangle(id, state.rectangle, rect, color, style, ui);
+        let (interaction, times_clicked) = interaction_and_times_clicked(id, ui);
 
         // Instantiate the image.
-        let Image { image_id, src_rect, color } = show;
+        let Image { image_id, press_image_id, hover_image_id, src_rect, color } = show;
+
+        // Determine the correct image to display.
+        let image_id = match interaction {
+            Interaction::Idle => image_id,
+            Interaction::Hover => hover_image_id.unwrap_or(image_id),
+            Interaction::Press => press_image_id.or(hover_image_id).unwrap_or(image_id),
+        };
+
+        let (x, y, w, h) = rect.x_y_w_h();
         let mut image = widget::Image::new(image_id)
-            .middle_of(id)
-            .wh_of(id)
+            .x_y(x, y)
+            .w_h(w, h)
             .parent(id)
             .graphics_for(id);
         image.src_rect = src_rect;
@@ -324,18 +353,25 @@ impl<'a> Widget for Button<'a, Image> {
 }
 
 
-fn color_and_times_clicked(button_id: widget::Id, style: &Style, ui: &UiCell) -> (Color, u16) {
+fn color_from_interaction(color: Color, interaction: Interaction) -> Color {
+    match interaction {
+        Interaction::Idle => color,
+        Interaction::Hover => color.highlighted(),
+        Interaction::Press => color.clicked(),
+    }
+}
+
+fn interaction_and_times_clicked(button_id: widget::Id, ui: &UiCell) -> (Interaction, u16) {
     let input = ui.widget_input(button_id);
-    let color = style.color(ui.theme());
-    let color = input.mouse().map_or(color, |mouse| {
+    let interaction = input.mouse().map_or(Interaction::Idle, |mouse| {
         if mouse.buttons.left().is_down() {
-            color.clicked()
+            Interaction::Press
         } else {
-            color.highlighted()
+            Interaction::Hover
         }
     });
     let times_clicked = input.clicks().left().count() as u16;
-    (color, times_clicked)
+    (interaction, times_clicked)
 }
 
 fn bordered_rectangle(button_id: widget::Id, rectangle_id: widget::Id,

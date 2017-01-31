@@ -55,10 +55,23 @@ mod feature {
 
         // Create our `conrod::image::Map` which describes each of our widget->image mappings.
         // In our case we only have one image, however the macro may be used to list multiple.
-        let rust_logo = load_rust_logo(&display);
-        let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
         let mut image_map = conrod::image::Map::new();
-        let rust_logo = image_map.insert(rust_logo);
+
+        struct ImageIds {
+            normal: conrod::image::Id,
+            hover: conrod::image::Id,
+            press: conrod::image::Id,
+        }
+
+        // Load the images into our `ImageIds` type for easy access.
+        let image_path = assets.join("images");
+        let rust_logo = load_image(&display, image_path.join("rust.png"));
+        let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
+        let image_ids = ImageIds {
+            normal: image_map.insert(rust_logo),
+            hover: image_map.insert(load_image(&display, image_path.join("rust_hover.png"))),
+            press: image_map.insert(load_image(&display, image_path.join("rust_press.png"))),
+        };
 
         // We'll change the background colour with the image button.
         let mut bg_color = conrod::color::LIGHT_BLUE;
@@ -95,12 +108,12 @@ mod feature {
                     .set(ids.canvas, ui);
 
                 // Button widget example button.
-                if widget::Button::image(rust_logo)
+                if widget::Button::image(image_ids.normal)
+                    .hover_image(image_ids.hover)
+                    .press_image(image_ids.press)
                     .w_h(w as conrod::Scalar, h as conrod::Scalar)
                     .middle_of(ids.canvas)
-                    .color(color::TRANSPARENT)
                     .border(0.0)
-                    .image_color_with_feedback(color::BLACK)
                     .set(ids.button, ui)
                     .was_clicked()
                 {
@@ -119,14 +132,15 @@ mod feature {
         }
     }
 
-    // Load the Rust logo from our assets folder to use as an example image.
-    fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-        let path = assets.join("images/rust.png");
+    // Load an image from our assets folder as a texture we can draw to the screen.
+    fn load_image<P>(display: &glium::Display, path: P) -> glium::texture::SrgbTexture2d
+        where P: AsRef<std::path::Path>,
+    {
+        let path = path.as_ref();
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
-        let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
+        let texture = glium::texture::SrgbTexture2d::new(display, raw_image).unwrap();
         texture
     }
 }
