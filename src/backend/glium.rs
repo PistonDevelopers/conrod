@@ -310,6 +310,27 @@ pub fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
 }
 
 
+/// Return the optimal client format for the text texture given the version.
+pub fn text_texture_client_format(opengl_version: &glium::Version) -> glium::texture::ClientFormat {
+    match *opengl_version {
+        // If the version is greater than or equal to GL 3.0 or GLes 3.0, we can use the `U8` format.
+        glium::Version(_, major, _) if major >= 3 => glium::texture::ClientFormat::U8,
+        // Otherwise, we must use the `U8U8U8` format to support older versions.
+        _ => glium::texture::ClientFormat::U8U8U8,
+    }
+}
+
+/// Return the optimal uncompressed float format for the text texture given the version.
+pub fn text_texture_uncompressed_float_format(opengl_version: &glium::Version) -> glium::texture::UncompressedFloatFormat {
+    match *opengl_version {
+        // If the version is greater than or equal to GL 3.0 or GLes 3.0, we can use the `U8` format.
+        glium::Version(_, major, _) if major >= 3 => glium::texture::UncompressedFloatFormat::U8,
+        // Otherwise, we must use the `U8U8U8` format to support older versions.
+        _ => glium::texture::UncompressedFloatFormat::U8U8U8,
+    }
+}
+
+
 impl GlyphCache {
 
     /// Construct a `GlyphCache` with a size equal to the given `Display`'s current framebuffer
@@ -320,7 +341,18 @@ impl GlyphCache {
         const SCALE_TOLERANCE: f32 = 0.1;
         const POSITION_TOLERANCE: f32 = 0.1;
 
-        let (w, h) = facade.get_context().get_framebuffer_dimensions();
+        let context = facade.get_context();
+        let (w, h) = context.get_framebuffer_dimensions();
+
+        // Determine the optimal texture format to use given the opengl version.
+        let opengl_version = context.get_opengl_version();
+        let client_format = text_texture_client_format(opengl_version);
+        let uncompressed_float_format = text_texture_uncompressed_float_format(opengl_version);
+
+        // Construct the `GlyphCache`.
+        let num_components = client_format.get_num_components() as u32;
+
+        let buffer_w = num_components * w;
 
         // First, the rusttype `Cache` which performs the logic for rendering and laying out glyphs
         // in the cache.
@@ -328,12 +360,12 @@ impl GlyphCache {
 
         // Now the texture to which glyphs will be rendered.
         let grey_image = glium::texture::RawImage2d {
-            data: std::borrow::Cow::Owned(vec![128u8; w as usize * h as usize]),
+            data: std::borrow::Cow::Owned(vec![128u8; buffer_w as usize * h as usize]),
             width: w,
             height: h,
-            format: glium::texture::ClientFormat::U8
+            format: client_format,
         };
-        let format = glium::texture::UncompressedFloatFormat::U8;
+        let format = uncompressed_float_format;
         let no_mipmap = glium::texture::MipmapsOption::NoMipmap;
         let texture = try!(glium::texture::Texture2d::with_format(facade, grey_image, format, no_mipmap));
 
@@ -388,6 +420,18 @@ impl Renderer {
 
         commands.clear();
         vertices.clear();
+
+        // This is necessary for supporting rusttype's GPU cache with OpenGL versions older than GL
+        // 3.0 and GL ES 3.0. It is used to convert from the `U8` data format given by `rusttype`
+        // to the `U8U8U8` format that is necessary for older versions of OpenGL.
+        //
+        // The buffer is only used if an older version was detected, otherwise the text GPU cache
+        // uses the rusttype `data` buffer directly.
+        let mut text_data_u8u8u8 = Vec::new();
+
+        // Determine the texture format that we're using.
+        let opengl_version = display.get_opengl_version();
+        let client_format = text_texture_client_format(opengl_version);
 
         enum State {
             Image { image_id: image::Id, start: usize },
@@ -605,17 +649,37 @@ impl Renderer {
 
                     // Cache the glyphs on the GPU.
                     cache.cache_queued(|rect, data| {
+                        let w = rect.width();
+                        let h = rect.height();
                         let glium_rect = glium::Rect {
                             left: rect.min.x,
                             bottom: rect.min.y,
-                            width: rect.width(),
-                            height: rect.height()
+                            width: w,
+                            height: h,
                         };
+
+                        let data = match client_format {
+                            // `rusttype` gives data in the `U8` format so we can use it directly.
+                            glium::texture::ClientFormat::U8 => std::borrow::Cow::Borrowed(data),
+                            // Otherwise we have to convert to the supported format.
+                            glium::texture::ClientFormat::U8U8U8 => {
+                                text_data_u8u8u8.clear();
+                                for &b in data.iter() {
+                                    text_data_u8u8u8.push(b);
+                                    text_data_u8u8u8.push(b);
+                                    text_data_u8u8u8.push(b);
+                                }
+                                std::borrow::Cow::Borrowed(&text_data_u8u8u8[..])
+                            },
+                            // The text cache is only ever created with U8 or U8U8U8 formats.
+                            _ => unreachable!(),
+                        };
+
                         let image = glium::texture::RawImage2d {
-                            data: std::borrow::Cow::Borrowed(data),
-                            width: rect.width(),
-                            height: rect.height(),
-                            format: glium::texture::ClientFormat::U8
+                            data: data,
+                            width: w,
+                            height: h,
+                            format: client_format,
                         };
                         texture.main_level().write(glium_rect, image);
                     }).unwrap();

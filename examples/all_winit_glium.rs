@@ -31,7 +31,7 @@ mod feature {
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
-            .with_gl(glium::glutin::GlRequest::Specific(glium::glutin::Api::OpenGl, (2, 1)))
+            //.with_gl(glium::glutin::GlRequest::Specific(glium::glutin::Api::OpenGl, (2, 1)))
             .build_glium()
             .unwrap();
 
