@@ -50,7 +50,7 @@ mod feature {
         let rust_logo = image_map.insert(rust_logo);
 
         // Poll events from the window.
-        let mut event_loop = support::EventLoop::new();
+        let event_loop = support::EventLoop::new();
         'main: loop {
 
             // Handle all events.

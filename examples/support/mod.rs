@@ -15,6 +15,8 @@ extern crate rand;
 
 use conrod;
 use std;
+use std::sync::{Arc, Mutex, Condvar};
+use std::time::Duration;
 
 #[cfg(feature="glium")] use conrod::backend::glium::glium;
 
@@ -365,8 +367,7 @@ pub fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut DemoApp) {
 /// glutin+glium event loop that works efficiently with conrod.
 #[cfg(feature="glium")]
 pub struct EventLoop {
-    ui_needs_update: bool,
-    last_update: std::time::Instant,
+    pair: Arc<(Mutex<bool>, Condvar)>,
 }
 
 #[cfg(feature="glium")]
@@ -374,33 +375,32 @@ impl EventLoop {
 
     pub fn new() -> Self {
         EventLoop {
-            last_update: std::time::Instant::now(),
-            ui_needs_update: false,
+            pair: Arc::new((Mutex::new(false), Condvar::new())),
         }
     }
 
     /// Produce an iterator yielding all available events.
-    pub fn next(&mut self, display: &glium::Display) -> Vec<glium::glutin::Event> {
-        // We don't want to loop any faster than 60 FPS, so wait until it has been at least 16ms
-        // since the last yield.
-        let last_update = self.last_update;
-        let sixteen_ms = std::time::Duration::from_millis(16);
-        let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
-        if duration_since_last_update < sixteen_ms {
-            std::thread::sleep(sixteen_ms - duration_since_last_update);
-        }
-
-        // Collect all pending events.
+    pub fn next(&self, display: &glium::Display) -> Vec<glium::glutin::Event> {
         let mut events = Vec::new();
-        events.extend(display.poll_events());
 
-        // If there are no events and the `Ui` does not need updating, wait for the next event.
-        if events.is_empty() && !self.ui_needs_update {
-            events.extend(display.wait_events().next());
+        // FIXME: This will busy loop at 60FPS, ideally there would be a way to have the glium
+        //        display also fire needs_update() calls and then we could bump the timeout
+        //        to something much higher or even just use wait()
+        loop {
+            events.extend(display.poll_events());
+            if !events.is_empty() {
+                break;
+            }
+
+            let &(ref lock, ref cvar) = &*self.pair;
+            let guard = lock.lock().unwrap();
+            let mut needs_update = cvar.wait_timeout(guard, Duration::from_millis(16)).unwrap().0;
+
+            if *needs_update {
+                *needs_update = false;
+                break;
+            }
         }
-
-        self.ui_needs_update = false;
-        self.last_update = std::time::Instant::now();
 
         events
     }
@@ -410,8 +410,11 @@ impl EventLoop {
     ///
     /// This is primarily used on the occasion that some part of the `Ui` is still animating and
     /// requires further updates to do so.
-    pub fn needs_update(&mut self) {
-        self.ui_needs_update = true;
+    pub fn needs_update(&self) {
+        let &(ref lock, ref cvar) = &*self.pair;
+        let mut guard = lock.lock().unwrap();
+        *guard = true;
+        cvar.notify_one();
     }
 
 }

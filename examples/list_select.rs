@@ -72,7 +72,7 @@ mod feature {
         let mut list_selected = std::collections::HashSet::new();
 
         // Poll events from the window.
-        let mut event_loop = support::EventLoop::new();
+        let event_loop = support::EventLoop::new();
         'main: loop {
 
             // Handle all events.
