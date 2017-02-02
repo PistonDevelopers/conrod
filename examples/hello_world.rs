@@ -93,7 +93,7 @@ mod feature {
                 }
             }
 
-            // Instnatiate all widgets in the GUI.
+            // Instantiate all widgets in the GUI.
             {
                 let ui = &mut ui.set_widgets();
 
