@@ -27,7 +27,7 @@ mod feature {
         let display = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIDTH, HEIGHT)
-            .with_title("Click me!")
+            .with_title("Hello Conrod!")
             .build_glium()
             .unwrap();
 
