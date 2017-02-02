@@ -375,7 +375,7 @@ impl EventLoop {
     pub fn new() -> Self {
         EventLoop {
             last_update: std::time::Instant::now(),
-            ui_needs_update: false,
+            ui_needs_update: true,
         }
     }
 
