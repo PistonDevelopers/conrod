@@ -76,8 +76,11 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
 
     match e {
 
-        winit::Event::Resized(w, h) =>
-            Some(Input::Resize(w, h).into()),
+        winit::Event::Resized(w, h) => {
+            let w = (w as Scalar / dpi_factor) as u32;
+            let h = (h as Scalar / dpi_factor) as u32;
+            Some(Input::Resize(w, h).into())
+        },
 
         winit::Event::ReceivedCharacter(ch) => {
             let string = match ch {
