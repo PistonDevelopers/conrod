@@ -13,7 +13,6 @@ fn main() {
 
 #[cfg(all(feature="winit", feature="glium"))]
 mod feature {
-    extern crate find_folder;
     use conrod::{self, widget, Colorable, Positionable, Sizeable, Widget};
     use conrod::backend::glium::glium;
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
