@@ -34,7 +34,7 @@ mod feature {
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
         // Generate the widget identifiers.
-        widget_ids!(struct Ids { text, circle });
+        widget_ids!(struct Ids { text });
         let ids = Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
