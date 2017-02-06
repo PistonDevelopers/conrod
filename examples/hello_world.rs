@@ -13,7 +13,7 @@ fn main() {
 
 #[cfg(all(feature="winit", feature="glium"))]
 mod feature {
-    use conrod::{self, widget, Colorable, Positionable, Sizeable, Widget};
+    use conrod::{self, widget, Colorable, Positionable, Widget};
     use conrod::backend::glium::glium;
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use std;
