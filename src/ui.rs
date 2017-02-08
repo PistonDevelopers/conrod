@@ -602,7 +602,7 @@ impl Ui {
             // 1. `Drag`
             // 2. `WidgetUncapturesMouse`
             // 3. `WidgetCapturesMouse`
-            Input::Move(motion) => {
+            Input::Motion(motion) => {
 
                 // Create a `Move` event.
                 let move_ = event::Move {
@@ -615,7 +615,7 @@ impl Ui {
 
                 match motion {
 
-                    Motion::MouseCursor(x, y) => {
+                    Motion::MouseCursor { x, y } => {
 
                         // Check for drag events.
                         let last_mouse_xy = self.global_input.current.mouse.xy;
@@ -647,8 +647,8 @@ impl Ui {
                         track_widget_under_mouse_and_update_capturing(self);
                     },
 
-                    // The mouse was scrolled.
-                    Motion::MouseScroll(x, y) => {
+                    // Some scrolling occurred (e.g. mouse scroll wheel).
+                    Motion::Scroll { x, y } => {
 
                         let mut scrollable_widgets = {
                             let depth_order = &self.depth_order.indices;

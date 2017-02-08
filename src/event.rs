@@ -64,8 +64,10 @@ pub enum Input {
     Release(input::Button),
     /// The window was received to the given dimensions.
     Resize(u32, u32),
-    /// Some motion input was received (e.g. moving mouse, joystick or touch pad).
-    Move(input::Motion),
+    /// Some motion input was received (e.g. moving mouse or joystick axis).
+    Motion(input::Motion),
+    /// Input from a touch surface/screen.
+    Touch(input::Touch),
     /// Text input was received, usually via the keyboard.
     Text(String),
     /// The window was focused or lost focus.
@@ -313,7 +315,8 @@ impl Move {
     /// Returns a copy of the `Move` relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Move {
         let motion = match self.motion {
-            input::Motion::MouseCursor(x, y) => input::Motion::MouseCursor(x - xy[0], y - xy[1]),
+            input::Motion::MouseCursor { x, y } =>
+                input::Motion::MouseCursor { x: x - xy[0], y: y - xy[1] },
             motion => motion,
         };
         Move {
@@ -439,6 +442,18 @@ impl Drag {
     }
 }
 
+
+impl From<input::Motion> for Input {
+    fn from(motion: input::Motion) -> Self {
+        Input::Motion(motion)
+    }
+}
+
+impl From<input::Touch> for Input {
+    fn from(touch: input::Touch) -> Self {
+        Input::Touch(touch)
+    }
+}
 
 impl From<Ui> for Event {
     fn from(ui: Ui) -> Self {

@@ -103,25 +103,31 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
         winit::Event::KeyboardInput(winit::ElementState::Released, _, Some(key)) =>
             Some(Input::Release(input::Button::Keyboard(map_key(key))).into()),
 
-        winit::Event::Touch(winit::Touch { phase, location, id }) => {
+        winit::Event::Touch(winit::Touch { phase, location: (x, y), id }) => {
             let phase = match phase {
-                winit::TouchPhase::Started => input::Touch::Start,
-                winit::TouchPhase::Moved => input::Touch::Move,
-                winit::TouchPhase::Ended => input::Touch::End,
-                winit::TouchPhase::Cancelled => input::Touch::Cancel
+                winit::TouchPhase::Started => input::touch::Phase::Start,
+                winit::TouchPhase::Moved => input::touch::Phase::Move,
+                winit::TouchPhase::Cancelled => input::touch::Phase::Cancel,
+                winit::TouchPhase::Ended => input::touch::Phase::End,
             };
-            let xy = [tx(location.0), ty(location.1)];
-            let args = input::TouchArgs::new(0, id as i64, xy, 1.0, phase);
-            Some(Input::Move(input::Motion::Touch(args)).into())
+            let xy = [tx(x), ty(y)];
+            let id = input::touch::Id::new(id);
+            let touch = input::Touch { phase: phase, id: id, xy: xy };
+            Some(Input::Touch(touch).into())
         }
 
-        winit::Event::MouseMoved(x, y) =>
-            Some(Input::Move(input::Motion::MouseCursor(tx(x as Scalar), ty(y as Scalar))).into()),
+        winit::Event::MouseMoved(x, y) => {
+            let x = tx(x as Scalar);
+            let y = ty(y as Scalar);
+            let motion = input::Motion::MouseCursor { x: x, y: y };
+            Some(Input::Motion(motion).into())
+        },
 
         winit::Event::MouseWheel(winit::MouseScrollDelta::PixelDelta(x, y), _) => {
             let x = x as Scalar / dpi_factor;
             let y = -y as Scalar / dpi_factor;
-            Some(Input::Move(input::Motion::MouseScroll(x, y)).into())
+            let motion = input::Motion::Scroll { x: x, y: y };
+            Some(Input::Motion(motion).into())
         },
 
         winit::Event::MouseWheel(winit::MouseScrollDelta::LineDelta(x, y), _) => {
@@ -129,7 +135,7 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
             const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
             let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
             let y = ARBITRARY_POINTS_PER_LINE_FACTOR * -y as Scalar;
-            Some(Input::Move(input::Motion::MouseScroll(x, y)).into())
+            Some(Input::Motion(input::Motion::Scroll { x: x, y: y }).into())
         },
 
         winit::Event::MouseInput(winit::ElementState::Pressed, button) =>
