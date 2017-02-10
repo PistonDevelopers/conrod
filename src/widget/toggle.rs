@@ -142,7 +142,10 @@ impl<'a> Widget for Toggle<'a> {
 
         let times_clicked = TimesClicked {
             state: value,
-            count: if enabled { ui.widget_input(id).clicks().left().count() as u16 } else { 0 },
+            count: if enabled {
+                let input = ui.widget_input(id);
+                (input.clicks().left().count() + input.taps().count()) as u16
+            } else { 0 },
         };
 
         // BorderedRectangle widget.
