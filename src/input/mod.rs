@@ -39,6 +39,19 @@ pub use piston_input::{
 };
 
 
+/// Sources from which user input may be received.
+///
+/// We use these to track which sources of input are being captured by which widget.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Source {
+    /// Mouse input (i.e. movement, buttons).
+    Mouse,
+    /// Keyboard input.
+    Keyboard,
+    /// Input from a finger on a touch screen/surface.
+    Touch(self::touch::Id),
+}
+
 /// Different kinds of motion input.
 #[allow(missing_docs)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -104,6 +117,18 @@ pub mod touch {
         /// Construct a new identifier.
         pub fn new(id: u64) -> Self {
             Id(id)
+        }
+
+    }
+
+    impl Touch {
+
+        /// Returns a copy of the `Touch` relative to the given `xy`.
+        pub fn relative_to(&self, xy: Point) -> Self {
+            Touch {
+                xy: [self.xy[0] - xy[0], self.xy[1] - xy[1]],
+                ..*self
+            }
         }
 
     }

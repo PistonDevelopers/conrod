@@ -99,7 +99,9 @@ pub enum Ui {
     Release(Option<widget::Id>, Release),
     /// Represents all forms of motion input, alongside with the widget that was capturing the
     /// mouse at the time.
-    Move(Option<widget::Id>, Move),
+    Motion(Option<widget::Id>, Motion),
+    /// Interaction with a touch screen/surface.
+    Touch(Option<widget::Id>, input::Touch),
     /// The window's dimensions were resized.
     WindowResized(Dimensions),
     /// Represents a pointing device being pressed and subsequently released while over the same
@@ -108,6 +110,8 @@ pub enum Ui {
     /// Two `Click` events with the same `button` and `xy` occurring within a duration that is less
     /// that the `theme.double_click_threshold`.
     DoubleClick(Option<widget::Id>, DoubleClick),
+    /// A user tapped a touch screen/surface.
+    Tap(Option<widget::Id>, Tap),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
     Drag(Option<widget::Id>, Drag),
     /// A generic scroll event.
@@ -119,15 +123,12 @@ pub enum Ui {
     /// top to bottom. The remainder will then be applied to either 1. whatever widget captures the
     /// device from which the scroll was emitted or 2. whatever widget was specified.
     Scroll(Option<widget::Id>, Scroll),
-    /// Indicates that the given widget has captured the mouse.
-    WidgetCapturesMouse(widget::Id),
-    /// Indicates that the given widget has released the mouse from capturing.
-    WidgetUncapturesMouse(widget::Id),
-    /// Indicates that the given widget has captured the keyboard.
-    WidgetCapturesKeyboard(widget::Id),
-    /// Indicates that the given widget has released the keyboard from capturing.
-    WidgetUncapturesKeyboard(widget::Id),
+    /// Indicates that the given widget has captured the given user input source.
+    WidgetCapturesInputSource(widget::Id, input::Source),
+    /// Indicates that the given widget has released the given user input source.
+    WidgetUncapturesInputSource(widget::Id, input::Source),
 }
+
 
 /// Events that apply to a specific widget.
 ///
@@ -141,7 +142,9 @@ pub enum Widget {
     /// Entered text.
     Text(Text),
     /// Represents all forms of motion input.
-    Move(Move),
+    Motion(Motion),
+    /// Interaction with a touch screen.
+    Touch(input::Touch),
     /// Some button was pressed.
     Press(Press),
     /// Some button was released.
@@ -152,20 +155,18 @@ pub enum Widget {
     /// Two `Click` events with the same `button` and `xy` occurring within a duration that is less
     /// that the `theme.double_click_threshold`.
     DoubleClick(DoubleClick),
+    /// A user tapped the widget on a touch screen/surface.
+    Tap(Tap),
     /// Represents a pointing device button being pressed and a subsequent movement of the mouse.
     Drag(Drag),
     /// Represents the amount of scroll that has been applied to this widget.
     Scroll(Scroll),
     /// The window's dimensions were resized.
     WindowResized(Dimensions),
-    /// The widget has captured the mouse.
-    CapturesMouse,
-    /// The widget has released the mouse from capturing.
-    UncapturesMouse,
-    /// The widget has captured the keyboard.
-    CapturesKeyboard,
-    /// Indicates that the given widget has released the keyboard from capturing.
-    UncapturesKeyboard,
+    /// The widget has captured the given input source.
+    CapturesInputSource(input::Source),
+    /// The widget has released the input source from capturing.
+    UncapturesInputSource(input::Source),
 }
 
 /// Contains all relevant information for a Text event.
@@ -179,7 +180,7 @@ pub struct Text {
 
 /// Contains all relevant information for a Motion event.
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct Move {
+pub struct Motion {
     /// The type of `Motion` that occurred.
     pub motion: input::Motion,
     /// The modifier keys that were down at the time.
@@ -300,6 +301,15 @@ pub struct DoubleClick {
     pub modifiers: input::keyboard::ModifierKey,
 }
 
+/// All relevant information for a touch-screen tap event.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Tap {
+    /// The unique identifier of the source of the touch.
+    pub id: input::touch::Id,
+    /// The position at which the finger left the screen.
+    pub xy: Point,
+}
+
 /// Holds all the relevant information about a scroll event
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Scroll {
@@ -311,15 +321,15 @@ pub struct Scroll {
     pub modifiers: input::keyboard::ModifierKey,
 }
 
-impl Move {
-    /// Returns a copy of the `Move` relative to the given `xy`
-    pub fn relative_to(&self, xy: Point) -> Move {
+impl Motion {
+    /// Returns a copy of the `Motion` relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Motion {
         let motion = match self.motion {
             input::Motion::MouseCursor { x, y } =>
                 input::Motion::MouseCursor { x: x - xy[0], y: y - xy[1] },
             motion => motion,
         };
-        Move {
+        Motion {
             motion: motion,
             ..*self
         }
@@ -410,6 +420,16 @@ impl Release {
 
 }
 
+impl Tap {
+    /// Returns a copy of the `Tap` relative to the given `xy`
+    pub fn relative_to(&self, xy: Point) -> Self {
+        Tap {
+            xy: vec2_sub(self.xy, xy),
+            ..*self
+        }
+    }
+}
+
 impl Click {
     /// Returns a copy of the Click relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Click {
@@ -473,9 +493,15 @@ impl From<Text> for Widget {
     }
 }
 
-impl From<Move> for Widget {
-    fn from(move_: Move) -> Self {
-        Widget::Move(move_)
+impl From<Motion> for Widget {
+    fn from(motion: Motion) -> Self {
+        Widget::Motion(motion)
+    }
+}
+
+impl From<input::Touch> for Widget {
+    fn from(touch: input::Touch) -> Self {
+        Widget::Touch(touch)
     }
 }
 
@@ -500,6 +526,12 @@ impl From<Click> for Widget {
 impl From<DoubleClick> for Widget {
     fn from(double_click: DoubleClick) -> Self {
         Widget::DoubleClick(double_click)
+    }
+}
+
+impl From<Tap> for Widget {
+    fn from(tap: Tap) -> Self {
+        Widget::Tap(tap)
     }
 }
 

@@ -416,35 +416,19 @@ impl<'a> Iterator for Events<'a> {
         while let Some(ui_event) = self.ui_events.next() {
             match *ui_event {
 
-                // Mouse capturing.
-                event::Ui::WidgetCapturesMouse(idx) => {
+                // Input source capturing.
+                event::Ui::WidgetCapturesInputSource(idx, source) => {
                     self.capturing_mouse = Some(idx);
                     if idx == self.idx {
-                        return Some(event::Widget::CapturesMouse);
+                        return Some(event::Widget::CapturesInputSource(source));
                     }
                 },
-                event::Ui::WidgetUncapturesMouse(idx) => {
+                event::Ui::WidgetUncapturesInputSource(idx, source) => {
                     if Some(idx) == self.capturing_mouse {
                         self.capturing_mouse = None;
                     }
                     if idx == self.idx {
-                        return Some(event::Widget::UncapturesMouse);
-                    }
-                },
-
-                // Keyboard capturing.
-                event::Ui::WidgetCapturesKeyboard(idx) => {
-                    self.capturing_keyboard = Some(idx);
-                    if idx == self.idx {
-                        return Some(event::Widget::CapturesKeyboard);
-                    }
-                },
-                event::Ui::WidgetUncapturesKeyboard(idx) => {
-                    if Some(idx) == self.capturing_keyboard {
-                        self.capturing_keyboard = None;
-                    }
-                    if idx == self.idx {
-                        return Some(event::Widget::UncapturesKeyboard);
+                        return Some(event::Widget::UncapturesInputSource(source));
                     }
                 },
 
@@ -454,8 +438,11 @@ impl<'a> Iterator for Events<'a> {
                 event::Ui::Text(idx, ref text) if idx == Some(self.idx) =>
                     return Some(text.clone().into()),
 
-                event::Ui::Move(idx, ref move_) if idx == Some(self.idx) =>
-                    return Some(move_.clone().into()),
+                event::Ui::Motion(idx, ref motion) if idx == Some(self.idx) =>
+                    return Some(motion.clone().into()),
+
+                event::Ui::Touch(idx, ref touch) if idx == Some(self.idx) =>
+                    return Some(touch.clone().relative_to(self.rect.xy()).into()),
 
                 event::Ui::Press(idx, ref press) if idx == Some(self.idx) =>
                     return Some(press.clone().relative_to(self.rect.xy()).into()),
@@ -468,6 +455,9 @@ impl<'a> Iterator for Events<'a> {
 
                 event::Ui::DoubleClick(idx, ref double_click) if idx == Some(self.idx) =>
                     return Some(double_click.clone().relative_to(self.rect.xy()).into()),
+
+                event::Ui::Tap(idx, ref tap) if idx == Some(self.idx) =>
+                    return Some(tap.clone().relative_to(self.rect.xy()).into()),
 
                 event::Ui::Drag(idx, ref drag) if idx == Some(self.idx) =>
                     return Some(drag.clone().relative_to(self.rect.xy()).into()),
