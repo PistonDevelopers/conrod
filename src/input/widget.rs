@@ -120,6 +120,13 @@ pub struct ButtonClicks<'a> {
     button: input::MouseButton,
 }
 
+/// An `Iterator` yielding all touch screen taps occuring within the given sequence of
+/// `widget::Event`s.
+#[derive(Clone)]
+pub struct Taps<'a> {
+    events: Events<'a>,
+}
+
 /// An iterator that yields all `event::Drag` events yielded by the `Events` iterator.
 ///
 /// Only events that occurred while the widget was capturing the device that did the dragging will
@@ -215,6 +222,14 @@ impl<'a> Widget<'a> {
     /// released over the widget.
     pub fn clicks(&self) -> Clicks<'a> {
         Clicks { events: self.events() }
+    }
+
+    /// Filters all events yielded by `Self::events` for all `event::Tap`s.
+    ///
+    /// A _tap_ is determined to have occured if a touch interaction both started and ended over
+    /// the widget.
+    pub fn taps(&self) -> Taps<'a> {
+        Taps { events: self.events() }
     }
 
     /// Produces an iterator that yields all `event::Drag` events yielded by the `Events` iterator.
@@ -589,6 +604,18 @@ impl<'a> Iterator for ButtonClicks<'a> {
         while let Some(click) = self.clicks.next() {
             if self.button == click.button {
                 return Some(click);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Taps<'a> {
+    type Item = event::Tap;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Tap(tap) = event {
+                return Some(tap);
             }
         }
         None
