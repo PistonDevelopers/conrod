@@ -14,8 +14,9 @@ fn push_event(input: &mut input::Global, event: event::Event) {
 fn mouse_should_return_none_if_another_widget_is_capturing_mouse() {
     let widget_area = Rect::from_corners([10.0, 10.0], [50.0, 50.0]);
     let mut global_input = input::Global::new();
-    push_event(&mut global_input, event::Ui::WidgetCapturesMouse(widget::Id::new(999)).into());
-    push_event(&mut global_input, event::Event::Raw(Input::Move(Motion::MouseRelative(30.0, 30.0))));
+    let source = input::Source::Mouse;
+    push_event(&mut global_input, event::Ui::WidgetCapturesInputSource(widget::Id::new(999), source).into());
+    push_event(&mut global_input, event::Event::Raw(Input::Motion(Motion::MouseRelative { x: 30.0, y: 30. })));
     push_event(&mut global_input, event::Event::Raw(Input::Press(Button::Mouse(MouseButton::Left))));
 
     let widget_input = input::Widget::for_widget(widget::Id::new(2), widget_area, &global_input);

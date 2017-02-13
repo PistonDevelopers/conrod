@@ -268,7 +268,7 @@ impl<'a> Widget for Button<'a, Flat> {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { maybe_label, .. } = self;
 
-        let (interaction, times_clicked) = interaction_and_times_clicked(id, ui);
+        let (interaction, times_triggered) = interaction_and_times_triggered(id, ui);
         let color = color_from_interaction(style.color(&ui.theme), interaction);
 
         bordered_rectangle(id, state.rectangle, rect, color, style, ui);
@@ -278,7 +278,7 @@ impl<'a> Widget for Button<'a, Flat> {
             label(id, state.label, l, style, ui);
         }
 
-        TimesClicked(times_clicked)
+        TimesClicked(times_triggered)
     }
 
 }
@@ -309,7 +309,7 @@ impl<'a> Widget for Button<'a, Image> {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
 
-        let (interaction, times_clicked) = interaction_and_times_clicked(id, ui);
+        let (interaction, times_triggered) = interaction_and_times_triggered(id, ui);
 
         // Instantiate the image.
         let Image { image_id, press_image_id, hover_image_id, src_rect, color } = show;
@@ -346,7 +346,7 @@ impl<'a> Widget for Button<'a, Image> {
             label(id, state.label, s, style, ui);
         }
 
-        TimesClicked(times_clicked)
+        TimesClicked(times_triggered)
     }
 
 }
@@ -360,7 +360,7 @@ fn color_from_interaction(color: Color, interaction: Interaction) -> Color {
     }
 }
 
-fn interaction_and_times_clicked(button_id: widget::Id, ui: &UiCell) -> (Interaction, u16) {
+fn interaction_and_times_triggered(button_id: widget::Id, ui: &UiCell) -> (Interaction, u16) {
     let input = ui.widget_input(button_id);
     let interaction = input.mouse().map_or(Interaction::Idle, |mouse| {
         if mouse.buttons.left().is_down() {
@@ -369,8 +369,8 @@ fn interaction_and_times_clicked(button_id: widget::Id, ui: &UiCell) -> (Interac
             Interaction::Hover
         }
     });
-    let times_clicked = input.clicks().left().count() as u16;
-    (interaction, times_clicked)
+    let times_triggered = (input.clicks().left().count() + input.taps().count()) as u16;
+    (interaction, times_triggered)
 }
 
 fn bordered_rectangle(button_id: widget::Id, rectangle_id: widget::Id,

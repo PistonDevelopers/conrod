@@ -355,7 +355,8 @@ impl Ui {
                 // Check to see if we need to uncapture a widget.
                 if let Some(idx) = ui.global_input.current.widget_capturing_mouse {
                     if widget_under_mouse != Some(idx) {
-                        let event = event::Ui::WidgetUncapturesMouse(idx).into();
+                        let source = input::Source::Mouse;
+                        let event = event::Ui::WidgetUncapturesInputSource(idx, source).into();
                         ui.global_input.push_event(event);
                         ui.global_input.current.widget_capturing_mouse = None;
                     }
@@ -364,7 +365,8 @@ impl Ui {
                 // Check to see if there is a new widget capturing the mouse.
                 if ui.global_input.current.widget_capturing_mouse.is_none() {
                     if let Some(idx) = widget_under_mouse {
-                        let event = event::Ui::WidgetCapturesMouse(idx).into();
+                        let source = input::Source::Mouse;
+                        let event = event::Ui::WidgetCapturesInputSource(idx, source).into();
                         ui.global_input.push_event(event);
                         ui.global_input.current.widget_capturing_mouse = Some(idx);
                     }
@@ -413,16 +415,18 @@ impl Ui {
                         // Check to see if we need to uncapture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
                             if Some(idx) != self.global_input.current.widget_under_mouse {
-                                let event = event::Ui::WidgetUncapturesKeyboard(idx).into();
-                                self.global_input.push_event(event);
+                                let source = input::Source::Keyboard;
+                                let event = event::Ui::WidgetUncapturesInputSource(idx, source);
+                                self.global_input.push_event(event.into());
                                 self.global_input.current.widget_capturing_keyboard = None;
                             }
                         }
 
                         // Check to see if we need to capture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_under_mouse {
-                            let event = event::Ui::WidgetCapturesKeyboard(idx).into();
-                            self.global_input.push_event(event);
+                            let source = input::Source::Keyboard;
+                            let event = event::Ui::WidgetCapturesInputSource(idx, source);
+                            self.global_input.push_event(event.into());
                             self.global_input.current.widget_capturing_keyboard = Some(idx);
                         }
                     }
@@ -552,8 +556,9 @@ impl Ui {
                     if let MouseButton::Left = mouse_button {
                         if let Some(idx) = self.global_input.current.widget_capturing_mouse {
                             if Some(idx) != self.global_input.current.widget_under_mouse {
-                                let event = event::Ui::WidgetUncapturesMouse(idx).into();
-                                self.global_input.push_event(event);
+                                let source = input::Source::Mouse;
+                                let event = event::Ui::WidgetUncapturesInputSource(idx, source);
+                                self.global_input.push_event(event.into());
                                 self.global_input.current.widget_capturing_mouse = None;
                             }
                         }
@@ -602,20 +607,20 @@ impl Ui {
             // 1. `Drag`
             // 2. `WidgetUncapturesMouse`
             // 3. `WidgetCapturesMouse`
-            Input::Move(motion) => {
+            Input::Motion(motion) => {
 
-                // Create a `Move` event.
-                let move_ = event::Move {
+                // Create a `Motion` event.
+                let move_ = event::Motion {
                     motion: motion,
                     modifiers: self.global_input.current.modifiers,
                 };
                 let widget = self.global_input.current.widget_capturing_mouse;
-                let move_event = event::Ui::Move(widget, move_).into();
+                let move_event = event::Ui::Motion(widget, move_).into();
                 self.global_input.push_event(move_event);
 
                 match motion {
 
-                    Motion::MouseCursor(x, y) => {
+                    Motion::MouseCursor { x, y } => {
 
                         // Check for drag events.
                         let last_mouse_xy = self.global_input.current.mouse.xy;
@@ -647,8 +652,8 @@ impl Ui {
                         track_widget_under_mouse_and_update_capturing(self);
                     },
 
-                    // The mouse was scrolled.
-                    Motion::MouseScroll(x, y) => {
+                    // Some scrolling occurred (e.g. mouse scroll wheel).
+                    Motion::Scroll { x, y } => {
 
                         let mut scrollable_widgets = {
                             let depth_order = &self.depth_order.indices;
@@ -784,7 +789,105 @@ impl Ui {
                 self.global_input.push_event(text_event);
             },
 
-            _ => (),
+            Input::Touch(touch) => match touch.phase {
+
+                input::touch::Phase::Start => {
+                    // Find the widget under the touch.
+                    let widget_under_touch =
+                        graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
+                            .next(&self.widget_graph, &self.depth_order.indices);
+
+                    // The start of the touch interaction state to be stored.
+                    let start = input::state::touch::Start {
+                        time: std::time::Instant::now(),
+                        xy: touch.xy,
+                        widget: widget_under_touch,
+                    };
+
+                    // The touch interaction state to be stored in the map.
+                    let state = input::state::touch::Touch {
+                        start: start,
+                        xy: touch.xy,
+                        widget: widget_under_touch,
+                    };
+
+                    // Insert the touch state into the map.
+                    self.global_input.current.touch.insert(touch.id, state);
+
+                    // Push touch event.
+                    let event = event::Ui::Touch(widget_under_touch, touch);
+                    self.global_input.push_event(event.into());
+
+                    // Push capture event.
+                    if let Some(widget) = widget_under_touch {
+                        let source = input::Source::Touch(touch.id);
+                        let event = event::Ui::WidgetCapturesInputSource(widget, source);
+                        self.global_input.push_event(event.into());
+                    }
+                },
+
+                input::touch::Phase::Move => {
+
+                    // Update the widget under the touch and return the widget capturing the touch.
+                    let widget = match self.global_input.current.touch.get_mut(&touch.id) {
+                        Some(touch) => {
+                            touch.widget =
+                                graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
+                                    .next(&self.widget_graph, &self.depth_order.indices);
+                            touch.xy = touch.xy;
+                            touch.start.widget
+                        },
+                        None => None,
+                    };
+                    let event = event::Ui::Touch(widget, touch);
+                    self.global_input.push_event(event.into());
+                },
+
+                input::touch::Phase::Cancel => {
+                    let widget = self.global_input.current.touch.remove(&touch.id).and_then(|t| t.start.widget);
+                    let event = event::Ui::Touch(widget, touch);
+                    self.global_input.push_event(event.into());
+
+                    // Generate an "uncaptures" event if necessary.
+                    if let Some(widget) = widget {
+                        let source = input::Source::Touch(touch.id);
+                        let event = event::Ui::WidgetUncapturesInputSource(widget, source);
+                        self.global_input.push_event(event.into());
+                    }
+                },
+
+                input::touch::Phase::End => {
+                    let old_touch = self.global_input.current.touch.remove(&touch.id).map(|touch| touch);
+                    let widget_capturing = old_touch.as_ref().and_then(|touch| touch.start.widget);
+                    let event = event::Ui::Touch(widget_capturing, touch);
+                    self.global_input.push_event(event.into());
+
+                    // Create a `Tap` event.
+                    //
+                    // If the widget at the end of the touch is the same as the widget at the start
+                    // of the touch, that widget receives the `Tap`.
+                    let tapped_widget =
+                        graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
+                            .next(&self.widget_graph, &self.depth_order.indices)
+                            .and_then(|widget| match Some(widget) == widget_capturing {
+                                true => Some(widget),
+                                false => None,
+                            });
+                    let tap = event::Tap { id: touch.id, xy: touch.xy };
+                    let event = event::Ui::Tap(tapped_widget, tap);
+                    self.global_input.push_event(event.into());
+
+                    // Generate an "uncaptures" event if necessary.
+                    if let Some(widget) = widget_capturing {
+                        let source = input::Source::Touch(touch.id);
+                        let event = event::Ui::WidgetUncapturesInputSource(widget, source);
+                        self.global_input.push_event(event.into());
+                    }
+                },
+
+            },
+
+            Input::Focus(_focused) => (),
         }
     }
 

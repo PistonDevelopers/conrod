@@ -120,6 +120,13 @@ pub struct ButtonClicks<'a> {
     button: input::MouseButton,
 }
 
+/// An `Iterator` yielding all touch screen taps occuring within the given sequence of
+/// `widget::Event`s.
+#[derive(Clone)]
+pub struct Taps<'a> {
+    events: Events<'a>,
+}
+
 /// An iterator that yields all `event::Drag` events yielded by the `Events` iterator.
 ///
 /// Only events that occurred while the widget was capturing the device that did the dragging will
@@ -215,6 +222,14 @@ impl<'a> Widget<'a> {
     /// released over the widget.
     pub fn clicks(&self) -> Clicks<'a> {
         Clicks { events: self.events() }
+    }
+
+    /// Filters all events yielded by `Self::events` for all `event::Tap`s.
+    ///
+    /// A _tap_ is determined to have occured if a touch interaction both started and ended over
+    /// the widget.
+    pub fn taps(&self) -> Taps<'a> {
+        Taps { events: self.events() }
     }
 
     /// Produces an iterator that yields all `event::Drag` events yielded by the `Events` iterator.
@@ -416,35 +431,19 @@ impl<'a> Iterator for Events<'a> {
         while let Some(ui_event) = self.ui_events.next() {
             match *ui_event {
 
-                // Mouse capturing.
-                event::Ui::WidgetCapturesMouse(idx) => {
+                // Input source capturing.
+                event::Ui::WidgetCapturesInputSource(idx, source) => {
                     self.capturing_mouse = Some(idx);
                     if idx == self.idx {
-                        return Some(event::Widget::CapturesMouse);
+                        return Some(event::Widget::CapturesInputSource(source));
                     }
                 },
-                event::Ui::WidgetUncapturesMouse(idx) => {
+                event::Ui::WidgetUncapturesInputSource(idx, source) => {
                     if Some(idx) == self.capturing_mouse {
                         self.capturing_mouse = None;
                     }
                     if idx == self.idx {
-                        return Some(event::Widget::UncapturesMouse);
-                    }
-                },
-
-                // Keyboard capturing.
-                event::Ui::WidgetCapturesKeyboard(idx) => {
-                    self.capturing_keyboard = Some(idx);
-                    if idx == self.idx {
-                        return Some(event::Widget::CapturesKeyboard);
-                    }
-                },
-                event::Ui::WidgetUncapturesKeyboard(idx) => {
-                    if Some(idx) == self.capturing_keyboard {
-                        self.capturing_keyboard = None;
-                    }
-                    if idx == self.idx {
-                        return Some(event::Widget::UncapturesKeyboard);
+                        return Some(event::Widget::UncapturesInputSource(source));
                     }
                 },
 
@@ -454,8 +453,11 @@ impl<'a> Iterator for Events<'a> {
                 event::Ui::Text(idx, ref text) if idx == Some(self.idx) =>
                     return Some(text.clone().into()),
 
-                event::Ui::Move(idx, ref move_) if idx == Some(self.idx) =>
-                    return Some(move_.clone().into()),
+                event::Ui::Motion(idx, ref motion) if idx == Some(self.idx) =>
+                    return Some(motion.clone().into()),
+
+                event::Ui::Touch(idx, ref touch) if idx == Some(self.idx) =>
+                    return Some(touch.clone().relative_to(self.rect.xy()).into()),
 
                 event::Ui::Press(idx, ref press) if idx == Some(self.idx) =>
                     return Some(press.clone().relative_to(self.rect.xy()).into()),
@@ -468,6 +470,9 @@ impl<'a> Iterator for Events<'a> {
 
                 event::Ui::DoubleClick(idx, ref double_click) if idx == Some(self.idx) =>
                     return Some(double_click.clone().relative_to(self.rect.xy()).into()),
+
+                event::Ui::Tap(idx, ref tap) if idx == Some(self.idx) =>
+                    return Some(tap.clone().relative_to(self.rect.xy()).into()),
 
                 event::Ui::Drag(idx, ref drag) if idx == Some(self.idx) =>
                     return Some(drag.clone().relative_to(self.rect.xy()).into()),
@@ -599,6 +604,18 @@ impl<'a> Iterator for ButtonClicks<'a> {
         while let Some(click) = self.clicks.next() {
             if self.button == click.button {
                 return Some(click);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> Iterator for Taps<'a> {
+    type Item = event::Tap;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.events.next() {
+            if let event::Widget::Tap(tap) = event {
+                return Some(tap);
             }
         }
         None

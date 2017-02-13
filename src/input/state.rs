@@ -9,6 +9,7 @@
 
 use position::Point;
 use self::mouse::Mouse;
+use std;
 use super::keyboard::{NO_MODIFIER, ModifierKey};
 use utils;
 use widget;
@@ -20,10 +21,12 @@ use widget;
 /// the mouse.
 ///
 /// It also includes which widgets, if any, are capturing keyboard and mouse input.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct State {
     /// Mouse position and button state.
     pub mouse: Mouse,
+    /// All in-progress touch interactions.
+    pub touch: std::collections::HashMap<super::touch::Id, self::touch::Touch>,
     /// Which widget, if any, is currently capturing the keyboard
     pub widget_capturing_keyboard: Option<widget::Id>,
     /// Which widget, if any, is currently capturing the mouse
@@ -42,6 +45,7 @@ impl State {
     /// Returns a fresh new input state
     pub fn new() -> State {
         State{
+            touch: std::collections::HashMap::new(),
             mouse: Mouse::new(),
             widget_capturing_keyboard: None,
             widget_capturing_mouse: None,
@@ -55,6 +59,38 @@ impl State {
         self.mouse.xy = utils::vec2_sub(self.mouse.xy, xy);
         self.mouse.buttons = self.mouse.buttons.relative_to(xy);
         self
+    }
+
+}
+
+/// Touch specific state.
+pub mod touch {
+    use position::Point;
+    use std;
+    use widget;
+
+    /// State stored about the start of a `Touch` interaction.
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub struct Start {
+        /// The time at which the `Touch` began.
+        pub time: std::time::Instant,
+        /// The position at which the touch began.
+        pub xy: Point,
+        /// The widget under the beginning of the touch if there was one.
+        ///
+        /// This widget captures the `Touch` input source for its duration.
+        pub widget: Option<widget::Id>,
+    }
+
+    /// All state stored for a `Touch` interaction in progress.
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub struct Touch {
+        /// The `Start` of the touch interaction.
+        pub start: Start,
+        /// The last recorded position of the finger on the window.
+        pub xy: Point,
+        /// The widget currently being touched.
+        pub widget: Option<widget::Id>,
     }
 
 }
