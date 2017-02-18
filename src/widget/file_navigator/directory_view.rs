@@ -18,6 +18,7 @@ use {
 use event;
 use std;
 use widget;
+use std::cmp::Ordering;
 
 /// For viewing, selecting, double-clicking, etc the contents of a directory.
 pub struct DirectoryView<'a> {
@@ -196,48 +197,52 @@ impl<'a> Widget for DirectoryView<'a> {
             });
 
             let show_hidden = self.show_hidden;
-            let entries: Vec<_> = match std::fs::read_dir(directory).ok() {
+            let mut entries: Vec<_> = match std::fs::read_dir(directory).ok() {
                 Some(entries) => {
                     entries.filter_map(|e| e.ok())
-                        .filter(|f| check_hidden(show_hidden, &f.path()))
-                        .collect()
+                        .filter_map(|f| {
+                            let path = f.path();
+                            if check_hidden(show_hidden, &path) {
+                                match types {
+                                    super::Types::All => Some(path),
+                                    super::Types::WithExtension(valid_exts) => {
+                                        // We're only after files.
+                                        if path.is_dir() {
+                                            Some(path)
+                                        } else {
+                                            // Check for valid extensions.
+                                            let ext = path.extension()
+                                                .and_then(|ext| ext.to_str())
+                                                .map(|s| std::ascii::AsciiExt::to_ascii_lowercase(s))
+                                                .unwrap_or_else(String::new);
+                                            if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
+                                                Some(path)
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                    },
+                                }
+                            } else {
+                                None
+                            }
+                        }).collect()
                 }
                 None => return Vec::new(),
             };
-
-            // Create an iterator yielding the path for each directory.
-            let directory_paths = entries.iter()
-                .map(|e| e.path())
-                .filter_map(|path| if path.is_dir() { Some(path) } else { None });
-
-            // And now paths for the relevant files.
-            let file_paths = entries.iter()
-                .map(|e| e.path())
-                .filter_map(|path| match types {
-                    super::Types::All => Some(path),
-                    super::Types::WithExtension(valid_exts) => {
-                        // We're only after files.
-                        if path.is_dir() {
-                            return None;
-                        }
-                        // Check for valid extensions.
-                        let ext = path.extension()
-                            .and_then(|ext| ext.to_str())
-                            .map(|s| std::ascii::AsciiExt::to_ascii_lowercase(s))
-                            .unwrap_or_else(String::new);
-                        if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
-                            Some(path)
-                        } else {
-                            None
-                        }
-                    },
-                });
-
-            // Chain them in order of directories and then files.
-            let entry_paths = directory_paths.chain(file_paths);
+            // Sort directories before files and alphabetically otherwise
+            entries.sort_by(|a,b| {
+              if a.is_dir() && !b.is_dir() {
+                Ordering::Less
+              } else if !a.is_dir() && b.is_dir() {
+                Ordering::Greater
+              } else {
+                a.cmp(b)
+              }
+            });
 
             state.update(|state| {
-                for entry_path in entry_paths {
+                for entry_path in entries {
                     let entry = Entry {
                         path: entry_path.to_path_buf(),
                         is_selected: false,
