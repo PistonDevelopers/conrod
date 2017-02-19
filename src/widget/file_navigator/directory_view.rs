@@ -119,10 +119,35 @@ fn is_file_hidden(path: &std::path::PathBuf) -> bool {
 }
 
 /// Returns true if file or directory should be displayed depending on configuration
-/// and file status (hidden or not)
-fn check_hidden(show_hidden: bool, path: &std::path::PathBuf) -> bool {
-    show_hidden | (!is_file_hidden(path))
+/// and file status (hidden or not) and extension (matching or not)
+fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBuf) -> bool {
+    // Reject hidden files or directories
+    if is_file_hidden(path) && !show_hidden {
+        return false
+    }
+
+    match types {
+        super::Types::All => return true,
+        super::Types::WithExtension(valid_exts) => {
+            // We only filter files by extension
+            if path.is_dir() {
+                return true
+            }
+
+            // Check for valid extensions.
+            let ext = path.extension()
+                .and_then(|ext| ext.to_str())
+                .map(|s| std::ascii::AsciiExt::to_ascii_lowercase(s))
+                .unwrap_or_else(String::new);
+            if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
+                return true
+            } else {
+                return false
+            }
+        },
+    }
 }
+
 
 impl<'a> DirectoryView<'a> {
 
@@ -202,27 +227,8 @@ impl<'a> Widget for DirectoryView<'a> {
                     entries.filter_map(|e| e.ok())
                         .filter_map(|f| {
                             let path = f.path();
-                            if check_hidden(show_hidden, &path) {
-                                match types {
-                                    super::Types::All => Some(path),
-                                    super::Types::WithExtension(valid_exts) => {
-                                        // We're only after files.
-                                        if path.is_dir() {
-                                            Some(path)
-                                        } else {
-                                            // Check for valid extensions.
-                                            let ext = path.extension()
-                                                .and_then(|ext| ext.to_str())
-                                                .map(|s| std::ascii::AsciiExt::to_ascii_lowercase(s))
-                                                .unwrap_or_else(String::new);
-                                            if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
-                                                Some(path)
-                                            } else {
-                                                None
-                                            }
-                                        }
-                                    },
-                                }
+                            if check_hidden(show_hidden, types, &path) {
+                                Some(path)
                             } else {
                                 None
                             }
