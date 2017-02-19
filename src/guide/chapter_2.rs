@@ -53,10 +53,10 @@ cargo build
 4. Build and run the examples (with --release optimisations turned on)!
 
 ```txt
-cargo run --release --example all_widgets
-cargo run --release --example canvas
-cargo run --release --example primitives
-cargo run --release --example text
+cargo run --release --features "winit glium" --example all_winit_glium
+cargo run --release --features "winit glium" --example canvas
+cargo run --release --features "winit glium" --example primitives
+cargo run --release --features "winit glium" --example text
 ```
 
 If you ran into any issues with these steps, please let us know by filing an issue at the Conrod
