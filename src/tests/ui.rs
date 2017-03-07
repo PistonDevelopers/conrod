@@ -51,11 +51,11 @@ fn test_handling_basic_input_event(ui: &mut Ui, event: Input) {
 }
 
 fn assert_event_was_pushed(ui: &Ui, event: event::Event) {
-    let found = ui.global_input.events().find(|evt| **evt == event);
+    let found = ui.global_input().events().find(|evt| **evt == event);
     assert!(found.is_some(),
             format!("expected to find event: {:?} in: \nevents: {:?}",
                     event,
-                    ui.global_input.events().collect::<Vec<&event::Event>>()));
+                    ui.global_input().events().collect::<Vec<&event::Event>>()));
 }
 
 fn to_window_coordinates(xy: Point, ui: &Ui) -> Point {
@@ -102,7 +102,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
             .set(button, ui);
     }
 
-    assert!(ui.global_input.events().next().is_none());
+    assert!(ui.global_input().events().next().is_none());
 }
 
 
@@ -127,7 +127,7 @@ fn high_level_scroll_event_should_be_created_from_a_raw_mouse_scroll() {
         y: 33.0,
         modifiers: ModifierKey::default()
     };
-    let event = ui.global_input.events().next().expect("expected a scroll event");
+    let event = ui.global_input().events().next().expect("expected a scroll event");
     if let event::Event::Ui(event::Ui::Scroll(_, scroll)) = *event {
         assert_eq!(expected_scroll, scroll);
     }

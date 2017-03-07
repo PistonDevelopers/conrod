@@ -363,7 +363,7 @@ mod feature {
             }
 
             // Update widgets if any event has happened
-            if ui.global_input.events().next().is_some() {
+            if ui.global_input().events().next().is_some() {
                 let mut ui = ui.set_widgets();
                 support::gui(&mut ui, &ids, &mut app);
             }
