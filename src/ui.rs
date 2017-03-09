@@ -48,7 +48,7 @@ pub struct Ui {
     /// An index into the root widget of the graph, representing the entire window.
     pub window: widget::Id,
     /// Handles aggregation of events and providing them to Widgets
-    pub global_input: input::Global,
+    global_input: input::Global,
     /// Manages all fonts that have been loaded by the user.
     pub fonts: text::font::Map,
     /// The Widget cache, storing state for all widgets.
@@ -889,6 +889,14 @@ impl Ui {
 
             Input::Focus(_focused) => (),
         }
+    }
+
+
+    /// Get an immutable reference to global input. Handles aggregation of events and providing them to Widgets
+    ///
+    /// Can be used to access the current input state, e.g. which widgets are currently capturing inputs.
+    pub fn global_input(&self) -> &input::Global {
+        &self.global_input
     }
 
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.

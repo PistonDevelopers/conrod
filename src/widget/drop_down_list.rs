@@ -317,8 +317,8 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 // not any of the drop down list's children.
                 let should_close = clicked_item.is_some() ||
                     clicked_item.is_none()
-                    && ui.global_input.current.mouse.buttons.pressed().next().is_some()
-                    && match ui.global_input.current.widget_capturing_mouse {
+                    && ui.global_input().current.mouse.buttons.pressed().next().is_some()
+                    && match ui.global_input().current.widget_capturing_mouse {
                         None => true,
                         Some(capturing) => !ui.widget_graph()
                             .does_recursive_depth_edge_exist(id, capturing),
