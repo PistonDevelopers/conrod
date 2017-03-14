@@ -893,6 +893,24 @@ impl From<glium::program::ProgramChooserCreationError> for RendererCreationError
     }
 }
 
+impl std::error::Error for RendererCreationError {
+    fn description(&self) -> &str {
+        match *self {
+            RendererCreationError::Texture(ref e) => std::error::Error::description(e),
+            RendererCreationError::Program(ref e) => std::error::Error::description(e),
+        }
+    }
+}
+
+impl std::fmt::Display for RendererCreationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match *self {
+            RendererCreationError::Texture(ref e) => std::fmt::Display(e, f),
+            RendererCreationError::Program(ref e) => std::fmt::Display(e, f),
+        }
+    }
+}
+
 impl From<glium::vertex::BufferCreationError> for DrawError {
     fn from(err: glium::vertex::BufferCreationError) -> Self {
         DrawError::Buffer(err)
@@ -902,5 +920,23 @@ impl From<glium::vertex::BufferCreationError> for DrawError {
 impl From<glium::DrawError> for DrawError {
     fn from(err: glium::DrawError) -> Self {
         DrawError::Draw(err)
+    }
+}
+
+impl std::error::Error for DrawError {
+    fn description(&self) -> &str {
+        match *self {
+            DrawError::Buffer(ref e) => std::error::Error::description(e),
+            DrawError::Draw(ref e) => std::error::Error::description(e),
+        }
+    }
+}
+
+impl std::fmt::Display for DrawError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        match *self {
+            DrawError::Buffer(ref e) => std::fmt::Display(e, f),
+            DrawError::Draw(ref e) => std::fmt::Display(e, f),
+        }
     }
 }
