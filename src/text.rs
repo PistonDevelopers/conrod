@@ -247,7 +247,10 @@ pub mod font {
 
     impl std::fmt::Display for Error {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-            writeln!(f, "{}", std::error::Error::description(self))
+            match *self {
+                Error::IO(ref e) => std::fmt::Display::fmt(e, f),
+                _ => write!(f, "{}", std::error::Error::description(self))
+            }
         }
     }
 
