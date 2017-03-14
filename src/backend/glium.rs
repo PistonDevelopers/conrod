@@ -905,8 +905,8 @@ impl std::error::Error for RendererCreationError {
 impl std::fmt::Display for RendererCreationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match *self {
-            RendererCreationError::Texture(ref e) => std::fmt::Display(e, f),
-            RendererCreationError::Program(ref e) => std::fmt::Display(e, f),
+            RendererCreationError::Texture(ref e) => std::fmt::Display::fmt(e, f),
+            RendererCreationError::Program(ref e) => std::fmt::Display::fmt(e, f),
         }
     }
 }
@@ -935,8 +935,8 @@ impl std::error::Error for DrawError {
 impl std::fmt::Display for DrawError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match *self {
-            DrawError::Buffer(ref e) => std::fmt::Display(e, f),
-            DrawError::Draw(ref e) => std::fmt::Display(e, f),
+            DrawError::Buffer(ref e) => std::fmt::Display::fmt(e, f),
+            DrawError::Draw(ref e) => std::fmt::Display::fmt(e, f),
         }
     }
 }
