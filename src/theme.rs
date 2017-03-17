@@ -12,6 +12,7 @@ use widget;
 
 
 /// A serializable collection of canvas and widget styling defaults.
+#[derive(Debug)]
 pub struct Theme {
     /// A name for the theme used for identification.
     pub name: String,
@@ -50,6 +51,7 @@ pub struct Theme {
 }
 
 /// The defaults for a specific widget.
+#[derive(Debug)]
 pub struct WidgetDefault {
     /// The unique style of a widget.
     pub style: Box<Any + Send>,
