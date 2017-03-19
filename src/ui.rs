@@ -306,6 +306,53 @@ impl Ui {
         }
     }
 
+    /// Determines which widget is currently under the mouse and sets it within the `Ui`'s
+    /// `input::Global`'s `input::State`.
+    ///
+    /// If the `widget_under_mouse` has changed, this function will also update the
+    /// `widget_capturing_mouse`.
+    ///
+    /// If the left mouse button is up, we assume that the widget directly under the
+    /// mouse cursor captures all input from the mouse.
+    ///
+    /// If the left mouse button is down, we assume that the widget that was clicked
+    /// remains "pinned" and will continue to capture the mouse until it is
+    /// released.
+    ///
+    /// Note: This function expects that `ui.global_input.current.mouse.xy` is up-to-date.
+    fn track_widget_under_mouse_and_update_capturing(&mut self) {
+        self.global_input.current.widget_under_mouse =
+            graph::algo::pick_widgets(&self.depth_order.indices,
+                                      self.global_input.current.mouse.xy)
+                                      .next(&self.widget_graph, &self.depth_order.indices);
+
+        // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
+        // under mouse.
+        if self.global_input.current.mouse.buttons.left().is_up() {
+            let widget_under_mouse = self.global_input.current.widget_under_mouse;
+
+            // Check to see if we need to uncapture a widget.
+            if let Some(idx) = self.global_input.current.widget_capturing_mouse {
+                if widget_under_mouse != Some(idx) {
+                    let source = input::Source::Mouse;
+                    let event = event::Ui::WidgetUncapturesInputSource(idx, source).into();
+                    self.global_input.push_event(event);
+                    self.global_input.current.widget_capturing_mouse = None;
+                }
+            }
+
+            // Check to see if there is a new widget capturing the mouse.
+            if self.global_input.current.widget_capturing_mouse.is_none() {
+                if let Some(idx) = widget_under_mouse {
+                    let source = input::Source::Mouse;
+                    let event = event::Ui::WidgetCapturesInputSource(idx, source).into();
+                    self.global_input.push_event(event);
+                    self.global_input.current.widget_capturing_mouse = Some(idx);
+                }
+            }
+        }
+    }
+
     /// Handle raw window events and update the `Ui` state accordingly.
     ///
     /// This occurs within several stages:
@@ -326,53 +373,6 @@ impl Ui {
         use event::{self, Input};
         use input::{Button, Key, ModifierKey, Motion};
         use input::state::mouse::Button as MouseButton;
-
-        // Determines which widget is currently under the mouse and sets it within the `Ui`'s
-        // `input::Global`'s `input::State`.
-        //
-        // If the `widget_under_mouse` has changed, this function will also update the
-        // `widget_capturing_mouse`.
-        //
-        // If the left mouse button is up, we assume that the widget directly under the
-        // mouse cursor captures all input from the mouse.
-        //
-        // If the left mouse button is down, we assume that the widget that was clicked
-        // remains "pinned" and will continue to capture the mouse until it is
-        // released.
-        //
-        // Note: This function expects that `ui.global_input.current.mouse.xy` is up-to-date.
-        fn track_widget_under_mouse_and_update_capturing(ui: &mut Ui) {
-            ui.global_input.current.widget_under_mouse =
-                graph::algo::pick_widgets(&ui.depth_order.indices,
-                                          ui.global_input.current.mouse.xy)
-                                          .next(&ui.widget_graph, &ui.depth_order.indices);
-
-            // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
-            // under mouse.
-            if ui.global_input.current.mouse.buttons.left().is_up() {
-                let widget_under_mouse = ui.global_input.current.widget_under_mouse;
-
-                // Check to see if we need to uncapture a widget.
-                if let Some(idx) = ui.global_input.current.widget_capturing_mouse {
-                    if widget_under_mouse != Some(idx) {
-                        let source = input::Source::Mouse;
-                        let event = event::Ui::WidgetUncapturesInputSource(idx, source).into();
-                        ui.global_input.push_event(event);
-                        ui.global_input.current.widget_capturing_mouse = None;
-                    }
-                }
-
-                // Check to see if there is a new widget capturing the mouse.
-                if ui.global_input.current.widget_capturing_mouse.is_none() {
-                    if let Some(idx) = widget_under_mouse {
-                        let source = input::Source::Mouse;
-                        let event = event::Ui::WidgetCapturesInputSource(idx, source).into();
-                        ui.global_input.push_event(event);
-                        ui.global_input.current.widget_capturing_mouse = Some(idx);
-                    }
-                }
-            }
-        }
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
@@ -598,7 +598,7 @@ impl Ui {
                 self.win_w = w;
                 self.win_h = h;
                 self.needs_redraw();
-                track_widget_under_mouse_and_update_capturing(self);
+                self.track_widget_under_mouse_and_update_capturing();
             },
 
             // The mouse cursor was moved to a new position.
@@ -649,7 +649,7 @@ impl Ui {
                         // input::State.
                         self.global_input.current.mouse.xy = mouse_xy;
 
-                        track_widget_under_mouse_and_update_capturing(self);
+                        self.track_widget_under_mouse_and_update_capturing();
                     },
 
                     // Some scrolling occurred (e.g. mouse scroll wheel).
@@ -770,7 +770,7 @@ impl Ui {
 
                         // Now that there might be a different widget under the mouse, we
                         // must update the capturing state.
-                        track_widget_under_mouse_and_update_capturing(self);
+                        self.track_widget_under_mouse_and_update_capturing();
                     },
 
                     _ => (),
@@ -1207,7 +1207,8 @@ impl<'a> UiCell<'a> {
 impl<'a> Drop for UiCell<'a> {
     fn drop(&mut self) {
         // We'll need to re-draw if we have gained or lost widgets.
-        if self.ui.updated_widgets != self.ui.prev_updated_widgets {
+        let changed = self.ui.updated_widgets != self.ui.prev_updated_widgets;
+        if changed {
             self.ui.needs_redraw();
         }
 
@@ -1226,6 +1227,11 @@ impl<'a> Drop for UiCell<'a> {
 
         // Reset the global input state. Note that this is the **only** time this should be called.
         self.ui.global_input.clear_events_and_update_start_state();
+
+        // Update which widget is under the cursor.
+        if changed {
+            self.ui.track_widget_under_mouse_and_update_capturing();
+        }
 
         // Move all pending `Scroll` events that have been produced since the start of this method
         // into the `global_input` event buffer.
