@@ -85,9 +85,8 @@ fn ui_should_reset_global_input_after_widget_are_set() {
     };
 
     move_mouse_to_widget(button, ui);
-    left_click_mouse(ui);
-
-    {
+    for _ in 0..2 {
+        left_click_mouse(ui);
         let ui = &mut ui.set_widgets();
 
         assert!(ui.global_input().events().next().is_some());
