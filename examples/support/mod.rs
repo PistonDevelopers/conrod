@@ -380,7 +380,7 @@ impl EventLoop {
     }
 
     /// Produce an iterator yielding all available events.
-    pub fn next(&mut self, display: &glium::Display) -> Vec<glium::glutin::Event> {
+    pub fn next(&mut self, events_loop: &glium::glutin::EventsLoop) -> Vec<glium::glutin::Event> {
         // We don't want to loop any faster than 60 FPS, so wait until it has been at least 16ms
         // since the last yield.
         let last_update = self.last_update;
@@ -392,11 +392,14 @@ impl EventLoop {
 
         // Collect all pending events.
         let mut events = Vec::new();
-        events.extend(display.poll_events());
+        events_loop.poll_events(|event| events.push(event));
 
         // If there are no events and the `Ui` does not need updating, wait for the next event.
         if events.is_empty() && !self.ui_needs_update {
-            events.extend(display.wait_events().next());
+            events_loop.run_forever(|event| {
+                events.push(event);
+                events_loop.interrupt();
+            });
         }
 
         self.ui_needs_update = false;

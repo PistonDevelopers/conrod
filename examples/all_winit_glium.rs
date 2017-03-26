@@ -15,8 +15,7 @@ mod feature {
     extern crate find_folder;
     extern crate image;
     use conrod;
-    use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::{self, Surface};
     use support;
     use std;
 
@@ -27,13 +26,15 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
+        let events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
             .with_multisampling(8)
-            .build_glium()
+            .build(&events_loop)
             .unwrap();
+        let display = glium::build(window).unwrap();
 
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -84,20 +85,22 @@ mod feature {
         'main: loop {
 
             // Handle all events.
-            for event in event_loop.next(&display) {
+            for event in event_loop.next(&events_loop) {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     ui.handle_event(event);
                     event_loop.needs_update();
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape), _) |
+                        glium::glutin::WindowEvent::Closed =>
+                            break 'main,
+                        _ => {},
+                    }
                 }
             }
 

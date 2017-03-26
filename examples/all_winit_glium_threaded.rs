@@ -14,7 +14,7 @@ mod feature {
     extern crate image;
     use conrod;
     use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::Surface;
     use support;
     use std;
 
@@ -25,13 +25,15 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
+        let events_loop = std::sync::Arc::new(glium::glutin::EventsLoop::new());
+        let window = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
             .with_multisampling(4)
-            .build_glium()
+            .build(&events_loop)
             .unwrap();
+        let display = glium::build(window).unwrap();
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
         // for drawing to the glium `Surface`.
@@ -62,14 +64,14 @@ mod feature {
         let (event_tx, event_rx) = std::sync::mpsc::channel();
         // A channel to send `render::Primitive`s from the conrod thread to the `winit thread.
         let (render_tx, render_rx) = std::sync::mpsc::channel();
-        // This window proxy will allow conrod to wake up the `winit::Window` for rendering.
-        let window_proxy = display.get_window().unwrap().create_window_proxy();
+        // Clone the handle to the events loop so that we can interrupt it when ready to draw.
+        let events_loop_2 = events_loop.clone();
 
         // A function that runs the conrod loop.
         fn run_conrod(rust_logo: conrod::image::Id,
                       event_rx: std::sync::mpsc::Receiver<conrod::event::Input>,
                       render_tx: std::sync::mpsc::Sender<conrod::render::OwnedPrimitives>,
-                      window_proxy: glium::glutin::WindowProxy)
+                      events_loop: std::sync::Arc<glium::glutin::EventsLoop>)
         {
             // Construct our `Ui`.
             let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -122,17 +124,31 @@ mod feature {
                         break 'conrod;
                     }
                     // Wakeup `winit` for rendering.
-                    window_proxy.wakeup_event_loop();
+                    events_loop.interrupt();
                 }
             }
         }
 
+        // Draws the given `primitives` to the given `Display`.
+        fn draw(display: &glium::Display,
+                renderer: &mut conrod::backend::glium::Renderer,
+                image_map: &conrod::image::Map<glium::Texture2d>,
+                primitives: &conrod::render::OwnedPrimitives)
+        {
+            renderer.fill(display, primitives.walk(), &image_map);
+            let mut target = display.draw();
+            target.clear_color(0.0, 0.0, 0.0, 1.0);
+            renderer.draw(display, &mut target, &image_map).unwrap();
+            target.finish().unwrap();
+        }
+
         // Spawn the conrod loop on its own thread.
-        std::thread::spawn(move || run_conrod(rust_logo, event_rx, render_tx, window_proxy));
+        std::thread::spawn(move || run_conrod(rust_logo, event_rx, render_tx, events_loop_2));
 
         // Run the `winit` loop.
         let mut last_update = std::time::Instant::now();
-        'main: loop {
+        let mut closed = false;
+        while !closed {
 
             // We don't want to loop any faster than 60 FPS, so wait until it has been at least
             // 16ms since the last yield.
@@ -143,42 +159,35 @@ mod feature {
                 std::thread::sleep(sixteen_ms - duration_since_last_update);
             }
 
-            // Collect all pending events.
-            let mut events: Vec<_> = display.poll_events().collect();
-
-            // If there are no events, wait for the next event.
-            if events.is_empty() {
-                events.extend(display.wait_events().next());
-            }
-
-            // Send any relevant events to the conrod thread.
-            for event in events {
-
+            events_loop.run_forever(|event| {
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     event_tx.send(event).unwrap();
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape), _) |
+                        glium::glutin::WindowEvent::Closed => {
+                            closed = true;
+                            events_loop.interrupt();
+                        },
+                        // We must re-draw on `Resized`, as the event loops become blocked during
+                        // resize on macOS.
+                        glium::glutin::WindowEvent::Resized(..) => {
+                            if let Some(primitives) = render_rx.iter().next() {
+                                draw(&display, &mut renderer, &image_map, &primitives);
+                            }
+                        },
+                        _ => {},
+                    },
                 }
-            }
+            });
 
             // Draw the most recently received `conrod::render::Primitives` sent from the `Ui`.
-            if let Ok(mut primitives) = render_rx.try_recv() {
-                while let Ok(newest) = render_rx.try_recv() {
-                    primitives = newest;
-                }
-
-                renderer.fill(&display, primitives.walk(), &image_map);
-                let mut target = display.draw();
-                target.clear_color(0.0, 0.0, 0.0, 1.0);
-                renderer.draw(&display, &mut target, &image_map).unwrap();
-                target.finish().unwrap();
+            if let Some(primitives) = render_rx.try_iter().last() {
+                draw(&display, &mut renderer, &image_map, &primitives);
             }
 
             last_update = std::time::Instant::now();
