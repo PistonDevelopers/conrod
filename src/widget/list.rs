@@ -205,7 +205,7 @@ impl<D> List<D, Dynamic>
 {
     /// Begin building a new `List`.
     pub fn new(num_items: usize) -> Self {
-        List::from_size(num_items, Dynamic {})
+        List::from_item_size(num_items, Dynamic {})
     }
 }
 
@@ -242,7 +242,7 @@ impl<D, S> List<D, S>
           S: ItemSize,
 {
     /// Begin building a new `List` given some direction and item size.
-    pub fn from_size(num_items: usize, item_size: S) -> Self {
+    pub fn from_item_size(num_items: usize, item_size: S) -> Self {
         List {
             common: widget::CommonBuilder::new(),
             style: Style::new(),
@@ -442,6 +442,62 @@ impl<D, S> Item<D, S>
             .set(widget_id, ui)
     }
 
+}
+
+impl<S> Item<Down, S> {
+    /// The width of the `Item`.
+    pub fn width(&self) -> Scalar {
+        self.breadth
+    }
+}
+
+impl Item<Down, Fixed> {
+    /// The height of the `Item`.
+    pub fn height(&self) -> Scalar {
+        self.size.length
+    }
+}
+
+impl<S> Item<Up, S> {
+    /// The width of the `Item`.
+    pub fn width(&self) -> Scalar {
+        self.breadth
+    }
+}
+
+impl Item<Up, Fixed> {
+    /// The height of the `Item`.
+    pub fn height(&self) -> Scalar {
+        self.size.length
+    }
+}
+
+impl<S> Item<Right, S> {
+    /// The height of the `Item`.
+    pub fn height(&self) -> Scalar {
+        self.breadth
+    }
+}
+
+impl Item<Right, Fixed> {
+    /// The width of the `Item`.
+    pub fn width(&self) -> Scalar {
+        self.size.length
+    }
+}
+
+impl<S> Item<Left, S> {
+    /// The height of the `Item`.
+    pub fn height(&self) -> Scalar {
+        self.breadth
+    }
+}
+
+impl Item<Left, Fixed> {
+    /// The width of the `Item`.
+    pub fn width(&self) -> Scalar {
+        self.size.length
+    }
 }
 
 

@@ -377,7 +377,7 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
         }
 
 
-        let mut list = widget::List::<D, _>::from_size(num_items, item_size);
+        let mut list = widget::List::<D, _>::from_item_size(num_items, item_size);
 
         let scrollbar_position = style.scrollbar_position(&ui.theme);
         list = match scrollbar_position {
