@@ -7,13 +7,32 @@ use std;
 /// A wrapper around the `List` widget that handles single and multiple selection logic.
 #[derive(Clone)]
 #[allow(missing_copy_implementations)]
-pub struct ListSelect<M> {
+pub struct ListSelect<M, D, S> {
     common: widget::CommonBuilder,
-    item_h: Scalar,
     num_items: usize,
     mode: M,
+    direction: std::marker::PhantomData<D>,
+    item_size: S,
     style: widget::list::Style,
     item_instantiation: widget::list::ItemInstantiation,
+}
+
+/// A trait that extends the `List` `Direction` trait with behaviour necessary for the `ListSelect`
+/// widget.
+///
+/// Implemented for the `Down`, `Right`, `Up`, `Left` types.
+pub trait Direction: widget::list::Direction {
+    /// Maps a given `key` to a direction along the list.
+    fn key_direction(key: input::Key) -> Option<ListDirection>;
+}
+
+/// The direction in which the list flows.
+#[derive(Copy, Clone, Debug)]
+pub enum ListDirection {
+    /// The direction flowing from the start of the list to the end of the list.
+    Forward,
+    /// The direction flowing from the end of the list to the start of the list.
+    Backward,
 }
 
 /// Allows the `ListSelect` to be generic over `Single` and `Multiple` selection modes.
@@ -24,24 +43,25 @@ pub trait Mode {
     type Selection;
 
     /// Update the `PendingEvents` in accordance with the given `Click` event.
-    fn click_selection<F>(&self,
-                          event::Click,
-                          i: usize,
-                          num_items: usize,
-                          &State,
-                          is_selected: F,
-                          &mut PendingEvents<Self::Selection>)
+    fn click_selection<F, D, S>(&self,
+                                event::Click,
+                                i: usize,
+                                num_items: usize,
+                                &State,
+                                is_selected: F,
+                                &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool;
 
     /// Update the `PendingEvents` in accordance with the given `KeyPress` event.
-    fn key_selection<F>(&self,
-                        event::KeyPress,
-                        i: usize,
-                        num_items: usize,
-                        &State,
-                        is_selected: F,
-                        &mut PendingEvents<Self::Selection>)
-        where F: Fn(usize) -> bool;
+    fn key_selection<F, D, S>(&self,
+                              event::KeyPress,
+                              i: usize,
+                              num_items: usize,
+                              &State,
+                              is_selected: F,
+                              &mut PendingEvents<Self::Selection, D, S>)
+        where F: Fn(usize) -> bool,
+              D: Direction;
 }
 
 widget_ids! {
@@ -58,28 +78,28 @@ pub struct State {
     last_selected_entry: std::cell::Cell<Option<usize>>,
 }
 
-/// Buffer use for storing events that have been produced but are yet to be yielded.
-pub type PendingEvents<S> = std::collections::VecDeque<Event<S>>;
+/// Buffer used for storing events that have been produced but are yet to be yielded.
+pub type PendingEvents<Selection, D, S> = std::collections::VecDeque<Event<Selection, D, S>>;
 
 /// An iterator-like type for yielding `ListSelect` `Event`s.
-pub struct Events<M>
+pub struct Events<M, D, S>
     where M: Mode,
 {
     id: widget::Id,
-    items: widget::list::Items,
+    items: widget::list::Items<D, S>,
     num_items: usize,
     mode: M,
-    pending_events: PendingEvents<M::Selection>,
+    pending_events: PendingEvents<M::Selection, D, S>,
 }
 
 /// The kind of events that the `ListSelect` may `react` to.
 /// Provides tuple(s) of index in list and string representation of selection
 #[derive(Clone, Debug)]
-pub enum Event<S> {
+pub enum Event<Selection, Direction, Size> {
     /// The next `Item` is ready for instantiation.
-    Item(widget::list::Item),
+    Item(widget::list::Item<Direction, Size>),
     /// A change in selection has occurred.
-    Selection(S),
+    Selection(Selection),
     /// A button press occurred while the widget was capturing the mouse.
     Press(event::Press),
     /// A button release occurred while the widget was capturing the mouse.
@@ -147,36 +167,120 @@ impl Selection {
 }
 
 
-impl ListSelect<Single> {
+impl ListSelect<Single, widget::list::Down, widget::list::Dynamic> {
     /// Construct a new ListSelect, allowing one selected item at a time.
-    pub fn single(num_items: usize, item_h: Scalar) -> Self {
-        Self::new(num_items, item_h, Single)
+    pub fn single(num_items: usize) -> Self {
+        Self::new(num_items, Single)
     }
 }
 
-impl ListSelect<Multiple> {
+impl ListSelect<Multiple, widget::list::Down, widget::list::Dynamic> {
     /// Construct a new ListSelect, allowing multiple selected items.
-    pub fn multiple(num_items: usize, item_h: Scalar) -> Self {
-        Self::new(num_items, item_h, Multiple)
+    pub fn multiple(num_items: usize) -> Self {
+        Self::new(num_items, Multiple)
     }
 }
 
-impl<M> ListSelect<M> {
+impl<M, D, S> ListSelect<M, D, S>
+    where M: Mode,
+          D: Direction,
+          S: widget::list::ItemSize,
+{
 
+    /// Flows items from top to bottom.
+    pub fn flow_down(self) -> ListSelect<M, widget::list::Down, S> {
+        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        ListSelect {
+            common: common,
+            num_items: num_items,
+            mode: mode,
+            direction: std::marker::PhantomData,
+            item_size: item_size,
+            style: style,
+            item_instantiation: item_instantiation,
+        }
+    }
+
+    /// Flows items from left to right.
+    pub fn flow_right(self) -> ListSelect<M, widget::list::Right, S> {
+        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        ListSelect {
+            common: common,
+            num_items: num_items,
+            mode: mode,
+            direction: std::marker::PhantomData,
+            item_size: item_size,
+            style: style,
+            item_instantiation: item_instantiation,
+        }
+    }
+
+    /// Flows items from right to left.
+    pub fn flow_left(self) -> ListSelect<M, widget::list::Left, S> {
+        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        ListSelect {
+            common: common,
+            num_items: num_items,
+            mode: mode,
+            direction: std::marker::PhantomData,
+            item_size: item_size,
+            style: style,
+            item_instantiation: item_instantiation,
+        }
+    }
+
+    /// Flows items from bottom to top.
+    pub fn flow_up(self) -> ListSelect<M, widget::list::Up, S> {
+        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        ListSelect {
+            common: common,
+            num_items: num_items,
+            mode: mode,
+            direction: std::marker::PhantomData,
+            item_size: item_size,
+            style: style,
+            item_instantiation: item_instantiation,
+        }
+    }
+
+    /// Specify a fixed item size, where size is a `Scalar` in the direction that the `List` is
+    /// flowing. When a `List` is constructed with this method, all items will have a fixed, equal
+    /// length.
+    pub fn item_size(self, length: Scalar) -> ListSelect<M, D, widget::list::Fixed> {
+        let ListSelect { common, num_items, mode, direction, style, .. } = self;
+        ListSelect {
+            common: common,
+            num_items: num_items,
+            mode: mode,
+            direction: direction,
+            item_size: widget::list::Fixed { length: length },
+            style: style,
+            item_instantiation: widget::list::ItemInstantiation::OnlyVisible,
+        }
+    }
+}
+
+impl<M> ListSelect<M, widget::list::Down, widget::list::Dynamic> {
     /// Begin building a new `ListSelect` with the given mode.
     ///
     /// This method is only useful when using a custom `Mode`, otherwise `ListSelect::single` or
     /// `ListSelect::multiple` will probably be more suitable.
-    pub fn new(num_items: usize, item_h: Scalar, mode: M) -> Self {
+    pub fn new(num_items: usize, mode: M) -> Self
+        where M: Mode,
+    {
         ListSelect {
             common: widget::CommonBuilder::new(),
             style: widget::list::Style::new(),
-            item_h: item_h,
             num_items: num_items,
+            item_size: widget::list::Dynamic {},
             mode: mode,
-            item_instantiation: widget::list::ItemInstantiation::OnlyVisible,
+            direction: std::marker::PhantomData,
+            item_instantiation: widget::list::ItemInstantiation::All,
         }
     }
+}
+
+impl<M, D, S> ListSelect<M, D, S> {
 
     /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` to the
     /// right of the items.
@@ -193,8 +297,8 @@ impl<M> ListSelect<M> {
     }
 
     /// The width of the `Scrollbar`.
-    pub fn scrollbar_width(mut self, w: Scalar) -> Self {
-        self.style.scrollbar_width = Some(Some(w));
+    pub fn scrollbar_thickness(mut self, w: Scalar) -> Self {
+        self.style.scrollbar_thickness = Some(Some(w));
         self
     }
 
@@ -204,8 +308,16 @@ impl<M> ListSelect<M> {
         self
     }
 
+}
+
+impl<M, D> ListSelect<M, D, widget::list::Fixed> {
+
     /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
     /// whether or not the `Item` would be visible.
+    ///
+    /// This is the default (and only) behaviour for `List`s with dynamic item sizes. This is
+    /// because a `List` cannot know the total length of its combined items in advanced when each
+    /// item is dynamically sized and their size is not given until they are set.
     ///
     /// Note: This may cause significantly heavier CPU load for lists containing many items (100+).
     /// We only recommend using this when absolutely necessary as large lists may cause unnecessary
@@ -219,7 +331,7 @@ impl<M> ListSelect<M> {
     /// avoid bloating the widget graph with unnecessary nodes and in turn keep traversal times to
     /// a minimum.
     ///
-    /// This is the default `List` behaviour.
+    /// This is the default behaviour for `ListSelect`s with fixed item sizes.
     pub fn instantiate_only_visible_items(mut self) -> Self {
         self.item_instantiation = widget::list::ItemInstantiation::OnlyVisible;
         self
@@ -227,12 +339,14 @@ impl<M> ListSelect<M> {
 
 }
 
-impl<M> Widget for ListSelect<M>
+impl<M, D, S> Widget for ListSelect<M, D, S>
     where M: Mode,
+          D: Direction,
+          S: widget::list::ItemSize,
 {
     type State = State;
     type Style = widget::list::Style;
-    type Event = (Events<M>, Option<widget::list::Scrollbar>);
+    type Event = (Events<M, D, S>, Option<widget::list::Scrollbar<D::Axis>>);
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -256,7 +370,7 @@ impl<M> Widget for ListSelect<M>
     /// Update the state of the ListSelect.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, mut state, style, mut ui, .. } = args;
-        let ListSelect { num_items, item_h, item_instantiation, mode, .. } = self;
+        let ListSelect { num_items, item_size, item_instantiation, mode, .. } = self;
 
         // Make sure that `last_selected_entry` refers to an actual selected value in the list.
         // If not push first selected item, if any.
@@ -266,10 +380,16 @@ impl<M> Widget for ListSelect<M>
             }
         }
 
-        let scrollbar_position = style.scrollbar_position(&ui.theme);
 
-        let mut list = widget::List::new(num_items, item_h)
-            .and_if(scrollbar_position.is_some(), |ls| ls.scroll_kids_vertically());
+        let mut list = widget::List::<D, _>::from_item_size(num_items, item_size);
+
+        let scrollbar_position = style.scrollbar_position(&ui.theme);
+        list = match scrollbar_position {
+            Some(widget::list::ScrollbarPosition::OnTop) => list.scrollbar_on_top(),
+            Some(widget::list::ScrollbarPosition::NextTo) => list.scrollbar_next_to(),
+            None => list,
+        };
+
         list.item_instantiation = item_instantiation;
         list.style = style.clone();
         let (items, scrollbar) = list.middle_of(id).wh_of(id).set(state.ids.list, ui);
@@ -286,12 +406,14 @@ impl<M> Widget for ListSelect<M>
     }
 }
 
-impl<M> Events<M>
+impl<M, D, S> Events<M, D, S>
     where M: Mode,
+          D: Direction,
+          S: widget::list::ItemSize,
 {
 
     /// Yield the next `Event`.
-    pub fn next<F>(&mut self, ui: &Ui, is_selected: F) -> Option<Event<M::Selection>>
+    pub fn next<F>(&mut self, ui: &Ui, is_selected: F) -> Option<Event<M::Selection, D, S>>
         where F: Fn(usize) -> bool,
     {
         let Events {
@@ -315,7 +437,7 @@ impl<M> Events<M>
         let state = || {
             ui.widget_graph()
                 .widget(id)
-                .and_then(|container| container.unique_widget_state::<ListSelect<M>>())
+                .and_then(|container| container.unique_widget_state::<ListSelect<M, D, S>>())
                 .map(|&graph::UniqueWidgetState { ref state, .. }| state)
                 .expect("couldn't find `ListSelect` state in the widget graph")
         };
@@ -393,13 +515,13 @@ impl<M> Events<M>
 impl Mode for Single {
     type Selection = usize;
 
-    fn click_selection<F>(&self,
-                          _: event::Click,
-                          i: usize,
-                          _num_items: usize,
-                          state: &State,
-                          _is_selected: F,
-                          pending: &mut PendingEvents<Self::Selection>)
+    fn click_selection<F, D, S>(&self,
+                                _: event::Click,
+                                i: usize,
+                                _num_items: usize,
+                                state: &State,
+                                _is_selected: F,
+                                pending: &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool,
     {
         state.last_selected_entry.set(Some(i));
@@ -407,24 +529,25 @@ impl Mode for Single {
         pending.push_back(event);
     }
 
-    fn key_selection<F>(&self,
-                        press: event::KeyPress,
-                        _i: usize,
-                        num_items: usize,
-                        state: &State,
-                        _is_selected: F,
-                        pending: &mut PendingEvents<Self::Selection>)
+    fn key_selection<F, D, S>(&self,
+                              press: event::KeyPress,
+                              _i: usize,
+                              num_items: usize,
+                              state: &State,
+                              _is_selected: F,
+                              pending: &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool,
+              D: Direction,
     {
         let i = match state.last_selected_entry.get() {
             Some(i) => i,
             None => return,
         };
 
-        let selection = match press.key {
-            input::Key::Up => if i == 0 { 0 } else { i - 1 },
-            input::Key::Down => std::cmp::min(i + 1, num_items - 1),
-            _ => return,
+        let selection = match D::key_direction(press.key) {
+            Some(ListDirection::Backward) => if i == 0 { 0 } else { i - 1 },
+            Some(ListDirection::Forward) => std::cmp::min(i + 1, num_items - 1),
+            None => return,
         };
 
         state.last_selected_entry.set(Some(selection));
@@ -437,13 +560,13 @@ impl Mode for Single {
 impl Mode for Multiple {
     type Selection = Selection;
 
-    fn click_selection<F>(&self,
-                          click: event::Click,
-                          i: usize,
-                          num_items: usize,
-                          state: &State,
-                          is_selected: F,
-                          pending: &mut PendingEvents<Self::Selection>)
+    fn click_selection<F, D, S>(&self,
+                                click: event::Click,
+                                i: usize,
+                                num_items: usize,
+                                state: &State,
+                                is_selected: F,
+                                pending: &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool,
     {
         let shift = click.modifiers.contains(input::keyboard::SHIFT);
@@ -485,14 +608,15 @@ impl Mode for Multiple {
         pending.push_back(event);
     }
 
-    fn key_selection<F>(&self,
-                        press: event::KeyPress,
-                        _i: usize,
-                        num_items: usize,
-                        state: &State,
-                        is_selected: F,
-                        pending: &mut PendingEvents<Self::Selection>)
+    fn key_selection<F, D, S>(&self,
+                              press: event::KeyPress,
+                              _i: usize,
+                              num_items: usize,
+                              state: &State,
+                              is_selected: F,
+                              pending: &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool,
+              D: Direction,
     {
         let i = match state.last_selected_entry.get() {
             Some(i) => i,
@@ -501,14 +625,14 @@ impl Mode for Multiple {
 
         let alt = press.modifiers.contains(input::keyboard::ALT);
 
-        let end = match press.key {
-            input::Key::Up =>
+        let end = match D::key_direction(press.key) {
+            Some(ListDirection::Backward) => 
                 if i == 0 || alt { 0 } else { i - 1 },
-            input::Key::Down => {
+            Some(ListDirection::Forward) => {
                 let last_idx = num_items - 1;
                 if i >= last_idx || alt { last_idx } else { i + 1 }
             },
-            _ => return,
+            None => return,
         };
 
         state.last_selected_entry.set(Some(end));
@@ -528,4 +652,44 @@ impl Mode for Multiple {
         pending.push_back(event);
     }
 
+}
+
+impl Direction for widget::list::Down {
+    fn key_direction(key: input::Key) -> Option<ListDirection> {
+        match key {
+            input::Key::Down => Some(ListDirection::Forward),
+            input::Key::Up => Some(ListDirection::Backward),
+            _ => None,
+        }
+    }
+}
+
+impl Direction for widget::list::Up {
+    fn key_direction(key: input::Key) -> Option<ListDirection> {
+        match key {
+            input::Key::Up => Some(ListDirection::Forward),
+            input::Key::Down => Some(ListDirection::Backward),
+            _ => None,
+        }
+    }
+}
+
+impl Direction for widget::list::Right {
+    fn key_direction(key: input::Key) -> Option<ListDirection> {
+        match key {
+            input::Key::Right => Some(ListDirection::Forward),
+            input::Key::Left => Some(ListDirection::Backward),
+            _ => None,
+        }
+    }
+}
+
+impl Direction for widget::list::Left {
+    fn key_direction(key: input::Key) -> Option<ListDirection> {
+        match key {
+            input::Key::Left => Some(ListDirection::Forward),
+            input::Key::Right => Some(ListDirection::Backward),
+            _ => None,
+        }
+    }
 }

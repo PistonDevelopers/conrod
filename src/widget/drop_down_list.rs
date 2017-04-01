@@ -275,7 +275,9 @@ impl<'a, T> Widget for DropDownList<'a, T>
                             .unwrap_or(10.0)
                     });
 
-                let (mut events, scrollbar) = widget::ListSelect::single(num_items, item_h)
+                let (mut events, scrollbar) = widget::ListSelect::single(num_items)
+                    .flow_down()
+                    .item_size(item_h)
                     .w_h(w, list_h)
                     .and(|ls| match scrollbar_position {
                         Some(widget::list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
@@ -283,7 +285,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                         None => ls,
                     })
                     .scrollbar_color(scrollbar_color)
-                    .scrollbar_width(scrollbar_width)
+                    .scrollbar_thickness(scrollbar_width)
                     .mid_top_of(id)
                     .floating(true)
                     .set(state.ids.list, ui);

@@ -93,9 +93,8 @@ mod feature {
 
         widget::Canvas::new().color(conrod::color::DARK_CHARCOAL).set(ids.canvas, ui);
 
-        const ITEM_HEIGHT: conrod::Scalar = 50.0;
-
-        let (mut items, scrollbar) = widget::List::new(list.len(), ITEM_HEIGHT)
+        let (mut items, scrollbar) = widget::List::flow_down(list.len())
+            .item_size(50.0)
             .scrollbar_on_top()
             .middle_of(ids.canvas)
             .wh_of(ids.canvas)

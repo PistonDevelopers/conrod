@@ -103,10 +103,13 @@ mod feature {
 
                 // Instantiate the `ListSelect` widget.
                 let num_items = list_items.len();
-                let item_h = 32.0;
-                let (mut events, scrollbar) = widget::ListSelect::multiple(num_items, item_h)
+                let item_h = 30.0;
+                let font_size = item_h as conrod::FontSize / 2;
+                let (mut events, scrollbar) = widget::ListSelect::multiple(num_items)
+                    .flow_down()
+                    .item_size(item_h)
                     .scrollbar_next_to()
-                    .w_h(350.0, 220.0)
+                    .w_h(400.0, 230.0)
                     .top_left_with_margins_on(ids.canvas, 40.0, 40.0)
                     .set(ids.list_select, ui);
 
@@ -118,7 +121,6 @@ mod feature {
                         // For the `Item` events we instantiate the `List`'s items.
                         Event::Item(item) => {
                             let label = &list_items[item.i];
-                            let font_size = item_h as conrod::FontSize / 2;
                             let (color, label_color) = match list_selected.contains(&item.i) {
                                 true => (conrod::color::LIGHT_BLUE, conrod::color::YELLOW),
                                 false => (conrod::color::LIGHT_GREY, conrod::color::BLACK),
