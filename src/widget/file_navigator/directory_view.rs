@@ -279,7 +279,9 @@ impl<'a> Widget for DirectoryView<'a> {
 
         let list_h = rect.h().min(state.entries.len() as Scalar * file_h);
         let (mut list_events, scrollbar) =
-            widget::ListSelect::multiple(state.entries.len(), file_h)
+            widget::ListSelect::multiple(state.entries.len())
+                .flow_down()
+                .item_size(file_h)
                 .scrollbar_on_top()
                 .w_h(rect.w(), list_h)
                 .mid_top_of(id)
