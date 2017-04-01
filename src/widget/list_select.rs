@@ -247,7 +247,7 @@ impl<M, D, S> ListSelect<M, D, S>
     /// flowing. When a `List` is constructed with this method, all items will have a fixed, equal
     /// length.
     pub fn item_size(self, length: Scalar) -> ListSelect<M, D, widget::list::Fixed> {
-        let ListSelect { common, num_items, mode, direction, style, item_instantiation, .. } = self;
+        let ListSelect { common, num_items, mode, direction, style, .. } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -255,7 +255,7 @@ impl<M, D, S> ListSelect<M, D, S>
             direction: direction,
             item_size: widget::list::Fixed { length: length },
             style: style,
-            item_instantiation: item_instantiation,
+            item_instantiation: widget::list::ItemInstantiation::OnlyVisible,
         }
     }
 }
@@ -315,6 +315,10 @@ impl<M, D> ListSelect<M, D, widget::list::Fixed> {
     /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
     /// whether or not the `Item` would be visible.
     ///
+    /// This is the default (and only) behaviour for `List`s with dynamic item sizes. This is
+    /// because a `List` cannot know the total length of its combined items in advanced when each
+    /// item is dynamically sized and their size is not given until they are set.
+    ///
     /// Note: This may cause significantly heavier CPU load for lists containing many items (100+).
     /// We only recommend using this when absolutely necessary as large lists may cause unnecessary
     /// bloating within the widget graph, and in turn result in greater traversal times.
@@ -327,7 +331,7 @@ impl<M, D> ListSelect<M, D, widget::list::Fixed> {
     /// avoid bloating the widget graph with unnecessary nodes and in turn keep traversal times to
     /// a minimum.
     ///
-    /// This is the default `List` behaviour.
+    /// This is the default behaviour for `ListSelect`s with fixed item sizes.
     pub fn instantiate_only_visible_items(mut self) -> Self {
         self.item_instantiation = widget::list::ItemInstantiation::OnlyVisible;
         self
