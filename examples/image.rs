@@ -28,6 +28,7 @@ mod feature {
             .with_vsync()
             .with_dimensions(WIDTH, HEIGHT)
             .with_title("Image Widget Demonstration")
+            .with_multisampling(4)
             .build_glium()
             .unwrap();
 

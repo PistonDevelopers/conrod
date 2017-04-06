@@ -31,6 +31,7 @@ mod feature {
             .with_vsync()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
+            .with_multisampling(8)
             .build_glium()
             .unwrap();
 
