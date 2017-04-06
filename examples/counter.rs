@@ -23,6 +23,7 @@ mod feature {
             .with_vsync()
             .with_dimensions(WIDTH, HEIGHT)
             .with_title("Click me!")
+            .with_multisampling(4)
             .build_glium()
             .unwrap();
 

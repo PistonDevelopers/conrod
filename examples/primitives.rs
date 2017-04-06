@@ -36,6 +36,7 @@ mod feature {
         let display = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIDTH, HEIGHT)
+            .with_multisampling(4)
             .with_title("Primitive Widgets Demo")
             .build_glium()
             .unwrap();

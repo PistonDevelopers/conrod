@@ -289,7 +289,7 @@ pub fn program<F>(facade: &F) -> Result<glium::Program, glium::program::ProgramC
 /// Default glium `DrawParameters` with alpha blending enabled.
 pub fn draw_parameters() -> glium::DrawParameters<'static> {
     let blend = glium::Blend::alpha_blending();
-    glium::DrawParameters { blend: blend, ..Default::default() }
+    glium::DrawParameters { multisampling: true, blend: blend, ..Default::default() }
 }
 
 
