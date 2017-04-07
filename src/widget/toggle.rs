@@ -10,6 +10,7 @@ use {
     Scalar,
     Widget,
 };
+use position::{self, Align};
 use text;
 use widget;
 
@@ -46,6 +47,10 @@ widget_style! {
         - label_font_size: FontSize { theme.font_size_medium }
         /// The ID of the font used to display the label.
         - label_font_id: Option<text::font::Id> { theme.font_id }
+        /// The position of the title bar's `Label` widget over the *x* axis.
+        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
+        /// The position of the title bar's `Label` widget over the *y* axis.
+        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
     }
 }
 
@@ -103,6 +108,18 @@ impl<'a> Toggle<'a> {
     /// Specify the font used for displaying the label.
     pub fn label_font_id(mut self, font_id: text::font::Id) -> Self {
         self.style.label_font_id = Some(Some(font_id));
+        self
+    }
+
+    /// Specify the label's position relatively to `Toggle` along the *x* axis.
+    pub fn label_x(mut self, x: position::Relative) -> Self {
+        self.style.label_x = Some(x);
+        self
+    }
+
+    /// Specify the label's position relatively to `Toggle` along the *y* axis.
+    pub fn label_y(mut self, y: position::Relative) -> Self {
+        self.style.label_y = Some(y);
         self
     }
 
@@ -176,9 +193,12 @@ impl<'a> Widget for Toggle<'a> {
             let color = style.label_color(ui.theme());
             let font_size = style.label_font_size(ui.theme());
             let font_id = style.label_font_id(&ui.theme).or(ui.fonts.ids().next());
+            let x = style.label_x(&ui.theme);
+            let y = style.label_y(&ui.theme);
             widget::Text::new(label)
                 .and_then(font_id, widget::Text::font_id)
-                .middle_of(state.ids.rectangle)
+                .x_position_relative_to(id, x)
+                .y_position_relative_to(id, y)
                 .graphics_for(id)
                 .color(color)
                 .font_size(font_size)
