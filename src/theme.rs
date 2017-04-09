@@ -11,6 +11,10 @@ use std::any::Any;
 use text;
 use widget;
 
+/// `std::collections::HashMap` with `fnv::FnvHasher` for unique styling
+/// of each widget, index-able by the **Widget::kind**.
+pub type StyleMap = fnv::FnvHashMap<std::any::TypeId, WidgetDefault>;
+
 
 /// A serializable collection of canvas and widget styling defaults.
 pub struct Theme {
@@ -40,8 +44,9 @@ pub struct Theme {
     pub font_size_medium: u32,
     /// A default "small" font size.
     pub font_size_small: u32,
-    /// Unique styling for each widget, index-able by the **Widget::kind**.
-    pub widget_styling: fnv::FnvHashMap<std::any::TypeId, WidgetDefault>,
+    /// `StyleMap` for unique styling
+    /// of each widget, index-able by the **Widget::kind**.
+    pub widget_styling: StyleMap,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
