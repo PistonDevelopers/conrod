@@ -3,6 +3,7 @@
 //! - [Map](./struct.Map.html)
 
 use std;
+use fnv;
 
 /// Unique image identifier.
 ///
@@ -33,8 +34,8 @@ pub struct Map<Img> {
     pub trigger_redraw: std::cell::Cell<bool>,
 }
 
-/// The type of `std::collections::HashMap` used within the `image::Map`.
-pub type HashMap<Img> = std::collections::HashMap<Id, Img>;
+/// The type of `std::collections::HashMap` with `fnv::FnvHasher` used within the `image::Map`.
+pub type HashMap<Img> = fnv::FnvHashMap<Id, Img>;
 
 /// An iterator yielding an `Id` for each new `Img` inserted into the `Map` via the `extend`
 /// method.
@@ -57,7 +58,7 @@ impl<Img> Map<Img> {
     pub fn new() -> Self {
         Map {
             next_index: 0,
-            map: std::collections::HashMap::new(),
+            map: HashMap::<Img>::default(),
             trigger_redraw: std::cell::Cell::new(true),
         }
     }

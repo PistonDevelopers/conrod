@@ -5,6 +5,7 @@
 use Scalar;
 use color::{Color, BLACK, WHITE};
 use position::{Align, Direction, Padding, Position, Relative};
+use fnv;
 use std;
 use std::any::Any;
 use text;
@@ -40,7 +41,7 @@ pub struct Theme {
     /// A default "small" font size.
     pub font_size_small: u32,
     /// Unique styling for each widget, index-able by the **Widget::kind**.
-    pub widget_styling: std::collections::HashMap<std::any::TypeId, WidgetDefault>,
+    pub widget_styling: fnv::FnvHashMap<std::any::TypeId, WidgetDefault>,
     /// Mouse Drag distance threshold determines the minimum distance from the mouse-down point
     /// that the mouse must move before starting a drag operation.
     pub mouse_drag_threshold: Scalar,
@@ -94,7 +95,7 @@ impl Theme {
             font_size_large: 26,
             font_size_medium: 18,
             font_size_small: 12,
-            widget_styling: std::collections::HashMap::new(),
+            widget_styling: fnv::FnvHashMap::default(),
             mouse_drag_threshold: 0.0,
             double_click_threshold: std::time::Duration::from_millis(500),
         }
