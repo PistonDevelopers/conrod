@@ -49,10 +49,10 @@ impl DepthOrder {
     ///
     /// The `visit_by_depth` algorithm should not be recursive and instead use either looping,
     /// walking or iteration.
-    pub fn update(&mut self,
+    pub fn update<T: std::hash::BuildHasher>(&mut self,
                   graph: &Graph,
                   root: widget::Id,
-                  updated_widgets: &std::collections::HashSet<widget::Id>)
+                  updated_widgets: &std::collections::HashSet<widget::Id, T>)
     {
         let DepthOrder { ref mut indices, ref mut floating } = *self;
 
@@ -88,9 +88,9 @@ impl DepthOrder {
 
 
 /// Recursive function for visiting all nodes within the dag.
-fn visit_by_depth(graph: &Graph,
+fn visit_by_depth<T: std::hash::BuildHasher>(graph: &Graph,
                   idx: widget::Id,
-                  updated_widgets: &std::collections::HashSet<widget::Id>,
+                  updated_widgets: &std::collections::HashSet<widget::Id, T>,
                   depth_order: &mut Vec<widget::Id>,
                   floating_deque: &mut Vec<widget::Id>)
 {

@@ -191,8 +191,8 @@ fn cropped_area_of_widget_maybe_within_depth(graph: &Graph,
 /// FIXME: This currently uses call stack recursion to do a depth-first search through all
 /// depth_children for the total bounding box. This should use a proper `Dfs` type with it's own
 /// stack for safer traversal that won't blow the stack on hugely deep GUIs.
-pub fn kids_bounding_box(graph: &Graph,
-                         prev_updated: &std::collections::HashSet<widget::Id>,
+pub fn kids_bounding_box<T: std::hash::BuildHasher>(graph: &Graph,
+                         prev_updated: &std::collections::HashSet<widget::Id, T>,
                          idx: widget::Id) -> Option<Rect>
 {
     // When traversing the `depth_kids`, we only want to visit those who:

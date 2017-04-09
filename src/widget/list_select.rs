@@ -120,15 +120,15 @@ pub struct Multiple;
 
 /// Represents some change in item selection for a `ListSelect` in `Multiple` mode.
 #[derive(Clone, Debug)]
-pub enum Selection {
+pub enum Selection<H: std::hash::BuildHasher = std::collections::hash_map::RandomState> {
     /// Items which have been added to the selection.
-    Add(std::collections::HashSet<usize>),
+    Add(std::collections::HashSet<usize, H>),
     /// Items which have been removed from the selection.
-    Remove(std::collections::HashSet<usize>),
+    Remove(std::collections::HashSet<usize, H>),
 }
 
 
-impl Selection {
+impl<H: std::hash::BuildHasher> Selection<H> {
 
     /// Update the given slice of `bool`s with this `Selection`.
     ///
@@ -151,7 +151,9 @@ impl Selection {
     }
 
     /// Update the given set of selected indices with this `Selection`.
-    pub fn update_index_set(&self, set: &mut std::collections::HashSet<usize>) {
+    pub fn update_index_set<T>(&self, set: &mut std::collections::HashSet<usize, T>)
+        where T: std::hash::BuildHasher
+    {
         match *self {
             Selection::Add(ref indices) =>
                 for &i in indices {
