@@ -9,6 +9,7 @@ use std;
 use std::any::Any;
 use text;
 use widget;
+use json::JsonValue;
 
 
 /// A serializable collection of canvas and widget styling defaults.
@@ -97,6 +98,31 @@ impl Theme {
             widget_styling: std::collections::HashMap::new(),
             mouse_drag_threshold: 0.0,
             double_click_threshold: std::time::Duration::from_millis(500),
+        }
+    }
+
+    /// Converts this **Theme** into a **JsonValue** representing it.
+    /// font_id's and any references to widget id's are left out because they don't make sense to
+    /// store between applications and sessions.
+    pub fn into_json(self) -> JsonValue {
+        object!{
+            "name" => self.name,
+            "padding" => object!{
+                "x" => array![self.padding.x.start, self.padding.x.end],
+                "y" => array![self.padding.y.start, self.padding.y.end]
+            },
+            "x_position" => self.x_position.into_json(),
+            "y_position" => self.y_position.into_json(),
+            "background_color" => self.background_color.to_fsa().to_vec(),
+            "shape_color" => self.shape_color.to_fsa().to_vec(),
+            "border_color" => self.border_color.to_fsa().to_vec(),
+            "border_width" => self.border_width,
+            "label_color" => self.label_color.to_fsa().to_vec(),
+            "font_size_large" => self.font_size_large,
+            "font_size_medium" => self.font_size_medium,
+            "font_size_small" => self.font_size_small,
+            "mouse_drag_threshold" => self.mouse_drag_threshold,
+            "double_click_threshold" => (self.double_click_threshold.as_secs() as u64 * 1000u64) + (self.double_click_threshold.subsec_nanos() as u64 / 1_000_000u64)
         }
     }
 
