@@ -331,6 +331,12 @@ pub fn text_texture_uncompressed_float_format(opengl_version: &glium::Version) -
 }
 
 
+// Often creating a texture the size of the screen might not be large enough to cache the necessary
+// text for an application. The following constant multiplier is used to ensure plenty of room in
+// the cache.
+const TEXT_CACHE_SIZE_MULTIPLIER: usize = 8;
+
+
 impl GlyphCache {
 
     /// Construct a `GlyphCache` with a size equal to the given `Display`'s current framebuffer
@@ -356,12 +362,12 @@ impl GlyphCache {
 
         // First, the rusttype `Cache` which performs the logic for rendering and laying out glyphs
         // in the cache.
-        let cache = text::GlyphCache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE);
+        let cache = text::GlyphCache::new(w * TEXT_CACHE_SIZE_MULTIPLIER as u32, h, SCALE_TOLERANCE, POSITION_TOLERANCE);
 
         // Now the texture to which glyphs will be rendered.
         let grey_image = glium::texture::RawImage2d {
-            data: std::borrow::Cow::Owned(vec![128u8; buffer_w as usize * h as usize]),
-            width: w,
+            data: std::borrow::Cow::Owned(vec![128u8; buffer_w as usize * h as usize * TEXT_CACHE_SIZE_MULTIPLIER]),
+            width: w * TEXT_CACHE_SIZE_MULTIPLIER as u32,
             height: h,
             format: client_format,
         };
