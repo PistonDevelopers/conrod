@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.51.1"
+version = "0.52.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -21,7 +21,7 @@ path = "./src/lib.rs"
 [dependencies]
 daggy = "0.4.0"
 num = "0.1.30"
-pistoncore-input = "0.17.0"
+pistoncore-input = "0.18.0"
 rusttype = "0.2.0"
 
 # Optional dependencies and features
@@ -52,12 +52,12 @@ piston = ["piston2d-graphics"]
 
 [dev-dependencies]
 find_folder = "0.3.0"
-image = "0.12.0"
+image = "0.13.0"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
-gfx = "0.14.0"
-gfx_core = "0.6.0"
+gfx = "0.15.1"
+gfx_core = "0.7.0"
 gfx_window_glutin = "0.14.0"
 glutin = "0.7.0"
 # piston_window.rs example dependencies
-piston_window = "0.63.0"
+piston_window = "0.65.0"
