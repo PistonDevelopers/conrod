@@ -57,7 +57,7 @@ rand = "0.3.13"
 # glutin_gfx.rs example dependencies
 gfx = "0.15.1"
 gfx_core = "0.7.0"
-gfx_window_glutin = "0.14.0"
+gfx_window_glutin = "0.15.0"
 glutin = "0.7.0"
 # piston_window.rs example dependencies
 piston_window = "0.65.0"
