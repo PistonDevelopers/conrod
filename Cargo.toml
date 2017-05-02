@@ -45,7 +45,7 @@ rusttype = "0.2.0"
 # Enables the `conrod::backend::piston` module.
 glium = { version = "0.16.0", optional = true }
 winit = { version = "0.5.9", optional = true }
-piston2d-graphics = { version = "0.20", optional = true }
+piston2d-graphics = { version = "0.21.1", optional = true }
 
 [features]
 piston = ["piston2d-graphics"]
