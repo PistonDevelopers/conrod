@@ -182,6 +182,11 @@ impl<'a> Button<'a, Flat> {
         Self::new_internal(Flat)
     }
 
+    /// Override the default button style
+    pub fn with_style(mut self, s: Style) -> Self{
+        self.style = s;
+        self
+    }
 }
 
 
