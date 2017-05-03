@@ -131,7 +131,7 @@ impl<'a> Widget for CollapsibleArea<'a> {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let CollapsibleArea { text, mut is_open, .. } = self;
 
-        let (x, y, w, h) = rect.x_y_w_h();
+        let (_, _, w, h) = rect.x_y_w_h();
         let color = style.color(&ui.theme);
         let border = style.border(&ui.theme);
         let border_color = style.border_color(&ui.theme);
