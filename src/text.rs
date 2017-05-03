@@ -91,6 +91,7 @@ impl<'a, I> Iterator for Lines<'a, I>
 
 /// The `font::Id` and `font::Map` types.
 pub mod font {
+    use fnv;
     use std;
 
     /// A type-safe wrapper around the `FontId`.
@@ -105,7 +106,7 @@ pub mod font {
     /// A collection of mappings from `font::Id`s to `rusttype::Font`s.
     pub struct Map {
         next_index: usize,
-        map: std::collections::HashMap<Id, super::Font>,
+        map: fnv::FnvHashMap<Id, super::Font>,
     }
 
     /// An iterator yielding an `Id` for each new `rusttype::Font` inserted into the `Map` via the
@@ -144,7 +145,7 @@ pub mod font {
         pub fn new() -> Self {
             Map {
                 next_index: 0,
-                map: std::collections::HashMap::new(),
+                map: fnv::FnvHashMap::default(),
             }
         }
 

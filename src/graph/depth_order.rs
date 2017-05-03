@@ -2,6 +2,7 @@
 
 use daggy::Walker;
 use std;
+use fnv;
 use super::{Graph, Node};
 use widget;
 
@@ -52,7 +53,7 @@ impl DepthOrder {
     pub fn update(&mut self,
                   graph: &Graph,
                   root: widget::Id,
-                  updated_widgets: &std::collections::HashSet<widget::Id>)
+                  updated_widgets: &fnv::FnvHashSet<widget::Id>)
     {
         let DepthOrder { ref mut indices, ref mut floating } = *self;
 
@@ -90,7 +91,7 @@ impl DepthOrder {
 /// Recursive function for visiting all nodes within the dag.
 fn visit_by_depth(graph: &Graph,
                   idx: widget::Id,
-                  updated_widgets: &std::collections::HashSet<widget::Id>,
+                  updated_widgets: &fnv::FnvHashSet<widget::Id>,
                   depth_order: &mut Vec<widget::Id>,
                   floating_deque: &mut Vec<widget::Id>)
 {

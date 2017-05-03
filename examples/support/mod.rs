@@ -64,7 +64,7 @@ pub fn theme() -> conrod::Theme {
         font_size_large: 26,
         font_size_medium: 18,
         font_size_small: 12,
-        widget_styling: std::collections::HashMap::new(),
+        widget_styling: conrod::theme::StyleMap::default(),
         mouse_drag_threshold: 0.0,
         double_click_threshold: std::time::Duration::from_millis(500),
     }

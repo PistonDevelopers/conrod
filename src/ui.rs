@@ -5,6 +5,7 @@ use input;
 use position::{self, Align, Direction, Dimensions, Padding, Point, Position, Range, Rect, Scalar};
 use render;
 use std;
+use fnv;
 use text;
 use theme::Theme;
 use utils;
@@ -67,12 +68,12 @@ pub struct Ui {
     /// The order in which widgets from the `widget_graph` are drawn.
     depth_order: graph::DepthOrder,
     /// The set of widgets that have been updated since the beginning of the `set_widgets` stage.
-    updated_widgets: std::collections::HashSet<widget::Id>,
+    updated_widgets: fnv::FnvHashSet<widget::Id>,
     /// The `updated_widgets` for the previous `set_widgets` stage.
     ///
     /// We use this to compare against the newly generated `updated_widgets` to see whether or not
     /// we require re-drawing.
-    prev_updated_widgets: std::collections::HashSet<widget::Id>,
+    prev_updated_widgets: fnv::FnvHashSet<widget::Id>,
     /// Scroll events that have been emitted during a call to `Ui::set_widgets`. These are usually
     /// emitted by some widget like the `Scrollbar`.
     ///
@@ -172,10 +173,11 @@ impl Ui {
             maybe_widgets_capacity.map_or_else(
                 || (Graph::new(),
                    graph::DepthOrder::new(),
-                   std::collections::HashSet::new()),
+                   fnv::FnvHashSet::default()),
                 |n| (Graph::with_node_capacity(n),
                      graph::DepthOrder::with_node_capacity(n),
-                     std::collections::HashSet::with_capacity(n)));
+                     std::collections::HashSet::with_capacity_and_hasher(n,
+                        fnv::FnvBuildHasher::default())));
 
         let window = widget_graph.add_placeholder();
         let prev_updated_widgets = updated_widgets.clone();
@@ -270,7 +272,7 @@ impl Ui {
     ///
     /// This set indicates which widgets have been instantiated since the beginning of the most
     /// recent `Ui::set_widgets` call.
-    pub fn updated_widgets(&self) -> &std::collections::HashSet<widget::Id> {
+    pub fn updated_widgets(&self) -> &fnv::FnvHashSet<widget::Id> {
         &self.updated_widgets
     }
 
@@ -278,7 +280,7 @@ impl Ui {
     ///
     /// This set indicates which widgets have were instantiated during the previous call to
     /// `Ui::set_widgets`.
-    pub fn prev_updated_widgets(&self) -> &std::collections::HashSet<widget::Id> {
+    pub fn prev_updated_widgets(&self) -> &fnv::FnvHashSet<widget::Id> {
         &self.prev_updated_widgets
     }
 

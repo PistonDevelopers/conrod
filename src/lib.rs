@@ -9,6 +9,7 @@
 #![warn(missing_docs)]
 
 extern crate daggy;
+extern crate fnv;
 extern crate num;
 extern crate input as piston_input;
 extern crate rusttype;

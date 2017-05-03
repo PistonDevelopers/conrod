@@ -9,7 +9,7 @@
 
 use position::Point;
 use self::mouse::Mouse;
-use std;
+use fnv;
 use super::keyboard::{NO_MODIFIER, ModifierKey};
 use utils;
 use widget;
@@ -26,7 +26,7 @@ pub struct State {
     /// Mouse position and button state.
     pub mouse: Mouse,
     /// All in-progress touch interactions.
-    pub touch: std::collections::HashMap<super::touch::Id, self::touch::Touch>,
+    pub touch: fnv::FnvHashMap<super::touch::Id, self::touch::Touch>,
     /// Which widget, if any, is currently capturing the keyboard
     pub widget_capturing_keyboard: Option<widget::Id>,
     /// Which widget, if any, is currently capturing the mouse
@@ -45,7 +45,7 @@ impl State {
     /// Returns a fresh new input state
     pub fn new() -> State {
         State{
-            touch: std::collections::HashMap::new(),
+            touch: fnv::FnvHashMap::default(),
             mouse: Mouse::new(),
             widget_capturing_keyboard: None,
             widget_capturing_mouse: None,

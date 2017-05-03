@@ -20,6 +20,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 daggy = "0.4.0"
+fnv = "1.0"
 num = "0.1.30"
 pistoncore-input = "0.17.0"
 rusttype = "0.2.0"
