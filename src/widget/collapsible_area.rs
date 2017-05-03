@@ -154,7 +154,7 @@ impl<'a> Widget for CollapsibleArea<'a> {
         // When the button is pressed, toggle whether the area is open or closed.
         let event = widget::Button::new()
             .w_h(w, h)
-            .x_y(x, y)
+            .middle_of(id)
             .color(color)
             .border(border)
             .border_color(border_color)
@@ -189,7 +189,8 @@ impl<'a> Widget for CollapsibleArea<'a> {
 
         // The triangle widget.
         widget::Polygon::fill(points.iter().cloned())
-            .xy(triangle_rect.xy())
+            .align_middle_y_of(state.ids.button)
+            .align_left_of(state.ids.button)
             .wh(triangle_rect.dim())
             .parent(state.ids.button)
             .graphics_for(state.ids.button)
