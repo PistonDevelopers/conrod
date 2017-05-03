@@ -185,15 +185,17 @@ impl<'a, T> Widget for Slider<'a, T>
             .set(state.ids.border, ui);
 
         // The **Rectangle** for the adjustable slider.
+        let value_perc = map_range(new_value, min, max, 0.0, 1.0);
+        let unskewed_perc = value_perc.powf(1.0 / skew as f64);
         let slider_rect = if is_horizontal {
             let left = inner_rect.x.start;
-            let right = map_range(new_value, min, max, left, inner_rect.x.end);
+            let right = map_range(unskewed_perc, 0.0, 1.0, left, inner_rect.x.end);
             let x = Range::new(left, right);
             let y = inner_rect.y;
             Rect { x: x, y: y }
         } else {
             let bottom = inner_rect.y.start;
-            let top = map_range(new_value, min, max, bottom, inner_rect.y.end);
+            let top = map_range(unskewed_perc, 0.0, 1.0, bottom, inner_rect.y.end);
             let x = inner_rect.x;
             let y = Range::new(bottom, top);
             Rect { x: x, y: y }
