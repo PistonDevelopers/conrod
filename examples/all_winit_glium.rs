@@ -25,7 +25,6 @@ mod feature {
     const WIN_H: u32 = support::WIN_H;
 
     pub fn main() {
-
         // Build the window.
         let display = glium::glutin::WindowBuilder::new()
             .with_vsync()

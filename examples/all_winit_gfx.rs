@@ -7,6 +7,7 @@
 
 #[cfg(feature="winit")] #[macro_use] extern crate conrod;
 #[cfg(feature="winit")] extern crate glutin;
+#[cfg(feature="winit")] extern crate winit;
 #[macro_use] extern crate gfx;
 extern crate gfx_core;
 
@@ -177,6 +178,9 @@ mod feature {
     }
 
     pub fn main() {
+        // Events loop
+        let events_loop = glutin::EventsLoop::new();
+
         // Builder for window
         let builder = glutin::WindowBuilder::new()
             .with_title("Conrod with GFX and Glutin")
@@ -184,7 +188,7 @@ mod feature {
 
         // Initialize gfx things
         let (window, mut device, mut factory, main_color, _) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder);
+            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
 
@@ -246,15 +250,18 @@ mod feature {
         // Demonstration app state that we'll control with our conrod GUI.
         let mut app = support::DemoApp::new(rust_logo);
 
-        // Event loop
-        let mut events = window.poll_events();
+        // Control variable for main loop
+        let mut is_running = true;
 
-        'main: loop {
+        while is_running {
             // If the window is closed, this will be None for one tick, so to avoid panicking with
             // unwrap, instead break the loop
             let (win_w, win_h) = match window.get_inner_size() {
                 Some(s) => s,
-                None => break 'main,
+                None => {
+                    is_running = false;
+                    continue;
+                }
             };
 
             let dpi_factor = window.hidpi_factor();
@@ -343,24 +350,31 @@ mod feature {
                 device.cleanup();
             }
 
-            if let Some(event) = events.next() {
+            events_loop.poll_events(|event| {
+                use winit::{Event, WindowEvent};
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
                 // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), window.as_winit_window()) {
-                    ui.handle_event(event);
+                match event.clone() {
+                    Event::WindowEvent { event, .. } => {
+                        if let Some(event) = conrod::backend::winit::convert(event, window.as_winit_window()) {
+                            ui.handle_event(event);
+                        }
+                    }
                 }
 
                 // Close window if the escape key or the exit button is pressed
                 match event {
-                    glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                    glutin::Event::Closed =>
-                        break 'main,
-
+                    Event::WindowEvent { event: WindowEvent::Closed, .. } |
+                    Event::WindowEvent {
+                        event: WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _), ..
+                    } => {
+                        is_running = false;
+                    }                        
                     _ => {},
                 }
-            }
+            });
 
             // Update widgets if any event has happened
             if ui.global_input().events().next().is_some() {

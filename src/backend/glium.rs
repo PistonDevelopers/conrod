@@ -578,7 +578,7 @@ impl Renderer {
                     }
                 },
 
-                render::PrimitiveKind::Lines { color, cap, thickness, points } => {
+                render::PrimitiveKind::Lines { color, thickness, points, .. } => {
 
                     // We need at least two points to draw any lines.
                     if points.len() < 2 {
