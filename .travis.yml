@@ -22,6 +22,10 @@ script:
     - cargo test --verbose
     - cargo test --features "winit glium" --verbose
     - cargo test --features "piston" --verbose
+    - cargo build --features "winit" --example all_winit_gfx
+    - cargo build --features "glium winit" --example all_winit_glium
+    - cargo build --features "glium winit" --example all_winit_glium_threaded
+    - cargo build --features "piston" --example all_piston_window
     - cargo doc --verbose
 
 after_success:
