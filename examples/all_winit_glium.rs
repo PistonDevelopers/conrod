@@ -53,7 +53,7 @@ mod feature {
             let path = assets.join("images/rust.png");
             let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
             let image_dimensions = rgba_image.dimensions();
-            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
             let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
             texture
         }
@@ -86,6 +86,7 @@ mod feature {
 
             // Handle all events.
             for event in event_loop.next(&events_loop) {
+                use conrod::backend::glium::glium::glutin::{KeyboardInput, WindowEvent, VirtualKeyCode};
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
                 if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
@@ -95,12 +96,16 @@ mod feature {
 
                 match event {
                     glium::glutin::Event::WindowEvent { event, .. } => match event {
-                        // Break from the loop upon `Escape`.
-                        glium::glutin::WindowEvent::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape), _) |
-                        glium::glutin::WindowEvent::Closed =>
-                            break 'main,
+                        // Break from the loop upon `Escape` or `Closed`.
+                        WindowEvent::Closed |
+                        WindowEvent::KeyboardInput {
+                            input: KeyboardInput {
+                                virtual_keycode: Some(VirtualKeyCode::Escape), ..
+                            }, ..
+                        } => break 'main,
                         _ => {},
-                    }
+                    },
+                    _ => (),
                 }
             }
 
