@@ -155,6 +155,7 @@ impl WinitEvent for winit::WindowEvent {
     }
 }
 
+#[cfg(feature = "glium")]
 impl WinitEvent for glium::glutin::Event {
     fn convert<W: WinitWindow>(self, window: &W) -> Option<Input> {
         // The window size in points.
@@ -405,11 +406,13 @@ pub fn map_mouse(mouse_button: winit::MouseButton) -> input::MouseButton {
     }
 }
 
+#[cfg(feature = "glium")]
 trait ToWinit {
     type WinitValue;
     fn to_winit(self) -> Self::WinitValue;
 }
 
+#[cfg(feature = "glium")]
 impl ToWinit for glium::glutin::MouseButton {
     type WinitValue = winit::MouseButton;
     fn to_winit(self) -> Self::WinitValue {
@@ -422,6 +425,7 @@ impl ToWinit for glium::glutin::MouseButton {
     }
 }
 
+#[cfg(feature = "glium")]
 impl ToWinit for glium::glutin::VirtualKeyCode {
     type WinitValue = winit::VirtualKeyCode;
     fn to_winit(self) -> Self::WinitValue {
