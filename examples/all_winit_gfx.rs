@@ -355,24 +355,21 @@ mod feature {
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
-                // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                match event.clone() {
-                    Event::WindowEvent { event, .. } => {
-                        if let Some(event) = conrod::backend::winit::convert(event, window.as_winit_window()) {
-                            ui.handle_event(event);
-                        }
-                    }
-                }
-
-                // Close window if the escape key or the exit button is pressed
                 match event {
+                    // Close window if the escape key or the exit button is pressed
                     Event::WindowEvent { event: WindowEvent::Closed, .. } |
                     Event::WindowEvent {
                         event: WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _), ..
                     } => {
                         is_running = false;
-                    }                        
-                    _ => {},
+                    }
+
+                    // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
+                    Event::WindowEvent { event, .. } => {
+                        if let Some(event) = conrod::backend::winit::convert(event, window.as_winit_window()) {
+                            ui.handle_event(event);
+                        }
+                    }
                 }
             });
 
