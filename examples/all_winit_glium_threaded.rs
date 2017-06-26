@@ -13,8 +13,8 @@ mod feature {
     extern crate find_folder;
     extern crate image;
     use conrod;
-    use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::Surface;
+    use conrod::backend::glium::glium::glutin::{self, winit};
+    use conrod::backend::glium::glium::{self, Surface};
     use support;
     use std;
 
@@ -25,15 +25,18 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let events_loop = std::sync::Arc::new(glium::glutin::EventsLoop::new());
-        let window = glium::glutin::WindowBuilder::new()
-            .with_vsync()
+        let mut events_loop = winit::EventsLoop::new();
+        let window = winit::WindowBuilder::new()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
-            .with_multisampling(4)
             .build(&events_loop)
             .unwrap();
-        let display = glium::build(window).unwrap();
+        let context = glutin::ContextBuilder::new()
+            .with_vsync()
+            .with_multisampling(8)
+            .build(&window)
+            .unwrap();
+        let display = glium::Display::new(window, context).unwrap();
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
         // for drawing to the glium `Surface`.
@@ -52,7 +55,7 @@ mod feature {
             let path = assets.join("images/rust.png");
             let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
             let image_dimensions = rgba_image.dimensions();
-            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
             let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
             texture
         }
@@ -65,13 +68,13 @@ mod feature {
         // A channel to send `render::Primitive`s from the conrod thread to the `winit thread.
         let (render_tx, render_rx) = std::sync::mpsc::channel();
         // Clone the handle to the events loop so that we can interrupt it when ready to draw.
-        let events_loop_2 = events_loop.clone();
+        let events_loop_proxy = events_loop.create_proxy();
 
         // A function that runs the conrod loop.
         fn run_conrod(rust_logo: conrod::image::Id,
                       event_rx: std::sync::mpsc::Receiver<conrod::event::Input>,
                       render_tx: std::sync::mpsc::Sender<conrod::render::OwnedPrimitives>,
-                      events_loop: std::sync::Arc<glium::glutin::EventsLoop>)
+                      events_loop_proxy: winit::EventsLoopProxy)
         {
             // Construct our `Ui`.
             let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -124,7 +127,7 @@ mod feature {
                         break 'conrod;
                     }
                     // Wakeup `winit` for rendering.
-                    events_loop.interrupt();
+                    events_loop_proxy.wakeup().unwrap();
                 }
             }
         }
@@ -143,7 +146,7 @@ mod feature {
         }
 
         // Spawn the conrod loop on its own thread.
-        std::thread::spawn(move || run_conrod(rust_logo, event_rx, render_tx, events_loop_2));
+        std::thread::spawn(move || run_conrod(rust_logo, event_rx, render_tx, events_loop_proxy));
 
         // Run the `winit` loop.
         let mut last_update = std::time::Instant::now();
@@ -166,23 +169,30 @@ mod feature {
                 }
 
                 match event {
-                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    winit::Event::WindowEvent { event, .. } => match event {
                         // Break from the loop upon `Escape`.
-                        glium::glutin::WindowEvent::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape), _) |
-                        glium::glutin::WindowEvent::Closed => {
+                        winit::WindowEvent::Closed |
+                        winit::WindowEvent::KeyboardInput {
+                            input: winit::KeyboardInput {
+                                virtual_keycode: Some(winit::VirtualKeyCode::Escape), ..
+                            }, ..
+                        } => {
                             closed = true;
-                            events_loop.interrupt();
+                            return winit::ControlFlow::Break;
                         },
                         // We must re-draw on `Resized`, as the event loops become blocked during
                         // resize on macOS.
-                        glium::glutin::WindowEvent::Resized(..) => {
+                        winit::WindowEvent::Resized(..) => {
                             if let Some(primitives) = render_rx.iter().next() {
                                 draw(&display, &mut renderer, &image_map, &primitives);
                             }
                         },
                         _ => {},
                     },
+                    winit::Event::Awakened => return winit::ControlFlow::Break,
+                    _ => (),
                 }
+                winit::ControlFlow::Continue
             });
 
             // Draw the most recently received `conrod::render::Primitives` sent from the `Ui`.

@@ -16,7 +16,7 @@ extern crate rand;
 use conrod;
 use std;
 
-#[cfg(feature="glium")] use conrod::backend::glium::glium;
+#[cfg(feature="glium")] use conrod::backend::glium::glium::glutin::winit;
 
 
 pub const WIN_W: u32 = 600;
@@ -380,7 +380,7 @@ impl EventLoop {
     }
 
     /// Produce an iterator yielding all available events.
-    pub fn next(&mut self, events_loop: &glium::glutin::EventsLoop) -> Vec<glium::glutin::Event> {
+    pub fn next(&mut self, events_loop: &mut winit::EventsLoop) -> Vec<winit::Event> {
         // We don't want to loop any faster than 60 FPS, so wait until it has been at least 16ms
         // since the last yield.
         let last_update = self.last_update;
@@ -398,7 +398,7 @@ impl EventLoop {
         if events.is_empty() && !self.ui_needs_update {
             events_loop.run_forever(|event| {
                 events.push(event);
-                events_loop.interrupt();
+                winit::ControlFlow::Break
             });
         }
 

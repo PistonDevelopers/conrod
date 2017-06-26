@@ -16,6 +16,7 @@ mod feature {
     extern crate image;
     use conrod;
     use conrod::backend::glium::glium::{self, Surface};
+    use conrod::backend::glium::glium::glutin::{self, winit};
     use support;
     use std;
 
@@ -26,24 +27,31 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let events_loop = glium::glutin::EventsLoop::new();
-        let window = glium::glutin::WindowBuilder::new()
-            .with_vsync()
+        let mut events_loop = winit::EventsLoop::new();
+        let window = winit::WindowBuilder::new()
             .with_dimensions(WIN_W, WIN_H)
             .with_title("Conrod with glium!")
-            .with_multisampling(8)
             .build(&events_loop)
             .unwrap();
-        let display = glium::build(window).unwrap();
+        let context = glutin::ContextBuilder::new()
+            .with_vsync()
+            .with_multisampling(8)
+            .build(&window)
+            .unwrap();
+        let display = glium::Display::new(window, context).unwrap();
 
         // Construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
+        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+            .theme(support::theme())
+            .build();
 
         // The `widget::Id` of each widget instantiated in `support::gui`.
         let ids = support::Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+        let assets = find_folder::Search::KidsThenParents(3, 5)
+            .for_folder("assets")
+            .unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -85,8 +93,7 @@ mod feature {
         'main: loop {
 
             // Handle all events.
-            for event in event_loop.next(&events_loop) {
-                use conrod::backend::glium::glium::glutin::{KeyboardInput, WindowEvent, VirtualKeyCode};
+            for event in event_loop.next(&mut events_loop) {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
                 if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
@@ -95,12 +102,12 @@ mod feature {
                 }
 
                 match event {
-                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    winit::Event::WindowEvent { event, .. } => match event {
                         // Break from the loop upon `Escape` or `Closed`.
-                        WindowEvent::Closed |
-                        WindowEvent::KeyboardInput {
-                            input: KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Escape), ..
+                        winit::WindowEvent::Closed |
+                        winit::WindowEvent::KeyboardInput {
+                            input: winit::KeyboardInput {
+                                virtual_keycode: Some(winit::VirtualKeyCode::Escape), ..
                             }, ..
                         } => break 'main,
                         _ => {},
