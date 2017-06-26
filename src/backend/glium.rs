@@ -459,7 +459,7 @@ impl Renderer {
         let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
-        let dpi_factor = display.get_window().map(|w| w.hidpi_factor()).unwrap_or(1.0) as Scalar;
+        let dpi_factor = display.get_window().hidpi_factor() as Scalar;
 
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;

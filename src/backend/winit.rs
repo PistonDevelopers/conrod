@@ -30,25 +30,12 @@ impl WinitWindow for winit::Window {
 }
 
 #[cfg(feature = "glium")]
-impl WinitWindow for glium::glutin::Window {
-    fn get_inner_size(&self) -> Option<(u32, u32)> {
-        glium::glutin::Window::as_winit_window(self).get_inner_size()
-    }
-    fn hidpi_factor(&self) -> f32 {
-        glium::glutin::Window::as_winit_window(self).hidpi_factor()
-    }
-}
-
-#[cfg(feature = "glium")]
 impl WinitWindow for glium::Display {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
-        self.get_window().and_then(|window| window.get_inner_size())
+        self.get_window().get_inner_size()
     }
     fn hidpi_factor(&self) -> f32 {
-        match self.get_window() {
-            Some(window) => window.hidpi_factor(),
-            None => 1.0,
-        }
+        self.get_window().hidpi_factor()
     }
 }
 
