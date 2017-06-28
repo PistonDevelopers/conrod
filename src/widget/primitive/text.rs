@@ -14,8 +14,10 @@ use widget;
 ///
 /// If some horizontal dimension is given, the text will automatically wrap to the width and align
 /// in accordance with the produced **Alignment**.
+#[derive(Clone, Debug, WidgetCommon_)]
 pub struct Text<'a> {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// The text to be drawn by the **Text**.
     pub text: &'a str,
@@ -141,14 +143,6 @@ impl<'a> Widget for Text<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

@@ -10,7 +10,9 @@ use widget;
 /// The function is sampled once per pixel and the result is mapped to the widget's height.
 ///
 /// The resulting "path" is drawn using conrod's `PointPath` primitive widget.
+#[derive(WidgetCommon_)]
 pub struct PlotPath<X, Y, F> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     min_x: X,
@@ -68,14 +70,6 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

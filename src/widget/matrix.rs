@@ -24,9 +24,10 @@ pub type PosY = Scalar;
 /// Draw a matrix of any rectangular widget type, where the matrix will provide a function with
 /// the widget number, it's `rows` and `cols` position, the width and height for the widget and
 /// the location at which the widget should be drawn.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 #[allow(missing_copy_implementations)]
 pub struct Matrix {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     cols: usize,
@@ -116,14 +117,6 @@ impl Widget for Matrix {
     type State = State;
     type Style = Style;
     type Event = Elements;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State { indices: Vec::new() }

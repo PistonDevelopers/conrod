@@ -6,14 +6,15 @@ use widget::{self, Widget};
 
 
 /// A simple, non-interactive widget for drawing a single straight Line.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct Line {
+    /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
+    pub common: widget::CommonBuilder,
     /// The start of the line.
     pub start: Point,
     /// The end of the line.
     pub end: Point,
-    /// Data necessary and common for all widget builder types.
-    pub common: widget::CommonBuilder,
     /// Unique styling.
     pub style: Style,
     /// Whether or not the line should be automatically centred to the widget position.
@@ -258,14 +259,6 @@ impl Widget for Line {
     type Style = Style;
     type Event = ();
 
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
-
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {
             start: [0.0, 0.0],
@@ -299,7 +292,6 @@ impl Widget for Line {
             state.update(|state| state.end = end);
         }
     }
-
 }
 
 

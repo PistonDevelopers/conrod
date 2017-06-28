@@ -8,8 +8,9 @@ use widget;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 pub struct Button<'a, S> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
     /// Whether the `Button` is a `Flat` color or an `Image`.
@@ -252,14 +253,6 @@ impl<'a> Widget for Button<'a, Flat> {
     type Style = Style;
     type Event = TimesClicked;
 
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
-
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         FlatIds::new(id_gen)
     }
@@ -292,14 +285,6 @@ impl<'a> Widget for Button<'a, Image> {
     type State = ImageIds;
     type Style = Style;
     type Event = TimesClicked;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         ImageIds::new(id_gen)

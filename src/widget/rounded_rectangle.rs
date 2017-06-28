@@ -10,9 +10,10 @@ use widget;
 
 
 /// Draws a rectangle with corners rounded via the given radius.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct RoundedRectangle {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the **RoundedRectangle**.
     pub style: Style,
@@ -78,14 +79,6 @@ impl Widget for RoundedRectangle {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

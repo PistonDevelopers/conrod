@@ -7,9 +7,10 @@ use widget;
 
 
 /// A primitive and basic widget for drawing an `Image`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, WidgetCommon_)]
 pub struct Image {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// The unique identifier for the image that will be drawn.
     pub image_id: image::Id,
@@ -93,14 +94,6 @@ impl Widget for Image {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

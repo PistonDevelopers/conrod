@@ -11,7 +11,9 @@ use widget;
 /// form of a `String`.
 ///
 /// It's reaction is triggered upon pressing of the `Enter`/`Return` key.
+#[derive(WidgetCommon_)]
 pub struct TextBox<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     text: &'a str,
     style: Style,
@@ -108,14 +110,6 @@ impl<'a> Widget for TextBox<'a> {
     type State = State;
     type Style = Style;
     type Event = Vec<Event>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

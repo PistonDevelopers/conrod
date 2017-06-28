@@ -23,9 +23,10 @@ use widget;
 /// This is flawed in that, if a user specifies an alpha lower than 1.0, the front `Rectangle` will
 /// blend with the border `Rectangle`, which is likely unexpected behaviour. This should be changed
 /// so that the border is drawn using a outlined `Rectangle`.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct BorderedRectangle {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the **BorderedRectangle**.
     pub style: Style,
@@ -74,14 +75,6 @@ impl Widget for BorderedRectangle {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

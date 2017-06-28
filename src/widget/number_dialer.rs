@@ -23,7 +23,9 @@ use widget;
 ///
 /// The reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the widget.
+#[derive(WidgetCommon_)]
 pub struct NumberDialer<'a, T> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     value: T,
     min: T,
@@ -159,14 +161,6 @@ impl<'a, T> Widget for NumberDialer<'a, T>
     type State = State;
     type Style = Style;
     type Event = Option<T>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

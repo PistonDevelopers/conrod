@@ -20,7 +20,9 @@ use widget;
 ///
 /// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
+#[derive(WidgetCommon_)]
 pub struct XYPad<'a, X, Y> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
@@ -103,14 +105,6 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
     type State = State;
     type Style = Style;
     type Event = Option<(X, Y)>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

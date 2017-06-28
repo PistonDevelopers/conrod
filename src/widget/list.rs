@@ -24,10 +24,11 @@ use widget;
 /// - Simplifying the positioning and sizing of items.
 /// - Optimised widget instantiation by only instantiating visible items. This is very useful for
 ///   lists containing many items, i.e. a `FileNavigator` over a directory with thousands of files.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 #[allow(missing_copy_implementations)]
 pub struct List<D, S> {
     /// Common widget building params for the `List`.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the `List`.
     pub style: Style,
@@ -336,14 +337,6 @@ impl<D, S> Widget for List<D, S>
     type State = State;
     type Style = Style;
     type Event = (Items<D, S>, Option<Scrollbar<D::Axis>>);
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

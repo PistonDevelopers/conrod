@@ -10,7 +10,9 @@ use widget::scroll::{self, X, Y};
 
 
 /// A widget that allows for scrolling via dragging the mouse.
+#[derive(WidgetCommon_)]
 pub struct Scrollbar<A> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     widget: widget::Id,
@@ -132,14 +134,6 @@ impl<A> Widget for Scrollbar<A>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

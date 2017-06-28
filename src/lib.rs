@@ -8,6 +8,7 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
+#[macro_use] extern crate conrod_derive;
 extern crate daggy;
 extern crate fnv;
 extern crate num;

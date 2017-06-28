@@ -16,10 +16,12 @@ use widget;
 
 
 /// A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
+#[derive(WidgetCommon_)]
 pub struct Tabs<'a> {
+    #[conrod(common_builder)]
+    common: widget::CommonBuilder,
     tabs: &'a [(widget::Id, &'a str)],
     style: Style,
-    common: widget::CommonBuilder,
     maybe_starting_tab_idx: Option<usize>,
 }
 
@@ -165,14 +167,6 @@ impl<'a> Widget for Tabs<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

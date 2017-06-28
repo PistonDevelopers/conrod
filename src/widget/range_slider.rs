@@ -8,7 +8,9 @@ use utils;
 use widget;
 
 /// Linear range selection.
+#[derive(WidgetCommon_)]
 pub struct RangeSlider<'a, T> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     start: T,
     end: T,
@@ -121,14 +123,6 @@ impl<'a, T> Widget for RangeSlider<'a, T>
     type State = State;
     type Style = Style;
     type Event = Event<T>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

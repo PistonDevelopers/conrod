@@ -7,8 +7,10 @@ use widget::{self, Widget};
 
 
 /// A simple title bar widget that automatically sizes itself to the top of some other widget.
+#[derive(Clone, WidgetCommon_)]
 pub struct TitleBar<'a> {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the **BorderedRectangle**.
     pub style: Style,
@@ -126,14 +128,6 @@ impl<'a> Widget for TitleBar<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

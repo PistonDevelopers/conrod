@@ -33,9 +33,10 @@ use widget;
 /// `.length` or `.length_weight` methods.
 ///
 /// See the `canvas.rs` example for a demonstration of the **Canvas** type.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct Canvas<'a> {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// The builder data related to the style of the Canvas.
     pub style: Style,
@@ -213,14 +214,6 @@ impl<'a> Widget for Canvas<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

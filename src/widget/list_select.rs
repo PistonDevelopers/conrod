@@ -5,9 +5,10 @@ use {event, graph, input, widget};
 use std;
 
 /// A wrapper around the `List` widget that handles single and multiple selection logic.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 #[allow(missing_copy_implementations)]
 pub struct ListSelect<M, D, S> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     num_items: usize,
     mode: M,
@@ -349,14 +350,6 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
     type State = State;
     type Style = widget::list::Style;
     type Event = (Events<M, D, S>, Option<widget::list::Scrollbar<D::Axis>>);
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

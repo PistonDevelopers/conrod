@@ -10,8 +10,9 @@ use widget;
 /// A vertically collapsible area.
 ///
 /// When "open" this widget returns a canvas upon which other widgets can be placed.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct CollapsibleArea<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     is_open: bool,
@@ -108,14 +109,6 @@ impl<'a> Widget for CollapsibleArea<'a> {
     type State = State;
     type Style = Style;
     type Event = (Option<Area>, Option<Event>);
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

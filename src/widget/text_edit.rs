@@ -15,7 +15,9 @@ use widget::primitive::text::Wrap;
 ///
 /// By default the text is wrapped via the first whitespace before the line exceeds the
 /// `TextEdit`'s width, however a user may change this using the `.wrap_by_character` method.
+#[derive(WidgetCommon_)]
 pub struct TextEdit<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     text: &'a str,
     style: Style,
@@ -176,14 +178,6 @@ impl<'a> Widget for TextEdit<'a> {
     // - Enumerates possible mutations (i.e. InsertChar, RemoveCharRange, etc).
     // - Enumerates cursor movement and range selection.
     type Event = Option<String>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

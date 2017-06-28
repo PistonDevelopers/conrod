@@ -19,6 +19,7 @@ name = "conrod"
 path = "./src/lib.rs"
 
 [dependencies]
+conrod-derive = { path = "conrod-derive" }
 daggy = "0.5.0"
 fnv = "1.0"
 num = "0.1.30"

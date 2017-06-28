@@ -59,6 +59,7 @@ pub mod scroll;
 pub mod primitive;
 
 // Widget modules.
+
 pub mod bordered_rectangle;
 pub mod button;
 pub mod canvas;
@@ -409,6 +410,33 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 }
 
 
+/// A trait implemented by all **Widget** types.
+///
+/// This trait provides access to a field of type **CommonBuilder** on the implementor. This allows
+/// the `Widget` trait to automatically provide a large number of methods including those from the
+/// **Positionable** and **Sizeable** traits.
+///
+/// The **Common** trait can be automatically derived for widgets like so:
+///
+/// ```ignore
+/// extern crate conrod;
+/// #[macro_use] extern crate conrod_derive;
+///
+/// #[derive(WidgetCommon)]
+/// struct MyWidget {
+///     #[conrod(common_builder)]
+///     common: conrod::widget::CommonBuilder,
+///     // etc
+/// }
+/// ```
+pub trait Common {
+    /// Borrows the `CommonBuilder` field.
+    fn common(&self) -> &CommonBuilder;
+    /// Mutably borrows the `CommonBuilder` field.
+    fn common_mut(&mut self) -> &mut CommonBuilder;
+}
+
+
 /// A trait to be implemented by all **Widget** types.
 ///
 /// A type that implements **Widget** can be thought of as a collection of arguments to the
@@ -417,8 +445,6 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 ///
 /// Methods that *must* be overridden:
 ///
-/// - common
-/// - common_mut
 /// - init_state
 /// - style
 /// - update
@@ -442,7 +468,7 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 /// - parent
 /// - no_parent
 /// - set
-pub trait Widget: Sized {
+pub trait Widget: Common + Sized {
     /// State to be stored within the `Ui`s widget cache.
     ///
     /// Take advantage of this type for any large allocations that you would like to avoid
@@ -513,20 +539,6 @@ pub trait Widget: Sized {
     ///
     /// For a non-interactive, purely graphical widget, this might be `()`.
     type Event;
-
-    /// Return a reference to a **CommonBuilder** struct owned by the Widget.
-    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-    ///
-    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
-    /// accordingly (perhaps under a different name).
-    fn common(&self) -> &CommonBuilder;
-
-    /// Return a mutable reference to a CommonBuilder struct owned by the Widget.
-    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-    ///
-    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
-    /// accordingly (perhaps under a different name).
-    fn common_mut(&mut self) -> &mut CommonBuilder;
 
     /// Return the initial **State** of the Widget.
     ///
@@ -620,7 +632,7 @@ pub trait Widget: Sized {
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
     // Most of them would benefit by some sort of field inheritance as they are mainly just used to
-    // set sommon data.
+    // set common data.
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.

@@ -25,7 +25,9 @@ pub use self::directory_view::DirectoryView;
 pub mod directory_view;
 
 /// A widget for navigating and interacting with a file system.
+#[derive(WidgetCommon_)]
 pub struct FileNavigator<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     /// Unique styling for the widget.
     pub style: Style,
@@ -179,14 +181,6 @@ impl<'a> Widget for FileNavigator<'a> {
     type State = State;
     type Style = Style;
     type Event = Vec<Event>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

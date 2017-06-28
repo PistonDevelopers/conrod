@@ -15,7 +15,9 @@ pub type Len = usize;
 /// Displays a given `Vec<String>` as a selectable drop down menu.
 ///
 /// It's reaction is triggered upon selection of a list item.
+#[derive(WidgetCommon_)]
 pub struct DropDownList<'a, T: 'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     items: &'a [T],
     selected: Option<Idx>,
@@ -186,14 +188,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
     type State = State;
     type Style = Style;
     type Event = Option<Idx>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

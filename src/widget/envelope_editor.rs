@@ -13,9 +13,11 @@ use widget;
 ///
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
+#[derive(WidgetCommon_)]
 pub struct EnvelopeEditor<'a, E>
     where E: EnvelopePoint + 'a,
 {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     env: &'a [E],
     /// The value skewing for the envelope's y-axis. This is useful for displaying exponential
@@ -222,14 +224,6 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
     type State = State;
     type Style = Style;
     type Event = Vec<Event<E>>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

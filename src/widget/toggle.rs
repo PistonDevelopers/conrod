@@ -1,15 +1,6 @@
 //! A button that allows for toggling boolean state.
 
-use {
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Labelable,
-    Positionable,
-    Scalar,
-    Widget,
-};
+use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Scalar, Widget};
 use position::{self, Align};
 use text;
 use widget;
@@ -22,8 +13,9 @@ use widget;
 ///
 /// Note that the Toggle will not mutate the bool for you, you should do this yourself within the
 /// react function.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 pub struct Toggle<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     value: bool,
     maybe_label: Option<&'a str>,
@@ -133,14 +125,6 @@ impl<'a> Widget for Toggle<'a> {
     type State = State;
     type Style = Style;
     type Event = TimesClicked;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
