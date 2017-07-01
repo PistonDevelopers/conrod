@@ -102,13 +102,19 @@ impl WinitEvent for winit::WindowEvent {
             winit::WindowEvent::Focused(focused) =>
                 Some(Input::Focus(focused).into()),
 
-            winit::WindowEvent::KeyboardInput(winit::ElementState::Pressed, _, Some(key), _) =>
-                Some(Input::Press(input::Button::Keyboard(map_key(key))).into()),
+            winit::WindowEvent::KeyboardInput { input, .. } => {
+                if let winit::KeyboardInput { virtual_keycode: Some(key), state, .. } = input {
+                    if state == winit::ElementState::Pressed {
+                        Some(Input::Press(input::Button::Keyboard(map_key(key))).into())
+                    } else {
+                        Some(Input::Release(input::Button::Keyboard(map_key(key))).into())
+                    }
+                } else {
+                    None
+                }
+            }
 
-            winit::WindowEvent::KeyboardInput(winit::ElementState::Released, _, Some(key), _) =>
-                Some(Input::Release(input::Button::Keyboard(map_key(key))).into()),
-
-            winit::WindowEvent::Touch(winit::Touch { phase, location: (x, y), id }) => {
+            winit::WindowEvent::Touch(winit::Touch { phase, location: (x, y), id, .. }) => {
                 let phase = match phase {
                     winit::TouchPhase::Started => input::touch::Phase::Start,
                     winit::TouchPhase::Moved => input::touch::Phase::Move,
@@ -121,21 +127,21 @@ impl WinitEvent for winit::WindowEvent {
                 Some(Input::Touch(touch).into())
             }
 
-            winit::WindowEvent::MouseMoved(x, y) => {
+            winit::WindowEvent::MouseMoved { position: (x, y), .. } => {
                 let x = tx(x as Scalar);
                 let y = ty(y as Scalar);
                 let motion = input::Motion::MouseCursor { x: x, y: y };
                 Some(Input::Motion(motion).into())
             },
 
-            winit::WindowEvent::MouseWheel(winit::MouseScrollDelta::PixelDelta(x, y), _) => {
+            winit::WindowEvent::MouseWheel { delta: winit::MouseScrollDelta::PixelDelta(x, y), .. } => {
                 let x = x as Scalar / dpi_factor;
                 let y = -y as Scalar / dpi_factor;
                 let motion = input::Motion::Scroll { x: x, y: y };
                 Some(Input::Motion(motion).into())
             },
 
-            winit::WindowEvent::MouseWheel(winit::MouseScrollDelta::LineDelta(x, y), _) => {
+            winit::WindowEvent::MouseWheel { delta: winit::MouseScrollDelta::LineDelta(x, y), .. } => {
                 // This should be configurable
                 // (we should provide a LineDelta event to allow for this).
                 const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
@@ -144,10 +150,10 @@ impl WinitEvent for winit::WindowEvent {
                 Some(Input::Motion(input::Motion::Scroll { x: x, y: y }).into())
             },
 
-            winit::WindowEvent::MouseInput(winit::ElementState::Pressed, button) =>
+            winit::WindowEvent::MouseInput { state: winit::ElementState::Pressed, button, .. } =>
                 Some(Input::Press(input::Button::Mouse(map_mouse(button))).into()),
 
-            winit::WindowEvent::MouseInput(winit::ElementState::Released, button) =>
+            winit::WindowEvent::MouseInput { state: winit::ElementState::Released, button, .. } =>
                 Some(Input::Release(input::Button::Mouse(map_mouse(button))).into()),
 
             _ => None,
