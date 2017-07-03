@@ -37,7 +37,14 @@ pub fn impl_widget_style_(ast: &syn::DeriveInput) -> quote::Tokens {
 }
 
 fn impl_tokens(params: &Params, crate_tokens: quote::Ident) -> quote::Tokens {
-    let Params { ref ident, ref fields, .. } = *params;
+    let Params {
+        ref impl_generics,
+        ref ty_generics,
+        ref where_clause,
+        ref ident,
+        ref fields,
+        ..
+    } = *params;
 
     let mut field_initialisers = quote::Tokens::new();
     for field in fields {
@@ -75,7 +82,7 @@ fn impl_tokens(params: &Params, crate_tokens: quote::Ident) -> quote::Tokens {
         });
 
     quote! {
-        impl #ident {
+        impl #impl_generics #ident #ty_generics #where_clause {
             #( #getter_methods )*
         }
     }
@@ -83,6 +90,9 @@ fn impl_tokens(params: &Params, crate_tokens: quote::Ident) -> quote::Tokens {
 
 #[derive(Debug)]
 struct Params {
+    impl_generics: quote::Tokens,
+    ty_generics: quote::Tokens,
+    where_clause: quote::Tokens,
     ident: quote::Tokens,
     fields: Vec<FieldParams>,
     dummy_const: quote::Tokens,
@@ -190,8 +200,12 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
 
     let dummy_const = syn::Ident::new(format!("_IMPL_WIDGET_STYLE_FOR_{}", ast.ident));
     let ident = &ast.ident;
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     Ok(Params {
+        impl_generics: quote!(#impl_generics),
+        ty_generics: quote!(#ty_generics),
+        where_clause: quote!(#where_clause),
         ident: quote!(#ident),
         fields: fields,
         dummy_const: quote!(#dummy_const),
