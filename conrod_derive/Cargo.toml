@@ -1,5 +1,5 @@
 [package]
-name = "conrod-derive"
+name = "conrod_derive"
 version = "0.1.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
 
