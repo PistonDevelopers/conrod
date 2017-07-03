@@ -492,45 +492,60 @@ pub trait Widget: Common + Sized {
     ///
     /// The reason this data is required to be in its own `Style` type (rather than in the widget
     /// type itself) is so that conrod can distinguish between default style data that may be
-    /// stored within the `Theme`'s `widget_styling`, and other data that is necessary for the
-    /// widget's behaviour logic. Having `Style` be an associated type makes it trivial to retrieve
-    /// unique, widget-specific styling data for each widget from a single method (see
+    /// stored within the `Theme`'s `widget_styling` field, and other data that is necessary for
+    /// the widget's behaviour logic. Having `Style` be an associated type makes it trivial to
+    /// retrieve unique, widget-specific styling data for each widget from a single method (see
     /// [`Theme::widget_style`](./theme/struct.Theme.html#method.widget_style)).
     ///
-    /// These types are often quite similar and can involve a lot of boilerplate when written by
-    /// hand due to rust's lack of field inheritance. To get around this, conrod provides
-    /// [`widget_style!`][1] - a macro that vastly simplifies the definition and implementation of
-    /// widget `Style` types.
+    /// ## `#[derive(WidgetStyle)]`
     ///
-    /// Conrod doesn't yet support serializing widget styling with the `Theme` type, but we hope to
-    /// soon.
+    /// These `Style` types are often quite similar and their implementations can involve a lot of
+    /// boilerplate when written by hand. To get around this, conrod provides
+    /// `#[derive(WidgetStyle)]`.
+    ///
+    /// This procedural macro generates a "getter"-style method for each struct field that is
+    /// decorated with a `#[conrod(default = "expr")]` attribute. The generated methods have the
+    /// same name as their respective fields and behave as follows:
+    ///
+    /// 1. First, the method will attempt to return the value directly if the field is `Some`.
+    /// 2. If the field is `None`, the method will fall back to the `Widget::Style` stored within
+    ///    the `Theme`'s `widget_styling` map.
+    /// 3. If there are no style defaults for the widget in the `Theme`, or if there is but the
+    ///    default field is also `None`, the method will fall back to the expression specified
+    ///    within the field's `#[conrod(default = "expr")]` attribute.
+    ///
+    /// The given "expr" can be a string containing any expression that returns the type specified
+    /// within the field's `Option` type parameter. The expression may also utilise the `theme` and
+    /// `self` bindings, where `theme` is a binding to the borrowed `Theme` and `self` is a binding
+    /// to the borrowed instance of this `Style` type.
     ///
     /// # Examples
     ///
     /// ```
     /// # extern crate conrod;
+    /// # #[macro_use] extern crate conrod_derive;
     /// # use conrod::{Color, FontSize, Scalar};
     /// # fn main() {}
     /// /// Unique styling for a Button widget.
+    /// #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
     /// pub struct Style {
     ///     /// Color of the Button's pressable area.
+    ///     #[conrod(default = "theme.shape_color")]
     ///     pub color: Option<Color>,
     ///     /// Width of the border surrounding the button.
+    ///     #[conrod(default = "1.0")]
     ///     pub border: Option<Scalar>,
     ///     /// The color of the Button's rectangular border.
+    ///     #[conrod(default = "conrod::color::BLACK")]
     ///     pub border_color: Option<Color>,
     ///     /// The color of the Button's label.
+    ///     #[conrod(default = "theme.label_color")]
     ///     pub label_color: Option<Color>,
     ///     /// The font size for the Button's label.
+    ///     #[conrod(default = "12")]
     ///     pub label_font_size: Option<FontSize>,
     /// }
     /// ```
-    ///
-    /// Note: It is recommended that you don't write these types yourself as it can get tedious.
-    /// Instead, we suggest using the [`widget_style!`][1] macro which also provides all necessary
-    /// style retrieval method implementations.
-    ///
-    /// [1]: ./macro.widget_style!.html
     type Style: Style + Send;
     /// The type of event yielded by the widget, returned via the `Widget::set` function.
     ///
