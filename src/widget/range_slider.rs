@@ -104,7 +104,7 @@ impl<'a, T> RangeSlider<'a, T> {
     /// Construct a new RangeSlider widget.
     pub fn new(start: T, end: T, min: T, max: T) -> Self {
         RangeSlider {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             start: start,
             end: end,

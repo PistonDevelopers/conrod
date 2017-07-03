@@ -101,7 +101,7 @@ impl<'a, T> DropDownList<'a, T> {
     /// Construct a new DropDownList.
     pub fn new(items: &'a [T], selected: Option<Idx>) -> Self {
         DropDownList {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             items: items,
             selected: selected,
             maybe_label: None,

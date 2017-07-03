@@ -72,7 +72,7 @@ impl Line {
         Line {
             start: start,
             end: end,
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
             should_centre_points: false,
         }

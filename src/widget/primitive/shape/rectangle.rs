@@ -39,7 +39,7 @@ impl Rectangle {
     /// Build a rectangle with the dimensions and style.
     pub fn styled(dim: Dimensions, style: Style) -> Self {
         Rectangle {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
         }.wh(dim)
     }

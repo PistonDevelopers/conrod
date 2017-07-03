@@ -98,7 +98,7 @@ mod circular_button {
         /// Create a button context to be built upon.
         pub fn new() -> Self {
             CircularButton {
-                common: widget::CommonBuilder::new(),
+                common: widget::CommonBuilder::default(),
                 style: Style::default(),
                 maybe_label: None,
                 enabled: true,

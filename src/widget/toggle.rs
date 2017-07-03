@@ -96,7 +96,7 @@ impl<'a> Toggle<'a> {
     /// Construct a new Toggle widget.
     pub fn new(value: bool) -> Toggle<'a> {
         Toggle {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             maybe_label: None,
             value: value,

@@ -83,7 +83,7 @@ impl<'a> CollapsibleArea<'a> {
     /// Begin building the `CollapsibleArea` widget.
     pub fn new(is_open: bool, text: &'a str) -> Self {
         CollapsibleArea {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             is_open: is_open,
             text: text,

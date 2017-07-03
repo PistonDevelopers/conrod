@@ -82,7 +82,7 @@ impl<'a, X, Y> XYPad<'a, X, Y> {
     /// Build a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
         XYPad {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,

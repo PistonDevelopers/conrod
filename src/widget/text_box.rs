@@ -68,7 +68,7 @@ impl<'a> TextBox<'a> {
     /// Construct a TextBox widget.
     pub fn new(text: &'a str) -> Self {
         TextBox {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             text: text,
         }

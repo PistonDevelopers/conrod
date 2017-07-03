@@ -25,7 +25,7 @@ impl Oval {
     /// Build an **Oval** with the given dimensions and style.
     pub fn styled(dim: Dimensions, style: Style) -> Self {
         Oval {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
         }.wh(dim)
     }

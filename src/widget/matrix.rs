@@ -97,7 +97,7 @@ impl Matrix {
     /// Create a widget matrix context.
     pub fn new(cols: usize, rows: usize) -> Self {
         Matrix {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             cols: cols,
             rows: rows,

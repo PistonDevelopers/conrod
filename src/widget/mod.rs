@@ -234,7 +234,7 @@ pub struct CommonBuilder {
 }
 
 /// Styling and positioning data that is common between all widget types.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CommonStyle {
     /// The width of a Widget.
     pub maybe_x_dimension: Option<Dimension>,
@@ -1132,12 +1132,10 @@ impl<'a, T> std::ops::Deref for State<'a, T> {
     }
 }
 
-
-impl CommonBuilder {
-    /// Construct an empty, initialised CommonBuilder.
-    pub fn new() -> CommonBuilder {
+impl Default for CommonBuilder {
+    fn default() -> Self {
         CommonBuilder {
-            style: CommonStyle::new(),
+            style: CommonStyle::default(),
             maybe_parent_id: MaybeParent::Unspecified,
             place_on_kid_area: true,
             maybe_graphics_for: None,
@@ -1148,20 +1146,6 @@ impl CommonBuilder {
         }
     }
 }
-
-impl CommonStyle {
-    /// A new default CommonStyle.
-    pub fn new() -> Self {
-        CommonStyle {
-            maybe_x_dimension: None,
-            maybe_y_dimension: None,
-            maybe_x_position: None,
-            maybe_y_position: None,
-            maybe_depth: None,
-        }
-    }
-}
-
 
 impl<W> Positionable for W
     where W: Widget,

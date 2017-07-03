@@ -159,7 +159,7 @@ impl<'a> DirectoryView<'a> {
     /// Begin building a `DirectoryNavigator` widget that displays only files of the given types.
     pub fn new(directory: &'a std::path::Path, types: super::Types<'a>) -> Self {
         DirectoryView {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             directory: directory,
             types: types,

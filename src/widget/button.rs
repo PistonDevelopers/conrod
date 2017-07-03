@@ -204,7 +204,7 @@ impl<'a, S> Button<'a, S> {
     /// Create a button context to be built upon.
     fn new_internal(show: S) -> Self {
         Button {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             show: show,
             maybe_label: None,
             style: Style::default(),

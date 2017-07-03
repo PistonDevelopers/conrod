@@ -85,7 +85,7 @@ impl<'a> Text<'a> {
     /// Build a new **Text** widget.
     pub fn new(text: &'a str) -> Self {
         Text {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             text: text,
             style: Style::default(),
         }

@@ -63,7 +63,7 @@ impl BorderedRectangle {
     /// Build a new **BorderedRectangle**.
     pub fn new(dim: Dimensions) -> Self {
         BorderedRectangle {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
         }.wh(dim)
     }

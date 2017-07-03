@@ -125,7 +125,7 @@ impl<'a, E> EnvelopeEditor<'a, E>
     /// Construct an EnvelopeEditor widget.
     pub fn new(env: &'a [E], min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y) -> Self {
         EnvelopeEditor {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).

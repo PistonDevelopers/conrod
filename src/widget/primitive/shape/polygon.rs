@@ -50,7 +50,7 @@ impl<I> Polygon<I> {
     pub fn styled(points: I, style: Style) -> Self {
         Polygon {
             points: points,
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
             maybe_shift_to_centre_from: None,
         }

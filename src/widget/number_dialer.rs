@@ -137,7 +137,7 @@ impl<'a, T> NumberDialer<'a, T>
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
         NumberDialer {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             value: clamp(value, min, max),
             min: min,

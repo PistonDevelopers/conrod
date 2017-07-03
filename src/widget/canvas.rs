@@ -143,7 +143,7 @@ impl<'a> Canvas<'a> {
     /// Construct a new Canvas builder.
     pub fn new() -> Self {
         Canvas {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             maybe_title_bar_label: None,
             maybe_splits: None,

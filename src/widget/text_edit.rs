@@ -103,7 +103,7 @@ impl<'a> TextEdit<'a> {
     /// Construct a TextEdit widget.
     pub fn new(text: &'a str) -> Self {
         TextEdit {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             text: text,
         }

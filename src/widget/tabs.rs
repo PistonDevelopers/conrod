@@ -83,7 +83,7 @@ impl<'a> Tabs<'a> {
     /// Construct some new Canvas Tabs.
     pub fn new(tabs: &'a [(widget::Id, &'a str)]) -> Tabs<'a> {
         Tabs {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             tabs: tabs,
             maybe_starting_tab_idx: None,

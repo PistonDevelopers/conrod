@@ -79,7 +79,7 @@ impl<'a> TitleBar<'a> {
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
     pub fn new(label: &'a str, id: widget::Id) -> Self {
         TitleBar {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             label: label,
         }.w_of(id).mid_top_of(id)

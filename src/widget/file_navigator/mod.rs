@@ -135,7 +135,7 @@ impl<'a> FileNavigator<'a> {
     /// Begin building a `FileNavigator` widget that displays only files of the given types.
     pub fn new(starting_directory: &'a std::path::Path, types: Types<'a>) -> Self {
         FileNavigator {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             starting_directory: starting_directory,
             types: types,

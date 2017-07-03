@@ -40,7 +40,7 @@ impl RoundedRectangle {
     /// Build a rounded rectangle with the given dimensions and style.
     pub fn styled(dim: Dimensions, radius: Scalar, style: Style) -> Self {
         RoundedRectangle {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
             radius: radius,
             corner_resolution: DEFAULT_CORNER_RESOLUTION,

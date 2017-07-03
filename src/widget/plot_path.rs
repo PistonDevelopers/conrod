@@ -50,7 +50,7 @@ impl<X, Y, F> PlotPath<X, Y, F> {
     /// Begin building a new `PlotPath` widget instance.
     pub fn new(min_x: X, max_x: X, min_y: Y, max_y: Y, f: F) -> Self {
         PlotPath {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             min_x: min_x,
             max_x: max_x,

@@ -68,7 +68,7 @@ impl Image {
     /// 3. use an index type which may be mapped to your various image types.
     pub fn new(image_id: image::Id) -> Self {
         Image {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             image_id: image_id,
             src_rect: None,
             style: Style::default(),

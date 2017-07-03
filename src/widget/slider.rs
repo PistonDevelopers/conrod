@@ -76,7 +76,7 @@ impl<'a, T> Slider<'a, T> {
     /// Construct a new Slider widget.
     pub fn new(value: T, min: T, max: T) -> Self {
         Slider {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             value: value,
             min: min,

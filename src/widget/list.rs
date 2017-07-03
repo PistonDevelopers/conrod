@@ -247,7 +247,7 @@ impl<D, S> List<D, S>
     /// Begin building a new `List` given some direction and item size.
     pub fn from_item_size(num_items: usize, item_size: S) -> Self {
         List {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             num_items: num_items,
             item_instantiation: ItemInstantiation::All,

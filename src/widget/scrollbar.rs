@@ -72,7 +72,7 @@ impl<A> Scrollbar<A> {
     /// Begin building a new scrollbar widget.
     fn new(widget: widget::Id) -> Self {
         Scrollbar {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: Style::default(),
             widget: widget,
             axis: std::marker::PhantomData,
