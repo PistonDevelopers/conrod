@@ -49,7 +49,6 @@ pub use self::xy_pad::XYPad;
 
 // Macro providing modules.
 #[macro_use] mod builder;
-#[macro_use] mod style;
 
 // Widget functionality modules.
 #[macro_use] pub mod id;

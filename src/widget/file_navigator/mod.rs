@@ -87,25 +87,30 @@ widget_ids! {
     }
 }
 
-widget_style! {
-    /// Unique styling for the widget.
-    style Style {
-        /// Color of the selected entries.
-        - color: Color { theme.shape_color }
-        /// The color of the unselected entries.
-        - unselected_color: Option<Color> { None }
-        /// The color of the directory and file names.
-        - text_color: Option<Color> { None }
-        /// The font size for the directory and file names.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The default width of a single directory view.
-        ///
-        /// The first directory will always be initialised to this size.
-        - column_width: Scalar { 250.0 }
-        /// The width of the bar that separates each directory in the stack and allows for
-        /// re-sizing.
-        - resize_handle_width: Scalar { 5.0 }
-    }
+/// Unique styling for the widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the selected entries.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The color of the unselected entries.
+    #[conrod(default = "None")]
+    pub unselected_color: Option<Option<Color>>,
+    /// The color of the directory and file names.
+    #[conrod(default = "None")]
+    pub text_color: Option<Option<Color>>,
+    /// The font size for the directory and file names.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The default width of a single directory view.
+    ///
+    /// The first directory will always be initialised to this size.
+    #[conrod(default = "250.0")]
+    pub column_width: Option<Scalar>,
+    /// The width of the bar that separates each directory in the stack and allows for
+    /// re-sizing.
+    #[conrod(default = "5.0")]
+    pub resize_handle_width: Option<Scalar>,
 }
 
 /// The kinds of events that the `FileNavigator` may produce.
@@ -131,7 +136,7 @@ impl<'a> FileNavigator<'a> {
     pub fn new(starting_directory: &'a std::path::Path, types: Types<'a>) -> Self {
         FileNavigator {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
             starting_directory: starting_directory,
             types: types,
             show_hidden: false,

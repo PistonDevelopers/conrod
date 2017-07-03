@@ -12,6 +12,7 @@
 //! For more information, please see the `Widget` trait documentation.
 
 #[macro_use] extern crate conrod;
+#[macro_use] extern crate conrod_derive;
 extern crate find_folder;
 #[cfg(all(feature="winit", feature="glium"))] mod support;
 
@@ -22,9 +23,11 @@ mod circular_button {
     use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
     /// The type upon which we'll implement the `Widget` trait.
+    #[derive(WidgetCommon)]
     pub struct CircularButton<'a> {
         /// An object that handles some of the dirty work of rendering a GUI. We don't
         /// really have to worry about it.
+        #[conrod(common_builder)]
         common: widget::CommonBuilder,
         /// Optional label string for the button.
         maybe_label: Option<&'a str>,
@@ -35,23 +38,30 @@ mod circular_button {
         enabled: bool
     }
 
-    // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
-    // widget's associated `Style` type. This generates both a `Style` struct, as well as an
-    // implementation that automatically retrieves defaults from the provided theme.
+    // We use `#[derive(WidgetStyle)] to vastly simplify the definition and implementation of the
+    // widget's associated `Style` type. This generates an implementation that automatically
+    // retrieves defaults from the provided theme in the following order:
     //
-    // See the documenation of the macro for a more details.
-    widget_style!{
-        /// Represents the unique styling for our CircularButton widget.
-        style Style {
-            /// Color of the button.
-            - color: conrod::Color { theme.shape_color }
-            /// Color of the button's label.
-            - label_color: conrod::Color { theme.label_color }
-            /// Font size of the button's label.
-            - label_font_size: conrod::FontSize { theme.font_size_medium }
-            /// Specify a unique font for the label.
-            - label_font_id: Option<conrod::text::font::Id> { theme.font_id }
-        }
+    // 1. If the field is `None`, falls back to the style stored within the `Theme`.
+    // 2. If there are no style defaults for the widget in the `Theme`, or if the
+    //    default field is also `None`, falls back to the expression specified within
+    //    the field's `#[conrod(default = "expr")]` attribute.
+
+    /// Represents the unique styling for our CircularButton widget.
+    #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
+    pub struct Style {
+        /// Color of the button.
+        #[conrod(default = "theme.shape_color")]
+        pub color: Option<conrod::Color>,
+        /// Color of the button's label.
+        #[conrod(default = "theme.label_color")]
+        pub label_color: Option<conrod::Color>,
+        /// Font size of the button's label.
+        #[conrod(default = "theme.font_size_medium")]
+        pub label_font_size: Option<conrod::FontSize>,
+        /// Specify a unique font for the label.
+        #[conrod(default = "theme.font_id")]
+        pub label_font_id: Option<Option<conrod::text::font::Id>>,
     }
 
     // We'll create the widget using a `Circle` widget and a `Text` widget for its label.
@@ -89,8 +99,8 @@ mod circular_button {
         pub fn new() -> Self {
             CircularButton {
                 common: widget::CommonBuilder::new(),
+                style: Style::default(),
                 maybe_label: None,
-                style: Style::new(),
                 enabled: true,
             }
         }
@@ -123,14 +133,6 @@ mod circular_button {
         ///
         /// `Some` when clicked, otherwise `None`.
         type Event = Option<()>;
-
-        fn common(&self) -> &widget::CommonBuilder {
-            &self.common
-        }
-
-        fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-            &mut self.common
-        }
 
         fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
             State { ids: Ids::new(id_gen) }

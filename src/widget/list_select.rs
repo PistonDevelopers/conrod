@@ -273,7 +273,7 @@ impl<M> ListSelect<M, widget::list::Down, widget::list::Dynamic> {
     {
         ListSelect {
             common: widget::CommonBuilder::new(),
-            style: widget::list::Style::new(),
+            style: widget::list::Style::default(),
             num_items: num_items,
             item_size: widget::list::Dynamic {},
             mode: mode,

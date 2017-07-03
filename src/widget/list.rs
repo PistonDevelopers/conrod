@@ -118,16 +118,18 @@ pub trait ItemSize: Sized + Clone + Copy {
               D: Direction;
 }
 
-widget_style! {
-    /// Unique styling for the `List`.
-    style Style {
-        /// The width of the scrollbar if it is visible.
-        - scrollbar_thickness: Option<Scalar> { None }
-        /// The color of the scrollbar if it is visible.
-        - scrollbar_color: Color { theme.border_color }
-        /// The location of the `List`'s scrollbar.
-        - scrollbar_position: Option<ScrollbarPosition> { None }
-    }
+/// Unique styling for the `List`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The width of the scrollbar if it is visible.
+    #[conrod(default = "None")]
+    pub scrollbar_thickness: Option<Option<Scalar>>,
+    /// The color of the scrollbar if it is visible.
+    #[conrod(default = "theme.border_color")]
+    pub scrollbar_color: Option<Color>,
+    /// The location of the `List`'s scrollbar.
+    #[conrod(default = "None")]
+    pub scrollbar_position: Option<Option<ScrollbarPosition>>,
 }
 
 widget_ids! {
@@ -246,7 +248,7 @@ impl<D, S> List<D, S>
     pub fn from_item_size(num_items: usize, item_size: S) -> Self {
         List {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
             num_items: num_items,
             item_instantiation: ItemInstantiation::All,
             item_size: item_size,

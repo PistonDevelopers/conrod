@@ -58,40 +58,53 @@ widget_ids! {
     }
 }
 
-widget_style! {
-    /// Unique styling for the Canvas.
-    style Style {
-        /// The color of the Canvas' rectangle surface.
-        - color: Color { theme.background_color }
-        /// The width of the border surrounding the Canvas' rectangle.
-        - border: Scalar { theme.border_width }
-        /// The color of the Canvas' border.
-        - border_color: Color { theme.border_color }
-        /// If this Canvas is a split of some parent Canvas, this is the length of the split.
-        - length: Length { Length::Weight(1.0) }
+/// Unique styling for the Canvas.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The color of the Canvas' rectangle surface.
+    #[conrod(default = "theme.background_color")]
+    pub color: Option<Color>,
+    /// The width of the border surrounding the Canvas' rectangle.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the Canvas' border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// If this Canvas is a split of some parent Canvas, this is the length of the split.
+    #[conrod(default = "Length::Weight(1.0)")]
+    pub length: Option<Length>,
 
-        /// Padding for the left edge of the Canvas' kid area.
-        - pad_left: Scalar { theme.padding.x.start }
-        /// Padding for the right edge of the Canvas' kid area.
-        - pad_right: Scalar { theme.padding.x.end }
-        /// Padding for the bottom edge of the Canvas' kid area.
-        - pad_bottom: Scalar { theme.padding.y.start }
-        /// Padding for the top edge of the Canvas' kid area.
-        - pad_top: Scalar { theme.padding.y.end }
+    /// Padding for the left edge of the Canvas' kid area.
+    #[conrod(default = "theme.padding.x.start")]
+    pub pad_left: Option<Scalar>,
+    /// Padding for the right edge of the Canvas' kid area.
+    #[conrod(default = "theme.padding.x.end")]
+    pub pad_right: Option<Scalar>,
+    /// Padding for the bottom edge of the Canvas' kid area.
+    #[conrod(default = "theme.padding.y.start")]
+    pub pad_bottom: Option<Scalar>,
+    /// Padding for the top edge of the Canvas' kid area.
+    #[conrod(default = "theme.padding.y.end")]
+    pub pad_top: Option<Scalar>,
 
-        /// The color of the title bar. Defaults to the color of the Canvas.
-        - title_bar_color: Option<Color> { None }
-        /// The color of the title bar's text.
-        - title_bar_text_color: Color { theme.label_color }
-        /// The font size for the title bar's text.
-        - title_bar_font_size: FontSize { theme.font_size_medium }
-        /// The way in which the title bar's text should wrap.
-        - title_bar_maybe_wrap: Option<widget::text::Wrap> { Some(widget::text::Wrap::Whitespace) }
-        /// The distance between lines for multi-line title bar text.
-        - title_bar_line_spacing: Scalar { 1.0 }
-        /// The label's typographic alignment over the *x* axis.
-        - title_bar_justify: text::Justify { text::Justify::Center }
-    }
+    /// The color of the title bar. Defaults to the color of the Canvas.
+    #[conrod(default = "None")]
+    pub title_bar_color: Option<Option<Color>>,
+    /// The color of the title bar's text.
+    #[conrod(default = "theme.label_color")]
+    pub title_bar_text_color: Option<Color>,
+    /// The font size for the title bar's text.
+    #[conrod(default = "theme.font_size_medium")]
+    pub title_bar_font_size: Option<FontSize>,
+    /// The way in which the title bar's text should wrap.
+    #[conrod(default = "Some(widget::text::Wrap::Whitespace)")]
+    pub title_bar_maybe_wrap: Option<Option<widget::text::Wrap>>,
+    /// The distance between lines for multi-line title bar text.
+    #[conrod(default = "1.0")]
+    pub title_bar_line_spacing: Option<Scalar>,
+    /// The label's typographic alignment over the *x* axis.
+    #[conrod(default = "text::Justify::Center")]
+    pub title_bar_justify: Option<text::Justify>,
 }
 
 /// A series of **Canvas** splits along with their unique identifiers.
@@ -131,7 +144,7 @@ impl<'a> Canvas<'a> {
     pub fn new() -> Self {
         Canvas {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
             maybe_title_bar_label: None,
             maybe_splits: None,
         }

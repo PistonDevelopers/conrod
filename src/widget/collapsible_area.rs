@@ -34,22 +34,27 @@ pub struct State {
     ids: Ids,
 }
 
-widget_style!{
-    /// Unique styling for the Button.
-    style Style {
-        /// Color of the Button's pressable area.
-        - color: Color { theme.shape_color }
-        /// Width of the border surrounding the button
-        - border: Scalar { theme.border_width }
-        /// The color of the border.
-        - border_color: Color { theme.border_color }
-        /// The color of the Button's label.
-        - label_color: Color { theme.label_color }
-        /// The font size of the Button's label.
-        - label_font_size: Option<FontSize> { None }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Unique styling for the CollapsibleArea.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the Button's pressable area.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// Width of the border surrounding the button
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the Button's label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size of the Button's label.
+    #[conrod(default = "None")]
+    pub label_font_size: Option<Option<FontSize>>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
 }
 
 /// The event returned when the text bar or triangle is pressed.
@@ -79,7 +84,7 @@ impl<'a> CollapsibleArea<'a> {
     pub fn new(is_open: bool, text: &'a str) -> Self {
         CollapsibleArea {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
             is_open: is_open,
             text: text,
         }

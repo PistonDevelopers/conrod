@@ -24,26 +24,33 @@ pub struct Toggle<'a> {
     pub enabled: bool,
 }
 
-widget_style! {
-    /// Styling for the Toggle including coloring, bordering and labelling.
-    style Style {
-        /// Color of the Toggle's pressable area.
-        - color: Color { theme.shape_color }
-        /// The width of the rectangular border surrounding the Toggle.
-        - border: Scalar { theme.border_width }
-        /// The color of the Toggle's border.
-        - border_color: Color { theme.border_color }
-        /// The color of the Toggle's Text label.
-        - label_color: Color { theme.label_color }
-        /// The font size for the Toggle's Text label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-        /// The position of the title bar's `Label` widget over the *x* axis.
-        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
-        /// The position of the title bar's `Label` widget over the *y* axis.
-        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
-    }
+/// Styling for the Toggle including coloring, bordering and labelling.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the Toggle's pressable area.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The width of the rectangular border surrounding the Toggle.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the Toggle's border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the Toggle's Text label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size for the Toggle's Text label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
+    /// The position of the title bar's `Label` widget over the *x* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_x: Option<position::Relative>,
+    /// The position of the title bar's `Label` widget over the *y* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_y: Option<position::Relative>,
 }
 
 widget_ids! {
@@ -90,9 +97,9 @@ impl<'a> Toggle<'a> {
     pub fn new(value: bool) -> Toggle<'a> {
         Toggle {
             common: widget::CommonBuilder::new(),
+            style: Style::default(),
             maybe_label: None,
             value: value,
-            style: Style::new(),
             enabled: true,
         }
     }

@@ -35,22 +35,27 @@ pub struct Slider<'a, T> {
     pub enabled: bool,
 }
 
-widget_style! {
-    /// Graphical styling unique to the Slider widget.
-    style Style {
-        /// The color of the slidable rectangle.
-        - color: Color { theme.shape_color }
-        /// The length of the border around the edges of the slidable rectangle.
-        - border: Scalar { theme.border_width }
-        /// The color of the Slider's border.
-        - border_color: Color { theme.border_color }
-        /// The color of the Slider's label.
-        - label_color: Color { theme.label_color }
-        /// The font-size for the Slider's label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Graphical styling unique to the Slider widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The color of the slidable rectangle.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The length of the border around the edges of the slidable rectangle.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the Slider's border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the Slider's label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font-size for the Slider's label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -72,12 +77,12 @@ impl<'a, T> Slider<'a, T> {
     pub fn new(value: T, min: T, max: T) -> Self {
         Slider {
             common: widget::CommonBuilder::new(),
+            style: Style::default(),
             value: value,
             min: min,
             max: max,
             skew: 1.0,
             maybe_label: None,
-            style: Style::new(),
             enabled: true,
         }
     }

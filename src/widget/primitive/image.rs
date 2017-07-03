@@ -31,12 +31,12 @@ pub struct State {
     pub image_id: image::Id,
 }
 
-widget_style!{
-    /// Unique styling for the `Image` widget.
-    style Style {
-        /// Optionally specify a single colour to use for the image.
-        - maybe_color: Option<Color> { None }
-    }
+/// Unique styling for the `Image` widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Optionally specify a single color to use for the image.
+    #[conrod(default = "None")]
+    pub maybe_color: Option<Option<Color>>,
 }
 
 
@@ -71,7 +71,7 @@ impl Image {
             common: widget::CommonBuilder::new(),
             image_id: image_id,
             src_rect: None,
-            style: Style::new(),
+            style: Style::default(),
         }
     }
 

@@ -37,22 +37,27 @@ pub struct NumberDialer<'a, T> {
     enabled: bool,
 }
 
-widget_style!{
-    /// Unique graphical styling for the NumberDialer.
-    style Style {
-        /// Color of the NumberDialer's rectangle.
-        - color: Color { theme.shape_color }
-        /// The color of the rectangle border.
-        - border: Scalar { theme.border_width }
-        /// The color of the rectangle border.
-        - border_color: Color { theme.border_color }
-        /// The color of the NumberDialer's label.
-        - label_color: Color { theme.label_color }
-        /// The font size for the NumberDialer's label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The `Id` associated with the font to use for the `NumberDialer` values.
-        - font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Unique graphical styling for the NumberDialer.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the NumberDialer's rectangle.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The color of the rectangle border.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the rectangle border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the NumberDialer's label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size for the NumberDialer's label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The `Id` associated with the font to use for the `NumberDialer` values.
+    #[conrod(default = "theme.font_id")]
+    pub font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -61,7 +66,6 @@ widget_ids! {
         label,
     }
 }
-
 
 /// The state of the NumberDialer.
 pub struct State {
@@ -134,12 +138,12 @@ impl<'a, T> NumberDialer<'a, T>
     pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
         NumberDialer {
             common: widget::CommonBuilder::new(),
+            style: Style::default(),
             value: clamp(value, min, max),
             min: min,
             max: max,
             precision: precision,
             maybe_label: None,
-            style: Style::new(),
             enabled: true,
         }
     }

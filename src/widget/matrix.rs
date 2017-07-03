@@ -42,14 +42,15 @@ pub struct State {
     indices: Vec<Vec<widget::Id>>,
 }
 
-widget_style!{
-    /// Unique styling for the `Matrix`.
-    style Style {
-        /// The width of the padding for each matrix element's "cell".
-        - cell_pad_w: Scalar { 0.0 }
-        /// The height of the padding for each matrix element's "cell".
-        - cell_pad_h: Scalar { 0.0 }
-    }
+/// Unique styling for the `Matrix`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The width of the padding for each matrix element's "cell".
+    #[conrod(default = "0.0")]
+    pub cell_pad_w: Option<Scalar>,
+    /// The height of the padding for each matrix element's "cell".
+    #[conrod(default = "0.0")]
+    pub cell_pad_h: Option<Scalar>,
 }
 
 /// The event type yielded by the `Matrix`.
@@ -97,7 +98,7 @@ impl Matrix {
     pub fn new(cols: usize, rows: usize) -> Self {
         Matrix {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
             cols: cols,
             rows: rows,
         }

@@ -39,16 +39,18 @@ widget_ids! {
     }
 }
 
-widget_style!{
-    /// Unique styling for the **BorderedRectangle** widget.
-    style Style {
-        /// Shape styling for the inner rectangle.
-        - color: Color { theme.shape_color }
-        /// The thickness of the border.
-        - border: Scalar { theme.border_width }
-        /// The color of the border.
-        - border_color: Color { theme.border_color }
-    }
+/// Unique styling for the **BorderedRectangle** widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Shape styling for the inner rectangle.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The thickness of the border.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
 }
 
 /// Unique state for the `BorderedRectangle`.
@@ -62,7 +64,7 @@ impl BorderedRectangle {
     pub fn new(dim: Dimensions) -> Self {
         BorderedRectangle {
             common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            style: Style::default(),
         }.wh(dim)
     }
 

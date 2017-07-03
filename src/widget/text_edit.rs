@@ -23,26 +23,33 @@ pub struct TextEdit<'a> {
     style: Style,
 }
 
-widget_style!{
-    /// Unique graphical styling for the TextEdit.
-    style Style {
-        /// The color of the text (this includes cursor and selection color).
-        - color: Color { theme.shape_color }
-        /// The font size for the text.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The horizontal alignment of the text.
-        - justify: text::Justify { text::Justify::Left }
-        /// The vertical alignment of the text.
-        - y_align: Align { Align::End }
-        /// The vertical space between each line of text.
-        - line_spacing: Scalar { 1.0 }
-        /// The way in which text is wrapped at the end of a line.
-        - line_wrap: Wrap { Wrap::Whitespace }
-        /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
-        - restrict_to_height: bool { true }
-        /// The font used for the `Text`.
-        - font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Unique graphical styling for the TextEdit.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The color of the text (this includes cursor and selection color).
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The font size for the text.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The horizontal alignment of the text.
+    #[conrod(default = "text::Justify::Left")]
+    pub justify: Option<text::Justify>,
+    /// The vertical alignment of the text.
+    #[conrod(default = "Align::End")]
+    pub y_align: Option<Align>,
+    /// The vertical space between each line of text.
+    #[conrod(default = "1.0")]
+    pub line_spacing: Option<Scalar>,
+    /// The way in which text is wrapped at the end of a line.
+    #[conrod(default = "Wrap::Whitespace")]
+    pub line_wrap: Option<Wrap>,
+    /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
+    #[conrod(default = "true")]
+    pub restrict_to_height: Option<bool>,
+    /// The font used for the `Text`.
+    #[conrod(default = "theme.font_id")]
+    pub font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -97,8 +104,8 @@ impl<'a> TextEdit<'a> {
     pub fn new(text: &'a str) -> Self {
         TextEdit {
             common: widget::CommonBuilder::new(),
+            style: Style::default(),
             text: text,
-            style: Style::new(),
         }
     }
 
