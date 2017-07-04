@@ -24,9 +24,10 @@ pub type PosY = Scalar;
 /// Draw a matrix of any rectangular widget type, where the matrix will provide a function with
 /// the widget number, it's `rows` and `cols` position, the width and height for the widget and
 /// the location at which the widget should be drawn.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 #[allow(missing_copy_implementations)]
 pub struct Matrix {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     cols: usize,
@@ -41,14 +42,15 @@ pub struct State {
     indices: Vec<Vec<widget::Id>>,
 }
 
-widget_style!{
-    /// Unique styling for the `Matrix`.
-    style Style {
-        /// The width of the padding for each matrix element's "cell".
-        - cell_pad_w: Scalar { 0.0 }
-        /// The height of the padding for each matrix element's "cell".
-        - cell_pad_h: Scalar { 0.0 }
-    }
+/// Unique styling for the `Matrix`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The width of the padding for each matrix element's "cell".
+    #[conrod(default = "0.0")]
+    pub cell_pad_w: Option<Scalar>,
+    /// The height of the padding for each matrix element's "cell".
+    #[conrod(default = "0.0")]
+    pub cell_pad_h: Option<Scalar>,
 }
 
 /// The event type yielded by the `Matrix`.
@@ -95,8 +97,8 @@ impl Matrix {
     /// Create a widget matrix context.
     pub fn new(cols: usize, rows: usize) -> Self {
         Matrix {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             cols: cols,
             rows: rows,
         }
@@ -116,14 +118,6 @@ impl Widget for Matrix {
     type State = State;
     type Style = Style;
     type Event = Elements;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State { indices: Vec::new() }

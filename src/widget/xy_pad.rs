@@ -20,7 +20,9 @@ use widget;
 ///
 /// Its reaction is triggered when the value is updated or if the mouse button is released while
 /// the cursor is above the rectangle.
+#[derive(WidgetCommon_)]
 pub struct XYPad<'a, X, Y> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     x: X, min_x: X, max_x: X,
     y: Y, min_y: Y, max_y: Y,
@@ -30,26 +32,33 @@ pub struct XYPad<'a, X, Y> {
     pub enabled: bool,
 }
 
-widget_style!{
-    /// Unique graphical styling for the XYPad.
-    style Style {
-        /// The color of the XYPad's rectangle.
-        - color: Color { theme.shape_color }
-        /// The width of the border surrounding the rectangle.
-        - border: Scalar { theme.border_width }
-        /// The color of the surrounding rectangle border.
-        - border_color: Color { theme.border_color }
-        /// The color of the XYPad's label and value label text.
-        - label_color: Color { theme.label_color }
-        /// The font size for the XYPad's label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-        /// The font size for the XYPad's *value* label.
-        - value_font_size: FontSize { 14 }
-        /// The thickness of the XYPad's crosshair lines.
-        - line_thickness: Scalar { 2.0 }
-    }
+/// Unique graphical styling for the XYPad.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The color of the XYPad's rectangle.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The width of the border surrounding the rectangle.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the surrounding rectangle border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the XYPad's label and value label text.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size for the XYPad's label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
+    /// The font size for the XYPad's *value* label.
+    #[conrod(default = "14")]
+    pub value_font_size: Option<FontSize>,
+    /// The thickness of the XYPad's crosshair lines.
+    #[conrod(default = "2.0")]
+    pub line_thickness: Option<Scalar>,
 }
 
 widget_ids! {
@@ -73,11 +82,11 @@ impl<'a, X, Y> XYPad<'a, X, Y> {
     /// Build a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
         XYPad {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             x: x_val, min_x: min_x, max_x: max_x,
             y: y_val, min_y: min_y, max_y: max_y,
             maybe_label: None,
-            style: Style::new(),
             enabled: true,
         }
     }
@@ -103,14 +112,6 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
     type State = State;
     type Style = Style;
     type Event = Option<(X, Y)>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

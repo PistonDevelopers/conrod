@@ -6,9 +6,10 @@ use widget;
 
 
 /// A simple, non-interactive widget for drawing a single **Oval**.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct Oval {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling.
     pub style: Style,
@@ -24,7 +25,7 @@ impl Oval {
     /// Build an **Oval** with the given dimensions and style.
     pub fn styled(dim: Dimensions, style: Style) -> Self {
         Oval {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
         }.wh(dim)
     }
@@ -56,14 +57,6 @@ impl Widget for Oval {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State

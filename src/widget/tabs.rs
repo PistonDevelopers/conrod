@@ -16,10 +16,12 @@ use widget;
 
 
 /// A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
+#[derive(WidgetCommon_)]
 pub struct Tabs<'a> {
+    #[conrod(common_builder)]
+    common: widget::CommonBuilder,
     tabs: &'a [(widget::Id, &'a str)],
     style: Style,
-    common: widget::CommonBuilder,
     maybe_starting_tab_idx: Option<usize>,
 }
 
@@ -43,22 +45,27 @@ pub struct Tab {
 /// The padding between the edge of the title bar and the title bar's label.
 const TAB_BAR_LABEL_PADDING: f64 = 4.0;
 
-widget_style!{
-    /// Unique styling for the `Tabs` widget.
-    style Style {
-        /// Layout for the tab selection bar.
-        - layout: Layout { Layout::Horizontal }
-        /// The thickness of the tab selection bar (width for vertical, height for horizontal).
-        - bar_thickness: Option<Scalar> { None }
-        /// Color of the number dialer's label.
-        - label_color: Color { theme.label_color }
-        /// Font size of the number dialer's label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The `font::Id` of the number dialer's font.
-        - font_id: Option<text::font::Id> { None }
-        /// The styling for each `Canvas`.
-        - canvas: widget::canvas::Style { widget::canvas::Style::new() }
-    }
+/// Unique styling for the `Tabs` widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Layout for the tab selection bar.
+    #[conrod(default = "Layout::Horizontal")]
+    pub layout: Option<Layout>,
+    /// The thickness of the tab selection bar (width for vertical, height for horizontal).
+    #[conrod(default = "None")]
+    pub bar_thickness: Option<Option<Scalar>>,
+    /// Color of the number dialer's label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// Font size of the number dialer's label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The `font::Id` of the number dialer's font.
+    #[conrod(default = "None")]
+    pub font_id: Option<Option<text::font::Id>>,
+    /// The styling for each `Canvas`.
+    #[conrod(default = "widget::canvas::Style::default()")]
+    pub canvas: Option<widget::canvas::Style>,
 }
 
 /// The direction in which the tabs will be laid out.
@@ -76,9 +83,9 @@ impl<'a> Tabs<'a> {
     /// Construct some new Canvas Tabs.
     pub fn new(tabs: &'a [(widget::Id, &'a str)]) -> Tabs<'a> {
         Tabs {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             tabs: tabs,
-            style: Style::new(),
             maybe_starting_tab_idx: None,
         }
     }
@@ -121,7 +128,7 @@ impl<'a> Tabs<'a> {
     {
         self.style.canvas = Some(map({
             self.style.canvas.clone()
-                .unwrap_or_else(widget::canvas::Style::new)
+                .unwrap_or_else(widget::canvas::Style::default)
         }));
         self
     }
@@ -165,14 +172,6 @@ impl<'a> Widget for Tabs<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

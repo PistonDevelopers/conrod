@@ -8,8 +8,9 @@ use widget;
 
 
 /// A pressable button widget whose reaction is triggered upon release.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 pub struct Button<'a, S> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     maybe_label: Option<&'a str>,
     /// Whether the `Button` is a `Flat` color or an `Image`.
@@ -20,28 +21,36 @@ pub struct Button<'a, S> {
     enabled: bool,
 }
 
-widget_style!{
-    /// Unique styling for the Button.
-    style Style {
-        /// Color of the Button's pressable area.
-        - color: Color { theme.shape_color }
-        /// Width of the border surrounding the button
-        - border: Scalar { theme.border_width }
-        /// The color of the border.
-        - border_color: Color { theme.border_color }
-        /// The color of the Button's label.
-        - label_color: Color { theme.label_color }
-        /// The font size of the Button's label.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-        /// The label's typographic alignment over the *x* axis.
-        - label_justify: text::Justify { text::Justify::Center }
-        /// The position of the title bar's `Label` widget over the *x* axis.
-        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
-        /// The position of the title bar's `Label` widget over the *y* axis.
-        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
-    }
+/// Unique styling for the Button.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the Button's pressable area.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// Width of the border surrounding the button
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the Button's label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size of the Button's label.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
+    /// The label's typographic alignment over the *x* axis.
+    #[conrod(default = "text::Justify::Center")]
+    pub label_justify: Option<text::Justify>,
+    /// The position of the title bar's `Label` widget over the *x* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_x: Option<position::Relative>,
+    /// The position of the title bar's `Label` widget over the *y* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_y: Option<position::Relative>,
 }
 
 widget_ids! {
@@ -195,10 +204,10 @@ impl<'a, S> Button<'a, S> {
     /// Create a button context to be built upon.
     fn new_internal(show: S) -> Self {
         Button {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             show: show,
             maybe_label: None,
-            style: Style::new(),
+            style: Style::default(),
             enabled: true,
         }
     }
@@ -252,14 +261,6 @@ impl<'a> Widget for Button<'a, Flat> {
     type Style = Style;
     type Event = TimesClicked;
 
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
-
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         FlatIds::new(id_gen)
     }
@@ -292,14 +293,6 @@ impl<'a> Widget for Button<'a, Image> {
     type State = ImageIds;
     type Style = Style;
     type Event = TimesClicked;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         ImageIds::new(id_gen)

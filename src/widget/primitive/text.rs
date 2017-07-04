@@ -14,8 +14,10 @@ use widget;
 ///
 /// If some horizontal dimension is given, the text will automatically wrap to the width and align
 /// in accordance with the produced **Alignment**.
+#[derive(Clone, Debug, WidgetCommon_)]
 pub struct Text<'a> {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// The text to be drawn by the **Text**.
     pub text: &'a str,
@@ -23,24 +25,30 @@ pub struct Text<'a> {
     pub style: Style,
 }
 
-widget_style!{
-    /// The styling for a **Text**'s graphics.
-    style Style {
-        /// The font size for the **Text**.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The color of the **Text**.
-        - color: Color { theme.label_color }
-        /// Whether or not the text should wrap around the width.
-        - maybe_wrap: Option<Wrap> { Some(Wrap::Whitespace) }
-        /// The spacing between consecutive lines.
-        - line_spacing: Scalar { 1.0 }
-        /// Alignment of the text along the *x* axis.
-        - justify: text::Justify { text::Justify::Left }
-        /// The id of the font to use for rendring and layout.
-        - font_id: Option<text::font::Id> { theme.font_id }
-        // /// The line styling for the text.
-        // - line: Option<Line> { None },
-    }
+/// The styling for a **Text**'s graphics.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The font size for the **Text**.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The color of the **Text**.
+    #[conrod(default = "theme.label_color")]
+    pub color: Option<Color>,
+    /// Whether or not the text should wrap around the width.
+    #[conrod(default = "Some(Wrap::Whitespace)")]
+    pub maybe_wrap: Option<Option<Wrap>>,
+    /// The spacing between consecutive lines.
+    #[conrod(default = "1.0")]
+    pub line_spacing: Option<Scalar>,
+    /// Alignment of the text along the *x* axis.
+    #[conrod(default = "text::Justify::Left")]
+    pub justify: Option<text::Justify>,
+    /// The id of the font to use for rendering and layout.
+    #[conrod(default = "theme.font_id")]
+    pub font_id: Option<Option<text::font::Id>>,
+    // /// The line styling for the text.
+    // #[conrod(default = "None")]
+    // pub line: Option<Option<Line>>,
 }
 
 /// The way in which text should wrap around the width.
@@ -77,9 +85,9 @@ impl<'a> Text<'a> {
     /// Build a new **Text** widget.
     pub fn new(text: &'a str) -> Self {
         Text {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             text: text,
-            style: Style::new(),
+            style: Style::default(),
         }
     }
 
@@ -141,14 +149,6 @@ impl<'a> Widget for Text<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

@@ -13,9 +13,11 @@ use widget;
 ///
 /// Useful for things such as oscillator/automation envelopes or any value series represented
 /// periodically.
+#[derive(WidgetCommon_)]
 pub struct EnvelopeEditor<'a, E>
     where E: EnvelopePoint + 'a,
 {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     env: &'a [E],
     /// The value skewing for the envelope's y-axis. This is useful for displaying exponential
@@ -28,28 +30,36 @@ pub struct EnvelopeEditor<'a, E>
     enabled: bool,
 }
 
-widget_style!{
-    /// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
-    style Style {
-        /// Coloring for the EnvelopeEditor's **BorderedRectangle**.
-        - color: Color { theme.shape_color }
-        /// Thickness of the **BorderedRectangle**'s border.
-        - border: f64 { theme.border_width }
-        /// Color of the border.
-        - border_color: Color { theme.border_color }
-        /// Color of the label.
-        - label_color: Color { theme.label_color }
-        /// The font size of the **EnvelopeEditor**'s label if one was given.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The font size of the value label.
-        - value_font_size: FontSize { 14 }
-        /// The radius of the envelope points.
-        - point_radius: Scalar { 6.0 }
-        /// The thickness of the envelope lines.
-        - line_thickness: Scalar { 2.0 }
-        /// The ID of the font used to display the label.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Styling for the EnvelopeEditor, necessary for constructing its renderable Element.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Coloring for the EnvelopeEditor's **BorderedRectangle**.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// Thickness of the **BorderedRectangle**'s border.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<f64>,
+    /// Color of the border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// Color of the label.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// The font size of the **EnvelopeEditor**'s label if one was given.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The font size of the value label.
+    #[conrod(default = "14")]
+    pub value_font_size: Option<FontSize>,
+    /// The radius of the envelope points.
+    #[conrod(default = "6.0")]
+    pub point_radius: Option<Scalar>,
+    /// The thickness of the envelope lines.
+    #[conrod(default = "2.0")]
+    pub line_thickness: Option<Scalar>,
+    /// The ID of the font used to display the label.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -115,13 +125,13 @@ impl<'a, E> EnvelopeEditor<'a, E>
     /// Construct an EnvelopeEditor widget.
     pub fn new(env: &'a [E], min_x: E::X, max_x: E::X, min_y: E::Y, max_y: E::Y) -> Self {
         EnvelopeEditor {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             env: env,
             skew_y_range: 1.0, // Default skew amount (no skew).
             min_x: min_x, max_x: max_x,
             min_y: min_y, max_y: max_y,
             maybe_label: None,
-            style: Style::new(),
             enabled: true,
         }
     }
@@ -222,14 +232,6 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
     type State = State;
     type Style = Style;
     type Event = Vec<Event<E>>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

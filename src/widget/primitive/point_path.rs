@@ -19,11 +19,12 @@ pub use super::line::Style;
 
 
 /// A simple, non-interactive widget for drawing a series of lines and/or points.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, WidgetCommon_)]
 pub struct PointPath<I> {
     /// Some iterator yielding a series of Points.
     pub points: I,
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the PointPath.
     pub style: Style,
@@ -59,7 +60,7 @@ impl<I> PointPath<I> {
     pub fn styled(points: I, style: Style) -> Self {
         PointPath {
             points: points,
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
             maybe_shift_to_centre_from: None,
         }
@@ -158,14 +159,6 @@ impl<I> Widget for PointPath<I>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

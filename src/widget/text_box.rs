@@ -11,35 +11,44 @@ use widget;
 /// form of a `String`.
 ///
 /// It's reaction is triggered upon pressing of the `Enter`/`Return` key.
+#[derive(WidgetCommon_)]
 pub struct TextBox<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     text: &'a str,
     style: Style,
 }
 
-widget_style!{
-    /// Unique graphical styling for the TextBox.
-    style Style {
-        /// The length of the gap between the bounding rectangle's border and the edge of the text.
-        - text_padding: Scalar { 5.0 }
-        /// Color of the rectangle behind the text.
-        ///
-        /// If you don't want to see the rectangle, either set the color with a zeroed alpha or use
-        /// the `TextEdit` widget directly.
-        - color: Color { theme.shape_color }
-        /// The width of the bounding `BorderedRectangle` border.
-        - border: Scalar { theme.border_width }
-        /// The color of the `BorderedRecangle`'s border.
-        - border_color: Color { theme.border_color }
-        /// The color of the `TextEdit` widget.
-        - text_color: Color { theme.label_color }
-        /// The font size for the text.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The typographic alignment of the text.
-        - justify: text::Justify { text::Justify::Left }
-        /// The font used for the `Text`.
-        - font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Unique graphical styling for the TextBox.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The length of the gap between the bounding rectangle's border and the edge of the text.
+    #[conrod(default = "5.0")]
+    pub text_padding: Option<Scalar>,
+    /// Color of the rectangle behind the text.
+    ///
+    /// If you don't want to see the rectangle, either set the color with a zeroed alpha or use
+    /// the `TextEdit` widget directly.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The width of the bounding `BorderedRectangle` border.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the `BorderedRecangle`'s border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the `TextEdit` widget.
+    #[conrod(default = "theme.label_color")]
+    pub text_color: Option<Color>,
+    /// The font size for the text.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The typographic alignment of the text.
+    #[conrod(default = "text::Justify::Left")]
+    pub justify: Option<text::Justify>,
+    /// The font used for the `Text`.
+    #[conrod(default = "theme.font_id")]
+    pub font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -59,9 +68,9 @@ impl<'a> TextBox<'a> {
     /// Construct a TextBox widget.
     pub fn new(text: &'a str) -> Self {
         TextBox {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             text: text,
-            style: Style::new(),
         }
     }
 
@@ -108,14 +117,6 @@ impl<'a> Widget for TextBox<'a> {
     type State = State;
     type Style = Style;
     type Event = Vec<Event>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

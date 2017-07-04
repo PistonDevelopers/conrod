@@ -10,7 +10,9 @@ use widget;
 /// The function is sampled once per pixel and the result is mapped to the widget's height.
 ///
 /// The resulting "path" is drawn using conrod's `PointPath` primitive widget.
+#[derive(WidgetCommon_)]
 pub struct PlotPath<X, Y, F> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     min_x: X,
@@ -20,14 +22,15 @@ pub struct PlotPath<X, Y, F> {
     f: F,
 }
 
-widget_style! {
-    /// Unique styling parameters for the `PlotPath` widget.
-    style Style {
-        /// The thickness of the plotted line.
-        - thickness: Scalar { 1.0 }
-        /// The color of the line.
-        - color: Color { theme.shape_color }
-    }
+/// Unique styling parameters for the `PlotPath` widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The thickness of the plotted line.
+    #[conrod(default = "1.0")]
+    pub thickness: Option<Scalar>,
+    /// The color of the line.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
 }
 
 widget_ids! {
@@ -47,8 +50,8 @@ impl<X, Y, F> PlotPath<X, Y, F> {
     /// Begin building a new `PlotPath` widget instance.
     pub fn new(min_x: X, max_x: X, min_y: Y, max_y: Y, f: F) -> Self {
         PlotPath {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             min_x: min_x,
             max_x: max_x,
             min_y: min_y,
@@ -68,14 +71,6 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

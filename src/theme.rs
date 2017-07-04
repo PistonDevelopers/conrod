@@ -77,7 +77,7 @@ impl WidgetDefault {
     pub fn new(style: Box<Any + Send>) -> WidgetDefault {
         WidgetDefault {
             style: style,
-            common: widget::CommonStyle::new(),
+            common: widget::CommonStyle::default(),
         }
     }
 }

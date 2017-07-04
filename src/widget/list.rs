@@ -24,10 +24,11 @@ use widget;
 /// - Simplifying the positioning and sizing of items.
 /// - Optimised widget instantiation by only instantiating visible items. This is very useful for
 ///   lists containing many items, i.e. a `FileNavigator` over a directory with thousands of files.
-#[derive(Clone)]
+#[derive(Clone, WidgetCommon_)]
 #[allow(missing_copy_implementations)]
 pub struct List<D, S> {
     /// Common widget building params for the `List`.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the `List`.
     pub style: Style,
@@ -117,16 +118,18 @@ pub trait ItemSize: Sized + Clone + Copy {
               D: Direction;
 }
 
-widget_style! {
-    /// Unique styling for the `List`.
-    style Style {
-        /// The width of the scrollbar if it is visible.
-        - scrollbar_thickness: Option<Scalar> { None }
-        /// The color of the scrollbar if it is visible.
-        - scrollbar_color: Color { theme.border_color }
-        /// The location of the `List`'s scrollbar.
-        - scrollbar_position: Option<ScrollbarPosition> { None }
-    }
+/// Unique styling for the `List`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The width of the scrollbar if it is visible.
+    #[conrod(default = "None")]
+    pub scrollbar_thickness: Option<Option<Scalar>>,
+    /// The color of the scrollbar if it is visible.
+    #[conrod(default = "theme.border_color")]
+    pub scrollbar_color: Option<Color>,
+    /// The location of the `List`'s scrollbar.
+    #[conrod(default = "None")]
+    pub scrollbar_position: Option<Option<ScrollbarPosition>>,
 }
 
 widget_ids! {
@@ -244,8 +247,8 @@ impl<D, S> List<D, S>
     /// Begin building a new `List` given some direction and item size.
     pub fn from_item_size(num_items: usize, item_size: S) -> Self {
         List {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             num_items: num_items,
             item_instantiation: ItemInstantiation::All,
             item_size: item_size,
@@ -336,14 +339,6 @@ impl<D, S> Widget for List<D, S>
     type State = State;
     type Style = Style;
     type Event = (Items<D, S>, Option<Scrollbar<D::Axis>>);
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

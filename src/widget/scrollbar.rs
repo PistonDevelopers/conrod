@@ -10,7 +10,9 @@ use widget::scroll::{self, X, Y};
 
 
 /// A widget that allows for scrolling via dragging the mouse.
+#[derive(WidgetCommon_)]
 pub struct Scrollbar<A> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     style: Style,
     widget: widget::Id,
@@ -36,20 +38,21 @@ pub trait Axis: scroll::Axis + Sized {
     fn to_2d(scalar: Scalar) -> [Scalar; 2];
 }
 
-
-widget_style! {
-    /// Styling for the DropDownList, necessary for constructing its renderable Element.
-    style Style {
-        /// Color of the widget.
-        - color: Color { theme.border_color }
-        /// The "thickness" of the scrollbar's track and handle `Rect`s.
-        - thickness: Scalar { 10.0 }
-        /// When true, the `Scrollbar` will only be visible when:
-        ///
-        /// - The target scrollable widget is being scrolled.
-        /// - The mouse is over the scrollbar.
-        - auto_hide: bool { false }
-    }
+/// Styling for the DropDownList, necessary for constructing its renderable Element.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the widget.
+    #[conrod(default = "theme.border_color")]
+    pub color: Option<Color>,
+    /// The "thickness" of the scrollbar's track and handle `Rect`s.
+    #[conrod(default = "10.0")]
+    pub thickness: Option<Scalar>,
+    /// When true, the `Scrollbar` will only be visible when:
+    ///
+    /// - The target scrollable widget is being scrolled.
+    /// - The mouse is over the scrollbar.
+    #[conrod(default = "false")]
+    pub auto_hide: Option<bool>,
 }
 
 widget_ids! {
@@ -69,8 +72,8 @@ impl<A> Scrollbar<A> {
     /// Begin building a new scrollbar widget.
     fn new(widget: widget::Id) -> Self {
         Scrollbar {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             widget: widget,
             axis: std::marker::PhantomData,
         }
@@ -132,14 +135,6 @@ impl<A> Widget for Scrollbar<A>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

@@ -12,12 +12,13 @@ use utils::{bounding_box_for_points, vec2_add, vec2_sub};
 ///
 /// **Polygon** will automatically close all shapes, so the given list of points does not need to
 /// start and end with the same position.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct Polygon<I> {
+    /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
+    pub common: widget::CommonBuilder,
     /// The points describing the corners of the **Polygon**.
     pub points: I,
-    /// Data necessary and common for all widget builder types.
-    pub common: widget::CommonBuilder,
     /// Unique styling for the **Polygon**.
     pub style: Style,
     /// Whether or not the points should be automatically centred to the widget position.
@@ -49,7 +50,7 @@ impl<I> Polygon<I> {
     pub fn styled(points: I, style: Style) -> Self {
         Polygon {
             points: points,
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             style: style,
             maybe_shift_to_centre_from: None,
         }
@@ -182,14 +183,6 @@ impl<I> Widget for Polygon<I>
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

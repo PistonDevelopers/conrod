@@ -21,7 +21,9 @@ use widget;
 use std::cmp::Ordering;
 
 /// For viewing, selecting, double-clicking, etc the contents of a directory.
+#[derive(WidgetCommon_)]
 pub struct DirectoryView<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     /// Unique styling for the widget.
     pub style: Style,
@@ -60,18 +62,21 @@ widget_ids! {
     }
 }
 
-widget_style! {
-    /// Unique styling for the widget.
-    style Style {
-        /// Color of the selected entries.
-        - color: Color { theme.shape_color }
-        /// The color of the unselected entries.
-        - unselected_color: Option<Color> { None }
-        /// The color of the directory and file names.
-        - text_color: Option<Color> { None }
-        /// The font size for the directory and file names.
-        - font_size: FontSize { theme.font_size_medium }
-    }
+/// Unique styling for the widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the selected entries.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The color of the unselected entries.
+    #[conrod(default = "None")]
+    pub unselected_color: Option<Option<Color>>,
+    /// The color of the directory and file names.
+    #[conrod(default = "None")]
+    pub text_color: Option<Option<Color>>,
+    /// The font size for the directory and file names.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
 }
 
 /// The kinds of `Event`s produced by the `DirectoryView`.
@@ -154,8 +159,8 @@ impl<'a> DirectoryView<'a> {
     /// Begin building a `DirectoryNavigator` widget that displays only files of the given types.
     pub fn new(directory: &'a std::path::Path, types: super::Types<'a>) -> Self {
         DirectoryView {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             directory: directory,
             types: types,
             show_hidden: false,
@@ -190,14 +195,6 @@ impl<'a> Widget for DirectoryView<'a> {
     type State = State;
     type Style = Style;
     type Event = Vec<Event>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

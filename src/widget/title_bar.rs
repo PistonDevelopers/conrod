@@ -7,8 +7,10 @@ use widget::{self, Widget};
 
 
 /// A simple title bar widget that automatically sizes itself to the top of some other widget.
+#[derive(Clone, WidgetCommon_)]
 pub struct TitleBar<'a> {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// Unique styling for the **BorderedRectangle**.
     pub style: Style,
@@ -28,32 +30,42 @@ widget_ids! {
     }
 }
 
-widget_style!{
-    /// Unique styling for the **TitleBar** widget.
-    style Style {
-        /// The color of the TitleBar's rectangle surface.
-        - color: Color { theme.background_color }
-        /// The width of the border surrounding the TitleBar's rectangle.
-        - border: Scalar { theme.border_width }
-        /// The color of the TitleBar's border.
-        - border_color: Color { theme.border_color }
-        /// The color of the title bar's text.
-        - text_color: Color { theme.label_color }
-        /// The font size for the title bar's text.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The way in which the title bar's text should wrap.
-        - maybe_wrap: Option<widget::text::Wrap> { Some(widget::text::Wrap::Whitespace) }
-        /// The distance between lines for multi-line title bar text.
-        - line_spacing: Scalar { 1.0 }
-        /// The horizontal alignment of the title bar text.
-        - justify: text::Justify { text::Justify::Center }
-        /// The position of the title bar's `Label` widget over the *x* axis.
-        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
-        /// The position of the title bar's `Label` widget over the *y* axis.
-        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
-        /// The font used for the `Text`.
-        - font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Unique styling for the **TitleBar** widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// The color of the TitleBar's rectangle surface.
+    #[conrod(default = "theme.background_color")]
+    pub color: Option<Color>,
+    /// The width of the border surrounding the TitleBar's rectangle.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// The color of the TitleBar's border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// The color of the title bar's text.
+    #[conrod(default = "theme.label_color")]
+    pub text_color: Option<Color>,
+    /// The font size for the title bar's text.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The way in which the title bar's text should wrap.
+    #[conrod(default = "Some(widget::text::Wrap::Whitespace)")]
+    pub maybe_wrap: Option<Option<widget::text::Wrap>>,
+    /// The distance between lines for multi-line title bar text.
+    #[conrod(default = "1.0")]
+    pub line_spacing: Option<Scalar>,
+    /// The horizontal alignment of the title bar text.
+    #[conrod(default = "text::Justify::Center")]
+    pub justify: Option<text::Justify>,
+    /// The position of the title bar's `Label` widget over the *x* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_x: Option<position::Relative>,
+    /// The position of the title bar's `Label` widget over the *y* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_y: Option<position::Relative>,
+    /// The font used for the `Text`.
+    #[conrod(default = "theme.font_id")]
+    pub font_id: Option<Option<text::font::Id>>,
 }
 
 /// The padding between the edge of the title bar and the title bar's label.
@@ -67,8 +79,8 @@ impl<'a> TitleBar<'a> {
     /// Construct a new TitleBar widget and attach it to the widget at the given index.
     pub fn new(label: &'a str, id: widget::Id) -> Self {
         TitleBar {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             label: label,
         }.w_of(id).mid_top_of(id)
     }
@@ -126,14 +138,6 @@ impl<'a> Widget for TitleBar<'a> {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

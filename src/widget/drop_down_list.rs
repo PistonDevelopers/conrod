@@ -15,7 +15,9 @@ pub type Len = usize;
 /// Displays a given `Vec<String>` as a selectable drop down menu.
 ///
 /// It's reaction is triggered upon selection of a list item.
+#[derive(WidgetCommon_)]
 pub struct DropDownList<'a, T: 'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     items: &'a [T],
     selected: Option<Idx>,
@@ -24,34 +26,45 @@ pub struct DropDownList<'a, T: 'a> {
     enabled: bool,
 }
 
-widget_style! {
-    /// Styling for the DropDownList, necessary for constructing its renderable Element.
-    style Style {
-        /// Color of the widget.
-        - color: Color { theme.shape_color }
-        /// Width of the widget's border.
-        - border: Scalar { theme.border_width }
-        /// Color of the widget's border.
-        - border_color: Color { theme.border_color }
-        /// Color of the item labels.
-        - label_color: Color { theme.label_color }
-        /// Font size for the item labels.
-        - label_font_size: FontSize { theme.font_size_medium }
-        /// The label's typographic alignment over the *x* axis.
-        - label_justify: text::Justify { text::Justify::Center }
-        /// The label's position relative to its `Button` along the *x* axis.
-        - label_x: position::Relative { position::Relative::Align(Align::Middle) }
-        /// The label's position relative to its `Button` along the *y* axis.
-        - label_y: position::Relative { position::Relative::Align(Align::Middle) }
-        /// Maximum height of the Open menu before the scrollbar appears.
-        - maybe_max_visible_height: Option<MaxHeight> { None }
-        /// The position of the scrollbar in the case that the list is scrollable.
-        - scrollbar_position: Option<widget::list::ScrollbarPosition> { None }
-        /// The width of the scrollbar in the case that the list is scrollable.
-        - scrollbar_width: Option<Scalar> { None }
-        /// The ID of the font used to display the labels.
-        - label_font_id: Option<text::font::Id> { theme.font_id }
-    }
+/// Styling for the DropDownList, necessary for constructing its renderable Element.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the widget.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// Width of the widget's border.
+    #[conrod(default = "theme.border_width")]
+    pub border: Option<Scalar>,
+    /// Color of the widget's border.
+    #[conrod(default = "theme.border_color")]
+    pub border_color: Option<Color>,
+    /// Color of the item labels.
+    #[conrod(default = "theme.label_color")]
+    pub label_color: Option<Color>,
+    /// Font size for the item labels.
+    #[conrod(default = "theme.font_size_medium")]
+    pub label_font_size: Option<FontSize>,
+    /// The label's typographic alignment over the *x* axis.
+    #[conrod(default = "text::Justify::Center")]
+    pub label_justify: Option<text::Justify>,
+    /// The label's position relative to its `Button` along the *x* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_x: Option<position::Relative>,
+    /// The label's position relative to its `Button` along the *y* axis.
+    #[conrod(default = "position::Relative::Align(Align::Middle)")]
+    pub label_y: Option<position::Relative>,
+    /// Maximum height of the Open menu before the scrollbar appears.
+    #[conrod(default = "None")]
+    pub maybe_max_visible_height: Option<Option<MaxHeight>>,
+    /// The position of the scrollbar in the case that the list is scrollable.
+    #[conrod(default = "None")]
+    pub scrollbar_position: Option<Option<widget::list::ScrollbarPosition>>,
+    /// The width of the scrollbar in the case that the list is scrollable.
+    #[conrod(default = "None")]
+    pub scrollbar_width: Option<Option<Scalar>>,
+    /// The ID of the font used to display the labels.
+    #[conrod(default = "theme.font_id")]
+    pub label_font_id: Option<Option<text::font::Id>>,
 }
 
 widget_ids! {
@@ -88,12 +101,12 @@ impl<'a, T> DropDownList<'a, T> {
     /// Construct a new DropDownList.
     pub fn new(items: &'a [T], selected: Option<Idx>) -> Self {
         DropDownList {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             items: items,
             selected: selected,
             maybe_label: None,
             enabled: true,
-            style: Style::new(),
+            style: Style::default(),
         }
     }
 
@@ -186,14 +199,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
     type State = State;
     type Style = Style;
     type Event = Option<Idx>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {

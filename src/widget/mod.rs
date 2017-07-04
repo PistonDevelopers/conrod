@@ -49,7 +49,6 @@ pub use self::xy_pad::XYPad;
 
 // Macro providing modules.
 #[macro_use] mod builder;
-#[macro_use] mod style;
 
 // Widget functionality modules.
 #[macro_use] pub mod id;
@@ -59,6 +58,7 @@ pub mod scroll;
 pub mod primitive;
 
 // Widget modules.
+
 pub mod bordered_rectangle;
 pub mod button;
 pub mod canvas;
@@ -234,7 +234,7 @@ pub struct CommonBuilder {
 }
 
 /// Styling and positioning data that is common between all widget types.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct CommonStyle {
     /// The width of a Widget.
     pub maybe_x_dimension: Option<Dimension>,
@@ -409,6 +409,33 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 }
 
 
+/// A trait implemented by all **Widget** types.
+///
+/// This trait provides access to a field of type **CommonBuilder** on the implementor. This allows
+/// the `Widget` trait to automatically provide a large number of methods including those from the
+/// **Positionable** and **Sizeable** traits.
+///
+/// The **Common** trait can be automatically derived for widgets like so:
+///
+/// ```ignore
+/// extern crate conrod;
+/// #[macro_use] extern crate conrod_derive;
+///
+/// #[derive(WidgetCommon)]
+/// struct MyWidget {
+///     #[conrod(common_builder)]
+///     common: conrod::widget::CommonBuilder,
+///     // etc
+/// }
+/// ```
+pub trait Common {
+    /// Borrows the `CommonBuilder` field.
+    fn common(&self) -> &CommonBuilder;
+    /// Mutably borrows the `CommonBuilder` field.
+    fn common_mut(&mut self) -> &mut CommonBuilder;
+}
+
+
 /// A trait to be implemented by all **Widget** types.
 ///
 /// A type that implements **Widget** can be thought of as a collection of arguments to the
@@ -417,8 +444,6 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 ///
 /// Methods that *must* be overridden:
 ///
-/// - common
-/// - common_mut
 /// - init_state
 /// - style
 /// - update
@@ -442,7 +467,7 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 /// - parent
 /// - no_parent
 /// - set
-pub trait Widget: Sized {
+pub trait Widget: Common + Sized {
     /// State to be stored within the `Ui`s widget cache.
     ///
     /// Take advantage of this type for any large allocations that you would like to avoid
@@ -467,45 +492,60 @@ pub trait Widget: Sized {
     ///
     /// The reason this data is required to be in its own `Style` type (rather than in the widget
     /// type itself) is so that conrod can distinguish between default style data that may be
-    /// stored within the `Theme`'s `widget_styling`, and other data that is necessary for the
-    /// widget's behaviour logic. Having `Style` be an associated type makes it trivial to retrieve
-    /// unique, widget-specific styling data for each widget from a single method (see
+    /// stored within the `Theme`'s `widget_styling` field, and other data that is necessary for
+    /// the widget's behaviour logic. Having `Style` be an associated type makes it trivial to
+    /// retrieve unique, widget-specific styling data for each widget from a single method (see
     /// [`Theme::widget_style`](./theme/struct.Theme.html#method.widget_style)).
     ///
-    /// These types are often quite similar and can involve a lot of boilerplate when written by
-    /// hand due to rust's lack of field inheritance. To get around this, conrod provides
-    /// [`widget_style!`][1] - a macro that vastly simplifies the definition and implementation of
-    /// widget `Style` types.
+    /// ## `#[derive(WidgetStyle)]`
     ///
-    /// Conrod doesn't yet support serializing widget styling with the `Theme` type, but we hope to
-    /// soon.
+    /// These `Style` types are often quite similar and their implementations can involve a lot of
+    /// boilerplate when written by hand. To get around this, conrod provides
+    /// `#[derive(WidgetStyle)]`.
+    ///
+    /// This procedural macro generates a "getter"-style method for each struct field that is
+    /// decorated with a `#[conrod(default = "expr")]` attribute. The generated methods have the
+    /// same name as their respective fields and behave as follows:
+    ///
+    /// 1. First, the method will attempt to return the value directly if the field is `Some`.
+    /// 2. If the field is `None`, the method will fall back to the `Widget::Style` stored within
+    ///    the `Theme`'s `widget_styling` map.
+    /// 3. If there are no style defaults for the widget in the `Theme`, or if there is but the
+    ///    default field is also `None`, the method will fall back to the expression specified
+    ///    within the field's `#[conrod(default = "expr")]` attribute.
+    ///
+    /// The given "expr" can be a string containing any expression that returns the type specified
+    /// within the field's `Option` type parameter. The expression may also utilise the `theme` and
+    /// `self` bindings, where `theme` is a binding to the borrowed `Theme` and `self` is a binding
+    /// to the borrowed instance of this `Style` type.
     ///
     /// # Examples
     ///
     /// ```
     /// # extern crate conrod;
+    /// # #[macro_use] extern crate conrod_derive;
     /// # use conrod::{Color, FontSize, Scalar};
     /// # fn main() {}
     /// /// Unique styling for a Button widget.
+    /// #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
     /// pub struct Style {
     ///     /// Color of the Button's pressable area.
+    ///     #[conrod(default = "theme.shape_color")]
     ///     pub color: Option<Color>,
     ///     /// Width of the border surrounding the button.
+    ///     #[conrod(default = "1.0")]
     ///     pub border: Option<Scalar>,
     ///     /// The color of the Button's rectangular border.
+    ///     #[conrod(default = "conrod::color::BLACK")]
     ///     pub border_color: Option<Color>,
     ///     /// The color of the Button's label.
+    ///     #[conrod(default = "theme.label_color")]
     ///     pub label_color: Option<Color>,
     ///     /// The font size for the Button's label.
+    ///     #[conrod(default = "12")]
     ///     pub label_font_size: Option<FontSize>,
     /// }
     /// ```
-    ///
-    /// Note: It is recommended that you don't write these types yourself as it can get tedious.
-    /// Instead, we suggest using the [`widget_style!`][1] macro which also provides all necessary
-    /// style retrieval method implementations.
-    ///
-    /// [1]: ./macro.widget_style!.html
     type Style: Style + Send;
     /// The type of event yielded by the widget, returned via the `Widget::set` function.
     ///
@@ -513,20 +553,6 @@ pub trait Widget: Sized {
     ///
     /// For a non-interactive, purely graphical widget, this might be `()`.
     type Event;
-
-    /// Return a reference to a **CommonBuilder** struct owned by the Widget.
-    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-    ///
-    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
-    /// accordingly (perhaps under a different name).
-    fn common(&self) -> &CommonBuilder;
-
-    /// Return a mutable reference to a CommonBuilder struct owned by the Widget.
-    /// This method allows us to do a blanket impl of Positionable and Sizeable for T: Widget.
-    ///
-    /// Note: When rust introduces field inheritance, we will move the **CommonBuilder**
-    /// accordingly (perhaps under a different name).
-    fn common_mut(&mut self) -> &mut CommonBuilder;
 
     /// Return the initial **State** of the Widget.
     ///
@@ -620,7 +646,7 @@ pub trait Widget: Sized {
     // None of the following methods should require overriding. Perhaps they should be split off
     // into a separate trait which is impl'ed for W: Widget to make this clearer?
     // Most of them would benefit by some sort of field inheritance as they are mainly just used to
-    // set sommon data.
+    // set common data.
 
 
     /// Set the parent widget for this Widget by passing the WidgetId of the parent.
@@ -1121,12 +1147,10 @@ impl<'a, T> std::ops::Deref for State<'a, T> {
     }
 }
 
-
-impl CommonBuilder {
-    /// Construct an empty, initialised CommonBuilder.
-    pub fn new() -> CommonBuilder {
+impl Default for CommonBuilder {
+    fn default() -> Self {
         CommonBuilder {
-            style: CommonStyle::new(),
+            style: CommonStyle::default(),
             maybe_parent_id: MaybeParent::Unspecified,
             place_on_kid_area: true,
             maybe_graphics_for: None,
@@ -1137,20 +1161,6 @@ impl CommonBuilder {
         }
     }
 }
-
-impl CommonStyle {
-    /// A new default CommonStyle.
-    pub fn new() -> Self {
-        CommonStyle {
-            maybe_x_dimension: None,
-            maybe_y_dimension: None,
-            maybe_x_position: None,
-            maybe_y_position: None,
-            maybe_depth: None,
-        }
-    }
-}
-
 
 impl<W> Positionable for W
     where W: Widget,

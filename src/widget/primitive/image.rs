@@ -7,9 +7,10 @@ use widget;
 
 
 /// A primitive and basic widget for drawing an `Image`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, WidgetCommon_)]
 pub struct Image {
     /// Data necessary and common for all widget builder types.
+    #[conrod(common_builder)]
     pub common: widget::CommonBuilder,
     /// The unique identifier for the image that will be drawn.
     pub image_id: image::Id,
@@ -30,12 +31,12 @@ pub struct State {
     pub image_id: image::Id,
 }
 
-widget_style!{
-    /// Unique styling for the `Image` widget.
-    style Style {
-        /// Optionally specify a single colour to use for the image.
-        - maybe_color: Option<Color> { None }
-    }
+/// Unique styling for the `Image` widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Optionally specify a single color to use for the image.
+    #[conrod(default = "None")]
+    pub maybe_color: Option<Option<Color>>,
 }
 
 
@@ -67,10 +68,10 @@ impl Image {
     /// 3. use an index type which may be mapped to your various image types.
     pub fn new(image_id: image::Id) -> Self {
         Image {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             image_id: image_id,
             src_rect: None,
-            style: Style::new(),
+            style: Style::default(),
         }
     }
 
@@ -93,14 +94,6 @@ impl Widget for Image {
     type State = State;
     type Style = Style;
     type Event = ();
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
         State {

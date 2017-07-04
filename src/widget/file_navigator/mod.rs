@@ -25,7 +25,9 @@ pub use self::directory_view::DirectoryView;
 pub mod directory_view;
 
 /// A widget for navigating and interacting with a file system.
+#[derive(WidgetCommon_)]
 pub struct FileNavigator<'a> {
+    #[conrod(common_builder)]
     common: widget::CommonBuilder,
     /// Unique styling for the widget.
     pub style: Style,
@@ -85,25 +87,30 @@ widget_ids! {
     }
 }
 
-widget_style! {
-    /// Unique styling for the widget.
-    style Style {
-        /// Color of the selected entries.
-        - color: Color { theme.shape_color }
-        /// The color of the unselected entries.
-        - unselected_color: Option<Color> { None }
-        /// The color of the directory and file names.
-        - text_color: Option<Color> { None }
-        /// The font size for the directory and file names.
-        - font_size: FontSize { theme.font_size_medium }
-        /// The default width of a single directory view.
-        ///
-        /// The first directory will always be initialised to this size.
-        - column_width: Scalar { 250.0 }
-        /// The width of the bar that separates each directory in the stack and allows for
-        /// re-sizing.
-        - resize_handle_width: Scalar { 5.0 }
-    }
+/// Unique styling for the widget.
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
+pub struct Style {
+    /// Color of the selected entries.
+    #[conrod(default = "theme.shape_color")]
+    pub color: Option<Color>,
+    /// The color of the unselected entries.
+    #[conrod(default = "None")]
+    pub unselected_color: Option<Option<Color>>,
+    /// The color of the directory and file names.
+    #[conrod(default = "None")]
+    pub text_color: Option<Option<Color>>,
+    /// The font size for the directory and file names.
+    #[conrod(default = "theme.font_size_medium")]
+    pub font_size: Option<FontSize>,
+    /// The default width of a single directory view.
+    ///
+    /// The first directory will always be initialised to this size.
+    #[conrod(default = "250.0")]
+    pub column_width: Option<Scalar>,
+    /// The width of the bar that separates each directory in the stack and allows for
+    /// re-sizing.
+    #[conrod(default = "5.0")]
+    pub resize_handle_width: Option<Scalar>,
 }
 
 /// The kinds of events that the `FileNavigator` may produce.
@@ -128,8 +135,8 @@ impl<'a> FileNavigator<'a> {
     /// Begin building a `FileNavigator` widget that displays only files of the given types.
     pub fn new(starting_directory: &'a std::path::Path, types: Types<'a>) -> Self {
         FileNavigator {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
             starting_directory: starting_directory,
             types: types,
             show_hidden: false,
@@ -179,14 +186,6 @@ impl<'a> Widget for FileNavigator<'a> {
     type State = State;
     type Style = Style;
     type Event = Vec<Event>;
-
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
