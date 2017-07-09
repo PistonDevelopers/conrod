@@ -45,6 +45,11 @@ rusttype = "0.2.0"
 # - Converting piston `GenericEvent` types to `conrod::event::Raw`s.
 # - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
 # Enables the `conrod::backend::piston` module.
+#
+# `sdl2`
+# Provides an SDL2 based primitive renderer and event handling.
+# Enabled the `conrod::backend::sdl2` module.
+sdl2 = { version = "0.30.0", optional = true, features = ["gfx"] }
 glium = { version = "0.16.0", optional = true }
 winit = { version = "0.5.9", optional = true }
 piston2d-graphics = { version = "0.21.1", optional = true }
