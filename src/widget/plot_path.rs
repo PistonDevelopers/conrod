@@ -46,7 +46,6 @@ pub struct State {
 
 
 impl<X, Y, F> PlotPath<X, Y, F> {
-
     /// Begin building a new `PlotPath` widget instance.
     pub fn new(min_x: X, max_x: X, min_y: Y, max_y: Y, f: F) -> Self {
         PlotPath {
@@ -60,6 +59,11 @@ impl<X, Y, F> PlotPath<X, Y, F> {
         }
     }
 
+    /// The thickness of the point path used to draw the plot.
+    pub fn thickness(mut self, thickness: Scalar) -> Self {
+        self.style.thickness = Some(thickness);
+        self
+    }
 }
 
 

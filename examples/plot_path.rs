@@ -15,11 +15,11 @@ mod feature {
     use support;
 
     widget_ids! {
-        struct Ids { canvas, plot }
+        struct Ids { canvas, grid, plot }
     }
 
     pub fn main() {
-        const WIDTH: u32 = 720;
+        const WIDTH: u32 = 1080;
         const HEIGHT: u32 = 360;
 
         // Build the window.
@@ -77,8 +77,25 @@ mod feature {
                 let max_x = std::f64::consts::PI * 2.0;
                 let min_y = -1.0;
                 let max_y = 1.0;
+
+                let quarter_lines = widget::grid::Lines::step(0.5_f64).thickness(2.0);
+                let sixteenth_lines = widget::grid::Lines::step(0.125_f64).thickness(1.0);
+                let lines = &[
+                    quarter_lines.x(),
+                    quarter_lines.y(),
+                    sixteenth_lines.x(),
+                    sixteenth_lines.y(),
+                ];
+
+                widget::Grid::new(min_x, max_x, min_y, max_y, lines.iter().cloned())
+                    .color(color::rgb(0.1, 0.12, 0.15))
+                    .wh_of(ids.canvas)
+                    .middle_of(ids.canvas)
+                    .set(ids.grid, ui);
+
                 widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
                     .color(color::LIGHT_BLUE)
+                    .thickness(2.0)
                     .wh_of(ids.canvas)
                     .middle_of(ids.canvas)
                     .set(ids.plot, ui);
