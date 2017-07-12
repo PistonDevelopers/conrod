@@ -21,7 +21,7 @@ mod feature {
     extern crate rand; // for making a random color.
     use conrod::{self, widget, Borderable, Colorable, Positionable, Sizeable, Widget, color};
     use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::Surface;
     use std;
     use support;
 
@@ -30,13 +30,14 @@ mod feature {
         const HEIGHT: u32 = 560;
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
-            .with_vsync()
-            .with_dimensions(WIDTH, HEIGHT)
+        let mut events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_title("Image Button Demonstration")
-            .with_multisampling(4)
-            .build_glium()
-            .unwrap();
+            .with_dimensions(WIDTH, HEIGHT);
+        let context = glium::glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_multisampling(4);
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -82,20 +83,28 @@ mod feature {
         'main: loop {
 
             // Handle all events.
-            for event in event_loop.next(&display) {
+            for event in event_loop.next(&mut events_loop) {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     ui.handle_event(event);
                     event_loop.needs_update();
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::KeyboardInput {
+                            input: glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                            ..
+                        } => break 'main,
+                        _ => (),
+                    },
+                    _ => (),
                 }
             }
 
@@ -140,7 +149,7 @@ mod feature {
         let path = path.as_ref();
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
-        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
         let texture = glium::texture::SrgbTexture2d::new(display, raw_image).unwrap();
         texture
     }

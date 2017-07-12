@@ -16,7 +16,6 @@ mod feature {
     extern crate image;
     use conrod;
     use conrod::backend::glium::glium::{self, Surface};
-    use conrod::backend::glium::glium::glutin::{self, winit};
     use support;
     use std;
 
@@ -27,31 +26,23 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let mut events_loop = winit::EventsLoop::new();
-        let window = winit::WindowBuilder::new()
-            .with_dimensions(WIN_W, WIN_H)
+        let mut events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_title("Conrod with glium!")
-            .build(&events_loop)
-            .unwrap();
-        let context = glutin::ContextBuilder::new()
-            .with_vsync()
-            .with_multisampling(8)
-            .build(&window)
-            .unwrap();
-        let display = glium::Display::new(window, context).unwrap();
+            .with_dimensions(WIN_W, WIN_H);
+        let context = glium::glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_multisampling(8);
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // Construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64])
-            .theme(support::theme())
-            .build();
+        let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
 
         // The `widget::Id` of each widget instantiated in `support::gui`.
         let ids = support::Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        let assets = find_folder::Search::KidsThenParents(3, 5)
-            .for_folder("assets")
-            .unwrap();
+        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -102,15 +93,17 @@ mod feature {
                 }
 
                 match event {
-                    winit::Event::WindowEvent { event, .. } => match event {
-                        // Break from the loop upon `Escape` or `Closed`.
-                        winit::WindowEvent::Closed |
-                        winit::WindowEvent::KeyboardInput {
-                            input: winit::KeyboardInput {
-                                virtual_keycode: Some(winit::VirtualKeyCode::Escape), ..
-                            }, ..
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::KeyboardInput {
+                            input: glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                            ..
                         } => break 'main,
-                        _ => {},
+                        _ => (),
                     },
                     _ => (),
                 }

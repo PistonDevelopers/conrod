@@ -348,7 +348,7 @@ mod feature {
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
                 // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), window.as_winit_window()) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.as_winit_window()) {
                     ui.handle_event(event);
                 }
 

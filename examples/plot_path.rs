@@ -10,26 +10,27 @@ mod feature {
     extern crate find_folder;
     use conrod;
     use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::Surface;
     use std;
     use support;
 
     widget_ids! {
-        struct Ids { canvas, grid, plot }
+        struct Ids { canvas, plot }
     }
 
     pub fn main() {
-        const WIDTH: u32 = 1080;
+        const WIDTH: u32 = 720;
         const HEIGHT: u32 = 360;
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
-            .with_vsync()
-            .with_dimensions(WIDTH, HEIGHT)
+        let mut events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_title("PlotPath Demo")
-            .with_multisampling(4)
-            .build_glium()
-            .unwrap();
+            .with_dimensions(WIDTH, HEIGHT);
+        let context = glium::glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_multisampling(4);
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -49,19 +50,27 @@ mod feature {
         'main: loop {
 
             // Handle all events.
-            for event in event_loop.next(&display) {
+            for event in event_loop.next(&mut events_loop) {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     ui.handle_event(event);
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::KeyboardInput {
+                            input: glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                            ..
+                        } => break 'main,
+                        _ => (),
+                    },
+                    _ => (),
                 }
             }
 
@@ -77,25 +86,8 @@ mod feature {
                 let max_x = std::f64::consts::PI * 2.0;
                 let min_y = -1.0;
                 let max_y = 1.0;
-
-                let quarter_lines = widget::grid::Lines::step(0.5_f64).thickness(2.0);
-                let sixteenth_lines = widget::grid::Lines::step(0.125_f64).thickness(1.0);
-                let lines = &[
-                    quarter_lines.x(),
-                    quarter_lines.y(),
-                    sixteenth_lines.x(),
-                    sixteenth_lines.y(),
-                ];
-
-                widget::Grid::new(min_x, max_x, min_y, max_y, lines.iter().cloned())
-                    .color(color::rgb(0.1, 0.12, 0.15))
-                    .wh_of(ids.canvas)
-                    .middle_of(ids.canvas)
-                    .set(ids.grid, ui);
-
                 widget::PlotPath::new(min_x, max_x, min_y, max_y, f64::sin)
                     .color(color::LIGHT_BLUE)
-                    .thickness(2.0)
                     .wh_of(ids.canvas)
                     .middle_of(ids.canvas)
                     .set(ids.plot, ui);
