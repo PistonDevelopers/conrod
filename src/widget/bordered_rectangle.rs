@@ -94,9 +94,25 @@ impl Widget for BorderedRectangle {
 
         let border = style.border(&ui.theme);
         if border > 0.0 {
+            // Pad the edges so that the line does not exceed the bounding rect.
+            let (l, r, b, t) = rect.l_r_b_t();
+            let half_border = border * 0.5;
+            let l_pad = l + half_border;
+            let r_pad = r - half_border;
+            let b_pad = b + half_border;
+            let t_pad = t - half_border;
+
+            let points = [
+                [l, t_pad],
+                [r_pad, t_pad],
+                [r_pad, b_pad],
+                [l_pad, b_pad],
+                [l_pad, t_pad],
+            ];
+
             let border_color = style.border_color(&ui.theme);
-            widget::Rectangle::fill(rect.dim())
-                .xy(rect.xy())
+            widget::PointPath::abs(points.iter().cloned())
+                .thickness(border)
                 .color(border_color)
                 .parent(id)
                 .graphics_for(id)
