@@ -10,7 +10,7 @@
 #[macro_use] extern crate gfx;
 extern crate gfx_core;
 
-#[cfg(feature="winit")]
+#[cfg(all(feature="winit", not(feature="glium")))]
 mod support;
 
 
@@ -18,7 +18,7 @@ fn main() {
     feature::main();
 }
 
-#[cfg(feature="winit")]
+#[cfg(all(feature="winit", not(feature="glium")))]
 mod feature {
     extern crate gfx_window_glutin;
     extern crate find_folder;
@@ -371,7 +371,7 @@ mod feature {
     }
 }
 
-#[cfg(not(feature="winit"))]
+#[cfg(not(all(feature="winit", not(feature="glium"))))]
 mod feature {
     pub fn main() {
         println!("This example requires the `winit` feature. \
