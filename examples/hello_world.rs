@@ -1,9 +1,5 @@
 //! A simple example that demonstrates using conrod within a basic `winit` window loop, using
 //! `glium` to render the `conrod::render::Primitives` to screen.
-//!
-//! Note that the event loop that we create in this example behaves the same as the example
-//! `EventLoop` in the `examples/support` module. It has been inlined in order to provide an
-//! example that does not depend on the `support` module.
 
 #[cfg(all(feature="winit", feature="glium"))] #[macro_use] extern crate conrod;
 
@@ -14,9 +10,7 @@ fn main() {
 #[cfg(all(feature="winit", feature="glium"))]
 mod feature {
     use conrod::{self, widget, Colorable, Positionable, Widget};
-    use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::Surface;
-    use std;
+    use conrod::backend::glium::glium::{self, Surface};
 
     pub fn main() {
         const WIDTH: u32 = 400;
@@ -51,62 +45,34 @@ mod feature {
         // The image map describing each of our widget->image mappings (in our case, none).
         let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-        // Poll events from the window.
-        let mut last_update = std::time::Instant::now();
-        let mut ui_needs_update = true;
-        'main: loop {
+        events_loop.run_forever(|event| {
 
-            // We don't want to loop any faster than 60 FPS, so wait until it has been at least
-            // 16ms since the last yield.
-            let sixteen_ms = std::time::Duration::from_millis(16);
-            let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
-            if duration_since_last_update < sixteen_ms {
-                std::thread::sleep(sixteen_ms - duration_since_last_update);
-            }
-
-            // Collect all pending events.
-            let mut events = Vec::new();
-            events_loop.poll_events(|event| events.push(event));
-
-            // If there are no events and the `Ui` does not need updating, wait for the next event.
-            if events.is_empty() && !ui_needs_update {
-                events_loop.run_forever(|event| {
-                    events.push(event);
-                    glium::glutin::ControlFlow::Break
-                });
-            }
-
-            // Reset the needs_update flag and time this update.
-            ui_needs_update = false;
-            last_update = std::time::Instant::now();
-
-            // Handle all events.
-            for event in events {
-
-                // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
-                    ui.handle_event(event);
-                    ui_needs_update = true;
-                }
-
-                match event {
-                    glium::glutin::Event::WindowEvent { event, .. } => match event {
-                        // Break from the loop upon `Escape`.
-                        glium::glutin::WindowEvent::Closed |
-                        glium::glutin::WindowEvent::KeyboardInput {
-                            input: glium::glutin::KeyboardInput {
-                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                                ..
-                            },
+            // Break from the loop upon `Escape` or closed window.
+            match event.clone() {
+                glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    glium::glutin::WindowEvent::Closed |
+                    glium::glutin::WindowEvent::KeyboardInput {
+                        input: glium::glutin::KeyboardInput {
+                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
                             ..
-                        } => break 'main,
-                        _ => (),
-                    },
+                        },
+                        ..
+                    } => return glium::glutin::ControlFlow::Break,
                     _ => (),
-                }
+                },
+                _ => (),
             }
 
-            // Instantiate all widgets in the GUI.
+            // Use the `winit` backend feature to convert the winit event to a conrod one.
+            let input = match conrod::backend::winit::convert_event(event, &display) {
+                None => return glium::glutin::ControlFlow::Continue,
+                Some(input) => input,
+            };
+
+            // Handle the input with the `Ui`.
+            ui.handle_event(input);
+
+            // Set the widgets.
             {
                 let ui = &mut ui.set_widgets();
 
@@ -118,7 +84,7 @@ mod feature {
                     .set(ids.text, ui);
             }
 
-            // Render the `Ui` and then display it on the screen.
+            // Draw the `Ui` if it has changed.
             if let Some(primitives) = ui.draw_if_changed() {
                 renderer.fill(&display, primitives, &image_map);
                 let mut target = display.draw();
@@ -126,7 +92,9 @@ mod feature {
                 renderer.draw(&display, &mut target, &image_map).unwrap();
                 target.finish().unwrap();
             }
-        }
+
+            glium::glutin::ControlFlow::Continue
+        });
     }
 }
 
