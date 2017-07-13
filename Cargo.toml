@@ -48,18 +48,24 @@ rusttype = "0.2.0"
 glium = { version = "0.17", optional = true }
 winit = { version = "0.7", optional = true }
 piston2d-graphics = { version = "0.21.1", optional = true }
+glutin = { version = "0.9", optional = true }
 
 [features]
 piston = ["piston2d-graphics"]
+glutin_winit = ["glutin"]
+
 
 [dev-dependencies]
 find_folder = "0.3.0"
 image = "0.13.0"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
-gfx = "0.15.1"
-gfx_core = "0.7.0"
-gfx_window_glutin = "0.15.0"
-glutin = "0.7.0"
+# gfx = "0.15.1"
+# gfx_core = "0.7.0"
+# gfx_window_glutin = "0.15.0"
+# glutin = "0.7.0"
+gfx = { git = "https://github.com/gfx-rs/gfx.git" } 
+gfx_core = { git = "https://github.com/gfx-rs/gfx.git" } 
+gfx_window_glutin = { git = "https://github.com/gfx-rs/gfx.git" } 
 # piston_window.rs example dependencies
 piston_window = "0.65.0"

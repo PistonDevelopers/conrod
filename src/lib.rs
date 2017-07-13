@@ -16,6 +16,7 @@ extern crate input as piston_input;
 extern crate rusttype;
 
 #[cfg(feature="glium")] #[macro_use] pub extern crate glium;
+#[cfg(feature = "glutin_winit")] pub extern crate glutin;
 
 pub use color::{Color, Colorable};
 pub use border::{Bordering, Borderable};
