@@ -68,8 +68,11 @@ impl<I> PointPath<I> {
 
     /// Build a new default PointPath widget.
     ///
-    /// It is recommended that you also see the `abs` and `centred` constructors for smart
-    /// positioning and layout.
+    /// Note that this does *not* automatically set the position of the bounding box for the
+    /// widget. It is recommended that you also see the `abs` and `centred` constructors for smart
+    /// positioning and layout that automatically infer the position and size of the bounding box.
+    /// This method should only be preferred if the user can also specify the correct bounding box
+    /// position and size as this will be more efficient than the `abs` or `centred` methods.
     pub fn new(points: I) -> Self {
         PointPath::styled(points, Style::new())
     }
