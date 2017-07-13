@@ -15,8 +15,7 @@ mod feature {
     extern crate find_folder;
     extern crate image;
     use conrod;
-    use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::{self, Surface};
     use support;
     use std;
 
@@ -27,13 +26,14 @@ mod feature {
     pub fn main() {
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
-            .with_vsync()
-            .with_dimensions(WIN_W, WIN_H)
+        let mut events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_title("Conrod with glium!")
-            .with_multisampling(8)
-            .build_glium()
-            .unwrap();
+            .with_dimensions(WIN_W, WIN_H);
+        let context = glium::glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_multisampling(8);
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // Construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -52,7 +52,7 @@ mod feature {
             let path = assets.join("images/rust.png");
             let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
             let image_dimensions = rgba_image.dimensions();
-            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(), image_dimensions);
+            let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
             let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
             texture
         }
@@ -84,20 +84,28 @@ mod feature {
         'main: loop {
 
             // Handle all events.
-            for event in event_loop.next(&display) {
+            for event in event_loop.next(&mut events_loop) {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     ui.handle_event(event);
                     event_loop.needs_update();
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::KeyboardInput {
+                            input: glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                            ..
+                        } => break 'main,
+                        _ => (),
+                    },
+                    _ => (),
                 }
             }
 

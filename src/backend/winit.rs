@@ -30,31 +30,32 @@ impl WinitWindow for winit::Window {
 }
 
 #[cfg(feature = "glium")]
-impl WinitWindow for glium::glutin::Window {
-    fn get_inner_size(&self) -> Option<(u32, u32)> {
-        glium::glutin::Window::as_winit_window(self).get_inner_size()
-    }
-    fn hidpi_factor(&self) -> f32 {
-        glium::glutin::Window::as_winit_window(self).hidpi_factor()
-    }
-}
-
-#[cfg(feature = "glium")]
 impl WinitWindow for glium::Display {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
-        self.get_window().and_then(|window| window.get_inner_size())
+        self.gl_window().get_inner_size()
     }
     fn hidpi_factor(&self) -> f32 {
-        match self.get_window() {
-            Some(window) => window.hidpi_factor(),
-            None => 1.0,
-        }
+        self.gl_window().hidpi_factor()
     }
 }
 
 
 /// A function for converting a `winit::Event` to a `conrod::event::Input`.
-pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
+///
+/// This can be useful for single-window applications.
+pub fn convert_event<W>(e: winit::Event, window: &W) -> Option<Input>
+    where W: WinitWindow,
+{
+    match e {
+        winit::Event::WindowEvent { event, .. } => convert_window_event(event, window),
+        _ => None,
+    }
+}
+
+/// A function for converting a `winit::WindowEvent` to a `conrod::event::Input`.
+///
+/// This is useful for multi-window applications.
+pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Input>
     where W: WinitWindow,
 {
     // The window size in points.
@@ -76,13 +77,13 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
 
     match e {
 
-        winit::Event::Resized(w, h) => {
+        winit::WindowEvent::Resized(w, h) => {
             let w = (w as Scalar / dpi_factor) as u32;
             let h = (h as Scalar / dpi_factor) as u32;
             Some(Input::Resize(w, h).into())
         },
 
-        winit::Event::ReceivedCharacter(ch) => {
+        winit::WindowEvent::ReceivedCharacter(ch) => {
             let string = match ch {
                 // Ignore control characters and return ascii for Text event (like sdl2).
                 '\u{7f}' | // Delete
@@ -94,16 +95,21 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
             Some(Input::Text(string).into())
         },
 
-        winit::Event::Focused(focused) =>
+        winit::WindowEvent::Focused(focused) =>
             Some(Input::Focus(focused).into()),
 
-        winit::Event::KeyboardInput(winit::ElementState::Pressed, _, Some(key)) =>
-            Some(Input::Press(input::Button::Keyboard(map_key(key))).into()),
+        winit::WindowEvent::KeyboardInput { input, .. } => {
+            input.virtual_keycode.map(|key| {
+                match input.state {
+                    winit::ElementState::Pressed =>
+                        Input::Press(input::Button::Keyboard(map_key(key))).into(),
+                    winit::ElementState::Released =>
+                        Input::Release(input::Button::Keyboard(map_key(key))).into(),
+                }
+            })
+        },
 
-        winit::Event::KeyboardInput(winit::ElementState::Released, _, Some(key)) =>
-            Some(Input::Release(input::Button::Keyboard(map_key(key))).into()),
-
-        winit::Event::Touch(winit::Touch { phase, location: (x, y), id }) => {
+        winit::WindowEvent::Touch(winit::Touch { phase, location: (x, y), id, .. }) => {
             let phase = match phase {
                 winit::TouchPhase::Started => input::touch::Phase::Start,
                 winit::TouchPhase::Moved => input::touch::Phase::Move,
@@ -116,33 +122,37 @@ pub fn convert<W>(e: winit::Event, window: &W) -> Option<Input>
             Some(Input::Touch(touch).into())
         }
 
-        winit::Event::MouseMoved(x, y) => {
+        winit::WindowEvent::MouseMoved { position: (x, y), .. } => {
             let x = tx(x as Scalar);
             let y = ty(y as Scalar);
             let motion = input::Motion::MouseCursor { x: x, y: y };
             Some(Input::Motion(motion).into())
         },
 
-        winit::Event::MouseWheel(winit::MouseScrollDelta::PixelDelta(x, y), _) => {
-            let x = x as Scalar / dpi_factor;
-            let y = -y as Scalar / dpi_factor;
-            let motion = input::Motion::Scroll { x: x, y: y };
-            Some(Input::Motion(motion).into())
+        winit::WindowEvent::MouseWheel { delta, .. } => match delta {
+
+            winit::MouseScrollDelta::PixelDelta(x, y) => {
+                let x = x as Scalar / dpi_factor;
+                let y = -y as Scalar / dpi_factor;
+                let motion = input::Motion::Scroll { x: x, y: y };
+                Some(Input::Motion(motion).into())
+            },
+
+            winit::MouseScrollDelta::LineDelta(x, y) => {
+                // This should be configurable (we should provide a LineDelta event to allow for this).
+                const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
+                let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
+                let y = ARBITRARY_POINTS_PER_LINE_FACTOR * -y as Scalar;
+                Some(Input::Motion(input::Motion::Scroll { x: x, y: y }).into())
+            },
         },
 
-        winit::Event::MouseWheel(winit::MouseScrollDelta::LineDelta(x, y), _) => {
-            // This should be configurable (we should provide a LineDelta event to allow for this).
-            const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
-            let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
-            let y = ARBITRARY_POINTS_PER_LINE_FACTOR * -y as Scalar;
-            Some(Input::Motion(input::Motion::Scroll { x: x, y: y }).into())
+        winit::WindowEvent::MouseInput { state, button, .. } => match state {
+            winit::ElementState::Pressed =>
+                Some(Input::Press(input::Button::Mouse(map_mouse(button))).into()),
+            winit::ElementState::Released =>
+                Some(Input::Release(input::Button::Mouse(map_mouse(button))).into()),
         },
-
-        winit::Event::MouseInput(winit::ElementState::Pressed, button) =>
-            Some(Input::Press(input::Button::Mouse(map_mouse(button))).into()),
-
-        winit::Event::MouseInput(winit::ElementState::Released, button) =>
-            Some(Input::Release(input::Button::Mouse(map_mouse(button))).into()),
 
         _ => None,
     }

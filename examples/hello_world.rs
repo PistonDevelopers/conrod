@@ -15,7 +15,7 @@ fn main() {
 mod feature {
     use conrod::{self, widget, Colorable, Positionable, Widget};
     use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::backend::glium::glium::Surface;
     use std;
 
     pub fn main() {
@@ -23,13 +23,14 @@ mod feature {
         const HEIGHT: u32 = 200;
 
         // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
-            .with_vsync()
-            .with_dimensions(WIDTH, HEIGHT)
+        let mut events_loop = glium::glutin::EventsLoop::new();
+        let window = glium::glutin::WindowBuilder::new()
             .with_title("Hello Conrod!")
-            .with_multisampling(4)
-            .build_glium()
-            .unwrap();
+            .with_dimensions(WIDTH, HEIGHT);
+        let context = glium::glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_multisampling(8);
+        let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -64,11 +65,15 @@ mod feature {
             }
 
             // Collect all pending events.
-            let mut events: Vec<_> = display.poll_events().collect();
+            let mut events = Vec::new();
+            events_loop.poll_events(|event| events.push(event));
 
             // If there are no events and the `Ui` does not need updating, wait for the next event.
             if events.is_empty() && !ui_needs_update {
-                events.extend(display.wait_events().next());
+                events_loop.run_forever(|event| {
+                    events.push(event);
+                    glium::glutin::ControlFlow::Break
+                });
             }
 
             // Reset the needs_update flag and time this update.
@@ -79,17 +84,25 @@ mod feature {
             for event in events {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                     ui.handle_event(event);
                     ui_needs_update = true;
                 }
 
                 match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
+                    glium::glutin::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::KeyboardInput {
+                            input: glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                            ..
+                        } => break 'main,
+                        _ => (),
+                    },
+                    _ => (),
                 }
             }
 
