@@ -6,7 +6,7 @@
 #![allow(unused_variables)]
 
 #[cfg(feature="winit")] #[macro_use] extern crate conrod;
-#[cfg(feature="winit")] extern crate glutin;
+#[cfg(feature="glutin_winit")] extern crate glutin;
 #[macro_use] extern crate gfx;
 extern crate gfx_core;
 
@@ -32,6 +32,8 @@ mod feature {
     use gfx::traits::FactoryExt;
     use conrod::render;
     use conrod::text::rt;
+    use glutin::GlContext;
+
 
     const FRAGMENT_SHADER: &'static [u8] = b"
         #version 140
@@ -177,14 +179,16 @@ mod feature {
     }
 
     pub fn main() {
+        let mut events_loop = glutin::EventsLoop::new();
+        let context = glutin::ContextBuilder::new();
         // Builder for window
         let builder = glutin::WindowBuilder::new()
             .with_title("Conrod with GFX and Glutin")
             .with_dimensions(WIN_W, WIN_H);
 
         // Initialize gfx things
-        let (window, mut device, mut factory, main_color, _) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder);
+        let (window, mut device, mut factory, main_color, mut main_depth) =
+            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop);
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
 
@@ -246,38 +250,86 @@ mod feature {
         // Demonstration app state that we'll control with our conrod GUI.
         let mut app = support::DemoApp::new(rust_logo);
 
-        // Event loop
-        let mut events = window.poll_events();
+        let mut running = true;
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let (_, mut slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
+        encoder.clear(&data.out, CLEAR_COLOR);
+        encoder.flush(&mut device);
+        window.swap_buffers().unwrap();
 
-        'main: loop {
-            // If the window is closed, this will be None for one tick, so to avoid panicking with
-            // unwrap, instead break the loop
+        while running {
             let (win_w, win_h) = match window.get_inner_size() {
                 Some(s) => s,
-                None => break 'main,
+                None => break,
             };
 
             let dpi_factor = window.hidpi_factor();
+            encoder.clear(&data.out, CLEAR_COLOR);
+
+            events_loop.poll_events(|event| {
+                match event {
+                    glutin::Event::WindowEvent { window_id: _, event } => {
+                        if let Some(event) = conrod::backend::winit::convert_window_event(event.clone(), &window) {
+                            ui.handle_event(event);
+                        }
+
+                        match event {
+                            glutin::WindowEvent::KeyboardInput {
+                                input: glutin::KeyboardInput { scancode: _, state: _, virtual_keycode: Some(glutin::VirtualKeyCode::Escape), modifiers: _ },
+                                ..
+                            } |
+                            glutin::WindowEvent::Closed => running = false,
+                            glutin::WindowEvent::Resized(_width, _height) => {
+                                gfx_window_glutin::update_views(&window, &mut data.out, &mut main_depth);
+                                ui.needs_redraw();
+                            }
+                            _ => {}
+                        }
+                    },
+                    _ => { }
+                }
+            });
 
             if let Some(mut primitives) = ui.draw_if_changed() {
+                vertices.clear();
                 let (screen_width, screen_height) = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
-                let mut vertices = Vec::new();
 
-                // Create vertices
+                let origin = rt::point(0.0, 0.0);
+                let to_gl_rect = |screen_rect: rt::Rect<i32>| rt::Rect {
+                    min: origin
+                        + (rt::vector(screen_rect.min.x as f32 / screen_width - 0.5,
+                                      1.0 - screen_rect.min.y as f32 / screen_height - 0.5)) * 2.0,
+                    max: origin
+                        + (rt::vector(screen_rect.max.x as f32 / screen_width - 0.5,
+                                      1.0 - screen_rect.max.y as f32 / screen_height - 0.5)) * 2.0,
+                };
+
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
-                        render::PrimitiveKind::Rectangle { color } => {
+                        render::PrimitiveKind::Rectangle { color } => { 
+                            let (l, r, b, t) = rect.l_r_b_t();
+                            let l = l * 2. / screen_width as f64; 
+                            let r = r * 2. / screen_width as f64;
+                            let b = b * 2. / screen_height as f64; 
+                            let t = t * 2. / screen_height as f64;
+                            let lrbt = [l as f32, r as f32, b as f32, t as f32];
+
+                            let color = color.to_fsa();
+                            let v = |p: [f64; 2]| -> Vertex {
+                                Vertex::new([p[0] as f32, p[1] as f32], [-1.0, -1.0], color)
+                            };
+                            vertices.extend_from_slice(&[v([l, b]), v([l, t]), v([r, b]), 
+                                                       v([l, t]), v([r, t]), v([r, b])][..]);
+
                         },
-                        render::PrimitiveKind::Polygon { color, points } => {
+                        render::PrimitiveKind::Polygon { color, points } => { 
                         },
-                        render::PrimitiveKind::Lines { color, cap, thickness, points } => {
+                        render::PrimitiveKind::Lines { color, cap, thickness, points } => { 
                         },
-                        render::PrimitiveKind::Image { image_id, color, source_rect } => {
+                        render::PrimitiveKind::Image { image_id, color, source_rect } => { 
                         },
                         render::PrimitiveKind::Text { color, text, font_id } => {
                             let positioned_glyphs = text.positioned_glyphs(dpi_factor);
-
-                            // Queue the glyphs to be cached
                             for glyph in positioned_glyphs {
                                 glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                             }
@@ -285,35 +337,18 @@ mod feature {
                             glyph_cache.cache_queued(|rect, data| {
                                 let offset = [rect.min.x as u16, rect.min.y as u16];
                                 let size = [rect.width() as u16, rect.height() as u16];
-
-                                let new_data = data.iter().map(|x| [0, 0, 0, *x]).collect::<Vec<_>>();
-
+                                let new_data = data.iter().map(|x| [255, 255, 255, *x]).collect::<Vec<_>>();
                                 update_texture(&mut encoder, &cache_tex, offset, size, &new_data);
                             }).unwrap();
-
+                            
                             let color = color.to_fsa();
                             let cache_id = font_id.index();
-                            let origin = rt::point(0.0, 0.0);
-
-                            // A closure to convert RustType rects to GL rects
-                            let to_gl_rect = |screen_rect: rt::Rect<i32>| rt::Rect {
-                                min: origin
-                                    + (rt::vector(screen_rect.min.x as f32 / screen_width - 0.5,
-                                                  1.0 - screen_rect.min.y as f32 / screen_height - 0.5)) * 2.0,
-                                max: origin
-                                    + (rt::vector(screen_rect.max.x as f32 / screen_width - 0.5,
-                                                  1.0 - screen_rect.max.y as f32 / screen_height - 0.5)) * 2.0,
-                            };
-
-                            // Create new vertices
                             let extension = positioned_glyphs.into_iter()
                                 .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
                                 .flat_map(|(uv_rect, screen_rect)| {
                                     use std::iter::once;
-
                                     let gl_rect = to_gl_rect(screen_rect);
                                     let v = |pos, uv| once(Vertex::new(pos, uv, color));
-
                                     v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y])
                                         .chain(v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]))
                                         .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
@@ -321,46 +356,30 @@ mod feature {
                                         .chain(v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]))
                                         .chain(v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]))
                                 });
-
                             vertices.extend(extension);
                         },
                         render::PrimitiveKind::Other(_) => {},
                     }
                 }
 
-                // Clear the window
-                encoder.clear(&main_color, CLEAR_COLOR);
-
-                // Draw the vertices
+                let offset = [0, 0];
+                let size = [1, 1];
+                let new_data = [[255u8; 4]];
+                update_texture(&mut encoder, &cache_tex, offset, size, &new_data);
                 data.color.0 = cache_tex_view.clone();
-                let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
+
+                let (vbuf, temp_slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
+                slice = temp_slice;
                 data.vbuf = vbuf;
-                encoder.draw(&slice, &pso, &data);
-
-                // Display the results
-                encoder.flush(&mut device);
-                window.swap_buffers().unwrap();
-                device.cleanup();
             }
 
-            if let Some(event) = events.next() {
-                let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
-                let dpi_factor = dpi_factor as conrod::Scalar;
+            if !running { break; }
 
-                // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.as_winit_window()) {
-                    ui.handle_event(event);
-                }
+            encoder.draw(&slice, &pso, &data);
 
-                // Close window if the escape key or the exit button is pressed
-                match event {
-                    glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                    glutin::Event::Closed =>
-                        break 'main,
-
-                    _ => {},
-                }
-            }
+            encoder.flush(&mut device);
+            window.swap_buffers().unwrap();
+            device.cleanup();
 
             // Update widgets if any event has happened
             if ui.global_input().events().next().is_some() {
