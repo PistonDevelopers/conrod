@@ -10,6 +10,7 @@
 
 
 use {Color, FontSize, Point, Rect, Scalar};
+use color;
 use graph::{self, Graph};
 use image;
 use position::{Align, Dimensions};
@@ -34,6 +35,8 @@ pub struct Primitives<'a> {
     theme: &'a Theme,
     fonts: &'a text::font::Map,
     window_rect: Rect,
+    /// The triangle slice to use for the `Triangles` primitive.
+    triangles: Vec<Triangle>,
     /// The point slice to use for the `Lines` and `Polygon` primitives.
     points: Vec<Point>,
     /// The slice of rusttype `PositionedGlyph`s to re-use for the `Text` primitive.
@@ -48,6 +51,7 @@ pub struct Primitives<'a> {
 #[derive(Clone)]
 pub struct OwnedPrimitives {
     primitives: Vec<OwnedPrimitive>,
+    triangles: Vec<Triangle>,
     points: Vec<Point>,
     max_glyphs: usize,
     line_infos: Vec<text::line::Info>,
@@ -101,6 +105,14 @@ pub enum PrimitiveKind<'a> {
     Rectangle {
         /// The fill colour for the rectangle. 
         color: Color
+    },
+
+    /// A series of consecutive `Triangles`.
+    ///
+    /// This variant is produced by the general purpose `Triangles` primitive widget.
+    Triangles {
+        /// An ordered slice of triangles.
+        triangles: &'a [Triangle]
     },
 
     /// A filled `Polygon`.
@@ -167,6 +179,14 @@ pub enum PrimitiveKind<'a> {
 
 }
 
+/// A point with an associated color.
+///
+/// This is used within the `Triangles` type.
+pub type ColoredPoint = (Point, color::Rgba);
+
+/// A triangle is represented as three distinct coloured vertices.
+pub type Triangle = [ColoredPoint; 3];
+
 /// A type used for producing a `PositionedGlyph` iterator.
 ///
 /// We produce this type rather than the `&[PositionedGlyph]`s directly so that we can properly
@@ -197,6 +217,9 @@ struct OwnedPrimitive {
 enum OwnedPrimitiveKind {
     Rectangle {
         color: Color,
+    },
+    Triangles {
+        triangle_range: std::ops::Range<usize>,
     },
     Polygon {
         color: Color,
@@ -236,6 +259,7 @@ struct OwnedText {
 /// An iterator-like type for yielding `Primitive`s from an `OwnedPrimitives`.
 pub struct WalkOwnedPrimitives<'a> {
     primitives: std::slice::Iter<'a, OwnedPrimitive>,
+    triangles: &'a [Triangle],
     points: &'a [Point],
     line_infos: &'a [text::line::Info],
     texts_str: &'a str,
@@ -318,6 +342,7 @@ impl<'a> Primitives<'a> {
             // outlined `Rectangle`. This saves us from having to check the length of the buffer
             // before writing points for an `Oval` or `Rectangle`.
             points: vec![[0.0, 0.0]; NUM_POINTS],
+            triangles: Vec::new(),
             positioned_glyphs: Vec::new(),
         }
     }
@@ -327,6 +352,7 @@ impl<'a> Primitives<'a> {
         let Primitives {
             ref mut crop_stack,
             ref mut depth_order,
+            ref mut triangles,
             ref mut points,
             ref mut positioned_glyphs,
             graph,
@@ -339,6 +365,11 @@ impl<'a> Primitives<'a> {
             use widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
             use widget::primitive::shape::polygon::{State as PolygonState};
             use widget::primitive::shape::Style as ShapeStyle;
+
+            type TrianglesSolidColorState =
+                widget::triangles::State<Vec<widget::triangles::Triangle<Point>>>;
+            type TrianglesColorPerVertexState =
+                widget::triangles::State<Vec<widget::triangles::Triangle<(Point, color::Rgba)>>>;
 
             let (id, scizzor, container) = widget;
             let rect = container.rect;
@@ -377,6 +408,31 @@ impl<'a> Primitives<'a> {
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
                     }
+                }
+
+            } else if container.type_id == std::any::TypeId::of::<TrianglesSolidColorState>() {
+                type Style = widget::triangles::SolidColor;
+                if let Some(tris) = container.state_and_style::<TrianglesSolidColorState, Style>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *tris;
+                    let widget::triangles::SolidColor(color) = *style;
+                    triangles.clear();
+                    let extension = state.triangles.iter().map(|&triangle| {
+                        let (a, b, c) = triangle.into();
+                        [(a, color), (b, color), (c, color)]
+                    });
+                    triangles.extend(extension);
+                    let kind = PrimitiveKind::Triangles { triangles: triangles };
+                    return Some(new_primitive(id, kind, scizzor, rect));
+                }
+
+            } else if container.type_id == std::any::TypeId::of::<TrianglesColorPerVertexState>() {
+                type Style = widget::triangles::ColorPerVertex;
+                if let Some(tris) = container.state_and_style::<TrianglesColorPerVertexState, Style>() {
+                    let graph::UniqueWidgetState { ref state, .. } = *tris;
+                    triangles.clear();
+                    triangles.extend(state.triangles.iter().map(|&t| t.0));
+                    let kind = PrimitiveKind::Triangles { triangles: triangles };
+                    return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
             } else if container.type_id == state_type_id::<widget::Oval>() {
@@ -542,6 +598,7 @@ impl<'a> Primitives<'a> {
     /// This is useful for sending `Ui` rendering data across threads in an efficient manner.
     pub fn owned(mut self) -> OwnedPrimitives {
         let mut primitives = Vec::with_capacity(self.depth_order.len());
+        let mut primitive_triangles = Vec::new();
         let mut primitive_points = Vec::new();
         let mut primitive_line_infos = Vec::new();
         let mut texts_string = String::new();
@@ -559,6 +616,16 @@ impl<'a> Primitives<'a> {
 
                 PrimitiveKind::Rectangle { color } => {
                     let kind = OwnedPrimitiveKind::Rectangle { color: color };
+                    primitives.push(new(kind));
+                },
+
+                PrimitiveKind::Triangles { triangles } => {
+                    let start = primitive_triangles.len();
+                    primitive_triangles.extend(triangles.iter().cloned());
+                    let end = primitive_triangles.len();
+                    let kind = OwnedPrimitiveKind::Triangles {
+                        triangle_range: start..end,
+                    };
                     primitives.push(new(kind));
                 },
 
@@ -651,6 +718,7 @@ impl<'a> Primitives<'a> {
 
         OwnedPrimitives {
             primitives: primitives,
+            triangles: primitive_triangles,
             points: primitive_points,
             max_glyphs: max_glyphs,
             line_infos: primitive_line_infos,
@@ -667,6 +735,7 @@ impl OwnedPrimitives {
     pub fn walk(&self) -> WalkOwnedPrimitives {
         let OwnedPrimitives {
             ref primitives,
+            ref triangles,
             ref points,
             ref line_infos,
             ref texts_string,
@@ -674,6 +743,7 @@ impl OwnedPrimitives {
         } = *self;
         WalkOwnedPrimitives {
             primitives: primitives.iter(),
+            triangles: triangles,
             points: points,
             line_infos: line_infos,
             texts_str: texts_string,
@@ -690,6 +760,7 @@ impl<'a> WalkOwnedPrimitives<'a> {
         let WalkOwnedPrimitives {
             ref mut primitives,
             ref mut positioned_glyphs,
+            triangles,
             points,
             line_infos,
             texts_str,
@@ -707,6 +778,13 @@ impl<'a> WalkOwnedPrimitives<'a> {
 
                 OwnedPrimitiveKind::Rectangle { color } => {
                     let kind = PrimitiveKind::Rectangle { color: color };
+                    new(kind)
+                },
+
+                OwnedPrimitiveKind::Triangles { ref triangle_range } => {
+                    let kind = PrimitiveKind::Triangles {
+                        triangles: &triangles[triangle_range.clone()],
+                    };
                     new(kind)
                 },
 

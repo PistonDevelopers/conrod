@@ -21,6 +21,7 @@ pub use self::primitive::shape::circle::{self, Circle};
 pub use self::primitive::shape::oval::{self, Oval};
 pub use self::primitive::shape::polygon::{self, Polygon};
 pub use self::primitive::shape::rectangle::{self, Rectangle};
+pub use self::primitive::shape::triangles::{self, Triangles};
 pub use self::primitive::text::{self, Text};
 
 pub use self::bordered_rectangle::BorderedRectangle;

@@ -103,6 +103,19 @@ pub fn primitive<'a, Img, G, T, C, F>(
             rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
         },
 
+        // FIXME: Piston does not currently allow for associating a unique colour per vertex.  For
+        // now, we just use the first colour of each triangle. Also, this could be greatly
+        // optimised using one of the `tri_list` methods, however currently they expect a single
+        // color.
+        render::PrimitiveKind::Triangles { triangles } => {
+            for triangle in triangles {
+                let color = triangle[0].1.into();
+                let polygon = piston_graphics::Polygon::new(color);
+                let points = [triangle[0].0, triangle[1].0, triangle[2].0];
+                polygon.draw(&points, &context.draw_state, context.transform, graphics);
+            }
+        },
+
         render::PrimitiveKind::Polygon { color, points } => {
             let color = color.to_fsa();
             let polygon = piston_graphics::Polygon::new(color);

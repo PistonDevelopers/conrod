@@ -1,16 +1,6 @@
 //! A simple, non-interactive widget for drawing a series of conjoined lines.
 
-use {
-    Color,
-    Colorable,
-    Point,
-    Positionable,
-    Range,
-    Rect,
-    Scalar,
-    Sizeable,
-    Widget,
-};
+use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Widget};
 use utils::{vec2_add, vec2_sub};
 use widget;
 
@@ -40,22 +30,7 @@ pub struct State {
 }
 
 
-/// Find the bounding rect for the given series of points.
-fn bounding_box_for_points<I>(mut points: I) -> Rect
-    where I: Iterator<Item=Point>,
-{
-    points.next().map(|first| {
-        let start_rect = Rect {
-            x: Range { start: first[0], end: first[0] },
-            y: Range { start: first[1], end: first[1] },
-        };
-        points.fold(start_rect, Rect::stretch_to_point)
-    }).unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
-}
-
-
 impl<I> PointPath<I> {
-
     /// The same as [**PointPath::new**](./struct.PointPath#method.new) but with th given style.
     pub fn styled(points: I, style: Style) -> Self {
         PointPath {
@@ -96,7 +71,7 @@ impl<I> PointPath<I> {
         where I: IntoIterator<Item=Point> + Clone,
     {
         let points_clone = points.clone().into_iter();
-        let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
+        let (xy, dim) = super::bounding_box_for_points(points_clone).xy_dim();
         PointPath::styled(points, style).wh(dim).xy(xy)
     }
 
@@ -120,7 +95,7 @@ impl<I> PointPath<I> {
         where I: IntoIterator<Item=Point> + Clone,
     {
         let points_clone = points.clone().into_iter();
-        let (xy, dim) = bounding_box_for_points(points_clone).xy_dim();
+        let (xy, dim) = super::bounding_box_for_points(points_clone).xy_dim();
         let mut point_path = PointPath::styled(points, style).wh(dim);
         point_path.maybe_shift_to_centre_from = Some(xy);
         point_path
@@ -152,7 +127,6 @@ impl<I> PointPath<I> {
         self.style.set_pattern(Pattern::Dotted);
         self
     }
-
 }
 
 
