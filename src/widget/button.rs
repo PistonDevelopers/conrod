@@ -72,8 +72,17 @@ widget_ids! {
 }
 
 /// The `Button` simply displays a flat color.
-#[derive(Copy, Clone)]
-pub struct Flat;
+#[derive(Copy, Clone, Default, PartialEq, Debug)]
+pub struct Flat {
+    /// Allows specifying a color to use when the mouse hovers over the button.
+    ///
+    /// By default, this is `color.highlighted()` where `color` is the button's regular color.
+    pub hover_color: Option<Color>,
+    /// Allows specifying a color to use when the mouse presses the button.
+    ///
+    /// By default, this is `color.clicked()` where `color` is the button's regular color.
+    pub press_color: Option<Color>,
+}
 
 /// The `Button` displays an `Image` on top.
 #[derive(Copy, Clone)]
@@ -188,12 +197,28 @@ impl<'a> Button<'a, Flat> {
 
     /// Begin building a flat-colored `Button` widget.
     pub fn new() -> Self {
-        Self::new_internal(Flat)
+        Self::new_internal(Flat::default())
     }
 
     /// Override the default button style
-    pub fn with_style(mut self, s: Style) -> Self{
+    pub fn with_style(mut self, s: Style) -> Self {
         self.style = s;
+        self
+    }
+
+    /// Specify a color to use when the mouse hovers over the button.
+    ///
+    /// By default, this is `color.highlighted()` where `color` is the button's regular color.
+    pub fn hover_color(mut self, color: Color) -> Self {
+        self.show.hover_color = Some(color);
+        self
+    }
+
+    /// Specify a color to use when the mouse presses the button.
+    ///
+    /// By default, this is `color.clicked()` where `color` is the button's regular color.
+    pub fn press_color(mut self, color: Color) -> Self {
+        self.show.press_color = Some(color);
         self
     }
 }
@@ -272,10 +297,16 @@ impl<'a> Widget for Button<'a, Flat> {
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let Button { maybe_label, .. } = self;
+        let Button { show, maybe_label, .. } = self;
 
         let (interaction, times_triggered) = interaction_and_times_triggered(id, ui);
-        let color = color_from_interaction(style.color(&ui.theme), interaction);
+        let color = match interaction {
+            Interaction::Idle => style.color(&ui.theme),
+            Interaction::Hover => show.hover_color
+                .unwrap_or_else(|| style.color(&ui.theme).highlighted()),
+            Interaction::Press => show.press_color
+                .unwrap_or_else(|| style.color(&ui.theme).clicked()),
+        };
 
         bordered_rectangle(id, state.rectangle, rect, color, style, ui);
 
@@ -349,14 +380,6 @@ impl<'a> Widget for Button<'a, Image> {
 
 }
 
-
-fn color_from_interaction(color: Color, interaction: Interaction) -> Color {
-    match interaction {
-        Interaction::Idle => color,
-        Interaction::Hover => color.highlighted(),
-        Interaction::Press => color.clicked(),
-    }
-}
 
 fn interaction_and_times_triggered(button_id: widget::Id, ui: &UiCell) -> (Interaction, u16) {
     let input = ui.widget_input(button_id);
