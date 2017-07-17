@@ -124,31 +124,6 @@ pub fn primitive<'a, Img, G, T, C, F>(
             }
         },
 
-        render::PrimitiveKind::Polygon { color, points } => {
-            let color = color.to_fsa();
-            let polygon = piston_graphics::Polygon::new(color);
-            polygon.draw(points, &context.draw_state, context.transform, graphics);
-        },
-
-        render::PrimitiveKind::Lines { color, cap, thickness, points } => {
-            use widget::primitive::line::Cap;
-            let color = color.to_fsa();
-
-            let mut points = points.iter();
-            if let Some(first) = points.next() {
-                let line = match cap {
-                    Cap::Flat => piston_graphics::Line::new(color, thickness / 2.0),
-                    Cap::Round => piston_graphics::Line::new_round(color, thickness / 2.0),
-                };
-                let mut start = first;
-                for end in points {
-                    let coords = [start[0], start[1], end[0], end[1]];
-                    line.draw(coords, &context.draw_state, context.transform, graphics);
-                    start = end;
-                }
-            }
-        },
-
         render::PrimitiveKind::Text { color, text, font_id } => {
 
             // Retrieve the "dots per inch" factor by dividing the window width by the view.
