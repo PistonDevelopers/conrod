@@ -540,29 +540,43 @@ impl Renderer {
                     push_v(r, t);
                 },
 
-                render::PrimitiveKind::Triangles { triangles } => {
-
-                    // We only want to do the color conversion if the color has changed.
-                    // Thus we always keep track of the last emitted color to compare.
-                    let mut rgba = if !triangles.is_empty() {
-                        triangles[0][0].1
-                    } else {
+                render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                    if triangles.is_empty() {
                         continue;
-                    };
-                    let mut color = gamma_srgb_to_linear(rgba.into());
+                    }
 
                     switch_to_plain_state!();
 
-                    let mut v = |(p, c): ([Scalar; 2], color::Rgba)| {
-                        // Update the color if it has changed.
-                        if rgba != c {
-                            rgba = c;
-                            color = gamma_srgb_to_linear(rgba.into());
-                        }
+                    let color = gamma_srgb_to_linear(color.into());
+
+                    let v = |p: [Scalar; 2]| {
                         Vertex {
                             position: [vx(p[0]), vy(p[1])],
                             tex_coords: [0.0, 0.0],
                             color: color,
+                            mode: MODE_GEOMETRY,
+                        }
+                    };
+
+                    for triangle in triangles {
+                        vertices.push(v(triangle[0]));
+                        vertices.push(v(triangle[1]));
+                        vertices.push(v(triangle[2]));
+                    }
+                },
+
+                render::PrimitiveKind::TrianglesMultiColor { triangles } => {
+                    if triangles.is_empty() {
+                        continue;
+                    }
+
+                    switch_to_plain_state!();
+
+                    let v = |(p, c): ([Scalar; 2], color::Rgba)| {
+                        Vertex {
+                            position: [vx(p[0]), vy(p[1])],
+                            tex_coords: [0.0, 0.0],
+                            color: gamma_srgb_to_linear(c.into()),
                             mode: MODE_GEOMETRY,
                         }
                     };
