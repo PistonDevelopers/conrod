@@ -1,6 +1,6 @@
 //! A primitive widget that allows for drawing using a list of triangles.
 
-use {Rect, Point, Positionable, Sizeable, Widget};
+use {Rect, Point, Positionable, Scalar, Sizeable, Widget};
 use color;
 use std;
 use utils::{vec2_add, vec2_sub};
@@ -335,5 +335,119 @@ impl<S, I> Widget for Triangles<S, I>
             },
             None => update_triangles(state, triangles),
         }
+    }
+}
+
+
+
+/// An iterator that triangulates a polygon represented by a sequence of points.
+#[derive(Clone)]
+pub struct FromPolygon<I> {
+    first: Point,
+    prev: Point,
+    points: I,
+}
+
+/// An iterator that triangulates a series of lines represented by a sequence of points.
+#[derive(Clone)]
+pub struct FromLines<I> {
+    next: Option<Triangle<Point>>,
+    prev: Point,
+    points: I,
+    thickness: Scalar,
+    cap: widget::line::Cap,
+}
+
+/// Triangulate the polygon given as a list of `Point`s describing its sides.
+///
+/// Returns `None` if the given iterator yields less than two points.
+pub fn from_polygon<I>(points: I) -> Option<FromPolygon<I::IntoIter>>
+    where I: IntoIterator<Item=Point>,
+{
+    let mut points = points.into_iter();
+    let first = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
+    let prev = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
+    Some(FromPolygon {
+        first: first,
+        prev: prev,
+        points: points,
+    })
+}
+
+/// Triangulate a series of lines represented by a sequence of points.
+///
+/// Returns `None` if the given iterator yields less than one point.
+pub fn from_lines<I>(points: I, cap: widget::line::Cap, thickness: Scalar)
+    -> Option<FromLines<I::IntoIter>>
+    where I: IntoIterator<Item=Point>,
+{
+    let mut points = points.into_iter();
+    let first = match points.next() {
+        Some(point) => point,
+        None => return None,
+    };
+    Some(FromLines {
+        next: None,
+        prev: first,
+        points: points,
+        thickness: thickness,
+        cap: cap,
+    })
+}
+
+impl<I> Iterator for FromPolygon<I>
+    where I: Iterator<Item=Point>,
+{
+    type Item = Triangle<Point>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.points.next().map(|point| {
+            let t = Triangle([self.first, self.prev, point]);
+            self.prev = point;
+            t
+        })
+    }
+}
+
+impl<I> Iterator for FromLines<I>
+    where I: Iterator<Item=Point>,
+{
+    type Item = Triangle<Point>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(triangle) = self.next.take() {
+            return Some(triangle);
+        }
+
+        self.points.next().map(|point| {
+            let (a, b) = (self.prev, point);
+            self.prev = point;
+
+            let direction = [b[0] - a[0], b[1] - a[1]];
+            let mag = (direction[0] * direction[0] + direction[1] * direction[1]).sqrt();
+            let unit = [direction[0] / mag, direction[1] / mag];
+            let normal = [-unit[1], unit[0]];
+            let half_thickness = self.thickness / 2.0;
+
+            // A perpendicular line with length half the thickness.
+            let n = [normal[0] * half_thickness, normal[1] * half_thickness];
+
+            // The corners of the rectangle.
+            let r1 = [a[0] + n[0], a[1] + n[1]];
+            let r2 = [a[0] - n[0], a[1] - n[1]];
+            let r3 = [b[0] + n[0], b[1] + n[1]];
+            let r4 = [b[0] - n[0], b[1] - n[1]];
+
+            // The pair of triangles that make up the rectangle.
+            let t1 = Triangle([r1, r4, r2]);
+            let t2 = Triangle([r1, r4, r3]);
+
+            self.next = Some(t2);
+            t1
+        })
     }
 }
