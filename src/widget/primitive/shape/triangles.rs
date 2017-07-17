@@ -36,11 +36,11 @@ pub trait Style: widget::Style + Clone + Send {
 
 /// All triangles colored with a single `Color`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct SolidColor(pub color::Rgba);
+pub struct SingleColor(pub color::Rgba);
 
 /// Each triangle is colored per vertex.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ColorPerVertex;
+pub struct MultiColor;
 
 /// A single triangle described by three vertices.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -77,11 +77,11 @@ impl Vertex for ColoredPoint {
     }
 }
 
-impl Style for SolidColor {
+impl Style for SingleColor {
     type Vertex = Point;
 }
 
-impl Style for ColorPerVertex {
+impl Style for MultiColor {
     type Vertex = ColoredPoint;
 }
 
@@ -161,28 +161,28 @@ impl<S, I> Triangles<S, I> {
     }
 }
 
-impl<I> Triangles<SolidColor, I>
-    where I: IntoIterator<Item=Triangle<<SolidColor as Style>::Vertex>>,
+impl<I> Triangles<SingleColor, I>
+    where I: IntoIterator<Item=Triangle<<SingleColor as Style>::Vertex>>,
 {
     /// A list of triangles described by the given points.
     ///
     /// All triangles are colored with the given `Color`.
-    pub fn solid_color<C>(color: C, points: I) -> TrianglesUnpositioned<SolidColor, I>
+    pub fn single_color<C>(color: C, points: I) -> TrianglesUnpositioned<SingleColor, I>
         where C: Into<color::Rgba>,
     {
-        let style = SolidColor(color.into());
+        let style = SingleColor(color.into());
         TrianglesUnpositioned::new(Triangles::new(style, points))
     }
 }
 
-impl<I> Triangles<ColorPerVertex, I>
-    where I: IntoIterator<Item=Triangle<<ColorPerVertex as Style>::Vertex>>,
+impl<I> Triangles<MultiColor, I>
+    where I: IntoIterator<Item=Triangle<<MultiColor as Style>::Vertex>>,
 {
     /// A list of triangles described by the given points.
     ///
     /// Every vertex specifies its own unique color.
-    pub fn color_per_vertex(points: I) -> TrianglesUnpositioned<ColorPerVertex, I> {
-        TrianglesUnpositioned::new(Triangles::new(ColorPerVertex, points))
+    pub fn multi_color(points: I) -> TrianglesUnpositioned<MultiColor, I> {
+        TrianglesUnpositioned::new(Triangles::new(MultiColor, points))
     }
 }
 

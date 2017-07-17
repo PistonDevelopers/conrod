@@ -86,7 +86,7 @@ mod feature {
                     Triangle([([r, t], c1), ([r, b], c2), ([l, b], c3)]),
                 ];
 
-                widget::Triangles::color_per_vertex(triangles.iter().cloned())
+                widget::Triangles::multi_color(triangles.iter().cloned())
                     .with_bounding_rect(rect)
                     .set(ids.triangles, ui);
             }

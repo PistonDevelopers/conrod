@@ -366,9 +366,9 @@ impl<'a> Primitives<'a> {
             use widget::primitive::shape::polygon::{State as PolygonState};
             use widget::primitive::shape::Style as ShapeStyle;
 
-            type TrianglesSolidColorState =
+            type TrianglesSingleColorState =
                 widget::triangles::State<Vec<widget::triangles::Triangle<Point>>>;
-            type TrianglesColorPerVertexState =
+            type TrianglesMultiColorState =
                 widget::triangles::State<Vec<widget::triangles::Triangle<(Point, color::Rgba)>>>;
 
             let (id, scizzor, container) = widget;
@@ -410,11 +410,11 @@ impl<'a> Primitives<'a> {
                     }
                 }
 
-            } else if container.type_id == std::any::TypeId::of::<TrianglesSolidColorState>() {
-                type Style = widget::triangles::SolidColor;
-                if let Some(tris) = container.state_and_style::<TrianglesSolidColorState, Style>() {
+            } else if container.type_id == std::any::TypeId::of::<TrianglesSingleColorState>() {
+                type Style = widget::triangles::SingleColor;
+                if let Some(tris) = container.state_and_style::<TrianglesSingleColorState, Style>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *tris;
-                    let widget::triangles::SolidColor(color) = *style;
+                    let widget::triangles::SingleColor(color) = *style;
                     triangles.clear();
                     let extension = state.triangles.iter().map(|&triangle| {
                         let (a, b, c) = triangle.into();
@@ -425,9 +425,9 @@ impl<'a> Primitives<'a> {
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
-            } else if container.type_id == std::any::TypeId::of::<TrianglesColorPerVertexState>() {
-                type Style = widget::triangles::ColorPerVertex;
-                if let Some(tris) = container.state_and_style::<TrianglesColorPerVertexState, Style>() {
+            } else if container.type_id == std::any::TypeId::of::<TrianglesMultiColorState>() {
+                type Style = widget::triangles::MultiColor;
+                if let Some(tris) = container.state_and_style::<TrianglesMultiColorState, Style>() {
                     let graph::UniqueWidgetState { ref state, .. } = *tris;
                     triangles.clear();
                     triangles.extend(state.triangles.iter().map(|&t| t.0));
