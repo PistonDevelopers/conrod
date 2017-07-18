@@ -96,24 +96,27 @@ impl Widget for BorderedRectangle {
         if border > 0.0 {
             // Pad the edges so that the line does not exceed the bounding rect.
             let (l, r, b, t) = rect.l_r_b_t();
-            let half_border = border * 0.5;
-            let l_pad = l + half_border;
-            let r_pad = r - half_border;
-            let b_pad = b + half_border;
-            let t_pad = t - half_border;
+            let l_pad = l + border;
+            let r_pad = r - border;
+            let b_pad = b + border;
+            let t_pad = t - border;
 
-            let points = [
-                [l, t_pad],
-                [r_pad, t_pad],
-                [r_pad, b_pad],
-                [l_pad, b_pad],
-                [l_pad, t_pad],
-            ];
+            // The four quads that make up the border.
+            let r1 = [[l, t], [r_pad, t], [r_pad, t_pad], [l, t_pad]];
+            let r2 = [[r_pad, t], [r, t], [r, b_pad], [r_pad, b_pad]];
+            let r3 = [[l_pad, b_pad], [r, b_pad], [r, b], [l_pad, b]];
+            let r4 = [[l, t_pad], [l_pad, t_pad], [l_pad, b], [l, b]];
+
+            let (r1a, r1b) = widget::triangles::from_quad(r1);
+            let (r2a, r2b) = widget::triangles::from_quad(r2);
+            let (r3a, r3b) = widget::triangles::from_quad(r3);
+            let (r4a, r4b) = widget::triangles::from_quad(r4);
+
+            let triangles = [r1a, r1b, r2a, r2b, r3a, r3b, r4a, r4b];
 
             let border_color = style.border_color(&ui.theme);
-            widget::PointPath::abs(points.iter().cloned())
-                .thickness(border)
-                .color(border_color)
+            widget::Triangles::single_color(border_color, triangles.iter().cloned())
+                .with_bounding_rect(rect)
                 .parent(id)
                 .graphics_for(id)
                 .set(state.ids.border, ui);
