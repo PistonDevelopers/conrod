@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.53.0"
+version = "0.54.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -19,7 +19,7 @@ name = "conrod"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_derive = { path = "conrod_derive" }
+conrod_derive = "0.1"
 daggy = "0.5.0"
 fnv = "1.0"
 num = "0.1.30"

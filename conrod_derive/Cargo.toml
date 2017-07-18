@@ -2,6 +2,11 @@
 name = "conrod_derive"
 version = "0.1.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+description = "A crate providing procedural macros for the conrod library"
+license = "MIT OR Apache-2.0"
+keywords = ["conrod", "gui", "derive", "procedural", "macro"]
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
 
 [lib]
 proc-macro = true
