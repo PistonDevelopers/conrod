@@ -359,7 +359,7 @@ impl<'a> Primitives<'a> {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
                             let points = array.iter().cloned();
-                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -404,7 +404,7 @@ impl<'a> Primitives<'a> {
                     match *style {
 
                         ShapeStyle::Fill(_) => {
-                            let triangles = match widget::triangles::from_polygon(points) {
+                            let triangles = match widget::polygon::triangles(points) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -421,7 +421,7 @@ impl<'a> Primitives<'a> {
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -448,7 +448,7 @@ impl<'a> Primitives<'a> {
                     match *style {
 
                         ShapeStyle::Fill(_) => {
-                            let triangles = match widget::triangles::from_polygon(points) {
+                            let triangles = match widget::polygon::triangles(points) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -465,7 +465,7 @@ impl<'a> Primitives<'a> {
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -489,7 +489,7 @@ impl<'a> Primitives<'a> {
                     let cap = style.get_cap(theme);
                     let thickness = style.get_thickness(theme);
                     let points = std::iter::once(state.start).chain(std::iter::once(state.end));
-                    let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                    let triangles = match widget::point_path::triangles(points, cap, thickness) {
                         None => &[],
                         Some(iter) => {
                             triangles.extend(iter);
@@ -511,7 +511,7 @@ impl<'a> Primitives<'a> {
                     let cap = style.get_cap(theme);
                     let thickness = style.get_thickness(theme);
                     let points = state.points.iter().map(|&t| t);
-                    let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                    let triangles = match widget::point_path::triangles(points, cap, thickness) {
                         None => &[],
                         Some(iter) => {
                             triangles.extend(iter);

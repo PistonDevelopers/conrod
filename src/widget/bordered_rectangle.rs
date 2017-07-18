@@ -5,12 +5,15 @@ use {
     Colorable,
     Dimensions,
     Borderable,
+    Point,
     Positionable,
+    Rect,
     Scalar,
     Sizeable,
     Widget,
 };
 use widget;
+use widget::triangles::Triangle;
 
 
 /// A filled rectangle widget that may or may not have some border.
@@ -93,27 +96,7 @@ impl Widget for BorderedRectangle {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
 
         let border = style.border(&ui.theme);
-        if border > 0.0 {
-            // Pad the edges so that the line does not exceed the bounding rect.
-            let (l, r, b, t) = rect.l_r_b_t();
-            let l_pad = l + border;
-            let r_pad = r - border;
-            let b_pad = b + border;
-            let t_pad = t - border;
-
-            // The four quads that make up the border.
-            let r1 = [[l, t], [r_pad, t], [r_pad, t_pad], [l, t_pad]];
-            let r2 = [[r_pad, t], [r, t], [r, b_pad], [r_pad, b_pad]];
-            let r3 = [[l_pad, b_pad], [r, b_pad], [r, b], [l_pad, b]];
-            let r4 = [[l, t_pad], [l_pad, t_pad], [l_pad, b], [l, b]];
-
-            let (r1a, r1b) = widget::triangles::from_quad(r1);
-            let (r2a, r2b) = widget::triangles::from_quad(r2);
-            let (r3a, r3b) = widget::triangles::from_quad(r3);
-            let (r4a, r4b) = widget::triangles::from_quad(r4);
-
-            let triangles = [r1a, r1b, r2a, r2b, r3a, r3b, r4a, r4b];
-
+        if let Some(triangles) = border_triangles(rect, border) {
             let border_color = style.border_color(&ui.theme);
             widget::Triangles::single_color(border_color, triangles.iter().cloned())
                 .with_bounding_rect(rect)
@@ -144,4 +127,36 @@ impl Borderable for BorderedRectangle {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
+}
+
+
+/// The eight triangles that describe a rectangular border.
+///
+/// `rect` specifies the outer rectangle and `border` specifies the thickness of the border.
+///
+/// Returns `None` if `border` is less than or equal to `0`.
+pub fn border_triangles(rect: Rect, border: Scalar) -> Option<[Triangle<Point>; 8]> {
+    if border <= 0.0 {
+        return None;
+    }
+
+    // Pad the edges so that the line does not exceed the bounding rect.
+    let (l, r, b, t) = rect.l_r_b_t();
+    let l_pad = l + border;
+    let r_pad = r - border;
+    let b_pad = b + border;
+    let t_pad = t - border;
+
+    // The four quads that make up the border.
+    let r1 = [[l, t], [r_pad, t], [r_pad, t_pad], [l, t_pad]];
+    let r2 = [[r_pad, t], [r, t], [r, b_pad], [r_pad, b_pad]];
+    let r3 = [[l_pad, b_pad], [r, b_pad], [r, b], [l_pad, b]];
+    let r4 = [[l, t_pad], [l_pad, t_pad], [l_pad, b], [l, b]];
+
+    let (r1a, r1b) = widget::triangles::from_quad(r1);
+    let (r2a, r2b) = widget::triangles::from_quad(r2);
+    let (r3a, r3b) = widget::triangles::from_quad(r3);
+    let (r4a, r4b) = widget::triangles::from_quad(r4);
+
+    Some([r1a, r1b, r2a, r2b, r3a, r3b, r4a, r4b])
 }

@@ -3,6 +3,7 @@
 use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Widget};
 use utils::{vec2_add, vec2_sub};
 use widget;
+use widget::triangles::Triangle;
 
 pub use super::line::Pattern;
 pub use super::line::Style;
@@ -27,6 +28,16 @@ pub struct PointPath<I> {
 pub struct State {
     /// An owned version of the list of points.
     pub points: Vec<Point>,
+}
+
+/// An iterator that triangulates a point path.
+#[derive(Clone)]
+pub struct Triangles<I> {
+    next: Option<Triangle<Point>>,
+    prev: Point,
+    points: I,
+    thickness: Scalar,
+    cap: widget::line::Cap,
 }
 
 
@@ -187,5 +198,65 @@ impl<I> Colorable for PointPath<I> {
     fn color(mut self, color: Color) -> Self {
         self.style.set_color(color);
         self
+    }
+}
+
+
+/// Triangulate a point path.
+///
+/// Returns `None` if the given iterator yields less than one point.
+pub fn triangles<I>(points: I, cap: widget::line::Cap, thickness: Scalar)
+    -> Option<Triangles<I::IntoIter>>
+    where I: IntoIterator<Item=Point>,
+{
+    let mut points = points.into_iter();
+    let first = match points.next() {
+        Some(point) => point,
+        None => return None,
+    };
+    Some(Triangles {
+        next: None,
+        prev: first,
+        points: points,
+        thickness: thickness,
+        cap: cap,
+    })
+}
+
+impl<I> Iterator for Triangles<I>
+    where I: Iterator<Item=Point>,
+{
+    type Item = Triangle<Point>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(triangle) = self.next.take() {
+            return Some(triangle);
+        }
+
+        self.points.next().map(|point| {
+            let (a, b) = (self.prev, point);
+            self.prev = point;
+
+            let direction = [b[0] - a[0], b[1] - a[1]];
+            let mag = (direction[0] * direction[0] + direction[1] * direction[1]).sqrt();
+            let unit = [direction[0] / mag, direction[1] / mag];
+            let normal = [-unit[1], unit[0]];
+            let half_thickness = self.thickness / 2.0;
+
+            // A perpendicular line with length half the thickness.
+            let n = [normal[0] * half_thickness, normal[1] * half_thickness];
+
+            // The corners of the rectangle.
+            let r1 = [a[0] + n[0], a[1] + n[1]];
+            let r2 = [a[0] - n[0], a[1] - n[1]];
+            let r3 = [b[0] + n[0], b[1] + n[1]];
+            let r4 = [b[0] - n[0], b[1] - n[1]];
+
+            // The pair of triangles that make up the rectangle.
+            let t1 = Triangle([r1, r4, r2]);
+            let t2 = Triangle([r1, r4, r3]);
+
+            self.next = Some(t2);
+            t1
+        })
     }
 }

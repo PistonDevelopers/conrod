@@ -116,6 +116,13 @@ pub fn circumference(rect: Rect, resolution: usize) -> Circumference {
     }
 }
 
+/// An iterator yielding the triangles that describe the given oval.
+///
+/// Returns `None` if the `resolution` is less than `3`.
+pub fn triangles(rect: Rect, resolution: usize) -> Option<Triangles> {
+    widget::polygon::triangles(circumference(rect, resolution))
+}
+
 /// An iterator yielding the `Oval`'s edges as a circumference represented as a series of edges.
 #[derive(Clone)]
 #[allow(missing_copy_implementations)]
@@ -127,6 +134,9 @@ pub struct Circumference {
     half_w: Scalar,
     half_h: Scalar,
 }
+
+/// An iterator yielding the triangles that describe an oval.
+pub type Triangles = widget::polygon::Triangles<Circumference>;
 
 impl Iterator for Circumference {
     type Item = Point;
