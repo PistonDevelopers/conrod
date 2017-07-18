@@ -5,6 +5,7 @@ use num::{Float, NumCast, ToPrimitive};
 use position::{Padding, Range, Rect, Scalar};
 use text;
 use widget;
+use widget::triangles::Triangle;
 
 
 /// Linear value selection.
@@ -60,8 +61,7 @@ pub struct Style {
 
 widget_ids! {
     struct Ids {
-        border,
-        slider,
+        triangles,
         label,
     }
 }
@@ -176,37 +176,62 @@ impl<'a, T> Widget for Slider<'a, T>
                 })
                 .unwrap_or(color);
 
-        let border_color = interaction_color(ui, style.border_color(ui.theme()));
-        widget::Rectangle::fill(rect.dim())
-            .middle_of(id)
-            .graphics_for(id)
-            .color(border_color)
-            .set(state.ids.border, ui);
-
         // The **Rectangle** for the adjustable slider.
         let value_perc = map_range(new_value, min, max, 0.0, 1.0);
         let unskewed_perc = value_perc.powf(1.0 / skew as f64);
-        let slider_rect = if is_horizontal {
+        let (slider_rect, blank_rect) = if is_horizontal {
             let left = inner_rect.x.start;
-            let right = map_range(unskewed_perc, 0.0, 1.0, left, inner_rect.x.end);
-            let x = Range::new(left, right);
+            let slider = map_range(unskewed_perc, 0.0, 1.0, left, inner_rect.x.end);
+            let right = inner_rect.x.end;
             let y = inner_rect.y;
-            Rect { x: x, y: y }
+            let slider_rect = Rect { x: Range::new(left, slider), y: y };
+            let blank_rect = Rect { x: Range::new(slider, right), y: y };
+            (slider_rect, blank_rect)
         } else {
             let bottom = inner_rect.y.start;
-            let top = map_range(unskewed_perc, 0.0, 1.0, bottom, inner_rect.y.end);
+            let slider = map_range(unskewed_perc, 0.0, 1.0, bottom, inner_rect.y.end);
+            let top = inner_rect.y.end;
             let x = inner_rect.x;
-            let y = Range::new(bottom, top);
-            Rect { x: x, y: y }
+            let slider_rect = Rect { x: x, y: Range::new(bottom, slider) };
+            let blank_rect = Rect { x: x, y: Range::new(slider, top) };
+            (slider_rect, blank_rect)
         };
-        let color = interaction_color(ui, style.color(ui.theme()));
-        let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
-        widget::Rectangle::fill(slider_rect.dim())
-            .xy_relative_to(id, slider_xy_offset)
+
+        let border_triangles = widget::bordered_rectangle::border_triangles(rect, border);
+        let (a, b) = widget::rectangle::triangles(slider_rect);
+        let slider_triangles = [a, b];
+        let (a, b) = widget::rectangle::triangles(blank_rect);
+        let blank_triangles = [a, b];
+
+        let border_color = interaction_color(ui, style.border_color(ui.theme())).to_rgb();
+        let color = interaction_color(ui, style.color(ui.theme())).to_rgb();
+
+        // The border and blank triangles are the same color.
+        let border_colored_triangles = border_triangles
+            .as_ref()
+            .into_iter()
+            .flat_map(|tris| tris.iter().cloned())
+            .chain(blank_triangles.iter().cloned())
+            .map(|Triangle(ps)| Triangle([
+                 (ps[0], border_color),
+                 (ps[1], border_color),
+                 (ps[2], border_color)
+            ]));
+
+        // Color the slider triangles.
+        let slider_colored_triangles = slider_triangles
+            .iter()
+            .cloned()
+            .map(|Triangle(ps)| Triangle([(ps[0], color), (ps[1], color), (ps[2], color)]));
+
+        // Chain all triangles together into a single iterator.
+        let triangles = border_colored_triangles.chain(slider_colored_triangles);
+
+        widget::Triangles::multi_color(triangles)
+            .with_bounding_rect(rect)
             .graphics_for(id)
             .parent(id)
-            .color(color)
-            .set(state.ids.slider, ui);
+            .set(state.ids.triangles, ui);
 
         // The **Text** for the slider's label (if it has one).
         if let Some(label) = maybe_label {
