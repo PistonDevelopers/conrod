@@ -3,6 +3,7 @@
 use {Color, Colorable, Point, Positionable, Sizeable, Widget};
 use super::Style;
 use widget;
+use widget::triangles::Triangle;
 use utils::{bounding_box_for_points, vec2_add, vec2_sub};
 
 
@@ -41,6 +42,15 @@ pub enum Kind {
     Outline,
     /// The rectangle area is filled with some color.
     Fill,
+}
+
+/// An iterator that triangulates a polygon represented by a sequence of points describing its
+/// edges.
+#[derive(Clone)]
+pub struct Triangles<I> {
+    first: Point,
+    prev: Point,
+    points: I,
 }
 
 
@@ -246,5 +256,41 @@ impl<I> Colorable for Polygon<I> {
     fn color(mut self, color: Color) -> Self {
         self.style.set_color(color);
         self
+    }
+}
+
+
+/// Triangulate the polygon given as a list of `Point`s describing its sides.
+///
+/// Returns `None` if the given iterator yields less than two points.
+pub fn triangles<I>(points: I) -> Option<Triangles<I::IntoIter>>
+    where I: IntoIterator<Item=Point>,
+{
+    let mut points = points.into_iter();
+    let first = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
+    let prev = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
+    Some(Triangles {
+        first: first,
+        prev: prev,
+        points: points,
+    })
+}
+
+impl<I> Iterator for Triangles<I>
+    where I: Iterator<Item=Point>,
+{
+    type Item = Triangle<Point>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.points.next().map(|point| {
+            let t = Triangle([self.first, self.prev, point]);
+            self.prev = point;
+            t
+        })
     }
 }

@@ -3,9 +3,10 @@
 //! Due to the frequency of its use in GUIs, the `Rectangle` gets its own widget to allow backends
 //! to specialise their rendering implementations.
 
-use {Color, Colorable, Dimensions, Sizeable, Widget};
+use {Color, Colorable, Dimensions, Point, Rect, Sizeable, Widget};
 use super::Style as Style;
 use widget;
+use widget::triangles::Triangle;
 
 
 /// A basic, non-interactive rectangle shape widget.
@@ -104,4 +105,12 @@ impl Colorable for Rectangle {
         self.style.set_color(color);
         self
     }
+}
+
+
+/// The two triangles that describe the given `Rect`.
+pub fn triangles(rect: Rect) -> (Triangle<Point>, Triangle<Point>) {
+    let (l, r, b, t) = rect.l_r_b_t();
+    let quad = [[l, t], [r, t], [r, b], [l, b]];
+    widget::triangles::from_quad(quad)
 }
