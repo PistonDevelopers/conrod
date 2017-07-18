@@ -1,4 +1,4 @@
-# Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod) [![Crates.io](https://img.shields.io/crates/v/conrod.svg)](https://crates.io/crates/conrod) [![Crates.io](https://img.shields.io/crates/l/conrod.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE)
+# Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod) [![Crates.io](https://img.shields.io/crates/v/conrod.svg)](https://crates.io/crates/conrod) [![Crates.io](https://img.shields.io/crates/l/conrod.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE) [![docs.rs](https://docs.rs/conrod/badge.svg)](https://docs.rs/conrod/)
 
 An easy-to-use, 2D GUI library written entirely in Rust.
 
@@ -84,7 +84,7 @@ dual licensed as above, without any additional terms or conditions.
 - [Google Noto](https://www.google.com/get/noto/) (Apache2)
 
 
-[The API Documentation]: http://docs.piston.rs/conrod/conrod/
+[The API Documentation]: https://docs.rs/conrod/
 [The Guide]: http://docs.piston.rs/conrod/conrod/guide/index.html
 
 [1]:        http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
