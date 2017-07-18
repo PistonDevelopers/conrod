@@ -281,13 +281,46 @@ impl Color {
 
 
 /// The parts of HSL along with an alpha for transparency.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Hsla(pub f32, pub f32, pub f32, pub f32);
 
 
+impl From<Color> for Hsla {
+    fn from(color: Color) -> Self {
+        color.to_hsl()
+    }
+}
+
+impl From<Hsla> for Color {
+    fn from(Hsla(h, s, l, a): Hsla) -> Self {
+        Color::Hsla(h, s, l, a)
+    }
+}
+
+
 /// The parts of RGB along with an alpha for transparency.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rgba(pub f32, pub f32, pub f32, pub f32);
+
+
+impl From<Color> for Rgba {
+    fn from(color: Color) -> Self {
+        color.to_rgb()
+    }
+}
+
+impl From<Rgba> for Color {
+    fn from(Rgba(r, g, b, a): Rgba) -> Self {
+        Color::Rgba(r, g, b, a)
+    }
+}
+
+impl Into<[f32; 4]> for Rgba {
+    fn into(self) -> [f32; 4] {
+        let Rgba(r, g, b, a) = self;
+        [r, g, b, a]
+    }
+}
 
 
 /// Convert an f32 color to a byte.

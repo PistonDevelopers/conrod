@@ -10,13 +10,15 @@
 
 
 use {Color, FontSize, Point, Rect, Scalar};
+use color;
 use graph::{self, Graph};
 use image;
 use position::{Align, Dimensions};
 use std;
 use text;
 use theme::Theme;
-use widget::{self, primitive, Widget};
+use widget::{self, Widget};
+use widget::triangles::{ColoredPoint, Triangle};
 
 
 /// An iterator-like type that yields a reference to each primitive in order of depth for
@@ -34,8 +36,8 @@ pub struct Primitives<'a> {
     theme: &'a Theme,
     fonts: &'a text::font::Map,
     window_rect: Rect,
-    /// The point slice to use for the `Lines` and `Polygon` primitives.
-    points: Vec<Point>,
+    /// A buffer to use for triangulating polygons and lines for the `Triangles`.
+    triangles: Vec<Triangle<Point>>,
     /// The slice of rusttype `PositionedGlyph`s to re-use for the `Text` primitive.
     positioned_glyphs: Vec<text::PositionedGlyph>,
 }
@@ -48,7 +50,8 @@ pub struct Primitives<'a> {
 #[derive(Clone)]
 pub struct OwnedPrimitives {
     primitives: Vec<OwnedPrimitive>,
-    points: Vec<Point>,
+    triangles_single_color: Vec<Triangle<Point>>,
+    triangles_multi_color: Vec<Triangle<ColoredPoint>>,
     max_glyphs: usize,
     line_infos: Vec<text::line::Info>,
     texts_string: String,
@@ -103,32 +106,20 @@ pub enum PrimitiveKind<'a> {
         color: Color
     },
 
-    /// A filled `Polygon`.
-    ///
-    /// These are produced by the `Oval` and `Polygon` primitive widgets.
-    Polygon {
-        /// The fill colour for the inner part of the polygon
-        color: Color,
-        /// The ordered points that, when joined with lines, represent each side of the `Polygon`.
-        ///
-        /// The first and final points should always be the same.
-        points: &'a [Point],
+    /// A series of consecutive `Triangles` that are all the same color.
+    TrianglesSingleColor {
+        /// The color of all triangles.
+        color: color::Rgba,
+        /// An ordered slice of triangles.
+        triangles: &'a [Triangle<Point>]
     },
 
-    /// A series of consecutive `Line`s.
+    /// A series of consecutive `Triangles` with unique colors per vertex.
     ///
-    /// These are produces via the `Line` and `PointPath` primitive widgets, or the `shape`
-    /// primitives if they are instantiated with an `Outline` style.
-    Lines {
-        /// The colour of each `Line`.
-        color: Color,
-        /// Whether the end of the lines should be `Flat` or `Round`.
-        cap: primitive::line::Cap,
-        /// The thickness of the lines, i.e. the width of a vertical line or th height of a
-        /// horizontal line.
-        thickness: Scalar,
-        /// The ordered points which should be joined by lines.
-        points: &'a [Point],
+    /// This variant is produced by the general purpose `Triangles` primitive widget.
+    TrianglesMultiColor {
+        /// An ordered slice of multicolored triangles.
+        triangles: &'a [Triangle<ColoredPoint>]
     },
 
     /// A single `Image`, produced by the primitive `Image` widget.
@@ -198,15 +189,12 @@ enum OwnedPrimitiveKind {
     Rectangle {
         color: Color,
     },
-    Polygon {
-        color: Color,
-        point_range: std::ops::Range<usize>,
+    TrianglesSingleColor {
+        color: color::Rgba,
+        triangle_range: std::ops::Range<usize>,
     },
-    Lines {
-        color: Color,
-        cap: primitive::line::Cap,
-        thickness: Scalar,
-        point_range: std::ops::Range<usize>,
+    TrianglesMultiColor {
+        triangle_range: std::ops::Range<usize>,
     },
     Image {
         image_id: image::Id,
@@ -236,7 +224,8 @@ struct OwnedText {
 /// An iterator-like type for yielding `Primitive`s from an `OwnedPrimitives`.
 pub struct WalkOwnedPrimitives<'a> {
     primitives: std::slice::Iter<'a, OwnedPrimitive>,
-    points: &'a [Point],
+    triangles_single_color: &'a [Triangle<Point>],
+    triangles_multi_color: &'a [Triangle<ColoredPoint>],
     line_infos: &'a [text::line::Info],
     texts_str: &'a str,
     positioned_glyphs: Vec<text::PositionedGlyph>,
@@ -294,9 +283,6 @@ impl<'a> Text<'a> {
 
 }
 
-const CIRCLE_RESOLUTION: usize = 50;
-const NUM_POINTS: usize = CIRCLE_RESOLUTION + 1;
-
 
 impl<'a> Primitives<'a> {
 
@@ -314,10 +300,7 @@ impl<'a> Primitives<'a> {
             theme: theme,
             fonts: fonts,
             window_rect: Rect::from_xy_dim([0.0, 0.0], window_dim),
-            // Initialise the `points` `Vec` with at least as many points as there are in an
-            // outlined `Rectangle`. This saves us from having to check the length of the buffer
-            // before writing points for an `Oval` or `Rectangle`.
-            points: vec![[0.0, 0.0]; NUM_POINTS],
+            triangles: Vec::new(),
             positioned_glyphs: Vec::new(),
         }
     }
@@ -327,7 +310,7 @@ impl<'a> Primitives<'a> {
         let Primitives {
             ref mut crop_stack,
             ref mut depth_order,
-            ref mut points,
+            ref mut triangles,
             ref mut positioned_glyphs,
             graph,
             theme,
@@ -339,6 +322,11 @@ impl<'a> Primitives<'a> {
             use widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
             use widget::primitive::shape::polygon::{State as PolygonState};
             use widget::primitive::shape::Style as ShapeStyle;
+
+            type TrianglesSingleColorState =
+                widget::triangles::State<Vec<widget::triangles::Triangle<Point>>>;
+            type TrianglesMultiColorState =
+                widget::triangles::State<Vec<widget::triangles::Triangle<(Point, color::Rgba)>>>;
 
             let (id, scizzor, container) = widget;
             let rect = container.rect;
@@ -361,53 +349,88 @@ impl<'a> Primitives<'a> {
                         },
                         ShapeStyle::Outline(ref line_style) => {
                             let (l, r, b, t) = rect.l_r_b_t();
-                            points[0] = [l, b];
-                            points[1] = [l, t];
-                            points[2] = [r, t];
-                            points[3] = [r, b];
-                            points[4] = [l, b];
+                            let array = [
+                                [l, b],
+                                [l, t],
+                                [r, t],
+                                [r, b],
+                                [l, b],
+                            ];
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let kind = PrimitiveKind::Lines {
-                                color: color,
-                                cap: cap,
-                                thickness: thickness,
-                                points: &points[..5],
+                            let points = array.iter().cloned();
+                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                                None => &[],
+                                Some(iter) => {
+                                    triangles.extend(iter);
+                                    &triangles[..]
+                                },
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
                     }
                 }
 
+            } else if container.type_id == std::any::TypeId::of::<TrianglesSingleColorState>() {
+                type Style = widget::triangles::SingleColor;
+                if let Some(tris) = container.state_and_style::<TrianglesSingleColorState, Style>() {
+                    let graph::UniqueWidgetState { ref state, ref style } = *tris;
+                    let widget::triangles::SingleColor(color) = *style;
+                    let kind = PrimitiveKind::TrianglesSingleColor {
+                        color: color,
+                        triangles: &state.triangles,
+                    };
+                    return Some(new_primitive(id, kind, scizzor, rect));
+                }
+
+            } else if container.type_id == std::any::TypeId::of::<TrianglesMultiColorState>() {
+                type Style = widget::triangles::MultiColor;
+                if let Some(tris) = container.state_and_style::<TrianglesMultiColorState, Style>() {
+                    let graph::UniqueWidgetState { ref state, .. } = *tris;
+                    let kind = PrimitiveKind::TrianglesMultiColor { triangles: &state.triangles };
+                    return Some(new_primitive(id, kind, scizzor, rect));
+                }
+
             } else if container.type_id == state_type_id::<widget::Oval>() {
                 if let Some(oval) = container.unique_widget_state::<widget::Oval>() {
-                    use std::f64::consts::PI;
-                    let graph::UniqueWidgetState { ref style, .. } = *oval;
-
-                    let (x, y, w, h) = rect.x_y_w_h();
-                    let t = 2.0 * PI / CIRCLE_RESOLUTION as Scalar;
-                    let hw = w / 2.0;
-                    let hh = h / 2.0;
-                    let f = |i: Scalar| [x + hw * (t*i).cos(), y + hh * (t*i).sin()];
-                    for i in 0..NUM_POINTS {
-                        points[i] = f(i as f64);
-                    }
-
+                    let graph::UniqueWidgetState { ref style, ref state } = *oval;
+                    triangles.clear();
+                    let points = widget::oval::circumference(rect, state.resolution);
                     let color = style.get_color(theme);
-                    let points = &mut points[..NUM_POINTS];
                     match *style {
+
                         ShapeStyle::Fill(_) => {
-                            let kind = PrimitiveKind::Polygon { color: color, points: points };
+                            let triangles = match widget::triangles::from_polygon(points) {
+                                None => &[],
+                                Some(iter) => {
+                                    triangles.extend(iter);
+                                    &triangles[..]
+                                },
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
+                            };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
+
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let kind = PrimitiveKind::Lines {
-                                color: color,
-                                cap: cap,
-                                thickness: thickness,
-                                points: points,
+                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                                None => &[],
+                                Some(iter) => {
+                                    triangles.extend(iter);
+                                    &triangles[..]
+                                },
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
@@ -418,22 +441,40 @@ impl<'a> Primitives<'a> {
                 use widget::primitive::shape::Style;
                 if let Some(polygon) = container.state_and_style::<PolygonState, Style>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *polygon;
+                    triangles.clear();
 
                     let color = style.get_color(theme);
-                    let points = &state.points[..];
+                    let points = state.points.iter().cloned();
                     match *style {
+
                         ShapeStyle::Fill(_) => {
-                            let kind = PrimitiveKind::Polygon { color: color, points: points };
+                            let triangles = match widget::triangles::from_polygon(points) {
+                                None => &[],
+                                Some(iter) => {
+                                    triangles.extend(iter);
+                                    &triangles[..]
+                                },
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
+                            };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
+
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let kind = PrimitiveKind::Lines {
-                                color: color,
-                                cap: cap,
-                                thickness: thickness,
-                                points: points,
+                            let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                                None => &[],
+                                Some(iter) => {
+                                    triangles.extend(iter);
+                                    &triangles[..]
+                                },
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
@@ -443,17 +484,21 @@ impl<'a> Primitives<'a> {
             } else if container.type_id == state_type_id::<widget::Line>() {
                 if let Some(line) = container.unique_widget_state::<widget::Line>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *line;
+                    triangles.clear();
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
                     let thickness = style.get_thickness(theme);
-                    points[0] = state.start;
-                    points[1] = state.end;
-                    let points = &points[..2];
-                    let kind = PrimitiveKind::Lines {
-                        color: color,
-                        cap: cap,
-                        thickness: thickness,
-                        points: points,
+                    let points = std::iter::once(state.start).chain(std::iter::once(state.end));
+                    let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                        None => &[],
+                        Some(iter) => {
+                            triangles.extend(iter);
+                            &triangles[..]
+                        },
+                    };
+                    let kind = PrimitiveKind::TrianglesSingleColor {
+                        color: color.to_rgb(),
+                        triangles: triangles,
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
@@ -461,15 +506,21 @@ impl<'a> Primitives<'a> {
             } else if container.type_id == std::any::TypeId::of::<PointPathState>() {
                 if let Some(point_path) = container.state_and_style::<PointPathState, PointPathStyle>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *point_path;
+                    triangles.clear();
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
                     let thickness = style.get_thickness(theme);
-                    let points = &state.points[..];
-                    let kind = PrimitiveKind::Lines {
-                        color: color,
-                        cap: cap,
-                        thickness: thickness,
-                        points: points,
+                    let points = state.points.iter().map(|&t| t);
+                    let triangles = match widget::triangles::from_lines(points, cap, thickness) {
+                        None => &[],
+                        Some(iter) => {
+                            triangles.extend(iter);
+                            &triangles[..]
+                        },
+                    };
+                    let kind = PrimitiveKind::TrianglesSingleColor {
+                        color: color.to_rgb(),
+                        triangles: triangles,
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
@@ -542,7 +593,8 @@ impl<'a> Primitives<'a> {
     /// This is useful for sending `Ui` rendering data across threads in an efficient manner.
     pub fn owned(mut self) -> OwnedPrimitives {
         let mut primitives = Vec::with_capacity(self.depth_order.len());
-        let mut primitive_points = Vec::new();
+        let mut primitive_triangles_multi_color = Vec::new();
+        let mut primitive_triangles_single_color = Vec::new();
         let mut primitive_line_infos = Vec::new();
         let mut texts_string = String::new();
         let mut max_glyphs = 0;
@@ -562,26 +614,23 @@ impl<'a> Primitives<'a> {
                     primitives.push(new(kind));
                 },
 
-                PrimitiveKind::Polygon { color, points } => {
-                    let start = primitive_points.len();
-                    primitive_points.extend(points.iter().cloned());
-                    let end = primitive_points.len();
-                    let kind = OwnedPrimitiveKind::Polygon {
+                PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                    let start = primitive_triangles_single_color.len();
+                    primitive_triangles_single_color.extend(triangles.iter().cloned());
+                    let end = primitive_triangles_single_color.len();
+                    let kind = OwnedPrimitiveKind::TrianglesSingleColor {
                         color: color,
-                        point_range: start..end,
+                        triangle_range: start..end,
                     };
                     primitives.push(new(kind));
                 },
 
-                PrimitiveKind::Lines { color, cap, thickness, points } => {
-                    let start = primitive_points.len();
-                    primitive_points.extend(points.iter().cloned());
-                    let end = primitive_points.len();
-                    let kind = OwnedPrimitiveKind::Lines {
-                        color: color,
-                        cap: cap,
-                        thickness: thickness,
-                        point_range: start..end,
+                PrimitiveKind::TrianglesMultiColor { triangles } => {
+                    let start = primitive_triangles_multi_color.len();
+                    primitive_triangles_multi_color.extend(triangles.iter().cloned());
+                    let end = primitive_triangles_multi_color.len();
+                    let kind = OwnedPrimitiveKind::TrianglesMultiColor {
+                        triangle_range: start..end,
                     };
                     primitives.push(new(kind));
                 },
@@ -651,7 +700,8 @@ impl<'a> Primitives<'a> {
 
         OwnedPrimitives {
             primitives: primitives,
-            points: primitive_points,
+            triangles_single_color: primitive_triangles_single_color,
+            triangles_multi_color: primitive_triangles_multi_color,
             max_glyphs: max_glyphs,
             line_infos: primitive_line_infos,
             texts_string: texts_string,
@@ -667,14 +717,16 @@ impl OwnedPrimitives {
     pub fn walk(&self) -> WalkOwnedPrimitives {
         let OwnedPrimitives {
             ref primitives,
-            ref points,
+            ref triangles_single_color,
+            ref triangles_multi_color,
             ref line_infos,
             ref texts_string,
             max_glyphs,
         } = *self;
         WalkOwnedPrimitives {
             primitives: primitives.iter(),
-            points: points,
+            triangles_single_color: triangles_single_color,
+            triangles_multi_color: triangles_multi_color,
             line_infos: line_infos,
             texts_str: texts_string,
             positioned_glyphs: Vec::with_capacity(max_glyphs),
@@ -690,7 +742,8 @@ impl<'a> WalkOwnedPrimitives<'a> {
         let WalkOwnedPrimitives {
             ref mut primitives,
             ref mut positioned_glyphs,
-            points,
+            triangles_single_color,
+            triangles_multi_color,
             line_infos,
             texts_str,
         } = *self;
@@ -710,20 +763,17 @@ impl<'a> WalkOwnedPrimitives<'a> {
                     new(kind)
                 },
 
-                OwnedPrimitiveKind::Polygon { color, ref point_range } => {
-                    let kind = PrimitiveKind::Polygon {
+                OwnedPrimitiveKind::TrianglesSingleColor { color, ref triangle_range } => {
+                    let kind = PrimitiveKind::TrianglesSingleColor {
                         color: color,
-                        points: &points[point_range.clone()],
+                        triangles: &triangles_single_color[triangle_range.clone()],
                     };
                     new(kind)
                 },
 
-                OwnedPrimitiveKind::Lines { color, cap, thickness, ref point_range } => {
-                    let kind = PrimitiveKind::Lines {
-                        color: color,
-                        cap: cap,
-                        thickness: thickness,
-                        points: &points[point_range.clone()],
+                OwnedPrimitiveKind::TrianglesMultiColor { ref triangle_range } => {
+                    let kind = PrimitiveKind::TrianglesMultiColor {
+                        triangles: &triangles_multi_color[triangle_range.clone()],
                     };
                     new(kind)
                 },

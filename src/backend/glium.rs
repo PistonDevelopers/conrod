@@ -540,15 +540,14 @@ impl Renderer {
                     push_v(r, t);
                 },
 
-                render::PrimitiveKind::Polygon { color, points } => {
-                    // If we don't at least have a triangle, keep looping.
-                    if points.len() < 3 {
+                render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                    if triangles.is_empty() {
                         continue;
                     }
 
                     switch_to_plain_state!();
 
-                    let color = gamma_srgb_to_linear(color.to_fsa());
+                    let color = gamma_srgb_to_linear(color.into());
 
                     let v = |p: [Scalar; 2]| {
                         Vertex {
@@ -559,79 +558,33 @@ impl Renderer {
                         }
                     };
 
-                    // Triangulate the polygon.
-                    //
-                    // Make triangles between the first point and every following pair of
-                    // points.
-                    //
-                    // For example, for a polygon with 6 points (a to f), this makes the
-                    // following triangles: abc, acd, ade, aef.
-                    let first = points[0];
-                    let first_v = v(first);
-                    let mut prev_v = v(points[1]);
-                    for &p in &points[2..] {
-                        let v = v(p);
-                        vertices.push(first_v);
-                        vertices.push(prev_v);
-                        vertices.push(v);
-                        prev_v = v;
+                    for triangle in triangles {
+                        vertices.push(v(triangle[0]));
+                        vertices.push(v(triangle[1]));
+                        vertices.push(v(triangle[2]));
                     }
                 },
 
-                render::PrimitiveKind::Lines { color, cap, thickness, points } => {
-
-                    // We need at least two points to draw any lines.
-                    if points.len() < 2 {
+                render::PrimitiveKind::TrianglesMultiColor { triangles } => {
+                    if triangles.is_empty() {
                         continue;
                     }
 
                     switch_to_plain_state!();
 
-                    let color = gamma_srgb_to_linear(color.to_fsa());
-
-                    let v = |p: [Scalar; 2]| {
+                    let v = |(p, c): ([Scalar; 2], color::Rgba)| {
                         Vertex {
                             position: [vx(p[0]), vy(p[1])],
                             tex_coords: [0.0, 0.0],
-                            color: color,
+                            color: gamma_srgb_to_linear(c.into()),
                             mode: MODE_GEOMETRY,
                         }
                     };
 
-                    // Convert each line to a rectangle for triangulation.
-                    //
-                    // TODO: handle `cap` and properly join consecutive lines considering
-                    // the miter. Discussion here:
-                    // https://forum.libcinder.org/topic/smooth-thick-lines-using-geometry-shader#23286000001269127
-                    let mut a = points[0];
-                    for &b in &points[1..] {
-
-                        let direction = [b[0] - a[0], b[1] - a[1]];
-                        let mag = (direction[0].powi(2) + direction[1].powi(2)).sqrt();
-                        let unit = [direction[0] / mag, direction[1] / mag];
-                        let normal = [-unit[1], unit[0]];
-                        let half_thickness = thickness / 2.0;
-
-                        // A perpendicular line with length half the thickness.
-                        let n = [normal[0] * half_thickness, normal[1] * half_thickness];
-
-                        // The corners of the rectangle as GL vertices.
-                        let (r1, r2, r3, r4);
-                        r1 = v([a[0] + n[0], a[1] + n[1]]);
-                        r2 = v([a[0] - n[0], a[1] - n[1]]);
-                        r3 = v([b[0] + n[0], b[1] + n[1]]);
-                        r4 = v([b[0] - n[0], b[1] - n[1]]);
-
-                        // Push the rectangle's vertices.
-                        let mut push_v = |v| vertices.push(v);
-                        push_v(r1);
-                        push_v(r4);
-                        push_v(r2);
-                        push_v(r1);
-                        push_v(r4);
-                        push_v(r3);
-
-                        a = b;
+                    for triangle in triangles {
+                        vertices.push(v(triangle[0]));
+                        vertices.push(v(triangle[1]));
+                        vertices.push(v(triangle[2]));
                     }
                 },
 
