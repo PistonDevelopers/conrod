@@ -380,6 +380,60 @@ pub fn from_polygon<I>(points: I) -> Option<FromPolygon<I::IntoIter>>
     })
 }
 
+/// Triangulates the given quad, represented by four points that describe its edges in either
+/// clockwise or anti-clockwise order.
+///
+/// # Example
+///
+/// The following rectangle
+///
+/// ```ignore
+///
+///  a        b
+///   --------
+///   |      |
+///   |      |
+///   |      |
+///   --------
+///  d        c
+///
+/// ```
+///
+/// given as
+///
+/// ```ignore
+/// from_quad([a, b, c, d])
+/// ```
+///
+/// returns
+///
+/// ```ignore
+/// (Triangle([a, b, c]), Triangle([a, c, d]))
+/// ```
+///
+/// Here's a basic code example:
+///
+/// ```
+/// extern crate conrod;
+///
+/// use conrod::widget::triangles::{from_quad, Triangle};
+///
+/// fn main() {
+///     let a = [0.0, 1.0];
+///     let b = [1.0, 1.0];
+///     let c = [1.0, 0.0];
+///     let d = [0.0, 0.0];
+///     let quad = [a, b, c, d];
+///     let triangles = from_quad(quad);
+///     assert_eq!(triangles, (Triangle([a, b, c]), Triangle([a, c, d])));
+/// }
+/// ```
+#[inline]
+pub fn from_quad(points: [Point; 4]) -> (Triangle<Point>, Triangle<Point>) {
+    let (a, b, c, d) = (points[0], points[1], points[2], points[3]);
+    (Triangle([a, b, c]), Triangle([a, c, d]))
+}
+
 /// Triangulate a series of lines represented by a sequence of points.
 ///
 /// Returns `None` if the given iterator yields less than one point.
