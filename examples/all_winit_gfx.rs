@@ -7,10 +7,11 @@
 
 #[cfg(feature="winit")] #[macro_use] extern crate conrod;
 #[cfg(feature="winit")] extern crate glutin;
+#[cfg(feature="winit")] extern crate winit;
 #[macro_use] extern crate gfx;
 extern crate gfx_core;
 
-#[cfg(all(feature="winit", not(feature="glium")))]
+#[cfg(feature="winit")]
 mod support;
 
 
@@ -18,7 +19,7 @@ fn main() {
     feature::main();
 }
 
-#[cfg(all(feature="winit", not(feature="glium")))]
+#[cfg(feature="winit")]
 mod feature {
     extern crate gfx_window_glutin;
     extern crate find_folder;
@@ -27,7 +28,9 @@ mod feature {
     use glutin;
     use gfx;
     use support;
+    use winit;
 
+    use glutin::GlContext;
     use gfx::{Factory, Device, texture};
     use gfx::traits::FactoryExt;
     use conrod::render;
@@ -101,6 +104,18 @@ mod feature {
     const WIN_W: u32 = support::WIN_W;
     const WIN_H: u32 = support::WIN_H;
     const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
+
+    fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
+        fn component(f: f32) -> f32 {
+            // Taken from https://github.com/PistonDevelopers/graphics/src/color.rs#L42
+            if f <= 0.04045 {
+                f / 12.92
+            } else {
+                ((f + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        [component(c[0]), component(c[1]), component(c[2]), c[3]]
+    }
 
     // Creates a gfx texture with the given data
     fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
@@ -182,9 +197,14 @@ mod feature {
             .with_title("Conrod with GFX and Glutin")
             .with_dimensions(WIN_W, WIN_H);
 
+        let context = glutin::ContextBuilder::new()
+            .with_multisampling(4);
+
+        let mut events_loop = winit::EventsLoop::new();
+
         // Initialize gfx things
         let (window, mut device, mut factory, main_color, _) =
-            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder);
+            gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, context, &events_loop );
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
 
@@ -197,7 +217,8 @@ mod feature {
 
         // Dummy values for initialization
         let vbuf = factory.create_vertex_buffer(&[]);
-        let (_, fake_texture) = create_texture(&mut factory, 2, 2, &[0; 4]);
+        let (_, fake_texture) = create_texture(&mut factory, 2, 2, &[0;4]);
+        let (_, blank_texture) = create_texture(&mut factory, 2, 2, &[255;4]);
 
         let mut data = pipe::Data {
             vbuf: vbuf,
@@ -246,9 +267,6 @@ mod feature {
         // Demonstration app state that we'll control with our conrod GUI.
         let mut app = support::DemoApp::new(rust_logo);
 
-        // Event loop
-        let mut events = window.poll_events();
-
         'main: loop {
             // If the window is closed, this will be None for one tick, so to avoid panicking with
             // unwrap, instead break the loop
@@ -262,17 +280,46 @@ mod feature {
             if let Some(mut primitives) = ui.draw_if_changed() {
                 let (screen_width, screen_height) = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
                 let mut vertices = Vec::new();
+                let mut text_vertices = Vec::new();
 
                 // Create vertices
                 while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
                     match kind {
                         render::PrimitiveKind::Rectangle { color } => {
+                            let color = gamma_srgb_to_linear(color.to_fsa());
+
+                            let mut v = |x,y| vertices.push(Vertex::new([2.0 * x as f32 / screen_width, 2.0 * y as f32 / screen_height], [0.0, 0.0], color));
+                            
+                            v(rect.x.start, rect.y.end  );
+                            v(rect.x.start, rect.y.start);
+                            v(rect.x.end  , rect.y.start);
+                            v(rect.x.end  , rect.y.start);
+                            v(rect.x.end  , rect.y.end  );
+                            v(rect.x.start, rect.y.end  );
                         },
-                        render::PrimitiveKind::Polygon { color, points } => {
+                        render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                            let color = gamma_srgb_to_linear(color.into());
+                            use conrod::position::Point;
+                            let mut v = |pos: Point| vertices.push(Vertex::new([2.0 * pos[0] as f32 / screen_width, 2.0 * pos[1] as f32 / screen_height], [0.0, 0.0], color));
+
+                            for triangle in triangles{
+                                v(triangle[0]);
+                                v(triangle[1]);
+                                v(triangle[2]);
+                            }
                         },
-                        render::PrimitiveKind::Lines { color, cap, thickness, points } => {
+                        render::PrimitiveKind::TrianglesMultiColor { triangles } => {
+                            use conrod::widget::primitive::shape::triangles::ColoredPoint;
+                            let mut v = |(pos,rgba): ColoredPoint| vertices.push(Vertex::new([2.0 * pos[0] as f32 / screen_width, 2.0 * pos[1] as f32 / screen_height], [0.0, 0.0], gamma_srgb_to_linear(rgba.into())));
+
+                            for triangle in triangles{
+                                v(triangle[0]);
+                                v(triangle[1]);
+                                v(triangle[2]);
+                            }
                         },
                         render::PrimitiveKind::Image { image_id, color, source_rect } => {
+                            //TODO
                         },
                         render::PrimitiveKind::Text { color, text, font_id } => {
                             let positioned_glyphs = text.positioned_glyphs(dpi_factor);
@@ -286,12 +333,12 @@ mod feature {
                                 let offset = [rect.min.x as u16, rect.min.y as u16];
                                 let size = [rect.width() as u16, rect.height() as u16];
 
-                                let new_data = data.iter().map(|x| [0, 0, 0, *x]).collect::<Vec<_>>();
+                                let new_data = data.iter().map(|x| [255, 255, 255, *x]).collect::<Vec<_>>();
 
                                 update_texture(&mut encoder, &cache_tex, offset, size, &new_data);
                             }).unwrap();
 
-                            let color = color.to_fsa();
+                            let color = gamma_srgb_to_linear(color.to_fsa());
                             let cache_id = font_id.index();
                             let origin = rt::point(0.0, 0.0);
 
@@ -322,7 +369,7 @@ mod feature {
                                         .chain(v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]))
                                 });
 
-                            vertices.extend(extension);
+                            text_vertices.extend(extension);
                         },
                         render::PrimitiveKind::Other(_) => {},
                     }
@@ -332,8 +379,14 @@ mod feature {
                 encoder.clear(&main_color, CLEAR_COLOR);
 
                 // Draw the vertices
-                data.color.0 = cache_tex_view.clone();
+                data.color.0 = blank_texture.clone();
                 let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
+                data.vbuf = vbuf;
+                encoder.draw(&slice, &pso, &data);
+
+                // Draw the text vertices
+                data.color.0 = cache_tex_view.clone();
+                let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&text_vertices, ());
                 data.vbuf = vbuf;
                 encoder.draw(&slice, &pso, &data);
 
@@ -343,23 +396,26 @@ mod feature {
                 device.cleanup();
             }
 
-            if let Some(event) = events.next() {
+            let mut should_quit = false;
+            events_loop.poll_events(|event|{
                 let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
                 let dpi_factor = dpi_factor as conrod::Scalar;
 
                 // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.as_winit_window()) {
+                if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.window()) {
                     ui.handle_event(event);
                 }
 
                 // Close window if the escape key or the exit button is pressed
                 match event {
-                    glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                    glutin::Event::Closed =>
-                        break 'main,
-
+                    winit::Event::WindowEvent{event: winit::WindowEvent::KeyboardInput{input: winit::KeyboardInput{virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..}, .. } |
+                    winit::Event::WindowEvent{event: winit::WindowEvent::Closed, ..} =>
+                        should_quit = true,
                     _ => {},
                 }
+            });
+            if should_quit {
+                break 'main;
             }
 
             // Update widgets if any event has happened
@@ -371,10 +427,10 @@ mod feature {
     }
 }
 
-#[cfg(not(all(feature="winit", not(feature="glium"))))]
+#[cfg(not(feature="winit"))]
 mod feature {
     pub fn main() {
         println!("This example requires the `winit` feature. \
                  Try running `cargo run --release --no-default-features --features=\"winit\" --example <example_name>`");
-    }
+   }
 }
