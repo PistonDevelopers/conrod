@@ -262,7 +262,7 @@ function. The builder pattern implementation introduces a few differences worth 
 
 1. A method must be implemented on `Button` for every optional parameter.
 2. The `Button::new` function must return some type that can be treated as a set of `Option`
-   arguments which can be set as it is passed from buidler method to builder method.
+   arguments which can be set as it is passed from builder method to builder method.
 3. There must be some method that indicates the end of building and the instantiation of the widget.
 
 In Conrod, we are of the opinion that, in the common case, the extra work on behalf of the widget
