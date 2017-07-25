@@ -30,7 +30,7 @@ mod feature {
             .with_dimensions(WIDTH, HEIGHT);
         let context = glium::glutin::ContextBuilder::new()
             .with_vsync(true)
-            .with_multisampling(8);
+            .with_multisampling(4);
         let display = glium::Display::new(window, context, &events_loop).unwrap();
 
         // Construct our `Ui`.
