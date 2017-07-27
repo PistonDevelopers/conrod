@@ -1,9 +1,8 @@
-use gfx::{self,Resources,Factory, Device, texture,PipelineState};
-use gfx::handle::{Buffer,Sampler,RenderTargetView};
+use gfx::{self,Resources,Factory, texture,PipelineState};
+use gfx::handle::{RenderTargetView};
 use gfx::traits::FactoryExt;
 use render;
 use text::{rt,GlyphCache};
-use image;
 use std;
 
 const FRAGMENT_SHADER: &'static [u8] = b"
@@ -52,20 +51,29 @@ type DepthFormat = gfx::format::DepthStencil;
 type SurfaceFormat = gfx::format::R8_G8_B8_A8;
 type FullFormat = (SurfaceFormat, gfx::format::Unorm);
 
-// Vertex and pipeline declarations
-gfx_defines! {
-    vertex Vertex {
-        pos: [f32; 2] = "a_Pos",
-        uv: [f32; 2] = "a_Uv",
-        color: [f32; 4] = "a_Color",
-    }
+//this is it's own module to allow_unsafe within it
+mod defines{
+    //it appears gfx_defines generates unsafe code
+    #![allow(unsafe_code)]
+    use gfx;
+    use super::ColorFormat;
+    // Vertex and pipeline declarations
+    gfx_defines! {
+        vertex Vertex {
+            pos: [f32; 2] = "a_Pos",
+            uv: [f32; 2] = "a_Uv",
+            color: [f32; 4] = "a_Color",
+        }
 
-    pipeline pipe {
-        vbuf: gfx::VertexBuffer<Vertex> = (),
-        color: gfx::TextureSampler<[f32; 4]> = "t_Color",
-        out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
+        pipeline pipe {
+            vbuf: gfx::VertexBuffer<Vertex> = (),
+            color: gfx::TextureSampler<[f32; 4]> = "t_Color",
+            out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
+        }
     }
 }
+
+use self::defines::*;
 
 // Convenience constructor
 impl Vertex {
@@ -83,15 +91,13 @@ pub struct Renderer<R: Resources>{
     glyph_cache: GlyphCache,
     cache_tex: gfx::handle::Texture<R, SurfaceFormat>,
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
-    fake_texture: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     blank_texture: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     data: pipe::Data<R>,
     dpi_factor: f32,
-    rtv: RenderTargetView<R, (gfx::format::R8_G8_B8_A8, gfx::format::Srgb)>,
 }
 
 impl<R: Resources> Renderer<R>{
-    pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, (gfx::format::R8_G8_B8_A8, gfx::format::Srgb)>, dpi_factor: f32) -> Result<Self,RendererCreationError>
+    pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f32) -> Result<Self,RendererCreationError>
     {
         let sampler_info = texture::SamplerInfo::new(
             texture::FilterMethod::Bilinear,
@@ -135,16 +141,15 @@ impl<R: Resources> Renderer<R>{
             glyph_cache,
             cache_tex,
             cache_tex_view,
-            fake_texture,
             blank_texture,
             data,
             dpi_factor,
-            rtv: rtv.clone(),
         })
     }
 
-    pub fn draw<'a,F: Factory<R>,C: gfx::CommandBuffer<R>,D: gfx::Device<Resources=R,CommandBuffer=C>>(&mut self, factory: &mut F, encoder: &mut gfx::Encoder<R,C>, device: &mut D,primitives: render::Primitives<'a>, dims: (f32,f32)/*, image_map: &image::Map<gfx::handle::ShaderResourceView<R, [f32; 4]>>*/)
+    pub fn draw<'a,F: Factory<R>,C: gfx::CommandBuffer<R>,D: gfx::Device<Resources=R,CommandBuffer=C>>(&mut self, factory: &mut F, encoder: &mut gfx::Encoder<R,C>, device: &mut D, mut primitives: render::Primitives<'a>, dims: (f32,f32)/*, image_map: &image::Map<gfx::handle::ShaderResourceView<R, [f32; 4]>>*/)
     {
+        let Renderer{ ref pipeline, ref mut glyph_cache, ref cache_tex, ref cache_tex_view, ref blank_texture, ref mut data, dpi_factor} = *self;
         let (screen_width, screen_height) = dims;
         let mut vertices = Vec::new();
         let mut text_vertices = Vec::new();
@@ -185,24 +190,24 @@ impl<R: Resources> Renderer<R>{
                         v(triangle[2]);
                     }
                 },
-                render::PrimitiveKind::Image { image_id, color, source_rect } => {
+                render::PrimitiveKind::Image { .. } => {
                     //TODO
                 },
                 render::PrimitiveKind::Text { color, text, font_id } => {
-                    let positioned_glyphs = text.positioned_glyphs(self.dpi_factor);
+                    let positioned_glyphs = text.positioned_glyphs(dpi_factor);
 
                     // Queue the glyphs to be cached
                     for glyph in positioned_glyphs {
-                        self.glyph_cache.queue_glyph(font_id.index(), glyph.clone());
+                        glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                     }
 
-                    self.glyph_cache.cache_queued(|rect, data| {
+                    glyph_cache.cache_queued(|rect, data| {
                         let offset = [rect.min.x as u16, rect.min.y as u16];
                         let size = [rect.width() as u16, rect.height() as u16];
 
                         let new_data = data.iter().map(|x| [255, 255, 255, *x]).collect::<Vec<_>>();
 
-                        update_texture(&mut encoder, &self.cache_tex, offset, size, &new_data);
+                        update_texture(encoder, &cache_tex, offset, size, &new_data);
                     }).unwrap();
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
@@ -221,7 +226,7 @@ impl<R: Resources> Renderer<R>{
 
                     // Create new vertices
                     let extension = positioned_glyphs.into_iter()
-                        .filter_map(|g| self.glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
+                        .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
                         .flat_map(|(uv_rect, screen_rect)| {
                             use std::iter::once;
 
@@ -243,16 +248,16 @@ impl<R: Resources> Renderer<R>{
         }
 
         // Draw the vertices
-        self.data.color.0 = self.blank_texture.clone();
+        data.color.0 = blank_texture.clone();
         let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
-        self.data.vbuf = vbuf;
-        encoder.draw(&slice, &self.pipeline, &self.data);
+        data.vbuf = vbuf;
+        encoder.draw(&slice, &pipeline, data);
 
         // Draw the text vertices
-        self.data.color.0 = self.cache_tex_view.clone();
+        data.color.0 = cache_tex_view.clone();
         let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&text_vertices, ());
-        self.data.vbuf = vbuf;
-        self.encoder.draw(&slice, &self.pipeline, &self.data);
+        data.vbuf = vbuf;
+        encoder.draw(&slice, &pipeline, data);
     }
 }
 
