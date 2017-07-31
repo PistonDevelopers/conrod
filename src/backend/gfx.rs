@@ -1,23 +1,77 @@
 use gfx::{self,Resources,Factory, texture,PipelineState};
 use gfx::handle::{RenderTargetView};
 use gfx::traits::FactoryExt;
-use render;
-use text::{rt,GlyphCache};
 use std;
+
+use text::{rt,GlyphCache};
+use render;
+use color;
+use image;
+use {Rect, Scalar};
+
+/// A `Command` describing a step in the drawing process.
+#[derive(Clone, Debug)]
+pub enum Command<'a> {
+    /// Draw to the target.
+    Draw(Draw<'a>),
+    /// Update the scizzor within the pipeline.
+    Scizzor(gfx::Rect),
+}
+
+/// An iterator yielding `Command`s, produced by the `Renderer::commands` method.
+pub struct Commands<'a> {
+    commands: std::slice::Iter<'a, PreparedCommand>,
+    vertices: &'a [Vertex],
+}
+
+/// A `Command` for drawing to the target.
+///
+/// Each variant describes how to draw the contents of the vertex buffer.
+#[derive(Clone, Debug)]
+pub enum Draw<'a> {
+    /// A range of vertices representing triangles textured with the image in the
+    /// image_map at the given `widget::Id`.
+    Image(image::Id, &'a [Vertex]),
+    /// A range of vertices representing plain triangles.
+    Plain(&'a [Vertex]),
+}
+
+enum PreparedCommand {
+    Image(image::Id, std::ops::Range<usize>),
+    Plain(std::ops::Range<usize>),
+    Scizzor(gfx::Rect),
+}
+
+/// Draw text from the text cache texture `tex` in the fragment shader.
+pub const MODE_TEXT: u32 = 0;
+/// Draw an image from the texture at `tex` in the fragment shader.
+pub const MODE_IMAGE: u32 = 1;
+/// Ignore `tex` and draw simple, colored 2D geometry.
+pub const MODE_GEOMETRY: u32 = 2;
 
 const FRAGMENT_SHADER: &'static [u8] = b"
     #version 140
-
     uniform sampler2D t_Color;
 
     in vec2 v_Uv;
     in vec4 v_Color;
+    flat in uint v_Mode;
 
     out vec4 f_Color;
 
     void main() {
-        vec4 tex = texture(t_Color, v_Uv);
-        f_Color = v_Color * tex;
+        // Text
+        if (v_Mode == uint(0)) {
+            f_Color = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).a);
+
+        // Image
+        } else if (v_Mode == uint(1)) {
+            f_Color = texture(t_Color, v_Uv);
+
+        // 2D Geometry
+        } else if (v_Mode == uint(2)) {
+            f_Color = v_Color;
+        }
     }
 ";
 
@@ -27,14 +81,17 @@ const VERTEX_SHADER: &'static [u8] = b"
     in vec2 a_Pos;
     in vec2 a_Uv;
     in vec4 a_Color;
+    in uint a_Mode;
 
     out vec2 v_Uv;
     out vec4 v_Color;
+    flat out uint v_Mode;
 
     void main() {
         v_Uv = a_Uv;
         v_Color = a_Color;
         gl_Position = vec4(a_Pos, 0.0, 1.0);
+        v_Mode = a_Mode;
     }
 ";
 
@@ -63,11 +120,13 @@ mod defines{
             pos: [f32; 2] = "a_Pos",
             uv: [f32; 2] = "a_Uv",
             color: [f32; 4] = "a_Color",
+            mode: u32 = "a_Mode",
         }
 
         pipeline pipe {
             vbuf: gfx::VertexBuffer<Vertex> = (),
             color: gfx::TextureSampler<[f32; 4]> = "t_Color",
+            scissor: gfx::Scissor = (),
             out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
         }
     }
@@ -77,11 +136,12 @@ use self::defines::*;
 
 // Convenience constructor
 impl Vertex {
-    fn new(pos: [f32; 2], uv: [f32; 2], color: [f32; 4]) -> Vertex {
+    fn new(pos: [f32; 2], uv: [f32; 2], color: [f32; 4], mode: u32) -> Vertex {
         Vertex {
-            pos: pos,
-            uv: uv,
-            color: color,
+            pos,
+            uv,
+            color,
+            mode
         }
     }
 }
@@ -93,11 +153,13 @@ pub struct Renderer<R: Resources>{
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     blank_texture: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     data: pipe::Data<R>,
-    dpi_factor: f32,
+    dpi_factor: f64,
+    commands: Vec<PreparedCommand>,
+    vertices: Vec<Vertex>,
 }
 
 impl<R: Resources> Renderer<R>{
-    pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f32) -> Result<Self,RendererCreationError>
+    pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f64) -> Result<Self,RendererCreationError>
     {
         let sampler_info = texture::SamplerInfo::new(
             texture::FilterMethod::Bilinear,
@@ -106,11 +168,14 @@ impl<R: Resources> Renderer<R>{
         let sampler = factory.create_sampler(sampler_info);
 
         let vbuf = factory.create_vertex_buffer(&[]);
-        let (_, fake_texture) = create_texture(factory, 2, 2, &[0;4]);
-        let (_, blank_texture) = create_texture(factory, 2, 2, &[255;4]);
+        let (_, fake_texture) = create_texture(factory, 1, 1, &[0;4]);
+        let (_, blank_texture) = create_texture(factory, 1, 1, &[255;4]);
 
-        let mut data = pipe::Data {
+        let (width,height,_depth,_samples) = rtv.get_dimensions();
+
+        let data = pipe::Data {
             vbuf,
+            scissor: gfx::Rect{x:0,y:0,w:width,h:height},
             color: (fake_texture.clone(), sampler),
             out: rtv.clone(),
         };
@@ -118,10 +183,9 @@ impl<R: Resources> Renderer<R>{
         let pipeline = factory.create_pipeline_simple(VERTEX_SHADER, FRAGMENT_SHADER, pipe::new())?;
 
         let (glyph_cache, cache_tex, cache_tex_view) = {
-            let (width,height,_depth,_samples) = rtv.get_dimensions();
 
-            let width = (width as f32 * dpi_factor) as u32;
-            let height = (height as f32 * dpi_factor) as u32;
+            let width = (width as f64* dpi_factor) as u32;
+            let height = (height as f64 * dpi_factor) as u32;
 
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
@@ -144,57 +208,192 @@ impl<R: Resources> Renderer<R>{
             blank_texture,
             data,
             dpi_factor,
+            commands: vec![],
+            vertices: vec![],
         })
     }
 
-    pub fn draw<'a,F: Factory<R>,C: gfx::CommandBuffer<R>,D: gfx::Device<Resources=R,CommandBuffer=C>>(&mut self, factory: &mut F, encoder: &mut gfx::Encoder<R,C>, device: &mut D, mut primitives: render::Primitives<'a>, dims: (f32,f32)/*, image_map: &image::Map<gfx::handle::ShaderResourceView<R, [f32; 4]>>*/)
+    /// Produce an `Iterator` yielding `Command`s.
+    pub fn commands(&self) -> Commands {
+        let Renderer { ref commands, ref vertices, .. } = *self;
+        Commands {
+            commands: commands.iter(),
+            vertices: vertices,
+        }
+    }
+
+    /// Fill the inner vertex and command buffers by translating the given `primitives`.
+    pub fn fill<P, C>(&mut self,
+                            encoder: &mut gfx::Encoder<R,C>,
+                            dims: (f32,f32),
+                            mut primitives: P,
+                            image_map: &image::Map<(gfx::handle::ShaderResourceView<R, [f32; 4]>,(u32,u32))>)
+        where P: render::PrimitiveWalker,
+              C: gfx::CommandBuffer<R>,
     {
-        let Renderer{ ref pipeline, ref mut glyph_cache, ref cache_tex, ref cache_tex_view, ref blank_texture, ref mut data, dpi_factor} = *self;
-        let (screen_width, screen_height) = dims;
-        let mut vertices = Vec::new();
-        let mut text_vertices = Vec::new();
+        let Renderer { ref mut commands, ref mut vertices, ref mut glyph_cache, ref mut cache_tex, dpi_factor, .. } = *self;
 
-        // Create vertices
-        while let Some(render::Primitive { id, kind, scizzor, rect }) = primitives.next() {
+        commands.clear();
+        vertices.clear();
+
+        enum State {
+            Image { image_id: image::Id, start: usize },
+            Plain { start: usize },
+        }
+
+        let mut current_state = State::Plain { start: 0 };
+
+        // Switches to the `Plain` state and completes the previous `Command` if not already in the
+        // `Plain` state.
+        macro_rules! switch_to_plain_state {
+            () => {
+                match current_state {
+                    State::Plain { .. } => (),
+                    State::Image { image_id, start } => {
+                        commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                        current_state = State::Plain { start: vertices.len() };
+                    },
+                }
+            };
+        }
+
+        // Framebuffer dimensions and the "dots per inch" factor.
+        let (screen_w, screen_h) = dims;
+        let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
+        let half_win_w = win_w / 2.0;
+        let half_win_h = win_h / 2.0;
+
+        // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
+        let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
+        let vy = |y: Scalar| (y * dpi_factor / half_win_h) as f32;
+
+        let mut current_scizzor = gfx::Rect {
+            x: 0,
+            w: screen_w as u16,
+            y: 0,
+            h: screen_h as u16,
+        };
+
+        let rect_to_gfx_rect = |rect: Rect| {
+            let (w, h) = rect.w_h();
+            let left = (rect.left() * dpi_factor + half_win_w) as u16;
+            let bottom = (rect.bottom() * dpi_factor + half_win_h) as u16;
+            let width = (w * dpi_factor) as u16;
+            let height = (h * dpi_factor) as u16;
+            gfx::Rect {
+                x: std::cmp::max(left, 0),
+                w: std::cmp::min(width, screen_w as u16),
+                y: std::cmp::max(bottom, 0),
+                h:  std::cmp::min(height, screen_h as u16),
+            }
+        };
+
+        // Draw each primitive in order of depth.
+        while let Some(primitive) = primitives.next_primitive() {
+            let render::Primitive { kind, scizzor, rect, .. } = primitive;
+
+            // Check for a `Scizzor` command.
+            let new_scizzor = rect_to_gfx_rect(scizzor);
+            if new_scizzor != current_scizzor {
+                // Finish the current command.
+                match current_state {
+                    State::Plain { start } =>
+                        commands.push(PreparedCommand::Plain(start..vertices.len())),
+                    State::Image { image_id, start } =>
+                        commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+                }
+
+                // Update the scizzor and produce a command.
+                current_scizzor = new_scizzor;
+                commands.push(PreparedCommand::Scizzor(new_scizzor));
+
+                // Set the state back to plain drawing.
+                current_state = State::Plain { start: vertices.len() };
+            }
+
             match kind {
+
                 render::PrimitiveKind::Rectangle { color } => {
+                    switch_to_plain_state!();
+
                     let color = gamma_srgb_to_linear(color.to_fsa());
+                    let (l, r, b, t) = rect.l_r_b_t();
 
-                    let mut v = |x,y| vertices.push(Vertex::new([2.0 * x as f32 / screen_width, 2.0 * y as f32 / screen_height], [0.0, 0.0], color));
-                    
-                    v(rect.x.start, rect.y.end  );
-                    v(rect.x.start, rect.y.start);
-                    v(rect.x.end  , rect.y.start);
-                    v(rect.x.end  , rect.y.start);
-                    v(rect.x.end  , rect.y.end  );
-                    v(rect.x.start, rect.y.end  );
+                    let v = |x, y| {
+                        // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                        Vertex {
+                            pos: [vx(x), vy(y)],
+                            uv: [0.0, 0.0],
+                            color: color,
+                            mode: MODE_GEOMETRY,
+                        }
+                    };
+
+                    let mut push_v = |x, y| vertices.push(v(x, y));
+
+                    // Bottom left triangle.
+                    push_v(l, t);
+                    push_v(r, b);
+                    push_v(l, b);
+
+                    // Top right triangle.
+                    push_v(l, t);
+                    push_v(r, b);
+                    push_v(r, t);
                 },
+
                 render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                    if triangles.is_empty() {
+                        continue;
+                    }
+
+                    switch_to_plain_state!();
+
                     let color = gamma_srgb_to_linear(color.into());
-                    use position::Point;
-                    let mut v = |pos: Point| vertices.push(Vertex::new([2.0 * pos[0] as f32 / screen_width, 2.0 * pos[1] as f32 / screen_height], [0.0, 0.0], color));
 
-                    for triangle in triangles{
-                        v(triangle[0]);
-                        v(triangle[1]);
-                        v(triangle[2]);
+                    let v = |p: [Scalar; 2]| {
+                        Vertex {
+                            pos: [vx(p[0]), vy(p[1])],
+                            uv: [0.0, 0.0],
+                            color: color,
+                            mode: MODE_GEOMETRY,
+                        }
+                    };
+
+                    for triangle in triangles {
+                        vertices.push(v(triangle[0]));
+                        vertices.push(v(triangle[1]));
+                        vertices.push(v(triangle[2]));
                     }
                 },
+
                 render::PrimitiveKind::TrianglesMultiColor { triangles } => {
-                    use widget::primitive::shape::triangles::ColoredPoint;
-                    let mut v = |(pos,rgba): ColoredPoint| vertices.push(Vertex::new([2.0 * pos[0] as f32 / screen_width, 2.0 * pos[1] as f32 / screen_height], [0.0, 0.0], gamma_srgb_to_linear(rgba.into())));
+                    if triangles.is_empty() {
+                        continue;
+                    }
 
-                    for triangle in triangles{
-                        v(triangle[0]);
-                        v(triangle[1]);
-                        v(triangle[2]);
+                    switch_to_plain_state!();
+
+                    let v = |(p, c): ([Scalar; 2], color::Rgba)| {
+                        Vertex {
+                            pos: [vx(p[0]), vy(p[1])],
+                            uv: [0.0, 0.0],
+                            color: gamma_srgb_to_linear(c.into()),
+                            mode: MODE_GEOMETRY,
+                        }
+                    };
+
+                    for triangle in triangles {
+                        vertices.push(v(triangle[0]));
+                        vertices.push(v(triangle[1]));
+                        vertices.push(v(triangle[2]));
                     }
                 },
-                render::PrimitiveKind::Image { .. } => {
-                    //TODO
-                },
+
                 render::PrimitiveKind::Text { color, text, font_id } => {
-                    let positioned_glyphs = text.positioned_glyphs(dpi_factor);
+                    switch_to_plain_state!();
+
+                    let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
 
                     // Queue the glyphs to be cached
                     for glyph in positioned_glyphs {
@@ -217,47 +416,169 @@ impl<R: Resources> Renderer<R>{
                     // A closure to convert RustType rects to GL rects
                     let to_gl_rect = |screen_rect: rt::Rect<i32>| rt::Rect {
                         min: origin
-                            + (rt::vector(screen_rect.min.x as f32 / screen_width - 0.5,
-                                            1.0 - screen_rect.min.y as f32 / screen_height - 0.5)) * 2.0,
+                            + (rt::vector(screen_rect.min.x as f32 / screen_w - 0.5,
+                                            1.0 - screen_rect.min.y as f32 / screen_h - 0.5)) * 2.0,
                         max: origin
-                            + (rt::vector(screen_rect.max.x as f32 / screen_width - 0.5,
-                                            1.0 - screen_rect.max.y as f32 / screen_height - 0.5)) * 2.0,
+                            + (rt::vector(screen_rect.max.x as f32 / screen_w - 0.5,
+                                            1.0 - screen_rect.max.y as f32 / screen_h - 0.5)) * 2.0,
                     };
 
-                    // Create new vertices
-                    let extension = positioned_glyphs.into_iter()
-                        .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
-                        .flat_map(|(uv_rect, screen_rect)| {
-                            use std::iter::once;
-
+                    for g in positioned_glyphs {
+                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g) {
                             let gl_rect = to_gl_rect(screen_rect);
-                            let v = |pos, uv| once(Vertex::new(pos, uv, color));
-
-                            v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y])
-                                .chain(v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]))
-                                .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
-                                .chain(v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]))
-                                .chain(v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]))
-                                .chain(v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]))
-                        });
-
-                    text_vertices.extend(extension);
+                            let v = |p, t| Vertex {
+                                pos: p,
+                                uv: t,
+                                color: color,
+                                mode: MODE_TEXT,
+                            };
+                            let mut push_v = |p, t| vertices.push(v(p, t));
+                            push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                            push_v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
+                            push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                        }
+                    }
                 },
-                render::PrimitiveKind::Other(_) => {},
+
+                render::PrimitiveKind::Image { image_id, color, source_rect } => {
+
+                    // Switch to the `Image` state for this image if we're not in it already.
+                    let new_image_id = image_id;
+                    match current_state {
+
+                        // If we're already in the drawing mode for this image, we're done.
+                        State::Image { image_id, .. } if image_id == new_image_id => (),
+
+                        // If we were in the `Plain` drawing state, switch to Image drawing state.
+                        State::Plain { start } => {
+                            commands.push(PreparedCommand::Plain(start..vertices.len()));
+                            current_state = State::Image {
+                                image_id: new_image_id,
+                                start: vertices.len(),
+                            };
+                        },
+
+                        // If we were drawing a different image, switch state to draw *this* image.
+                        State::Image { image_id, start } => {
+                            commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                            current_state = State::Image {
+                                image_id: new_image_id,
+                                start: vertices.len(),
+                            };
+                        },
+                    }
+
+                    let color = color.unwrap_or(color::WHITE).to_fsa();
+
+                    let (image_w, image_h) = image_map.get(&image_id).unwrap().1;
+                    let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
+
+                    // Get the sides of the source rectangle as uv coordinates.
+                    //
+                    // Texture coordinates range:
+                    // - left to right: 0.0 to 1.0
+                    // - bottom to top: 1.0 to 0.0
+                    // Note bottom and top are flipped in comparison to glium so that we don't need to flip images when loading
+                    let (uv_l, uv_r, uv_t, uv_b) = match source_rect {
+                        Some(src_rect) => {
+                            let (l, r, b, t) = src_rect.l_r_b_t();
+                            ((l / image_w) as f32,
+                             (r / image_w) as f32,
+                             (b / image_h) as f32,
+                             (t / image_h) as f32)
+                        },
+                        None => (0.0, 1.0, 0.0, 1.0),
+                    };
+
+                    let v = |x, y, t| {
+                        // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                        let x = (x * dpi_factor as Scalar / half_win_w) as f32;
+                        let y = (y * dpi_factor as Scalar / half_win_h) as f32;
+                        Vertex {
+                            pos: [x, y],
+                            uv: t,
+                            color: color,
+                            mode: MODE_IMAGE,
+                        }
+                    };
+
+                    let mut push_v = |x, y, t| vertices.push(v(x, y, t));
+
+                    let (l, r, b, t) = rect.l_r_b_t();
+
+                    // Bottom left triangle.
+                    push_v(l, t, [uv_l, uv_t]);
+                    push_v(r, b, [uv_r, uv_b]);
+                    push_v(l, b, [uv_l, uv_b]);
+
+                    // Top right triangle.
+                    push_v(l, t, [uv_l, uv_t]);
+                    push_v(r, b, [uv_r, uv_b]);
+                    push_v(r, t, [uv_r, uv_t]);
+                },
+
+                // We have no special case widgets to handle.
+                render::PrimitiveKind::Other(_) => (),
             }
+
         }
 
-        // Draw the vertices
-        data.color.0 = blank_texture.clone();
-        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
-        data.vbuf = vbuf;
-        encoder.draw(&slice, &pipeline, data);
+        // Enter the final command.
+        match current_state {
+            State::Plain { start } =>
+                commands.push(PreparedCommand::Plain(start..vertices.len())),
+            State::Image { image_id, start } =>
+                commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+        }
+    }
 
-        // Draw the text vertices
-        data.color.0 = cache_tex_view.clone();
-        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&text_vertices, ());
-        data.vbuf = vbuf;
-        encoder.draw(&slice, &pipeline, data);
+    /// Draws using the inner list of `Command`s to the given `display`.
+    ///
+    /// Note: If you require more granular control over rendering, you may want to use the `fill`
+    /// and `commands` methods separately. This method is simply a convenience wrapper around those
+    /// methods for the case that the user does not require accessing or modifying conrod's draw
+    /// parameters, uniforms or generated draw commands.
+    pub fn draw<F, C>(&self, factory: &mut F, encoder: &mut gfx::Encoder<R,C>, image_map: &image::Map<(gfx::handle::ShaderResourceView<R, [f32; 4]>,(u32,u32))>)
+        where F: Factory<R>,
+              C: gfx::CommandBuffer<R>,
+    {
+        let Renderer{ ref pipeline, ref data, ref cache_tex_view, ..} = *self;
+
+        let mut data = data.clone();
+
+        for command in self.commands() {
+            match command {
+
+                // Update the `scizzor` before continuing to draw.
+                Command::Scizzor(scizzor) => data.scissor = scizzor,
+
+                // Draw to the target with the given `draw` command.
+                Command::Draw(draw) => match draw {
+
+                    // Draw text and plain 2D geometry.
+                    Draw::Plain(verts) => {
+                        data.color.0 = cache_tex_view.clone();
+                        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&verts, ());
+                        data.vbuf = vbuf;
+                        encoder.draw(&slice, &pipeline, &data);
+                    },
+
+                    // Draw an image whose texture data lies within the `image_map` at the
+                    // given `id`.
+                    Draw::Image(image_id, verts) => {
+                        let image = &image_map.get(&image_id).unwrap().0;
+                        data.color.0 = image.clone();
+                        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&verts, ());
+                        data.vbuf = vbuf;
+                        encoder.draw(&slice, &pipeline, &data);
+                    },
+
+                }
+            }
+        }
     }
 }
 
@@ -345,6 +666,20 @@ fn update_texture<R, C>(encoder: &mut gfx::Encoder<R, C>,
     };
 
     encoder.update_texture::<SurfaceFormat, FullFormat>(texture, None, info, data).unwrap();
+}
+
+impl<'a> Iterator for Commands<'a> {
+    type Item = Command<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let Commands { ref mut commands, ref vertices } = *self;
+        commands.next().map(|command| match *command {
+            PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
+            PreparedCommand::Plain(ref range) =>
+                Command::Draw(Draw::Plain(&vertices[range.clone()])),
+            PreparedCommand::Image(id, ref range) =>
+                Command::Draw(Draw::Image(id, &vertices[range.clone()])),
+        })
+    }
 }
 
 impl From<gfx::PipelineStateError<String>> for RendererCreationError {

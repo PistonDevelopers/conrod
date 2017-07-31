@@ -23,10 +23,14 @@ fn main() {
 mod feature {
     extern crate gfx_window_glutin;
     extern crate find_folder;
+    extern crate image;
+
+    use std;
 
     use conrod;
     use glutin;
     use gfx;
+    use gfx_core;
     use support;
     use winit;
 
@@ -56,7 +60,7 @@ mod feature {
             gfx_window_glutin::init::<conrod::backend::gfx::ColorFormat, DepthFormat>(builder, context, &events_loop );
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, window.hidpi_factor()).unwrap();
+        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, window.hidpi_factor() as f64).unwrap();
 
         // Create Ui and Ids of widgets to instantiate
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -67,11 +71,40 @@ mod feature {
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
+        // Load the Rust logo from our assets folder to use as an example image.
+        fn load_rust_logo<T: gfx::format::TextureFormat,R: gfx_core::Resources, F: gfx::Factory<R>>(factory: &mut F) -> (gfx::handle::ShaderResourceView<R, <T as gfx::format::Formatted>::View>,(u32,u32)) {
+            use gfx::{format, texture};
+            use gfx::memory::Usage;
+            let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+            let path = assets.join("images/rust.png");
+            let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+            let image_dimensions = rgba_image.dimensions();
+            let kind = texture::Kind::D2(
+                image_dimensions.0 as texture::Size,
+                image_dimensions.1 as texture::Size,
+                texture::AaMode::Single
+            );
+            let info = texture::Info {
+                kind: kind,
+                levels: 1,
+                format: <T::Surface as format::SurfaceTyped>::get_surface_type(),
+                bind: gfx::SHADER_RESOURCE,
+                usage: Usage::Dynamic,
+            };
+            let raw = factory.create_texture_raw(info, Some(<T::Channel as format::ChannelTyped>::get_channel_type()) , Some(&[rgba_image.into_raw().as_slice()])).unwrap();
+            let tex = gfx_core::memory::Typed::new(raw);
+            let view = factory.view_texture_as_shader_resource::<T>(
+                &tex, (0,0), format::Swizzle::new()
+            ).unwrap();
+            (view,image_dimensions)
+        }
+
+
         // FIXME: We don't yet load the rust logo, so just insert nothing for now so we can get an
         // identifier used to construct the DemoApp. This should be changed to *actually* load a
         // gfx texture for the rust logo and insert it into the map.
         let mut image_map = conrod::image::Map::new();
-        let rust_logo = image_map.insert(());
+        let rust_logo = image_map.insert(load_rust_logo::<conrod::backend::gfx::ColorFormat,_,_>(&mut factory));
 
         // Demonstration app state that we'll control with our conrod GUI.
         let mut app = support::DemoApp::new(rust_logo);
@@ -92,7 +125,9 @@ mod feature {
                 //Clear the window
                 encoder.clear(&rtv, CLEAR_COLOR);
 
-                renderer.draw(&mut factory,&mut encoder,&mut device,primitives,dims);
+                renderer.fill(&mut encoder,dims,primitives,&image_map);
+
+                renderer.draw(&mut factory,&mut encoder,&image_map);
 
                 encoder.flush(&mut device);
                 window.swap_buffers().unwrap();
