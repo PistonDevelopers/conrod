@@ -890,6 +890,8 @@ impl Ui {
             },
 
             Input::Focus(_focused) => (),
+
+            Input::Redraw => self.needs_redraw(),
         }
     }
 
