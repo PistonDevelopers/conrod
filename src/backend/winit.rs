@@ -155,7 +155,7 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
         },
 
         winit::WindowEvent::Refresh => {
-            Some(Input::Rerender),
+            Some(Input::Redraw)
         },
 
         _ => None,

@@ -891,7 +891,7 @@ impl Ui {
 
             Input::Focus(_focused) => (),
 
-            Input::Rerender => self.needs_redraw(),
+            Input::Redraw => self.needs_redraw(),
         }
     }
 

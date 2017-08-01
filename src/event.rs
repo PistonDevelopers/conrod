@@ -72,8 +72,8 @@ pub enum Input {
     Text(String),
     /// The window was focused or lost focus.
     Focus(bool),
-    /// The backed requested to rerender.
-    Rerender,
+    /// The backed requested to redraw.
+    Redraw,
 }
 
 
