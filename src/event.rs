@@ -72,6 +72,8 @@ pub enum Input {
     Text(String),
     /// The window was focused or lost focus.
     Focus(bool),
+    /// The backed requested to rerender.
+    Rerender,
 }
 
 
@@ -82,7 +84,7 @@ pub enum Event {
     Raw(Input),
     /// Events that have been interpreted from `backend::RawEvent`s by the `Ui`.
     ///
-    /// Most events usually 
+    /// Most events usually
     Ui(Ui)
 }
 

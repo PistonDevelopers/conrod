@@ -154,6 +154,10 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
                 Some(Input::Release(input::Button::Mouse(map_mouse(button))).into()),
         },
 
+        winit::WindowEvent::Refresh => {
+            Some(Input::Rerender),
+        },
+
         _ => None,
     }
 }
