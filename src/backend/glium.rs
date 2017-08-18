@@ -447,7 +447,9 @@ impl Renderer {
                 match current_state {
                     State::Plain { .. } => (),
                     State::Image { image_id, start } => {
-                        commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                        if vertices.len() > start { 
+                            commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                        }
                         current_state = State::Plain { start: vertices.len() };
                     },
                 }
@@ -495,10 +497,16 @@ impl Renderer {
             if new_scizzor != current_scizzor {
                 // Finish the current command.
                 match current_state {
-                    State::Plain { start } =>
-                        commands.push(PreparedCommand::Plain(start..vertices.len())),
-                    State::Image { image_id, start } =>
-                        commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+                    State::Plain { start } => {
+                        if vertices.len() > start {
+                            commands.push(PreparedCommand::Plain(start..vertices.len()));
+                        }
+                    },
+                    State::Image { image_id, start } => {
+                        if vertices.len() > start {
+                            commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                        }
+                    },
                 }
 
                 // Update the scizzor and produce a command.
@@ -682,7 +690,9 @@ impl Renderer {
 
                         // If we were in the `Plain` drawing state, switch to Image drawing state.
                         State::Plain { start } => {
-                            commands.push(PreparedCommand::Plain(start..vertices.len()));
+                            if vertices.len() > start {
+                                commands.push(PreparedCommand::Plain(start..vertices.len()));
+                            }
                             current_state = State::Image {
                                 image_id: new_image_id,
                                 start: vertices.len(),
@@ -691,7 +701,9 @@ impl Renderer {
 
                         // If we were drawing a different image, switch state to draw *this* image.
                         State::Image { image_id, start } => {
-                            commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                            if vertices.len() > start {
+                                commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                            }
                             current_state = State::Image {
                                 image_id: new_image_id,
                                 start: vertices.len(),
@@ -755,10 +767,16 @@ impl Renderer {
 
         // Enter the final command.
         match current_state {
-            State::Plain { start } =>
-                commands.push(PreparedCommand::Plain(start..vertices.len())),
-            State::Image { image_id, start } =>
-                commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+            State::Plain { start } => {
+                if vertices.len() > start {
+                    commands.push(PreparedCommand::Plain(start..vertices.len()));
+                }
+            },
+            State::Image { image_id, start } => {
+                if vertices.len() > start {
+                    commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
+                }
+            },
         }
     }
 
