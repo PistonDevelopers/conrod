@@ -45,35 +45,53 @@ mod feature {
         // The image map describing each of our widget->image mappings (in our case, none).
         let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-        events_loop.run_forever(|event| {
+        let mut events = Vec::new();
 
-            // Break from the loop upon `Escape` or closed window.
-            match event.clone() {
-                glium::glutin::Event::WindowEvent { event, .. } => match event {
-                    glium::glutin::WindowEvent::Closed |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                            ..
-                        },
-                        ..
-                    } => return glium::glutin::ControlFlow::Break,
-                    _ => (),
-                },
-                _ => (),
+        'render: loop {
+            events.clear();
+
+            // Get all the new events since the last frame.
+            events_loop.poll_events(|event| { events.push(event); });
+
+            // If there are no new events, wait for one.
+            if events.is_empty() {
+                events_loop.run_forever(|event| {
+                    events.push(event);
+                    glium::glutin::ControlFlow::Break
+                });
             }
 
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            let input = match conrod::backend::winit::convert_event(event, &display) {
-                None => return glium::glutin::ControlFlow::Continue,
-                Some(input) => input,
-            };
+            // Process the events.
+            for event in events.drain(..) {
 
-            // Handle the input with the `Ui`.
-            ui.handle_event(input);
+                // Break from the loop upon `Escape` or closed window.
+                match event.clone() {
+                    glium::glutin::Event::WindowEvent { event, .. } => {
+                        match event {
+                            glium::glutin::WindowEvent::Closed |
+                            glium::glutin::WindowEvent::KeyboardInput {
+                                input: glium::glutin::KeyboardInput {
+                                    virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                    ..
+                                },
+                                ..
+                            } => break 'render,
+                            _ => (),
+                        }
+                    }
+                    _ => (),
+                };
 
-            // Set the widgets.
-            {
+                // Use the `winit` backend feature to convert the winit event to a conrod input.
+                let input = match conrod::backend::winit::convert_event(event, &display) {
+                    None => continue,
+                    Some(input) => input,
+                };
+
+                // Handle the input with the `Ui`.
+                ui.handle_event(input);
+
+                // Set the widgets.
                 let ui = &mut ui.set_widgets();
 
                 // "Hello World!" in the middle of the screen.
@@ -92,9 +110,7 @@ mod feature {
                 renderer.draw(&display, &mut target, &image_map).unwrap();
                 target.finish().unwrap();
             }
-
-            glium::glutin::ControlFlow::Continue
-        });
+        }
     }
 }
 
