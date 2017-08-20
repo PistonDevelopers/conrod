@@ -6,6 +6,7 @@ use Scalar;
 use event::Input;
 use input;
 #[cfg(feature = "glium")] use glium;
+#[cfg(feature = "glutin_winit")] use glutin;
 
 
 /// Types that have access to a `winit::Window` and can provide the necessary dimensions and hidpi
@@ -28,6 +29,17 @@ impl WinitWindow for winit::Window {
         winit::Window::hidpi_factor(self)
     }
 }
+
+#[cfg(feature = "glutin_winit")]
+impl WinitWindow for glutin::GlWindow {
+    fn get_inner_size(&self) -> Option<(u32, u32)> {
+        glutin::Window::get_inner_size(self.window())
+    }
+    fn hidpi_factor(&self) -> f32 {
+        glutin::Window::hidpi_factor(self.window())
+    }
+}
+
 
 #[cfg(feature = "glium")]
 impl WinitWindow for glium::Display {
