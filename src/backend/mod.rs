@@ -10,4 +10,5 @@
 #[cfg(feature="glium")] pub mod glium;
 #[cfg(feature="winit")] pub mod winit;
 #[cfg(feature="piston")] pub mod piston;
+#[cfg(feature="sdl2")] pub mod sdl2;
 #[cfg(feature="gfx_rs")] pub mod gfx;
