@@ -63,4 +63,4 @@ rand = "0.3.13"
 gfx_window_glutin = "0.17.0"
 glutin = "0.9.0"
 # piston_window.rs example dependencies
-piston_window = "0.65.0"
+piston_window = "0.70.0"
