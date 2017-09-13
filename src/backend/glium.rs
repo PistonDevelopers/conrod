@@ -783,6 +783,8 @@ impl Renderer {
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Linear)
         };
 
+        const NUM_VERTICES_IN_TRIANGLE: usize = 3;
+
         for command in self.commands() {
             match command {
 
@@ -793,14 +795,18 @@ impl Renderer {
                 Command::Draw(draw) => match draw {
 
                     // Draw text and plain 2D geometry.
-                    Draw::Plain(slice) => {
+                    //
+                    // Only submit the vertices if there is enough for at least one triangle.
+                    Draw::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let vertex_buffer = try!(glium::VertexBuffer::new(facade, slice));
                         surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
                     },
 
                     // Draw an image whose texture data lies within the `image_map` at the
                     // given `id`.
-                    Draw::Image(image_id, slice) => {
+                    //
+                    // Only submit the vertices if there is enough for at least one triangle.
+                    Draw::Image(image_id, slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice).unwrap();
                         let image = image_map.get(&image_id).unwrap();
                         let image_uniforms = uniform! {
