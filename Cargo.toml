@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.54.0"
+version = "0.55.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -59,7 +59,7 @@ gfx_rs=["gfx","gfx_core"]
 [dev-dependencies]
 find_folder = "0.3.0"
 image = "0.15.0"
-rand = "0.3.16"
+rand = "0.3.13"
 # glutin_gfx.rs example dependencies
 gfx_window_glutin = "0.17.0"
 gfx_window_sdl = "0.6.0"
