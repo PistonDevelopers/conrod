@@ -323,12 +323,14 @@ pub fn map_mouse(mouse_button: winit::MouseButton) -> input::MouseButton {
 fn set_mouse_cursor(cursor: cursor::MouseCursor, window: &winit::Window) {
     match cursor {
         cursor::MouseCursor::Text => window.set_cursor(winit::MouseCursor::Text),
+        cursor::MouseCursor::VerticalText => window.set_cursor(winit::MouseCursor::VerticalText),
+        cursor::MouseCursor::Hand=> window.set_cursor(winit::MouseCursor::Hand),
         cursor::MouseCursor::Grab => window.set_cursor(winit::MouseCursor::Grab),
         cursor::MouseCursor::Grabbing => window.set_cursor(winit::MouseCursor::Grabbing),
         cursor::MouseCursor::ResizeVertical => window.set_cursor(winit::MouseCursor::NsResize),
         cursor::MouseCursor::ResizeHorizontal => window.set_cursor(winit::MouseCursor::EwResize),
-        cursor::MouseCursor::ResizeTopLeftDownRight => window.set_cursor(winit::MouseCursor::NwseResize),
-        cursor::MouseCursor::ResizeTopRightDownLeft => window.set_cursor(winit::MouseCursor::NeswResize),
+        cursor::MouseCursor::ResizeTopLeftBottomRight => window.set_cursor(winit::MouseCursor::NwseResize),
+        cursor::MouseCursor::ResizeTopRightBottomLeft => window.set_cursor(winit::MouseCursor::NeswResize),
         _ => window.set_cursor(winit::MouseCursor::Arrow),
     }
 }
