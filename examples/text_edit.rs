@@ -8,9 +8,11 @@ fn main() {
 #[cfg(all(feature="winit", feature="glium"))]
 mod feature {
     extern crate find_folder;
+    extern crate winit;
     use conrod;
     use conrod::backend::glium::glium;
     use conrod::backend::glium::glium::Surface;
+    use conrod::backend::winit::WinitWindow;
     use support;
 
     widget_ids! {
@@ -90,6 +92,8 @@ mod feature {
 
             // Instnatiate all widgets in the GUI.
             set_ui(ui.set_widgets(), &ids, &mut demo_text);
+
+            display.set_mouse_cursor(ui.mouse_cursor());
 
             // Render the `Ui` and then display it on the screen.
             if let Some(primitives) = ui.draw_if_changed() {

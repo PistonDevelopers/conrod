@@ -10,6 +10,7 @@ use text;
 use theme::Theme;
 use utils;
 use widget::{self, Widget};
+use cursor;
 
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
@@ -81,6 +82,8 @@ pub struct Ui {
     /// the end of the `Ui::set_widgets` method. This ensures that the events are received by the
     /// target widgets during the next call to `Ui::set_widgets`.
     pending_scroll_events: Vec<event::Ui>,
+    /// Mouse cursor
+    mouse_cursor: cursor::MouseCursor,
 
     // TODO: Remove the following fields as they should now be handled by `input::Global`.
 
@@ -198,6 +201,7 @@ impl Ui {
             prev_updated_widgets: prev_updated_widgets,
             global_input: input::Global::new(),
             pending_scroll_events: Vec::new(),
+            mouse_cursor: cursor::MouseCursor::Arrow,
         }
     }
 
@@ -1051,6 +1055,8 @@ impl Ui {
 
         ui_cell.ui.maybe_current_parent_id = Some(ui_cell.window.into());
 
+        ui_cell.set_mouse_cursor(cursor::MouseCursor::Arrow);
+
         ui_cell
     }
 
@@ -1142,6 +1148,10 @@ impl Ui {
         graph::algo::cropped_area_of_widget(&self.widget_graph, id)
     }
 
+    /// Get mouse cursor state.
+    pub fn mouse_cursor(&self) -> cursor::MouseCursor {
+        self.mouse_cursor
+    }
 }
 
 
@@ -1206,6 +1216,10 @@ impl<'a> UiCell<'a> {
         }
     }
 
+    /// Sets the mouse cursor
+    pub fn set_mouse_cursor(&mut self, cursor: cursor::MouseCursor) {
+        self.ui.mouse_cursor = cursor;
+    }
 }
 
 impl<'a> Drop for UiCell<'a> {

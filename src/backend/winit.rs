@@ -5,11 +5,13 @@ extern crate winit;
 use Scalar;
 use event::Input;
 use input;
+use cursor;
 #[cfg(feature = "glium")] use glium;
 
 
 /// Types that have access to a `winit::Window` and can provide the necessary dimensions and hidpi
-/// factor for converting `winit::Event`s to `conrod::event::Input`.
+/// factor for converting `winit::Event`s to `conrod::event::Input`, as well as set the mouse
+/// cursor.
 ///
 /// This allows users to pass either `glium::Display`, `glium::glutin::Window` or `winit::Window`
 /// to the `conrod::backend::winit::convert` function defined below.
@@ -18,6 +20,8 @@ pub trait WinitWindow {
     fn get_inner_size(&self) -> Option<(u32, u32)>;
     /// Return the window's DPI factor so that we can convert from pixel values to scalar values.
     fn hidpi_factor(&self) -> f32;
+    /// Set the mouse cursor.
+    fn set_mouse_cursor(&self, cur: cursor::MouseCursor);
 }
 
 impl WinitWindow for winit::Window {
@@ -26,6 +30,9 @@ impl WinitWindow for winit::Window {
     }
     fn hidpi_factor(&self) -> f32 {
         winit::Window::hidpi_factor(self)
+    }
+    fn set_mouse_cursor(&self, cur: cursor::MouseCursor) {
+        set_mouse_cursor(cur, self);
     }
 }
 
@@ -36,6 +43,9 @@ impl WinitWindow for glium::Display {
     }
     fn hidpi_factor(&self) -> f32 {
         self.gl_window().hidpi_factor()
+    }
+    fn set_mouse_cursor(&self, cur: cursor::MouseCursor) {
+        set_mouse_cursor(cur, &self.gl_window().window());
     }
 }
 
@@ -306,5 +316,19 @@ pub fn map_mouse(mouse_button: winit::MouseButton) -> input::MouseButton {
         winit::MouseButton::Other(3) => MouseButton::Button7,
         winit::MouseButton::Other(4) => MouseButton::Button8,
         _ => MouseButton::Unknown
+    }
+}
+
+/// Helper method to set the mouse cursor using winit.
+fn set_mouse_cursor(cursor: cursor::MouseCursor, window: &winit::Window) {
+    match cursor {
+        cursor::MouseCursor::Text => window.set_cursor(winit::MouseCursor::Text),
+        cursor::MouseCursor::Grab => window.set_cursor(winit::MouseCursor::Grab),
+        cursor::MouseCursor::Grabbing => window.set_cursor(winit::MouseCursor::Grabbing),
+        cursor::MouseCursor::ResizeVertical => window.set_cursor(winit::MouseCursor::NsResize),
+        cursor::MouseCursor::ResizeHorizontal => window.set_cursor(winit::MouseCursor::EwResize),
+        cursor::MouseCursor::ResizeTopLeftDownRight => window.set_cursor(winit::MouseCursor::NwseResize),
+        cursor::MouseCursor::ResizeTopRightDownLeft => window.set_cursor(winit::MouseCursor::NeswResize),
+        _ => window.set_cursor(winit::MouseCursor::Arrow),
     }
 }
