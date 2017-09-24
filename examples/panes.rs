@@ -125,7 +125,7 @@ mod feature {
         // Construct our main `PaneCanvas` tree.
         widget::PaneCanvas::new().flow_down(&[
             (ids.header, widget::PaneCanvas::new().color(color::BLUE).pad_bottom(20.0)),
-            (ids.body, widget::PaneCanvas::new().length(300.0).divider_width(10.0).divider_color(color::LIGHT_ORANGE)
+            (ids.body, widget::PaneCanvas::new().length(300.0).divider_width(10.0).divider_color(color::DARK_BLUE)
              .flow_right(&[
                 (ids.left_column, widget::PaneCanvas::new().color(color::LIGHT_ORANGE).pad(20.0)),
                 (ids.middle_column, widget::PaneCanvas::new().color(color::ORANGE)),

@@ -234,6 +234,8 @@ impl<'a> PaneCanvas<'a> {
     }
 
     /// Set the width of the Split divider. By default, dividers are 5 pixels wide.
+    /// Setting this to 0.0 effectively disables dividers, which makes this widget act exactly like
+    /// the **Canvas** widget.
     pub fn divider_width(mut self, width: Scalar) -> Self {
         self.style.divider_width = Some(width);
         self
@@ -519,7 +521,7 @@ impl<'a> Widget for PaneCanvas<'a> {
                                     [kid_area.$outer(), divider_width]
                                 };
                             let prev_split_id = splits[i].0;
-                            widget::BorderedRectangle::new(dim)
+                            widget::Rectangle::fill(dim)
                                 .color(divider_color)
                                 .place_on_kid_area(false)
                                 .$div_dir(prev_split_id, 0.5*(split_padding - divider_width))
