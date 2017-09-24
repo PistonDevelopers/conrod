@@ -741,8 +741,7 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        let hover = ui.widget_input(id).mouse().map_or(false, |_| { true });
-        if hover {
+        if let Some(_) = ui.widget_input(id).mouse() {
             ui.set_mouse_cursor(cursor::MouseCursor::Text);
         }
 
