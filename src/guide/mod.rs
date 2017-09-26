@@ -19,11 +19,9 @@
 2. [**Getting Started**][2]
     - [Installing Rust and Cargo][2.1]
     - [Running the Conrod Examples][2.2]
-3. [**Hello World**][3]
-    - [Creating a New Project][3.1]
-    - [Conrod Setup][3.2]
-    - [Creating a window][3.3]
-    - [Handling events][3.4]
+3. **Let's Create a GUI**
+    - Setup a Basic Window (using piston_window)
+    - Conrod Setup
     - Instantiating Widgets
     - Widget Positioning and Layout
 4. **Using and Customising Themes**
@@ -58,13 +56,8 @@
 [2]:        ./chapter_2/index.html
 [2.1]:      ./chapter_2/index.html#installing-rust-and-cargo
 [2.2]:      ./chapter_2/index.html#running-the-conrod-examples
-[3]:        ./chapter_3/index.html
-[3.1]:      ./chapter_3/index.html#creating-a-new-project
-[3.2]:      ./chapter_3/index.html#setting-up-cargo-for-conrod
-[3.3]:      ./chapter_3/index.html#creating-a-window
-[3.4]:      ./chapter_3/index.html#event-handling
+
 */
 
 pub mod chapter_1;
 pub mod chapter_2;
-pub mod chapter_3;
