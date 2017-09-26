@@ -20,8 +20,6 @@ pub trait WinitWindow {
     fn get_inner_size(&self) -> Option<(u32, u32)>;
     /// Return the window's DPI factor so that we can convert from pixel values to scalar values.
     fn hidpi_factor(&self) -> f32;
-    /// Set the mouse cursor.
-    fn set_mouse_cursor(&self, cur: cursor::MouseCursor);
 }
 
 impl WinitWindow for winit::Window {
@@ -30,9 +28,6 @@ impl WinitWindow for winit::Window {
     }
     fn hidpi_factor(&self) -> f32 {
         winit::Window::hidpi_factor(self)
-    }
-    fn set_mouse_cursor(&self, cur: cursor::MouseCursor) {
-        set_mouse_cursor(cur, self);
     }
 }
 
@@ -43,9 +38,6 @@ impl WinitWindow for glium::Display {
     }
     fn hidpi_factor(&self) -> f32 {
         self.gl_window().hidpi_factor()
-    }
-    fn set_mouse_cursor(&self, cur: cursor::MouseCursor) {
-        set_mouse_cursor(cur, &self.gl_window().window());
     }
 }
 
@@ -319,18 +311,18 @@ pub fn map_mouse(mouse_button: winit::MouseButton) -> input::MouseButton {
     }
 }
 
-/// Helper method to set the mouse cursor using winit.
-fn set_mouse_cursor(cursor: cursor::MouseCursor, window: &winit::Window) {
+/// Convert a given conrod mouse cursor to the corresponding winit cursor type.
+pub fn convert_mouse_cursor(cursor: cursor::MouseCursor) -> winit::MouseCursor {
     match cursor {
-        cursor::MouseCursor::Text => window.set_cursor(winit::MouseCursor::Text),
-        cursor::MouseCursor::VerticalText => window.set_cursor(winit::MouseCursor::VerticalText),
-        cursor::MouseCursor::Hand=> window.set_cursor(winit::MouseCursor::Hand),
-        cursor::MouseCursor::Grab => window.set_cursor(winit::MouseCursor::Grab),
-        cursor::MouseCursor::Grabbing => window.set_cursor(winit::MouseCursor::Grabbing),
-        cursor::MouseCursor::ResizeVertical => window.set_cursor(winit::MouseCursor::NsResize),
-        cursor::MouseCursor::ResizeHorizontal => window.set_cursor(winit::MouseCursor::EwResize),
-        cursor::MouseCursor::ResizeTopLeftBottomRight => window.set_cursor(winit::MouseCursor::NwseResize),
-        cursor::MouseCursor::ResizeTopRightBottomLeft => window.set_cursor(winit::MouseCursor::NeswResize),
-        _ => window.set_cursor(winit::MouseCursor::Arrow),
+        cursor::MouseCursor::Text => winit::MouseCursor::Text,
+        cursor::MouseCursor::VerticalText => winit::MouseCursor::VerticalText,
+        cursor::MouseCursor::Hand => winit::MouseCursor::Hand,
+        cursor::MouseCursor::Grab => winit::MouseCursor::Grab,
+        cursor::MouseCursor::Grabbing => winit::MouseCursor::Grabbing,
+        cursor::MouseCursor::ResizeVertical => winit::MouseCursor::NsResize,
+        cursor::MouseCursor::ResizeHorizontal => winit::MouseCursor::EwResize,
+        cursor::MouseCursor::ResizeTopLeftBottomRight => winit::MouseCursor::NwseResize,
+        cursor::MouseCursor::ResizeTopRightBottomLeft => winit::MouseCursor::NeswResize,
+        _ => winit::MouseCursor::Arrow,
     }
 }
