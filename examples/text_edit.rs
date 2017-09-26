@@ -91,6 +91,10 @@ mod feature {
             // Instnatiate all widgets in the GUI.
             set_ui(ui.set_widgets(), &ids, &mut demo_text);
 
+            // Get the underlying winit window and update the mouse cursor as set by conrod.
+            display.gl_window().window()
+                .set_cursor(conrod::backend::winit::convert_mouse_cursor(ui.mouse_cursor()));
+
             // Render the `Ui` and then display it on the screen.
             if let Some(primitives) = ui.draw_if_changed() {
                 renderer.fill(&display, primitives, &image_map);

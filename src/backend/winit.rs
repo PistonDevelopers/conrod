@@ -5,11 +5,13 @@ extern crate winit;
 use Scalar;
 use event::Input;
 use input;
+use cursor;
 #[cfg(feature = "glium")] use glium;
 
 
 /// Types that have access to a `winit::Window` and can provide the necessary dimensions and hidpi
-/// factor for converting `winit::Event`s to `conrod::event::Input`.
+/// factor for converting `winit::Event`s to `conrod::event::Input`, as well as set the mouse
+/// cursor.
 ///
 /// This allows users to pass either `glium::Display`, `glium::glutin::Window` or `winit::Window`
 /// to the `conrod::backend::winit::convert` function defined below.
@@ -306,5 +308,21 @@ pub fn map_mouse(mouse_button: winit::MouseButton) -> input::MouseButton {
         winit::MouseButton::Other(3) => MouseButton::Button7,
         winit::MouseButton::Other(4) => MouseButton::Button8,
         _ => MouseButton::Unknown
+    }
+}
+
+/// Convert a given conrod mouse cursor to the corresponding winit cursor type.
+pub fn convert_mouse_cursor(cursor: cursor::MouseCursor) -> winit::MouseCursor {
+    match cursor {
+        cursor::MouseCursor::Text => winit::MouseCursor::Text,
+        cursor::MouseCursor::VerticalText => winit::MouseCursor::VerticalText,
+        cursor::MouseCursor::Hand => winit::MouseCursor::Hand,
+        cursor::MouseCursor::Grab => winit::MouseCursor::Grab,
+        cursor::MouseCursor::Grabbing => winit::MouseCursor::Grabbing,
+        cursor::MouseCursor::ResizeVertical => winit::MouseCursor::NsResize,
+        cursor::MouseCursor::ResizeHorizontal => winit::MouseCursor::EwResize,
+        cursor::MouseCursor::ResizeTopLeftBottomRight => winit::MouseCursor::NwseResize,
+        cursor::MouseCursor::ResizeTopRightBottomLeft => winit::MouseCursor::NeswResize,
+        _ => winit::MouseCursor::Arrow,
     }
 }

@@ -8,6 +8,7 @@ use std;
 use text;
 use utils;
 use widget;
+use cursor;
 use widget::primitive::text::Wrap;
 
 
@@ -738,6 +739,10 @@ impl<'a> Widget for TextEdit<'a> {
 
                 _ => (),
             }
+        }
+
+        if let Some(_) = ui.widget_input(id).mouse() {
+            ui.set_mouse_cursor(cursor::MouseCursor::Text);
         }
 
         let cursor_has_changed = state.cursor != cursor;
