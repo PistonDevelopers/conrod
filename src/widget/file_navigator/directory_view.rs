@@ -150,6 +150,7 @@ fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBu
                 return false
             }
         },
+        super::Types::Directories => return path.is_dir(),
     }
 }
 
