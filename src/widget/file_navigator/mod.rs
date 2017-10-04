@@ -159,6 +159,7 @@ impl<'a> FileNavigator<'a> {
         Self::new(starting_directory, Types::WithExtension(exts))
     }
 
+    /// Begin building a `FileNavigator` that only displays directories.
     pub fn directories(starting_directory: &'a std::path::Path) -> Self {
         Self::new(starting_directory, Types::Directories)
     }
