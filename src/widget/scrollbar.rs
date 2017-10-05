@@ -158,8 +158,6 @@ impl<A> Widget for Scrollbar<A>
         let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
         let Scrollbar { widget, .. } = self;
 
-        let color = style.color(ui.theme());
-
         // Only continue if the widget that we want to scroll has some scroll state.
         let (offset_bounds, offset, scrollable_range_len, is_scrolling) =
             match ui.widget_graph().widget(widget) {
@@ -180,7 +178,11 @@ impl<A> Widget for Scrollbar<A>
             let perpendicular_track_range = A::perpendicular_range(rect);
             let track_range = A::parallel_range(rect);
             let track_len = track_range.len();
-            let len = track_len * (track_len / scrollable_range_len);
+            let len = if scrollable_range_len == 0.0 {
+                track_len
+            } else {
+                utils::clamp(track_len * (track_len / scrollable_range_len), 0.0, track_len)
+            };
             let handle_range = Range::from_pos_and_len(0.0, len);
             let pos = {
                 let pos_min = handle_range.align_start_of(track_range).middle();
@@ -252,14 +254,28 @@ impl<A> Widget for Scrollbar<A>
 
         // Don't draw the scrollbar if auto_hide is on and there is no interaction.
         let auto_hide = style.auto_hide(ui.theme());
+        let not_scrollable = offset_bounds.magnitude().is_sign_positive();
         if auto_hide {
-            let not_scrollable = offset_bounds.magnitude().is_sign_positive();
             let no_offset = additional_offset == 0.0;
             let no_mouse_interaction = ui.widget_input(id).mouse().is_none();
             if not_scrollable || (!is_scrolling && no_offset && no_mouse_interaction) {
                 return;
             }
         }
+
+        let color = style.color(ui.theme());
+        let color = if not_scrollable {
+            color
+        } else {
+            ui.widget_input(id)
+                .mouse()
+                .map(|m| if m.buttons.left().is_down() {
+                    color.clicked()
+                } else {
+                    color.highlighted()
+                })
+                .unwrap_or_else(|| color)
+        };
 
         // The `Track` widget along which the handle will slide.
         let track_color = color.alpha(0.25);

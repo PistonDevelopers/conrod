@@ -48,6 +48,8 @@ pub enum Types<'a> {
     ///
     /// i.e. `&["wav", "wave", "aiff"]`.
     WithExtension(&'a [&'a str]),
+    /// Indicates only directories should be shown
+    Directories,
 }
 
 /// Unique state stored within the widget graph for each `FileNavigator`.
@@ -155,6 +157,11 @@ impl<'a> FileNavigator<'a> {
     /// list of extensions: `&["wav", "wave", "aiff"]`.
     pub fn with_extension(starting_directory: &'a std::path::Path, exts: &'a [&'a str]) -> Self {
         Self::new(starting_directory, Types::WithExtension(exts))
+    }
+
+    /// Begin building a `FileNavigator` that only displays directories.
+    pub fn directories(starting_directory: &'a std::path::Path) -> Self {
+        Self::new(starting_directory, Types::Directories)
     }
 
     /// The color of the unselected entries within each `DirectoryView`.
