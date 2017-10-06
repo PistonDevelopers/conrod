@@ -590,12 +590,19 @@ impl<'a, R: Resources> Renderer<'a, R>{
         }
     }
 
-    /// Call this method when a window has been resized. This ensures that conrod primitives are
+    /// Call this routine when a window has been resized. This ensures that conrod primitives are
     /// drawn properly with the `draw` call.
     pub fn on_resize(&mut self, rtv: RenderTargetView<R, ColorFormat>) {
         let (width,height,_depth,_samples) = rtv.get_dimensions();
         self.data.out = rtv;
         self.data.scissor = gfx::Rect{x:0,y:0,w:width,h:height};
+    }
+
+    /// Call this routine to clear the render target.
+    pub fn clear<C>(&self, encoder: &mut gfx::Encoder<R,C>, clear_color: [f32; 4])
+        where C: gfx::CommandBuffer<R>,
+    {
+        encoder.clear(&self.data.out, clear_color);
     }
 }
 
