@@ -171,6 +171,6 @@ mod feature {
 mod feature {
     pub fn main() {
         println!("This example requires the `winit` feature and the `gfx_rs` feature. \
-                 Try running `cargo run --release --no-default-features --features=\"winit gf_rs\" --example <example_name>`");
+                 Try running `cargo run --release --no-default-features --features=\"winit gfx_rs\" --example <example_name>`");
    }
 }
