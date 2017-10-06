@@ -99,10 +99,6 @@ mod feature {
             (view,image_dimensions)
         }
 
-
-        // FIXME: We don't yet load the rust logo, so just insert nothing for now so we can get an
-        // identifier used to construct the DemoApp. This should be changed to *actually* load a
-        // gfx texture for the rust logo and insert it into the map.
         let mut image_map = conrod::image::Map::new();
         let rust_logo = image_map.insert(load_rust_logo::<conrod::backend::gfx::ColorFormat,_,_>(&mut factory));
 
@@ -136,8 +132,6 @@ mod feature {
 
             let mut should_quit = false;
             events_loop.poll_events(|event|{
-                let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
-                let dpi_factor = dpi_factor as conrod::Scalar;
 
                 // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
                 if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.window()) {
@@ -146,9 +140,17 @@ mod feature {
 
                 // Close window if the escape key or the exit button is pressed
                 match event {
-                    winit::Event::WindowEvent{event: winit::WindowEvent::KeyboardInput{input: winit::KeyboardInput{virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..}, .. } |
-                    winit::Event::WindowEvent{event: winit::WindowEvent::Closed, ..} =>
-                        should_quit = true,
+                    winit::Event::WindowEvent{event, .. } =>
+                        match event {
+                            winit::WindowEvent::KeyboardInput{ input: winit::KeyboardInput{ virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..} |
+                            winit::WindowEvent::Closed => should_quit = true,
+                            winit::WindowEvent::Resized(width, height) => {
+                                window.resize(width, height);
+                                let (new_color, _) = gfx_window_glutin::new_views::<conrod::backend::gfx::ColorFormat, DepthFormat>(&window);
+                                renderer.on_resize(new_color);
+                            }
+                            _ => {},
+                        },
                     _ => {},
                 }
             });
