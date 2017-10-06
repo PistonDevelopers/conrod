@@ -119,7 +119,7 @@ mod feature {
                 let dims = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
 
                 //Clear the window
-                encoder.clear(&rtv, CLEAR_COLOR);
+                renderer.clear(&mut encoder, CLEAR_COLOR);
 
                 renderer.fill(&mut encoder,dims,primitives,&image_map);
 
