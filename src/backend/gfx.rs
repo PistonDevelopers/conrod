@@ -177,9 +177,16 @@ impl<R: Resources> Renderer<R>{
             out: rtv.clone(),
         };
 
-        let pipeline = factory.create_pipeline_simple(VERTEX_SHADER,
-                                                      FRAGMENT_SHADER,
-                                                      pipe::new())?;
+        let shader_set = factory.create_shader_set(VERTEX_SHADER, FRAGMENT_SHADER).unwrap();
+
+        let pipeline = factory.create_pipeline_state(
+            &shader_set,
+            gfx::Primitive::TriangleList,
+            gfx::state::Rasterizer {
+                samples: Some(gfx::state::MultiSample {}),
+                ..gfx::state::Rasterizer::new_fill()
+            },
+            pipe::new())?;
 
         let (glyph_cache, cache_tex, cache_tex_view) = {
 
