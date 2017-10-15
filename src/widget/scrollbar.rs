@@ -155,7 +155,7 @@ impl<A> Widget for Scrollbar<A>
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let Scrollbar { widget, .. } = self;
 
         // Only continue if the widget that we want to scroll has some scroll state.

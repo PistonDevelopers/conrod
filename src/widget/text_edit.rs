@@ -239,7 +239,7 @@ impl<'a> Widget for TextEdit<'a> {
 
     /// Update the state of the TextEdit.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let TextEdit { text, .. } = self;
         let mut text = std::borrow::Cow::Borrowed(text);
 
@@ -458,7 +458,7 @@ impl<'a> Widget for TextEdit<'a> {
                         // If `Cursor::Idx`, remove the `char` behind the cursor.
                         // If `Cursor::Selection`, remove the selected text.
                         input::Key::Backspace | input::Key::Delete => {
-                            let delete_word = press.modifiers.contains(input::keyboard::CTRL);
+                            let delete_word = press.modifiers.contains(input::keyboard::ModifierKey::CTRL);
 
                             // Calculate start/end indices of text to remove
                             let (start, end) = match cursor {
@@ -520,8 +520,8 @@ impl<'a> Widget for TextEdit<'a> {
 
                         input::Key::Left | input::Key::Right | input::Key::Up | input::Key::Down => {
                             let font = ui.fonts.get(font_id).unwrap();
-                            let move_word = press.modifiers.contains(input::keyboard::CTRL);
-                            let select = press.modifiers.contains(input::keyboard::SHIFT);
+                            let move_word = press.modifiers.contains(input::keyboard::ModifierKey::CTRL);
+                            let select = press.modifiers.contains(input::keyboard::ModifierKey::SHIFT);
 
                             let (old_selection_start, cursor_idx) = match cursor {
                                 Cursor::Idx(idx) => (idx, idx),
@@ -600,7 +600,7 @@ impl<'a> Widget for TextEdit<'a> {
 
                         input::Key::A => {
                             // Select all text on Ctrl+a.
-                            if press.modifiers.contains(input::keyboard::CTRL) {
+                            if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
                                 let start = text::cursor::Index { line: 0, char: 0 };
                                 let end = {
                                     let line_infos = state.line_infos.iter().cloned();
@@ -613,7 +613,7 @@ impl<'a> Widget for TextEdit<'a> {
 
                         input::Key::E => {
                             // move cursor to end.
-                            if press.modifiers.contains(input::keyboard::CTRL) {
+                            if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
                                 let mut line_infos = state.line_infos.iter().cloned();
                                 let line = line_infos.len() - 1;
                                 match line_infos.nth(line) {
@@ -679,14 +679,14 @@ impl<'a> Widget for TextEdit<'a> {
                 },
 
                 event::Widget::Text(event::Text { string, modifiers }) => {
-                    if modifiers.contains(input::keyboard::CTRL)
+                    if modifiers.contains(input::keyboard::ModifierKey::CTRL)
                     || string.chars().count() == 0
                     || string.chars().next().is_none() {
                         continue 'events;
                     }
 
                     // Ignore text produced by arrow keys.
-                    // 
+                    //
                     // TODO: These just happened to be the modifiers for the arrows on OS X, I've
                     // no idea if they also apply to other platforms. We should definitely see if
                     // there's a better way to handle this, or whether this should be fixed

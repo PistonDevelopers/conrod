@@ -145,7 +145,7 @@ mod circular_button {
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
         fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-            let widget::UpdateArgs { id, state, rect, mut ui, style, .. } = args;
+            let widget::UpdateArgs { id, state, rect, ui, style, .. } = args;
 
             let (color, event) = {
                 let input = ui.widget_input(id);

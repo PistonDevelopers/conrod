@@ -145,7 +145,7 @@ impl<'a> Widget for Toggle<'a> {
 
     /// Update the state of the Toggle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Toggle { value, enabled, maybe_label, .. } = self;
 
         let times_clicked = TimesClicked {
