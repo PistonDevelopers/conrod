@@ -60,7 +60,7 @@ find_folder = "0.3.0"
 image = "0.17.0"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
-gfx_window_glutin = "0.17.0"
-glutin = "0.9.0"
+gfx_window_glutin = "0.18.0"
+glutin = "0.10.0"
 # piston_window.rs example dependencies
 piston_window = "0.73.0"
