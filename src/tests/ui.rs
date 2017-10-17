@@ -107,7 +107,7 @@ fn ui_should_reset_global_input_after_widget_are_set() {
 
 #[test]
 fn ui_should_push_input_events_to_aggregator() {
-    let mut ui = &mut windowless_ui();
+    let ui = &mut windowless_ui();
 
     test_handling_basic_input_event(ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
     test_handling_basic_input_event(ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));

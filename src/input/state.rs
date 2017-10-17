@@ -10,7 +10,7 @@
 use position::Point;
 use self::mouse::Mouse;
 use fnv;
-use super::keyboard::{NO_MODIFIER, ModifierKey};
+use super::keyboard::ModifierKey;
 use utils;
 use widget;
 
@@ -50,7 +50,7 @@ impl State {
             widget_capturing_keyboard: None,
             widget_capturing_mouse: None,
             widget_under_mouse: None,
-            modifiers: NO_MODIFIER,
+            modifiers: ModifierKey::NO_MODIFIER,
         }
     }
 

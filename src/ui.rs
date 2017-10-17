@@ -383,12 +383,12 @@ impl Ui {
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+            use input::keyboard::ModifierKey;
             match key {
-                Key::LCtrl | Key::RCtrl => Some(CTRL),
-                Key::LShift | Key::RShift => Some(SHIFT),
-                Key::LAlt | Key::RAlt => Some(ALT),
-                Key::LGui | Key::RGui => Some(GUI),
+                Key::LCtrl | Key::RCtrl => Some(ModifierKey::CTRL),
+                Key::LShift | Key::RShift => Some(ModifierKey::SHIFT),
+                Key::LAlt | Key::RAlt => Some(ModifierKey::ALT),
+                Key::LGui | Key::RGui => Some(ModifierKey::GUI),
                 _ => None
             }
         }
