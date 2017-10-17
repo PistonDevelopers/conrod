@@ -513,7 +513,7 @@ impl ItemSize for Fixed {
         -> <List<D, Self> as Widget>::Event
         where D: Direction,
     {
-        let widget::UpdateArgs { id, state, rect, prev, mut ui, style, .. } = args;
+        let widget::UpdateArgs { id, state, rect, prev, ui, style, .. } = args;
         let List { common, item_size, num_items, item_instantiation, .. } = list;
 
         // The following code is generic over the direction in which the `List` is laid out.

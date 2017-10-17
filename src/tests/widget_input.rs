@@ -1,6 +1,6 @@
 use event::{self, Input};
 use input::{self, Button, Motion, MouseButton};
-use input::keyboard::NO_MODIFIER;
+use input::keyboard::ModifierKey;
 use widget;
 use position::Rect;
 
@@ -32,7 +32,7 @@ fn widget_input_should_provide_any_mouse_events_over_the_widgets_area_if_nothing
     push_event(&mut global_input, event::Ui::Click(Some(widget), event::Click{
         button: MouseButton::Left,
         xy: [10.0, 10.0],
-        modifiers: NO_MODIFIER,
+        modifiers: ModifierKey::NO_MODIFIER,
     }).into());
     assert!(global_input.current.widget_capturing_mouse.is_none());
 

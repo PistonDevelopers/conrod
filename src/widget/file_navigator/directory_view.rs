@@ -42,7 +42,7 @@ pub struct State {
     /// The absolute path to the directory.
     directory: std::path::PathBuf,
     /// The `DirectoryView`'s children widgets:
-    /// 
+    ///
     /// - The background color for the directory view.
     /// - The index used to instantiate the `ListSelect` widget.
     ids: Ids,
@@ -150,6 +150,7 @@ fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBu
                 return false
             }
         },
+        super::Types::Directories => return path.is_dir(),
     }
 }
 
@@ -209,7 +210,7 @@ impl<'a> Widget for DirectoryView<'a> {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let DirectoryView { directory, types, .. } = self;
 
         if directory != &state.directory {

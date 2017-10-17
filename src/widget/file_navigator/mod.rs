@@ -48,6 +48,8 @@ pub enum Types<'a> {
     ///
     /// i.e. `&["wav", "wave", "aiff"]`.
     WithExtension(&'a [&'a str]),
+    /// Indicates only directories should be shown
+    Directories,
 }
 
 /// Unique state stored within the widget graph for each `FileNavigator`.
@@ -157,6 +159,11 @@ impl<'a> FileNavigator<'a> {
         Self::new(starting_directory, Types::WithExtension(exts))
     }
 
+    /// Begin building a `FileNavigator` that only displays directories.
+    pub fn directories(starting_directory: &'a std::path::Path) -> Self {
+        Self::new(starting_directory, Types::Directories)
+    }
+
     /// The color of the unselected entries within each `DirectoryView`.
     pub fn unselected_color(mut self, color: Color) -> Self {
         self.style.unselected_color = Some(Some(color));
@@ -201,7 +208,7 @@ impl<'a> Widget for FileNavigator<'a> {
 
     /// Update the state of the Button.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let FileNavigator { starting_directory, types, .. } = self;
 
         if starting_directory != state.starting_directory {

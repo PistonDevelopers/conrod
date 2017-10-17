@@ -153,7 +153,7 @@ impl<'a, T> Widget for RangeSlider<'a, T>
 
     /// Update the state of the Slider.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let RangeSlider { start, end, min, max, maybe_label, .. } = self;
 
         let border = style.border(ui.theme());
@@ -171,10 +171,10 @@ impl<'a, T> Widget for RangeSlider<'a, T>
 
             match widget_event {
 
-                /// - If over the range and within the range_end_grab_threshold, snap the end to
-                /// the cursor.
-                /// - Else if over the range, begin dragging the range.
-                /// - Else if not over the range, snap the end closest to the mouse to the mouse.
+                // - If over the range and within the range_end_grab_threshold, snap the end to
+                // the cursor.
+                // - Else if over the range, begin dragging the range.
+                // - Else if not over the range, snap the end closest to the mouse to the mouse.
                 event::Widget::Press(press) => {
                     let press_xy = match press.button {
                         event::Button::Mouse(input::MouseButton::Left, press_xy) => press_xy,
@@ -215,7 +215,7 @@ impl<'a, T> Widget for RangeSlider<'a, T>
                     }
                 },
 
-                /// Drags either the Start, End or the whole Bar depending on where it was pressed.
+                // Drags either the Start, End or the whole Bar depending on where it was pressed.
                 event::Widget::Drag(drag_event) if drag_event.button == input::MouseButton::Left => {
                     match maybe_drag {
                         Some(Drag::Edge(Edge::Start)) => {

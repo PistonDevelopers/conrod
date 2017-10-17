@@ -44,5 +44,6 @@ pub mod theme;
 mod ui;
 pub mod utils;
 pub mod widget;
+pub mod cursor;
 
 #[cfg(test)] mod tests;

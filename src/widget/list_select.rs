@@ -364,7 +364,7 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
 
     /// Update the state of the ListSelect.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, mut state, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, style, ui, .. } = args;
         let ListSelect { num_items, item_size, item_instantiation, mode, .. } = self;
 
         // Make sure that `last_selected_entry` refers to an actual selected value in the list.
@@ -564,9 +564,9 @@ impl Mode for Multiple {
                                 pending: &mut PendingEvents<Self::Selection, D, S>)
         where F: Fn(usize) -> bool,
     {
-        let shift = click.modifiers.contains(input::keyboard::SHIFT);
-        let alt = click.modifiers.contains(input::keyboard::ALT)
-               || click.modifiers.contains(input::keyboard::CTRL);
+        let shift = click.modifiers.contains(input::keyboard::ModifierKey::SHIFT);
+        let alt = click.modifiers.contains(input::keyboard::ModifierKey::ALT)
+               || click.modifiers.contains(input::keyboard::ModifierKey::CTRL);
 
         let event = match state.last_selected_entry.get() {
 
@@ -618,10 +618,10 @@ impl Mode for Multiple {
             None => return,
         };
 
-        let alt = press.modifiers.contains(input::keyboard::ALT);
+        let alt = press.modifiers.contains(input::keyboard::ModifierKey::ALT);
 
         let end = match D::key_direction(press.key) {
-            Some(ListDirection::Backward) => 
+            Some(ListDirection::Backward) =>
                 if i == 0 || alt { 0 } else { i - 1 },
             Some(ListDirection::Forward) => {
                 let last_idx = num_items - 1;
@@ -632,7 +632,7 @@ impl Mode for Multiple {
 
         state.last_selected_entry.set(Some(end));
 
-        let selection = if press.modifiers.contains(input::keyboard::SHIFT) {
+        let selection = if press.modifiers.contains(input::keyboard::ModifierKey::SHIFT) {
             let start = std::cmp::min(i, end);
             let end = std::cmp::max(i, end) + 1;
             (start..end).collect()
