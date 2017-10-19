@@ -68,7 +68,9 @@ mod feature {
 
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, 1.0f64).unwrap();
+        let dpi_factor = window.drawable_size().0 / window.size().0;
+
+        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, dpi_factor as f64).unwrap();
 
         // Create Ui and Ids of widgets to instantiate
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -133,11 +135,13 @@ mod feature {
             }
 
             for event in events.poll_iter() {
-                //let (win_w, win_h) = window.drawable_size();
-                //let (w, h) = (win_w as conrod::Scalar, win_h as conrod::Scalar);
+                let (win_w, win_h) = {
+                    let (w,h) = window.size();
+                    (w as f64, h as f64)
+                };
 
-                // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-                if let (Some(event), mb_extra_event) = conrod::backend::sdl2::convert_event(event.clone(), &window) {
+                // Convert sdl2 event to conrod event, requires conrod to be built with the `sdl2` feature
+                if let (Some(event), mb_extra_event) = conrod::backend::sdl2::convert_event(event.clone(), win_w, win_h) {
                     ui.handle_event(event);
                     if let Some(extra_event) = mb_extra_event {
                         ui.handle_event(extra_event);

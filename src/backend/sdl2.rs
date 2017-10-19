@@ -3,7 +3,7 @@
 use Scalar;
 use event::Input;
 use input;
-use sdl2::{event, video};
+use sdl2::{event};
 use sdl2;
 use piston_input::{ControllerAxisArgs};
 
@@ -13,15 +13,9 @@ use piston_input::{ControllerAxisArgs};
 ///
 /// NOTE: The sdl2 MouseMotion event is a combination of a MouseCursor and MouseRelative conrod
 /// events. Thus we may sometimes return two events in place of one, hence the tuple return type
-pub fn convert_event(e: event::Event, window: &video::Window) -> (Option<Input>, Option<Input>)
+pub fn convert_event(e: event::Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, Option<Input>)
 {
     use sdl2::event::{Event, WindowEvent};
-
-    // The window size in points.
-    let (win_w, win_h) = {
-        let (w,h) = window.drawable_size();
-        (w as Scalar, h as Scalar)
-    };
 
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     //
