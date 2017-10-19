@@ -5,6 +5,7 @@ use input;
 use position::{self, Align, Direction, Dimensions, Padding, Point, Position, Range, Rect, Scalar};
 use render;
 use std;
+use std::sync::atomic::{self, AtomicUsize};
 use fnv;
 use text;
 use theme::Theme;
@@ -63,7 +64,7 @@ pub struct Ui {
     /// triggered.
     num_redraw_frames: u8,
     /// Whether or not the `Ui` needs to be re-drawn to screen.
-    redraw_count: u8,
+    redraw_count: AtomicUsize,
     /// A background color to clear the screen with before drawing if one was given.
     maybe_background_color: Option<Color>,
     /// The order in which widgets from the `widget_graph` are drawn.
@@ -194,7 +195,7 @@ impl Ui {
             maybe_prev_widget_id: None,
             maybe_current_parent_id: None,
             num_redraw_frames: SAFE_REDRAW_COUNT,
-            redraw_count: SAFE_REDRAW_COUNT,
+            redraw_count: AtomicUsize::new(SAFE_REDRAW_COUNT as usize),
             maybe_background_color: None,
             depth_order: depth_order,
             updated_widgets: updated_widgets,
@@ -382,12 +383,12 @@ impl Ui {
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use input::keyboard::{CTRL, SHIFT, ALT, GUI};
+            use input::keyboard::ModifierKey;
             match key {
-                Key::LCtrl | Key::RCtrl => Some(CTRL),
-                Key::LShift | Key::RShift => Some(SHIFT),
-                Key::LAlt | Key::RAlt => Some(ALT),
-                Key::LGui | Key::RGui => Some(GUI),
+                Key::LCtrl | Key::RCtrl => Some(ModifierKey::CTRL),
+                Key::LShift | Key::RShift => Some(ModifierKey::SHIFT),
+                Key::LAlt | Key::RAlt => Some(ModifierKey::ALT),
+                Key::LGui | Key::RGui => Some(ModifierKey::GUI),
                 _ => None
             }
         }
@@ -1071,8 +1072,8 @@ impl Ui {
     /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
     /// count to `num_redraw_frames`. See the docs for `set_num_redraw_frames`, SAFE_REDRAW_COUNT
     /// or `draw_if_changed` for more info on how/why the redraw count is used.
-    pub fn needs_redraw(&mut self) {
-        self.redraw_count = self.num_redraw_frames;
+    pub fn needs_redraw(&self) {
+        self.redraw_count.store(self.num_redraw_frames as usize, atomic::Ordering::Relaxed);
     }
 
     /// The first of the `Primitivees` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
@@ -1088,9 +1089,9 @@ impl Ui {
     ///
     /// NOTE: If you don't need to redraw your conrod GUI every frame, it is recommended to use the
     /// `Ui::draw_if_changed` method instead.
-    pub fn draw(&mut self) -> render::Primitives {
+    pub fn draw(&self) -> render::Primitives {
         let Ui {
-            ref mut redraw_count,
+            ref redraw_count,
             ref widget_graph,
             ref depth_order,
             ref theme,
@@ -1103,8 +1104,9 @@ impl Ui {
         let indices = &depth_order.indices;
 
         // We're about to draw everything, so take one from the redraw count.
-        if *redraw_count > 0 {
-            *redraw_count -= 1;
+        let remaining_redraws = redraw_count.load(atomic::Ordering::Relaxed);
+        if remaining_redraws > 0 {
+            redraw_count.store(remaining_redraws - 1, atomic::Ordering::Relaxed);
         }
 
         render::Primitives::new(widget_graph, indices, theme, fonts, [win_w, win_h])
@@ -1126,7 +1128,7 @@ impl Ui {
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
     pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
-        if self.redraw_count > 0 {
+        if self.redraw_count.load(atomic::Ordering::Relaxed) > 0 {
             return Some(self.draw())
         }
 

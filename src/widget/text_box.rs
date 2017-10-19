@@ -130,7 +130,7 @@ impl<'a> Widget for TextBox<'a> {
 
     /// Update the state of the TextEdit.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
+        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let TextBox { text, .. } = self;
 
         let font_size = style.font_size(ui.theme());

@@ -242,11 +242,11 @@ fn crop_context(context: Context, rect: Rect) -> Context {
     // We start with the x and y in the center of our crop area, however we need it to be
     // at the top left of the crop area.
     let left_x = x - w as f64 / 2.0;
-    let top_y = y - h as f64 / 2.0;
+    let top_y = y + h as f64 / 2.0;
 
     // Map the position at the top left of the crop area in view_dim to our draw_dim.
     let x = map_range(left_x, left, right, 0, draw_dim[0] as i32);
-    let y = map_range(top_y, bottom, top, 0, draw_dim[1] as i32);
+    let y = map_range(top_y, top, bottom, 0, draw_dim[1] as i32);
 
     // Convert the w and h from our view_dim to the draw_dim.
     let w_scale = draw_dim[0] / view_dim[0];
