@@ -1,4 +1,4 @@
-//! A function for converting a `winit::Event` to a `conrod::event::Input`.
+//! A function for converting a `sdl2::event::Event` to a `conrod::event::Input`.
 
 use Scalar;
 use event::Input;
@@ -9,7 +9,8 @@ use piston_input::{ControllerAxisArgs};
 
 /// A function for converting a `sdl2::event::Event` to a `conrod::event::Input`.
 ///
-/// This can be useful for single-window applications.
+/// This can be useful for single-window applications. Note that win_w and win_h should be the dpi
+/// agnostic values (i.e. pass window.size() values and NOT window.drawable_size())
 ///
 /// NOTE: The sdl2 MouseMotion event is a combination of a MouseCursor and MouseRelative conrod
 /// events. Thus we may sometimes return two events in place of one, hence the tuple return type
