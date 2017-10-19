@@ -121,7 +121,7 @@ mod feature {
                 //Clear the window
                 renderer.clear(&mut encoder, CLEAR_COLOR);
 
-                renderer.fill(&mut encoder,dims,primitives,&image_map);
+                renderer.fill(&mut encoder,dims,dpi_factor as f64,primitives,&image_map);
 
                 renderer.draw(&mut factory,&mut encoder,&image_map);
 
