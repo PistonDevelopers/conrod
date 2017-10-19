@@ -68,9 +68,9 @@ mod feature {
 
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-        let dpi_factor = window.drawable_size().0 / window.size().0;
+        let dpi_factor = window.drawable_size().0 as f64 / window.size().0 as f64;
 
-        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, dpi_factor as f64).unwrap();
+        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, dpi_factor).unwrap();
 
         // Create Ui and Ids of widgets to instantiate
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
