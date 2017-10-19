@@ -84,8 +84,9 @@ pub fn convert_event(e: event::Event, win_w: Scalar, win_h: Scalar) -> (Option<I
 
         Event::MouseWheel { x, y, .. } => {
             // Invert the scrolling of the *y* axis as *y* is up in conrod.
-            let x = x as Scalar;
-            let y = -y as Scalar;
+            const ARBITRARY_POINTS_PER_LINE_FACTOR: Scalar = 10.0;
+            let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
+            let y = ARBITRARY_POINTS_PER_LINE_FACTOR * (-y) as Scalar;
             let motion = input::Motion::Scroll { x, y };
             (Some(Input::Motion(motion)), None)
         },
