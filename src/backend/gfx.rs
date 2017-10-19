@@ -156,7 +156,6 @@ pub struct Renderer<'a, R: Resources>{
     cache_tex: gfx::handle::Texture<R, SurfaceFormat>,
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     data: pipe::Data<R>,
-    dpi_factor: f64,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
 }
@@ -201,7 +200,7 @@ impl<'a, R: Resources> Renderer<'a, R>{
 
         let (glyph_cache, cache_tex, cache_tex_view) = {
 
-            let width = (width as f64* dpi_factor) as u32;
+            let width = (width as f64 * dpi_factor) as u32;
             let height = (height as f64 * dpi_factor) as u32;
 
             const SCALE_TOLERANCE: f32 = 0.1;
@@ -222,7 +221,6 @@ impl<'a, R: Resources> Renderer<'a, R>{
             cache_tex,
             cache_tex_view,
             data,
-            dpi_factor,
             commands: vec![],
             vertices: vec![],
         })
@@ -241,13 +239,14 @@ impl<'a, R: Resources> Renderer<'a, R>{
     pub fn fill<P, C>(&mut self,
                       encoder: &mut gfx::Encoder<R,C>,
                       dims: (f32,f32),
+                      dpi_factor: f64,
                       mut primitives: P,
                       image_map: &image::Map<(gfx::handle::ShaderResourceView<R, [f32; 4]>,
                                               (u32,u32))>)
         where P: render::PrimitiveWalker,
               C: gfx::CommandBuffer<R>,
     {
-        let Renderer { ref mut commands, ref mut vertices, ref mut glyph_cache, ref mut cache_tex, dpi_factor, .. } = *self;
+        let Renderer { ref mut commands, ref mut vertices, ref mut glyph_cache, ref mut cache_tex, .. } = *self;
 
         commands.clear();
         vertices.clear();
