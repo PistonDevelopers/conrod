@@ -23,7 +23,7 @@ use widget;
 /// "children" widgets.
 ///
 /// Widgets can be placed on a **Canvas** in a variety of ways using methods from the
-/// [**Positionable**](../position/trait.Positionable) trait.
+/// [**Positionable**](../../position/trait.Positionable.html) trait.
 ///
 /// **Canvas** provides methods for padding the kid widget area which can make using the
 /// **Place**-related **Positionable** methods a little easier.
