@@ -88,7 +88,7 @@ mod feature {
                 }
             }
 
-            // Instnatiate all widgets in the GUI.
+            // Instantiate all widgets in the GUI.
             set_ui(ui.set_widgets(), &ids, &mut demo_text);
 
             // Get the underlying winit window and update the mouse cursor as set by conrod.

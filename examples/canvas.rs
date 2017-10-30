@@ -77,7 +77,7 @@ mod feature {
                 }
             }
 
-            // Instnatiate all widgets in the GUI.
+            // Instantiate all widgets in the GUI.
             set_widgets(ui.set_widgets(), ids);
 
             // Render the `Ui` and then display it on the screen.

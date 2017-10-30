@@ -44,7 +44,7 @@ fn impl_derive(
     generate_derive: fn(&syn::DeriveInput) -> quote::Tokens,
 ) -> TokenStream
 {
-    // A string representatin of the type definition.
+    // A string representation of the type definition.
     let input_string = input.to_string();
 
     // Parse the string representation.

@@ -133,7 +133,7 @@ mod feature {
         // The image map describing each of our widget->image mappings (in our case, none).
         let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-        // Our dmonstration app that we'll control with our GUI.
+        // Our demonstration app that we'll control with our GUI.
         let mut app = DemoApp::new();
 
         // Poll events from the window.
