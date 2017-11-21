@@ -34,30 +34,30 @@ First, open up the command line on your system and follow these steps:
 
 1. Clone the repo
 
-```txt
-git clone https://github.com/PistonDevelopers/conrod.git
-```
+  ```txt
+  git clone https://github.com/PistonDevelopers/conrod.git
+  ```
 
 2. Change to the `conrod` directory that we just cloned
 
-```txt
-cd conrod
-```
+  ```txt
+  cd conrod
+  ```
 
 3. Test that conrod builds without problems
 
-```txt
-cargo build
-```
+  ```txt
+  cargo build
+  ```
 
 4. Build and run the examples (with --release optimisations turned on)!
 
-```txt
-cargo run --release --features "winit glium" --example all_winit_glium
-cargo run --release --features "winit glium" --example canvas
-cargo run --release --features "winit glium" --example primitives
-cargo run --release --features "winit glium" --example text
-```
+  ```txt
+  cargo run --release --features "winit glium" --example all_winit_glium
+  cargo run --release --features "winit glium" --example canvas
+  cargo run --release --features "winit glium" --example primitives
+  cargo run --release --features "winit glium" --example text
+  ```
 
 If you ran into any issues with these steps, please let us know by filing an issue at the Conrod
 [issue tracker]. Be sure to search for your issue first, as another user may have already
