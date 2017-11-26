@@ -8,7 +8,7 @@
 //! would cause a new `UiEvent::MouseClick` to be generated. This saves individual widgets from
 //! having to interpret these themselves, thus freeing them from also having to store input state.
 //!
-//! Whenever there's an update, all of the events that have occured since the last update will be
+//! Whenever there's an update, all of the events that have occurred since the last update will be
 //! available for widgets to process. `WidgetInput` is used to provide input events to a specific
 //! widget. It filters events that do not apply to the widget. All events provided by `WidgetIput`
 //! will have all coordinates in the widget's own local coordinate system, where `(0, 0)` is the

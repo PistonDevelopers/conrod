@@ -1076,7 +1076,7 @@ impl Ui {
         self.redraw_count.store(self.num_redraw_frames as usize, atomic::Ordering::Relaxed);
     }
 
-    /// The first of the `Primitivees` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
+    /// The first of the `Primitives` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
     /// be a `Rectangle` the size of the window in which conrod is hosted.
     ///
     /// This method sets the colour with which this `Rectangle` is drawn (the default being
