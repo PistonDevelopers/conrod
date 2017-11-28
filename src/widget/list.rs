@@ -65,7 +65,7 @@ pub struct Fixed {
 #[derive(Clone, Copy, Debug)]
 pub struct Dynamic {}
 
-/// The direction in which the list is layed out.
+/// The direction in which the list is laid out.
 pub trait Direction {
     /// The direction along which the `Scrollbar` is laid out.
     type Axis: widget::scrollbar::Axis;
@@ -275,7 +275,7 @@ impl<D, S> List<D, S>
 impl<D> List<D, Fixed>
     where D: Direction,
 {
-    /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
+    /// Indicates that an `Item` should be instantiated for every element in the list, regardless of
     /// whether or not the `Item` would be visible.
     ///
     /// This is the default (and only) behaviour for `List`s with dynamic item sizes. This is
