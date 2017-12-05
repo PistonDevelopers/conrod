@@ -9,6 +9,7 @@ use daggy::Walker;
 use position::{Point, Rect};
 use fnv;
 use super::{EdgeIndex, Graph};
+use theme::Theme;
 use widget;
 
 
@@ -38,21 +39,42 @@ impl PickWidgets {
     /// is a `Graphics` child to some other widget.
     ///
     /// This is called within `PickWidgets::next`.
-    pub fn next_including_graphics_children(&mut self,
-                                                   graph: &Graph,
-                                                   depth_order: &[widget::Id]) -> Option<widget::Id>
-    {
+    pub fn next_including_graphics_children(
+        &mut self,
+        graph: &Graph,
+        depth_order: &[widget::Id],
+        theme: &Theme,
+    ) -> Option<widget::Id> {
         while self.idx > 0 {
             self.idx -= 1;
-            match depth_order.get(self.idx) {
+            let idx = match depth_order.get(self.idx) {
                 None => break,
-                Some(&idx) => {
-                    if let Some(visible_rect) = cropped_area_of_widget(graph, idx) {
-                        if visible_rect.is_over(self.xy) {
-                            return Some(idx);
-                        }
-                    }
-                },
+                Some(&idx) => idx,
+            };
+            let visible_rect = match cropped_area_of_widget(graph, idx) {
+                None => continue,
+                Some(rect) => rect,
+            };
+            if !visible_rect.is_over(self.xy) {
+                continue;
+            }
+            // Now that we know we're over the bounding box, we can check the more
+            // detailed widget-specific `is_over` function.
+            let mut id = idx;
+            loop {
+                let container = match graph.widget(id) {
+                    None => break,
+                    Some(container) => container,
+                };
+                match (container.is_over.0)(&container, self.xy, theme) {
+                    widget::IsOver::Bool(false) => break,
+                    widget::IsOver::Bool(true) => return Some(id),
+                    widget::IsOver::Widget(w_id) => {
+                        assert!(id != w_id, "the specified IsOver::Widget \
+                                             would cause an infinite loop");
+                        id = w_id;
+                    },
+                }
             }
         }
         None
@@ -64,8 +86,13 @@ impl PickWidgets {
     ///
     /// If the next widget is some graphic element of another widget, the graphic parent will be
     /// returned.
-    pub fn next(&mut self, graph: &Graph, depth_order: &[widget::Id]) -> Option<widget::Id> {
-        self.next_including_graphics_children(graph, depth_order)
+    pub fn next(
+        &mut self,
+        graph: &Graph,
+        depth_order: &[widget::Id],
+        theme: &Theme,
+    ) -> Option<widget::Id> {
+        self.next_including_graphics_children(graph, depth_order, theme)
             .map(|idx| {
                 // Ensure that if we've picked some widget that is a **Graphic** child of some
                 // other widget, we return the **Graphic** parent.
@@ -82,8 +109,13 @@ impl PickScrollableWidgets {
     /// The `widget::Id` of the next scrollable `Widget` under the `xy` location.
     ///
     /// The `Graph` is traversed from the top down.
-    pub fn next(&mut self, graph: &Graph, depth_order: &[widget::Id]) -> Option<widget::Id> {
-        while let Some(idx) = self.pick_widgets.next_including_graphics_children(graph, depth_order) {
+    pub fn next(
+        &mut self,
+        graph: &Graph,
+        depth_order: &[widget::Id],
+        theme: &Theme,
+    ) -> Option<widget::Id> {
+        while let Some(idx) = self.pick_widgets.next_including_graphics_children(graph, depth_order, theme) {
             if let Some(ref container) = graph.widget(idx) {
                 if container.maybe_x_scroll_state.is_some()
                 || container.maybe_y_scroll_state.is_some() {
@@ -91,7 +123,6 @@ impl PickScrollableWidgets {
                 }
             }
         }
-
         None
     }
 

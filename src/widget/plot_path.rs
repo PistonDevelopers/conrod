@@ -1,6 +1,7 @@
 //! A widget for plotting a series of lines using the given function *x -> y*.
 
-use {Color, Colorable, Positionable, Scalar, Sizeable, Widget};
+use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
+use graph;
 use num;
 use utils;
 use widget;
@@ -84,6 +85,14 @@ impl<X, Y, F> Widget for PlotPath<X, Y, F>
 
     fn style(&self) -> Self::Style {
         self.style.clone()
+    }
+
+    fn is_over(&self) -> widget::IsOverFn {
+        fn is_over_widget(widget: &graph::Container, _: Point, _: &Theme) -> widget::IsOver {
+            let unique = widget.state_and_style::<State, Style>().unwrap();
+            unique.state.ids.point_path.into()
+        }
+        is_over_widget
     }
 
     /// Update the state of the PlotPath.

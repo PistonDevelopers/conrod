@@ -1,6 +1,7 @@
 //! A simple, non-interactive widget for drawing a single **Oval**.
 
-use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Widget};
+use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Theme, Widget};
+use graph;
 use std;
 use super::Style as Style;
 use widget;
@@ -137,6 +138,10 @@ where
 
     fn style(&self) -> Self::Style {
         self.style.clone()
+    }
+
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
@@ -285,4 +290,18 @@ impl Iterator for Triangles {
             triangle
         })
     }
+}
+
+/// Returns `true` if the given `Point` is over an oval at the given rect.
+pub fn is_over(r: Rect, p: Point) -> bool {
+    let (px, py) = (p[0], p[1]);
+    let (ox, oy, w, h) = r.x_y_w_h();
+    let rx = w * 0.5;
+    let ry = h * 0.5;
+    ((px - ox).powi(2) / rx.powi(2) + (py - oy).powi(2) / ry.powi(2)) < 1.0
+}
+
+/// The function to use for picking whether a given point is over the oval.
+pub fn is_over_widget(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver {
+    is_over(widget.rect, point).into()
 }

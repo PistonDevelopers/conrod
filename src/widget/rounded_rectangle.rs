@@ -3,7 +3,9 @@
 //! The roundedness of the corners is specified with a `radius`. This indicates the radius of the
 //! circle used to draw the corners.
 
-use {Color, Colorable, Dimensions, Point, Positionable, Range, Rect, Scalar, Sizeable, Widget};
+use {Color, Colorable, Dimensions, Point, Positionable, Range, Rect, Scalar, Sizeable, Theme,
+     Widget};
+use graph;
 use std::f64::consts::PI;
 use widget;
 use widget::primitive::shape::Style;
@@ -87,6 +89,10 @@ impl Widget for RoundedRectangle {
 
     fn style(&self) -> Self::Style {
         self.style.clone()
+    }
+
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget
     }
 
     /// Update the state of the Rectangle.
@@ -176,3 +182,11 @@ impl Iterator for Points {
 
 /// An iterator yielding triangles for a `RoundedRectangle`.
 pub type Triangles = widget::polygon::Triangles<Points>;
+
+/// The function to use for picking whether a given point is over the polygon.
+pub fn is_over_widget(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver {
+    widget
+        .unique_widget_state::<RoundedRectangle>()
+        .map(|widget| widget.state.ids.polygon.into())
+        .unwrap_or_else(|| widget.rect.is_over(point).into())
+}

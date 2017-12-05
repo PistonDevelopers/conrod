@@ -331,7 +331,9 @@ impl Ui {
         self.global_input.current.widget_under_mouse =
             graph::algo::pick_widgets(&self.depth_order.indices,
                                       self.global_input.current.mouse.xy)
-                                      .next(&self.widget_graph, &self.depth_order.indices);
+                                      .next(&self.widget_graph,
+                                            &self.depth_order.indices,
+                                            &self.theme);
 
         // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
         // under mouse.
@@ -675,7 +677,8 @@ impl Ui {
                         // direction.
                         while let Some(idx) =
                             scrollable_widgets.next(&self.widget_graph,
-                                                    &self.depth_order.indices)
+                                                    &self.depth_order.indices,
+                                                    &self.theme)
                         {
 
                             let (kid_area, maybe_x_scroll, maybe_y_scroll) =
@@ -802,7 +805,7 @@ impl Ui {
                     // Find the widget under the touch.
                     let widget_under_touch =
                         graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                            .next(&self.widget_graph, &self.depth_order.indices);
+                            .next(&self.widget_graph, &self.depth_order.indices, &self.theme);
 
                     // The start of the touch interaction state to be stored.
                     let start = input::state::touch::Start {
@@ -840,7 +843,9 @@ impl Ui {
                         Some(touch) => {
                             touch.widget =
                                 graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                                    .next(&self.widget_graph, &self.depth_order.indices);
+                                    .next(&self.widget_graph,
+                                          &self.depth_order.indices,
+                                          &self.theme);
                             touch.xy = touch.xy;
                             touch.start.widget
                         },
@@ -875,7 +880,7 @@ impl Ui {
                     // of the touch, that widget receives the `Tap`.
                     let tapped_widget =
                         graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                            .next(&self.widget_graph, &self.depth_order.indices)
+                            .next(&self.widget_graph, &self.depth_order.indices, &self.theme)
                             .and_then(|widget| match Some(widget) == widget_capturing {
                                 true => Some(widget),
                                 false => None,
