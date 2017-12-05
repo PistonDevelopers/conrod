@@ -212,7 +212,7 @@ impl Circumference {
     /// `resolution` is clamped to a minimum of `1` as to avoid creating a `Circumference` that
     /// produces `NaN` values.
     pub fn new_section(rect: Rect, resolution: usize, radians: Scalar) -> Self {
-        Self::new_inner(rect, resolution, radians / resolution as Scalar)
+        Self::new_inner(rect, resolution + 1, radians / resolution as Scalar)
     }
 }
 
