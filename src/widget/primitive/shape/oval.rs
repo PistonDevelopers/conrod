@@ -1,6 +1,7 @@
 //! A simple, non-interactive widget for drawing a single **Oval**.
 
-use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Widget};
+use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Theme, Widget};
+use graph;
 use std;
 use super::Style as Style;
 use widget;
@@ -22,7 +23,10 @@ pub struct Oval<S> {
 }
 
 /// Types that may be used to describe the visible section of the `Oval`.
-pub trait OvalSection: 'static + Copy + PartialEq + Send {}
+pub trait OvalSection: 'static + Copy + PartialEq + Send {
+    /// The function used to determine if a point is over the oval section widget.
+    const IS_OVER: widget::IsOverFn;
+}
 
 /// The entire `Oval` will be drawn.
 ///
@@ -30,7 +34,9 @@ pub trait OvalSection: 'static + Copy + PartialEq + Send {}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Full;
 
-impl OvalSection for Full {}
+impl OvalSection for Full {
+    const IS_OVER: widget::IsOverFn = is_over_widget;
+}
 
 /// A section of the oval will be drawn where the section is specified by the given radians.
 ///
@@ -45,7 +51,9 @@ pub struct Section {
     pub offset_radians: Scalar,
 }
 
-impl OvalSection for Section {}
+impl OvalSection for Section {
+    const IS_OVER: widget::IsOverFn = is_over_section_widget;
+}
 
 /// Unique state for the **Oval**.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -139,10 +147,17 @@ where
         self.style.clone()
     }
 
+    fn is_over(&self) -> widget::IsOverFn {
+        S::IS_OVER
+    }
+
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { state, .. } = args;
         if state.resolution != self.resolution {
             state.update(|state| state.resolution = self.resolution);
+        }
+        if state.section != self.section {
+            state.update(|state| state.section = self.section);
         }
     }
 }
@@ -285,4 +300,39 @@ impl Iterator for Triangles {
             triangle
         })
     }
+}
+
+/// Returns `true` if the given `Point` is over an oval at the given rect.
+pub fn is_over(r: Rect, p: Point) -> bool {
+    let (px, py) = (p[0], p[1]);
+    let (ox, oy, w, h) = r.x_y_w_h();
+    let rx = w * 0.5;
+    let ry = h * 0.5;
+    ((px - ox).powi(2) / rx.powi(2) + (py - oy).powi(2) / ry.powi(2)) < 1.0
+}
+
+/// The function to use for picking whether a given point is over the oval.
+pub fn is_over_widget(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver {
+    is_over(widget.rect, point).into()
+}
+
+/// Returns whether or not the given point is over the section described
+pub fn is_over_section(circumference: Circumference, p: Point) -> bool {
+    widget::triangles::is_over(circumference.triangles(), p)
+}
+
+/// The function to use for picking whether a given point is over the oval section.
+pub fn is_over_section_widget(widget: &graph::Container, p: Point, _: &Theme) -> widget::IsOver {
+    widget
+        .state_and_style::<State<Section>, Style>()
+        .map(|unique| {
+            let res = unique.state.resolution;
+            let offset_rad = unique.state.section.offset_radians;
+            let rad = unique.state.section.radians;
+            let circumference = Circumference::new_section(widget.rect, res, rad)
+                .offset_radians(offset_rad);
+            is_over_section(circumference, p)
+        })
+        .unwrap_or_else(|| widget.rect.is_over(p))
+        .into()
 }

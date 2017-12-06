@@ -94,6 +94,21 @@ pub struct Container {
     /// i.e. if foo's `instantiation_order_idx` is lower than bar's, it means that foo was
     /// instantiated before bar.
     pub instantiation_order_idx: usize,
+    /// A function specified by the widget to use when determining whether or not a point is over
+    /// it.
+    ///
+    /// NOTE: See `Wiget::is_over` for more details and a note on possible future plans.
+    pub is_over: IsOverFn,
+}
+
+/// A wrapper around a `widget::IsOverFn` to make implementing `Debug` easier for `Container`.
+#[derive(Copy, Clone)]
+pub struct IsOverFn(pub widget::IsOverFn);
+
+impl std::fmt::Debug for IsOverFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "IsOverFn")
+    }
 }
 
 /// A node for use within the **Graph**.
@@ -610,7 +625,7 @@ impl Graph {
         let widget::PreUpdateCache {
             type_id, id, maybe_parent_id, maybe_x_positioned_relatively_id,
             maybe_y_positioned_relatively_id, rect, depth, kid_area, maybe_floating,
-            crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for,
+            crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for, is_over,
         } = widget;
 
         assert!(self.node(id).is_some(), "No node found for the given widget::Id {:?}", id);
@@ -627,6 +642,7 @@ impl Graph {
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_y_scroll_state: maybe_y_scroll_state,
             instantiation_order_idx: instantiation_order_idx,
+            is_over: IsOverFn(is_over),
         };
 
         // Retrieves the widget's parent index.
@@ -678,6 +694,7 @@ impl Graph {
                 container.maybe_x_scroll_state = maybe_x_scroll_state;
                 container.maybe_y_scroll_state = maybe_y_scroll_state;
                 container.instantiation_order_idx = instantiation_order_idx;
+                container.is_over = IsOverFn(is_over);
             },
 
         }

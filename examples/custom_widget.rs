@@ -20,7 +20,7 @@ extern crate find_folder;
 /// The module in which we'll implement our own custom circular button.
 #[cfg(all(feature="winit", feature="glium"))]
 mod circular_button {
-    use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
+    use conrod::{self, widget, Colorable, Labelable, Point, Positionable, Widget};
 
     /// The type upon which we'll implement the `Widget` trait.
     #[derive(WidgetCommon)]
@@ -79,20 +79,6 @@ mod circular_button {
         ids: Ids,
     }
 
-    /// Return whether or not a given point is over a circle at a given point on a
-    /// Cartesian plane. We use this to determine whether the mouse is over the button.
-    pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
-        // Offset vector from the center of the circle to the mouse.
-        let offset = conrod::utils::vec2_sub(mouse_point, circ_center);
-
-        // If the length of the offset vector is less than or equal to the circle's
-        // radius, then the mouse is inside the circle. We assume that dim is a square
-        // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
-        let distance = (offset[0].powf(2.0) + offset[1].powf(2.0)).sqrt();
-        let radius = dim[0] / 2.0;
-        distance <= radius
-    }
-
     impl<'a> CircularButton<'a> {
 
         /// Create a button context to be built upon.
@@ -142,6 +128,21 @@ mod circular_button {
             self.style.clone()
         }
 
+        /// Optionally specify a function to use for determining whether or not a point is over a
+        /// widget, or if some other widget's function should be used to represent this widget.
+        ///
+        /// This method is optional to implement. By default, the bounding rectangle of the widget
+        /// is used.
+        fn is_over(&self) -> widget::IsOverFn {
+            use conrod::graph::Container;
+            use conrod::Theme;
+            fn is_over_widget(widget: &Container, _: Point, _: &Theme) -> widget::IsOver {
+                let unique = widget.state_and_style::<State, Style>().unwrap();
+                unique.state.ids.circle.into()
+            }
+            is_over_widget
+        }
+
         /// Update the state of the button by handling any input that has occurred since the last
         /// update.
         fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
@@ -155,14 +156,10 @@ mod circular_button {
 
                 let color = style.color(&ui.theme);
                 let color = input.mouse().map_or(color, |mouse| {
-                    if is_over_circ([0.0, 0.0], mouse.rel_xy(), rect.dim()) {
-                        if mouse.buttons.left().is_down() {
-                            color.clicked()
-                        } else {
-                            color.highlighted()
-                        }
+                    if mouse.buttons.left().is_down() {
+                        color.clicked()
                     } else {
-                        color
+                        color.highlighted()
                     }
                 });
 
@@ -316,7 +313,7 @@ fn main() {
 
         // Instantiate the widgets.
         {
-           let ui = &mut ui.set_widgets();
+            let ui = &mut ui.set_widgets();
 
             // Sets a color to clear the background with before the Ui draws our widget.
             widget::Canvas::new().color(conrod::color::DARK_RED).set(ids.background, ui);

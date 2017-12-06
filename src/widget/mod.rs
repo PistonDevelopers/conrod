@@ -4,7 +4,7 @@
 //! re-exports all widgets (and their modules) that are provided by conrod.
 
 use graph;
-use position::{Align, Depth, Dimension, Dimensions, Padding, Position,
+use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Point,
                Positionable, Rect, Relative, Sizeable};
 use std;
 use text::font;
@@ -323,6 +323,8 @@ pub struct PreUpdateCache {
     /// Whether or not the **Widget** has been instantiated as a graphical element for some other
     /// widget.
     pub maybe_graphics_for: Option<Id>,
+    /// A function describing whether or not a given point is over the widget.
+    pub is_over: IsOverFn
 }
 
 // **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
@@ -345,6 +347,35 @@ pub struct PostUpdateCache<W>
     pub style: W::Style,
 }
 
+/// Returned by the `Widget::is_over` method.
+#[derive(Copy, Clone)]
+pub enum IsOver {
+    /// Whether or not the point was over the widget.
+    Bool(bool),
+    /// Check whether or not the point is over the widget at the given `Id` and if so, assume it is
+    /// over this widget.
+    Widget(Id),
+}
+
+impl From<bool> for IsOver {
+    fn from(b: bool) -> Self {
+        IsOver::Bool(b)
+    }
+}
+
+impl From<Id> for IsOver {
+    fn from(id: Id) -> Self {
+        IsOver::Widget(id)
+    }
+}
+
+/// A function type used to determine whether or not a given point is over a widget.
+pub type IsOverFn = fn(&graph::Container, Point, &Theme) -> IsOver;
+
+/// The default `IsOverFn` used if the `Widget::is_over` method is not overridden.
+pub fn is_over_rect(container: &graph::Container, point: Point, _: &Theme) -> IsOver {
+    container.rect.is_over(point).into()
+}
 
 /// The necessary bounds for a **Widget**'s associated **Style** type.
 pub trait Style: std::any::Any + std::fmt::Debug + PartialEq + Sized {}
@@ -643,6 +674,26 @@ pub trait Widget: Common + Sized {
             rect: args.rect,
             pad: Padding::none(),
         }
+    }
+
+    /// Returns either of the following:
+    ///
+    /// - A `Function` that can be used to describe whether or not a given point is over the
+    /// widget.
+    /// - The `Id` of another `Widget` that can be used to determine if the point is over this
+    /// widget.
+    ///
+    /// By default, this is a function returns `true` if the given `Point` is over the bounding
+    /// `Rect` and returns `false` otherwise.
+    ///
+    /// *NOTE: It could be worth removing this in favour of adding a `widget::State` trait, adding
+    /// an `is_over` method to it and then refactoring the `Container` to store a
+    /// `Box<widget::State>` and `Box<widget::Style>` rather than `Box<Any>`. This would however
+    /// involve some significant breakage (which could perhaps be mitigated by adding a
+    /// `derive(WidgetState)` macro - a fair chunk of work) so this might be the easiest temporary
+    /// way forward for now.*
+    fn is_over(&self) -> IsOverFn {
+        is_over_rect
     }
 
 
@@ -1042,6 +1093,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
             maybe_y_scroll_state: maybe_y_scroll_state,
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_graphics_for: widget.common().maybe_graphics_for,
+            is_over: widget.is_over(),
         });
     }
 

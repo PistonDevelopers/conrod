@@ -1,6 +1,7 @@
 //! A simple, non-interactive **Polygon** widget for drawing arbitrary convex shapes.
 
-use {Color, Colorable, Point, Positionable, Sizeable, Widget};
+use {Color, Colorable, Point, Positionable, Sizeable, Theme, Widget};
+use graph;
 use super::Style;
 use widget;
 use widget::triangles::Triangle;
@@ -205,6 +206,10 @@ impl<I> Widget for Polygon<I>
         self.style.clone()
     }
 
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget
+    }
+
     /// Update the state of the Polygon.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
@@ -293,4 +298,22 @@ impl<I> Iterator for Triangles<I>
             t
         })
     }
+}
+
+/// Returns `true` if the given `Point` is over the polygon described by the given series of
+/// points.
+pub fn is_over<I>(points: I, point: Point) -> bool
+where
+    I: IntoIterator<Item=Point>,
+{
+    triangles(points).map(|ts| widget::triangles::is_over(ts, point)).unwrap_or(false)
+}
+
+/// The function to use for picking whether a given point is over the polygon.
+pub fn is_over_widget(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver {
+    widget
+        .state_and_style::<State, Style>()
+        .map(|widget| is_over(widget.state.points.iter().cloned(), point))
+        .unwrap_or_else(|| widget.rect.is_over(point))
+        .into()
 }
