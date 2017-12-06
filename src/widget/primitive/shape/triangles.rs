@@ -108,6 +108,18 @@ impl<V> Triangle<V>
     }
 }
 
+impl Triangle<Point> {
+    /// Convert the `Triangle<Point>` to a `Triangle<ColoredPoint>`.
+    pub fn color(self, a: color::Rgba, b: color::Rgba, c: color::Rgba) -> Triangle<ColoredPoint> {
+        Triangle([(self[0], a), (self[1], b), (self[2], c)])
+    }
+
+    /// Convert the `Triangle<Point>` to a `Triangle<ColoredPoint>` using the given color.
+    pub fn color_all(self, color: color::Rgba) -> Triangle<ColoredPoint> {
+        Triangle([(self[0], color), (self[1], color), (self[2], color)])
+    }
+}
+
 impl<V> std::ops::Deref for Triangle<V>
     where V: Vertex,
 {
