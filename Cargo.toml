@@ -45,9 +45,10 @@ rusttype = "0.2.0"
 # - Converting piston `GenericEvent` types to `conrod::event::Raw`s.
 # - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
 # Enables the `conrod::backend::piston` module.
-glium = { version = "0.18.0", optional = true }
-winit = { version = "0.8.3", optional = true }
-piston2d-graphics = { version = "0.23.0", optional = true }
+glium = { version = "0.17", optional = true }
+winit = { version = "0.7", optional = true }
+piston2d-graphics = { version = "0.21.1", optional = true }
+sdl2 = { version = "0.29", optional = true }
 gfx = { version = "0.16.1", optional = true }
 gfx_core = { version = "0.7.0", optional = true }
 
@@ -61,6 +62,7 @@ image = "0.17.0"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
 gfx_window_glutin = "0.18.0"
+gfx_window_sdl = "0.6.0"
 glutin = "0.10.0"
 # piston_window.rs example dependencies
 piston_window = "0.73.0"

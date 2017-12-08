@@ -16,6 +16,7 @@ extern crate input as piston_input;
 extern crate rusttype;
 
 #[cfg(feature="glium")] #[macro_use] pub extern crate glium;
+#[cfg(feature="sdl2")] pub extern crate sdl2;
 #[cfg(feature="gfx_rs")] #[macro_use] pub extern crate gfx;
 #[cfg(feature="gfx_rs")] pub extern crate gfx_core;
 
