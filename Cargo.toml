@@ -58,6 +58,7 @@ gfx_rs=["gfx","gfx_core"]
 [dev-dependencies]
 find_folder = "0.3.0"
 image = "0.17.0"
+petgraph = "0.4"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
 gfx_window_glutin = "0.19.0"
