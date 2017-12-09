@@ -179,6 +179,8 @@ pub fn rounded_border_triangles(
 pub struct RoundedBorderTriangles {
     outer: widget::rounded_rectangle::Points,
     inner: widget::rounded_rectangle::Points,
+    outer_end: Option<Point>,
+    inner_end: Option<Point>,
     last_points: [Point; 2],
     is_next_outer: bool,
 }
@@ -202,9 +204,13 @@ impl RoundedBorderTriangles {
         let mut outer = widget::rounded_rectangle::points(rect, radius, corner_resolution);
         let mut inner = widget::rounded_rectangle::points(inner_rect, radius, corner_resolution);
         // A rounded_rectangle should always yield at least four points.
-        let last_points = [outer.next().unwrap(), inner.next().unwrap()];
+        let last_outer = outer.next().unwrap();
+        let last_inner = inner.next().unwrap();
+        let outer_end = Some(last_outer);
+        let inner_end = Some(last_inner);
+        let last_points = [last_outer, last_inner];
         let is_next_outer = true;
-        RoundedBorderTriangles { outer, inner, is_next_outer, last_points }
+        RoundedBorderTriangles { outer, inner, is_next_outer, last_points, outer_end, inner_end }
     }
 }
 
@@ -212,8 +218,8 @@ impl Iterator for RoundedBorderTriangles {
     type Item = Triangle<Point>;
     fn next(&mut self) -> Option<Self::Item> {
         let next_point = match self.is_next_outer {
-            true => self.outer.next(),
-            false => self.inner.next(),
+            true => self.outer.next().or_else(|| self.outer_end.take()),
+            false => self.inner.next().or_else(|| self.inner_end.take()),
         };
         next_point.map(|c| {
             self.is_next_outer = !self.is_next_outer;
