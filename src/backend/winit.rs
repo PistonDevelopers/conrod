@@ -124,7 +124,7 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
             Some(Input::Touch(touch).into())
         }
 
-        winit::WindowEvent::MouseMoved { position: (x, y), .. } => {
+        winit::WindowEvent::CursorMoved { position: (x, y), .. } => {
             let x = tx(x as Scalar);
             let y = ty(y as Scalar);
             let motion = input::Motion::MouseCursor { x: x, y: y };
