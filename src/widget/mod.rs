@@ -3,7 +3,7 @@
 //! This module contains items related to the implementation of the `Widget` trait. It also
 //! re-exports all widgets (and their modules) that are provided by conrod.
 
-use graph;
+use graph::{Container, UniqueWidgetState};
 use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Point,
                Positionable, Rect, Relative, Sizeable};
 use std;
@@ -29,12 +29,13 @@ pub use self::button::Button;
 pub use self::canvas::Canvas;
 pub use self::collapsible_area::CollapsibleArea;
 pub use self::drop_down_list::DropDownList;
-pub use self::list_select::ListSelect;
 pub use self::envelope_editor::EnvelopeEditor;
 pub use self::file_navigator::FileNavigator;
 pub use self::grid::Grid;
 pub use self::list::List;
+pub use self::list_select::ListSelect;
 pub use self::matrix::Matrix;
+pub use self::graph::Graph;
 pub use self::number_dialer::NumberDialer;
 pub use self::plot_path::PlotPath;
 pub use self::range_slider::RangeSlider;
@@ -72,6 +73,7 @@ pub mod grid;
 pub mod list;
 pub mod list_select;
 pub mod matrix;
+pub mod graph;
 pub mod number_dialer;
 pub mod plot_path;
 pub mod range_slider;
@@ -370,10 +372,10 @@ impl From<Id> for IsOver {
 }
 
 /// A function type used to determine whether or not a given point is over a widget.
-pub type IsOverFn = fn(&graph::Container, Point, &Theme) -> IsOver;
+pub type IsOverFn = fn(&Container, Point, &Theme) -> IsOver;
 
 /// The default `IsOverFn` used if the `Widget::is_over` method is not overridden.
-pub fn is_over_rect(container: &graph::Container, point: Point, _: &Theme) -> IsOver {
+pub fn is_over_rect(container: &Container, point: Point, _: &Theme) -> IsOver {
     container.rect.is_over(point).into()
 }
 
@@ -901,7 +903,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
                 }
 
                 // Destructure the cached state.
-                let graph::Container {
+                let Container {
                     ref mut maybe_state,
                     rect,
                     depth,
@@ -914,8 +916,8 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
 
                 let (state, style) = match maybe_state.take().and_then(|a| a.downcast().ok()) {
                     Some(boxed) => {
-                        let unique: graph::UniqueWidgetState<W::State, W::Style> = *boxed;
-                        let graph::UniqueWidgetState { state, style } = unique;
+                        let unique: UniqueWidgetState<W::State, W::Style> = *boxed;
+                        let UniqueWidgetState { state, style } = unique;
                         (state, style)
                     },
                     None => return None,
