@@ -39,7 +39,7 @@ enum PreparedCommand {
 
 /// A rusttype `GlyphCache` along with a `glium::texture::Texture2d` for caching text on the `GPU`.
 pub struct GlyphCache {
-    cache: text::GlyphCache,
+    cache: text::GlyphCache<'static>,
     texture: glium::texture::Texture2d,
 }
 
