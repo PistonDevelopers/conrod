@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.56.0"
+version = "0.57.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -24,7 +24,7 @@ daggy = "0.5.0"
 fnv = "1.0"
 num = "0.1.30"
 pistoncore-input = "0.20.0"
-rusttype = "0.2.0"
+rusttype = "0.3.0"
 
 # Optional dependencies and features
 # ----------------------------------
