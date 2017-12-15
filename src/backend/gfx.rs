@@ -146,9 +146,9 @@ impl Vertex {
     }
 }
 
-pub struct Renderer<R: Resources>{
+pub struct Renderer<'a, R: Resources>{
     pipeline: PipelineState<R, pipe::Meta>,
-    glyph_cache: GlyphCache,
+    glyph_cache: GlyphCache<'a>,
     cache_tex: gfx::handle::Texture<R, SurfaceFormat>,
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     blank_texture: gfx::handle::ShaderResourceView<R, [f32; 4]>,
@@ -158,7 +158,7 @@ pub struct Renderer<R: Resources>{
     vertices: Vec<Vertex>,
 }
 
-impl<R: Resources> Renderer<R>{
+impl<'a, R: Resources> Renderer<'a, R>{
     pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f64) -> Result<Self,RendererCreationError>
     {
         let sampler_info = texture::SamplerInfo::new(
