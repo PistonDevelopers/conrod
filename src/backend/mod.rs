@@ -11,6 +11,5 @@
 #[cfg(feature="winit")] pub mod winit;
 #[cfg(feature="piston")] pub mod piston;
 #[cfg(feature="gfx_rs")] pub mod gfx;
-
 /// Functionality for encoding `conrod::render::Primitives` to a `vulkano::command_buffer::AutoCommandBufferBuilder`
 #[cfg(feature="vulkano")] pub mod vulkano;
