@@ -18,6 +18,8 @@ extern crate rusttype;
 #[cfg(feature="glium")] #[macro_use] pub extern crate glium;
 #[cfg(feature="gfx_rs")] #[macro_use] pub extern crate gfx;
 #[cfg(feature="gfx_rs")] pub extern crate gfx_core;
+#[cfg(feature="vulkano_rs")] #[macro_use] pub extern crate vulkano;
+#[cfg(feature="vulkano_rs")] #[macro_use] pub extern crate vulkano_shader_derive;
 
 pub use color::{Color, Colorable};
 pub use border::{Bordering, Borderable};

@@ -46,14 +46,17 @@ rusttype = "0.3.0"
 # - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
 # Enables the `conrod::backend::piston` module.
 glium = { version = "0.19", optional = true }
-winit = { version = "0.9", optional = true }
+winit = { version = "0.9.0", optional = true }
 piston2d-graphics = { version = "0.23.0", optional = true }
 gfx = { version = "0.16.1", optional = true }
 gfx_core = { version = "0.7.0", optional = true }
+vulkano = { version = "0.7.2", optional = true }
+vulkano-shader-derive = { version = "0.7.2", optional = true }
 
 [features]
 piston = ["piston2d-graphics"]
 gfx_rs=["gfx","gfx_core"]
+vulkano_rs=["vulkano","vulkano-shader-derive"]
 
 [dev-dependencies]
 find_folder = "0.3.0"
