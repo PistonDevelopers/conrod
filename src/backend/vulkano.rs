@@ -550,7 +550,7 @@ impl Renderer {
                     //
                     // Texture coordinates range:
                     // - left to right: 0.0 to 1.0
-                    // - bottom to top: 1.0 to 0.0
+                    // - bottom to top: 0.0 to 0.1
                     // Note bottom and top are flipped in comparison to glium so that we don't need 
                     //  to flip images when loading
                     let (uv_l, uv_r, uv_t, uv_b) = match source_rect {
@@ -558,8 +558,8 @@ impl Renderer {
                             let (l, r, b, t) = src_rect.l_r_b_t();
                             ((l / image_w) as f32,
                              (r / image_w) as f32,
-                             (b / image_h) as f32,
-                             (t / image_h) as f32)
+                             (t / image_h) as f32,
+                             (b / image_h) as f32)
                         },
                         None => (0.0, 1.0, 0.0, 1.0),
                     };
@@ -569,7 +569,7 @@ impl Renderer {
                         let x = (x * dpi_factor / half_win_w) as f32;
                         let y = (y * dpi_factor / half_win_h) as f32;
                         Vertex {
-                            pos: [x, 1.0-y],
+                            pos: [x, y],
                             uv: t,
                             color: color,
                             mode: MODE_IMAGE,
@@ -578,7 +578,7 @@ impl Renderer {
 
                     let mut push_v = |x, y, t| vertices.push(v(x, y, t));
 
-                    let (l, r, b, t) = rect.l_r_b_t();
+                    let (l, r, t, b) = rect.l_r_b_t();
 
                     // Bottom left triangle.
                     push_v(l, t, [uv_l, uv_t]);
