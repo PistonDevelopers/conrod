@@ -127,7 +127,7 @@ mod defines{
             vbuf: gfx::VertexBuffer<Vertex> = (),
             color: gfx::TextureSampler<[f32; 4]> = "t_Color",
             scissor: gfx::Scissor = (),
-            out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
+            out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::ColorMask::all(), ::gfx::preset::blend::ALPHA),
         }
     }
 }
@@ -614,7 +614,9 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
                 T: gfx::format::TextureFormat
     {
         use gfx::{format, texture};
-        use gfx::memory::{Usage, SHADER_RESOURCE};
+        use gfx::memory::Usage;
+        use gfx::memory::Bind;
+
         use gfx_core::memory::Typed;
 
         let surface = <T::Surface as format::SurfaceTyped>::get_surface_type();
@@ -624,11 +626,14 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
             kind: kind,
             levels: (data.len() / (num_slices * num_faces)) as texture::Level,
             format: surface,
-            bind: SHADER_RESOURCE,
+            bind: Bind::SHADER_RESOURCE,
             usage: Usage::Dynamic,
         };
         let cty = <T::Channel as format::ChannelTyped>::get_channel_type();
-        let raw = try!(factory.create_texture_raw(desc, Some(cty), Some(data)));
+        let raw = try!(factory.create_texture_raw(
+            desc,
+            Some(cty),
+            Some((data, gfx::texture::Mipmap::Provided))));
         let levels = (0, raw.get_info().levels - 1);
         let tex = Typed::new(raw);
         let view = try!(factory.view_texture_as_shader_resource::<T>(

@@ -48,8 +48,8 @@ rusttype = "0.3.0"
 glium = { version = "0.20", optional = true }
 winit = { version = "0.10", optional = true }
 piston2d-graphics = { version = "0.23.0", optional = true }
-gfx = { version = "0.16.1", optional = true }
-gfx_core = { version = "0.7.0", optional = true }
+gfx = { version = "0.17", optional = true }
+gfx_core = { version = "0.8", optional = true }
 
 [features]
 piston = ["piston2d-graphics"]
@@ -61,7 +61,7 @@ image = "0.17.0"
 petgraph = "0.4"
 rand = "0.3.13"
 # glutin_gfx.rs example dependencies
-gfx_window_glutin = "0.19.0"
-glutin = "0.11.0"
+gfx_window_glutin = "0.20"
+glutin = "0.12"
 # piston_window.rs example dependencies
 piston_window = "0.73.0"
