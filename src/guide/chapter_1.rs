@@ -255,7 +255,7 @@ Button::new()
 *This is in fact the method of widget instantiation used by conrod, though with some slight
 differences in method naming (best to check the examples directory for a proper demo).*
 
-Although this certainly certainly seems like the nicest solution from an API perspective, the
+Although this certainly seems like the nicest solution from an API perspective, the
 attentive rustacean may notice that this requires extra work for the widget designer compared to
 the previous examples. Previously, all work for widget instantiation was done within the `new`
 function. The builder pattern implementation introduces a few differences worth noticing:
