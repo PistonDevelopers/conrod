@@ -74,6 +74,7 @@ mod feature {
         // Load the Rust logo from our assets folder to use as an example image.
         fn load_rust_logo<T: gfx::format::TextureFormat,R: gfx_core::Resources, F: gfx::Factory<R>>(factory: &mut F) -> (gfx::handle::ShaderResourceView<R, <T as gfx::format::Formatted>::View>,(u32,u32)) {
             use gfx::{format, texture};
+            use gfx::memory::Bind;
             use gfx::memory::Usage;
             let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
             let path = assets.join("images/rust.png");
@@ -88,10 +89,13 @@ mod feature {
                 kind: kind,
                 levels: 1,
                 format: <T::Surface as format::SurfaceTyped>::get_surface_type(),
-                bind: gfx::SHADER_RESOURCE,
+                bind: Bind::SHADER_RESOURCE,
                 usage: Usage::Dynamic,
             };
-            let raw = factory.create_texture_raw(info, Some(<T::Channel as format::ChannelTyped>::get_channel_type()) , Some(&[rgba_image.into_raw().as_slice()])).unwrap();
+            let raw = factory.create_texture_raw(
+                info,
+                Some(<T::Channel as format::ChannelTyped>::get_channel_type()),
+                Some((&[rgba_image.into_raw().as_slice()], texture::Mipmap::Provided))).unwrap();
             let tex = gfx_core::memory::Typed::new(raw);
             let view = factory.view_texture_as_shader_resource::<T>(
                 &tex, (0,0), format::Swizzle::new()
