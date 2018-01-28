@@ -24,7 +24,7 @@ script:
     - cargo test --features "piston" --verbose
     - cargo test --features "gfx_rs" --verbose
     - cargo test --all-features --verbose
-    - cargo doc --verbose
+    - cargo doc --all-features --verbose
 
 after_success:
     - curl http://docs.piston.rs/travis-doc-upload.sh | sh
