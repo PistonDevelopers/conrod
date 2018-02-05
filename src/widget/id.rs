@@ -345,7 +345,7 @@ macro_rules! widget_ids {
         widget_ids! { constructor $Ids, $generator { { $($id_field: $new,)* } $id, } }
     };
 
-    // Generatees the `$Ids` constructor using the `field: expr`s generated above.
+    // Generates the `$Ids` constructor using the `field: expr`s generated above.
     (constructor $Ids:ident, $generator:ident { { $($id:ident: $new:expr,)* } }) => {
         $Ids {
             $(
