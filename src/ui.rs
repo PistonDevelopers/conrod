@@ -60,7 +60,7 @@ pub struct Ui {
     maybe_prev_widget_id: Option<widget::Id>,
     /// The widget::Id of the last widget used as a parent for another widget.
     maybe_current_parent_id: Option<widget::Id>,
-    /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
+    /// The number of frames that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
     num_redraw_frames: u8,
     /// Whether or not the `Ui` needs to be re-drawn to screen.
@@ -1074,7 +1074,7 @@ impl Ui {
     }
 
 
-    /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
+    /// Tells the `Ui` that it needs to re-draw everything. It does this by setting the redraw
     /// count to `num_redraw_frames`. See the docs for `set_num_redraw_frames`, SAFE_REDRAW_COUNT
     /// or `draw_if_changed` for more info on how/why the redraw count is used.
     pub fn needs_redraw(&self) {

@@ -186,7 +186,7 @@ impl<A> State<A>
                 .unwrap_or_else(|| Range::new(0.0, 0.0))
         };
 
-        // Determine the min and max offst bounds. These bounds are the limits to which the
+        // Determine the min and max offset bounds. These bounds are the limits to which the
         // scrollable_range may be shifted in either direction across the range.
         let min_offset = Range::new(scrollable_range.start, kid_area_range_origin.start).magnitude();
         let max_offset = Range::new(scrollable_range.end, kid_area_range_origin.end).magnitude();
