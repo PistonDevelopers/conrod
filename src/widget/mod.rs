@@ -582,7 +582,7 @@ pub trait Widget: Common + Sized {
     /// # Arguments
     /// * id - The `Widget`'s unique index (whether `Public` or `Internal`).
     /// * prev - The previous common state of the Widget. If this is the first time **update** is
-    /// called, `Widget::init_state` will be used to produce some intial state instead.
+    /// called, `Widget::init_state` will be used to produce some initial state instead.
     /// * state - A wrapper around the `Widget::State`. See the [**State** docs](./struct.State)
     /// for more details.
     /// * rect - The position (centered) and dimensions of the widget.
