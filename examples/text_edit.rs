@@ -124,7 +124,7 @@ mod feature {
             .restrict_to_height(false) // Let the height grow infinitely and scroll.
             .set(ids.text_edit, ui)
         {
-            *demo_text = edit;
+            edit.apply(demo_text);
         }
 
         widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.scrollbar, ui);

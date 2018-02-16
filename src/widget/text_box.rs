@@ -1,11 +1,14 @@
 //! A widget for displaying and mutating a one-line field of text.
 
+use std::borrow::Cow;
+
 use {Color, Colorable, FontSize, Borderable, Positionable, Sizeable, Widget};
 use event;
 use input;
 use position::{Range, Rect, Scalar};
 use text;
 use widget;
+use widget::text_edit::TextEvent;
 
 /// A widget for displaying and mutating a small, one-line field of text, given by the user in the
 /// form of a `String`.
@@ -161,7 +164,29 @@ impl<'a> Widget for TextBox<'a> {
 
         let text_color = style.text_color(ui.theme());
         let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
-        if let Some(new_string) = widget::TextEdit::new(text)
+
+        // TODO: work on event passthrough... that is, having TextBox also do the same thing of returning TextEvents.
+
+
+        // This is a way to get "enter" events passed through, without them actually applying to text.
+        // We create an EnterPressedPlaceholder whenever '\n' is pressed, then grab it on the way out
+        // and create an Event::Return.
+        struct EnterPressedPlaceholder;
+
+        let transfomer =  |event| -> TextEvent<EnterPressedPlaceholder> {
+            match event {
+                TextEvent::Splice { start_index: _, length, ref text } if length == 0 && &**text == "\n" => {
+                    // TODO: handle the case where some other text then "Enter" then other text was submitted...
+                    // this will require having event_transformer return SmallVec<[TextEvent; 1]> & making it easy
+                    // to accommodate that in text_edit's post-event checks.
+
+                    TextEvent::PassthroughData { data: EnterPressedPlaceholder }
+                },
+                other => other.into_specific_event(),
+            }
+        };
+
+        let inner_events = widget::TextEdit::with_transform(text, transfomer)
             .and_then(font_id, widget::TextEdit::font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
@@ -169,25 +194,30 @@ impl<'a> Widget for TextBox<'a> {
             .color(text_color)
             .justify(justify)
             .parent(id)
-            .set(state.ids.text_edit, ui)
-        {
-            events.push(Event::Update(new_string));
-        }
+            .set(state.ids.text_edit, ui);
 
-        // Produce an event for any `Enter`/`Return` presses.
-        //
-        // TODO: We should probably be doing this via the `TextEdit` widget.
-        for widget_event in ui.widget_input(state.ids.text_edit).events() {
-            match widget_event {
-                event::Widget::Press(press) => match press.button {
-                    event::Button::Keyboard(key) => match key {
-                        input::Key::Return => events.push(Event::Enter),
-                        _ => (),
-                    },
-                    _ => (),
+        // this is inefficient, but it will be replaced with events being passed through eventually.
+        let mut updated_string = Cow::Borrowed(text);
+        let mut updates_included = false;
+        for event in inner_events {
+            match event {
+                TextEvent::PassthroughData { data: EnterPressedPlaceholder } => {
+                    if !updates_included {
+                        updates_included = true;
+                        events.push(Event::Update(updated_string.as_ref().to_owned()));
+                    }
+                    events.push(Event::Enter);
                 },
-                _ => (),
+                other => {
+                    if !other.no_op() {
+                        updates_included = false;
+                        other.apply(updated_string.to_mut());
+                    }
+                }
             }
+        }
+        if !updates_included {
+            events.push(Event::Update(updated_string.into_owned()));
         }
 
         events
