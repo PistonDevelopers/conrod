@@ -21,8 +21,8 @@ pub struct Id(u32);
 ///
 /// ```ignore
 /// let image_map = image_map! {
-///     (RUST_LOGO, try!(image::open("rust-logo.png"))),
-///     (CAT_PIC, try!(image::open("floof.jpeg"))),
+///     (RUST_LOGO, image::open("rust-logo.png")?),
+///     (CAT_PIC, image::open("floof.jpeg")?),
 /// };
 /// ```
 pub struct Map<Img> {

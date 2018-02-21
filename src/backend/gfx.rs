@@ -630,15 +630,15 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
             usage: Usage::Dynamic,
         };
         let cty = <T::Channel as format::ChannelTyped>::get_channel_type();
-        let raw = try!(factory.create_texture_raw(
+        let raw = factory.create_texture_raw(
             desc,
             Some(cty),
-            Some((data, gfx::texture::Mipmap::Provided))));
+            Some((data, gfx::texture::Mipmap::Provided)))?;
         let levels = (0, raw.get_info().levels - 1);
         let tex = Typed::new(raw);
-        let view = try!(factory.view_texture_as_shader_resource::<T>(
+        let view = factory.view_texture_as_shader_resource::<T>(
             &tex, levels, format::Swizzle::new()
-        ));
+        )?;
         Ok((tex, view))
     }
 
