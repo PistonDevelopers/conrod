@@ -167,7 +167,7 @@ pub mod font {
         pub fn insert_from_file<P>(&mut self, path: P) -> Result<Id, Error>
             where P: AsRef<std::path::Path>,
         {
-            let font = try!(from_file(path));
+            let font = from_file(path)?;
             Ok(self.insert(font))
         }
 
@@ -202,9 +202,9 @@ pub mod font {
     {
         use std::io::Read;
         let path = path.as_ref();
-        let mut file = try!(std::fs::File::open(path));
+        let mut file = std::fs::File::open(path)?;
         let mut file_buffer = Vec::new();
-        try!(file.read_to_end(&mut file_buffer));
+        file.read_to_end(&mut file_buffer)?;
         Ok(super::FontCollection::from_bytes(file_buffer))
     }
 
@@ -212,7 +212,7 @@ pub mod font {
     pub fn from_file<P>(path: P) -> Result<super::Font, Error>
         where P: AsRef<std::path::Path>
     {
-        let collection = try!(collection_from_file(path));
+        let collection = collection_from_file(path)?;
         collection.into_font().ok_or(Error::NoFont)
     }
 

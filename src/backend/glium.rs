@@ -367,7 +367,7 @@ impl GlyphCache {
         };
         let format = uncompressed_float_format;
         let no_mipmap = glium::texture::MipmapsOption::NoMipmap;
-        let texture = try!(glium::texture::Texture2d::with_format(facade, grey_image, format, no_mipmap));
+        let texture = glium::texture::Texture2d::with_format(facade, grey_image, format, no_mipmap)?;
 
         Ok(GlyphCache {
             cache: cache,
@@ -389,8 +389,8 @@ impl Renderer {
     pub fn new<F>(facade: &F) -> Result<Self, RendererCreationError>
         where F: glium::backend::Facade,
     {
-        let program = try!(program(facade));
-        let glyph_cache = try!(GlyphCache::new(facade));
+        let program = program(facade)?;
+        let glyph_cache = GlyphCache::new(facade)?;
         Ok(Renderer {
             program: program,
             glyph_cache: glyph_cache,
@@ -798,7 +798,7 @@ impl Renderer {
                     //
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
-                        let vertex_buffer = try!(glium::VertexBuffer::new(facade, slice));
+                        let vertex_buffer = glium::VertexBuffer::new(facade, slice)?;
                         surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
                     },
 
