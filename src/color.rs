@@ -338,7 +338,7 @@ pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
         // If there's no difference in the channels we have grayscale, so the hue is undefined.
         0.0
     } else {
-        degrees(60.0) * if      c_max == r { fmod(((g - b) / c), 6) }
+        degrees(60.0) * if      c_max == r { fmod((g - b) / c, 6) }
                         else if c_max == g { ((b - r) / c) + 2.0 }
                         else               { ((r - g) / c) + 4.0 }
     };
