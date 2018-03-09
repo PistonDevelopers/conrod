@@ -28,6 +28,8 @@ fnv = "1.0"
 num = "0.1.30"
 pistoncore-input = "0.20.0"
 rusttype = { version = "0.4.0", features = ["gpu_cache"] }
+smallstring = "0.1"
+void = "1"
 
 # Optional dependencies and features
 # ----------------------------------

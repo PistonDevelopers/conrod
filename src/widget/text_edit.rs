@@ -1,5 +1,7 @@
 //! A widget for displaying and mutating multi-line text, given as a `String`.
 
+use std::fmt;
+
 use {Color, Colorable, FontSize, Positionable, Sizeable, Widget, Ui};
 use event;
 use input;
@@ -11,16 +13,23 @@ use widget;
 use cursor;
 use widget::primitive::text::Wrap;
 
+use smallstring::SmallString;
+use void::Void;
 
 /// A widget for displaying and mutating multi-line text, given as a `String`.
 ///
 /// By default the text is wrapped via the first whitespace before the line exceeds the
 /// `TextEdit`'s width, however a user may change this using the `.wrap_by_character` method.
+///
+/// Note that when text is updated with this widget, the internal text / text displayed is
+/// not changed. Instead, the changes are returned as TextEvents, and it's up to the user to
+/// update the actual text and display it the next widget cycle.
 #[derive(WidgetCommon_)]
-pub struct TextEdit<'a> {
+pub struct TextEdit<'a, EventTransform> {
     #[conrod(common_builder)]
     common: widget::CommonBuilder,
     text: &'a str,
+    event_transform: EventTransform,
     style: Style,
 }
 
@@ -98,15 +107,29 @@ pub enum Cursor {
     },
 }
 
-
-impl<'a> TextEdit<'a> {
-
+impl<'a> TextEdit<'a, fn(TextEvent<Void>) -> TextEvent<Void>> {
     /// Construct a TextEdit widget.
     pub fn new(text: &'a str) -> Self {
+        fn default_transform(evt: TextEvent) -> TextEvent {
+            evt
+        }
+
+        TextEdit::with_transform(text, default_transform)
+    }
+}
+
+impl<'a, T> TextEdit<'a, T> {
+    /// Construct a TextEdit widget with the given event transformation
+    /// closure.
+    pub fn with_transform<E>(text: &'a str, transform: T) -> Self
+    where
+        T: FnMut(TextEvent<Void>) -> TextEvent<E>,
+    {
         TextEdit {
             common: widget::CommonBuilder::default(),
             style: Style::default(),
             text: text,
+            event_transform: transform,
         }
     }
 
@@ -175,17 +198,314 @@ impl<'a> TextEdit<'a> {
         pub line_spacing { style.line_spacing = Some(Scalar) }
         pub restrict_to_height { style.restrict_to_height = Some(bool) }
     }
-
 }
 
-impl<'a> Widget for TextEdit<'a> {
+/// Text event.
+#[derive(Clone)]
+pub enum TextEvent<T = Void> {
+    /// Passes through an event which is a no-op on the text, but can be picked
+    /// up by whatever receives the TextEdit events. This is only ever returned
+    /// if it's returned from the event_transform function.
+    PassthroughData {
+        /// The data to pass through.
+        data: T,
+    },
+    /// Removes text from a string, and replaces it with other text.
+    ///
+    /// This is a catch-all variation for all direct modifications. If 'length'
+    /// is 0, this is pure insertion. If 'text' is empty, this is pure deletion.
+    Splice {
+        /// Start byte index.
+        start_index: usize,
+        /// Byte length removed.
+        length: usize,
+        /// Text inserted into the removed text's place.
+        text: SmallString<[u8; 8]>,
+    },
+    /// Moves text from one place in the string to another, without caring what
+    /// the text is. This could be represented by two Splices, but it's more
+    /// memory-efficient this way while storing events and has the potential to
+    /// be more efficient if wrapping string storage is something like a rope.
+    MoveText {
+        /// Start byte index.
+        start_index: usize,
+        /// Byte length.
+        length: usize,
+        /// Index to insert at *in the original string*. If you've already removed the text,
+        /// then this index is going to be `(insertion_index - length)` if `insertion_index > start_index`.
+        ///
+        /// If `start_index <= insertion_index <= start_index + length`, this is a no-op.
+        insertion_index: usize,
+    },
+}
+impl<T> fmt::Debug for TextEvent<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TextEvent::PassthroughData { .. } => f.debug_struct("TextEvent::PassthroughData")
+                .field("data", &"<non-debug>")
+                .finish(),
+            TextEvent::Splice {
+                start_index,
+                length,
+                ref text,
+            } => f.debug_struct("TextEvent::Splice")
+                .field("start_index", &start_index)
+                .field("length", &length)
+                .field("text", &text)
+                .finish(),
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => f.debug_struct("TextEvent::MoveText")
+                .field("start_index", &start_index)
+                .field("length", &length)
+                .field("insertion_index", &insertion_index)
+                .finish(),
+        }
+    }
+}
+
+impl<T> TextEvent<T> {
+    /* // We'll possibly want this, but for now we can do a "EventAllowed" closure instead.
+
+    /// Turns an event which was intended to be applied after this set of events into one which can be applied
+    /// while ignoring these events.
+    ///
+    /// Example: if there are three events, "insert char A at 0", "insert char B at 1", "insert char C at 2",
+    /// they work when applied together. What if you have a text box which you only want to allow the character
+    /// "C" in however? Applying the third event doesn't work, since it will insert it in the wrong position.
+    ///
+    /// This is where `into_correct_without_applying` comes in: you can call
+    ///
+    /// ```ignore
+    /// (third_event).into_correct_without_applying(&[first_event, second_event]).apply(string)
+    /// ```
+    /// and it will act as though the event were "insert char C at 0".
+    pub fn into_correct_without_applying<'a, T>(self, events: T) -> TextEvent
+    where
+        T: IntoIterator<Item = &'a TextEvent>
+    {
+
+    }
+
+    */
+
+    /// Returns true if this operation does anything when applied to strings.
+    ///
+    /// This will return false if this operation is a no-op AND it isn't a passthrough event.
+    pub fn no_op(&self) -> bool {
+        match *self {
+            TextEvent::Splice {
+                start_index: _,
+                length,
+                ref text,
+            } => length == 0 && text.len() == 0,
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => length == 0 || (start_index <= insertion_index && insertion_index < (start_index + length)),
+            TextEvent::PassthroughData { .. } => true,
+        }
+    }
+
+    /// Returns true if this operation is a "passthrough" event, one which is a no-op
+    /// with regards to the string, but is useful to outside consumers.
+    pub fn is_passthrough(&self) -> bool {
+        match *self {
+            TextEvent::PassthroughData { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Creates a new string from the given str with this event applied.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the indices stored in this TextEvent are out of bounds for
+    /// the given string, or if the indices to match up with `char` boundaries.
+    pub fn apply_new(&self, existing_text: &str) -> String {
+        // TODO: make a more efficient version of this function which uses iterator
+        // chains instead of modifying memory (and test if it's actually faster after
+        // that). Or at least a version which copies "start text" then "middle text"
+        // then "end text" instead of copying "start text" "end text" then inserting
+        // "middle text".
+        //
+        // something like this:
+        //
+        // let new_text = text.chars().take(start_idx)
+        //     .chain(string.chars())
+        //     .chain(text.chars().skip(end_idx))
+        //     .collect();
+        let mut owned = existing_text.to_owned();
+        self.apply(&mut owned);
+        owned
+    }
+
+    /// Modifies the given string in place with this event.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the indices stored in this TextEvent are out of bounds for
+    /// the given string, or if the indices to match up with `char` boundaries.
+    pub fn apply(&self, existing_text: &mut String) {
+        match *self {
+            TextEvent::Splice {
+                start_index,
+                length,
+                ref text,
+            } => {
+                if length == 0 {
+                    existing_text.insert_str(start_index, text);
+                } else if text.len() == 0 {
+                    existing_text.drain(start_index..(start_index + length));
+                } else {
+                    // TODO: use String::splice when it's stable.
+                    existing_text.drain(start_index..(start_index + length));
+                    existing_text.insert_str(start_index, text);
+                }
+            }
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => {
+                if start_index <= insertion_index && insertion_index < (start_index + length) {
+                    return;
+                }
+                // This is somewhat naive, but that's OK: if someone's editing large strings,
+                // they're likely using a rope structure anyways, and they can manually
+                // re-implement this method.
+                let text_to_move: String = existing_text
+                    .drain(start_index..(start_index + length))
+                    .collect();
+
+                let new_insert_index = if insertion_index < start_index {
+                    insertion_index
+                } else {
+                    // TODO: verify this is correct
+                    insertion_index - length
+                };
+
+                existing_text.insert_str(new_insert_index, &text_to_move);
+            }
+            TextEvent::PassthroughData { .. } => {}
+        }
+    }
+
+    /// Gets the start index of the text affected after this event is applied.
+    ///
+    /// This will return 0 if the event is a `TextEvent::PassthroughData`.
+    pub fn start_index(&self) -> usize {
+        match *self {
+            TextEvent::Splice { start_index, .. } => start_index,
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => {
+                if insertion_index < start_index {
+                    insertion_index
+                } else if insertion_index < (start_index + length) {
+                    // no-op version
+                    start_index
+                } else {
+                    // we do 'insertion_index - length' because we've removed the same length of
+                    // text before, then we add length to get the end of the text.
+                    insertion_index - length
+                }
+            }
+            // TODO: is this the best API surface we can make?
+            // Could we do a "NonPassthroughEvent"? or should we get rid of that variant alltogether
+            // and make events a trait which must be AsRef<TextEvent>?
+            TextEvent::PassthroughData { .. } => 0,
+        }
+    }
+
+    /// Gets the end index of text affected after this event is applied.
+    ///
+    /// This will return 0 if the event is a `TextEvent::PassthroughData`.
+    pub fn end_index(&self) -> usize {
+        match *self {
+            TextEvent::Splice {
+                start_index,
+                length,
+                ref text,
+            } => start_index + text.len(),
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => {
+                if insertion_index < start_index {
+                    insertion_index + length
+                } else if insertion_index < (start_index + length) {
+                    // no-op version
+                    start_index + length
+                } else {
+                    // we do 'insertion_index - length' because we've removed the same length of
+                    // text before, then we add length to get the end of the text.
+                    insertion_index
+                }
+            }
+            // see concerns for similar statement in start_index
+            TextEvent::PassthroughData { .. } => 0,
+        }
+    }
+}
+
+impl TextEvent<Void> {
+    /// Transforms this event into a type which could contain a different type of extra data.
+    ///
+    /// The new event is exactly the same as this event, since TextEvent<Void> can never be
+    /// the 'extra data' variant.
+    pub fn into_specific_event<T>(self) -> TextEvent<T> {
+        match self {
+            TextEvent::Splice {
+                start_index,
+                length,
+                text,
+            } => TextEvent::Splice {
+                start_index,
+                length,
+                text,
+            },
+            TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            } => TextEvent::MoveText {
+                start_index,
+                length,
+                insertion_index,
+            },
+            TextEvent::PassthroughData { data } => match data {}, // data is 'Void'
+        }
+    }
+}
+
+/*
+struct TextWithEvents<'a>(&'a str, &'a [TextEvent]);
+
+impl TextWithEvents {
+    fn new<'a>(s: &'a str, events: &'a [TextEvent]) {
+        TextWithEvents(s, events)
+    }
+}
+*/
+
+impl<'a, Transformer, ExtraEvent> Widget for TextEdit<'a, Transformer>
+where
+    Transformer: FnMut(TextEvent<Void>) -> TextEvent<ExtraEvent>,
+{
     type State = State;
     type Style = Style;
     // TODO: We should create a more specific `Event` type that:
     // - Allows for mutating an existing `String` directly
     // - Enumerates possible mutations (i.e. InsertChar, RemoveCharRange, etc).
     // - Enumerates cursor movement and range selection.
-    type Event = Option<String>;
+    type Event = Vec<TextEvent<ExtraEvent>>;
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
@@ -240,8 +560,14 @@ impl<'a> Widget for TextEdit<'a> {
     /// Update the state of the TextEdit.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
-        let TextEdit { text, .. } = self;
-        let mut text = std::borrow::Cow::Borrowed(text);
+        let TextEdit {
+            text: original_text,
+            mut event_transform,
+            ..
+        } = self;
+        let mut cached_text = std::borrow::Cow::Borrowed(original_text);
+
+        let mut events = Vec::<TextEvent<_>>::new();
 
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
@@ -251,7 +577,7 @@ impl<'a> Widget for TextEdit<'a> {
             .and_then(|id| ui.fonts.get(id).map(|_| id))
         {
             Some(font_id) => font_id,
-            None => return None,
+            None => return events,
         };
 
         let font_size = style.font_size(ui.theme());
@@ -282,7 +608,7 @@ impl<'a> Widget for TextEdit<'a> {
             let maybe_new_line_infos = {
                 let line_info_slice = &state.line_infos[..];
                 let font = ui.fonts.get(font_id).unwrap();
-                let new_line_infos = line_infos(&text, font, font_size, line_wrap, rect.w());
+                let new_line_infos = line_infos(&cached_text, font, font_size, line_wrap, rect.w());
                 match utils::write_if_different(line_info_slice, new_line_infos) {
                     std::borrow::Cow::Owned(new) => Some(new),
                     _ => None,
@@ -362,20 +688,26 @@ impl<'a> Widget for TextEdit<'a> {
 
         // Insert the given `string` at the given `cursor` position within the given `text`.
         //
-        // Produces the resulting text, cursor position and `line::Info`s for the new text.
+        // Produces the resulting TextEvent, cursor position and `line::Info`s for the new text.
         //
         // Returns `None` if the new text would exceed the height restriction.
+        //
+        // TODO: decide if we should return the created String representing the new text, or if
+        // it's reasonable to leave it without that so we can in future avoid creating that string.
         let insert_text = |string: &str,
-                           cursor: Cursor,
-                           text: &str,
-                           infos: &[text::line::Info],
-                           font: &text::Font|
-            -> Option<(String, Cursor, std::vec::Vec<text::line::Info>)>
-        {
-            let string_char_count = string.chars().count();
-
+                               cursor: Cursor,
+                               text: &str,
+                               infos: &[text::line::Info],
+                               font: &text::Font,
+                               event_transform: &mut Transformer|
+         -> Option<
+            (
+                TextEvent<ExtraEvent>,
+                Option<(Cursor, std::vec::Vec<text::line::Info>)>,
+            ),
+        > {
             // Construct the new text with the new string inserted at the cursor.
-            let (new_text, new_cursor_char_idx): (String, usize) = {
+            let (new_text, event, new_cursor_char_idx): (String, TextEvent<_>, usize) = {
                 let (cursor_start, cursor_end) = match cursor {
                     Cursor::Idx(idx) => (idx, idx),
                     Cursor::Selection { start, end } =>
@@ -390,13 +722,29 @@ impl<'a> Widget for TextEdit<'a> {
                      text::glyph::index_after_cursor(line_infos.clone(), cursor_end)
                         .unwrap_or(0));
 
-                let new_cursor_char_idx = start_idx + string_char_count;
+                let event = TextEvent::Splice {
+                    start_index: start_idx,
+                    length: end_idx - start_idx,
+                    text: string.into(),
+                };
 
-                let new_text = text.chars().take(start_idx)
-                    .chain(string.chars())
-                    .chain(text.chars().skip(end_idx))
-                    .collect();
-                (new_text, new_cursor_char_idx)
+                let event = event_transform(event);
+
+                if event.no_op() {
+                    if event.is_passthrough() {
+                        return Some((event, None));
+                    } else {
+                        return None;
+                    }
+                }
+
+                // TODO: make a function to get "line infos on string w/ this one event applied"
+                // so we can do "event.apply(text.to_mut());" instead.
+                let mut new_text = event.apply_new(&text);
+
+                let new_cursor_char_idx = event.end_index();
+
+                (new_text, event, new_cursor_char_idx)
             };
 
             // Calculate the new `line_infos` for the `new_text`.
@@ -412,14 +760,16 @@ impl<'a> Widget for TextEdit<'a> {
                 // Determine the new `Cursor` and its position.
                 let new_cursor_idx = {
                     let line_infos = new_line_infos.iter().cloned();
-                    text::cursor::index_before_char(line_infos, new_cursor_char_idx)
-                        .unwrap_or(text::cursor::Index {
-                            line: 0,
-                            char: string_char_count,
-                        })
+                    text::cursor::index_before_char(line_infos, new_cursor_char_idx).unwrap_or(text::cursor::Index {
+                        line: 0,
+                        // TODO: this is what this was before events. Understand what this meant, and re-do it!
+                        // "let string_char_count = string.chars().count();"
+                        // char: string_char_count,
+                        char: new_cursor_char_idx,
+                    })
                 };
 
-                Some((new_text, Cursor::Idx(new_cursor_idx), new_line_infos))
+                Some((event, Some((Cursor::Idx(new_cursor_idx), new_line_infos))))
             } else {
                 None
             }
@@ -434,16 +784,14 @@ impl<'a> Widget for TextEdit<'a> {
         // - Key presses for cursor movement.
         'events: for widget_event in ui.widget_input(id).events() {
             match widget_event {
-
                 event::Widget::Press(press) => match press.button {
-
                     // If the left mouse button was pressed, place a `Cursor` with the starting
                     // index at the mouse position.
                     event::Button::Mouse(input::MouseButton::Left, rel_xy) => {
                         let abs_xy = utils::vec2_add(rel_xy, rect.xy());
                         let infos = &state.line_infos;
                         let font = ui.fonts.get(font_id).unwrap();
-                        let closest = closest_cursor_index_and_xy(abs_xy, &text, infos, font);
+                        let closest = closest_cursor_index_and_xy(abs_xy, &cached_text, infos, font);
                         if let Some((closest_cursor, _)) = closest {
                             cursor = Cursor::Idx(closest_cursor);
                         }
@@ -470,13 +818,13 @@ impl<'a> Widget for TextEdit<'a> {
                                             cursor_idx.previous(line_infos)
                                         }
                                         (input::Key::Backspace, true) => {
-                                            cursor_idx.previous_word_start(&text, line_infos)
+                                            cursor_idx.previous_word_start(&cached_text, line_infos)
                                         }
                                         (input::Key::Delete, false) => {
                                             cursor_idx.next(line_infos)
                                         }
                                         (input::Key::Delete, true) => {
-                                            cursor_idx.next_word_end(&text, line_infos)
+                                            cursor_idx.next_word_end(&cached_text, line_infos)
                                         }
                                         _ => unreachable!(),
                                     }.unwrap_or(cursor_idx);
@@ -496,25 +844,51 @@ impl<'a> Widget for TextEdit<'a> {
                                 let (start_idx, end_idx) = (std::cmp::min(start_idx, end_idx),
                                                             std::cmp::max(start_idx, end_idx));
 
-                                let new_cursor_char_idx =
-                                    if start_idx > 0 { start_idx } else { 0 };
-                                let new_cursor_idx = {
-                                    let line_infos = state.line_infos.iter().cloned();
-                                    text::cursor::index_before_char(line_infos,
-                                                                    new_cursor_char_idx)
-                                        .expect("char index was out of range")
+                                let event = TextEvent::Splice {
+                                    start_index: start_idx,
+                                    length: end_idx - start_idx,
+                                    text: "".into(),
                                 };
-                                cursor = Cursor::Idx(new_cursor_idx);
-                                *text.to_mut() = text.chars().take(start_idx)
-                                    .chain(text.chars().skip(end_idx))
-                                    .collect();
-                                state.update(|state| {
-                                    let font = ui.fonts.get(font_id).unwrap();
-                                    let w = rect.w();
-                                    state.line_infos =
-                                        line_infos(&text, font, font_size, line_wrap, w)
-                                            .collect();
-                                });
+                                let event = event_transform(event);
+                                // TODO: event_transform can even turn deletes into insertions... We need to
+                                // put the same safeguards here that we have in `insert_text` for text which
+                                // possibly escapes the restricted height...
+                                // TODO: should event_transform be the thing which possibly guards against
+                                // height in the first place? it could be made to be Fn(&str, TextEvent)
+                                // instead of Fn(TextEvent) so it can check height. Or we could do a local
+                                // closure which wraps it...
+
+                                if !event.no_op() {
+                                    event.apply(cached_text.to_mut());
+                                    state.update(|state| {
+                                        let font = ui.fonts.get(font_id).unwrap();
+                                        let w = rect.w();
+                                        state.line_infos =
+                                            line_infos(&cached_text, font, font_size, line_wrap, w).collect();
+                                    });
+                                    let new_cursor_char_idx = event.end_index();
+                                    let new_cursor_idx = {
+                                        let line_infos = state.line_infos.iter().cloned();
+                                        text::cursor::index_before_char(line_infos, new_cursor_char_idx)
+                                            .unwrap_or_else(|| {
+                                                panic!(
+                                                    "end char index for event {:#?} was out of range of {:#?}",
+                                                    event, state.line_infos
+                                                )
+                                            })
+                                        // .unwrap_or(text::cursor::Index {
+                                        //     line: 0,
+                                        //     char: new_cursor_char_idx,
+                                        // })
+                                    };
+                                    cursor = Cursor::Idx(new_cursor_idx);
+                                    events.push(event);
+                                } else {
+                                    println!("no-op event ignored: {:#?}", event);
+                                    if event.is_passthrough() {
+                                        events.push(event);
+                                    }
+                                }
                             }
                         },
 
@@ -532,24 +906,24 @@ impl<'a> Widget for TextEdit<'a> {
                                 let line_infos = state.line_infos.iter().cloned();
                                 match (key, move_word) {
                                     (input::Key::Left, true) => cursor_idx
-                                        .previous_word_start(&text, line_infos),
+                                        .previous_word_start(&cached_text, line_infos),
                                     (input::Key::Right, true) => cursor_idx
-                                        .next_word_end(&text, line_infos),
+                                        .next_word_end(&cached_text, line_infos),
                                     (input::Key::Left, false) => cursor_idx
                                         .previous(line_infos),
                                     (input::Key::Right, false) => cursor_idx
                                         .next(line_infos),
 
                                     // Up/Down movement
-                                    _ => cursor_xy_at(cursor_idx, &text, &state.line_infos, font)
-                                        .and_then(|(x_pos, _)| {
+                                    _ => cursor_xy_at(cursor_idx, &cached_text, &state.line_infos, font).and_then(
+                                        |(x_pos, _)| {
                                             let text::cursor::Index { line, .. } = cursor_idx;
                                             let next_line = match key {
                                                 input::Key::Up => line.saturating_sub(1),
                                                 input::Key::Down => line + 1,
                                                 _ => unreachable!(),
                                             };
-                                            closest_cursor_index_on_line(x_pos, next_line, &text, &state.line_infos, font)
+                                            closest_cursor_index_on_line(x_pos, next_line, &cached_text, &state.line_infos, font)
                                         })
                                 }.unwrap_or(cursor_idx)
                             };
@@ -583,10 +957,10 @@ impl<'a> Widget for TextEdit<'a> {
                                                 let line_infos = state.line_infos.iter().cloned();
                                                 match key {
                                                     input::Key::Left | input::Key::Up => {
-                                                        cursor_idx.previous_word_start(&text, line_infos)
+                                                        cursor_idx.previous_word_start(&cached_text, line_infos)
                                                     },
                                                     input::Key::Right | input::Key::Down => {
-                                                        cursor_idx.next_word_end(&text, line_infos)
+                                                        cursor_idx.next_word_end(&cached_text, line_infos)
                                                     }
                                                     _ => unreachable!(),
                                                 }.unwrap_or(cursor_idx)
@@ -604,7 +978,7 @@ impl<'a> Widget for TextEdit<'a> {
                                 let start = text::cursor::Index { line: 0, char: 0 };
                                 let end = {
                                     let line_infos = state.line_infos.iter().cloned();
-                                    text::cursor::index_before_char(line_infos, text.chars().count())
+                                    text::cursor::index_before_char(line_infos, cached_text.chars().count())
                                         .expect("char index was out of range")
                                 };
                                 cursor = Cursor::Selection { start: start, end: end };
@@ -655,12 +1029,22 @@ impl<'a> Widget for TextEdit<'a> {
 
                         input::Key::Return => {
                             let font = ui.fonts.get(font_id).unwrap();
-                            match insert_text("\n", cursor, &text, &state.line_infos, font) {
-                                Some((new_text, new_cursor, new_line_infos)) => {
-                                    *text.to_mut() = new_text;
+                            match insert_text(
+                                "\n",
+                                cursor,
+                                &cached_text,
+                                &state.line_infos,
+                                font,
+                                &mut event_transform,
+                            ) {
+                                Some((event, None)) => events.push(event),
+                                Some((event, Some((new_cursor, new_line_infos)))) => {
+                                    event.apply(cached_text.to_mut());
                                     cursor = new_cursor;
                                     state.update(|state| state.line_infos = new_line_infos);
-                                }, _ => ()
+                                    events.push(event);
+                                }
+                                _ => (),
                             }
                         },
 
@@ -697,12 +1081,22 @@ impl<'a> Widget for TextEdit<'a> {
                     }
 
                     let font = ui.fonts.get(font_id).unwrap();
-                    match insert_text(&string, cursor, &text, &state.line_infos, font) {
-                        Some((new_text, new_cursor, new_line_infos)) => {
-                            *text.to_mut() = new_text;
+                    match insert_text(
+                        &string,
+                        cursor,
+                        &cached_text,
+                        &state.line_infos,
+                        font,
+                        &mut event_transform,
+                    ) {
+                        Some((event, None)) => events.push(event),
+                        Some((event, Some((new_cursor, new_line_infos)))) => {
+                            event.apply(cached_text.to_mut());
                             cursor = new_cursor;
                             state.update(|state| state.line_infos = new_line_infos);
-                        }, _ => ()
+                            events.push(event);
+                        }
+                        _ => (),
                     }
                 },
 
@@ -718,7 +1112,7 @@ impl<'a> Widget for TextEdit<'a> {
                             let abs_xy = utils::vec2_add(drag_event.to, rect.xy());
                             let infos = &state.line_infos;
                             let font = ui.fonts.get(font_id).unwrap();
-                            match closest_cursor_index_and_xy(abs_xy, &text, infos, font) {
+                            match closest_cursor_index_and_xy(abs_xy, &cached_text, infos, font) {
                                 Some((end_cursor_idx, _)) =>
                                     cursor = Cursor::Selection {
                                         start: start_cursor_idx,
@@ -745,6 +1139,13 @@ impl<'a> Widget for TextEdit<'a> {
             ui.set_mouse_cursor(cursor::MouseCursor::Text);
         }
 
+        // TODO; this is part of displaying the original text, rather than the cached_text.
+        // See comments below (after `match line_wrap {`)
+        let original_cursor = state.cursor;
+
+        let display_cursor = original_cursor;
+        let display_text = &original_text;
+
         let cursor_has_changed = state.cursor != cursor;
         if cursor_has_changed {
             state.update(|state| state.cursor = cursor);
@@ -752,14 +1153,6 @@ impl<'a> Widget for TextEdit<'a> {
 
         if state.drag != drag {
             state.update(|state| state.drag = drag);
-        }
-
-        // Takes the `String` from the `Cow` if the `Cow` is `Owned`.
-        fn take_if_owned(text: std::borrow::Cow<str>) -> Option<String> {
-            match text {
-                std::borrow::Cow::Borrowed(_) => None,
-                std::borrow::Cow::Owned(s) => Some(s),
-            }
         }
 
         let color = style.color(ui.theme());
@@ -770,8 +1163,16 @@ impl<'a> Widget for TextEdit<'a> {
         let text_rect = Rect { x: rect.x, y: text_y_range };
 
         match line_wrap {
-            Wrap::Whitespace => widget::Text::new(&text).wrap_by_word(),
-            Wrap::Character => widget::Text::new(&text).wrap_by_character(),
+            // We could display cached_text here, but that would undermine password
+            // widgets which want to hide what is being typed.
+            //
+            // Instead, we just display the original text that was given, and we can
+            // display the updates on the next render.
+            //
+            // TODO: should we make it a configuration variable whether to display cached_text?
+            //
+            Wrap::Whitespace => widget::Text::new(&display_text).wrap_by_word(),
+            Wrap::Character => widget::Text::new(&display_text).wrap_by_character(),
         }
             .font_id(font_id)
             .wh(text_rect.dim())
@@ -785,19 +1186,19 @@ impl<'a> Widget for TextEdit<'a> {
             .set(state.ids.text, ui);
 
         // Draw the line for the cursor.
-        let cursor_idx = match cursor {
+        let cursor_idx = match display_cursor {
             Cursor::Idx(idx) => idx,
             Cursor::Selection { end, .. } => end,
         };
 
         // If this widget is not capturing the keyboard, no need to draw cursor or selection.
         if ui.global_input().current.widget_capturing_keyboard != Some(id) {
-            return take_if_owned(text);
+            return events;
         }
 
         let (cursor_x, cursor_y_range) = {
             let font = ui.fonts.get(font_id).unwrap();
-            cursor_xy_at(cursor_idx, &text, &state.line_infos, font)
+            cursor_xy_at(cursor_idx, &display_text, &state.line_infos, font)
                 .unwrap_or_else(|| {
                     let x = rect.left();
                     let y = Range::new(0.0, font_size as Scalar).align_to(y_align, rect.y);
@@ -840,12 +1241,12 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        if let Cursor::Selection { start, end } = cursor {
+        if let Cursor::Selection { start, end } = display_cursor {
             let (start, end) = (std::cmp::min(start, end), std::cmp::max(start, end));
 
             let selected_rects: Vec<Rect> = {
                 let line_infos = state.line_infos.iter().cloned();
-                let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
+                let lines = line_infos.clone().map(|info| &display_text[info.byte_range()]);
                 let line_rects = text::line::rects(line_infos.clone(), font_size, rect,
                                                    justify, y_align, line_spacing);
                 let lines_with_rects = lines.zip(line_rects.clone());
@@ -873,12 +1274,10 @@ impl<'a> Widget for TextEdit<'a> {
             }
         }
 
-        take_if_owned(text)
+        events
     }
-
 }
 
-
-impl<'a> Colorable for TextEdit<'a> {
+impl<'a, T> Colorable for TextEdit<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
