@@ -205,7 +205,7 @@ pub mod font {
         let mut file = std::fs::File::open(path)?;
         let mut file_buffer = Vec::new();
         file.read_to_end(&mut file_buffer)?;
-        Ok(super::FontCollection::from_bytes(file_buffer))
+        Ok(super::FontCollection::from_bytes(file_buffer)?)
     }
 
     /// Load a single `Font` from a file at the given path.
@@ -213,7 +213,7 @@ pub mod font {
         where P: AsRef<std::path::Path>
     {
         let collection = collection_from_file(path)?;
-        collection.into_font().ok_or(Error::NoFont)
+        collection.into_font().or(Err(Error::NoFont))
     }
 
 
@@ -1078,7 +1078,7 @@ pub mod line {
                      scale: super::Scale,
                      last_glyph: &mut Option<super::GlyphId>) -> Scalar
     {
-        let g = font.glyph(ch).unwrap().scaled(scale);
+        let g = font.glyph(ch).scaled(scale);
         let kern = last_glyph
             .map(|last| font.pair_kerning(scale, last, g.id()))
             .unwrap_or(0.0);
