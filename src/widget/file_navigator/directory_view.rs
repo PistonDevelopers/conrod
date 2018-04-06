@@ -142,7 +142,7 @@ fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBu
             // Check for valid extensions.
             let ext = path.extension()
                 .and_then(|ext| ext.to_str())
-                .map(|s| std::ascii::AsciiExt::to_ascii_lowercase(s))
+                .map(str::to_ascii_lowercase)
                 .unwrap_or_else(String::new);
             if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
                 return true
