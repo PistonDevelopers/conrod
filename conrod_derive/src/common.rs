@@ -37,7 +37,7 @@ pub fn impl_widget_common_(ast: &syn::DeriveInput) -> quote::Tokens {
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
-    
+
     let impl_item = quote! {
         impl #impl_generics ::widget::Common for #ident #ty_generics #where_clause {
             fn common(&self) -> &::widget::CommonBuilder {

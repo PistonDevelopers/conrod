@@ -181,7 +181,7 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
                 ty: quote!(#ty),
                 ident: quote!(#ident),
             };
-            
+
             Some(Ok(params))
         })
         .collect::<Result<_, _>>()?;
