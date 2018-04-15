@@ -185,8 +185,12 @@ where
 
         // Functions for converting between ranges.
         let normalise_value = |v: T| utils::map_range(v, min, max, 0.0, 1.0);
-        let normalise_and_skew_value = |v: T| normalise_value(v).powf(skew as f64);
+        let normalise_and_skew_value = |v: T| {
+            let f = utils::clamp(normalise_value(v), 0.0, 1.0);
+            f.powf(skew as f64)
+        };
         let unskew_and_unnormalise_value = |f: f64| {
+            let f = utils::clamp(f, 0.0, 1.0);
             utils::map_range(f.powf(1.0 / skew as f64), 0.0, 1.0, min, max)
         };
         let value_to_x = |v: T| {
@@ -195,7 +199,8 @@ where
         };
         let x_to_value = |x: Scalar| {
             let f = utils::map_range(x, inner_rect.left(), inner_rect.right(), 0.0, 1.0);
-            unskew_and_unnormalise_value(f)
+            let unskewed_and_unnormalised = unskew_and_unnormalise_value(f);
+            unskewed_and_unnormalised
         };
 
         let mut maybe_drag = state.drag;
@@ -265,11 +270,13 @@ where
                     match maybe_drag {
                         Some(Drag::Edge(Edge::Start)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
-                            new_start = utils::clamp(x_to_value(abs_drag_to), min, new_end);
+                            let v = x_to_value(abs_drag_to);
+                            new_start = utils::clamp(v, min, new_end);
                         },
                         Some(Drag::Edge(Edge::End)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
-                            new_end = utils::clamp(x_to_value(abs_drag_to), new_start, max);
+                            let v = x_to_value(abs_drag_to);
+                            new_end = utils::clamp(v, new_start, max);
                         },
                         Some(Drag::Handle) => {
                             let drag_amt = drag_event.delta_xy[0];
