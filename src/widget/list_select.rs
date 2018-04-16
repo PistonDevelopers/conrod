@@ -3,6 +3,8 @@
 use {Color, Positionable, Scalar, Sizeable, Ui, Widget};
 use {event, graph, input, widget};
 use std;
+use input::keyboard::ModifierKey;
+use input::state::mouse::Button;
 
 /// A wrapper around the `List` widget that handles single and multiple selection logic.
 #[derive(Clone, WidgetCommon_)]
@@ -482,7 +484,19 @@ impl<M, D, S> Events<M, D, S>
                                            &is_selected, pending_events);
                     }
                 },
-
+                
+                event::Widget::Tap(_) => {
+                    let dummy_click=event::Click{
+                        button:Button::Left,
+                        xy:[200.0,123.0],
+                        modifiers:ModifierKey::NO_MODIFIER
+                    };
+                    pending_events.push_back(Event::Click(dummy_click.clone()));
+                    let state = state();
+                    ensure_last_selected_validity(state);
+                    mode.click_selection(dummy_click, i, num_items, state,
+                                         &is_selected, pending_events);
+                },
                 // Produce a `Release` event.
                 event::Widget::Release(release) => {
                     let event = Event::Release(release);
