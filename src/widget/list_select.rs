@@ -485,7 +485,7 @@ impl<M, D, S> Events<M, D, S>
                     }
                 },
                 
-                event::Widget::Tap(_tab) => {
+                event::Widget::Tap(_) => {
                     let dummy_click=event::Click{
                         button:Button::Left,
                         xy:[200.0,123.0],
