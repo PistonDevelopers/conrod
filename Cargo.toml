@@ -64,7 +64,7 @@ image = "0.18"
 petgraph = "0.4"
 rand = "0.4"
 # glutin_gfx.rs example dependencies
-gfx_window_glutin = "0.20"
+gfx_window_glutin = "0.22"
 glutin = "0.14"
 # piston_window.rs example dependencies
 piston_window = "0.75"
