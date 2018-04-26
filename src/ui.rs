@@ -1132,7 +1132,7 @@ impl Ui {
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
+    pub fn draw_if_changed(&self) -> Option<render::Primitives> {
         if self.redraw_count.load(atomic::Ordering::Relaxed) > 0 {
             return Some(self.draw())
         }
