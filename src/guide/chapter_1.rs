@@ -276,7 +276,7 @@ address each of the above points best we can in order to reduce the workload of 
    hidden and stored within the `Ui`.
 3. All Conrod widgets must take a unique identifier and a mutable reference to the `Ui`. We
    consolidate this into a single `.set(ID, &mut ui)` method, which we also use as the indication
-   method to stop building and instantiate the widget wihtin the `Ui`.
+   method to stop building and instantiate the widget within the `Ui`.
 
 All of these points will be covered later in more detail within the widget implementation section
 of the guide.
