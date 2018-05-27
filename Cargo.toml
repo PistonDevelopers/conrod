@@ -1,6 +1,6 @@
 [package]
 name = "conrod"
-version = "0.59.1"
+version = "0.60.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -26,7 +26,7 @@ conrod_derive = "0.1"
 daggy = "0.5.0"
 fnv = "1.0"
 num = "0.1.30"
-pistoncore-input = "0.20.0"
+pistoncore-input = "0.21.0"
 rusttype = { version = "0.5.0", features = ["gpu_cache"] }
 
 # Optional dependencies and features
@@ -50,7 +50,7 @@ rusttype = { version = "0.5.0", features = ["gpu_cache"] }
 # Enables the `conrod::backend::piston` module.
 winit = { version = "0.12", optional = true }
 glium = { version = "0.21", optional = true }
-piston2d-graphics = { version = "0.24", optional = true }
+piston2d-graphics = { version = "0.26", optional = true }
 gfx = { version = "0.17", optional = true }
 gfx_core = { version = "0.8", optional = true }
 
@@ -60,11 +60,11 @@ gfx_rs=["gfx","gfx_core"]
 
 [dev-dependencies]
 find_folder = "0.3.0"
-image = "0.18"
+image = "0.19"
 petgraph = "0.4"
-rand = "0.4"
+rand = "0.5"
 # glutin_gfx.rs example dependencies
 gfx_window_glutin = "0.22"
 glutin = "0.14"
 # piston_window.rs example dependencies
-piston_window = "0.75"
+piston_window = "0.80"
