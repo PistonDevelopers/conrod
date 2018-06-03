@@ -1,13 +1,14 @@
 use std;
+
+use proc_macro2;
 use syn;
-use quote;
 
 // The implementation for `WidgetCommon`.
-pub fn impl_widget_common(ast: &syn::DeriveInput) -> quote::Tokens {
+pub fn impl_widget_common(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
+    let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_COMMON_FOR_{}", ident), proc_macro2::Span::call_site());
 
     let impl_item = quote! {
         impl #impl_generics _conrod::widget::Common for #ident #ty_generics #where_clause {
@@ -32,11 +33,11 @@ pub fn impl_widget_common(ast: &syn::DeriveInput) -> quote::Tokens {
 // The implementation for `WidgetCommon_`.
 //
 // The same as `WidgetCommon` but only for use within the conrod crate itself.
-pub fn impl_widget_common_(ast: &syn::DeriveInput) -> quote::Tokens {
+pub fn impl_widget_common_(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
+    let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_COMMON_FOR_{}", ident), proc_macro2::Span::call_site());
 
     let impl_item = quote! {
         impl #impl_generics ::widget::Common for #ident #ty_generics #where_clause {
@@ -84,15 +85,16 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
             if let Some(_meta) = attr.interpret_meta() {
                 let mut is_conrod=false;
                 let mut has_common_builder = false;
-                if let syn::Meta::List(_metalist) = _meta{
-                    if _metalist.ident == syn::Ident::from("conrod"){
+                if let syn::Meta::List(_metalist) = _meta {
+                    if _metalist.ident == "conrod" {
                         is_conrod = true;
                     }
-                   has_common_builder = _metalist.nested.iter().any(|v| match *v {
-                    syn::NestedMeta::Meta(syn::Meta::Word(ref w))
-                        if w == "common_builder" => true,
-                    _ => false,
-                });
+
+                    has_common_builder = _metalist.nested.iter().any(|v| match *v {
+                        syn::NestedMeta::Meta(syn::Meta::Word(ref w))
+                            if w == "common_builder" => true,
+                        _ => false,
+                    });
                 }
                 if is_conrod && has_common_builder {
                     // There should only be one `CommonBuilder` attribute.

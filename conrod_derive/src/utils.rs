@@ -19,7 +19,7 @@ impl<'a, I> Iterator for ConrodAttrs<I>
         while let Some(attr) = self.attrs.next() {
             if let Some(_meta) = attr.interpret_meta() {
                 if let &syn::Meta::List(ref _metalist) = &_meta{
-                    if _metalist.ident == syn::Ident::from("conrod"){
+                    if _metalist.ident == "conrod" {
                         let j = _metalist.nested.clone().into_pairs().map(|pair|pair.into_value()).collect::<Vec<syn::NestedMeta>>();
                         return Some(j);
                     }

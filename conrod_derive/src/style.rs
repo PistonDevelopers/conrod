@@ -1,13 +1,13 @@
-use quote;
 use std;
+
+use proc_macro2;
 use syn;
 use utils;
-use syn::Expr;
 // The implementation for `WidgetStyle`.
 //
 // This generates an accessor method for every field in the struct
-pub fn impl_widget_style(ast: &syn::DeriveInput) -> quote::Tokens {
-    let crate_tokens = Some(syn::Ident::from("_conrod"));
+pub fn impl_widget_style(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
+    let crate_tokens = Some(syn::Ident::new("_conrod", proc_macro2::Span::call_site()));
     let params = params(ast).unwrap();
     let impl_tokens = impl_tokens(&params, crate_tokens);
     let dummy_const = &params.dummy_const;
@@ -23,7 +23,7 @@ pub fn impl_widget_style(ast: &syn::DeriveInput) -> quote::Tokens {
 // The implementation for `WidgetStyle_`.
 //
 // The same as `WidgetStyle` but only for use within the conrod crate itself.
-pub fn impl_widget_style_(ast: &syn::DeriveInput) -> quote::Tokens {
+pub fn impl_widget_style_(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
    // let crate_tokens = syn::Ident::from(syn::token::CapSelf::default());
     let crate_tokens= None;
     let params = params(ast).unwrap();
@@ -37,7 +37,7 @@ pub fn impl_widget_style_(ast: &syn::DeriveInput) -> quote::Tokens {
     }
 }
 
-fn impl_tokens(params: &Params, crate_tokens: Option<syn::Ident>) -> quote::Tokens {
+fn impl_tokens(params: &Params, crate_tokens: Option<syn::Ident>) -> proc_macro2::TokenStream {
     let Params {
         ref impl_generics,
         ref ty_generics,
@@ -79,19 +79,19 @@ fn impl_tokens(params: &Params, crate_tokens: Option<syn::Ident>) -> quote::Toke
 
 #[derive(Debug)]
 struct Params {
-    impl_generics: quote::Tokens,
-    ty_generics: quote::Tokens,
-    where_clause: quote::Tokens,
-    ident: quote::Tokens,
+    impl_generics: proc_macro2::TokenStream,
+    ty_generics: proc_macro2::TokenStream,
+    where_clause: proc_macro2::TokenStream,
+    ident: proc_macro2::TokenStream,
     fields: Vec<FieldParams>,
-    dummy_const: quote::Tokens,
+    dummy_const: proc_macro2::TokenStream,
 }
 
 #[derive(Debug)]
 struct FieldParams {
-    default: quote::Tokens,
-    ty: quote::Tokens,
-    ident: quote::Tokens,
+    default: proc_macro2::TokenStream,
+    ty: proc_macro2::TokenStream,
+    ident: proc_macro2::TokenStream,
 }
 
 fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
@@ -138,7 +138,7 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
                 ref item => return Some(Err(Error::UnexpectedMetaItem(item.clone()))),
             };
 
-            let default:Expr = match *literal {
+            let default: syn::Expr = match *literal {
                 syn::Lit::Str(ref litstr) => litstr.clone().parse().unwrap(),
                 ref literal => return Some(Err(Error::UnexpectedLiteral(literal.clone()))),
             };
@@ -186,7 +186,7 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
         })
         .collect::<Result<_, _>>()?;
 
-    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_STYLE_FOR_{}", ast.ident));
+    let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_STYLE_FOR_{}", ast.ident), proc_macro2::Span::call_site());
     let ident = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 

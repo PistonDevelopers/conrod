@@ -1,6 +1,8 @@
 extern crate proc_macro;
-extern crate syn;
+
+extern crate proc_macro2;
 #[macro_use] extern crate quote;
+extern crate syn;
 
 mod common;
 mod style;
@@ -41,7 +43,7 @@ pub fn widget_style_(input: TokenStream) -> TokenStream {
 // Use the given function to generate a TokenStream for the derive implementation.
 fn impl_derive(
     input: TokenStream,
-    generate_derive: fn(&syn::DeriveInput) -> quote::Tokens,
+    generate_derive: fn(&syn::DeriveInput) -> proc_macro2::TokenStream,
 ) -> TokenStream
 {
     // Parse the input TokenStream representation.
