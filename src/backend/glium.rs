@@ -39,7 +39,7 @@ enum PreparedCommand {
 
 /// A rusttype `GlyphCache` along with a `glium::texture::Texture2d` for caching text on the `GPU`.
 pub struct GlyphCache {
-    cache: text::GlyphCache,
+    cache: text::GlyphCache<'static>,
     texture: glium::texture::Texture2d,
 }
 
@@ -330,44 +330,62 @@ pub fn text_texture_uncompressed_float_format(opengl_version: &glium::Version) -
     }
 }
 
+// Creating the rusttype glyph cache used within a `GlyphCache`.
+fn rusttype_glyph_cache(w: u32, h: u32) -> text::GlyphCache<'static> {
+    const SCALE_TOLERANCE: f32 = 0.1;
+    const POSITION_TOLERANCE: f32 = 0.1;
+    text::GlyphCache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE)
+}
+
+// Create the texture used within a `GlyphCache` of the given size.
+fn glyph_cache_texture<F>(
+    facade: &F,
+    width: u32,
+    height: u32,
+) -> Result<glium::texture::Texture2d, glium::texture::TextureCreationError>
+where
+    F: glium::backend::Facade,
+{
+    // Determine the optimal texture format to use given the opengl version.
+    let context = facade.get_context();
+    let opengl_version = context.get_opengl_version();
+    let client_format = text_texture_client_format(opengl_version);
+    let uncompressed_float_format = text_texture_uncompressed_float_format(opengl_version);
+    let num_components = client_format.get_num_components() as u32;
+    let data_size = num_components as usize * width as usize * height as usize;
+    let data = std::borrow::Cow::Owned(vec![128u8; data_size]);
+    let grey_image = glium::texture::RawImage2d {
+        data: data,
+        width: width,
+        height: height,
+        format: client_format,
+    };
+    let format = uncompressed_float_format;
+    let no_mipmap = glium::texture::MipmapsOption::NoMipmap;
+    glium::texture::Texture2d::with_format(facade, grey_image, format, no_mipmap)
+}
 
 impl GlyphCache {
-
-    /// Construct a `GlyphCache` with a size equal to the given `Display`'s current framebuffer
-    /// dimensions.
-    pub fn new<F>(facade: &F) -> Result<Self, glium::texture::TextureCreationError>
-        where F: glium::backend::Facade,
+    /// Construct a **GlyphCache** with the given texture dimensions.
+    ///
+    /// When calling `GlyphCache::new`, the `get_framebuffer_dimensions` method is used to produce
+    /// the width and height. However, often creating a texture the size of the screen might not be
+    /// large enough to cache the necessary text for an application. The following constant
+    /// multiplier is used to ensure plenty of room in the cache.
+    pub fn with_dimensions<F>(
+        facade: &F,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, glium::texture::TextureCreationError>
+    where
+        F: glium::backend::Facade,
     {
-        const SCALE_TOLERANCE: f32 = 0.1;
-        const POSITION_TOLERANCE: f32 = 0.1;
-
-        let context = facade.get_context();
-        let (w, h) = context.get_framebuffer_dimensions();
-
-        // Determine the optimal texture format to use given the opengl version.
-        let opengl_version = context.get_opengl_version();
-        let client_format = text_texture_client_format(opengl_version);
-        let uncompressed_float_format = text_texture_uncompressed_float_format(opengl_version);
-
-        // Construct the `GlyphCache`.
-        let num_components = client_format.get_num_components() as u32;
-
-        let buffer_w = num_components * w;
-
         // First, the rusttype `Cache` which performs the logic for rendering and laying out glyphs
         // in the cache.
-        let cache = text::GlyphCache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE);
+        let cache = rusttype_glyph_cache(width, height);
 
         // Now the texture to which glyphs will be rendered.
-        let grey_image = glium::texture::RawImage2d {
-            data: std::borrow::Cow::Owned(vec![128u8; buffer_w as usize * h as usize]),
-            width: w,
-            height: h,
-            format: client_format,
-        };
-        let format = uncompressed_float_format;
-        let no_mipmap = glium::texture::MipmapsOption::NoMipmap;
-        let texture = try!(glium::texture::Texture2d::with_format(facade, grey_image, format, no_mipmap));
+        let texture = glyph_cache_texture(facade, width, height)?;
 
         Ok(GlyphCache {
             cache: cache,
@@ -375,25 +393,57 @@ impl GlyphCache {
         })
     }
 
+    /// Construct a `GlyphCache` with a size equal to the given `Display`'s current framebuffer
+    /// dimensions.
+    pub fn new<F>(facade: &F) -> Result<Self, glium::texture::TextureCreationError>
+    where
+        F: glium::backend::Facade,
+    {
+        let (w, h) = facade.get_context().get_framebuffer_dimensions();
+        Self::with_dimensions(facade, w, h)
+    }
+
     /// The texture used to cache the glyphs on the GPU.
     pub fn texture(&self) -> &glium::texture::Texture2d {
         &self.texture
     }
-
 }
 
 
 impl Renderer {
-
     /// Construct a new empty `Renderer`.
+    ///
+    /// The dimensions of the inner glyph cache will be equal to the dimensions of the given
+    /// facade's framebuffer.
     pub fn new<F>(facade: &F) -> Result<Self, RendererCreationError>
         where F: glium::backend::Facade,
     {
-        let program = try!(program(facade));
-        let glyph_cache = try!(GlyphCache::new(facade));
+        let glyph_cache = GlyphCache::new(facade)?;
+        Self::with_glyph_cache(facade, glyph_cache)
+    }
+
+    /// Construct a new empty `Renderer` with the given glyph cache dimensions.
+    pub fn with_glyph_cache_dimensions<F>(
+        facade: &F,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, RendererCreationError>
+    where
+        F: glium::backend::Facade,
+    {
+        let glyph_cache = GlyphCache::with_dimensions(facade, width, height)?;
+        Self::with_glyph_cache(facade, glyph_cache)
+    }
+
+    // Construct a new **Renderer** that uses the given glyph cache for caching text.
+    fn with_glyph_cache<F>(facade: &F, gc: GlyphCache) -> Result<Self, RendererCreationError>
+    where
+        F: glium::backend::Facade,
+    {
+        let program = program(facade)?;
         Ok(Renderer {
             program: program,
-            glyph_cache: glyph_cache,
+            glyph_cache: gc,
             commands: Vec::new(),
             vertices: Vec::new(),
         })
@@ -798,7 +848,7 @@ impl Renderer {
                     //
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
-                        let vertex_buffer = try!(glium::VertexBuffer::new(facade, slice));
+                        let vertex_buffer = glium::VertexBuffer::new(facade, slice)?;
                         surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
                     },
 

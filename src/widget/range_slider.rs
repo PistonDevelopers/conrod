@@ -1,7 +1,7 @@
 //! A widget for specifying start and end values for some linear range.
 
 use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
-use num::{Float, NumCast, ToPrimitive};
+use num::Float;
 use position::{Padding, Range, Rect, Scalar};
 use text;
 use utils;
@@ -18,6 +18,16 @@ pub struct RangeSlider<'a, T> {
     max: T,
     maybe_label: Option<&'a str>,
     style: Style,
+    /// The amount in which the slider's display should be skewed.
+    ///
+    /// Higher skew amounts (above 1.0) will weight lower values.
+    ///
+    /// Lower skew amounts (below 1.0) will weight heigher values.
+    ///
+    /// All skew amounts should be greater than 0.0.
+    ///
+    /// By default, this value is `1.0` (no skew).
+    pub skew: f32,
 }
 
 /// Graphical styling unique to the RangeSlider widget.
@@ -100,7 +110,6 @@ impl<T> Iterator for Event<T> {
 
 
 impl<'a, T> RangeSlider<'a, T> {
-
     /// Construct a new RangeSlider widget.
     pub fn new(start: T, end: T, min: T, max: T) -> Self {
         RangeSlider {
@@ -111,6 +120,7 @@ impl<'a, T> RangeSlider<'a, T> {
             min: min,
             max: max,
             maybe_label: None,
+            skew: 1.0,
         }
     }
 
@@ -120,10 +130,24 @@ impl<'a, T> RangeSlider<'a, T> {
         self
     }
 
+    /// The amount in which the slider's display should be skewed.
+    ///
+    /// Higher skew amounts (above 1.0) will weight lower values.
+    ///
+    /// Lower skew amounts (below 1.0) will weight heigher values.
+    ///
+    /// All skew amounts should be greater than 0.0.
+    ///
+    /// By default, this value is `1.0` (no skew).
+    pub fn skew(mut self, skew: f32) -> Self {
+        self.skew = skew;
+        self
+    }
 }
 
 impl<'a, T> Widget for RangeSlider<'a, T>
-    where T: Float + NumCast + ToPrimitive,
+where
+    T: Float,
 {
     type State = State;
     type Style = Style;
@@ -151,19 +175,36 @@ impl<'a, T> Widget for RangeSlider<'a, T>
         }
     }
 
-    /// Update the state of the Slider.
+    /// Update the state of the range slider.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
-        let RangeSlider { start, end, min, max, maybe_label, .. } = self;
+        let RangeSlider { start, end, min, max, maybe_label, skew, .. } = self;
 
         let border = style.border(ui.theme());
         let inner_rect = rect.pad(border);
 
-        let value_to_x = |v| utils::map_range(v, min, max, inner_rect.left(), inner_rect.right());
-        let x_to_value = |x| utils::map_range(x, inner_rect.left(), inner_rect.right(), min, max);
+        // Functions for converting between ranges.
+        let normalise_value = |v: T| utils::map_range(v, min, max, 0.0, 1.0);
+        let normalise_and_skew_value = |v: T| {
+            let f = utils::clamp(normalise_value(v), 0.0, 1.0);
+            f.powf(skew as f64)
+        };
+        let unskew_and_unnormalise_value = |f: f64| {
+            let f = utils::clamp(f, 0.0, 1.0);
+            utils::map_range(f.powf(1.0 / skew as f64), 0.0, 1.0, min, max)
+        };
+        let value_to_x = |v: T| {
+            let f = normalise_and_skew_value(v);
+            utils::map_range(f, 0.0, 1.0, inner_rect.left(), inner_rect.right())
+        };
+        let x_to_value = |x: Scalar| {
+            let f = utils::map_range(x, inner_rect.left(), inner_rect.right(), 0.0, 1.0);
+            let unskewed_and_unnormalised = unskew_and_unnormalise_value(f);
+            unskewed_and_unnormalised
+        };
 
         let mut maybe_drag = state.drag;
-        let mut new_start = start;
+        let mut new_start = utils::clamp(start, min, max);
         let mut new_end = utils::clamp(end, start, max);
         for widget_event in ui.widget_input(id).events() {
             use event;
@@ -184,27 +225,36 @@ impl<'a, T> Widget for RangeSlider<'a, T>
                     if inner_rect.is_over(abs_press_xy) {
                         let start_x = value_to_x(new_start);
                         let end_x = value_to_x(new_end);
+                        let handle_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
                         let length_x = end_x - start_x;
                         let grab_edge_threshold = length_x / 10.0;
-                        let handle_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
                         if handle_rect.is_over(abs_press_xy) {
                             let distance_from_start = (abs_press_xy[0] - start_x).abs();
-                            if distance_from_start < grab_edge_threshold {
+                            if distance_from_start <= grab_edge_threshold {
                                 maybe_drag = Some(Drag::Edge(Edge::Start));
                                 new_start = x_to_value(abs_press_xy[0]);
                                 continue;
                             }
                             let distance_from_end = (end_x - abs_press_xy[0]).abs();
-                            if distance_from_end < grab_edge_threshold {
+                            if distance_from_end <= grab_edge_threshold {
                                 maybe_drag = Some(Drag::Edge(Edge::End));
                                 new_end = x_to_value(abs_press_xy[0]);
                                 continue;
                             }
                             maybe_drag = Some(Drag::Handle);
                         } else {
-                            let distance_from_start = (abs_press_xy[0] - start_x).abs();
-                            let distance_from_end = (end_x - abs_press_xy[0]).abs();
-                            if distance_from_start < distance_from_end {
+                            // If the mouse is not over the handle, grab the closest edge.
+                            let distance_from_start = start_x - abs_press_xy[0];
+                            let distance_from_end = end_x - abs_press_xy[0];
+                            if distance_from_start == distance_from_end {
+                                if distance_from_start > 0.0 {
+                                    maybe_drag = Some(Drag::Edge(Edge::Start));
+                                    new_start = x_to_value(abs_press_xy[0]);
+                                } else {
+                                    maybe_drag = Some(Drag::Edge(Edge::End));
+                                    new_end = x_to_value(abs_press_xy[0]);
+                                }
+                            } else if distance_from_start.abs() < distance_from_end.abs() {
                                 maybe_drag = Some(Drag::Edge(Edge::Start));
                                 new_start = x_to_value(abs_press_xy[0]);
                             } else {
@@ -215,16 +265,18 @@ impl<'a, T> Widget for RangeSlider<'a, T>
                     }
                 },
 
-                // Drags either the Start, End or the whole Bar depending on where it was pressed.
+                // Drags either the Start, End or the whole handle depending on where it was pressed.
                 event::Widget::Drag(drag_event) if drag_event.button == input::MouseButton::Left => {
                     match maybe_drag {
                         Some(Drag::Edge(Edge::Start)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
-                            new_start = utils::clamp(x_to_value(abs_drag_to), min, new_end);
+                            let v = x_to_value(abs_drag_to);
+                            new_start = utils::clamp(v, min, new_end);
                         },
                         Some(Drag::Edge(Edge::End)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
-                            new_end = utils::clamp(x_to_value(abs_drag_to), new_start, max);
+                            let v = x_to_value(abs_drag_to);
+                            new_end = utils::clamp(v, new_start, max);
                         },
                         Some(Drag::Handle) => {
                             let drag_amt = drag_event.delta_xy[0];
@@ -290,8 +342,17 @@ impl<'a, T> Widget for RangeSlider<'a, T>
             .set(state.ids.border, ui);
 
         // The **Rectangle** for the adjustable slider.
-        let start_x = value_to_x(new_start);
-        let end_x = value_to_x(new_end);
+        let mut start_x = value_to_x(new_start);
+        let mut end_x = value_to_x(new_end);
+
+        // Always show at least a line for the handle.
+        let min_visible_len = 2.0;
+        if (start_x - rect.left()) < (rect.right() - end_x) {
+            start_x = start_x.min(end_x - min_visible_len);
+        } else {
+            end_x = end_x.max(start_x + min_visible_len);
+        }
+
         let slider_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
         let color = interaction_color(&ui, style.color(ui.theme()));
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];

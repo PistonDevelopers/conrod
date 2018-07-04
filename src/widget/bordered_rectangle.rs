@@ -160,3 +160,74 @@ pub fn border_triangles(rect: Rect, border: Scalar) -> Option<[Triangle<Point>; 
 
     Some([r1a, r1b, r2a, r2b, r3a, r3b, r4a, r4b])
 }
+
+/// An iterator yielding triangles for a rounded border.
+///
+/// Clamps the thickness of the border to half the smallest dimension of the rectangle to
+/// ensure the bounds of the `rect` are not exceeded.
+pub fn rounded_border_triangles(
+    rect: Rect,
+    thickness: Scalar,
+    radius: Scalar,
+    corner_resolution: usize,
+) -> RoundedBorderTriangles {
+    RoundedBorderTriangles::new(rect, thickness, radius, corner_resolution)
+}
+
+/// An iterator yielding triangles for a rounded border.
+#[derive(Clone)]
+pub struct RoundedBorderTriangles {
+    outer: widget::rounded_rectangle::Points,
+    inner: widget::rounded_rectangle::Points,
+    outer_end: Option<Point>,
+    inner_end: Option<Point>,
+    last_points: [Point; 2],
+    is_next_outer: bool,
+}
+
+impl RoundedBorderTriangles {
+    /// Constructor for an iterator yielding triangles for a rounded border.
+    ///
+    /// Clamps the thickness of the border to half the smallest dimension of the rectangle to
+    /// ensure the bounds of the `rect` are not exceeded.
+    pub fn new(
+        rect: Rect,
+        mut thickness: Scalar,
+        radius: Scalar,
+        corner_resolution: usize,
+    ) -> Self {
+        thickness = {
+            let (w, h) = rect.w_h();
+            thickness.min(w * 0.5).min(h * 0.5)
+        };
+        let inner_rect = rect.pad(thickness);
+        let mut outer = widget::rounded_rectangle::points(rect, radius, corner_resolution);
+        let mut inner = widget::rounded_rectangle::points(inner_rect, radius, corner_resolution);
+        // A rounded_rectangle should always yield at least four points.
+        let last_outer = outer.next().unwrap();
+        let last_inner = inner.next().unwrap();
+        let outer_end = Some(last_outer);
+        let inner_end = Some(last_inner);
+        let last_points = [last_outer, last_inner];
+        let is_next_outer = true;
+        RoundedBorderTriangles { outer, inner, is_next_outer, last_points, outer_end, inner_end }
+    }
+}
+
+impl Iterator for RoundedBorderTriangles {
+    type Item = Triangle<Point>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next_point = match self.is_next_outer {
+            true => self.outer.next().or_else(|| self.outer_end.take()),
+            false => self.inner.next().or_else(|| self.inner_end.take()),
+        };
+        next_point.map(|c| {
+            self.is_next_outer = !self.is_next_outer;
+            let a = self.last_points[0];
+            let b = self.last_points[1];
+            self.last_points[0] = b;
+            self.last_points[1] = c;
+            Triangle([a, b, c])
+        })
+    }
+}

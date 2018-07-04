@@ -15,7 +15,7 @@ pub fn partial_min<T: PartialOrd>(a: T, b: T) -> T {
     if a <= b { a } else { b }
 }
 
-/// Compare to PartialOrd values and return the min.
+/// Compare to PartialOrd values and return the max.
 pub fn partial_max<T: PartialOrd>(a: T, b: T) -> T {
     if a >= b { a } else { b }
 }

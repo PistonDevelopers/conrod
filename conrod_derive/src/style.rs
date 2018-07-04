@@ -2,12 +2,12 @@ use quote;
 use std;
 use syn;
 use utils;
-
+use syn::Expr;
 // The implementation for `WidgetStyle`.
 //
 // This generates an accessor method for every field in the struct
 pub fn impl_widget_style(ast: &syn::DeriveInput) -> quote::Tokens {
-    let crate_tokens = quote::Ident::new("_conrod");
+    let crate_tokens = Some(syn::Ident::from("_conrod"));
     let params = params(ast).unwrap();
     let impl_tokens = impl_tokens(&params, crate_tokens);
     let dummy_const = &params.dummy_const;
@@ -24,7 +24,8 @@ pub fn impl_widget_style(ast: &syn::DeriveInput) -> quote::Tokens {
 //
 // The same as `WidgetStyle` but only for use within the conrod crate itself.
 pub fn impl_widget_style_(ast: &syn::DeriveInput) -> quote::Tokens {
-    let crate_tokens = quote::Ident::new("");
+   // let crate_tokens = syn::Ident::from(syn::token::CapSelf::default());
+    let crate_tokens= None;
     let params = params(ast).unwrap();
     let impl_tokens = impl_tokens(&params, crate_tokens);
     let dummy_const = &params.dummy_const;
@@ -36,7 +37,7 @@ pub fn impl_widget_style_(ast: &syn::DeriveInput) -> quote::Tokens {
     }
 }
 
-fn impl_tokens(params: &Params, crate_tokens: quote::Ident) -> quote::Tokens {
+fn impl_tokens(params: &Params, crate_tokens: Option<syn::Ident>) -> quote::Tokens {
     let Params {
         ref impl_generics,
         ref ty_generics,
@@ -45,18 +46,6 @@ fn impl_tokens(params: &Params, crate_tokens: quote::Ident) -> quote::Tokens {
         ref fields,
         ..
     } = *params;
-
-    let mut field_initialisers = quote::Tokens::new();
-    for field in fields {
-        let ident = &field.ident;
-        field_initialisers.append_all(&[
-            quote::Ident::new(ident.as_str()),
-            quote::Ident::new(":"),
-            quote::Ident::new("None"),
-            quote::Ident::new(","),
-        ]);
-    }
-
     let getter_methods = fields
         .iter()
         .map(|&FieldParams { ref default, ref ty, ref ident }| {
@@ -108,22 +97,22 @@ struct FieldParams {
 fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
 
     // Ensure we are deriving for a struct.
-    let body = match ast.body {
-        syn::Body::Struct(ref body) => body,
+    let body = match ast.data {
+        syn::Data::Struct(ref body) => body,
         _ => return Err(Error::NotStruct),
     };
 
     // We can only derive `WidgetStyle` for structs with fields.
-    let fields = match *body {
-        syn::VariantData::Struct(ref fields) => fields,
-        syn::VariantData::Tuple(_) => return Err(Error::TupleStruct),
-        syn::VariantData::Unit => return Err(Error::UnitStruct),
+    match body.fields {
+        syn::Fields::Named(_) => {},
+        syn::Fields::Unnamed(_) => return Err(Error::TupleStruct),
+        syn::Fields::Unit => return Err(Error::UnitStruct),
     };
 
     // For each field in the struct, create a method
     //
     // Produce an iterator yielding `Tokens` for each method.
-    let fields = fields
+    let fields = body.fields
         .iter()
         .filter_map(|field| {
 
@@ -131,9 +120,9 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
 
             let mut item = None;
             'attrs: for nested_items in attr_elems {
-                for nested_item in nested_items {
-                    if let syn::NestedMetaItem::MetaItem(ref meta_item) = *nested_item {
-                        item = Some(meta_item);
+                for nested_item in nested_items{
+                    if let syn::NestedMeta::Meta(ref meta_item) = nested_item {
+                        item = Some(meta_item.clone());
                         break 'attrs;
                     }
                 }
@@ -144,16 +133,15 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
                 None => return None,
             };
 
-            let literal = match *item {
-                syn::MetaItem::NameValue(ref ident, ref literal) if ident == "default" => literal,
+            let literal = match item {
+                syn::Meta::NameValue(syn::MetaNameValue{ref ident, ref lit,..}) if ident == "default" => lit,
                 ref item => return Some(Err(Error::UnexpectedMetaItem(item.clone()))),
             };
 
-            let default = match *literal {
-                syn::Lit::Str(ref str, _) => quote::Ident::new(&str[..]),
+            let default:Expr = match *literal {
+                syn::Lit::Str(ref litstr) => litstr.clone().parse().unwrap(),
                 ref literal => return Some(Err(Error::UnexpectedLiteral(literal.clone()))),
             };
-
             let ident = match field.ident {
                 Some(ref ident) => ident,
                 None => return Some(Err(Error::UnnamedStructField)),
@@ -161,7 +149,7 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
 
             let ty = {
                 let path = match field.ty {
-                    syn::Ty::Path(_, ref path) => path,
+                    syn::Type::Path(syn::TypePath{ref path,..}) => path,
                     _ => return Some(Err(Error::NonOptionFieldTy)),
                 };
 
@@ -175,13 +163,13 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
                     return Some(Err(Error::NonOptionFieldTy));
                 }
 
-                let angle_bracket_data = match path_segment.parameters {
-                    syn::PathParameters::AngleBracketed(ref data) => data,
+                let angle_bracket_data = match path_segment.arguments {
+                    syn::PathArguments::AngleBracketed(ref data) => data,
                     _ => return Some(Err(Error::NonOptionFieldTy)),
                 };
 
-                let ty = match angle_bracket_data.types.len() {
-                    1 => &angle_bracket_data.types[0],
+                let ty = match angle_bracket_data.args.len() {
+                    1 => angle_bracket_data.args.first().unwrap(),
                     _ => return Some(Err(Error::NonOptionFieldTy)),
                 };
 
@@ -193,12 +181,12 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
                 ty: quote!(#ty),
                 ident: quote!(#ident),
             };
-            
+
             Some(Ok(params))
         })
         .collect::<Result<_, _>>()?;
 
-    let dummy_const = syn::Ident::new(format!("_IMPL_WIDGET_STYLE_FOR_{}", ast.ident));
+    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_STYLE_FOR_{}", ast.ident));
     let ident = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
@@ -218,7 +206,7 @@ enum Error {
     TupleStruct,
     UnitStruct,
     UnexpectedLiteral(syn::Lit),
-    UnexpectedMetaItem(syn::MetaItem),
+    UnexpectedMetaItem(syn::Meta),
     UnnamedStructField,
     NonOptionFieldTy,
 }

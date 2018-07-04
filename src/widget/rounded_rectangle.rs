@@ -3,10 +3,13 @@
 //! The roundedness of the corners is specified with a `radius`. This indicates the radius of the
 //! circle used to draw the corners.
 
-use {Color, Colorable, Dimensions, Point, Positionable, Scalar, Sizeable, Widget};
-use std;
-use super::primitive::shape::Style;
+use {Color, Colorable, Dimensions, Point, Positionable, Range, Rect, Scalar, Sizeable, Theme,
+     Widget};
+use graph;
+use std::f64::consts::PI;
 use widget;
+use widget::primitive::shape::Style;
+use widget::primitive::shape::oval::Circumference;
 
 
 /// Draws a rectangle with corners rounded via the given radius.
@@ -36,7 +39,6 @@ pub struct State {
 }
 
 impl RoundedRectangle {
-
     /// Build a rounded rectangle with the given dimensions and style.
     pub fn styled(dim: Dimensions, radius: Scalar, style: Style) -> Self {
         RoundedRectangle {
@@ -72,7 +74,6 @@ impl RoundedRectangle {
         self.corner_resolution = res;
         self
     }
-
 }
 
 impl Widget for RoundedRectangle {
@@ -90,38 +91,15 @@ impl Widget for RoundedRectangle {
         self.style.clone()
     }
 
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget
+    }
+
     /// Update the state of the Rectangle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let RoundedRectangle { radius, corner_resolution, .. } = self;
-
-        let (l, r, b, t) = rect.l_r_b_t();
-        // The rectangle edges with the radius subtracted.
-        let (in_l, in_r, in_b, in_t) = (l + radius, r - radius, b + radius, t - radius);
-
-        // Circle logic for the rounded corners of the rectangle.
-        let circle_resolution = corner_resolution * 4;
-        let t = 2.0 * std::f64::consts::PI / circle_resolution as Scalar;
-        fn f(r: Scalar, i: Scalar, t: Scalar) -> Point {
-            [r * (t*i).cos(), r * (t*i).sin()]
-        }
-
-        const NUM_CORNERS: usize = 4;
-        let points = (0..NUM_CORNERS).flat_map(move |corner| {
-            let (in_x, in_y, step) = match corner {
-                0 => (in_r, in_t, 0),
-                1 => (in_l, in_t, corner_resolution),
-                2 => (in_l, in_b, corner_resolution + corner_resolution),
-                3 => (in_r, in_b, corner_resolution + corner_resolution + corner_resolution),
-                _ => unreachable!(),
-            };
-            (0..corner_resolution+1).map(move |res| {
-                let i = step + res;
-                let circle_offset = f(radius, i as f64, t);
-                [in_x + circle_offset[0], in_y + circle_offset[1]]
-            })
-        });
-
+        let points = points(rect, radius, corner_resolution);
         let (x, y, w, h) = rect.x_y_w_h();
         widget::Polygon::styled(points, *style)
             .x_y(x, y)
@@ -130,7 +108,6 @@ impl Widget for RoundedRectangle {
             .graphics_for(id)
             .set(state.ids.polygon, ui);
     }
-
 }
 
 impl Colorable for RoundedRectangle {
@@ -138,4 +115,78 @@ impl Colorable for RoundedRectangle {
         self.style.set_color(color);
         self
     }
+}
+
+/// An iterator yielding the outer points of a `RoundedRectangle`
+#[derive(Clone)]
+pub struct Points {
+    rect: Rect,
+    corner_rect: Rect,
+    corner_index: usize,
+    corner_resolution: usize,
+    corner_points: Circumference,
+}
+
+const CORNER_RADIANS: Scalar = PI * 0.5;
+
+/// Produce an iterator yielding the outer points of a rounded rectangle.
+///
+/// - `rect` describes the location and dimensions
+/// - `radius` describes the radius of the corner circles.
+/// - `corner_resolution` the number of lines used to draw each corner.
+pub fn points(rect: Rect, radius: Scalar, corner_resolution: usize) -> Points {
+    let (r, t) = (rect.x.end, rect.y.end);
+    // First corner is the top right corner.
+    let radius_2 = radius * 2.0;
+    let corner_rect = Rect {
+        x: Range { start: r - radius_2, end: r },
+        y: Range { start: t - radius_2, end: t },
+    };
+    let corner = Circumference::new_section(corner_rect, corner_resolution, CORNER_RADIANS);
+    Points {
+        rect,
+        corner_rect,
+        corner_index: 0,
+        corner_resolution,
+        corner_points: corner,
+    }
+}
+
+impl Iterator for Points {
+    type Item = Point;
+    fn next(&mut self) -> Option<Self::Item> {
+        let Points {
+            ref mut corner_rect,
+            ref mut corner_index,
+            ref mut corner_points,
+            corner_resolution,
+            rect,
+        } = *self;
+        loop {
+            if let Some(point) = corner_points.next() {
+                return Some(point);
+            }
+            *corner_rect = match *corner_index {
+                0 => corner_rect.align_left_of(rect),
+                1 => corner_rect.align_bottom_of(rect),
+                2 => corner_rect.align_right_of(rect),
+                _ => return None,
+            };
+            *corner_index += 1;
+            let offset_radians = *corner_index as Scalar * CORNER_RADIANS;
+            *corner_points = Circumference::new_section(*corner_rect, corner_resolution, CORNER_RADIANS)
+                .offset_radians(offset_radians);
+        }
+    }
+}
+
+/// An iterator yielding triangles for a `RoundedRectangle`.
+pub type Triangles = widget::polygon::Triangles<Points>;
+
+/// The function to use for picking whether a given point is over the polygon.
+pub fn is_over_widget(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver {
+    widget
+        .unique_widget_state::<RoundedRectangle>()
+        .map(|widget| widget.state.ids.polygon.into())
+        .unwrap_or_else(|| widget.rect.is_over(point).into())
 }

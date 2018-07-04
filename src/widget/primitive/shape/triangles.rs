@@ -1,7 +1,8 @@
 //! A primitive widget that allows for drawing using a list of triangles.
 
-use {Rect, Point, Positionable, Sizeable, Widget};
+use {Rect, Point, Positionable, Scalar, Sizeable, Theme, Widget};
 use color;
+use graph;
 use std;
 use utils::{vec2_add, vec2_sub};
 use widget;
@@ -105,6 +106,23 @@ impl<V> Triangle<V>
         let b = self[1].add(amount);
         let c = self[2].add(amount);
         Triangle([a, b, c])
+    }
+
+    /// The three points that make up the triangle.
+    pub fn points(self) -> [Point; 3] {
+        [self[0].point(), self[1].point(), self[2].point()]
+    }
+}
+
+impl Triangle<Point> {
+    /// Convert the `Triangle<Point>` to a `Triangle<ColoredPoint>`.
+    pub fn color(self, a: color::Rgba, b: color::Rgba, c: color::Rgba) -> Triangle<ColoredPoint> {
+        Triangle([(self[0], a), (self[1], b), (self[2], c)])
+    }
+
+    /// Convert the `Triangle<Point>` to a `Triangle<ColoredPoint>` using the given color.
+    pub fn color_all(self, color: color::Rgba) -> Triangle<ColoredPoint> {
+        Triangle([(self[0], color), (self[1], color), (self[2], color)])
     }
 }
 
@@ -302,6 +320,10 @@ impl<S, I> Widget for Triangles<S, I>
         self.style.clone()
     }
 
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget::<S>
+    }
+
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
@@ -391,4 +413,54 @@ impl<S, I> Widget for Triangles<S, I>
 pub fn from_quad(points: [Point; 4]) -> (Triangle<Point>, Triangle<Point>) {
     let (a, b, c, d) = (points[0], points[1], points[2], points[3]);
     (Triangle([a, b, c]), Triangle([a, c, d]))
+}
+
+impl<V> AsRef<Triangle<V>> for Triangle<V>
+where
+    V: Vertex,
+{
+    fn as_ref(&self) -> &Triangle<V> {
+        self
+    }
+}
+
+/// Returns `true` if the given `Point` is over the given `Triangle`.
+pub fn is_over_triangle<V>(t: &Triangle<V>, p: Point) -> bool
+where
+    V: Vertex,
+{
+    let ps = t.points();
+    let (a, b, c) = (ps[0], ps[1], ps[2]);
+
+    fn sign(a: Point, b: Point, c: Point) -> Scalar {
+        (a[0] - c[0]) * (b[1] - c[1]) - (b[0] - c[0]) * (a[1] - c[1])
+    }
+
+    let b1 = sign(p, a, b) < 0.0;
+    let b2 = sign(p, b, c) < 0.0;
+    let b3 = sign(p, c, a) < 0.0;
+
+    (b1 == b2) && (b2 == b3)
+}
+
+/// Returns `true` if the given `Point` is over any of the given `Triangle`s.
+pub fn is_over<V, I, T>(ts: I, p: Point) -> bool
+where
+    V: Vertex,
+    T: AsRef<Triangle<V>>,
+    I: IntoIterator<Item=T>,
+{
+    ts.into_iter().any(|t| is_over_triangle(t.as_ref(), p))
+}
+
+/// The function to use for picking whether a given point is over the line.
+pub fn is_over_widget<S>(widget: &graph::Container, point: Point, _: &Theme) -> widget::IsOver
+where
+    S: Style,
+{
+    widget
+        .state_and_style::<State<Vec<Triangle<S::Vertex>>>, S>()
+        .map(|widget| is_over(widget.state.triangles.iter().cloned(), point))
+        .unwrap_or_else(|| widget.rect.is_over(point))
+        .into()
 }

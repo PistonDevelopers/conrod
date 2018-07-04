@@ -94,10 +94,10 @@ pub enum Ui {
     /// Entered text, along with the widget that was capturing the keyboard at the time.
     Text(Option<widget::Id>, Text),
     /// Some button was pressed, along with the widget that was capturing the device whose button
-    /// which was pressed.
+    /// was pressed.
     Press(Option<widget::Id>, Press),
     /// Some button was released, along with the widget that was capturing the device whose button
-    /// which was released.
+    /// was released.
     Release(Option<widget::Id>, Release),
     /// Represents all forms of motion input, alongside with the widget that was capturing the
     /// mouse at the time.

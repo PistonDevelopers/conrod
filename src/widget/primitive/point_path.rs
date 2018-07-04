@@ -1,6 +1,7 @@
 //! A simple, non-interactive widget for drawing a series of conjoined lines.
 
-use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Widget};
+use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
+use graph;
 use utils::{vec2_add, vec2_sub};
 use widget;
 use widget::triangles::Triangle;
@@ -36,7 +37,7 @@ pub struct Triangles<I> {
     next: Option<Triangle<Point>>,
     prev: Point,
     points: I,
-    thickness: Scalar,
+    half_thickness: Scalar,
     cap: widget::line::Cap,
 }
 
@@ -158,6 +159,10 @@ impl<I> Widget for PointPath<I>
         self.style.clone()
     }
 
+    fn is_over(&self) -> widget::IsOverFn {
+        is_over_widget
+    }
+
     /// Update the state of the Line.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
@@ -218,7 +223,7 @@ pub fn triangles<I>(points: I, cap: widget::line::Cap, thickness: Scalar)
         next: None,
         prev: first,
         points: points,
-        thickness: thickness,
+        half_thickness: thickness / 2.0,
         cap: cap,
     })
 }
@@ -231,32 +236,34 @@ impl<I> Iterator for Triangles<I>
         if let Some(triangle) = self.next.take() {
             return Some(triangle);
         }
-
         self.points.next().map(|point| {
             let (a, b) = (self.prev, point);
             self.prev = point;
-
-            let direction = [b[0] - a[0], b[1] - a[1]];
-            let mag = (direction[0] * direction[0] + direction[1] * direction[1]).sqrt();
-            let unit = [direction[0] / mag, direction[1] / mag];
-            let normal = [-unit[1], unit[0]];
-            let half_thickness = self.thickness / 2.0;
-
-            // A perpendicular line with length half the thickness.
-            let n = [normal[0] * half_thickness, normal[1] * half_thickness];
-
-            // The corners of the rectangle.
-            let r1 = [a[0] + n[0], a[1] + n[1]];
-            let r2 = [a[0] - n[0], a[1] - n[1]];
-            let r3 = [b[0] + n[0], b[1] + n[1]];
-            let r4 = [b[0] - n[0], b[1] - n[1]];
-
-            // The pair of triangles that make up the rectangle.
-            let t1 = Triangle([r1, r4, r2]);
-            let t2 = Triangle([r1, r4, r3]);
-
-            self.next = Some(t2);
-            t1
+            let tris = widget::line::triangles(a, b, self.half_thickness);
+            self.next = Some(tris[1]);
+            tris[0]
         })
     }
+}
+
+/// Returns whether or not the given point `p` lies over the `PointPath` described by the given
+/// points, line cap and thickness.
+pub fn is_over<I>(points: I, cap: widget::line::Cap, thickness: Scalar, p: Point) -> bool
+where
+    I: IntoIterator<Item=Point>,
+{
+    triangles(points, cap, thickness).map(|ts| widget::triangles::is_over(ts, p)).unwrap_or(false)
+}
+
+/// The function to use for picking whether a given point is over the point path.
+pub fn is_over_widget(widget: &graph::Container, point: Point, theme: &Theme) -> widget::IsOver {
+    widget
+        .state_and_style::<State, Style>()
+        .map(|widget| {
+            let cap = widget.style.get_cap(theme);
+            let thickness = widget.style.get_thickness(theme);
+            is_over(widget.state.points.iter().cloned(), cap, thickness, point)
+        })
+        .unwrap_or_else(|| widget.rect.is_over(point))
+        .into()
 }

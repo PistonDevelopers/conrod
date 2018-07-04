@@ -44,15 +44,11 @@ fn impl_derive(
     generate_derive: fn(&syn::DeriveInput) -> quote::Tokens,
 ) -> TokenStream
 {
-    // A string representatin of the type definition.
-    let input_string = input.to_string();
-
-    // Parse the string representation.
-    let ast = syn::parse_derive_input(&input_string).unwrap();
-
+    // Parse the input TokenStream representation.
+    let ast = syn::parse(input).unwrap();
+    
     // Build the implementation.
     let gen = generate_derive(&ast);
-
     // Return the generated impl.
-    gen.parse().unwrap()
+    gen.into()
 }

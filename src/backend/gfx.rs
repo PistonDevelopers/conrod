@@ -129,19 +129,30 @@ mod defines {
             vbuf: gfx::VertexBuffer<Vertex> = (),
             color: gfx::TextureSampler<[f32; 4]> = "t_Color",
             scissor: gfx::Scissor = (),
-            out: gfx::BlendTarget<ColorFormat> =
-                ("f_Color", ::gfx::state::MASK_ALL, ::gfx::preset::blend::ALPHA),
+            out: gfx::BlendTarget<ColorFormat> = ("f_Color", ::gfx::state::ColorMask::all(), ::gfx::preset::blend::ALPHA),
         }
     }
 }
 
 use self::defines::*;
 
+// Convenience constructor
+impl Vertex {
+    fn new(pos: [f32; 2], uv: [f32; 2], color: [f32; 4], mode: u32) -> Vertex {
+        Vertex {
+            pos,
+            uv,
+            color,
+            mode
+        }
+    }
+}
+
 /// This type is used for translating `render::Primitives` into `Commands`s that indicate how to
 /// draw the GUI using `gfx`.
-pub struct Renderer<R: Resources> {
+pub struct Renderer<'a, R: Resources>{
     pipeline: PipelineState<R, pipe::Meta>,
-    glyph_cache: GlyphCache,
+    glyph_cache: GlyphCache<'a>,
     cache_tex: gfx::handle::Texture<R, SurfaceFormat>,
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     data: pipe::Data<R>,
@@ -149,14 +160,10 @@ pub struct Renderer<R: Resources> {
     vertices: Vec<Vertex>,
 }
 
-impl<R: Resources> Renderer<R>{
+impl<'a, R: Resources> Renderer<'a, R>{
     /// Create a new renderer from a `gfx::Factory`, `gfx::handle::RenderTargetView` and
     /// a given `dpi_factor`
-    pub fn new<F>(factory: &mut F,
-                  rtv: &RenderTargetView<R, ColorFormat>,
-                  dpi_factor: f64)
-        -> Result<Self,RendererCreationError>
-        where F: Factory<R>,
+    pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f64) -> Result<Self,RendererCreationError>
     {
         let sampler_info = texture::SamplerInfo::new(
             texture::FilterMethod::Bilinear,
@@ -633,7 +640,9 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
                 T: gfx::format::TextureFormat
     {
         use gfx::{format, texture};
-        use gfx::memory::{Usage, SHADER_RESOURCE};
+        use gfx::memory::Usage;
+        use gfx::memory::Bind;
+
         use gfx_core::memory::Typed;
 
         let surface = <T::Surface as format::SurfaceTyped>::get_surface_type();
@@ -643,16 +652,19 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
             kind: kind,
             levels: (data.len() / (num_slices * num_faces)) as texture::Level,
             format: surface,
-            bind: SHADER_RESOURCE,
+            bind: Bind::SHADER_RESOURCE,
             usage: Usage::Dynamic,
         };
         let cty = <T::Channel as format::ChannelTyped>::get_channel_type();
-        let raw = try!(factory.create_texture_raw(desc, Some(cty), Some(data)));
+        let raw = factory.create_texture_raw(
+            desc,
+            Some(cty),
+            Some((data, gfx::texture::Mipmap::Provided)))?;
         let levels = (0, raw.get_info().levels - 1);
         let tex = Typed::new(raw);
-        let view = try!(factory.view_texture_as_shader_resource::<T>(
+        let view = factory.view_texture_as_shader_resource::<T>(
             &tex, levels, format::Swizzle::new()
-        ));
+        )?;
         Ok((tex, view))
     }
 

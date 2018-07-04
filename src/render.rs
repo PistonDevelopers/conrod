@@ -395,8 +395,8 @@ impl<'a> Primitives<'a> {
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
 
-            } else if container.type_id == state_type_id::<widget::Oval>() {
-                if let Some(oval) = container.unique_widget_state::<widget::Oval>() {
+            } else if container.type_id == state_type_id::<widget::Oval<widget::oval::Full>>() {
+                if let Some(oval) = container.unique_widget_state::<widget::Oval<widget::oval::Full>>() {
                     let graph::UniqueWidgetState { ref style, ref state } = *oval;
                     triangles.clear();
                     let points = widget::oval::circumference(rect, state.resolution);
@@ -404,7 +404,21 @@ impl<'a> Primitives<'a> {
                     match *style {
 
                         ShapeStyle::Fill(_) => {
-                            let triangles = match widget::polygon::triangles(points) {
+                            let triangles = {
+                                triangles.extend(points.triangles());
+                                &triangles[..]
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
+                            };
+                            return Some(new_primitive(id, kind, scizzor, rect));
+                        },
+
+                        ShapeStyle::Outline(ref line_style) => {
+                            let cap = line_style.get_cap(theme);
+                            let thickness = line_style.get_thickness(theme);
+                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
@@ -417,10 +431,38 @@ impl<'a> Primitives<'a> {
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
+                    }
+                }
+
+            // Oval subsection.
+            } else if container.type_id == state_type_id::<widget::Oval<widget::oval::Section>>() {
+                if let Some(oval) = container.unique_widget_state::<widget::Oval<widget::oval::Section>>() {
+                    let graph::UniqueWidgetState { ref style, ref state } = *oval;
+                    triangles.clear();
+                    let points = widget::oval::circumference(rect, state.resolution)
+                        .section(state.section.radians)
+                        .offset_radians(state.section.offset_radians);
+                    let color = style.get_color(theme);
+                    match *style {
+
+                        ShapeStyle::Fill(_) => {
+                            let triangles = {
+                                triangles.extend(points.triangles());
+                                &triangles[..]
+                            };
+                            let kind = PrimitiveKind::TrianglesSingleColor {
+                                color: color.to_rgb(),
+                                triangles: &triangles,
+                            };
+                            return Some(new_primitive(id, kind, scizzor, rect));
+                        },
 
                         ShapeStyle::Outline(ref line_style) => {
+                            use std::iter::once;
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
+                            let middle = rect.xy();
+                            let points = once(middle).chain(points).chain(once(middle));
                             let triangles = match widget::point_path::triangles(points, cap, thickness) {
                                 None => &[],
                                 Some(iter) => {

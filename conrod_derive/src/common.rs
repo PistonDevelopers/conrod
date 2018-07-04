@@ -7,7 +7,7 @@ pub fn impl_widget_common(ast: &syn::DeriveInput) -> quote::Tokens {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::new(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
+    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
 
     let impl_item = quote! {
         impl #impl_generics _conrod::widget::Common for #ident #ty_generics #where_clause {
@@ -36,7 +36,7 @@ pub fn impl_widget_common_(ast: &syn::DeriveInput) -> quote::Tokens {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::new(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
+    let dummy_const = syn::Ident::from(format!("_IMPL_WIDGET_COMMON_FOR_{}", ident));
 
     let impl_item = quote! {
         impl #impl_generics ::widget::Common for #ident #ty_generics #where_clause {
@@ -62,32 +62,39 @@ pub fn impl_widget_common_(ast: &syn::DeriveInput) -> quote::Tokens {
 fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
 
     // Ensure we are deriving for a struct.
-    let body = match ast.body {
-        syn::Body::Struct(ref body) => body,
+    let body = match ast.data {
+        syn::Data::Struct(ref body) => body,
         _ => return Err(Error::NotStruct),
     };
 
     // We can only derive `WidgetCommon` for structs with fields.
-    let fields = match *body {
-        syn::VariantData::Struct(ref fields) => fields,
-        syn::VariantData::Tuple(_) => return Err(Error::TupleStruct),
-        syn::VariantData::Unit => return Err(Error::UnitStruct),
+     match body.fields {
+        syn::Fields::Named(_) => {},
+        syn::Fields::Unnamed(_) => return Err(Error::TupleStruct),
+        syn::Fields::Unit => return Err(Error::UnitStruct),
     };
 
     // Find the field on the struct with the `WidgetCommon` attribute.
     //
     // We need this to know what field to use for the `common` and `common_mut` accessor methods.
     let mut common_field = None;
-    for field in fields {
+    for field in body.fields.iter() {
         // First, search for the attribute.
         for attr in &field.attrs {
-            if let syn::MetaItem::List(ref ident, ref values) = attr.value {
-                let has_common_builder = values.iter().any(|v| match *v {
-                    syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref w))
+            if let Some(_meta) = attr.interpret_meta() {
+                let mut is_conrod=false;
+                let mut has_common_builder = false;
+                if let syn::Meta::List(_metalist) = _meta{
+                    if _metalist.ident == syn::Ident::from("conrod"){
+                        is_conrod = true;
+                    }
+                   has_common_builder = _metalist.nested.iter().any(|v| match *v {
+                    syn::NestedMeta::Meta(syn::Meta::Word(ref w))
                         if w == "common_builder" => true,
                     _ => false,
                 });
-                if ident == "conrod" && has_common_builder {
+                }
+                if is_conrod && has_common_builder {
                     // There should only be one `CommonBuilder` attribute.
                     if common_field.is_some() {
                         return Err(Error::MultipleCommonBuilderFields);

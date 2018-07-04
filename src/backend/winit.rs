@@ -16,7 +16,7 @@ use cursor;
 /// This allows users to pass either `glium::Display`, `glium::glutin::Window` or `winit::Window`
 /// to the `conrod::backend::winit::convert` function defined below.
 pub trait WinitWindow {
-    /// Return the inner size of the window.
+    /// Return the inner size of the window in pixels.
     fn get_inner_size(&self) -> Option<(u32, u32)>;
     /// Return the window's DPI factor so that we can convert from pixel values to scalar values.
     fn hidpi_factor(&self) -> f32;
@@ -60,15 +60,15 @@ pub fn convert_event<W>(e: winit::Event, window: &W) -> Option<Input>
 pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Input>
     where W: WinitWindow,
 {
-    // The window size in points.
-    let (win_w, win_h) = match window.get_inner_size() {
-        Some((w, h)) => (w as Scalar, h as Scalar),
-        None => return None,
-    };
-
     // The "dots per inch" factor. Multiplying this by `win_w` and `win_h` gives the framebuffer
     // width and height.
     let dpi_factor = window.hidpi_factor() as Scalar;
+
+    // The window size in points.
+    let (win_w, win_h) = match window.get_inner_size() {
+        Some((w, h)) => (w as Scalar / dpi_factor, h as Scalar / dpi_factor),
+        None => return None,
+    };
 
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     //
@@ -124,7 +124,7 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
             Some(Input::Touch(touch).into())
         }
 
-        winit::WindowEvent::MouseMoved { position: (x, y), .. } => {
+        winit::WindowEvent::CursorMoved { position: (x, y), .. } => {
             let x = tx(x as Scalar);
             let y = ty(y as Scalar);
             let motion = input::Motion::MouseCursor { x: x, y: y };

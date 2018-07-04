@@ -60,7 +60,7 @@ pub struct Ui {
     maybe_prev_widget_id: Option<widget::Id>,
     /// The widget::Id of the last widget used as a parent for another widget.
     maybe_current_parent_id: Option<widget::Id>,
-    /// The number of frames that that will be used for the `redraw_count` when `need_redraw` is
+    /// The number of frames that will be used for the `redraw_count` when `need_redraw` is
     /// triggered.
     num_redraw_frames: u8,
     /// Whether or not the `Ui` needs to be re-drawn to screen.
@@ -331,7 +331,9 @@ impl Ui {
         self.global_input.current.widget_under_mouse =
             graph::algo::pick_widgets(&self.depth_order.indices,
                                       self.global_input.current.mouse.xy)
-                                      .next(&self.widget_graph, &self.depth_order.indices);
+                                      .next(&self.widget_graph,
+                                            &self.depth_order.indices,
+                                            &self.theme);
 
         // If MouseButton::Left is up and `widget_under_mouse` has changed, capture new widget
         // under mouse.
@@ -675,7 +677,8 @@ impl Ui {
                         // direction.
                         while let Some(idx) =
                             scrollable_widgets.next(&self.widget_graph,
-                                                    &self.depth_order.indices)
+                                                    &self.depth_order.indices,
+                                                    &self.theme)
                         {
 
                             let (kid_area, maybe_x_scroll, maybe_y_scroll) =
@@ -802,7 +805,7 @@ impl Ui {
                     // Find the widget under the touch.
                     let widget_under_touch =
                         graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                            .next(&self.widget_graph, &self.depth_order.indices);
+                            .next(&self.widget_graph, &self.depth_order.indices, &self.theme);
 
                     // The start of the touch interaction state to be stored.
                     let start = input::state::touch::Start {
@@ -840,7 +843,9 @@ impl Ui {
                         Some(touch) => {
                             touch.widget =
                                 graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                                    .next(&self.widget_graph, &self.depth_order.indices);
+                                    .next(&self.widget_graph,
+                                          &self.depth_order.indices,
+                                          &self.theme);
                             touch.xy = touch.xy;
                             touch.start.widget
                         },
@@ -875,7 +880,7 @@ impl Ui {
                     // of the touch, that widget receives the `Tap`.
                     let tapped_widget =
                         graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
-                            .next(&self.widget_graph, &self.depth_order.indices)
+                            .next(&self.widget_graph, &self.depth_order.indices, &self.theme)
                             .and_then(|widget| match Some(widget) == widget_capturing {
                                 true => Some(widget),
                                 false => None,
@@ -1069,14 +1074,14 @@ impl Ui {
     }
 
 
-    /// Tells the `Ui` that it needs to be re-draw everything. It does this by setting the redraw
+    /// Tells the `Ui` that it needs to re-draw everything. It does this by setting the redraw
     /// count to `num_redraw_frames`. See the docs for `set_num_redraw_frames`, SAFE_REDRAW_COUNT
     /// or `draw_if_changed` for more info on how/why the redraw count is used.
     pub fn needs_redraw(&self) {
         self.redraw_count.store(self.num_redraw_frames as usize, atomic::Ordering::Relaxed);
     }
 
-    /// The first of the `Primitivees` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
+    /// The first of the `Primitives` yielded by `Ui::draw` or `Ui::draw_if_changed` will always
     /// be a `Rectangle` the size of the window in which conrod is hosted.
     ///
     /// This method sets the colour with which this `Rectangle` is drawn (the default being
@@ -1127,7 +1132,7 @@ impl Ui {
     /// This ensures that conrod is drawn to each buffer in the case that there is buffer swapping
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
-    pub fn draw_if_changed(&mut self) -> Option<render::Primitives> {
+    pub fn draw_if_changed(&self) -> Option<render::Primitives> {
         if self.redraw_count.load(atomic::Ordering::Relaxed) > 0 {
             return Some(self.draw())
         }
