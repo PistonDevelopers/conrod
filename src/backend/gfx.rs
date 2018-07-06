@@ -1,4 +1,6 @@
-use gfx::{self,Resources,Factory, texture,PipelineState};
+//! A gfx backend for rendering conrod primitives.
+
+use gfx::{self, Resources, Factory, texture, PipelineState};
 use gfx::handle::{RenderTargetView};
 use gfx::traits::FactoryExt;
 use std;
@@ -102,14 +104,14 @@ pub enum RendererCreationError {
     PipelineState(gfx::PipelineStateError<String>),
 }
 
-// Format definitions (must be pub for  gfx_defines to use them)
+// Format definitions (must be pub for gfx_defines to use them)
+/// Color format used with gfx buffers.
 pub type ColorFormat = gfx::format::Srgba8;
-type DepthFormat = gfx::format::DepthStencil;
 type SurfaceFormat = gfx::format::R8_G8_B8_A8;
 type FullFormat = (SurfaceFormat, gfx::format::Unorm);
 
-//this is it's own module to allow_unsafe within it
-mod defines{
+// This is it's own module to allow_unsafe within it
+mod defines {
     //it appears gfx_defines generates unsafe code
     #![allow(unsafe_code)]
     use gfx;
@@ -146,19 +148,21 @@ impl Vertex {
     }
 }
 
+/// This type is used for translating `render::Primitives` into `Commands`s that indicate how to
+/// draw the GUI using `gfx`.
 pub struct Renderer<'a, R: Resources>{
     pipeline: PipelineState<R, pipe::Meta>,
     glyph_cache: GlyphCache<'a>,
     cache_tex: gfx::handle::Texture<R, SurfaceFormat>,
     cache_tex_view: gfx::handle::ShaderResourceView<R, [f32; 4]>,
-    blank_texture: gfx::handle::ShaderResourceView<R, [f32; 4]>,
     data: pipe::Data<R>,
-    dpi_factor: f64,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
 }
 
 impl<'a, R: Resources> Renderer<'a, R>{
+    /// Create a new renderer from a `gfx::Factory`, `gfx::handle::RenderTargetView` and
+    /// a given `dpi_factor`
     pub fn new<F: Factory<R>>(factory: &mut F, rtv: &RenderTargetView<R, ColorFormat>, dpi_factor: f64) -> Result<Self,RendererCreationError>
     {
         let sampler_info = texture::SamplerInfo::new(
@@ -169,7 +173,6 @@ impl<'a, R: Resources> Renderer<'a, R>{
 
         let vbuf = factory.create_vertex_buffer(&[]);
         let (_, fake_texture) = create_texture(factory, 1, 1, &[0;4]);
-        let (_, blank_texture) = create_texture(factory, 1, 1, &[255;4]);
 
         let (width,height,_depth,_samples) = rtv.get_dimensions();
 
@@ -180,19 +183,27 @@ impl<'a, R: Resources> Renderer<'a, R>{
             out: rtv.clone(),
         };
 
-        let pipeline = factory.create_pipeline_simple(VERTEX_SHADER, FRAGMENT_SHADER, pipe::new())?;
+        let shader_set = factory.create_shader_set(VERTEX_SHADER, FRAGMENT_SHADER).unwrap();
+
+        let pipeline = factory.create_pipeline_state(
+            &shader_set,
+            gfx::Primitive::TriangleList,
+            gfx::state::Rasterizer {
+                samples: Some(gfx::state::MultiSample {}),
+                ..gfx::state::Rasterizer::new_fill()
+            },
+            pipe::new())?;
 
         let (glyph_cache, cache_tex, cache_tex_view) = {
 
-            let width = (width as f64* dpi_factor) as u32;
+            let width = (width as f64 * dpi_factor) as u32;
             let height = (height as f64 * dpi_factor) as u32;
 
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
 
             let cache = GlyphCache::new(width, height,
-                                                      SCALE_TOLERANCE,
-                                                      POSITION_TOLERANCE);
+                                        SCALE_TOLERANCE, POSITION_TOLERANCE);
 
             let data = vec![0; (width * height * 4) as usize];
 
@@ -205,9 +216,7 @@ impl<'a, R: Resources> Renderer<'a, R>{
             glyph_cache,
             cache_tex,
             cache_tex_view,
-            blank_texture,
             data,
-            dpi_factor,
             commands: vec![],
             vertices: vec![],
         })
@@ -224,14 +233,16 @@ impl<'a, R: Resources> Renderer<'a, R>{
 
     /// Fill the inner vertex and command buffers by translating the given `primitives`.
     pub fn fill<P, C>(&mut self,
-                            encoder: &mut gfx::Encoder<R,C>,
-                            dims: (f32,f32),
-                            mut primitives: P,
-                            image_map: &image::Map<(gfx::handle::ShaderResourceView<R, [f32; 4]>,(u32,u32))>)
+                      encoder: &mut gfx::Encoder<R,C>,
+                      dims: (f32,f32),
+                      dpi_factor: f64,
+                      mut primitives: P,
+                      image_map: &image::Map<(gfx::handle::ShaderResourceView<R, [f32; 4]>,
+                                              (u32,u32))>)
         where P: render::PrimitiveWalker,
               C: gfx::CommandBuffer<R>,
     {
-        let Renderer { ref mut commands, ref mut vertices, ref mut glyph_cache, ref mut cache_tex, dpi_factor, .. } = *self;
+        let Renderer { ref mut commands, ref mut vertices, ref mut glyph_cache, ref mut cache_tex, .. } = *self;
 
         commands.clear();
         vertices.clear();
@@ -579,6 +590,21 @@ impl<'a, R: Resources> Renderer<'a, R>{
                 }
             }
         }
+    }
+
+    /// Call this routine when a window has been resized. This ensures that conrod primitives are
+    /// drawn properly with the `draw` call.
+    pub fn on_resize(&mut self, rtv: RenderTargetView<R, ColorFormat>) {
+        let (width,height,_depth,_samples) = rtv.get_dimensions();
+        self.data.out = rtv;
+        self.data.scissor = gfx::Rect{x:0,y:0,w:width,h:height};
+    }
+
+    /// Call this routine to clear the render target.
+    pub fn clear<C>(&self, encoder: &mut gfx::Encoder<R,C>, clear_color: [f32; 4])
+        where C: gfx::CommandBuffer<R>,
+    {
+        encoder.clear(&self.data.out, clear_color);
     }
 }
 
