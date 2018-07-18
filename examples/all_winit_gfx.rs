@@ -48,7 +48,7 @@ mod feature {
         // Builder for window
         let builder = glutin::WindowBuilder::new()
             .with_title("Conrod with GFX and Glutin")
-            .with_dimensions(WIN_W, WIN_H);
+            .with_dimensions((WIN_W, WIN_H).into());
 
         let context = glutin::ContextBuilder::new()
             .with_multisampling(4);
@@ -60,7 +60,7 @@ mod feature {
             gfx_window_glutin::init::<conrod::backend::gfx::ColorFormat, DepthFormat>(builder, context, &events_loop );
         let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, window.hidpi_factor() as f64).unwrap();
+        let mut renderer = conrod::backend::gfx::Renderer::new(&mut factory, &rtv, window.get_hidpi_factor() as f64).unwrap();
 
         // Create Ui and Ids of widgets to instantiate
         let mut ui = conrod::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
@@ -116,12 +116,12 @@ mod feature {
         'main: loop {
             // If the window is closed, this will be None for one tick, so to avoid panicking with
             // unwrap, instead break the loop
-            let (win_w, win_h) = match window.get_inner_size() {
-                Some(s) => s,
+            let (win_w, win_h): (u32, u32) = match window.get_inner_size() {
+                Some(s) => s.into(),
                 None => break 'main,
             };
 
-            let dpi_factor = window.hidpi_factor();
+            let dpi_factor = window.get_hidpi_factor() as f32;
 
             if let Some(primitives) = ui.draw_if_changed() {
                 let dims = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
@@ -151,7 +151,7 @@ mod feature {
                 // Close window if the escape key or the exit button is pressed
                 match event {
                     winit::Event::WindowEvent{event: winit::WindowEvent::KeyboardInput{input: winit::KeyboardInput{virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..}, .. } |
-                    winit::Event::WindowEvent{event: winit::WindowEvent::Closed, ..} =>
+                    winit::Event::WindowEvent{event: winit::WindowEvent::CloseRequested, ..} =>
                         should_quit = true,
                     _ => {},
                 }

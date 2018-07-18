@@ -29,7 +29,7 @@ mod feature {
         let mut events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
             .with_title("Conrod with glium!")
-            .with_dimensions(WIN_W, WIN_H);
+            .with_dimensions((WIN_W, WIN_H).into());
         let context = glium::glutin::ContextBuilder::new()
             .with_vsync(true)
             .with_multisampling(4);
@@ -95,7 +95,7 @@ mod feature {
                 match event {
                     glium::glutin::Event::WindowEvent { event, .. } => match event {
                         // Break from the loop upon `Escape`.
-                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::CloseRequested |
                         glium::glutin::WindowEvent::KeyboardInput {
                             input: glium::glutin::KeyboardInput {
                                 virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
