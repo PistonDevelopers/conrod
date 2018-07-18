@@ -25,7 +25,7 @@ mod feature {
         let mut events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
             .with_title("TextEdit Demo")
-            .with_dimensions(WIDTH, HEIGHT);
+            .with_dimensions((WIDTH, HEIGHT).into());
         let context = glium::glutin::ContextBuilder::new()
             .with_vsync(true)
             .with_multisampling(4);
@@ -74,7 +74,7 @@ mod feature {
                 match event {
                     glium::glutin::Event::WindowEvent { event, .. } => match event {
                         // Break from the loop upon `Escape`.
-                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::CloseRequested |
                         glium::glutin::WindowEvent::KeyboardInput {
                             input: glium::glutin::KeyboardInput {
                                 virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),

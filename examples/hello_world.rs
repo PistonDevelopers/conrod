@@ -20,7 +20,7 @@ mod feature {
         let mut events_loop = glium::glutin::EventsLoop::new();
         let window = glium::glutin::WindowBuilder::new()
             .with_title("Hello Conrod!")
-            .with_dimensions(WIDTH, HEIGHT);
+            .with_dimensions((WIDTH, HEIGHT).into());
         let context = glium::glutin::ContextBuilder::new()
             .with_vsync(true)
             .with_multisampling(4);
@@ -68,7 +68,7 @@ mod feature {
                 match event.clone() {
                     glium::glutin::Event::WindowEvent { event, .. } => {
                         match event {
-                            glium::glutin::WindowEvent::Closed |
+                            glium::glutin::WindowEvent::CloseRequested |
                             glium::glutin::WindowEvent::KeyboardInput {
                                 input: glium::glutin::KeyboardInput {
                                     virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),

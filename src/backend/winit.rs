@@ -16,7 +16,7 @@ use cursor;
 /// This allows users to pass either `glium::Display`, `glium::glutin::Window` or `winit::Window`
 /// to the `conrod::backend::winit::convert` function defined below.
 pub trait WinitWindow {
-    /// Return the inner size of the window in pixels.
+    /// Return the inner size of the window in logical pixels.
     fn get_inner_size(&self) -> Option<(u32, u32)>;
     /// Return the window's DPI factor so that we can convert from pixel values to scalar values.
     fn hidpi_factor(&self) -> f32;
@@ -24,20 +24,20 @@ pub trait WinitWindow {
 
 impl WinitWindow for winit::Window {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
-        winit::Window::get_inner_size(self)
+        winit::Window::get_inner_size(self).map(Into::into)
     }
     fn hidpi_factor(&self) -> f32 {
-        winit::Window::hidpi_factor(self)
+        winit::Window::get_hidpi_factor(self) as _
     }
 }
 
 #[cfg(feature = "glium")]
 impl WinitWindow for glium::Display {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
-        self.gl_window().get_inner_size()
+        self.gl_window().get_inner_size().map(Into::into)
     }
     fn hidpi_factor(&self) -> f32 {
-        self.gl_window().hidpi_factor()
+        self.gl_window().get_hidpi_factor() as _
     }
 }
 
@@ -60,29 +60,19 @@ pub fn convert_event<W>(e: winit::Event, window: &W) -> Option<Input>
 pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Input>
     where W: WinitWindow,
 {
-    // The "dots per inch" factor. Multiplying this by `win_w` and `win_h` gives the framebuffer
-    // width and height.
-    let dpi_factor = window.hidpi_factor() as Scalar;
-
     // The window size in points.
     let (win_w, win_h) = match window.get_inner_size() {
-        Some((w, h)) => (w as Scalar / dpi_factor, h as Scalar / dpi_factor),
+        Some((w, h)) => (w as Scalar, h as Scalar),
         None => return None,
     };
 
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
-    //
-    // winit produces input events in pixels, so these positions need to be divided by the widht
-    // and height of the window in order to be DPI agnostic.
-    let tx = |x: Scalar| (x / dpi_factor) - win_w / 2.0;
-    let ty = |y: Scalar| -((y / dpi_factor) - win_h / 2.0);
+    let tx = |x: Scalar| x - win_w / 2.0;
+    let ty = |y: Scalar| -(y - win_h / 2.0);
 
     match e {
-
-        winit::WindowEvent::Resized(w, h) => {
-            let w = (w as Scalar / dpi_factor) as u32;
-            let h = (h as Scalar / dpi_factor) as u32;
-            Some(Input::Resize(w, h).into())
+        winit::WindowEvent::Resized(winit::dpi::LogicalSize { width, height }) => {
+            Some(Input::Resize(width as _, height as _).into())
         },
 
         winit::WindowEvent::ReceivedCharacter(ch) => {
@@ -111,7 +101,8 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
             })
         },
 
-        winit::WindowEvent::Touch(winit::Touch { phase, location: (x, y), id, .. }) => {
+        winit::WindowEvent::Touch(winit::Touch { phase, location, id, .. }) => {
+            let winit::dpi::LogicalPosition { x, y } = location;
             let phase = match phase {
                 winit::TouchPhase::Started => input::touch::Phase::Start,
                 winit::TouchPhase::Moved => input::touch::Phase::Move,
@@ -124,7 +115,8 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
             Some(Input::Touch(touch).into())
         }
 
-        winit::WindowEvent::CursorMoved { position: (x, y), .. } => {
+        winit::WindowEvent::CursorMoved { position, .. } => {
+            let winit::dpi::LogicalPosition { x, y } = position;
             let x = tx(x as Scalar);
             let y = ty(y as Scalar);
             let motion = input::Motion::MouseCursor { x: x, y: y };
@@ -132,10 +124,9 @@ pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Inpu
         },
 
         winit::WindowEvent::MouseWheel { delta, .. } => match delta {
-
-            winit::MouseScrollDelta::PixelDelta(x, y) => {
-                let x = x as Scalar / dpi_factor;
-                let y = -y as Scalar / dpi_factor;
+            winit::MouseScrollDelta::PixelDelta(winit::dpi::LogicalPosition { x, y }) => {
+                let x = x as Scalar;
+                let y = -y as Scalar;
                 let motion = input::Motion::Scroll { x: x, y: y };
                 Some(Input::Motion(motion).into())
             },
@@ -262,11 +253,9 @@ pub fn map_key(keycode: winit::VirtualKeyCode) -> input::keyboard::Key {
         winit::VirtualKeyCode::LShift => Key::LShift,
         winit::VirtualKeyCode::LControl => Key::LCtrl,
         winit::VirtualKeyCode::LAlt => Key::LAlt,
-        winit::VirtualKeyCode::LMenu => Key::LGui,
         winit::VirtualKeyCode::RShift => Key::RShift,
         winit::VirtualKeyCode::RControl => Key::RCtrl,
         winit::VirtualKeyCode::RAlt => Key::RAlt,
-        winit::VirtualKeyCode::RMenu => Key::RGui,
         // Map to backslash?
         // K::GraveAccent => Key::Unknown,
         winit::VirtualKeyCode::Home => Key::Home,
