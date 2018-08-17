@@ -751,50 +751,52 @@ impl Renderer {
 
                     let color = color.unwrap_or(color::WHITE).to_fsa();
 
-                    let (image_w, image_h) = image_map.get(&image_id).unwrap().dimensions();
-                    let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
+                    if let Some(image) = image_map.get(&image_id) {
+                        let (image_w, image_h) = image.dimensions();
+                        let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
 
-                    // Get the sides of the source rectangle as uv coordinates.
-                    //
-                    // Texture coordinates range:
-                    // - left to right: 0.0 to 1.0
-                    // - bottom to top: 0.0 to 1.0
-                    let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
-                        Some(src_rect) => {
-                            let (l, r, b, t) = src_rect.l_r_b_t();
-                            ((l / image_w) as f32,
-                             (r / image_w) as f32,
-                             (b / image_h) as f32,
-                             (t / image_h) as f32)
-                        },
-                        None => (0.0, 1.0, 0.0, 1.0),
-                    };
+                        // Get the sides of the source rectangle as uv coordinates.
+                        //
+                        // Texture coordinates range:
+                        // - left to right: 0.0 to 1.0
+                        // - bottom to top: 0.0 to 1.0
+                        let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
+                            Some(src_rect) => {
+                                let (l, r, b, t) = src_rect.l_r_b_t();
+                                ((l / image_w) as f32,
+                                 (r / image_w) as f32,
+                                 (b / image_h) as f32,
+                                 (t / image_h) as f32)
+                            },
+                            None => (0.0, 1.0, 0.0, 1.0),
+                        };
 
-                    let v = |x, y, t| {
-                        // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                        let x = (x * dpi_factor as Scalar / half_win_w) as f32;
-                        let y = (y * dpi_factor as Scalar / half_win_h) as f32;
-                        Vertex {
-                            position: [x, y],
-                            tex_coords: t,
-                            color: color,
-                            mode: MODE_IMAGE,
-                        }
-                    };
+                        let v = |x, y, t| {
+                            // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                            let x = (x * dpi_factor as Scalar / half_win_w) as f32;
+                            let y = (y * dpi_factor as Scalar / half_win_h) as f32;
+                            Vertex {
+                                position: [x, y],
+                                tex_coords: t,
+                                color: color,
+                                mode: MODE_IMAGE,
+                            }
+                        };
 
-                    let mut push_v = |x, y, t| vertices.push(v(x, y, t));
+                        let mut push_v = |x, y, t| vertices.push(v(x, y, t));
 
-                    let (l, r, b, t) = rect.l_r_b_t();
+                        let (l, r, b, t) = rect.l_r_b_t();
 
-                    // Bottom left triangle.
-                    push_v(l, t, [uv_l, uv_t]);
-                    push_v(r, b, [uv_r, uv_b]);
-                    push_v(l, b, [uv_l, uv_b]);
+                        // Bottom left triangle.
+                        push_v(l, t, [uv_l, uv_t]);
+                        push_v(r, b, [uv_r, uv_b]);
+                        push_v(l, b, [uv_l, uv_b]);
 
-                    // Top right triangle.
-                    push_v(l, t, [uv_l, uv_t]);
-                    push_v(r, b, [uv_r, uv_b]);
-                    push_v(r, t, [uv_r, uv_t]);
+                        // Top right triangle.
+                        push_v(l, t, [uv_l, uv_t]);
+                        push_v(r, b, [uv_r, uv_b]);
+                        push_v(r, t, [uv_r, uv_t]);
+                    }
                 },
 
                 // We have no special case widgets to handle.
@@ -858,13 +860,14 @@ impl Renderer {
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Image(image_id, slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice).unwrap();
-                        let image = image_map.get(&image_id).unwrap();
-                        let image_uniforms = uniform! {
-                            tex: glium::uniforms::Sampler::new(image)
-                                .wrap_function(glium::uniforms::SamplerWrapFunction::Clamp)
-                                .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
-                        };
-                        surface.draw(&vertex_buffer, no_indices, &self.program, &image_uniforms, &draw_params).unwrap();
+                        if let Some(image) = image_map.get(&image_id) {
+                            let image_uniforms = uniform! {
+                                tex: glium::uniforms::Sampler::new(image)
+                                    .wrap_function(glium::uniforms::SamplerWrapFunction::Clamp)
+                                    .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest),
+                            };
+                            surface.draw(&vertex_buffer, no_indices, &self.program, &image_uniforms, &draw_params).unwrap();
+                        }
                     },
 
                 }
