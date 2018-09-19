@@ -1,0 +1,70 @@
+[package]
+name = "conrod_core"
+version = "0.62.0"
+authors = [
+    "Mitchell Nordine <mitchell.nordine@gmail.com>",
+    "Sven Nilsen <bvssvni@gmail.com>"
+]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "http://docs.piston.rs/conrod/conrod/"
+categories = ["gui"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lib]
+name = "conrod_core"
+path = "./src/lib.rs"
+
+[dependencies]
+conrod_derive = "0.1"
+daggy = "0.5.0"
+fnv = "1.0"
+num = "0.1.30"
+pistoncore-input = "0.21.0"
+rusttype = { version = "0.5.0", features = ["gpu_cache"] }
+
+# Optional dependencies and features
+# ----------------------------------
+#
+# None of the following dependencies are necessary to use conrod, however they may greatly
+# simplify the work involved when using conrod with certain window or graphics backends.
+#
+# `glium`
+# Provides functions for rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
+# Enables the `conrod::backend::glium` module.
+#
+# `winit`
+# Provides a function for converting winit `Event`s to `conrod::event::Raw`s.
+# Enables the `conrod::backend::winit` module.
+#
+# `src`
+# Provides functions for:
+# - Converting src `GenericEvent` types to `conrod::event::Raw`s.
+# - Rendering the `conrod::render::Primitives` yielded by `Ui::draw`.
+# Enables the `conrod::backend::src` module.
+#winit = { version = "0.16", optional = true }
+#glium = { version = "0.22", optional = true }
+#piston2d-graphics = { version = "0.26", optional = true }
+#gfx = { version = "0.17", optional = true }
+#gfx_core = { version = "0.8", optional = true }
+#
+#[features]
+#piston = ["piston2d-graphics"]
+#gfx_rs=["gfx","gfx_core"]
+#
+#[dev-dependencies]
+#find_folder = "0.3.0"
+#image = "0.19"
+#petgraph = "0.4"
+#rand = "0.5"
+## glutin_gfx.rs example dependencies
+#gfx_window_glutin = "0.25"
+#glutin = "0.17"
+## piston_window.rs example dependencies
+#piston_window = "0.80"
