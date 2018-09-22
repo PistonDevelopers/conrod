@@ -262,8 +262,8 @@ fn crop_context(context: Context, rect: Rect) -> Context {
     let y_neg = if y < 0 { y } else { 0 };
     let mut x = ::std::cmp::max(0, x) as u32;
     let mut y = ::std::cmp::max(0, y) as u32;
-    let mut w = ::std::cmp::max(0, (w as i32 + x_neg)) as u32;
-    let mut h = ::std::cmp::max(0, (h as i32 + y_neg)) as u32;
+    let mut w = ::std::cmp::max(0, w as i32 + x_neg) as u32;
+    let mut h = ::std::cmp::max(0, h as i32 + y_neg) as u32;
 
     // If there was already some scissor set, we must check for the intersection.
     if let Some(rect) = draw_state.scissor {
