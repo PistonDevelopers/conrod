@@ -1,5 +1,5 @@
-//! A src backend for rendering conrod primitives.
-//!
+//! A piston backend for rendering conrod primitives.
+
 use conrod_core::{
     Rect,
     image,
@@ -7,9 +7,10 @@ use conrod_core::{
     text,
     utils,
 };
+use piston_graphics;
 
 #[doc(inline)]
-use piston_graphics::{self, Context, DrawState, Graphics, ImageSize, Transformed};
+pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
 
 
 /// Render the given sequence of conrod primitive widgets.
@@ -18,7 +19,7 @@ use piston_graphics::{self, Context, DrawState, Graphics, ImageSize, Transformed
 ///
 /// - `primitives` - The sequence of primitives to be rendered to the screen.
 /// - `context` - The piston2d-graphics drawing context.
-/// - `graphics` - The src `Graphics` backend.
+/// - `graphics` - The piston `Graphics` backend.
 /// - `text_texture_cache` - Some texture type `T` upon which we can cache text glyphs.
 /// - `glyph_cache` - The RustType `Cache` used to cache glyphs in our `text_texture_cache`.
 /// - `image_map` - Mappings from image widget indices to their associated image data.
@@ -65,7 +66,7 @@ pub fn primitives<'a, P, G, T, Img, C, F>(
 ///
 /// - `primitive` - The `Primitive` that is to be rendered to the screen.
 /// - `context` - The piston2d-graphics drawing context.
-/// - `graphics` - The src `Graphics` backend.
+/// - `graphics` - The piston `Graphics` backend.
 /// - `text_texture_cache` - Some texture type `T` upon which we can cache text glyphs.
 /// - `glyph_cache` - The RustType `Cache` used to cache glyphs in our `text_texture_cache`.
 /// - `image_map` - Mappings from image widget indices to their associated image data.
@@ -263,8 +264,8 @@ fn crop_context(context: Context, rect: Rect) -> Context {
     let y_neg = if y < 0 { y } else { 0 };
     let mut x = ::std::cmp::max(0, x) as u32;
     let mut y = ::std::cmp::max(0, y) as u32;
-    let mut w = ::std::cmp::max(0, (w as i32 + x_neg)) as u32;
-    let mut h = ::std::cmp::max(0, (h as i32 + y_neg)) as u32;
+    let mut w = ::std::cmp::max(0, w as i32 + x_neg) as u32;
+    let mut h = ::std::cmp::max(0, h as i32 + y_neg) as u32;
 
     // If there was already some scissor set, we must check for the intersection.
     if let Some(rect) = draw_state.scissor {
