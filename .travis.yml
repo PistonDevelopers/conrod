@@ -19,13 +19,13 @@ addons:
 
 script:
     - cd core && cargo build --verbose
-    - cd core && cargo test --verbose
-    - cd core && cargo doc --all-features --verbose
-    - cd conrod_derive && cargo b --verbose
-    - cd backends/conrod_gfx && cargo test --features "conrod_winit_glue" --verbose
-    - cd backends/conrod_glium && cargo test --features "conrod_winit_glue" --verbose
-    - cd backends/conrod_piston && cargo test --verbose
-    - cd backends/conrod_vulkano && cargo test --features "winit_example_glue" --verbose
+    - cargo test --verbose
+    - cargo doc --all-features --verbose
+    - cd ../conrod_derive && cargo b --verbose
+    - cd ../backends/conrod_gfx && cargo test --features "conrod_winit_glue" --verbose
+    - cd ../conrod_glium && cargo test --features "conrod_winit_glue" --verbose
+    - cd ../conrod_piston && cargo test --verbose
+    - cd ../conrod_vulkano && cargo test --features "winit_example_glue" --verbose
 
 after_success:
     - curl http://docs.piston.rs/travis-doc-upload.sh | sh
