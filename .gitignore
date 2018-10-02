@@ -19,6 +19,6 @@
 /build/
 /.rust/
 rusti.sh
-/examples/**/target
 
 Cargo.lock
+/.idea
