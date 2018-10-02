@@ -1085,7 +1085,7 @@ impl Ui {
     /// be a `Rectangle` the size of the window in which conrod is hosted.
     ///
     /// This method sets the colour with which this `Rectangle` is drawn (the default being
-    /// `conrod::color::TRANSPARENT`.
+    /// `conrod_core::color::TRANSPARENT`.
     pub fn clear_with(&mut self, color: Color) {
         self.maybe_background_color = Some(color);
     }

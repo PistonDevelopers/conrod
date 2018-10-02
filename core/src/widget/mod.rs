@@ -454,13 +454,13 @@ pub fn default_y_dimension<W>(widget: &W, ui: &Ui) -> Dimension
 /// The **Common** trait can be automatically derived for widgets like so:
 ///
 /// ```ignore
-/// extern crate conrod;
+/// extern crate conrod_core;
 /// #[macro_use] extern crate conrod_derive;
 ///
 /// #[derive(WidgetCommon)]
 /// struct MyWidget {
 ///     #[conrod(common_builder)]
-///     common: conrod::widget::CommonBuilder,
+///     common: conrod_core::widget::CommonBuilder,
 ///     // etc
 /// }
 /// ```
@@ -558,12 +558,12 @@ pub trait Widget: Common + Sized {
     /// # Examples
     ///
     /// ```
-    /// # extern crate conrod;
+    /// # extern crate conrod_core;
     /// # #[macro_use] extern crate conrod_derive;
-    /// # use conrod::{Color, FontSize, Scalar};
+    /// # use conrod_core::{Color, FontSize, Scalar, Theme};
     /// # fn main() {}
     /// /// Unique styling for a Button widget.
-    /// #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
+    /// #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
     /// pub struct Style {
     ///     /// Color of the Button's pressable area.
     ///     #[conrod(default = "theme.shape_color")]
@@ -572,7 +572,7 @@ pub trait Widget: Common + Sized {
     ///     #[conrod(default = "1.0")]
     ///     pub border: Option<Scalar>,
     ///     /// The color of the Button's rectangular border.
-    ///     #[conrod(default = "conrod::color::BLACK")]
+    ///     #[conrod(default = "conrod_core::color::BLACK")]
     ///     pub border_color: Option<Color>,
     ///     /// The color of the Button's label.
     ///     #[conrod(default = "theme.label_color")]

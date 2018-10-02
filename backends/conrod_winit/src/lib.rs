@@ -1,4 +1,4 @@
-//! A function for converting a `winit::Event` to a `conrod::event::Input`.
+//! A function for converting a `winit::Event` to a `conrod_core::event::Input`.
 
 pub extern crate winit;
 extern crate conrod_core;
@@ -11,11 +11,11 @@ use conrod_core::{
 };
 
 /// Types that have access to a `winit::Window` and can provide the necessary dimensions and hidpi
-/// factor for converting `winit::Event`s to `conrod::event::Input`, as well as set the mouse
+/// factor for converting `winit::Event`s to `conrod_core::event::Input`, as well as set the mouse
 /// cursor.
 ///
 /// This allows users to pass either `glium::Display`, `glium::glutin::Window` or `winit::Window`
-/// to the `conrod::backend::winit::convert` function defined below.
+/// to the `conrod_core::backend::winit::convert` function defined below.
 pub trait WinitWindow {
     /// Return the inner size of the window in logical pixels.
     fn get_inner_size(&self) -> Option<(u32, u32)>;
@@ -32,7 +32,7 @@ impl WinitWindow for winit::Window {
     }
 }
 
-/// A function for converting a `winit::Event` to a `conrod::event::Input`.
+/// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
 ///
 /// This can be useful for single-window applications.
 pub fn convert_event<W>(e: winit::Event, window: &W) -> Option<Input>
@@ -44,7 +44,7 @@ pub fn convert_event<W>(e: winit::Event, window: &W) -> Option<Input>
     }
 }
 
-/// A function for converting a `winit::WindowEvent` to a `conrod::event::Input`.
+/// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
 ///
 /// This is useful for multi-window applications.
 pub fn convert_window_event<W>(e: winit::WindowEvent, window: &W) -> Option<Input>

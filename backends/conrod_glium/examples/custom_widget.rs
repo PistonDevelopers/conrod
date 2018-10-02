@@ -50,7 +50,7 @@ mod circular_button {
     //    the field's `#[conrod(default = "expr")]` attribute.
 
     /// Represents the unique styling for our CircularButton widget.
-    #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle_)]
     pub struct Style {
         /// Color of the button.
         #[conrod(default = "theme.shape_color")]

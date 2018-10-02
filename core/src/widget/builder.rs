@@ -64,8 +64,8 @@ macro_rules! builder_method {
 /// The builder pattern looks like this:
 ///
 /// ```
-/// # extern crate conrod;
-/// # use conrod::color::{Color, BLACK, LIGHT_PURPLE};
+/// # extern crate conrod_core;
+/// # use conrod_core::color::{Color, BLACK, LIGHT_PURPLE};
 ///
 /// struct Button {
 ///     color: Option<Color>,
@@ -116,8 +116,8 @@ macro_rules! builder_method {
 /// Here's what implementing the color method for our `Button` now looks like:
 ///
 /// ```
-/// # #[macro_use] extern crate conrod;
-/// # use conrod::color::Color;
+/// # #[macro_use] extern crate conrod_core;
+/// # use conrod_core::color::Color;
 /// # struct Button { color: Option<Color> }
 /// # fn main() {}
 /// impl Button {

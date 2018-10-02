@@ -140,7 +140,7 @@ pub enum PrimitiveKind<'a> {
         /// to bottom right.
         text: Text<'a>,
         /// The unique identifier for the font, useful for the `glyph_cache.rect_for(id, glyph)`
-        /// method when using the `conrod::text::GlyphCache` (rusttype's GPU `Cache`).
+        /// method when using the `conrod_core::text::GlyphCache` (rusttype's GPU `Cache`).
         font_id: text::font::Id,
     },
 

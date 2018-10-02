@@ -395,9 +395,9 @@ impl<S, I> Widget for Triangles<S, I>
 /// Here's a basic code example:
 ///
 /// ```
-/// extern crate conrod;
+/// extern crate conrod_core;
 ///
-/// use conrod::widget::triangles::{from_quad, Triangle};
+/// use conrod_core::widget::triangles::{from_quad, Triangle};
 ///
 /// fn main() {
 ///     let a = [0.0, 1.0];

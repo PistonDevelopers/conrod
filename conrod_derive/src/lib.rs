@@ -10,13 +10,13 @@ mod utils;
 
 use proc_macro::TokenStream;
 
-// The implementation for the `WidgetCommon` trait derivation (aka `conrod::widget::Common`).
+// The implementation for the `WidgetCommon` trait derivation (aka `conrod_core::widget::Common`).
 #[proc_macro_derive(WidgetCommon, attributes(conrod, common_builder))]
 pub fn widget_common(input: TokenStream) -> TokenStream {
     impl_derive(input, common::impl_widget_common)
 }
 
-// The implementation for the `WidgetCommon_` trait derivation (aka `conrod::widget::Common`).
+// The implementation for the `WidgetCommon_` trait derivation (aka `conrod_core::widget::Common`).
 //
 // Note that this is identical to the `WidgetCommon` trait, but only for use within the conrod
 // crate itself.
@@ -25,13 +25,13 @@ pub fn widget_common_(input: TokenStream) -> TokenStream {
     impl_derive(input, common::impl_widget_common_)
 }
 
-// The implementation for the `WidgetStyle` trait derivation (aka `conrod::widget::Style`).
+// The implementation for the `WidgetStyle` trait derivation (aka `conrod_core::widget::Style`).
 #[proc_macro_derive(WidgetStyle, attributes(conrod, default))]
 pub fn widget_style(input: TokenStream) -> TokenStream {
     impl_derive(input, style::impl_widget_style)
 }
 
-// The implementation for the `WidgetStyle_` trait derivation (aka `conrod::widget::Style`).
+// The implementation for the `WidgetStyle_` trait derivation (aka `conrod_core::widget::Style`).
 //
 // Note that this is identical to the `WidgetStyle_` trait, but only for use within the conrod
 // crate itself.
