@@ -43,8 +43,8 @@ pub struct Style {
     #[conrod(default = "1.0")]
     pub line_spacing: Option<Scalar>,
     /// The way in which text is wrapped at the end of a line.
-    #[conrod(default = "Wrap::Whitespace")]
-    pub line_wrap: Option<Wrap>,
+    #[conrod(default = "Some(Wrap::Whitespace)")]
+    pub maybe_wrap: Option<Option<Wrap>>,
     /// Do not allow to enter text that would exceed the bounds of the `TextEdit`'s `Rect`.
     #[conrod(default = "true")]
     pub restrict_to_height: Option<bool>,
@@ -115,7 +115,7 @@ impl<'a> TextEdit<'a> {
     ///
     /// This is the default setting.
     pub fn wrap_by_whitespace(self) -> Self {
-        self.line_wrap(Wrap::Whitespace)
+        self.maybe_wrap(Some(Wrap::Whitespace))
     }
 
     /// By default, the `TextEdit` will wrap text via the whitespace that precedes the first
@@ -123,7 +123,15 @@ impl<'a> TextEdit<'a> {
     ///
     /// Calling this method causes the `TextEdit` to wrap text at the first exceeding character.
     pub fn wrap_by_character(self) -> Self {
-        self.line_wrap(Wrap::Character)
+        self.maybe_wrap(Some(Wrap::Character))
+    }
+
+    /// By default, the `TextEdit` will wrap text via the whitespace that precedes the first
+    /// width-exceeding character.
+    ///
+    /// Calling this method causes the `TextEdit` to disable text wrapping.
+    pub fn no_line_wrap(self) -> Self {
+        self.maybe_wrap(None)
     }
 
     /// Align the text to the left of its bounding **Rect**'s *x* axis range.
@@ -171,7 +179,7 @@ impl<'a> TextEdit<'a> {
         pub font_size { style.font_size = Some(FontSize) }
         pub justify { style.justify = Some(text::Justify) }
         pub y_align_text { style.y_align = Some(Align) }
-        pub line_wrap { style.line_wrap = Some(Wrap) }
+        pub maybe_wrap { style.maybe_wrap = Some(Option<Wrap>) }
         pub line_spacing { style.line_spacing = Some(Scalar) }
         pub restrict_to_height { style.restrict_to_height = Some(bool) }
     }
@@ -221,15 +229,18 @@ impl<'a> Widget for TextEdit<'a> {
         let font_size = self.style.font_size(&ui.theme);
         let num_lines = match self.get_w(ui) {
             None => text.lines().count(),
-            Some(max_w) => match self.style.line_wrap(&ui.theme) {
-                Wrap::Character =>
+            Some(max_w) => match self.style.maybe_wrap(&ui.theme) {
+                Some(Wrap::Character) =>
                     text::line::infos(text, font, font_size)
                         .wrap_by_character(max_w)
                         .count(),
-                Wrap::Whitespace =>
+                Some(Wrap::Whitespace) =>
                     text::line::infos(text, font, font_size)
                         .wrap_by_whitespace(max_w)
                         .count(),
+                None =>
+                    text::line::infos(text, font, font_size)
+                        .count()
             },
         };
         let line_spacing = self.style.line_spacing(&ui.theme);
@@ -255,7 +266,7 @@ impl<'a> Widget for TextEdit<'a> {
         };
 
         let font_size = style.font_size(ui.theme());
-        let line_wrap = style.line_wrap(ui.theme());
+        let maybe_wrap = style.maybe_wrap(ui.theme());
         let justify = style.justify(ui.theme());
         let y_align = style.y_align(ui.theme());
         let line_spacing = style.line_spacing(ui.theme());
@@ -267,13 +278,14 @@ impl<'a> Widget for TextEdit<'a> {
         fn line_infos<'a>(text: &'a str,
                           font: &'a text::Font,
                           font_size: FontSize,
-                          line_wrap: Wrap,
+                          maybe_wrap: Option<Wrap>,
                           max_width: Scalar) -> LineInfos<'a>
         {
             let infos = text::line::infos(text, font, font_size);
-            match line_wrap {
-                Wrap::Whitespace => infos.wrap_by_whitespace(max_width),
-                Wrap::Character => infos.wrap_by_character(max_width),
+            match maybe_wrap {
+                Some(Wrap::Whitespace) => infos.wrap_by_whitespace(max_width),
+                Some(Wrap::Character) => infos.wrap_by_character(max_width),
+                None => infos,
             }
         }
 
@@ -282,7 +294,7 @@ impl<'a> Widget for TextEdit<'a> {
             let maybe_new_line_infos = {
                 let line_info_slice = &state.line_infos[..];
                 let font = ui.fonts.get(font_id).unwrap();
-                let new_line_infos = line_infos(&text, font, font_size, line_wrap, rect.w());
+                let new_line_infos = line_infos(&text, font, font_size, maybe_wrap, rect.w());
                 match utils::write_if_different(line_info_slice, new_line_infos) {
                     std::borrow::Cow::Owned(new) => Some(new),
                     _ => None,
@@ -401,7 +413,7 @@ impl<'a> Widget for TextEdit<'a> {
 
             // Calculate the new `line_infos` for the `new_text`.
             let new_line_infos: Vec<_> = {
-                line_infos(&new_text, font, font_size, line_wrap, rect.w()).collect()
+                line_infos(&new_text, font, font_size, maybe_wrap, rect.w()).collect()
             };
 
             // Check that the new text would not exceed the `inner_rect` bounds.
@@ -512,7 +524,7 @@ impl<'a> Widget for TextEdit<'a> {
                                     let font = ui.fonts.get(font_id).unwrap();
                                     let w = rect.w();
                                     state.line_infos =
-                                        line_infos(&text, font, font_size, line_wrap, w)
+                                        line_infos(&text, font, font_size, maybe_wrap, w)
                                             .collect();
                                 });
                             }
@@ -769,9 +781,10 @@ impl<'a> Widget for TextEdit<'a> {
         let text_y_range = Range::new(0.0, text_height).align_to(y_align, rect.y);
         let text_rect = Rect { x: rect.x, y: text_y_range };
 
-        match line_wrap {
-            Wrap::Whitespace => widget::Text::new(&text).wrap_by_word(),
-            Wrap::Character => widget::Text::new(&text).wrap_by_character(),
+        match maybe_wrap {
+            Some(Wrap::Whitespace) => widget::Text::new(&text).wrap_by_word(),
+            Some(Wrap::Character) => widget::Text::new(&text).wrap_by_character(),
+            None => widget::Text::new(&text).no_line_wrap(),
         }
             .font_id(font_id)
             .wh(text_rect.dim())
