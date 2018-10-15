@@ -161,7 +161,7 @@ impl<'a> Widget for TextBox<'a> {
 
         let text_color = style.text_color(ui.theme());
         let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
-        if let Some(new_string) = widget::TextEdit::new(text)
+        if let Some(new_string) = widget::TextEdit::new(text).no_line_wrap()
             .and_then(font_id, widget::TextEdit::font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
