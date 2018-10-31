@@ -1,12 +1,4 @@
 /*!
-# #[macro_use]
-# extern crate conrod;
-# extern crate find_folder;
-
-# use conrod::{self, widget, Positionable, Colorable, Widget};
-# use conrod::backend::glium::glium::{self, Surface};
-
-
 **Setting up a basic window using glium and winit**
 
 In this chapter we'll get a "hello world" app up and running. "Hello World" is
@@ -56,7 +48,8 @@ and you need to tell Cargo to make it available to your programme. The program
 itself is in the `src` folder of your project, in the file called `main.rs`,
 and should look like this right now:
 
-``` fn main() {
+```ignore
+fn main() {
     println!("Hello, world!");
 }
 ```
@@ -114,7 +107,7 @@ about it in the code itself. Alternatively, the application can be run using
 cargo "features" as described in the previous chapter.
 
 ```txt
-    cargo run --release --features "winit glium" --example all_winit_glium
+cargo run --release --features "winit glium" --example all_winit_glium
 ```
 
 At the time of writing (September 2017), the winit and glium backend
@@ -138,8 +131,8 @@ convince me that I really want Conrod to do the work for me!
 Conrod makes Glium available through an export. Put the following line into
 the code, near the top, to include it:
 
-```txt
-    use conrod::backend::glium::glium::{self, Surface};
+```ignore
+use conrod::backend::glium::glium::{self, Surface};
 ```
 
 `Surface` is a trait required for glium, specifically for the call to
@@ -150,7 +143,7 @@ interaction with the UI, then a window, then a context, then finally links the
 event loop, window and context together into a display. The display is the
 home for the UI, and is an OpenGL context provided by glium.
 
-```txt
+```ignore
 const WIDTH: u32 = 400;
 const HEIGHT: u32 = 200;
 
@@ -167,29 +160,29 @@ let display = glium::Display::new(window, context, &events_loop).unwrap();
 Now create the UI itself. Conrod has a builder that contains and looks after
 the UI for the user.
 
-```txt
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+```ignore
+let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 ```
 
 
 Conrod can use graphics. It stores these in a map. The system needs the map,
 even though it doesn't contain anything at this time, so create it:
 
-```txt
-    let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
+```ignore
+let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 ```
 
 Finally, Conrod needs to render its UI. It uses a renderer to do this, so
 create one:
 
-```txt
-    let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
+```ignore
+let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
 ```
 
 As an Immediate Mode GUI, Conrod sits in the main loop of the program, drawing
 the UI every time round the loop. Here's the main loop:
 
-```txt
+```ignore
 'main: loop {
     // Render the `Ui` and then display it on the screen.
     if let Some(primitives) = ui.draw_if_changed() {
@@ -225,15 +218,15 @@ ever - a green block with a white "menu bar" that has nothing in it. Let's add
 at least something to see.
 
 After
-# const WIDTH: i32 = 400;
-# const HEIGHT: i32 = 640;
-```txt
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+```ignore
+const WIDTH: i32 = 400;
+const HEIGHT: i32 = 640;
+let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 ```
 
 add the code that will initiate and build the UI:
 
-```txt
+```ignore
 widget_ids!(struct Ids { text });
 let ids = Ids::new(ui.widget_id_generator());
 ```
@@ -249,7 +242,7 @@ After defining the widget_ids, `Ids::new` creates the the widget structure.
 To instantiate the widgets, insert the following code in the main loop, before
 the rendering statement.
 
-```txt
+```ignore
 let ui = &mut ui.set_widgets();
 
 // "Hello World!" in the middle of the screen.
@@ -274,15 +267,17 @@ there's nothing more to do right now.
 
 Except that if you compile the code right now, it fails with
 
-`error[E0599]: no method named 'middle_of' found for type
-'conrod::widget::Text<'_>' in the current scope`
+```txt
+error[E0599]: no method named 'middle_of' found for type
+conrod::widget::Text<'_>' in the current scope
 
-`  --> src/main.rs:89:18`
+  --> src/main.rs:89:18`
 
-`   = help: items from traits can only be used if the trait is in scope`
+   = help: items from traits can only be used if the trait is in scope`
 
-`   = note: the following trait is implemented but not in scope, perhaps add a
-'use' for it:` `           candidate #1: 'use conrod::Positionable;'`
+   = note: the following trait is implemented but not in scope, perhaps add a 'use' for it:`
+           candidate #1: 'use conrod::Positionable;'
+```
 
 
 `middle_of` is a Conrod trait, of the type `Positionable` and color is also a
@@ -290,32 +285,37 @@ trait of type 'Colorable'. To ensure that the program can find the trait, we
 need to add to the `use conrod` line, as suggested in the error message. We
 also need to define `widget' and the type of Widget, so add the following near
 the top of the programme:
-```txt
-    use conrod::{widget, Positionable, Colorable, Widget};
+```ignore
+use conrod::{widget, Positionable, Colorable, Widget};
 ```
 
 There's one more thing we need to do. Conrod needs to load fonts before it can
 use them. Some boilerplate in the early part of the programme can do this:
 
-```txt
-let assets = find_folder::Search::KidsThenParents(3,
-5).for_folder("assets").unwrap(); let font_path = assets.join("fonts/NotoSans
-/NotoSans-Regular.ttf"); ui.fonts.insert_from_file(font_path).unwrap();
+```ignore
+let assets = find_folder::Search::KidsThenParents(3, 5)
+    .for_folder("assets")
+    .unwrap();
+let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+ui.fonts.insert_from_file(font_path).unwrap();
 ```
 
 The code uses the find_folder crate. Modify the Cargo.toml file for this
 project by adding find_folder to the dependencies. Its current version at time
 of writing is 0.3.0:
 
-```txt
+```toml
 [dependencies]
-conrod = { version = "0.55.0", features = ["glium", "winit"] }
+conrod = {
+    version = "0.55.0",
+    features = ["glium", "winit"]
+}
 find_folder="0.3.0"
 ```
 
 and reference the crate at the beginning of the file:
-```txt
-    extern crate find_folder;
+```ignore
+extern crate find_folder;
 ```
 
 `find_folder` and some Rust path handling generates the path to the font. It
@@ -341,7 +341,7 @@ handled. At its most simple, events can be handled by fetching them from the
 `event_loop` and dispatching them accordingly. Here's the code in the main
 loop:
 
-```txt
+```ignore
 let mut events = Vec::new();
 events_loop.poll_events(|event| events.push(event));
 
@@ -384,9 +384,13 @@ respond to any of its own events, so they're not taken into account.
 First, let's add event handling for Conrod. Putting the following at the
 beginning of the event for loop will take care of UI events:
 
-```txt
-    if let Some(event) = conrod::backend::winit::convert_event(event.clone(),
-        &display) { ui.handle_event(event); }
+```ignore
+if let Some(event) = conrod::backend::winit::convert_event(
+    event.clone(),
+    &display
+) {
+    ui.handle_event(event);
+}
 ```
 
 `ui.handle_event()` is the business end of Conrod - it takes events off the
@@ -398,14 +402,13 @@ Then there's some straightforward event boilerplate that most Conrod apps have
 somewhere convenient. In this case, I'm going to put it into the same file as
 `fn main()'.
 
-```txt
+```ignore
 pub struct EventLoop {
-        ui_needs_update: bool,
-        last_update: std::time::Instant,
-    }
+    ui_needs_update: bool,
+    last_update: std::time::Instant,
+}
 
 impl EventLoop {
-
     pub fn new() -> Self {
         EventLoop { last_update: std::time::Instant::now(),
                     ui_needs_update: true,
@@ -462,13 +465,13 @@ update.
 The main events loop can now be changed. Insert a constructor for the event
 loop just before the 'main loop
 
-```txt
-     let mut event_loop = EventLoop::new();
+```ignore
+let mut event_loop = EventLoop::new();
 ```
 
 Remove the quick-and-dirty event queue introduced above
 
-```txt
+```ignore
 let mut events = Vec::new();
 events_loop.poll_events(|event|events.push(event));
 ```
@@ -476,7 +479,7 @@ events_loop.poll_events(|event|events.push(event));
 and change the event `for` loop to read from the `event_loop` that was
 constructed above.
 
-```txt
+```ignore
 for event in event_loop.next(&mut events_loop){
 ```
 
