@@ -63,7 +63,7 @@ pub enum Input {
     /// A button on some input device was released.
     Release(input::Button),
     /// The window was received to the given dimensions.
-    Resize(u32, u32),
+    Resize(f64, f64),
     /// Some motion input was received (e.g. moving mouse or joystick axis).
     Motion(input::Motion),
     /// Input from a touch surface/screen.

@@ -112,7 +112,7 @@ fn ui_should_push_input_events_to_aggregator() {
     test_handling_basic_input_event(ui, Input::Press(input::Button::Keyboard(Key::LCtrl)));
     test_handling_basic_input_event(ui, Input::Release(input::Button::Keyboard(Key::LCtrl)));
     test_handling_basic_input_event(ui, Input::Text("my string".to_string()));
-    test_handling_basic_input_event(ui, Input::Resize(55, 99));
+    test_handling_basic_input_event(ui, Input::Resize(55.0, 99.0));
     test_handling_basic_input_event(ui, Input::Focus(true));
 }
 

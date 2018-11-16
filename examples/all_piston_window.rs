@@ -49,7 +49,11 @@ mod feature {
         let (mut glyph_cache, mut text_texture_cache) = {
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
-            let cache = conrod::text::GlyphCache::new(WIDTH, HEIGHT, SCALE_TOLERANCE, POSITION_TOLERANCE);
+            let cache = conrod::text::GlyphCache::builder()
+                .dimensions(WIDTH, HEIGHT)
+                .scale_tolerance(SCALE_TOLERANCE)
+                .position_tolerance(POSITION_TOLERANCE)
+                .build();
             let buffer_len = WIDTH as usize * HEIGHT as usize;
             let init = vec![128; buffer_len];
             let settings = TextureSettings::new();

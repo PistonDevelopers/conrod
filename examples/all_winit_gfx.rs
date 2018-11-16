@@ -28,14 +28,13 @@ mod feature {
     use std;
 
     use conrod;
-    use glutin;
     use gfx;
     use gfx_core;
     use support;
     use winit;
 
-    use glutin::GlContext;
     use gfx::Device;
+    use conrod::glium::glutin::GlContext;
 
 
     const WIN_W: u32 = support::WIN_W;
@@ -46,11 +45,11 @@ mod feature {
 
     pub fn main() {
         // Builder for window
-        let builder = glutin::WindowBuilder::new()
+        let builder = winit::WindowBuilder::new()
             .with_title("Conrod with GFX and Glutin")
             .with_dimensions((WIN_W, WIN_H).into());
 
-        let context = glutin::ContextBuilder::new()
+        let context = conrod::glium::glutin::ContextBuilder::new()
             .with_multisampling(4);
 
         let mut events_loop = winit::EventsLoop::new();
@@ -120,6 +119,8 @@ mod feature {
             let dpi_factor = window.get_hidpi_factor() as f32;
 
             if let Some(primitives) = ui.draw_if_changed() {
+                use conrod::glium::glutin::GlContext;
+
                 let dims = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
 
                 //Clear the window
@@ -136,6 +137,7 @@ mod feature {
 
             let mut should_quit = false;
             events_loop.poll_events(|event|{
+                use conrod::glium::glutin::GlContext;
 
                 // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
                 if let Some(event) = conrod::backend::winit::convert_event(event.clone(), window.window()) {
