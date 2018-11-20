@@ -126,11 +126,11 @@ pub fn primitive<'a, Img, G, T, C, F>(
 
         render::PrimitiveKind::Text { color, text, font_id } => {
 
-            // Retrieve the "dots per inch" factor by dividing the window width by the view.
+            // Retrieve the "dots per inch" factor by dividing the draw width by the window width.
             //
             // TODO: Perhaps this should be a method on the `Context` type?
             let dpi_factor = context.viewport
-                .map(|v| v.window_size[0] as f32 / view_size[0] as f32)
+                .map(|v| v.draw_size[0] as f32 / v.window_size[0] as f32)
                 .unwrap_or(1.0);
             let positioned_glyphs = text.positioned_glyphs(dpi_factor);
             // Re-orient the context to top-left origin with *y* facing downwards, as the
