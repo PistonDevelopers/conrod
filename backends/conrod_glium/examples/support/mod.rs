@@ -5,11 +5,11 @@ use conrod_core::{self, widget_ids};
 use std;
 use glium;
 
-#[cfg(feature="conrod_winit_glue")] extern crate conrod_winit_backend;
+extern crate conrod_winit;
 
-//#[cfg(feature="conrod_winit_glue")]
 pub struct GliumDisplayWinitWrapper(pub glium::Display);
-impl conrod_winit_backend::WinitWindow for GliumDisplayWinitWrapper {
+
+impl conrod_winit::WinitWindow for GliumDisplayWinitWrapper {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
         self.0.gl_window().get_inner_size().map(Into::into)
     }

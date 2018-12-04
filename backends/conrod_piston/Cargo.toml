@@ -1,5 +1,5 @@
 [package]
-name = "conrod_piston_backend"
+name = "conrod_piston"
 version = "0.62.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
@@ -18,11 +18,11 @@ categories = ["gui"]
 all-features = true
 
 [lib]
-name = "conrod_piston_backend"
+name = "conrod_piston"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = {path = "../../core"}
+conrod_core = { path = "../../conrod_core" }
 piston2d-graphics = { version = "0.26" }
 pistoncore-input = "0.21.0"
 piston_window = "0.80"

@@ -20,5 +20,5 @@ path = "./src/lib.rs"
 
 [dependencies]
 #conrod_core = "0.62"
-conrod_core = { path = "../../core" }
+conrod_core = { path = "../../conrod_core" }
 winit = { version = "0.16" }
