@@ -332,9 +332,9 @@ pub fn text_texture_uncompressed_float_format(opengl_version: &glium::Version) -
 
 // Creating the rusttype glyph cache used within a `GlyphCache`.
 fn rusttype_glyph_cache(w: u32, h: u32) -> text::GlyphCache<'static> {
-    const SCALE_TOLERANCE: f32 = 0.1;
-    const POSITION_TOLERANCE: f32 = 0.1;
-    text::GlyphCache::new(w, h, SCALE_TOLERANCE, POSITION_TOLERANCE)
+    text::GlyphCache::builder()
+        .dimensions(w, h)
+        .build()
 }
 
 // Create the texture used within a `GlyphCache` of the given size.
