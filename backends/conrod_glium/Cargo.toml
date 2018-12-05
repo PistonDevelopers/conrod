@@ -19,12 +19,11 @@ name = "conrod_glium"
 path = "./src/lib.rs"
 
 [dependencies]
-#conrod_core = "0.62"
-conrod_core = { path = "../../conrod_core" }
-conrod_derive = { path = "../../conrod_derive" }
+conrod_core = { path = "../../conrod_core", version = "0.62" }
 glium = { version = "0.22" }
 
 [dev-dependencies]
+conrod_derive = { path = "../../conrod_derive", version = "0.2" }
 conrod_winit = { path = "../conrod_winit" }
 find_folder = "0.3.0"
 image = "0.19"

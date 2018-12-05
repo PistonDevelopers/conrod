@@ -148,18 +148,6 @@ mod defines {
 
 use self::defines::*;
 
-// Convenience constructor
-impl Vertex {
-    fn new(pos: [f32; 2], uv: [f32; 2], color: [f32; 4], mode: u32) -> Vertex {
-        Vertex {
-            pos,
-            uv,
-            color,
-            mode,
-        }
-    }
-}
-
 /// This type is used for translating `render::Primitives` into `Commands`s that indicate how to
 /// draw the GUI using `gfx`.
 pub struct Renderer<'a, R: Resources> {

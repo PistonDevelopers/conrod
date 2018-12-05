@@ -5,7 +5,7 @@ extern crate conrod_core;
 
 extern crate find_folder;
 extern crate piston_window;
-extern crate conrod_piston_backend;
+extern crate conrod_piston;
 
 mod support;
 
@@ -79,7 +79,7 @@ pub fn main() {
         // Convert the src event to a conrod event.
         let size = window.size();
         let (win_w, win_h) = (size.width as conrod_core::Scalar, size.height as conrod_core::Scalar);
-        if let Some(e) = conrod_piston_backend::event::convert(event.clone(), win_w, win_h) {
+        if let Some(e) = conrod_piston::event::convert(event.clone(), win_w, win_h) {
             ui.handle_event(e);
         }
 
@@ -112,14 +112,14 @@ pub fn main() {
                 fn texture_from_image<T>(img: &T) -> &T { img }
 
                 // Draw the conrod `render::Primitives`.
-                conrod_piston_backend::draw::primitives(primitives,
-                                                               context,
-                                                               graphics,
-                                                               &mut text_texture_cache,
-                                                               &mut glyph_cache,
-                                                               &image_map,
-                                                               cache_queued_glyphs,
-                                                               texture_from_image);
+                conrod_piston::draw::primitives(primitives,
+                                                context,
+                                                graphics,
+                                                &mut text_texture_cache,
+                                                &mut glyph_cache,
+                                                &image_map,
+                                                cache_queued_glyphs,
+                                                texture_from_image);
             }
         });
     }

@@ -14,7 +14,7 @@
 extern crate conrod_core;
 extern crate glium;
 
-#[macro_use] extern crate conrod_derive;
+extern crate conrod_derive;
 extern crate find_folder;
 #[cfg(all(feature = "conrod_winit_glue"))] mod support;
 
