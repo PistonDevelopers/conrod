@@ -47,16 +47,22 @@ First, open up the command line on your system and follow these steps:
 3. Test that conrod builds without problems
 
   ```txt
-  cargo build
+  cargo build --release
   ```
 
-4. Build and run the examples (with --release optimisations turned on)!
+4. Change to the `conrod_glium` backend directory (it has the most examples)
 
   ```txt
-  cargo run --release --features "winit glium" --example all_winit_glium
-  cargo run --release --features "winit glium" --example canvas
-  cargo run --release --features "winit glium" --example primitives
-  cargo run --release --features "winit glium" --example text
+  cd backends/conrod_glium
+  ```
+
+5. Build and run the examples (with --release optimisations turned on)!
+
+  ```txt
+  cargo run --release --example all_winit_glium
+  cargo run --release --example canvas
+  cargo run --release --example primitives
+  cargo run --release --example text
   ```
 
 If you ran into any issues with these steps, please let us know by filing an issue at the Conrod
@@ -64,7 +70,6 @@ If you ran into any issues with these steps, please let us know by filing an iss
 encountered your problem.
 
 Otherwise, you're now ready to use conrod!
-
 
 [rust-lang]:                https://www.rust-lang.org/                          "The Rust Homepage"
 [The Official Rust Book]:   https://doc.rust-lang.org/book/                     "The Official Rust Book"
