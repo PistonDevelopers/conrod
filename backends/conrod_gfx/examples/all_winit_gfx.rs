@@ -19,7 +19,6 @@ extern crate image;
 use self::conrod_winit::winit;
 
 use conrod_example_shared::{WIN_W, WIN_H};
-use glutin::GlContext;
 use gfx::Device;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
@@ -39,7 +38,7 @@ fn main() {
 
     // Initialize gfx things
     let (window, mut device, mut factory, rtv, _) =
-        gfx_window_glutin::init::<conrod_gfx::ColorFormat, DepthFormat>(builder, context, &events_loop );
+        gfx_window_glutin::init::<conrod_gfx::ColorFormat, DepthFormat>(builder, context, &events_loop).unwrap();
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
     let mut renderer = conrod_gfx::Renderer::new(&mut factory, &rtv, window.get_hidpi_factor() as f64).unwrap();

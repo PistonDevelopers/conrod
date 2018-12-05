@@ -19,8 +19,8 @@ all-features = true
 
 [dependencies]
 conrod_derive = { path = "../conrod_derive", version = "0.2" }
-daggy = "0.5.0"
+daggy = "0.5"
 fnv = "1.0"
-num = "0.1.30"
-pistoncore-input = "0.21.0"
-rusttype = { version = "0.5.0", features = ["gpu_cache"] }
+num = "0.2"
+pistoncore-input = "0.23"
+rusttype = { version = "0.7", features = ["gpu_cache"] }

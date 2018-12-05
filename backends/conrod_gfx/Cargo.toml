@@ -29,7 +29,6 @@ conrod_winit = { path = "../conrod_winit", version = "0.62" }
 find_folder = "0.3.0"
 image = "0.19"
 petgraph = "0.4"
-rand = "0.5"
 ## glutin_gfx.rs example dependencies
-gfx_window_glutin = "0.25"
-glutin = "0.17"
+gfx_window_glutin = "0.28"
+glutin = "0.19"

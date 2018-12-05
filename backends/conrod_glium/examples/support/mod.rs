@@ -1,10 +1,9 @@
 #![allow(dead_code)]
-extern crate rand;
+
+extern crate conrod_winit;
 
 use std;
 use glium;
-
-extern crate conrod_winit;
 
 pub struct GliumDisplayWinitWrapper(pub glium::Display);
 

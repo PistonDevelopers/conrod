@@ -10,8 +10,6 @@ use gfx::{Resources, Factory, texture, PipelineState,
           traits::FactoryExt,
 };
 
-//use gfx_core::buffer::Role::Vertex;
-
 use conrod_core::{
     Rect,
     Scalar,
@@ -19,7 +17,6 @@ use conrod_core::{
     image,
     render,
     text::{rt, GlyphCache},
-    //widget::triangles::Vertex,
 };
 
 /// A `Command` describing a step in the drawing process.
@@ -205,8 +202,11 @@ impl<'a, R: Resources> Renderer<'a, R> {
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
 
-            let cache = GlyphCache::new(width, height,
-                                        SCALE_TOLERANCE, POSITION_TOLERANCE);
+            let cache = GlyphCache::builder()
+                .dimensions(width, height)
+                .scale_tolerance(SCALE_TOLERANCE)
+                .position_tolerance(POSITION_TOLERANCE)
+                .build();
 
             let data = vec![0; (width * height * 4) as usize];
 
