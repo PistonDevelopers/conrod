@@ -1,13 +1,14 @@
 #[macro_use]
-extern crate conrod;
+extern crate conrod_core;
+extern crate conrod_glium;
+extern crate conrod_winit;
 extern crate find_folder;
+extern crate glium;
 
-use conrod::{widget, Positionable, Colorable, Widget};
-use conrod::backend::glium::glium::{self, Surface};
+use conrod_core::{widget, Positionable, Colorable, Widget};
+use glium::Surface;
 
 fn main() {
-
-
     const WIDTH: u32 = 400;
     const HEIGHT: u32 = 200;
 
@@ -15,15 +16,15 @@ fn main() {
     let mut events_loop = glium::glutin::EventsLoop::new();
     let window = glium::glutin::WindowBuilder::new()
         .with_title("Hello Conrod")
-        .with_dimensions(WIDTH, HEIGHT);
+        .with_dimensions((WIDTH, HEIGHT).into());
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
     let display = glium::Display::new(window, context, &events_loop).unwrap();
-
+    let display = GliumDisplayWinitWrapper(display);
 
     // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+    let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Generate the widget identifiers.
     widget_ids!(struct Ids { text });
@@ -37,11 +38,11 @@ fn main() {
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
-    let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
+    let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
 
-    // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+    // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
 
     let mut event_loop = EventLoop::new();
     'main: loop {
@@ -52,7 +53,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
+            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }
@@ -60,7 +61,7 @@ fn main() {
             match event {
                 glium::glutin::Event::WindowEvent { event, .. } => {
                     match event {
-                        glium::glutin::WindowEvent::Closed |
+                        glium::glutin::WindowEvent::CloseRequested |
                         glium::glutin::WindowEvent::KeyboardInput {
                             input: glium::glutin::KeyboardInput {
                                 virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape), ..
@@ -81,7 +82,7 @@ fn main() {
             // "Hello World!" in the middle of the screen.
             widget::Text::new("Hello World!")
                 .middle_of(ui.window)
-                .color(conrod::color::WHITE)
+                .color(conrod_core::color::WHITE)
                 .font_size(32)
                 .set(ids.text, ui);
         }
@@ -89,17 +90,14 @@ fn main() {
 
         // Render the `Ui` and then display it on the screen.
         if let Some(primitives) = ui.draw_if_changed() {
-            renderer.fill(&display, primitives, &image_map);
-            let mut target = display.draw();
+            renderer.fill(&display.0, primitives, &image_map);
+            let mut target = display.0.draw();
             target.clear_color(0.0, 1.0, 0.0, 1.0);
-            renderer.draw(&display, &mut target, &image_map).unwrap();
+            renderer.draw(&display.0, &mut target, &image_map).unwrap();
             target.finish().unwrap();
         }
     }
 }
-
-
-
 
 pub struct EventLoop {
     ui_needs_update: bool,
@@ -154,5 +152,16 @@ impl EventLoop {
     /// requires further updates to do so.
     pub fn needs_update(&mut self) {
         self.ui_needs_update = true;
+    }
+}
+
+pub struct GliumDisplayWinitWrapper(pub glium::Display);
+
+impl conrod_winit::WinitWindow for GliumDisplayWinitWrapper {
+    fn get_inner_size(&self) -> Option<(u32, u32)> {
+        self.0.gl_window().get_inner_size().map(Into::into)
+    }
+    fn hidpi_factor(&self) -> f32 {
+        self.0.gl_window().get_hidpi_factor() as _
     }
 }

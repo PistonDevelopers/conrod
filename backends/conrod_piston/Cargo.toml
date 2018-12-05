@@ -28,6 +28,7 @@ pistoncore-input = "0.21.0"
 piston_window = "0.80"
 
 [dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared" }
 find_folder = "0.3.0"
 image = "0.19"
 petgraph = "0.4"

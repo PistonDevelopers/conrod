@@ -1,21 +1,17 @@
-extern crate conrod_core;
+#[macro_use] extern crate conrod_core;
+extern crate conrod_glium;
+extern crate conrod_winit;
+extern crate find_folder;
 extern crate glium;
 
-#[cfg(feature = "conrod_winit_glue")]
 mod support;
 
-#[cfg(all(feature = "conrod_winit_glue"))]
+use glium::Surface;
+
+const WIDTH: u32 = 600;
+const HEIGHT: u32 = 300;
+
 fn main() {
-    extern crate conrod_glium_backend;
-    extern crate conrod_winit_backend;
-    extern crate find_folder;
-
-    use conrod_core::{self, widget_ids};
-    use glium::{self, Surface};
-
-    const WIDTH: u32 = 600;
-    const HEIGHT: u32 = 300;
-
     // Build the window.
     let mut events_loop = glium::glutin::EventsLoop::new();
     let window = glium::glutin::WindowBuilder::new()
@@ -41,7 +37,7 @@ fn main() {
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod_glium_backend::Renderer::new(&display.0).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
@@ -56,7 +52,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit_backend::convert_event(event.clone(), &display) {
+            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }
@@ -107,10 +103,4 @@ fn main() {
             target.finish().unwrap();
         }
     }
-}
-
-#[cfg(not(all(feature = "conrod_winit_glue")))]
-fn main() {
-    println!("This example requires the `conrod_winit_glue` feature. \
-             Try running `cargo run --release --features=\"conrod_winit_glue\" --example <example_name>`");
 }

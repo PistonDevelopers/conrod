@@ -24,7 +24,8 @@ glium = { version = "0.22" }
 
 [dev-dependencies]
 conrod_derive = { path = "../../conrod_derive", version = "0.2" }
-conrod_winit = { path = "../conrod_winit" }
+conrod_example_shared = { path = "../conrod_example_shared" }
+conrod_winit = { path = "../conrod_winit", version = "0.62" }
 find_folder = "0.3.0"
 image = "0.19"
 petgraph = "0.4"

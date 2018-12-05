@@ -5,7 +5,8 @@
 
 #![allow(unused_variables)]
 
-#[macro_use] extern crate conrod_core;
+extern crate conrod_core;
+extern crate conrod_example_shared;
 extern crate conrod_gfx;
 extern crate conrod_winit;
 extern crate gfx;
@@ -15,15 +16,12 @@ extern crate glutin;
 extern crate find_folder;
 extern crate image;
 
-mod support;
-
 use self::conrod_winit::winit;
 
+use conrod_example_shared::{WIN_W, WIN_H};
 use glutin::GlContext;
 use gfx::Device;
 
-const WIN_W: u32 = support::WIN_W;
-const WIN_H: u32 = support::WIN_H;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 type DepthFormat = gfx::format::DepthStencil;
@@ -47,8 +45,10 @@ fn main() {
     let mut renderer = conrod_gfx::Renderer::new(&mut factory, &rtv, window.get_hidpi_factor() as f64).unwrap();
 
     // Create Ui and Ids of widgets to instantiate
-    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
-    let ids = support::Ids::new(ui.widget_id_generator());
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+        .theme(conrod_example_shared::theme())
+        .build();
+    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
     // Load font from file
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -91,7 +91,7 @@ fn main() {
     let rust_logo = image_map.insert(load_rust_logo::<conrod_gfx::ColorFormat,_,_>(&mut factory));
 
     // Demonstration app state that we'll control with our conrod GUI.
-    let mut app = support::DemoApp::new(rust_logo);
+    let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
     'main: loop {
         // If the window is closed, this will be None for one tick, so to avoid panicking with
@@ -151,7 +151,7 @@ fn main() {
         // Update widgets if any event has happened
         if ui.global_input().events().next().is_some() {
             let mut ui = ui.set_widgets();
-            support::gui(&mut ui, &ids, &mut app);
+            conrod_example_shared::gui(&mut ui, &ids, &mut app);
         }
     }
 }

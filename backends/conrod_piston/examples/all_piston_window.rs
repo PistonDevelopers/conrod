@@ -1,23 +1,19 @@
 //! An example demonstrating all widgets in a long, vertically scrollable window.
 
-#[macro_use]
 extern crate conrod_core;
-
+extern crate conrod_example_shared;
 extern crate find_folder;
 extern crate piston_window;
 extern crate conrod_piston;
-
-mod support;
 
 use self::piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use self::piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
 use self::piston_window::OpenGL;
 use self::piston_window::texture::UpdateTexture;
 
-
 pub fn main() {
-    const WIDTH: u32 = support::WIN_W;
-    const HEIGHT: u32 = support::WIN_H;
+    const WIDTH: u32 = conrod_example_shared::WIN_W;
+    const HEIGHT: u32 = conrod_example_shared::WIN_H;
 
     // Construct the window.
     let mut window: PistonWindow =
@@ -31,7 +27,7 @@ pub fn main() {
 
     // construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64])
-        .theme(support::theme())
+        .theme(conrod_example_shared::theme())
         .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -54,11 +50,11 @@ pub fn main() {
     };
 
     // Instantiate the generated list of widget identifiers.
-    let ids = support::Ids::new(ui.widget_id_generator());
+    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
     // Load the rust logo from file to a piston_window texture.
     let rust_logo: G2dTexture = {
-        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
         let path = assets.join("images/rust.png");
         let factory = &mut window.factory;
         let settings = TextureSettings::new();
@@ -71,7 +67,7 @@ pub fn main() {
     let rust_logo = image_map.insert(rust_logo);
 
     // A demonstration of some state that we'd like to control with the App.
-    let mut app = support::DemoApp::new(rust_logo);
+    let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
     // Poll events from the window.
     while let Some(event) = window.next() {
@@ -85,7 +81,7 @@ pub fn main() {
 
         event.update(|_| {
             let mut ui = ui.set_widgets();
-            support::gui(&mut ui, &ids, &mut app);
+            conrod_example_shared::gui(&mut ui, &ids, &mut app);
         });
 
         window.draw_2d(&event, |context, graphics| {
@@ -124,4 +120,3 @@ pub fn main() {
         });
     }
 }
-

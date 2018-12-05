@@ -12,15 +12,15 @@
 //! For more information, please see the `Widget` trait documentation.
 
 extern crate conrod_core;
+#[macro_use] extern crate conrod_derive;
+extern crate conrod_glium;
+extern crate conrod_winit;
+extern crate find_folder;
 extern crate glium;
 
-extern crate conrod_derive;
-extern crate find_folder;
-#[cfg(all(feature = "conrod_winit_glue"))] mod support;
-
+mod support;
 
 /// The module in which we'll implement our own custom circular button.
-#[cfg(all(feature = "conrod_winit_glue"))]
 mod circular_button {
     use conrod_core::{self, widget_ids, widget, Colorable, Labelable, Point, Positionable, Widget};
 
@@ -235,12 +235,7 @@ mod circular_button {
     }
 }
 
-
-#[cfg(all(feature = "conrod_winit_glue"))]
 fn main() {
-    extern crate conrod_glium_backend;
-    extern crate conrod_winit_backend;
-
     use conrod_core::{self, widget, widget_ids, Colorable, Labelable, Positionable, Sizeable, Widget};
     use glium::{self, Surface};
     use support;
@@ -281,7 +276,7 @@ fn main() {
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod_glium_backend::Renderer::new(&display.0).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
@@ -294,7 +289,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit_backend::convert_event(event.clone(), &display) {
+            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }
@@ -348,10 +343,4 @@ fn main() {
             target.finish().unwrap();
         }
     }
-}
-
-#[cfg(not(all(feature = "conrod_winit_glue")))]
-fn main() {
-    println!("This example requires the `conrod_winit_glue` feature. \
-             Try running `cargo run --release --features=\"conrod_winit_glue\" --example <example_name>`");
 }

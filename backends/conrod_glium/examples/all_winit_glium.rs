@@ -1,5 +1,6 @@
 //! A demonstration using winit to provide events and glium for drawing the Ui.
 extern crate conrod_core;
+extern crate conrod_example_shared;
 extern crate conrod_glium;
 extern crate conrod_winit;
 extern crate find_folder;
@@ -8,12 +9,9 @@ extern crate image;
 
 mod support;
 
-use self::conrod_glium::Renderer;
+use conrod_example_shared::{WIN_W, WIN_H};
+use conrod_glium::Renderer;
 use glium::Surface;
-
-// The initial width and height in "points".
-const WIN_W: u32 = support::WIN_W;
-const WIN_H: u32 = support::WIN_H;
 
 fn main() {
     // Build the window.
@@ -28,10 +26,10 @@ fn main() {
     let display = support::GliumDisplayWinitWrapper(display);
 
     // Construct our `Ui`.
-    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(support::theme()).build();
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(conrod_example_shared::theme()).build();
 
-    // The `widget::Id` of each widget instantiated in `support::gui`.
-    let ids = support::Ids::new(ui.widget_id_generator());
+    // The `widget::Id` of each widget instantiated in `conrod_example_shared::gui`.
+    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -53,7 +51,7 @@ fn main() {
     let rust_logo = image_map.insert(load_rust_logo(&display.0));
 
     // A demonstration of some app state that we want to control with the conrod GUI.
-    let mut app = support::DemoApp::new(rust_logo);
+    let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
@@ -69,7 +67,7 @@ fn main() {
     // Start the loop:
     //
     // - Poll the window for available events.
-    // - Update the widgets via the `support::gui` fn.
+    // - Update the widgets via the `conrod_example_shared::gui` fn.
     // - Render the current state of the `Ui`.
     // - Repeat.
     let mut event_loop = support::EventLoop::new();
@@ -102,7 +100,7 @@ fn main() {
         }
 
         // Instantiate a GUI demonstrating every widget type provided by conrod.
-        support::gui(&mut ui.set_widgets(), &ids, &mut app);
+        conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
 
         // Draw the `Ui`.
         if let Some(primitives) = ui.draw_if_changed() {

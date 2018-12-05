@@ -1,5 +1,4 @@
-//! This module is used for sharing a few items between the `all_widgets.rs`, `glutin_glium.rs` and
-//! `glutin_gfx.rs` examples.
+//! This crate is used for sharing a few items between the conrod examples.
 //!
 //! The module contains:
 //!
@@ -11,10 +10,8 @@
 //! and drawing backends behave in the same manner.
 #![allow(dead_code)]
 
+#[macro_use] extern crate conrod_core;
 extern crate rand;
-
-use conrod_core;
-use std;
 
 pub const WIN_W: u32 = 600;
 pub const WIN_H: u32 = 420;
@@ -68,11 +65,9 @@ widget_ids! {
     pub struct Ids {
         // The scrollable canvas.
         canvas,
-
         // The title and introduction widgets.
         title,
         introduction,
-
         // Shapes.
         shapes_canvas,
         rounded_rectangle,
@@ -87,23 +82,19 @@ widget_ids! {
         oval_fill,
         oval_outline,
         circle,
-
         // Image.
         image_title,
         rust_logo,
-
         // Button, XyPad, Toggle.
         button_title,
         button,
         xy_pad,
         toggle,
         ball,
-
         // NumberDialer, PlotPath
         dialer_title,
         number_dialer,
         plot_path,
-
         // Scrollbar
         canvas_scrollbar,
     }
