@@ -755,7 +755,7 @@ impl Renderer {
                     let color = color.unwrap_or(color::WHITE).to_fsa();
 
                     if let Some(image) = image_map.get(&image_id) {
-                        let (image_w, image_h) = image_map.get(&image_id).unwrap().dimensions();
+                        let (image_w, image_h) = image.dimensions();
                         let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
 
                         // Get the sides of the source rectangle as uv coordinates.
