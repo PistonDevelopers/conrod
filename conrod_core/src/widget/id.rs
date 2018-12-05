@@ -111,7 +111,7 @@ impl ListWalk {
 ///
 /// ```
 /// #[macro_use]
-/// extern crate conrod;
+/// extern crate conrod_core;
 ///
 /// widget_ids! {
 ///     struct Ids {
@@ -125,18 +125,18 @@ impl ListWalk {
 /// The following will be produced:
 ///
 /// ```
-/// # extern crate conrod;
+/// # extern crate conrod_core;
 /// # fn main() {}
 /// struct Ids {
-///     button: conrod::widget::Id,
-///     toggles: conrod::widget::id::List,
+///     button: conrod_core::widget::Id,
+///     toggles: conrod_core::widget::id::List,
 /// }
 ///
 /// impl Ids {
-///     pub fn new(mut generator: conrod::widget::id::Generator) -> Self {
+///     pub fn new(mut generator: conrod_core::widget::id::Generator) -> Self {
 ///         Ids {
 ///             button: generator.next(),
-///             toggles: conrod::widget::id::List::new(),
+///             toggles: conrod_core::widget::id::List::new(),
 ///         }
 ///     }
 /// }
@@ -209,12 +209,12 @@ macro_rules! widget_ids {
     //
     // ```ignore
     // struct Ids {
-    //     button: conrod::widget::Id,
-    //     toggles: conrod::widget::id::List,
+    //     button: conrod_core::widget::Id,
+    //     toggles: conrod_core::widget::id::List,
     // }
     // ```
 
-    // Converts `foo[]` tokens to `foo: conrod::widget::id::List`.
+    // Converts `foo[]` tokens to `foo: conrod_core::widget::id::List`.
     (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
         { $($id_field:ident: $T:path,)* } $id:ident[], $($rest:tt)*
     }) => {
@@ -229,7 +229,7 @@ macro_rules! widget_ids {
         }
     };
 
-    // Converts `foo` tokens to `foo: conrod::widget::Id`.
+    // Converts `foo` tokens to `foo: conrod_core::widget::Id`.
     (define_struct $(#[$attr:meta])* [$($public:tt)*] $Ids:ident {
         { $($id_field:ident: $T:path,)* } $id:ident, $($rest:tt)*
     }) => {
@@ -299,11 +299,11 @@ macro_rules! widget_ids {
     // ```ignore
     // Ids {
     //     button: generator.next(),
-    //     toggles: conrod::widget::id::List::new(),
+    //     toggles: conrod_core::widget::id::List::new(),
     // }
     // ```
 
-    // Converts `foo[]` to `foo: conrod::widget::id::List::new()`.
+    // Converts `foo[]` to `foo: conrod_core::widget::id::List::new()`.
     (constructor $Ids:ident, $generator:ident {
         { $($id_field:ident: $new:expr,)* } $id:ident[], $($rest:tt)*
     }) => {

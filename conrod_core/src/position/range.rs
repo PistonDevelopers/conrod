@@ -33,7 +33,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range { start: 0.0, end: 10.0 }, Range::new(0.0, 10.0));
     /// ```
@@ -49,7 +49,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 10.0), Range::from_pos_and_len(5.0, 10.0));
     /// assert_eq!(Range::new(-5.0, 1.0), Range::from_pos_and_len(-2.0, 6.0));
@@ -67,7 +67,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(-5.0, 5.0).magnitude(), 10.0);
     /// assert_eq!(Range::new(5.0, -5.0).magnitude(), -10.0);
@@ -82,7 +82,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(-5.0, 5.0).len(), 10.0);
     /// assert_eq!(Range::new(5.0, -5.0).len(), 10.0);
@@ -97,7 +97,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(-5.0, 5.0).middle(), 0.0);
     /// assert_eq!(Range::new(5.0, -5.0).middle(), 0.0);
@@ -114,7 +114,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(-5.0, 5.0).invert(), Range::new(5.0, -5.0));
     /// assert_eq!(Range::new(-10.0, 10.0).invert(), Range::new(10.0, -10.0));
@@ -130,7 +130,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(0.0, 5.0);
     ///
@@ -157,7 +157,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 5.0).shift(5.0), Range::new(5.0, 10.0));
     /// assert_eq!(Range::new(0.0, 5.0).shift(-5.0), Range::new(-5.0, 0.0));
@@ -172,7 +172,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 5.0).direction(), 1.0);
     /// assert_eq!(Range::new(0.0, 0.0).direction(), 0.0);
@@ -191,7 +191,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 5.0).undirected(), Range::new(0.0, 5.0));
     /// assert_eq!(Range::new(5.0, 1.0).undirected(), Range::new(1.0, 5.0));
@@ -208,7 +208,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(0.0, 3.0);
     /// let b = Range::new(7.0, 10.0);
@@ -236,7 +236,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(0.0, 6.0);
     /// let b = Range::new(4.0, 10.0);
@@ -271,7 +271,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(0.0, 3.0);
     /// let b = Range::new(7.0, 10.0);
@@ -291,7 +291,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let range = Range::new(0.0, 10.0);
     /// assert!(range.is_over(5.0));
@@ -310,7 +310,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.25, 9.5).round(), Range::new(0.0, 10.0));
     /// assert_eq!(Range::new(4.95, -5.3).round(), Range::new(5.0, -5.0));
@@ -324,7 +324,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.25, 9.5).floor(), Range::new(0.0, 9.0));
     /// assert_eq!(Range::new(4.95, -5.3).floor(), Range::new(4.0, -6.0));
@@ -338,7 +338,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 10.0).pad_start(2.0), Range::new(2.0, 10.0));
     /// assert_eq!(Range::new(10.0, 0.0).pad_start(2.0), Range::new(8.0, 0.0));
@@ -353,7 +353,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 10.0).pad_end(2.0), Range::new(0.0, 8.0));
     /// assert_eq!(Range::new(10.0, 0.0).pad_end(2.0), Range::new(10.0, 2.0));
@@ -368,7 +368,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 10.0).pad(2.0), Range::new(2.0, 8.0));
     /// assert_eq!(Range::new(10.0, 0.0).pad(2.0), Range::new(8.0, 2.0));
@@ -382,7 +382,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 10.0).pad_ends(1.0, 2.0), Range::new(1.0, 8.0));
     /// assert_eq!(Range::new(10.0, 0.0).pad_ends(4.0, 3.0), Range::new(6.0, 3.0));
@@ -396,7 +396,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert_eq!(Range::new(0.0, 5.0).clamp_value(7.0), 5.0);
     /// assert_eq!(Range::new(5.0, -2.5).clamp_value(-3.0), -2.5);
@@ -413,7 +413,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(2.5, 5.0);
     /// assert_eq!(a.stretch_to_value(10.0), Range::new(2.5, 10.0));
@@ -449,7 +449,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// assert!(Range::new(0.0, 1.0).has_same_direction(Range::new(100.0, 200.0)));
     /// assert!(Range::new(0.0, -5.0).has_same_direction(Range::new(-2.5, -6.0)));
@@ -469,7 +469,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(2.5, 7.5);
     /// let b = Range::new(0.0, 10.0);
@@ -498,7 +498,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(2.5, 7.5);
     /// let b = Range::new(0.0, 10.0);
@@ -524,7 +524,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(0.0, 5.0);
     /// let b = Range::new(0.0, 10.0);
@@ -548,7 +548,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(2.5, 7.5);
     /// let b = Range::new(0.0, 10.0);
@@ -576,7 +576,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::Range;
+    /// use conrod_core::Range;
     ///
     /// let a = Range::new(2.5, 7.5);
     /// let b = Range::new(0.0, 10.0);
@@ -613,7 +613,7 @@ impl Range {
     /// # Examples
     ///
     /// ```
-    /// use conrod::position::{Edge, Range};
+    /// use conrod_core::position::{Edge, Range};
     ///
     /// assert_eq!(Range::new(0.0, 10.0).closest_edge(4.0), Edge::Start);
     /// assert_eq!(Range::new(0.0, 10.0).closest_edge(7.0), Edge::End);

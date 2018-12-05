@@ -31,6 +31,7 @@ mod border;
 pub mod color;
 pub mod event;
 pub mod graph;
+pub mod guide;
 pub mod image;
 pub mod input;
 mod label;
