@@ -1,0 +1,10 @@
+[package]
+name = "conrod_vulkano"
+version = "0.1.0"
+authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.62" }
+vulkano = "0.11"
+vulkano-shaders = "0.11"

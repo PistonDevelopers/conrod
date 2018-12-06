@@ -4,7 +4,8 @@ members = [
     "conrod_derive",
     "backends/conrod_example_shared",
     "backends/conrod_winit",
-    "backends/conrod_glium",
     "backends/conrod_gfx",
+    "backends/conrod_glium",
     "backends/conrod_piston",
+    "backends/conrod_vulkano",
 ]
