@@ -8,3 +8,11 @@ edition = "2018"
 conrod_core = { path = "../../conrod_core", version = "0.62" }
 vulkano = "0.11"
 vulkano-shaders = "0.11"
+
+[dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared" }
+conrod_winit = { path = "../conrod_winit", version = "0.62" }
+find_folder = "0.3"
+image = "0.20"
+vulkano-win = "0.11"
+winit = "0.18"

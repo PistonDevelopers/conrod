@@ -5,24 +5,23 @@ extern crate vulkano_shaders;
 
 use std::sync::Arc;
 
-use conrod_core::{render, color, image, Rect, Scalar};
-use conrod_core::text::{rt,GlyphCache};
+use conrod_core::text::{rt, GlyphCache};
+use conrod_core::{color, image, render, Rect, Scalar};
 
-use vulkano::command_buffer::AutoCommandBufferBuilder;
-use vulkano::pipeline::viewport::Scissor;
-use vulkano::instance::QueueFamily;
-use vulkano::device::*;
-use vulkano::pipeline::*;
-use vulkano::descriptor::descriptor_set::FixedSizeDescriptorSetsPool;
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::buffer::CpuAccessibleBuffer;
+use vulkano::command_buffer::DynamicState;
+use vulkano::descriptor::descriptor_set::{DescriptorSet, FixedSizeDescriptorSetsPool};
+use vulkano::device::*;
+use vulkano::format::*;
 use vulkano::framebuffer::*;
 use vulkano::image::*;
-use vulkano::format::*;
-use vulkano::sampler::*;
+use vulkano::instance::QueueFamily;
+use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
-use vulkano::command_buffer::DynamicState;
+use vulkano::pipeline::*;
+use vulkano::sampler::*;
 
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
@@ -76,7 +75,7 @@ pub const MODE_GEOMETRY: u32 = 2;
 
 mod vs {
     vulkano_shaders::shader! {
-        ty: "vertex",
+    ty: "vertex",
         src: "
 #version 450
 
@@ -101,7 +100,7 @@ void main() {
 
 mod fs {
     vulkano_shaders::shader! {
-        ty: "fragment",
+    ty: "fragment",
         src: "
 #version 450
 
@@ -133,17 +132,17 @@ void main() {
 
 /// The `Vertex` type passed to the vertex shader.
 #[derive(Debug, Clone, Copy)]
-pub  struct Vertex { 
+pub struct Vertex {
     /// The position of the vertex within vector space.
     ///
-    /// [-1.0, -1.0] is the leftmost, bottom position of the display.
-    /// [1.0, 1.0] is the rightmost, top position of the display.
-    pub pos:   [f32; 2],
+    /// [-1.0, 1.0] is the leftmost, bottom position of the display.
+    /// [1.0, -1.0] is the rightmost, top position of the display.
+    pub pos: [f32; 2],
     /// The coordinates of the texture used by this `Vertex`.
     ///
     /// [0.0, 0.0] is the leftmost, top position of the texture.
     /// [1.0, 1.0] is the rightmost, bottom position of the texture.
-    pub uv:    [f32; 2],
+    pub uv: [f32; 2],
     /// A color associated with the `Vertex`.
     ///
     /// The way that the color is used depends on the `mode`.
@@ -155,7 +154,7 @@ pub  struct Vertex {
     /// `2` for rendering non-textured 2D geometry.
     ///
     /// If any other value is given, the fragment shader will not output any color.
-    pub mode:  u32, 
+    pub mode: u32,
 }
 
 impl_vertex!(Vertex, pos, uv, color, mode);
@@ -163,63 +162,93 @@ impl_vertex!(Vertex, pos, uv, color, mode);
 /// A type used for translating `render::Primitives` into `Command`s that indicate how to draw the
 /// conrod GUI using `vulkano`.
 pub struct Renderer {
-    pipeline: Box<Arc<GraphicsPipelineAbstract+Send+Sync>>,
+    pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
     glyph_cache: GlyphCache<'static>,
-    glyph_uploads: CpuBufferPool<[u8; 4]>,
+    glyph_uploads: Arc<CpuBufferPool<[u8; 4]>>,
     glyph_cache_tex: Arc<StorageImage<R8G8B8A8Unorm>>,
     sampler: Arc<Sampler>,
     dpi_factor: f64,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
-    tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract+Send+Sync>>,
+    tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract + Send + Sync>>,
+}
+
+/// All commands that must be submitted to the command buffer for caching text glyphs.
+pub struct GlyphCacheCommands {
+    /// The GPU image to which the glyphs are cached
+    pub glyph_cache_texture: Arc<StorageImage<R8G8B8A8Unorm>>,
+    /// The cpu buffer pool used to upload glyphs.
+    pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<[u8; 4]>>,
+    /// Commands for caching individual glyphs.
+    pub commands: Vec<GlyphCacheCommand>,
+}
+
+/// An command for uploading an individual glyph.
+#[derive(Debug)]
+pub struct GlyphCacheCommand {
+    pub offset: [u32; 2],
+    pub size: [u32; 2],
+    pub data: Vec<[u8; 4]>,
+}
+
+/// A draw command that maps directly to the `AutoCommandBufferBuilder::draw` method. By returning
+/// `DrawCommand`s, we can avoid consuming the entire `AutoCommandBufferBuilder` itself which might
+/// not always be available from APIs that wrap Vulkan.
+pub struct DrawCommand {
+    pub graphics_pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
+    pub dynamic_state: DynamicState,
+    pub descriptor_set: Arc<DescriptorSet + Send + Sync>,
+    pub vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
 }
 
 impl Renderer {
     /// Construct a new empty `Renderer`.
-    pub fn new<
-        'a,
-        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static
-    > (
+    pub fn new<'a, L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static>(
         device: Arc<Device>,
         subpass: Subpass<L>,
         graphics_queue_family: QueueFamily<'a>,
         width: u32,
         height: u32,
-        dpi_factor: f64
+        dpi_factor: f64,
     ) -> Self {
         let sampler = Sampler::new(
-            device.clone(), 
+            device.clone(),
             Filter::Linear,
-            Filter::Linear, 
+            Filter::Linear,
             MipmapMode::Nearest,
             SamplerAddressMode::ClampToEdge,
             SamplerAddressMode::ClampToEdge,
             SamplerAddressMode::ClampToEdge,
-            0.0, 1.0, 0.0, 0.0
-        ).unwrap();
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+        )
+        .unwrap();
 
-        let vertex_shader = vs::Shader::load(device.clone())
-            .expect("failed to create shader module");
+        let vertex_shader =
+            vs::Shader::load(device.clone()).expect("failed to create shader module");
 
-        let fragment_shader = fs::Shader::load(device.clone())
-            .expect("failed to create shader module");
+        let fragment_shader =
+            fs::Shader::load(device.clone()).expect("failed to create shader module");
 
-        let pipeline = Arc::new(GraphicsPipeline::start()
-            .vertex_input_single_buffer::<Vertex>()
-            .vertex_shader(vertex_shader.main_entry_point(), ())
-            .depth_stencil_disabled()
-            .triangle_list()
-            .front_face_clockwise()
-            //.cull_mode_back()
-            .viewports_scissors_dynamic(1)
-            .fragment_shader(fragment_shader.main_entry_point(), ())
-            .blend_alpha_blending()
-            .render_pass(subpass)
-            .build(device.clone())
-            .unwrap());
+        let pipeline = Arc::new(
+            GraphicsPipeline::start()
+                .vertex_input_single_buffer::<Vertex>()
+                .vertex_shader(vertex_shader.main_entry_point(), ())
+                .depth_stencil_disabled()
+                .triangle_list()
+                .front_face_clockwise()
+                //.cull_mode_back()
+                .viewports_scissors_dynamic(1)
+                .fragment_shader(fragment_shader.main_entry_point(), ())
+                .blend_alpha_blending()
+                .render_pass(subpass)
+                .build(device.clone())
+                .unwrap(),
+        );
 
         let (glyph_cache, glyph_cache_tex) = {
-
             let width = (width as f64 * dpi_factor) as u32;
             let height = (height as f64 * dpi_factor) as u32;
 
@@ -233,38 +262,44 @@ impl Renderer {
                 .build();
 
             let glyph_cache_tex = StorageImage::with_usage(
-                device.clone(), 
-                Dimensions::Dim2d{ width, height }, 
-                R8G8B8A8Unorm, 
+                device.clone(),
+                Dimensions::Dim2d { width, height },
+                R8G8B8A8Unorm,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
-                    .. ImageUsage::none()
-                }, 
-                vec![graphics_queue_family]
-            ).unwrap();
+                    ..ImageUsage::none()
+                },
+                vec![graphics_queue_family],
+            )
+            .unwrap();
 
             (glyph_cache, glyph_cache_tex)
         };
 
         let tex_descs = FixedSizeDescriptorSetsPool::new(pipeline.clone() as Arc<_>, 0);
+        let glyph_uploads = Arc::new(CpuBufferPool::upload(device.clone()));
 
         Renderer {
-            pipeline: Box::new(pipeline),
+            pipeline: pipeline,
             glyph_cache,
-            glyph_uploads: CpuBufferPool::upload(device.clone()),
+            glyph_uploads,
             glyph_cache_tex,
             sampler,
             dpi_factor,
             commands: Vec::new(),
             vertices: Vec::new(),
-            tex_descs,            
+            tex_descs,
         }
     }
 
     /// Produce an `Iterator` yielding `Command`s.
     pub fn commands(&self) -> Commands {
-        let Renderer { ref commands, ref vertices, .. } = *self;
+        let Renderer {
+            ref commands,
+            ref vertices,
+            ..
+        } = *self;
         Commands {
             commands: commands.iter(),
             vertices: vertices,
@@ -272,27 +307,25 @@ impl Renderer {
     }
 
     /// Fill the inner vertex and command buffers by translating the given `primitives`.
-    pub fn fill<
-        P: render::PrimitiveWalker
-    > (
+    pub fn fill<P: render::PrimitiveWalker>(
         &mut self,
-        mut cmd: AutoCommandBufferBuilder,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
-        mut primitives: P   
-    ) -> AutoCommandBufferBuilder {
-        let Renderer { 
-            ref mut commands, 
-            ref mut vertices, 
-            ref mut glyph_cache, 
-            ref     glyph_uploads,
-            ref mut glyph_cache_tex, 
-            dpi_factor, 
-            .. 
+        mut primitives: P,
+    ) -> GlyphCacheCommands {
+        let Renderer {
+            ref mut commands,
+            ref mut vertices,
+            ref mut glyph_cache,
+            ref glyph_uploads,
+            ref glyph_cache_tex,
+            dpi_factor,
+            ..
         } = *self;
 
         commands.clear();
         vertices.clear();
+        let mut glyph_cache_commands = vec![];
 
         enum State {
             Image { image_id: image::Id, start: usize },
@@ -309,14 +342,16 @@ impl Renderer {
                     State::Plain { .. } => (),
                     State::Image { image_id, start } => {
                         commands.push(PreparedCommand::Image(image_id, start..vertices.len()));
-                        current_state = State::Plain { start: vertices.len() };
-                    },
+                        current_state = State::Plain {
+                            start: vertices.len(),
+                        };
+                    }
                 }
             };
         }
 
         // Framebuffer dimensions and the "dots per inch" factor.
-        let (screen_w, screen_h) = (viewport[2]-viewport[0], viewport[3]-viewport[1]);
+        let (screen_w, screen_h) = (viewport[2] - viewport[0], viewport[3] - viewport[1]);
         let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
@@ -344,17 +379,24 @@ impl Renderer {
 
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
-            let render::Primitive { kind, scizzor, rect, .. } = primitive;
+            let render::Primitive {
+                kind,
+                scizzor,
+                rect,
+                ..
+            } = primitive;
 
             // Check for a `Scizzor` command.
             let new_scizzor = rect_to_scissor(scizzor);
             if new_scizzor != current_scizzor {
                 // Finish the current command.
                 match current_state {
-                    State::Plain { start } =>
-                        commands.push(PreparedCommand::Plain(start..vertices.len())),
-                    State::Image { image_id, start } =>
-                        commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+                    State::Plain { start } => {
+                        commands.push(PreparedCommand::Plain(start..vertices.len()))
+                    }
+                    State::Image { image_id, start } => {
+                        commands.push(PreparedCommand::Image(image_id, start..vertices.len()))
+                    }
                 }
 
                 // Update the scizzor and produce a command.
@@ -362,11 +404,12 @@ impl Renderer {
                 commands.push(PreparedCommand::Scizzor(new_scizzor));
 
                 // Set the state back to plain drawing.
-                current_state = State::Plain { start: vertices.len() };
+                current_state = State::Plain {
+                    start: vertices.len(),
+                };
             }
 
             match kind {
-
                 render::PrimitiveKind::Rectangle { color } => {
                     switch_to_plain_state!();
 
@@ -394,7 +437,7 @@ impl Renderer {
                     push_v(l, t);
                     push_v(r, b);
                     push_v(r, t);
-                },
+                }
 
                 render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
                     if triangles.is_empty() {
@@ -405,13 +448,11 @@ impl Renderer {
 
                     let color = gamma_srgb_to_linear(color.into());
 
-                    let v = |p: [Scalar; 2]| {
-                        Vertex {
-                            pos: [vx(p[0]), vy(p[1])],
-                            uv: [0.0, 0.0],
-                            color: color,
-                            mode: MODE_GEOMETRY,
-                        }
+                    let v = |p: [Scalar; 2]| Vertex {
+                        pos: [vx(p[0]), vy(p[1])],
+                        uv: [0.0, 0.0],
+                        color: color,
+                        mode: MODE_GEOMETRY,
                     };
 
                     for triangle in triangles {
@@ -419,7 +460,7 @@ impl Renderer {
                         vertices.push(v(triangle[1]));
                         vertices.push(v(triangle[2]));
                     }
-                },
+                }
 
                 render::PrimitiveKind::TrianglesMultiColor { triangles } => {
                     if triangles.is_empty() {
@@ -428,13 +469,11 @@ impl Renderer {
 
                     switch_to_plain_state!();
 
-                    let v = |(p, c): ([Scalar; 2], color::Rgba)| {
-                        Vertex {
-                            pos: [vx(p[0]), vy(p[1])],
-                            uv: [0.0, 0.0],
-                            color: gamma_srgb_to_linear(c.into()),
-                            mode: MODE_GEOMETRY,
-                        }
+                    let v = |(p, c): ([Scalar; 2], color::Rgba)| Vertex {
+                        pos: [vx(p[0]), vy(p[1])],
+                        uv: [0.0, 0.0],
+                        color: gamma_srgb_to_linear(c.into()),
+                        mode: MODE_GEOMETRY,
                     };
 
                     for triangle in triangles {
@@ -442,9 +481,13 @@ impl Renderer {
                         vertices.push(v(triangle[1]));
                         vertices.push(v(triangle[2]));
                     }
-                },
+                }
 
-                render::PrimitiveKind::Text { color, text, font_id } => {
+                render::PrimitiveKind::Text {
+                    color,
+                    text,
+                    font_id,
+                } => {
                     switch_to_plain_state!();
 
                     let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
@@ -454,27 +497,20 @@ impl Renderer {
                         glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                     }
 
-                    let mut capture_cmd = Some(cmd);
+                    glyph_cache
+                        .cache_queued(|rect, data| {
+                            let offset = [rect.min.x as u32, rect.min.y as u32];
+                            let size = [rect.width() as u32, rect.height() as u32];
 
-                    glyph_cache.cache_queued(|rect, data| {
-                        let offset = [rect.min.x as u32, rect.min.y as u32];
-                        let size = [rect.width() as u32, rect.height() as u32];
+                            let data = data
+                                .iter()
+                                .map(|x| [255, 255, 255, *x])
+                                .collect::<Vec<[u8; 4]>>();
 
-                        let new_data = data.iter()
-                            .map(|x| [255, 255, 255, *x])
-                            .collect::<Vec<[u8; 4]>>();
-
-                        capture_cmd = Some(update_texture(
-                            capture_cmd.take().unwrap(), 
-                            glyph_uploads, 
-                            glyph_cache_tex.clone(), 
-                            offset, 
-                            size, 
-                            new_data
-                        ));
-                    }).unwrap();
-
-                    cmd = capture_cmd.take().unwrap();
+                            let cmd = GlyphCacheCommand { offset, size, data };
+                            glyph_cache_commands.push(cmd);
+                        })
+                        .unwrap();
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
                     let cache_id = font_id.index();
@@ -483,17 +519,20 @@ impl Renderer {
                     // A closure to convert RustType rects to GL rects
                     let to_vk_rect = |screen_rect: rt::Rect<i32>| rt::Rect {
                         min: origin
-                            + (rt::vector(screen_rect.min.x as f32 / screen_w - 0.5,
-                                          screen_rect.min.y as f32 / screen_h - 0.5)) * 2.0,
+                            + (rt::vector(
+                                screen_rect.min.x as f32 / screen_w - 0.5,
+                                screen_rect.min.y as f32 / screen_h - 0.5,
+                            )) * 2.0,
                         max: origin
-                            + (rt::vector(screen_rect.max.x as f32 / screen_w - 0.5,
-                                          screen_rect.max.y as f32 / screen_h - 0.5)) * 2.0,
+                            + (rt::vector(
+                                screen_rect.max.x as f32 / screen_w - 0.5,
+                                screen_rect.max.y as f32 / screen_h - 0.5,
+                            )) * 2.0,
                     };
 
                     for g in positioned_glyphs {
-                        if let Ok(Some((uv_rect, screen_rect))) = 
-                            glyph_cache.rect_for(cache_id, g) {
-
+                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g)
+                        {
                             let vk_rect = to_vk_rect(screen_rect);
                             let v = |p, t| Vertex {
                                 pos: p,
@@ -502,22 +541,42 @@ impl Renderer {
                                 mode: MODE_TEXT,
                             };
                             let mut push_v = |p, t| vertices.push(v(p, t));
-                            push_v([vk_rect.min.x, vk_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
-                            push_v([vk_rect.min.x, vk_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
-                            push_v([vk_rect.max.x, vk_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
-                            push_v([vk_rect.max.x, vk_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
-                            push_v([vk_rect.max.x, vk_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
-                            push_v([vk_rect.min.x, vk_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                            push_v(
+                                [vk_rect.min.x, vk_rect.max.y],
+                                [uv_rect.min.x, uv_rect.max.y],
+                            );
+                            push_v(
+                                [vk_rect.min.x, vk_rect.min.y],
+                                [uv_rect.min.x, uv_rect.min.y],
+                            );
+                            push_v(
+                                [vk_rect.max.x, vk_rect.min.y],
+                                [uv_rect.max.x, uv_rect.min.y],
+                            );
+                            push_v(
+                                [vk_rect.max.x, vk_rect.min.y],
+                                [uv_rect.max.x, uv_rect.min.y],
+                            );
+                            push_v(
+                                [vk_rect.max.x, vk_rect.max.y],
+                                [uv_rect.max.x, uv_rect.max.y],
+                            );
+                            push_v(
+                                [vk_rect.min.x, vk_rect.max.y],
+                                [uv_rect.min.x, uv_rect.max.y],
+                            );
                         }
                     }
-                },
+                }
 
-                render::PrimitiveKind::Image { image_id, color, source_rect } => {
-
+                render::PrimitiveKind::Image {
+                    image_id,
+                    color,
+                    source_rect,
+                } => {
                     // Switch to the `Image` state for this image if we're not in it already.
                     let new_image_id = image_id;
                     match current_state {
-
                         // If we're already in the drawing mode for this image, we're done.
                         State::Image { image_id, .. } if image_id == new_image_id => (),
 
@@ -528,7 +587,7 @@ impl Renderer {
                                 image_id: new_image_id,
                                 start: vertices.len(),
                             };
-                        },
+                        }
 
                         // If we were drawing a different image, switch state to draw *this* image.
                         State::Image { image_id, start } => {
@@ -537,7 +596,7 @@ impl Renderer {
                                 image_id: new_image_id,
                                 start: vertices.len(),
                             };
-                        },
+                        }
                     }
 
                     let color = color.unwrap_or(color::WHITE).to_fsa();
@@ -551,23 +610,25 @@ impl Renderer {
                     // Texture coordinates range:
                     // - left to right: 0.0 to 1.0
                     // - bottom to top: 0.0 to 0.1
-                    // Note bottom and top are flipped in comparison to glium so that we don't need 
+                    // Note bottom and top are flipped in comparison to glium so that we don't need
                     //  to flip images when loading
                     let (uv_l, uv_r, uv_t, uv_b) = match source_rect {
                         Some(src_rect) => {
                             let (l, r, b, t) = src_rect.l_r_b_t();
-                            ((l / image_w) as f32,
-                             (r / image_w) as f32,
-                             (t / image_h) as f32,
-                             (b / image_h) as f32)
-                        },
+                            (
+                                (l / image_w) as f32,
+                                (r / image_w) as f32,
+                                (t / image_h) as f32,
+                                (b / image_h) as f32,
+                            )
+                        }
                         None => (0.0, 1.0, 0.0, 1.0),
                     };
 
                     let v = |x, y, t| {
                         // Convert from conrod Scalar range to GL range -1.0 to 1.0.
                         let x = (x * dpi_factor / half_win_w) as f32;
-                        let y = (y * dpi_factor / half_win_h) as f32;
+                        let y = -((y * dpi_factor / half_win_h) as f32);
                         Vertex {
                             pos: [x, y],
                             uv: t,
@@ -578,7 +639,8 @@ impl Renderer {
 
                     let mut push_v = |x, y, t| vertices.push(v(x, y, t));
 
-                    let (l, r, t, b) = rect.l_r_b_t();
+                    // Swap bottom and top to suit reversed vulkan coords.
+                    let (l, r, b, t) = rect.l_r_b_t();
 
                     // Bottom left triangle.
                     push_v(l, t, [uv_l, uv_t]);
@@ -589,23 +651,26 @@ impl Renderer {
                     push_v(l, t, [uv_l, uv_t]);
                     push_v(r, b, [uv_r, uv_b]);
                     push_v(r, t, [uv_r, uv_t]);
-                },
+                }
 
                 // We have no special case widgets to handle.
                 render::PrimitiveKind::Other(_) => (),
             }
-
         }
 
         // Enter the final command.
         match current_state {
-            State::Plain { start } =>
-                commands.push(PreparedCommand::Plain(start..vertices.len())),
-            State::Image { image_id, start } =>
-                commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
+            State::Plain { start } => commands.push(PreparedCommand::Plain(start..vertices.len())),
+            State::Image { image_id, start } => {
+                commands.push(PreparedCommand::Image(image_id, start..vertices.len()))
+            }
         }
 
-        cmd
+        GlyphCacheCommands {
+            glyph_cache_texture: glyph_cache_tex.clone(),
+            glyph_cpu_buffer_pool: glyph_uploads.clone(),
+            commands: glyph_cache_commands,
+        }
     }
 
     /// Draws using the inner list of `Command`s to the given `display`.
@@ -615,26 +680,33 @@ impl Renderer {
     /// methods for the case that the user does not require accessing or modifying conrod's draw
     /// parameters, uniforms or generated draw commands.
     pub fn draw(
-        &mut self, 
-        mut cmd: AutoCommandBufferBuilder,
+        &mut self,
         device: Arc<Device>,
         image_map: &image::Map<Image>,
-        viewport: [f32; 4]        
-    ) -> AutoCommandBufferBuilder {
+        viewport: [f32; 4],
+    ) -> Vec<DrawCommand> {
         let current_viewport = Viewport {
             origin: [viewport[0], viewport[1]],
-            dimensions: [viewport[2]-viewport[0], viewport[3]-viewport[1]],
-            depth_range: 0.0 .. 1.0,
+            dimensions: [viewport[2] - viewport[0], viewport[3] - viewport[1]],
+            depth_range: 0.0..1.0,
         };
 
         let mut current_scissor = Scissor {
             origin: [viewport[0] as i32, viewport[1] as i32],
-            dimensions: [(viewport[2]-viewport[0]) as u32, (viewport[3]-viewport[1]) as u32],
+            dimensions: [
+                (viewport[2] - viewport[0]) as u32,
+                (viewport[3] - viewport[1]) as u32,
+            ],
         };
 
-        let desc_cache = Arc::new(self.tex_descs.next()
-            .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone()).unwrap()
-            .build().unwrap());
+        let desc_cache = Arc::new(
+            self.tex_descs
+                .next()
+                .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())
+                .unwrap()
+                .build()
+                .unwrap(),
+        );
 
         let tex_descs = &mut self.tex_descs;
 
@@ -643,95 +715,112 @@ impl Renderer {
             vertices: &self.vertices,
         };
 
-        let dynamic_state = |scissor| {
-            DynamicState {
-                line_width: None,
-                viewports: Some(vec![current_viewport.clone()]),
-                scissors: Some(vec![scissor]),
-            }
+        let dynamic_state = |scissor| DynamicState {
+            line_width: None,
+            viewports: Some(vec![current_viewport.clone()]),
+            scissors: Some(vec![scissor]),
         };
+
+        let mut draw_commands = vec![];
 
         for command in commands {
             match command {
-
                 // Update the `scizzor` before continuing to draw.
                 Command::Scizzor(scizzor) => current_scissor = scizzor,
 
                 // Draw to the target with the given `draw` command.
                 Command::Draw(draw) => match draw {
-
                     // Draw text and plain 2D geometry.
                     Draw::Plain(verts) => {
                         if verts.len() > 0 {
                             let vbuf = CpuAccessibleBuffer::<[Vertex]>::from_iter(
-                                device.clone(), 
-                                BufferUsage::vertex_buffer(), 
-                                verts.iter().cloned()
-                            ).unwrap();
+                                device.clone(),
+                                BufferUsage::vertex_buffer(),
+                                verts.iter().cloned(),
+                            )
+                            .unwrap();
 
-                            cmd = cmd
-                                .draw(self.pipeline.clone(),
-                                    &dynamic_state(current_scissor.clone()),
-                                    vec![vbuf],
-                                    desc_cache.clone(), 
-                                    ())
-                                .unwrap();
+                            draw_commands.push(DrawCommand {
+                                graphics_pipeline: self.pipeline.clone(),
+                                dynamic_state: dynamic_state(current_scissor.clone()),
+                                vertex_buffer: vbuf,
+                                descriptor_set: desc_cache.clone(),
+                            });
                         }
-                    },
+                    }
 
                     // Draw an image whose texture data lies within the `image_map` at the
                     // given `id`.
                     Draw::Image(image_id, verts) => {
-                        if verts.len() > 0 {
-                            let image = image_map.get(&image_id).unwrap().image_access.clone();
-
-                            let desc_image = Arc::new(tex_descs.next()
-                                .add_sampled_image(image, self.sampler.clone()).unwrap()
-                                .build().unwrap());
+                        if verts.len() == 0 {
+                            continue;
+                        }
+                        if let Some(image) = image_map.get(&image_id) {
+                            let desc_image = Arc::new(
+                                tex_descs
+                                    .next()
+                                    .add_sampled_image(
+                                        image.image_access.clone(),
+                                        self.sampler.clone(),
+                                    )
+                                    .unwrap()
+                                    .build()
+                                    .unwrap(),
+                            );
 
                             let vbuf = CpuAccessibleBuffer::from_iter(
-                                device.clone(), 
-                                BufferUsage::vertex_buffer(), 
-                                verts.iter().cloned()
-                            ).unwrap();
+                                device.clone(),
+                                BufferUsage::vertex_buffer(),
+                                verts.iter().cloned(),
+                            )
+                            .unwrap();
 
-                            cmd = cmd
-                                .draw(self.pipeline.clone(),
-                                    &dynamic_state(current_scissor.clone()),
-                                    vec![vbuf],
-                                    desc_image, 
-                                    ())
-                                .unwrap();
+                            draw_commands.push(DrawCommand {
+                                graphics_pipeline: self.pipeline.clone(),
+                                dynamic_state: dynamic_state(current_scissor.clone()),
+                                vertex_buffer: vbuf,
+                                descriptor_set: desc_image,
+                            });
+                            // cmd = cmd
+                            //     .draw(
+                            //         self.pipeline.clone(),
+                            //         &dynamic_state(current_scissor.clone()),
+                            //         vec![vbuf],
+                            //         desc_image,
+                            //         (),
+                            //     )
+                            //     .unwrap();
                         }
-                    },
-                }
+                    }
+                },
             }
         }
 
-        cmd
+        draw_commands
     }
 }
 
-fn update_texture(
-    cmd: AutoCommandBufferBuilder,
-    pool: &CpuBufferPool<[u8;4]>,
-    texture: Arc<StorageImage<R8G8B8A8Unorm>>,
-    offset: [u32;2],
-    size: [u32;2],
-    data: Vec<[u8;4]>
-) -> AutoCommandBufferBuilder {
-    let buffer = pool.chunk(data.iter().cloned()).unwrap();
-
-    cmd.copy_buffer_to_image_dimensions(
-        buffer, 
-        texture, 
-        [offset[0], offset[1], 0], 
-        [size[0], size[1], 1], 
-        0, 
-        1, 
-        0
-    ).unwrap()
-}
+// fn update_texture(
+//     cmd: AutoCommandBufferBuilder,
+//     pool: &CpuBufferPool<[u8; 4]>,
+//     texture: Arc<StorageImage<R8G8B8A8Unorm>>,
+//     offset: [u32; 2],
+//     size: [u32; 2],
+//     data: Vec<[u8; 4]>,
+// ) -> AutoCommandBufferBuilder {
+//     let buffer = pool.chunk(data.iter().cloned()).unwrap();
+//
+//     cmd.copy_buffer_to_image_dimensions(
+//         buffer,
+//         texture,
+//         [offset[0], offset[1], 0],
+//         [size[0], size[1], 1],
+//         0,
+//         1,
+//         0,
+//     )
+//     .unwrap()
+// }
 
 fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
     fn component(f: f32) -> f32 {
@@ -748,13 +837,18 @@ fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
 impl<'a> Iterator for Commands<'a> {
     type Item = Command<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        let Commands { ref mut commands, ref vertices } = *self;
+        let Commands {
+            ref mut commands,
+            ref vertices,
+        } = *self;
         commands.next().map(|command| match *command {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
-            PreparedCommand::Plain(ref range) =>
-                Command::Draw(Draw::Plain(&vertices[range.clone()])),
-            PreparedCommand::Image(id, ref range) =>
-                Command::Draw(Draw::Image(id, &vertices[range.clone()])),
+            PreparedCommand::Plain(ref range) => {
+                Command::Draw(Draw::Plain(&vertices[range.clone()]))
+            }
+            PreparedCommand::Image(id, ref range) => {
+                Command::Draw(Draw::Image(id, &vertices[range.clone()]))
+            }
         })
     }
 }
