@@ -1,7 +1,11 @@
 [package]
 name = "conrod_vulkano"
 version = "0.1.0"
-authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+authors = [
+    "mitchmindtree <mitchell.nordine@gmail.com>",
+    "Kurble",
+    "Abendstolz",
+]
 edition = "2018"
 
 [dependencies]
