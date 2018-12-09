@@ -3,6 +3,8 @@ extern crate conrod_core;
 extern crate vulkano;
 extern crate vulkano_shaders;
 
+use std::error::Error as StdError;
+use std::fmt;
 use std::sync::Arc;
 
 use conrod_core::text::{rt, GlyphCache};
@@ -10,14 +12,17 @@ use conrod_core::{color, image, render, Rect, Scalar};
 
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
-use vulkano::buffer::CpuAccessibleBuffer;
+use vulkano::buffer::ImmutableBuffer;
 use vulkano::command_buffer::DynamicState;
-use vulkano::descriptor::descriptor_set::{DescriptorSet, FixedSizeDescriptorSetsPool};
+use vulkano::descriptor::descriptor_set::{DescriptorSet, FixedSizeDescriptorSetsPool,
+                                          PersistentDescriptorSetError,
+                                          PersistentDescriptorSetBuildError};
 use vulkano::device::*;
 use vulkano::format::*;
 use vulkano::framebuffer::*;
 use vulkano::image::*;
 use vulkano::instance::QueueFamily;
+use vulkano::memory::DeviceMemoryAllocError;
 use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::*;
@@ -167,7 +172,6 @@ pub struct Renderer {
     glyph_uploads: Arc<CpuBufferPool<[u8; 4]>>,
     glyph_cache_tex: Arc<StorageImage<R8G8B8A8Unorm>>,
     sampler: Arc<Sampler>,
-    dpi_factor: f64,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
     tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract + Send + Sync>>,
@@ -198,19 +202,62 @@ pub struct DrawCommand {
     pub graphics_pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
     pub dynamic_state: DynamicState,
     pub descriptor_set: Arc<DescriptorSet + Send + Sync>,
-    pub vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
+    pub vertex_buffer: Arc<ImmutableBuffer<[Vertex]>>,
+}
+
+/// Errors that might occur during creation of the renderer.
+#[derive(Debug)]
+pub enum RendererCreationError {
+    SamplerCreation(SamplerCreationError),
+    ShaderLoad(vulkano::OomError),
+    GraphicsPipelineCreation(GraphicsPipelineCreationError),
+    ImageCreation(ImageCreationError),
+}
+
+/// Errors that might occur during draw calls.
+#[derive(Debug)]
+pub enum DrawError {
+    PersistentDescriptorSet(PersistentDescriptorSetError),
+    PersistentDescriptorSetBuild(PersistentDescriptorSetBuildError),
+    VertexBufferAlloc(DeviceMemoryAllocError),
 }
 
 impl Renderer {
     /// Construct a new empty `Renderer`.
-    pub fn new<'a, L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static>(
+    ///
+    /// The dimensions of the glyph cache will be the dimensions of the window multiplied by the
+    /// DPI factor.
+    pub fn new<'a, L>(
         device: Arc<Device>,
         subpass: Subpass<L>,
         graphics_queue_family: QueueFamily<'a>,
-        width: u32,
-        height: u32,
+        window_dims: [u32; 2],
         dpi_factor: f64,
-    ) -> Self {
+    ) -> Result<Self, RendererCreationError>
+    where
+        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
+    {
+        // TODO: Check that necessary subpass properties exist?
+        let [w, h] = window_dims;
+        let glyph_cache_dims = [(w as f64 * dpi_factor) as u32, (h as f64 * dpi_factor) as u32];
+        Self::with_glyph_cache_dimensions(
+            device,
+            subpass,
+            graphics_queue_family,
+            glyph_cache_dims,
+        )
+    }
+
+    /// Construct a new empty `Renderer`.
+    pub fn with_glyph_cache_dimensions<'a, L>(
+        device: Arc<Device>,
+        subpass: Subpass<L>,
+        graphics_queue_family: QueueFamily<'a>,
+        glyph_cache_dims: [u32; 2],
+    ) -> Result<Self, RendererCreationError>
+    where
+        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
+    {
         let sampler = Sampler::new(
             device.clone(),
             Filter::Linear,
@@ -223,14 +270,12 @@ impl Renderer {
             1.0,
             0.0,
             0.0,
-        )
-        .unwrap();
+        )?;
 
-        let vertex_shader =
-            vs::Shader::load(device.clone()).expect("failed to create shader module");
-
-        let fragment_shader =
-            fs::Shader::load(device.clone()).expect("failed to create shader module");
+        let vertex_shader = vs::Shader::load(device.clone())
+            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
+        let fragment_shader = fs::Shader::load(device.clone())
+            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
 
         let pipeline = Arc::new(
             GraphicsPipeline::start()
@@ -239,18 +284,15 @@ impl Renderer {
                 .depth_stencil_disabled()
                 .triangle_list()
                 .front_face_clockwise()
-                //.cull_mode_back()
                 .viewports_scissors_dynamic(1)
                 .fragment_shader(fragment_shader.main_entry_point(), ())
                 .blend_alpha_blending()
                 .render_pass(subpass)
-                .build(device.clone())
-                .unwrap(),
+                .build(device.clone())?
         );
 
         let (glyph_cache, glyph_cache_tex) = {
-            let width = (width as f64 * dpi_factor) as u32;
-            let height = (height as f64 * dpi_factor) as u32;
+            let [width, height] = glyph_cache_dims;
 
             const SCALE_TOLERANCE: f32 = 0.1;
             const POSITION_TOLERANCE: f32 = 0.1;
@@ -271,8 +313,7 @@ impl Renderer {
                     ..ImageUsage::none()
                 },
                 vec![graphics_queue_family],
-            )
-            .unwrap();
+            )?;
 
             (glyph_cache, glyph_cache_tex)
         };
@@ -280,17 +321,16 @@ impl Renderer {
         let tex_descs = FixedSizeDescriptorSetsPool::new(pipeline.clone() as Arc<_>, 0);
         let glyph_uploads = Arc::new(CpuBufferPool::upload(device.clone()));
 
-        Renderer {
+        Ok(Renderer {
             pipeline: pipeline,
             glyph_cache,
             glyph_uploads,
             glyph_cache_tex,
             sampler,
-            dpi_factor,
             commands: Vec::new(),
             vertices: Vec::new(),
             tex_descs,
-        }
+        })
     }
 
     /// Produce an `Iterator` yielding `Command`s.
@@ -311,15 +351,15 @@ impl Renderer {
         &mut self,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
+        dpi_factor: f64,
         mut primitives: P,
-    ) -> GlyphCacheCommands {
+    ) -> Result<GlyphCacheCommands, rt::gpu_cache::CacheWriteErr> {
         let Renderer {
             ref mut commands,
             ref mut vertices,
             ref mut glyph_cache,
             ref glyph_uploads,
             ref glyph_cache_tex,
-            dpi_factor,
             ..
         } = *self;
 
@@ -350,9 +390,9 @@ impl Renderer {
             };
         }
 
-        // Framebuffer dimensions and the "dots per inch" factor.
-        let (screen_w, screen_h) = (viewport[2] - viewport[0], viewport[3] - viewport[1]);
-        let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
+        // Viewport dimensions and the "dots per inch" factor.
+        let (viewport_w, viewport_h) = (viewport[2] - viewport[0], viewport[3] - viewport[1]);
+        let (win_w, win_h) = (viewport_w as Scalar, viewport_h as Scalar);
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
 
@@ -362,7 +402,7 @@ impl Renderer {
 
         let mut current_scizzor = Scissor {
             origin: [0, 0],
-            dimensions: [screen_w as u32, screen_h as u32],
+            dimensions: [viewport_w as u32, viewport_h as u32],
         };
 
         let rect_to_scissor = |rect: Rect| {
@@ -373,7 +413,7 @@ impl Renderer {
             let height = (h * dpi_factor) as u32;
             Scissor {
                 origin: [left.max(0), bottom.max(0)],
-                dimensions: [width.min(screen_w as u32), height.min(screen_h as u32)],
+                dimensions: [width.min(viewport_w as u32), height.min(viewport_h as u32)],
             }
         };
 
@@ -497,20 +537,18 @@ impl Renderer {
                         glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                     }
 
-                    glyph_cache
-                        .cache_queued(|rect, data| {
-                            let offset = [rect.min.x as u32, rect.min.y as u32];
-                            let size = [rect.width() as u32, rect.height() as u32];
+                    glyph_cache.cache_queued(|rect, data| {
+                        let offset = [rect.min.x as u32, rect.min.y as u32];
+                        let size = [rect.width() as u32, rect.height() as u32];
 
-                            let data = data
-                                .iter()
-                                .map(|x| [255, 255, 255, *x])
-                                .collect::<Vec<[u8; 4]>>();
+                        let data = data
+                            .iter()
+                            .map(|x| [255, 255, 255, *x])
+                            .collect::<Vec<[u8; 4]>>();
 
-                            let cmd = GlyphCacheCommand { offset, size, data };
-                            glyph_cache_commands.push(cmd);
-                        })
-                        .unwrap();
+                        let cmd = GlyphCacheCommand { offset, size, data };
+                        glyph_cache_commands.push(cmd);
+                    })?;
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
                     let cache_id = font_id.index();
@@ -520,13 +558,13 @@ impl Renderer {
                     let to_vk_rect = |screen_rect: rt::Rect<i32>| rt::Rect {
                         min: origin
                             + (rt::vector(
-                                screen_rect.min.x as f32 / screen_w - 0.5,
-                                screen_rect.min.y as f32 / screen_h - 0.5,
+                                screen_rect.min.x as f32 / viewport_w - 0.5,
+                                screen_rect.min.y as f32 / viewport_h - 0.5,
                             )) * 2.0,
                         max: origin
                             + (rt::vector(
-                                screen_rect.max.x as f32 / screen_w - 0.5,
-                                screen_rect.max.y as f32 / screen_h - 0.5,
+                                screen_rect.max.x as f32 / viewport_w - 0.5,
+                                screen_rect.max.y as f32 / viewport_h - 0.5,
                             )) * 2.0,
                     };
 
@@ -574,6 +612,11 @@ impl Renderer {
                     color,
                     source_rect,
                 } => {
+                    let image_ref = match image_map.get(&image_id) {
+                        None => continue,
+                        Some(img) => img,
+                    };
+
                     // Switch to the `Image` state for this image if we're not in it already.
                     let new_image_id = image_id;
                     match current_state {
@@ -600,8 +643,6 @@ impl Renderer {
                     }
 
                     let color = color.unwrap_or(color::WHITE).to_fsa();
-
-                    let image_ref = image_map.get(&image_id).unwrap();
                     let (image_w, image_h) = (image_ref.width, image_ref.height);
                     let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
 
@@ -666,14 +707,17 @@ impl Renderer {
             }
         }
 
-        GlyphCacheCommands {
+        Ok(GlyphCacheCommands {
             glyph_cache_texture: glyph_cache_tex.clone(),
             glyph_cpu_buffer_pool: glyph_uploads.clone(),
             commands: glyph_cache_commands,
-        }
+        })
     }
 
-    /// Draws using the inner list of `Command`s to the given `display`.
+    /// Draws using the inner list of `Command`s to a list of `DrawCommand`s compatible with the
+    /// vulkano command buffer builders.
+    ///
+    /// Uses the given `queue` for submitting vertex buffers.
     ///
     /// Note: If you require more granular control over rendering, you may want to use the `fill`
     /// and `commands` methods separately. This method is simply a convenience wrapper around those
@@ -681,10 +725,10 @@ impl Renderer {
     /// parameters, uniforms or generated draw commands.
     pub fn draw(
         &mut self,
-        device: Arc<Device>,
+        queue: Arc<Queue>,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
-    ) -> Vec<DrawCommand> {
+    ) -> Result<Vec<DrawCommand>, DrawError> {
         let current_viewport = Viewport {
             origin: [viewport[0], viewport[1]],
             dimensions: [viewport[2] - viewport[0], viewport[3] - viewport[1]],
@@ -702,10 +746,8 @@ impl Renderer {
         let desc_cache = Arc::new(
             self.tex_descs
                 .next()
-                .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())
-                .unwrap()
-                .build()
-                .unwrap(),
+                .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())?
+                .build()?
         );
 
         let tex_descs = &mut self.tex_descs;
@@ -733,13 +775,11 @@ impl Renderer {
                     // Draw text and plain 2D geometry.
                     Draw::Plain(verts) => {
                         if verts.len() > 0 {
-                            let vbuf = CpuAccessibleBuffer::<[Vertex]>::from_iter(
-                                device.clone(),
-                                BufferUsage::vertex_buffer(),
+                            let (vbuf, _vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
                                 verts.iter().cloned(),
-                            )
-                            .unwrap();
-
+                                BufferUsage::vertex_buffer(),
+                                queue.clone(),
+                            )?;
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scissor.clone()),
@@ -762,65 +802,29 @@ impl Renderer {
                                     .add_sampled_image(
                                         image.image_access.clone(),
                                         self.sampler.clone(),
-                                    )
-                                    .unwrap()
-                                    .build()
-                                    .unwrap(),
+                                    )?
+                                    .build()?
                             );
-
-                            let vbuf = CpuAccessibleBuffer::from_iter(
-                                device.clone(),
-                                BufferUsage::vertex_buffer(),
+                            let (vbuf, _vbuf_fut) = ImmutableBuffer::from_iter(
                                 verts.iter().cloned(),
-                            )
-                            .unwrap();
-
+                                BufferUsage::vertex_buffer(),
+                                queue.clone(),
+                            )?;
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scissor.clone()),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_image,
                             });
-                            // cmd = cmd
-                            //     .draw(
-                            //         self.pipeline.clone(),
-                            //         &dynamic_state(current_scissor.clone()),
-                            //         vec![vbuf],
-                            //         desc_image,
-                            //         (),
-                            //     )
-                            //     .unwrap();
                         }
                     }
                 },
             }
         }
 
-        draw_commands
+        Ok(draw_commands)
     }
 }
-
-// fn update_texture(
-//     cmd: AutoCommandBufferBuilder,
-//     pool: &CpuBufferPool<[u8; 4]>,
-//     texture: Arc<StorageImage<R8G8B8A8Unorm>>,
-//     offset: [u32; 2],
-//     size: [u32; 2],
-//     data: Vec<[u8; 4]>,
-// ) -> AutoCommandBufferBuilder {
-//     let buffer = pool.chunk(data.iter().cloned()).unwrap();
-//
-//     cmd.copy_buffer_to_image_dimensions(
-//         buffer,
-//         texture,
-//         [offset[0], offset[1], 0],
-//         [size[0], size[1], 1],
-//         0,
-//         1,
-//         0,
-//     )
-//     .unwrap()
-// }
 
 fn gamma_srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
     fn component(f: f32) -> f32 {
@@ -850,5 +854,91 @@ impl<'a> Iterator for Commands<'a> {
                 Command::Draw(Draw::Image(id, &vertices[range.clone()]))
             }
         })
+    }
+}
+
+impl From<SamplerCreationError> for RendererCreationError {
+    fn from(err: SamplerCreationError) -> Self {
+        RendererCreationError::SamplerCreation(err)
+    }
+}
+
+impl From<GraphicsPipelineCreationError> for RendererCreationError {
+    fn from(err: GraphicsPipelineCreationError) -> Self {
+        RendererCreationError::GraphicsPipelineCreation(err)
+    }
+}
+
+impl From<ImageCreationError> for RendererCreationError {
+    fn from(err: ImageCreationError) -> Self {
+        RendererCreationError::ImageCreation(err)
+    }
+}
+
+impl From<PersistentDescriptorSetError> for DrawError {
+    fn from(err: PersistentDescriptorSetError) -> Self {
+        DrawError::PersistentDescriptorSet(err)
+    }
+}
+
+impl From<PersistentDescriptorSetBuildError> for DrawError {
+    fn from(err: PersistentDescriptorSetBuildError) -> Self {
+        DrawError::PersistentDescriptorSetBuild(err)
+    }
+}
+
+impl From<DeviceMemoryAllocError> for DrawError {
+    fn from(err: DeviceMemoryAllocError) -> Self {
+        DrawError::VertexBufferAlloc(err)
+    }
+}
+
+impl StdError for RendererCreationError {
+    fn description(&self) -> &str {
+        match *self {
+            RendererCreationError::SamplerCreation(ref err) => err.description(),
+            RendererCreationError::ShaderLoad(ref err) => err.description(),
+            RendererCreationError::GraphicsPipelineCreation(ref err) => err.description(),
+            RendererCreationError::ImageCreation(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            RendererCreationError::SamplerCreation(ref err) => Some(err),
+            RendererCreationError::ShaderLoad(ref err) => Some(err),
+            RendererCreationError::GraphicsPipelineCreation(ref err) => Some(err),
+            RendererCreationError::ImageCreation(ref err) => Some(err),
+        }
+    }
+}
+
+impl StdError for DrawError {
+    fn description(&self) -> &str {
+        match *self {
+            DrawError::PersistentDescriptorSet(ref err) => err.description(),
+            DrawError::PersistentDescriptorSetBuild(ref err) => err.description(),
+            DrawError::VertexBufferAlloc(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            DrawError::PersistentDescriptorSet(ref err) => Some(err),
+            DrawError::PersistentDescriptorSetBuild(ref err) => Some(err),
+            DrawError::VertexBufferAlloc(ref err) => Some(err),
+        }
+    }
+}
+
+impl fmt::Display for RendererCreationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+impl fmt::Display for DrawError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
     }
 }

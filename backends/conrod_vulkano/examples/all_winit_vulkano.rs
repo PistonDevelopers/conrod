@@ -19,13 +19,12 @@ extern crate winit;
 mod support;
 
 use conrod_example_shared::{WIN_H, WIN_W};
-use std::{mem, sync::Arc};
+use std::sync::Arc;
 use vulkano::{
     command_buffer::AutoCommandBufferBuilder,
-    format,
-    format::D16Unorm,
-    framebuffer::{Framebuffer, RenderPassAbstract},
-    image::{AttachmentImage, SwapchainImage},
+    format::{D16Unorm, Format},
+    framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract},
+    image::AttachmentImage,
     swapchain,
     swapchain::AcquireError,
     sync::{now, FlushError, GpuFuture},
@@ -33,24 +32,26 @@ use vulkano::{
 
 use conrod_vulkano::{Image as VulkanoGuiImage, Renderer};
 
-fn main() {
-    const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
+type DepthFormat = D16Unorm;
+const DEPTH_FORMAT_TY: DepthFormat = D16Unorm;
+const DEPTH_FORMAT: Format = Format::D16Unorm;
+const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
+fn main() {
     let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano");
 
-    let subpass = vulkano::framebuffer::Subpass::from(window.render_pass.clone(), 0)
+    let mut render_target = RenderTarget::new(&window);
+
+    let subpass = vulkano::framebuffer::Subpass::from(render_target.render_pass.clone(), 0)
         .expect("Couldn't create subpass for gui!");
     let queue = window.queue.clone();
     let mut renderer = Renderer::new(
         window.device.clone(),
         subpass,
         queue.family(),
-        WIN_W,
-        WIN_H,
+        [WIN_W, WIN_H],
         window.surface.window().get_hidpi_factor() as f64,
-    );
-
-    let mut render_helper = RenderHelper::new(&window);
+    ).unwrap();
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -109,7 +110,8 @@ fn main() {
                 match swapchain::acquire_next_image(window.swapchain.clone(), None) {
                     Ok(r) => r,
                     Err(AcquireError::OutOfDate) => {
-                        render_helper.handle_resize(&mut window);
+                        window.handle_resize();
+                        render_target.handle_resize(&mut window);
                         continue;
                     }
                     Err(err) => panic!("{:?}", err),
@@ -125,7 +127,8 @@ fn main() {
             .expect("Failed to create AutoCommandBufferBuilder");
 
             let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
-            let mut cmds = renderer.fill(&image_map, viewport, primitives);
+            let dpi_factor = window.surface.window().get_hidpi_factor() as f64;
+            let mut cmds = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap();
             for cmd in cmds.commands.drain(..) {
                 let buffer = cmds.glyph_cpu_buffer_pool.chunk(cmd.data.iter().cloned()).unwrap();
                 command_buffer_builder = command_buffer_builder
@@ -144,17 +147,17 @@ fn main() {
 
             let mut command_buffer_builder = command_buffer_builder
                 .begin_render_pass(
-                    render_helper.frame_buffers[image_num].clone(),
+                    render_target.framebuffers[image_num].clone(),
                     false,
                     vec![CLEAR_COLOR.into(), 1f32.into()],
                 ) // Info: We need to clear background AND depth buffer here!
                 .expect("Failed to begin render pass!");
 
             let draw_cmds = renderer.draw(
-                window.device.clone(),
+                window.queue.clone(),
                 &image_map,
                 [0.0, 0.0, win_w as f32, win_h as f32],
-            );
+            ).unwrap();
             for cmd in draw_cmds {
                 let conrod_vulkano::DrawCommand {
                     graphics_pipeline,
@@ -244,96 +247,87 @@ fn main() {
     }
 }
 
-pub struct RenderHelper {
+pub struct RenderTarget {
     depth_buffer: Arc<AttachmentImage<D16Unorm>>,
-    frame_buffers: Vec<
-        Arc<
-            Framebuffer<
-                Arc<RenderPassAbstract + Send + Sync>,
-                (
-                    ((), Arc<SwapchainImage<winit::Window>>),
-                    Arc<AttachmentImage<D16Unorm>>,
-                ),
-            >,
-        >,
-    >,
-    //previous_frame_end: Box<GpuFuture>,
-    width: u32,
-    height: u32,
+    render_pass: Arc<RenderPassAbstract + Send + Sync>,
+    framebuffers: Vec<Arc<FramebufferAbstract + Send + Sync>>,
 }
 
-impl RenderHelper {
+impl RenderTarget {
     pub fn new(window: &support::Window) -> Self {
-        let (width, height) = window
-            .get_dimensions()
-            .expect("Couldn't get window dimensions");
-        let depth_buffer =
-            AttachmentImage::transient(window.device.clone(), [width, height], format::D16Unorm)
-                .unwrap();
-        let frame_buffers: Vec<
-            Arc<
-                Framebuffer<
-                    Arc<RenderPassAbstract + Send + Sync>,
-                    (
-                        ((), Arc<SwapchainImage<winit::Window>>),
-                        Arc<AttachmentImage<D16Unorm>>,
-                    ),
-                >,
-            >,
-        > = window
-            .images
-            .iter()
-            .map(|image| {
-                Arc::new(
-                    Framebuffer::start(window.render_pass.clone())
-                        .add(image.clone())
-                        .unwrap()
-                        .add(depth_buffer.clone())
-                        .unwrap()
-                        .build()
-                        .unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let (win_w, win_h) = window.get_dimensions().expect("couldn't get window dimensions");
+        let win_dims = [win_w, win_h];
+        let device = window.device.clone();
+        let depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY).unwrap();
 
-        RenderHelper {
-            depth_buffer,
-            frame_buffers,
-            width,
-            height,
-        }
-    }
-
-    pub fn handle_resize(&mut self, window: &mut support::Window) -> () {
-        window.handle_resize();
-
-        let (width, height) = window
-            .get_dimensions()
-            .expect("Couldn't get window dimensions");
-        if self.width != width || self.height != height {
-            self.depth_buffer = AttachmentImage::transient(
-                window.device.clone(),
-                [width, height],
-                format::D16Unorm,
+        let render_pass = Arc::new(
+            single_pass_renderpass!(window.device.clone(),
+                attachments: {
+                    color: {
+                        load: Clear,
+                        store: Store,
+                        format: window.swapchain.format(),
+                        samples: 1,
+                    },
+                    depth: {
+                        load: Clear,
+                        store: DontCare,
+                        format: DEPTH_FORMAT,
+                        samples: 1,
+                    }
+                },
+                pass: {
+                    color: [color],
+                    depth_stencil: {depth}
+                }
             )
-            .unwrap();
-        }
+            .unwrap(),
+        );
 
-        let new_framebuffers = window
-            .images
-            .iter()
-            .map(|image| {
-                Arc::new(
-                    Framebuffer::start(window.render_pass.clone())
-                        .add(image.clone())
-                        .unwrap()
-                        .add(self.depth_buffer.clone())
-                        .unwrap()
-                        .build()
-                        .unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
-        mem::replace(&mut self.frame_buffers, new_framebuffers);
+        let framebuffers = create_framebuffers(window, render_pass.clone(), depth_buffer.clone());
+
+        RenderTarget {
+            depth_buffer,
+            framebuffers,
+            render_pass,
+        }
     }
+
+    pub fn handle_resize(&mut self, window: &support::Window) {
+        let [fb_w, fb_h, _] = self.framebuffers[0].dimensions();
+        let (win_w, win_h) = window.get_dimensions().expect("couldn't get window dimensions");
+        let win_dims = [win_w, win_h];
+        let device = window.device.clone();
+        if fb_w != win_w || fb_h != win_h {
+            self.depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY)
+                .unwrap();
+            self.framebuffers = create_framebuffers(
+                window,
+                self.render_pass.clone(),
+                self.depth_buffer.clone(),
+            );
+        }
+    }
+}
+
+fn create_framebuffers(
+    window: &support::Window,
+    render_pass: Arc<RenderPassAbstract + Send + Sync>,
+    depth_buffer: Arc<AttachmentImage<D16Unorm>>,
+) -> Vec<Arc<FramebufferAbstract + Send + Sync>> {
+    window
+        .images
+        .iter()
+        .map(|image| {
+            Arc::new(
+                Framebuffer::start(render_pass.clone())
+                    .add(image.clone())
+                    .unwrap()
+                    .add(depth_buffer.clone())
+                    .unwrap()
+                    .build()
+                    .unwrap(),
+            ) as Arc<_>
+        })
+        .collect()
 }

@@ -2,7 +2,6 @@ use std::sync::Arc;
 use vulkano::{
     self,
     device::{Device, Queue},
-    framebuffer::RenderPassAbstract,
     image::SwapchainImage,
     instance::{Instance, PhysicalDevice},
     swapchain::{PresentMode, Surface, SurfaceTransform, Swapchain, SwapchainCreationError},
@@ -18,7 +17,6 @@ pub struct Window {
     pub events_loop: EventsLoop,
     pub device: Arc<Device>,
     pub images: Vec<Arc<SwapchainImage<winit::Window>>>,
-    pub render_pass: Arc<RenderPassAbstract + Send + Sync>,
 }
 
 impl Window {
@@ -97,30 +95,6 @@ impl Window {
             )
         };
 
-        let render_pass = Arc::new(
-            single_pass_renderpass!(device.clone(),
-                attachments: {
-                    color: {
-                        load: Clear,
-                        store: Store,
-                        format: swapchain.format(),
-                        samples: 1,
-                    },
-                    depth: {
-                        load: Clear,
-                        store: DontCare,
-                        format: vulkano::format::Format::D16Unorm,
-                        samples: 1,
-                    }
-                },
-                pass: {
-                    color: [color],
-                    depth_stencil: {depth}
-                }
-            )
-            .unwrap(),
-        );
-
         Self {
             surface,
             swapchain,
@@ -128,7 +102,6 @@ impl Window {
             events_loop,
             device,
             images,
-            render_pass,
         }
     }
 
