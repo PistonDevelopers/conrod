@@ -9,7 +9,7 @@ pub use rusttype::gpu_cache::Cache as GlyphCache;
 
 /// Re-exported RustType geometrical types.
 pub mod rt {
-    pub use rusttype::{Point, Rect, Vector, point, vector};
+    pub use rusttype::{Point, Rect, Vector, gpu_cache, point, vector};
 }
 
 
