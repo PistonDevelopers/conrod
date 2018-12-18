@@ -287,5 +287,5 @@ fn crop_context(context: Context, rect: Rect) -> Context {
         }
     }
 
-    Context { draw_state: draw_state.scissor([x, y, w, h]), ..context }
+    Context { draw_state: draw_state.scissor([x, draw_dim[1] as u32 - (y+h), w, h]), ..context }
 }
