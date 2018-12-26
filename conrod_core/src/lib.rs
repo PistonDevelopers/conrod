@@ -15,11 +15,8 @@ extern crate num;
 extern crate input as piston_input;
 extern crate rusttype;
 
-//#[cfg(feature="glium")] #[macro_use] pub extern crate glium;
-//#[cfg(feature="gfx_rs")] #[macro_use] pub extern crate gfx;
-//#[cfg(feature="gfx_rs")] pub extern crate gfx_core;
-
 pub use color::{Color, Colorable};
+pub use conrod_derive::*;
 pub use border::{Bordering, Borderable};
 pub use label::{FontSize, Labelable};
 pub use position::{Dimensions, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
