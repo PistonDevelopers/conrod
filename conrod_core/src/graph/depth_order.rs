@@ -8,6 +8,7 @@ use widget;
 
 
 /// Contains Node indices in order of depth, starting with the deepest.
+#[derive(Debug)]
 pub struct DepthOrder {
     /// The primary **Vec** storing the **DepthOrder**'s ordered indices.
     pub indices: Vec<widget::Id>,

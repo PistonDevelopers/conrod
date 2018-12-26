@@ -9,6 +9,7 @@ use std;
 /// Global input event handler that also implements `input::Provider`. The `Ui` passes all events
 /// to it's `Global` instance, which aggregates and interprets the events to provide so-called
 /// 'high-level' events to widgets. This input gets reset after every update by the `Ui`.
+#[derive(Debug)]
 pub struct Global {
     /// The `input::State` as it was at the end of the last update cycle.
     pub start: input::State,

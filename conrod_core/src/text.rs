@@ -104,6 +104,7 @@ pub mod font {
     pub struct Id(usize);
 
     /// A collection of mappings from `font::Id`s to `rusttype::Font`s.
+    #[derive(Debug)]
     pub struct Map {
         next_index: usize,
         map: fnv::FnvHashMap<Id, super::Font>,
