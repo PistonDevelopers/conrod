@@ -1,0 +1,31 @@
+language: rust
+
+rust:
+    - stable
+    - beta
+    - nightly
+
+notifications:
+    irc: "irc.mozilla.org#src-internals"
+
+os:
+    - linux
+
+addons:
+    apt:
+        packages:
+            - libxxf86vm-dev
+            - libosmesa6-dev
+
+script:
+    - cargo build --verbose
+    - cargo test --verbose
+    # TODO move to appropriate render backend
+    #- cargo test --features "winit glium" --verbose
+    #- cargo test --features "src" --verbose
+    #- cargo test --features "gfx_rs" --verbose
+    #- cargo test --all-features --verbose
+    #- cargo doc --all-features --verbose
+
+after_success:
+    - curl http://docs.src.rs/travis-doc-upload.sh | sh

@@ -14,7 +14,7 @@ pub fn impl_widget_style(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     quote! {
         #[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
         const #dummy_const: () = {
-            extern crate conrod as _conrod;
+            extern crate conrod_core as _conrod;
             #impl_tokens
         };
     }

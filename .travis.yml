@@ -18,13 +18,9 @@ addons:
             - libosmesa6-dev
 
 script:
-    - cargo build --verbose
+    - cargo check --verbose
     - cargo test --verbose
-    - cargo test --features "winit glium" --verbose
-    - cargo test --features "piston" --verbose
-    - cargo test --features "gfx_rs" --verbose
-    - cargo test --all-features --verbose
-    - cargo doc --all-features --verbose
+    - cargo doc --verbose
 
 after_success:
     - curl http://docs.piston.rs/travis-doc-upload.sh | sh
