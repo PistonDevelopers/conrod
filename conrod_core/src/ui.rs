@@ -45,6 +45,7 @@ pub struct UiBuilder {
 /// * Contains the theme used for default styling of the widgets.
 /// * Maintains the latest user input state (for mouse and keyboard).
 /// * Maintains the latest window dimensions.
+#[derive(Debug)]
 pub struct Ui {
     /// The theme used to set default styling for widgets.
     pub theme: Theme,
@@ -104,6 +105,7 @@ pub struct Ui {
 /// `RefCell` types (which `UiCell` has nothing to do with). Thus, if you have a better name for
 /// this type in mind, please let us know at the github repo via an issue or PR sometime before we
 /// hit 1.0.0!
+#[derive(Debug)]
 pub struct UiCell<'a> {
     /// A mutable reference to a **Ui**.
     ui: &'a mut Ui,
