@@ -8,10 +8,10 @@ authors = [
 keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+readme = "../../README.md"
 repository = "https://github.com/pistondevelopers/conrod.git"
 homepage = "https://github.com/pistondevelopers/conrod"
-documentation = "http://docs.piston.rs/conrod/conrod/"
+documentation = "https://docs.rs/conrod"
 categories = ["gui"]
 
 [lib]
