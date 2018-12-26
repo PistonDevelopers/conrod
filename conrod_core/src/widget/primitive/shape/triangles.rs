@@ -1,11 +1,19 @@
 //! A primitive widget that allows for drawing using a list of triangles.
 
-use {Rect, Point, Positionable, Scalar, Sizeable, Theme, Widget};
-use color;
-use graph;
+use crate::{
+    Rect,
+    Point,
+    Positionable,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+    color,
+    graph,
+    utils::{vec2_add, vec2_sub},
+    widget
+};
 use std;
-use utils::{vec2_add, vec2_sub};
-use widget;
 
 /// A widget that allows for drawing a list of triangles.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -26,7 +34,7 @@ pub trait Vertex: Clone + Copy + PartialEq {
     /// The x y location of the vertex.
     fn point(&self) -> Point;
     /// Add the given vector onto the position of self and return the result.
-    fn add(self, Point) -> Self;
+    fn add(self, _: Point) -> Self;
 }
 
 /// Unique styling types for `Triangles`.
@@ -325,7 +333,7 @@ impl<S, I> Widget for Triangles<S, I>
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        use utils::{iter_diff, IterDiff};
+        use crate::utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
         let Triangles { triangles, maybe_shift_to_centre_from, .. } = self;
 

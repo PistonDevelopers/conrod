@@ -1,6 +1,6 @@
 //! Text layout logic.
 
-use {FontSize, Scalar};
+use crate::{FontSize, Scalar};
 use std;
 
 // Re-export all relevant rusttype types here.
@@ -261,7 +261,7 @@ pub mod font {
 
 /// Logic and types specific to individual glyph layout.
 pub mod glyph {
-    use {FontSize, Range, Rect, Scalar};
+    use crate::{FontSize, Range, Rect, Scalar};
     use std;
 
     /// Some position along the X axis (used within `CharXs`).
@@ -462,8 +462,8 @@ pub mod glyph {
 
 /// Logic related to the positioning of the cursor within text.
 pub mod cursor {
-    use FontSize;
-    use position::{Range, Rect, Scalar, Point, Align};
+    use crate::FontSize;
+    use crate::position::{Range, Rect, Scalar, Point, Align};
     use std;
 
     /// Every possible cursor position within each line of text yielded by the given iterator.
@@ -881,8 +881,8 @@ pub mod cursor {
 ///
 /// This module is the core of multi-line text handling.
 pub mod line {
-    use FontSize;
-    use position::{Align, Range, Rect, Scalar};
+    use crate::FontSize;
+    use crate::position::{Align, Range, Rect, Scalar};
     use std;
 
     /// The two types of **Break** indices returned by the **WrapIndicesBy** iterators.

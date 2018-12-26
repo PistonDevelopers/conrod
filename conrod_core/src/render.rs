@@ -9,16 +9,22 @@
 //! This is the only module in which the src graphics crate will be used directly.
 
 
-use {Color, FontSize, Point, Rect, Scalar};
-use color;
-use graph::{self, Graph};
-use image;
-use position::{Align, Dimensions};
+use crate::{
+    Color,
+    FontSize,
+    Point,
+    Rect,
+    Scalar,
+    color,
+    graph::{self, Graph},
+    image,
+    position::{Align, Dimensions},
+    text,
+    theme::Theme,
+    widget::{self, Widget},
+    widget::triangles::{ColoredPoint, Triangle}
+};
 use std;
-use text;
-use theme::Theme;
-use widget::{self, Widget};
-use widget::triangles::{ColoredPoint, Triangle};
 
 
 /// An iterator-like type that yields a reference to each primitive in order of depth for
@@ -140,7 +146,7 @@ pub enum PrimitiveKind<'a> {
         /// to bottom right.
         text: Text<'a>,
         /// The unique identifier for the font, useful for the `glyph_cache.rect_for(id, glyph)`
-        /// method when using the `conrod::text::GlyphCache` (rusttype's GPU `Cache`).
+        /// method when using the `conrod_core::text::GlyphCache` (rusttype's GPU `Cache`).
         font_id: text::font::Id,
     },
 
@@ -319,9 +325,9 @@ impl<'a> Primitives<'a> {
         } = *self;
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
-            use widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
-            use widget::primitive::shape::polygon::{State as PolygonState};
-            use widget::primitive::shape::Style as ShapeStyle;
+            use crate::widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
+            use crate::widget::primitive::shape::polygon::{State as PolygonState};
+            use crate::widget::primitive::shape::Style as ShapeStyle;
 
             type TrianglesSingleColorState =
                 widget::triangles::State<Vec<widget::triangles::Triangle<Point>>>;
@@ -480,7 +486,7 @@ impl<'a> Primitives<'a> {
                 }
 
             } else if container.type_id == std::any::TypeId::of::<PolygonState>() {
-                use widget::primitive::shape::Style;
+                use crate::widget::primitive::shape::Style;
                 if let Some(polygon) = container.state_and_style::<PolygonState, Style>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *polygon;
                     triangles.clear();
@@ -608,7 +614,7 @@ impl<'a> Primitives<'a> {
                 }
 
             } else if container.type_id == state_type_id::<widget::Image>() {
-                use widget::primitive::image::{State, Style};
+                use crate::widget::primitive::image::{State, Style};
                 if let Some(image) = container.state_and_style::<State, Style>() {
                     let graph::UniqueWidgetState { ref state, ref style } = *image;
                     let color = style.maybe_color(theme);

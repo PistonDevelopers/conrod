@@ -3,11 +3,14 @@
 //! The core of this module is the `Widget::for_widget` method, which creates an
 //! `InputProvider` that provides input events for a specific widget.
 
-use {Point, Rect};
-use event;
-use input;
-use utils;
-use widget;
+use crate::{
+    Point,
+    Rect,
+    event,
+    input,
+    utils,
+    widget
+};
 
 
 /// Provides only events and input state that are relevant to a specific widget.

@@ -2,7 +2,7 @@
 //! simplify the process of generating them.
 
 use daggy;
-use graph::Graph;
+use crate::graph::Graph;
 use std;
 
 /// Unique widget identifier.
@@ -359,8 +359,8 @@ macro_rules! widget_ids {
 
 #[test]
 fn test() {
-    use ui::UiBuilder;
-    use widget::{self, Widget};
+    use crate::ui::UiBuilder;
+    use crate::widget::{self, Widget};
 
     widget_ids! {
         /// Testing generated Ids doc comments.
@@ -391,7 +391,7 @@ fn test() {
 #[test]
 #[allow(unused_variables)]
 fn test_invocation_variations() {
-    use ui::UiBuilder;
+    use crate::ui::UiBuilder;
 
     widget_ids! { struct A { foo, bar } }
     widget_ids! { pub struct B { foo, bar } }

@@ -1,8 +1,20 @@
 //! A widget for displaying a grid of lines across two axes.
 
-use {Color, Colorable, Point, Scalar, Widget};
-use widget::{self, CommonBuilder, UpdateArgs};
-use utils::map_range;
+use conrod_core::{
+    Color,
+    Colorable,
+    Point,
+    Scalar,
+    Widget,
+    widget::{self, CommonBuilder, UpdateArgs},
+    utils::map_range,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 /// A widget for displaying a grid of lines across two axes.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]

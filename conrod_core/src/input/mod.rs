@@ -19,16 +19,16 @@ pub mod state;
 pub mod widget;
 pub mod global;
 
-use Scalar;
+use crate::Scalar;
 pub use self::state::State;
 pub use self::global::Global;
 pub use self::touch::Touch;
 pub use self::widget::Widget;
 
 #[doc(inline)]
-pub use piston_input::keyboard::ModifierKey;
+pub use crate::piston_input::keyboard::ModifierKey;
 #[doc(inline)]
-pub use piston_input::{
+pub use crate::piston_input::{
     Button,
     ControllerButton,
     ControllerAxisArgs,
@@ -71,7 +71,7 @@ pub enum Motion {
 
 /// Touch-related items.
 pub mod touch {
-    use Point;
+    use crate::Point;
 
     /// A type for uniquely identifying the source of a touch interaction.
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

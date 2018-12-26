@@ -1,11 +1,26 @@
 //! A widget for specifying start and end values for some linear range.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
+use conrod_core::{
+    utils,
+    text,
+    position::{Padding, Range, Rect, Scalar},
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Labelable,
+    Positionable,
+    Widget,
+    UiCell,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 use num::Float;
-use position::{Padding, Range, Rect, Scalar};
-use text;
-use utils;
-use widget;
 
 /// Linear range selection.
 #[derive(WidgetCommon_)]
@@ -207,8 +222,10 @@ where
         let mut new_start = utils::clamp(start, min, max);
         let mut new_end = utils::clamp(end, start, max);
         for widget_event in ui.widget_input(id).events() {
-            use event;
-            use input;
+            use conrod_core::{
+                event,
+                input
+            };
 
             match widget_event {
 
@@ -325,7 +342,7 @@ where
         }
 
         // The **Rectangle** for the border.
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
+        let interaction_color = |ui: &UiCell, color: Color|
             ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()

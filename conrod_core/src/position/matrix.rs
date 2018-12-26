@@ -1,7 +1,11 @@
-use {Backend, CharacterCache, Ui};
 use super::{Depth, Dimension, Dimensions, Point, Position, Positionable, Scalar, Sizeable};
-use ui;
-use widget;
+use crate::{
+    ui,
+    Backend,
+    CharacterCache,
+    Ui,
+    widget
+};
 
 pub type WidgetNum = usize;
 pub type ColNum = usize;
@@ -52,7 +56,7 @@ impl Matrix {
         C: CharacterCache,
         F: FnMut(&mut Ui<C>, WidgetNum, ColNum, RowNum, Point, Dimensions),
     {
-        use utils::map_range;
+        use crate::utils::map_range;
 
         let x_pos = self.get_x_position(ui);
         let y_pos = self.get_y_position(ui);
@@ -142,7 +146,7 @@ impl<B> Sizeable<B> for Matrix
     fn get_y_dimension(&self, ui: &Ui<B>) -> Dimension {
         const DEFAULT_HEIGHT: Dimension = Dimension::Absolute(256.0);
         self.maybe_y_dimension.or_else(|| {
-            ui.theme.widget_style::<widget::matrix::Style>(widget::matrix::KIND)
+            ui.theme.widget_style::<crate::widget::matrix::Style>(widget::matrix::KIND)
                 .map(|default| default.common.maybe_y_dimension.unwrap_or(DEFAULT_HEIGHT))
         }).unwrap_or(DEFAULT_HEIGHT)
     }

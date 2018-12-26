@@ -1,10 +1,19 @@
 //! A simple, non-interactive widget for drawing a series of conjoined lines.
 
-use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
-use graph;
-use utils::{vec2_add, vec2_sub};
-use widget;
-use widget::triangles::Triangle;
+use crate::{
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+    graph,
+    utils::{vec2_add, vec2_sub},
+    widget,
+    widget::triangles::Triangle
+};
 
 pub use super::line::Pattern;
 pub use super::line::Style;
@@ -165,7 +174,7 @@ impl<I> Widget for PointPath<I>
 
     /// Update the state of the Line.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        use utils::{iter_diff, IterDiff};
+        use crate::utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
         let PointPath { points, maybe_shift_to_centre_from, .. } = self;
 

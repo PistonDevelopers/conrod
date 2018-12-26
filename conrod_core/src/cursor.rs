@@ -1,9 +1,9 @@
 //! Contains an extendable enum of supported mouse cursor types.
 //!
 //! Use this module to map from the conrod's mouse cursor types to the types known to the window
-//! backend you are using. A lot of these are already implemented in `conrod::backend`. Unless you
+//! backend you are using. A lot of these are already implemented in `conrod_core::backend`. Unless you
 //! are using custom mouse cursor types not provided here, then using one of the implementations in
-//! `conrod::backend` should be sufficient.
+//! `conrod_core::backend` should be sufficient.
 
 /// This enum specifies cursor types used by internal widgets. For custom widgets using custom
 /// cursor types, you can still use this enum by specifying a numbered custom variant.

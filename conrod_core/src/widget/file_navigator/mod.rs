@@ -6,7 +6,7 @@
 //! of one or more files, de-selection, deletion and double-clicking.
 //! - `FileView`: Displays some basic information about the file.
 
-use {
+use crate::{
     color,
     Color,
     Colorable,
@@ -15,10 +15,10 @@ use {
     Scalar,
     Sizeable,
     Widget,
+    event,
+    widget
 };
-use event;
 use std;
-use widget;
 
 pub use self::directory_view::DirectoryView;
 
@@ -339,7 +339,7 @@ impl<'a> Widget for FileNavigator<'a> {
                     // Check for directory navigation.
                     directory_view::Event::Press(press, paths) => {
                         if let Some(key_press) = press.key() {
-                            use input;
+                            use crate::input;
                             match key_press.key {
                                 input::Key::Right => if paths.len() == 1 {
                                     if paths[0].is_dir() {

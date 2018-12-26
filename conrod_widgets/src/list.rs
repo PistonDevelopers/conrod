@@ -1,6 +1,7 @@
 //! A helper widget, useful for instantiating a sequence of widgets in a vertical list.
 
-use {
+use conrod_core::{
+    graph,
     color,
     Color,
     Colorable,
@@ -10,11 +11,15 @@ use {
     Widget,
     Ui,
     UiCell,
+    position::{Range, Rect},
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
 };
-use graph;
-use position::{Range, Rect};
-use std;
-use widget;
 
 /// A helper widget, useful for instantiating a sequence of widgets in a vertical list.
 ///
@@ -68,13 +73,13 @@ pub struct Dynamic {}
 /// The direction in which the list is laid out.
 pub trait Direction {
     /// The direction along which the `Scrollbar` is laid out.
-    type Axis: widget::scrollbar::Axis;
+    type Axis: crate::scrollbar::Axis;
 
     /// For some given `Rect`, returns the parallel and perpendicular ranges respectively.
-    fn ranges(Rect) -> (Range, Range);
+    fn ranges(_: Rect) -> (Range, Range);
 
     /// Begin building the scrollbar for the `List`.
-    fn scrollbar(widget::Id) -> widget::Scrollbar<Self::Axis>;
+    fn scrollbar(_: widget::Id) -> crate::Scrollbar<Self::Axis>;
 
     /// Borrow the scroll state associated with this `Direction`'s axis.
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll>;
@@ -108,7 +113,7 @@ pub trait Direction {
 pub trait ItemSize: Sized + Clone + Copy {
 
     /// Update the `List` widget.
-    fn update_list<D>(List<D, Self>, widget::UpdateArgs<List<D, Self>>)
+    fn update_list<D>(_: List<D, Self>, _: widget::UpdateArgs<List<D, Self>>)
         -> <List<D, Self> as Widget>::Event
         where D: Direction;
 
@@ -185,7 +190,7 @@ pub enum ScrollbarPosition {
 
 /// A wrapper around a `List`'s `Scrollbar` and its `widget::Id`.
 pub struct Scrollbar<A> {
-    widget: widget::Scrollbar<A>,
+    widget: crate::Scrollbar<A>,
     id: widget::Id,
 }
 
@@ -497,7 +502,7 @@ impl Item<Left, Fixed> {
 
 
 impl<A> Scrollbar<A>
-    where A: widget::scrollbar::Axis,
+    where A: crate::scrollbar::Axis,
 {
     /// Set the `Scrollbar` within the given `Ui`.
     pub fn set(self, ui: &mut UiCell) {
@@ -538,7 +543,7 @@ impl ItemSize for Fixed {
         // The width of the scrollbar.
         let scrollbar_thickness = style.scrollbar_thickness(&ui.theme)
             .unwrap_or_else(|| {
-                ui.theme.widget_style::<widget::scrollbar::Style>()
+                ui.theme.widget_style::<crate::scrollbar::Style>()
                     .and_then(|style| style.style.thickness)
                     .unwrap_or(10.0)
             });
@@ -660,7 +665,7 @@ impl ItemSize for Dynamic {
         // The width of the scrollbar.
         let scrollbar_thickness = style.scrollbar_thickness(&ui.theme)
             .unwrap_or_else(|| {
-                ui.theme.widget_style::<widget::scrollbar::Style>()
+                ui.theme.widget_style::<crate::scrollbar::Style>()
                     .and_then(|style| style.style.thickness)
                     .unwrap_or(10.0)
             });
@@ -720,8 +725,8 @@ impl Direction for Down {
         (y.invert(), x)
     }
 
-    fn scrollbar(id: widget::Id) -> widget::Scrollbar<Self::Axis> {
-        widget::Scrollbar::y_axis(id)
+    fn scrollbar(id: widget::Id) -> crate::Scrollbar<Self::Axis> {
+        crate::Scrollbar::y_axis(id)
     }
 
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll> {
@@ -775,8 +780,8 @@ impl Direction for Up {
         (y, x)
     }
 
-    fn scrollbar(id: widget::Id) -> widget::Scrollbar<Self::Axis> {
-        widget::Scrollbar::y_axis(id)
+    fn scrollbar(id: widget::Id) -> crate::Scrollbar<Self::Axis> {
+        crate::Scrollbar::y_axis(id)
     }
 
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll> {
@@ -830,8 +835,8 @@ impl Direction for Left {
         (x.invert(), y)
     }
 
-    fn scrollbar(id: widget::Id) -> widget::Scrollbar<Self::Axis> {
-        widget::Scrollbar::x_axis(id)
+    fn scrollbar(id: widget::Id) -> crate::Scrollbar<Self::Axis> {
+        crate::Scrollbar::x_axis(id)
     }
 
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll> {
@@ -885,8 +890,8 @@ impl Direction for Right {
         (x, y)
     }
 
-    fn scrollbar(id: widget::Id) -> widget::Scrollbar<Self::Axis> {
-        widget::Scrollbar::x_axis(id)
+    fn scrollbar(id: widget::Id) -> crate::Scrollbar<Self::Axis> {
+        crate::Scrollbar::x_axis(id)
     }
 
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll> {

@@ -3,52 +3,32 @@
 //! This module contains items related to the implementation of the `Widget` trait. It also
 //! re-exports all widgets (and their modules) that are provided by conrod.
 
-use graph::{Container, UniqueWidgetState};
-use position::{Align, Depth, Dimension, Dimensions, Padding, Position, Point,
-               Positionable, Rect, Relative, Sizeable};
+use crate::{
+    graph::{Container, UniqueWidgetState},
+    position::{Align, Depth, Dimension, Dimensions, Padding, Position, Point,
+               Positionable, Rect, Relative, Sizeable},
+    text::font,
+    theme::{self, Theme},
+    ui::{self, Ui, UiCell}
+};
 use std;
-use text::font;
-use theme::{self, Theme};
-use ui::{self, Ui, UiCell};
 
-
-pub use self::id::Id;
-
-pub use self::primitive::line::{self, Line};
-pub use self::primitive::image::{self, Image};
-pub use self::primitive::point_path::{self, PointPath};
-pub use self::primitive::shape::circle::{self, Circle};
-pub use self::primitive::shape::oval::{self, Oval};
-pub use self::primitive::shape::polygon::{self, Polygon};
-pub use self::primitive::shape::rectangle::{self, Rectangle};
-pub use self::primitive::shape::triangles::{self, Triangles};
-pub use self::primitive::text::{self, Text};
+pub use self::{
+    id::Id,
+    primitive::line::{self, Line},
+    primitive::image::{self, Image},
+    primitive::point_path::{self, PointPath},
+    primitive::shape::circle::{self, Circle},
+    primitive::shape::oval::{self, Oval},
+    primitive::shape::polygon::{self, Polygon},
+    primitive::shape::rectangle::{self, Rectangle},
+    primitive::shape::triangles::{self, Triangles},
+    primitive::text::{self, Text}
+};
 
 pub use self::bordered_rectangle::BorderedRectangle;
 pub use self::button::Button;
-pub use self::canvas::Canvas;
-pub use self::collapsible_area::CollapsibleArea;
-pub use self::drop_down_list::DropDownList;
-pub use self::envelope_editor::EnvelopeEditor;
-pub use self::file_navigator::FileNavigator;
-pub use self::grid::Grid;
-pub use self::list::List;
-pub use self::list_select::ListSelect;
-pub use self::matrix::Matrix;
-pub use self::graph::Graph;
-pub use self::number_dialer::NumberDialer;
-pub use self::plot_path::PlotPath;
-pub use self::range_slider::RangeSlider;
 pub use self::rounded_rectangle::RoundedRectangle;
-pub use self::scrollbar::Scrollbar;
-pub use self::slider::Slider;
-pub use self::tabs::Tabs;
-pub use self::text_box::TextBox;
-pub use self::text_edit::TextEdit;
-pub use self::title_bar::TitleBar;
-pub use self::toggle::Toggle;
-pub use self::xy_pad::XYPad;
-
 
 // Macro providing modules.
 #[macro_use] mod builder;
@@ -64,28 +44,7 @@ pub mod primitive;
 
 pub mod bordered_rectangle;
 pub mod button;
-pub mod canvas;
-pub mod collapsible_area;
-pub mod drop_down_list;
-pub mod envelope_editor;
-pub mod file_navigator;
-pub mod grid;
-pub mod list;
-pub mod list_select;
-pub mod matrix;
-pub mod graph;
-pub mod number_dialer;
-pub mod plot_path;
-pub mod range_slider;
 pub mod rounded_rectangle;
-pub mod scrollbar;
-pub mod slider;
-pub mod tabs;
-pub mod text_box;
-pub mod text_edit;
-pub mod title_bar;
-pub mod toggle;
-pub mod xy_pad;
 
 
 /// Arguments for the [**Widget::update**](./trait.Widget#method.update) method in a struct to
@@ -560,7 +519,7 @@ pub trait Widget: Common + Sized {
     /// ```
     /// # extern crate conrod_core;
     /// # #[macro_use] extern crate conrod_derive;
-    /// # use conrod_core::{Color, FontSize, Scalar};
+    /// # use conrod_core::{Color, FontSize, Scalar, Theme};
     /// # fn main() {}
     /// /// Unique styling for a Button widget.
     /// #[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
@@ -594,7 +553,7 @@ pub trait Widget: Common + Sized {
     ///
     /// The `Ui` will only call this once, immediately prior to the first time that
     /// **Widget::update** is first called.
-    fn init_state(&self, id::Generator) -> Self::State;
+    fn init_state(&self, _: id::Generator) -> Self::State;
 
     /// Return the styling of the widget.
     ///

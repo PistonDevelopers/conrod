@@ -1,11 +1,26 @@
 //! A widget for selecting a single value along some linear range.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
+use conrod_core::{
+    widget,
+    text,
+    position::{Padding, Range, Rect, Scalar},
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Labelable,
+    Positionable,
+    Widget,
+    UiCell,
+    widget::triangles::Triangle,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 use num::{Float, NumCast, ToPrimitive};
-use position::{Padding, Range, Rect, Scalar};
-use text;
-use widget;
-use widget::triangles::Triangle;
 
 
 /// Linear value selection.
@@ -130,7 +145,7 @@ impl<'a, T> Widget for Slider<'a, T>
 
     /// Update the state of the Slider.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        use utils::{clamp, map_range, value_from_perc};
+        use conrod_core::utils::{clamp, map_range, value_from_perc};
 
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let Slider { value, min, max, skew, maybe_label, .. } = self;
@@ -167,7 +182,7 @@ impl<'a, T> Widget for Slider<'a, T>
         };
 
         // The **Rectangle** for the border.
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
+        let interaction_color = |ui: &UiCell, color: Color|
             ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()

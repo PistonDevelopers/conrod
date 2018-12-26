@@ -1,11 +1,17 @@
 //! The primitive widget used for displaying text.
 
-use {Color, Colorable, FontSize, Ui, Widget};
-use position::{Dimension, Scalar};
+use crate::{
+    Color,
+    Colorable,
+    FontSize,
+    Ui,
+    Widget,
+    position::{Dimension, Scalar},
+    text,
+    utils,
+    widget
+};
 use std;
-use text;
-use utils;
-use widget;
 
 
 /// Displays some given text centered within a rectangular area.
@@ -188,7 +194,7 @@ impl<'a> Widget for Text<'a> {
     /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
     /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
     fn default_y_dimension(&self, ui: &Ui) -> Dimension {
-        use position::Sizeable;
+        use crate::position::Sizeable;
 
         let font = match self.style.font_id(&ui.theme)
             .or(ui.fonts.ids().next())
@@ -256,7 +262,7 @@ impl<'a> Widget for Text<'a> {
 
         // Otherwise, we'll check to see if we have to update the line breaks.
         } else {
-            use utils::write_if_different;
+            use crate::utils::write_if_different;
             use std::borrow::Cow;
 
             // Compare the line_infos and only collect the new ones if they are different.

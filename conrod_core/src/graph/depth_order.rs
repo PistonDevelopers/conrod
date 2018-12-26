@@ -4,7 +4,7 @@ use daggy::Walker;
 use std;
 use fnv;
 use super::{Graph, Node};
-use widget;
+use crate::widget;
 
 
 /// Contains Node indices in order of depth, starting with the deepest.

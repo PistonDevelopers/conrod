@@ -1,17 +1,21 @@
-use color::Color;
-use event;
-use graph::{self, Graph};
-use input;
-use position::{self, Align, Direction, Dimensions, Padding, Point, Position, Range, Rect, Scalar};
-use render;
-use std;
-use std::sync::atomic::{self, AtomicUsize};
+use crate::{
+    color::Color,
+    event,
+    graph::{self, Graph},
+    input,
+    position::{self, Align, Direction, Dimensions, Padding, Point, Position, Range, Rect, Scalar},
+    render,
+    text,
+    theme::Theme,
+    utils,
+    widget::{self, Widget},
+    cursor
+};
+use std::{
+    self,
+    sync::atomic::{self, AtomicUsize}
+};
 use fnv;
-use text;
-use theme::Theme;
-use utils;
-use widget::{self, Widget};
-use cursor;
 
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
@@ -381,13 +385,15 @@ impl Ui {
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
     pub fn handle_event(&mut self, event: event::Input) {
-        use event::{self, Input};
-        use input::{Button, Key, ModifierKey, Motion};
-        use input::state::mouse::Button as MouseButton;
+        use crate::{
+            event::{self, Input},
+            input::{Button, Key, ModifierKey, Motion},
+            input::state::mouse::Button as MouseButton
+        };
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use input::keyboard::ModifierKey;
+            use crate::input::keyboard::ModifierKey;
             match key {
                 Key::LCtrl | Key::RCtrl => Some(ModifierKey::CTRL),
                 Key::LShift | Key::RShift => Some(ModifierKey::SHIFT),
@@ -696,7 +702,7 @@ impl Ui {
                             fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
                                                      additional_offset: Scalar) -> bool
                             {
-                                use utils;
+                                use crate::utils;
 
                                 fn approx_eq(a: Scalar, b: Scalar) -> bool {
                                     (a - b).abs() < 0.000001
@@ -945,7 +951,7 @@ impl Ui {
                    dim: Dimensions,
                    place_on_kid_area: bool) -> Point
     {
-        use utils::vec2_add;
+        use crate::utils::vec2_add;
 
         // Retrieves the absolute **Scalar** position from the given position for a single axis.
         //
@@ -1066,7 +1072,7 @@ impl Ui {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use {color, Colorable, Borderable, Positionable, Widget};
+            use crate::{color, Colorable, Borderable, Positionable, Widget};
             type Window = widget::BorderedRectangle;
             Window::new([ui_cell.win_w, ui_cell.win_h])
                 .no_parent()
@@ -1103,7 +1109,7 @@ impl Ui {
     /// be a `Rectangle` the size of the window in which conrod is hosted.
     ///
     /// This method sets the colour with which this `Rectangle` is drawn (the default being
-    /// `conrod::color::TRANSPARENT`.
+    /// `conrod_core::color::TRANSPARENT`.
     pub fn clear_with(&mut self, color: Color) {
         self.maybe_background_color = Some(color);
     }
@@ -1315,8 +1321,8 @@ pub fn widget_graph_mut(ui: &mut Ui) -> &mut Graph {
 ///
 /// When a different parent may be inferred from either `Position`, the *x* `Position` is favoured.
 pub fn infer_parent_from_position(ui: &Ui, x: Position, y: Position) -> Option<widget::Id> {
-    use Position::Relative;
-    use position::Relative::{Align, Direction, Place, Scalar};
+    use crate::Position::Relative;
+    use crate::position::Relative::{Align, Direction, Place, Scalar};
     match (x, y) {
         (Relative(Place(_), maybe_parent_id), _) | (_, Relative(Place(_), maybe_parent_id)) =>
             maybe_parent_id,

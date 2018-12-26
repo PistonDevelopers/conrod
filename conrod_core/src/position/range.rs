@@ -149,7 +149,7 @@ impl Range {
     /// assert_eq!(a.map_value_to(10.0, &c), -30.0);
     /// ```
     pub fn map_value_to(&self, value: Scalar, other: &Range) -> Scalar {
-        ::utils::map_range(value, self.start, self.end, other.start, other.end)
+        crate::utils::map_range(value, self.start, self.end, other.start, other.end)
     }
 
     /// Shift the `Range` start and end points by a given `Scalar`.
@@ -253,8 +253,8 @@ impl Range {
     pub fn overlap(mut self, mut other: Self) -> Option<Range> {
         self = self.undirected();
         other = other.undirected();
-        let start = ::utils::partial_max(self.start, other.start);
-        let end = ::utils::partial_min(self.end, other.end);
+        let start = crate::utils::partial_max(self.start, other.start);
+        let end = crate::utils::partial_min(self.end, other.end);
         let magnitude = end - start;
         if magnitude >= 0.0 {
             Some(Range::new(start, end))
@@ -403,7 +403,7 @@ impl Range {
     /// assert_eq!(Range::new(5.0, 10.0).clamp_value(0.0), 5.0);
     /// ```
     pub fn clamp_value(&self, value: Scalar) -> Scalar {
-        ::utils::clamp(value, self.start, self.end)
+        crate::utils::clamp(value, self.start, self.end)
     }
 
     /// Stretch the end that is closest to the given value only if it lies outside the Range.

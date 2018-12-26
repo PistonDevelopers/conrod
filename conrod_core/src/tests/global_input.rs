@@ -1,9 +1,10 @@
-use event::{self, Input};
-use input::{self, Key, Motion, MouseButton};
-use input::Button::Keyboard;
-use input::Button::Mouse;
-use position::Scalar;
-
+use crate::{
+    event::{self, Input},
+    input::{self, Key, Motion, MouseButton},
+    input::Button::Keyboard,
+    input::Button::Mouse,
+    position::Scalar
+};
 
 // Pushes an event onto the given global input with a default drag threshold.
 fn push_event(input: &mut input::Global, event: event::Event) {
@@ -13,7 +14,6 @@ fn push_event(input: &mut input::Global, event: event::Event) {
 fn mouse_move_event(x: Scalar, y: Scalar) -> event::Event {
     event::Event::Raw(Input::Motion(Motion::MouseRelative { x: x, y: y }))
 }
-
 
 #[test]
 fn resetting_input_should_set_starting_state_to_current_state() {

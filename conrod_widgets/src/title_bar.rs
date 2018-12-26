@@ -1,9 +1,24 @@
 //! A simple title bar widget that automatically sizes itself to the top of some other widget.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable, Ui};
-use position::{self, Align, Dimension, Scalar};
-use text;
-use widget::{self, Widget};
+use conrod_core::{
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Labelable,
+    Positionable,
+    Sizeable,
+    Ui,
+    position::{self, Align, Dimension, Scalar},
+    text,
+    widget::{self, Widget},
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 
 /// A simple title bar widget that automatically sizes itself to the top of some other widget.

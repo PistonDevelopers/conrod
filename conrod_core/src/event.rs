@@ -35,10 +35,12 @@
 //! Because we use the `pistoncore-input` `Event` type, we also re-export its associated data
 //! types (`Button`, `ControllerAxisArgs`, `Key`, etc).
 
-use input;
-use position::{Dimensions, Point};
-use utils::vec2_sub;
-use widget;
+use crate::{
+    input,
+    position::{Dimensions, Point},
+    utils::vec2_sub,
+    widget
+};
 
 
 /// The event type that is used by conrod to track inputs from the world. Events yielded by polling
@@ -63,7 +65,7 @@ pub enum Input {
     /// A button on some input device was released.
     Release(input::Button),
     /// The window was received to the given dimensions.
-    Resize(f64, f64),
+    Resize(u32, u32),
     /// Some motion input was received (e.g. moving mouse or joystick axis).
     Motion(input::Motion),
     /// Input from a touch surface/screen.

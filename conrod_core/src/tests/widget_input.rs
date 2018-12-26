@@ -1,8 +1,10 @@
-use event::{self, Input};
-use input::{self, Button, Motion, MouseButton};
-use input::keyboard::ModifierKey;
-use widget;
-use position::Rect;
+use crate::{
+    event::{self, Input},
+    input::{self, Button, Motion, MouseButton},
+    input::keyboard::ModifierKey,
+    widget,
+    position::Rect
+};
 
 // Pushes an event onto the given global input with a default drag threshold.
 fn push_event(input: &mut input::Global, event: event::Event) {

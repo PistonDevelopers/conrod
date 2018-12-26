@@ -3,7 +3,7 @@
 //! Reacts to events for selection of one or more files, de-selection, deletion and
 //! double-clicking.
 
-use {
+use crate::{
     Borderable,
     color,
     Color,
@@ -14,11 +14,13 @@ use {
     Sizeable,
     Scalar,
     Widget,
+    event,
+    widget
 };
-use event;
-use std;
-use widget;
-use std::cmp::Ordering;
+use std::{
+    self,
+    cmp::Ordering
+};
 
 /// For viewing, selecting, double-clicking, etc the contents of a directory.
 #[derive(WidgetCommon_)]
@@ -291,13 +293,13 @@ impl<'a> Widget for DirectoryView<'a> {
             .collect();
 
         while let Some(event) = list_events.next(ui, |i| state.entries[i].is_selected) {
-            use widget::list_select;
+            use crate::widget::list_select;
 
             match event {
 
                 // Instantiate a `Button` for each item.
                 list_select::Event::Item(item) => {
-                    use position::{Place, Relative};
+                    use crate::position::{Place, Relative};
                     let entry = &state.entries[item.i];
                     let is_selected = entry.is_selected;
                     let is_directory = entry.path.is_dir();

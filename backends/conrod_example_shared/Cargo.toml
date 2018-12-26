@@ -6,4 +6,5 @@ description = "A small crate for sharing common code between conrod examples."
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.62" }
+conrod_widgets = {path = "../../conrod_widgets", version = "0.62"}
 rand = "0.6"

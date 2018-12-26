@@ -4,10 +4,12 @@
 
 
 use num::{Float, NumCast, PrimInt, ToPrimitive};
-use position::{Point, Range, Rect};
-use std::borrow::Cow;
-use std::iter::{Chain, once, Once};
-use std;
+use crate::position::{Point, Range, Rect};
+use std::{
+    borrow::Cow,
+    iter::{Chain, once, Once},
+    self
+};
 
 
 /// Compare to PartialOrd values and return the min.

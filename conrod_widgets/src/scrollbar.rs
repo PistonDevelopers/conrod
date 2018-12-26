@@ -1,13 +1,25 @@
 //! A widget that allows for manually scrolling via dragging the mouse.
 
-use {Color, Colorable, Positionable, Ui};
-use graph;
-use position::{Dimension, Range, Rect, Scalar};
-use std;
-use utils;
-use widget::{self, Widget};
-use widget::scroll::{self, X, Y};
-
+use conrod_core::{
+    position::{Dimension, Range, Rect, Scalar},
+    graph,
+    Color,
+    Colorable,
+    Positionable,
+    Ui,
+    utils,
+    widget::{
+        self,
+        Widget,
+        scroll::{self, X, Y}
+    },
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 /// A widget that allows for scrolling via dragging the mouse.
 #[derive(WidgetCommon_)]
@@ -167,9 +179,9 @@ impl<A> Widget for Scrollbar<A>
                          scroll.offset,
                          scroll.scrollable_range_len,
                          scroll.is_scrolling),
-                    None => return,
+                    None => return (),
                 },
-                None => return,
+                None => return (),
             };
 
         // Calculates the `Rect` for a scroll "handle" sitting on the given `track` with an offset
@@ -206,8 +218,10 @@ impl<A> Widget for Scrollbar<A>
         // Sum all offset yielded by `Press` and `Drag` events.
         let mut additional_offset = 0.0;
         for widget_event in ui.widget_input(id).events() {
-            use event;
-            use input;
+            use conrod_core::{
+                event,
+                input
+            };
 
             match widget_event {
 
@@ -249,17 +263,17 @@ impl<A> Widget for Scrollbar<A>
 
         // Scroll the given widget by the accumulated additional offset.
         if additional_offset != 0.0 {
-            ui.scroll_widget(widget, A::to_2d(additional_offset));
+            ui.scroll_widget(widget, A::to_2d(additional_offset.clone()));
         }
 
         // Don't draw the scrollbar if auto_hide is on and there is no interaction.
         let auto_hide = style.auto_hide(ui.theme());
         let not_scrollable = offset_bounds.magnitude().is_sign_positive();
         if auto_hide {
-            let no_offset = additional_offset == 0.0;
+            let no_offset = additional_offset.clone() == 0.0;
             let no_mouse_interaction = ui.widget_input(id).mouse().is_none();
             if not_scrollable || (!is_scrolling && no_offset && no_mouse_interaction) {
-                return;
+                return ();
             }
         }
 
@@ -294,6 +308,8 @@ impl<A> Widget for Scrollbar<A>
             .graphics_for(id)
             .parent(id)
             .set(state.ids.handle, ui);
+
+        ()
     }
 }
 
