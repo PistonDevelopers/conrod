@@ -915,6 +915,21 @@ impl Ui {
         &self.global_input
     }
 
+    /// Set keyboard capturing widget
+    pub fn keyboard_capture(&mut self, idx: widget::Id) {
+        let source = input::Source::Keyboard;
+
+        if self.global_input.current.widget_capturing_keyboard.is_some() {
+            let event = event::Ui::WidgetUncapturesInputSource(idx, source);
+            self.global_input.push_event(event.into());
+            self.global_input.current.widget_capturing_keyboard = None;
+        }
+
+        let event = event::Ui::WidgetCapturesInputSource(idx, source).into();
+        self.global_input.push_event(event);
+        self.global_input.current.widget_capturing_keyboard = Some(idx);
+    }
+
     /// Get the centred xy coords for some given `Dimension`s, `Position` and alignment.
     ///
     /// If getting the xy for a specific widget, its `widget::Id` should be specified so that we
