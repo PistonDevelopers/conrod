@@ -1,8 +1,15 @@
 [package]
 name = "conrod_example_shared"
-version = "0.1.0"
+version = "0.62.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "A small crate for sharing common code between conrod examples."
+license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "http://docs.rs/conrod"
+categories = ["gui"]
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.62" }

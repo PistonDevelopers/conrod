@@ -21,7 +21,7 @@ gfx = { version = "0.17" }
 gfx_core = { version = "0.8" }
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.62" }
 conrod_winit = { path = "../conrod_winit", version = "0.62" }
 find_folder = "0.3.0"
 image = "0.19"
