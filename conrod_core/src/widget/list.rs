@@ -266,7 +266,7 @@ impl<D, S> List<D, S>
             style: style,
             num_items: num_items,
             item_instantiation: ItemInstantiation::OnlyVisible,
-            item_size: Fixed { length: length },
+            item_size: Fixed { length },
             direction: std::marker::PhantomData,
         }
     }
