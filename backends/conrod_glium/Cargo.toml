@@ -20,7 +20,6 @@ conrod_core = { path = "../../conrod_core", version = "0.62" }
 glium = { version = "0.23" }
 
 [dev-dependencies]
-conrod_derive = { path = "../../conrod_derive", version = "0.2" }
 conrod_example_shared = { path = "../conrod_example_shared" }
 conrod_winit = { path = "../conrod_winit", version = "0.62" }
 find_folder = "0.3.0"

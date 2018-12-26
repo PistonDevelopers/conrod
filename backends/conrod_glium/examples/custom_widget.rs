@@ -11,8 +11,7 @@
 //!
 //! For more information, please see the `Widget` trait documentation.
 
-extern crate conrod_core;
-#[macro_use] extern crate conrod_derive;
+#[macro_use] extern crate conrod_core;
 extern crate conrod_glium;
 extern crate conrod_winit;
 extern crate find_folder;
