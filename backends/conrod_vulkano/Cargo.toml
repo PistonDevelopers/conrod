@@ -6,6 +6,14 @@ authors = [
     "Kurble",
     "Abendstolz",
 ]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
+license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "https://docs.rs/conrod"
+categories = ["gui"]
 edition = "2018"
 
 [dependencies]
@@ -14,7 +22,7 @@ vulkano = "0.11"
 vulkano-shaders = "0.11"
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.62" }
 conrod_winit = { path = "../conrod_winit", version = "0.62" }
 find_folder = "0.3"
 image = "0.20"
