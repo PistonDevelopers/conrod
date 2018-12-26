@@ -47,13 +47,15 @@ Guide
 Crates
 ------
 
-- **`conrod_core`** [![Crates.io](https://img.shields.io/crates/v/conrod_core.svg)](https://crates.io/crates/conrod_core) [![docs.rs](https://docs.rs/conrod_core/badge.svg)](https://docs.rs/conrod_core/) - The fundamentals for any conrod project.
-- **`conrod_derive`** [![Crates.io](https://img.shields.io/crates/v/conrod_derive.svg)](https://crates.io/crates/conrod_derive) [![docs.rs](https://docs.rs/conrod_derive/badge.svg)](https://docs.rs/conrod_derive/) - Provides the `WidgetCommon` and `WidgetStyle` derive macros.
-- **`conrod_winit`** [![Crates.io](https://img.shields.io/crates/v/conrod_winit.svg)](https://crates.io/crates/conrod_winit) [![docs.rs](https://docs.rs/conrod_winit/badge.svg)](https://docs.rs/conrod_winit/) - Simplifies using `conrod_core` with `winit`.
-- **`conrod_gfx`** [![Crates.io](https://img.shields.io/crates/v/conrod_gfx.svg)](https://crates.io/crates/conrod_gfx) [![docs.rs](https://docs.rs/conrod_gfx/badge.svg)](https://docs.rs/conrod_gfx/) - Simplifies using `conrod_core` with the gfx ecosystem.
-- **`conrod_glium`** [![Crates.io](https://img.shields.io/crates/v/conrod_glium.svg)](https://crates.io/crates/conrod_glium) [![docs.rs](https://docs.rs/conrod_glium/badge.svg)](https://docs.rs/conrod_glium/) - Simplifies using `conrod_core` with `glium`.
-- **`conrod_piston`** [![Crates.io](https://img.shields.io/crates/v/conrod_piston.svg)](https://crates.io/crates/conrod_piston) [![docs.rs](https://docs.rs/conrod_piston/badge.svg)](https://docs.rs/conrod_piston/) - Simplifies using `conrod_core` with `piston`.
-- **`conrod_vulkano`** [![Crates.io](https://img.shields.io/crates/v/conrod_vulkano.svg)](https://crates.io/crates/conrod_vulkano) [![docs.rs](https://docs.rs/conrod_vulkano/badge.svg)](https://docs.rs/conrod_vulkano/) - Simplifies using `conrod_core` with `vulkano`.
+| Crate | Badges | Description |
+| --- | --- | --- |
+| **`conrod_core`** | [![Crates.io](https://img.shields.io/crates/v/conrod_core.svg)](https://crates.io/crates/conrod_core) [![docs.rs](https://docs.rs/conrod_core/badge.svg)](https://docs.rs/conrod_core/) | The fundamentals for any conrod project. |
+| **`conrod_derive`** | [![Crates.io](https://img.shields.io/crates/v/conrod_derive.svg)](https://crates.io/crates/conrod_derive) [![docs.rs](https://docs.rs/conrod_derive/badge.svg)](https://docs.rs/conrod_derive/) | Provides the `WidgetCommon` and `WidgetStyle` derive macros. |
+| **`conrod_winit`** | [![Crates.io](https://img.shields.io/crates/v/conrod_winit.svg)](https://crates.io/crates/conrod_winit) [![docs.rs](https://docs.rs/conrod_winit/badge.svg)](https://docs.rs/conrod_winit/) | Simplifies using `conrod_core` with `winit` |
+| **`conrod_gfx`** | [![Crates.io](https://img.shields.io/crates/v/conrod_gfx.svg)](https://crates.io/crates/conrod_gfx) [![docs.rs](https://docs.rs/conrod_gfx/badge.svg)](https://docs.rs/conrod_gfx/) | Simplifies using `conrod_core` with the gfx ecosystem |
+| **`conrod_glium`** | [![Crates.io](https://img.shields.io/crates/v/conrod_glium.svg)](https://crates.io/crates/conrod_glium) [![docs.rs](https://docs.rs/conrod_glium/badge.svg)](https://docs.rs/conrod_glium/) | Simplifies using `conrod_core` with `glium` |
+| **`conrod_piston`** | [![Crates.io](https://img.shields.io/crates/v/conrod_piston.svg)](https://crates.io/crates/conrod_piston) [![docs.rs](https://docs.rs/conrod_piston/badge.svg)](https://docs.rs/conrod_piston/) | Simplifies using `conrod_core` with `piston` |
+| **`conrod_vulkano`** | [![Crates.io](https://img.shields.io/crates/v/conrod_vulkano.svg)](https://crates.io/crates/conrod_vulkano) [![docs.rs](https://docs.rs/conrod_vulkano/badge.svg)](https://docs.rs/conrod_vulkano/) | Simplifies using `conrod_core` with `vulkano` |
 
 
 Current State
