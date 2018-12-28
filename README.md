@@ -98,23 +98,23 @@ dual licensed as above, without any additional terms or conditions.
 
 
 [The API Documentation]: https://docs.rs/conrod/
-[The Guide]: http://docs.piston.rs/conrod/conrod/guide/index.html
+[The Guide]: https://docs.rs/conrod/latest/conrod/guide/index.html
 
-[1]:        http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
-[1.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#a-brief-history
-[1.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#screenshots-and-videos
-[1.3]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#feature-overview
-[1.4]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#available-widgets
-[1.4.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#primitive-widgets
-[1.4.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#common-use-widgets
-[1.5]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#immediate-mode
-[1.5.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#what-is-it
-[1.5.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#why-use-it
-[1.5.3]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
-[1.6]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#the-builder-pattern
-[2]:        http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html
-[2.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
-[2.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#running-the-conrod-examples
+[1]:        https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html
+[1.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#a-brief-history
+[1.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#screenshots-and-videos
+[1.3]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#feature-overview
+[1.4]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#available-widgets
+[1.4.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#primitive-widgets
+[1.4.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#common-use-widgets
+[1.5]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#immediate-mode
+[1.5.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#what-is-it
+[1.5.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#why-use-it
+[1.5.3]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
+[1.6]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#the-builder-pattern
+[2]:        https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html
+[2.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
+[2.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#running-the-conrod-examples
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
