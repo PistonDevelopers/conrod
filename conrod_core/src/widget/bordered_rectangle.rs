@@ -17,15 +17,6 @@ use widget::triangles::Triangle;
 
 
 /// A filled rectangle widget that may or may not have some border.
-///
-/// NOTE: BorderedRectangle is currently implemented as two filled rectangles:
-///
-/// 1. A `Rectangle` for the border.
-/// 2. A `Rectangle` for the non-border area.
-///
-/// This is flawed in that, if a user specifies an alpha lower than 1.0, the front `Rectangle` will
-/// blend with the border `Rectangle`, which is likely unexpected behaviour. This should be changed
-/// so that the border is drawn using a outlined `Rectangle`.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
 pub struct BorderedRectangle {
     /// Data necessary and common for all widget builder types.
