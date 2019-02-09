@@ -114,7 +114,7 @@ impl Rect {
 
     /// The length of the longest side of the rectangle.
     pub fn len(&self) -> Scalar {
-        ::utils::partial_max(self.w(), self.h())
+        crate::utils::partial_max(self.w(), self.h())
     }
 
     /// The Rect's lowest y value.

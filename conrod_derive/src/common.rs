@@ -11,11 +11,11 @@ pub fn impl_widget_common(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_COMMON_FOR_{}", ident), proc_macro2::Span::call_site());
 
     let impl_item = quote! {
-        impl #impl_generics _conrod::widget::Common for #ident #ty_generics #where_clause {
-            fn common(&self) -> &_conrod::widget::CommonBuilder {
+        impl #impl_generics _conrod_core::widget::Common for #ident #ty_generics #where_clause {
+            fn common(&self) -> &_conrod_core::widget::CommonBuilder {
                 &self.#common_field
             }
-            fn common_mut(&mut self) -> &mut _conrod::widget::CommonBuilder {
+            fn common_mut(&mut self) -> &mut _conrod_core::widget::CommonBuilder {
                 &mut self.#common_field
             }
         }
@@ -146,7 +146,7 @@ impl std::error::Error for Error {
                 "Cannot use #[conrod(common_builder)] attribute on unnamed fields",
             Error::NoCommonBuilderField =>
                 "`#[derive(WidgetCommon)]` requires a struct with one field of type \
-                 `conrod::widget::CommonBuilder` that has the `#[conrod(common_builder)]` \
+                 `conrod_core::widget::CommonBuilder` that has the `#[conrod(common_builder)]` \
                  attribute",
         }
     }

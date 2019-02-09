@@ -1,6 +1,6 @@
 //! The `BorderedRectangle` widget and related items.
 
-use {
+use crate::{
     Color,
     Colorable,
     Dimensions,
@@ -11,10 +11,11 @@ use {
     Scalar,
     Sizeable,
     Widget,
+    widget::{
+        self,
+        triangles::Triangle,
+    },
 };
-use widget;
-use widget::triangles::Triangle;
-
 
 /// A filled rectangle widget that may or may not have some border.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]

@@ -1,9 +1,24 @@
 //! A button that allows for toggling boolean state.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Scalar, Widget};
-use position::{self, Align};
-use text;
-use widget;
+use conrod_core::{
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Labelable,
+    Positionable,
+    Scalar,
+    Widget,
+    position::{self, Align},
+    text,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 
 /// A pressable widget for toggling the state of a bool.

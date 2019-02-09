@@ -1,11 +1,26 @@
 //! The `CollapsibleArea` widget and related items.
 
-use {Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
-use {Color, FontSize, Scalar, UiCell};
-use position;
-use std;
-use text;
-use widget;
+use conrod_core::{
+    Borderable,
+    Colorable,
+    Labelable,
+    Positionable,
+    Sizeable,
+    Widget,
+    Color,
+    FontSize,
+    Scalar,
+    UiCell,
+    position,
+    text,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 /// A vertically collapsible area.
 ///

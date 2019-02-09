@@ -1,12 +1,26 @@
 //! The `EnvelopeEditor` widget and related items.
 
-use {Color, Colorable, Borderable, FontSize, Labelable, Positionable, Sizeable, Widget};
+use conrod_core::{
+    utils::{clamp, map_range, percentage, val_to_string},
+    text,
+    position::{Direction, Edge, Point, Rect, Scalar},
+    Color,
+    Colorable,
+    Borderable,
+    FontSize,
+    Labelable,
+    Positionable,
+    Sizeable,
+    Widget,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 use num::Float;
-use position::{Direction, Edge, Point, Rect, Scalar};
-use std;
-use text;
-use utils::{clamp, map_range, percentage, val_to_string};
-use widget;
 
 
 /// Used for editing a series of 2D Points on a cartesian (X, Y) plane within some given range.
@@ -319,8 +333,10 @@ impl<'a, E> Widget for EnvelopeEditor<'a, E>
         // - Dragging points via left `Drag`.
         let mut events = Vec::new();
         'events: for widget_event in ui.widget_input(id).events() {
-            use event;
-            use input::{self, MouseButton};
+            use conrod_core::{
+                event,
+                input::{self, MouseButton}
+            };
 
             match widget_event {
 

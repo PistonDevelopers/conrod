@@ -1,11 +1,19 @@
 //! A simple, non-interactive **Polygon** widget for drawing arbitrary convex shapes.
 
-use {Color, Colorable, Point, Positionable, Sizeable, Theme, Widget};
-use graph;
+use crate::{
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Sizeable,
+    Theme,
+    Widget,
+    graph,
+    widget,
+    widget::triangles::Triangle,
+    utils::{bounding_box_for_points, vec2_add, vec2_sub}
+};
 use super::Style;
-use widget;
-use widget::triangles::Triangle;
-use utils::{bounding_box_for_points, vec2_add, vec2_sub};
 
 
 /// A basic, non-interactive, arbitrary **Polygon** widget.
@@ -212,7 +220,7 @@ impl<I> Widget for Polygon<I>
 
     /// Update the state of the Polygon.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        use utils::{iter_diff, IterDiff};
+        use crate::utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, style, .. } = args;
         let Polygon { points, maybe_shift_to_centre_from, .. } = self;
 

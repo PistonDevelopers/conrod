@@ -1,10 +1,13 @@
 //! A simple, non-interactive widget for drawing an `Image`.
 
-use {Color, Widget, Ui};
-use image;
-use position::{Dimension, Rect};
-use widget;
-
+use crate::{
+    position::{Dimension, Rect},
+    image,
+    Color,
+    Widget,
+    Ui,
+    widget
+};
 
 /// A primitive and basic widget for drawing an `Image`.
 #[derive(Copy, Clone, WidgetCommon_)]
@@ -45,7 +48,7 @@ impl Image {
     /// Construct a new `Image`.
     ///
     /// Note that the `Image` widget does not require borrowing or owning any image data directly.
-    /// Instead, image data is stored within a `conrod::image::Map` where `image::Id`s are mapped
+    /// Instead, image data is stored within a `conrod_core::image::Map` where `image::Id`s are mapped
     /// to their associated data.
     ///
     /// This is done for a few reasons:

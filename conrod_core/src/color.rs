@@ -12,7 +12,7 @@
 //!
 
 use std::f32::consts::PI;
-use utils::{degrees, fmod, turns};
+use crate::utils::{degrees, fmod, turns};
 
 /// Color supporting RGB and HSL variants.
 #[derive(PartialEq, Copy, Clone, Debug)]

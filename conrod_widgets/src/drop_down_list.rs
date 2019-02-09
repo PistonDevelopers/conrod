@@ -1,11 +1,28 @@
 //! The `DropDownList` and related items.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable};
-use position::{self, Align, Scalar};
-use text;
-use utils;
-use widget::{self, Widget};
+use conrod_core::{
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Labelable,
+    Positionable,
+    Sizeable,
+    position::{self, Align, Scalar},
+    text,
+    utils,
+    widget::{self, Widget},
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
+use crate::scrollbar;
+use crate::list::{self, List};
+use crate::list_select::ListSelect;
 
 /// The index of a selected item.
 pub type Idx = usize;
@@ -58,7 +75,7 @@ pub struct Style {
     pub maybe_max_visible_height: Option<Option<MaxHeight>>,
     /// The position of the scrollbar in the case that the list is scrollable.
     #[conrod(default = "None")]
-    pub scrollbar_position: Option<Option<widget::list::ScrollbarPosition>>,
+    pub scrollbar_position: Option<Option<list::ScrollbarPosition>>,
     /// The width of the scrollbar in the case that the list is scrollable.
     #[conrod(default = "None")]
     pub scrollbar_width: Option<Option<Scalar>>,
@@ -131,14 +148,14 @@ impl<'a, T> DropDownList<'a, T> {
     /// Specifies that the list should be scrollable and should provide a `Scrollbar` to the right
     /// of the items.
     pub fn scrollbar_next_to(mut self) -> Self {
-        self.style.scrollbar_position = Some(Some(widget::list::ScrollbarPosition::NextTo));
+        self.style.scrollbar_position = Some(Some(list::ScrollbarPosition::NextTo));
         self
     }
 
     /// Specifies that the list should be scrollable and should provide a `Scrollbar` that hovers
     /// above the right edge of the items and automatically hides when the user is not scrolling.
     pub fn scrollbar_on_top(mut self) -> Self {
-        self.style.scrollbar_position = Some(Some(widget::list::ScrollbarPosition::OnTop));
+        self.style.scrollbar_position = Some(Some(list::ScrollbarPosition::OnTop));
         self
     }
 
@@ -275,18 +292,18 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
                 let scrollbar_width = style.scrollbar_width(&ui.theme)
                     .unwrap_or_else(|| {
-                        ui.theme.widget_style::<widget::scrollbar::Style>()
+                        ui.theme.widget_style::<scrollbar::Style>()
                             .and_then(|style| style.style.thickness)
                             .unwrap_or(10.0)
                     });
 
-                let (mut events, scrollbar) = widget::ListSelect::single(num_items)
+                let (mut events, scrollbar) = ListSelect::single(num_items)
                     .flow_down()
                     .item_size(item_h)
                     .w_h(w, list_h)
                     .and(|ls| match scrollbar_position {
-                        Some(widget::list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
-                        Some(widget::list::ScrollbarPosition::OnTop) => ls.scrollbar_on_top(),
+                        Some(list::ScrollbarPosition::NextTo) => ls.scrollbar_next_to(),
+                        Some(list::ScrollbarPosition::OnTop) => ls.scrollbar_on_top(),
                         None => ls,
                     })
                     .scrollbar_color(scrollbar_color)
@@ -296,7 +313,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                     .set(state.ids.list, ui);
 
                 while let Some(event) = events.next(ui, |i| Some(i) == selected) {
-                    use widget::list_select::Event;
+                    use crate::list_select::Event;
                     match event {
 
                         // Instantiate a `Button` for each item.

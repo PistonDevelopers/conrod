@@ -1,5 +1,5 @@
 [package]
-name = "conrod_derive"
+name = "conrod_widgets"
 version = "0.62.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
 description = "A crate providing procedural macros for the conrod library"
@@ -10,10 +10,6 @@ homepage = "https://github.com/pistondevelopers/conrod"
 
 edition = "2018"
 
-[lib]
-proc-macro = true
-
 [dependencies]
-proc-macro2 = "0.4.2"
-quote = "0.6"
-syn = { version = "0.14", features = ["extra-traits", "full"] }
+conrod_core = {path = "../conrod_core"}
+num = "0.2"

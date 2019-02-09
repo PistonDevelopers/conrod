@@ -1,10 +1,24 @@
 //! A widget for plotting a series of lines using the given function *x -> y*.
 
-use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
-use graph;
-use num;
-use utils;
-use widget;
+use conrod_core::{
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+    graph,
+    utils,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 /// A widget that plots a series of lines using the given function *x -> y*.
 ///

@@ -1,6 +1,6 @@
 //! A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
 
-use {
+use conrod_core::{
     Color,
     Dimensions,
     FontSize,
@@ -8,11 +8,16 @@ use {
     Rect,
     Scalar,
     Widget,
+    text,
+    utils,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
 };
-use std;
-use text;
-use utils;
-use widget;
 
 
 /// A wrapper around a list of `Canvas`ses that displays them as a list of selectable tabs.
@@ -64,8 +69,8 @@ pub struct Style {
     #[conrod(default = "None")]
     pub font_id: Option<Option<text::font::Id>>,
     /// The styling for each `Canvas`.
-    #[conrod(default = "widget::canvas::Style::default()")]
-    pub canvas: Option<widget::canvas::Style>,
+    #[conrod(default = "crate::canvas::Style::default()")]
+    pub canvas: Option<crate::canvas::Style>,
 }
 
 /// The direction in which the tabs will be laid out.
@@ -117,38 +122,38 @@ impl<'a> Tabs<'a> {
     }
 
     /// Build the `Tabs` widget with the given styling for its `Canvas`ses.
-    pub fn canvas_style(mut self, style: widget::canvas::Style) -> Self {
+    pub fn canvas_style(mut self, style: crate::canvas::Style) -> Self {
         self.style.canvas = Some(style);
         self
     }
 
-    /// Map the `NumberDialer`'s `widget::canvas::Style` to a new `widget::canvas::Style`.
+    /// Map the `NumberDialer`'s `crate::canvas::Style` to a new `crate::canvas::Style`.
     fn map_canvas_style<F>(mut self, map: F) -> Self
-        where F: FnOnce(widget::canvas::Style) -> widget::canvas::Style,
+        where F: FnOnce(crate::canvas::Style) -> crate::canvas::Style,
     {
         self.style.canvas = Some(map({
             self.style.canvas.clone()
-                .unwrap_or_else(widget::canvas::Style::default)
+                .unwrap_or_else(crate::canvas::Style::default)
         }));
         self
     }
 
-    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `crate::canvas::Style`, assign the left padding.
     pub fn pad_left(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_left = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `crate::canvas::Style`, assign the left padding.
     pub fn pad_right(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_right = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `crate::canvas::Style`, assign the left padding.
     pub fn pad_bottom(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_bottom = Some(pad); style })
     }
 
-    /// If the `Tabs` has some `widget::canvas::Style`, assign the left padding.
+    /// If the `Tabs` has some `crate::canvas::Style`, assign the left padding.
     pub fn pad_top(self, pad: Scalar) -> Self {
         self.map_canvas_style(|mut style| { style.pad_top = Some(pad); style })
     }
@@ -272,7 +277,7 @@ impl<'a> Widget for Tabs<'a> {
             let mut tab_rects = TabRects::new(tabs, layout, rel_tab_bar_rect);
             let mut i = 0;
             while let Some((tab_rect, _, label)) = tab_rects.next_with_id_and_label() {
-                use {Colorable, Borderable, Labelable, Positionable, Sizeable};
+                use conrod_core::{Colorable, Borderable, Labelable, Positionable, Sizeable};
                 let tab = state.tabs[i];
                 let (xy, dim) = tab_rect.xy_dim();
 
@@ -303,10 +308,10 @@ impl<'a> Widget for Tabs<'a> {
 
         // If we do have some selected tab, we'll draw a Canvas for it.
         if let Some(selected_idx) = maybe_selected_tab_idx {
-            use position::{Positionable, Sizeable};
+            use conrod_core::position::{Positionable, Sizeable};
 
             let &(child_id, _) = &tabs[selected_idx];
-            widget::Canvas::new()
+            crate::Canvas::new()
                 .with_style(canvas_style)
                 .kid_area_wh_of(id)
                 .middle_of(id)
@@ -376,7 +381,7 @@ fn tab_dim(num_tabs: usize, tab_bar_dim: Dimensions, layout: Layout) -> Dimensio
 }
 
 
-impl<'a> ::color::Colorable for Tabs<'a> {
+impl<'a> conrod_core::color::Colorable for Tabs<'a> {
     fn color(self, color: Color) -> Self {
         self.map_canvas_style(|mut style| {
             style.color = Some(color);
@@ -385,7 +390,7 @@ impl<'a> ::color::Colorable for Tabs<'a> {
     }
 }
 
-impl<'a> ::border::Borderable for Tabs<'a> {
+impl<'a> conrod_core::border::Borderable for Tabs<'a> {
     fn border(self, width: f64) -> Self {
         self.map_canvas_style(|mut style| {
             style.border = Some(width);

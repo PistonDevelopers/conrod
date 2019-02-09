@@ -1,6 +1,8 @@
 //! Used for displaying and controlling a 2D point on a cartesian plane within a given range.
 
-use {
+use num::Float;
+use conrod_core::{
+    text,
     Color,
     Colorable,
     Borderable,
@@ -9,12 +11,17 @@ use {
     Positionable,
     Scalar,
     Widget,
+    UiCell,
+    position::{Direction, Edge},
+    utils::{map_range, val_to_string},
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
 };
-use num::Float;
-use text;
-use utils::{map_range, val_to_string};
-use widget;
-
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
 ///
@@ -125,8 +132,6 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
     /// Update the XYPad's cached state.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        use position::{Direction, Edge};
-
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let XYPad {
             x, min_x, max_x,
@@ -158,7 +163,7 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
             None
         };
 
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
+        let interaction_color = |ui: &UiCell, color: Color|
             ui.widget_input(id).mouse()
                 .map(|mouse| if mouse.buttons.left().is_down() {
                     color.clicked()
@@ -250,7 +255,6 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         event
     }
-
 }
 
 

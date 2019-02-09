@@ -1,15 +1,30 @@
 //! A widget for displaying and mutating multi-line text, given as a `String`.
 
-use {Color, Colorable, FontSize, Positionable, Sizeable, Widget, Ui};
-use event;
-use input;
-use position::{Align, Dimension, Point, Range, Rect, Scalar};
-use std;
-use text;
-use utils;
-use widget;
-use cursor;
-use widget::primitive::text::Wrap;
+use conrod_core::{
+    position::{Align, Dimension, Point, Range, Rect, Scalar},
+    input,
+    event,
+    Color,
+    Colorable,
+    FontSize,
+    Positionable,
+    Sizeable,
+    Widget,
+    Ui,
+    text,
+    utils,
+    widget::{
+        self,
+        primitive::text::Wrap
+    },
+    cursor,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 
 /// A widget for displaying and mutating multi-line text, given as a `String`.
@@ -822,7 +837,7 @@ impl<'a> Widget for TextEdit<'a> {
         if cursor_has_changed {
             let cursor_rect = ui.rect_of(state.ids.cursor).unwrap();
             if prev_cursor_rect != Some(cursor_rect) {
-                use graph::Walker;
+                use conrod_core::graph::Walker;
                 let mut scrollable_parents = ui.widget_graph().scrollable_y_parent_recursion(id);
                 if let Some(parent_id) = scrollable_parents.next_node(ui.widget_graph()) {
                     if let Some(parent_rect) = ui.rect_of(parent_id) {

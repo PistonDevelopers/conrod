@@ -1,11 +1,19 @@
 //! A simple, non-interactive widget for drawing a single straight Line.
 
-use {Color, Colorable, Point, Positionable, Rect, Scalar, Sizeable, Theme};
-use graph;
-use utils::{vec2_add, vec2_sub};
-use widget::{self, Widget};
-use widget::triangles::Triangle;
-
+use crate::{
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Rect,
+    Scalar,
+    Sizeable,
+    Theme,
+    graph,
+    utils::{vec2_add, vec2_sub},
+    widget::{self, Widget},
+    widget::triangles::Triangle
+};
 
 /// A simple, non-interactive widget for drawing a single straight Line.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]

@@ -1,6 +1,6 @@
 //! The `Canvas` widget and related items.
 
-use {
+use conrod_core::{
     Color,
     Colorable,
     FontSize,
@@ -12,12 +12,17 @@ use {
     Ui,
     UiCell,
     Widget,
+    position::{self, Dimensions, Padding, Place, Position, Range, Rect, Scalar},
+    position::Direction::{Forwards, Backwards},
+    text,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
 };
-use position::{self, Dimensions, Padding, Place, Position, Range, Rect, Scalar};
-use position::Direction::{Forwards, Backwards};
-use text;
-use widget;
-
 
 /// **Canvas** is designed to be a "container"-like "parent" widget that simplifies placement of
 /// "children" widgets.
@@ -304,7 +309,7 @@ impl<'a> Widget for Canvas<'a> {
             let justify = style.title_bar_justify(&ui.theme);
             let line_spacing = style.title_bar_line_spacing(&ui.theme);
             let maybe_wrap = style.title_bar_maybe_wrap(&ui.theme);
-            widget::TitleBar::new(label, state.ids.rectangle)
+            crate::TitleBar::new(label, state.ids.rectangle)
                 .and_mut(|title_bar| {
                     title_bar.style.maybe_wrap = Some(maybe_wrap);
                     title_bar.style.justify = Some(justify);
@@ -404,7 +409,7 @@ impl<'a> Widget for Canvas<'a> {
 /// The height and relative y coordinate of a Canvas' title bar given some canvas height and font
 /// size for the title bar.
 fn title_bar_h_rel_y(canvas_h: Scalar, font_size: FontSize) -> (Scalar, Scalar) {
-    let h = widget::title_bar::calc_height(font_size);
+    let h = crate::title_bar::calc_height(font_size);
     let rel_y = canvas_h / 2.0 - h / 2.0;
     (h, rel_y)
 }
@@ -428,18 +433,18 @@ impl Style {
     }
 }
 
-impl<'a> ::color::Colorable for Canvas<'a> {
+impl<'a> conrod_core::color::Colorable for Canvas<'a> {
     builder_method!(color { style.color = Some(Color) });
 }
 
-impl<'a> ::border::Borderable for Canvas<'a> {
+impl<'a> conrod_core::border::Borderable for Canvas<'a> {
     builder_methods!{
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
-impl<'a> ::label::Labelable<'a> for Canvas<'a> {
+impl<'a> conrod_core::label::Labelable<'a> for Canvas<'a> {
     fn label(self, text: &'a str) -> Self {
         self.title_bar(text)
     }

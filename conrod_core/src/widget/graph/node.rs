@@ -1,10 +1,22 @@
 //! A default container widget to use for nodes that exist within a `Graph` widget.
 
-use {widget, color, Color, Point, Positionable, Scalar, Sizeable, Widget, Ui};
-use graph;
-use position::{Axis, Direction, Range, Rect};
-use std::iter::once;
-use std::ops::{Deref, DerefMut};
+use crate::{
+    widget,
+    color,
+    Color,
+    Point,
+    Positionable,
+    Scalar,
+    Sizeable,
+    Widget,
+    Ui,
+    graph,
+    position::{Axis, Direction, Range, Rect}
+};
+use std::{
+    iter::once,
+    ops::{Deref, DerefMut}
+};
 
 /// A widget that acts as a convenience container for some `Node`'s unique widgets.
 #[derive(Clone, Debug, WidgetCommon_)]

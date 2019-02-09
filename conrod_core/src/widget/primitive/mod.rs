@@ -10,7 +10,7 @@ pub mod point_path;
 pub mod shape;
 pub mod text;
 
-use {Point, Range, Rect};
+use crate::{Point, Range, Rect};
 
 /// Find the bounding rect for the given series of points.
 pub fn bounding_box_for_points<I>(mut points: I) -> Rect

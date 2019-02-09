@@ -1,9 +1,20 @@
 //! A helper widget for laying out child widgets in the form of a grid.
 
-use {Scalar, Ui, UiCell, Widget};
-use graph;
-use utils;
-use widget;
+use conrod_core::{
+    Scalar,
+    Ui,
+    UiCell,
+    Widget,
+    graph,
+    utils,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 
 /// The number of the widget.
@@ -249,7 +260,7 @@ impl Element {
     pub fn set<W>(self, widget: W, ui: &mut UiCell) -> W::Event
         where W: Widget,
     {
-        use {Positionable, Sizeable};
+        use conrod_core::{Positionable, Sizeable};
         let Element { widget_id, matrix_id, w, h, rel_x, rel_y, .. } = self;
         widget
             .w_h(w, h)

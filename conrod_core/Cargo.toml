@@ -14,11 +14,14 @@ homepage = "https://github.com/pistondevelopers/conrod"
 documentation = "http://docs.piston.rs/conrod/conrod/"
 categories = ["gui"]
 
+edition = "2018"
+
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-conrod_derive = { path = "../conrod_derive", version = "0.62" }
+#conrod_derive = { path = "../conrod_derive", version = "0.62" }
+conrod_derive = "0.62"
 daggy = "0.5"
 fnv = "1.0"
 num = "0.2"

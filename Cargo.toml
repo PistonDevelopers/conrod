@@ -2,6 +2,7 @@
 members = [
     "conrod_core",
     "conrod_derive",
+    "conrod_widgets",
     "backends/conrod_example_shared",
     "backends/conrod_winit",
     "backends/conrod_gfx",

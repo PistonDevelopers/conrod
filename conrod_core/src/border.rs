@@ -1,5 +1,5 @@
 
-use color::{Color, hsl, hsla, rgb, rgba};
+use crate::color::{Color, hsl, hsla, rgb, rgba};
 
 /// To be used as a parameter for defining the aesthetic
 /// of the widget border.

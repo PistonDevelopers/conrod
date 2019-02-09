@@ -1,6 +1,6 @@
 //! A widget for precision control over any base-10 digit within a given value.
 
-use {
+use conrod_core::{
     Color,
     Colorable,
     FontSize,
@@ -10,13 +10,21 @@ use {
     Positionable,
     Scalar,
     Widget,
+    text,
+    utils::clamp,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
 };
 use num::{Float, NumCast};
-use std::cmp::Ordering;
-use std::iter::repeat;
-use text;
-use utils::clamp;
-use widget;
+use std::{
+    cmp::Ordering,
+    iter::repeat
+};
 
 
 /// A widget for precision control over any digit within a value.
@@ -215,7 +223,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         // Returns the index into the `val_string` for retrieving the value.
         let value_under_rel_xy = |rel_xy: Point| -> Option<usize> {
             if rel_rect.is_over(rel_xy) {
-                use position::Rect;
+                use conrod_core::position::Rect;
                 let slot_rect_xy = [label_rel_x + label_dim[0] / 2.0 + slot_w / 2.0, 0.0];
                 let val_string_xy = [slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0, 0.0];
                 let val_string_dim = [val_string_dim[0], slot_h];
@@ -244,8 +252,10 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         // - `Drag`ging of the mouse while a button is pressed.
         // - `Scroll`ing of the mouse over a value.
         'events: for widget_event in ui.widget_input(id).events() {
-            use event;
-            use input::{self, MouseButton};
+            use conrod_core::{
+                event,
+                input::{self, MouseButton}
+            };
 
             match widget_event {
 

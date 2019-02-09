@@ -3,10 +3,18 @@
 //! Due to the frequency of its use in GUIs, the `Rectangle` gets its own widget to allow backends
 //! to specialise their rendering implementations.
 
-use {Color, Colorable, Dimensions, Point, Rect, Sizeable, Widget};
+use crate::{
+    Color,
+    Colorable,
+    Dimensions,
+    Point,
+    Rect,
+    Sizeable,
+    Widget,
+    widget,
+    widget::triangles::Triangle
+};
 use super::Style as Style;
-use widget;
-use widget::triangles::Triangle;
 
 
 /// A basic, non-interactive rectangle shape widget.

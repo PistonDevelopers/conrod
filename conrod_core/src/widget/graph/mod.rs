@@ -1,14 +1,27 @@
 //! A widget for viewing and controlling graph structures.
 
-use {color, widget, Color, Colorable, Point, Positionable, Scalar, Widget, Ui, UiCell};
-use std::any::{Any, TypeId};
-use std::cell::Cell;
-use std::collections::{HashMap, VecDeque};
-use std::hash::Hash;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, Mutex, Weak};
-use utils::{iter_diff, IterDiff};
+use crate::{
+    color,
+    widget,
+    Color,
+    Colorable,
+    Point,
+    Positionable,
+    Scalar,
+    Widget,
+    Ui,
+    UiCell,
+    utils::{iter_diff, IterDiff}
+};
+use std::{
+    any::{Any, TypeId},
+    cell::Cell,
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex, Weak}
+};
 
 pub use self::node::{Node, SocketLayout, SocketSide};
 

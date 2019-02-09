@@ -1,11 +1,25 @@
 //! A widget for displaying and mutating a one-line field of text.
 
-use {Color, Colorable, FontSize, Borderable, Positionable, Sizeable, Widget};
-use event;
-use input;
-use position::{Range, Rect, Scalar};
-use text;
-use widget;
+use conrod_core::{
+    Color,
+    Colorable,
+    FontSize,
+    Borderable,
+    Positionable,
+    Sizeable,
+    Widget,
+    event,
+    input,
+    position::{Range, Rect, Scalar},
+    text,
+    widget,
+    // Macros
+    builder_method,
+    builder_methods,
+    widget_ids,
+    WidgetCommon_,
+    WidgetStyle_,
+};
 
 /// A widget for displaying and mutating a small, one-line field of text, given by the user in the
 /// form of a `String`.
@@ -161,8 +175,8 @@ impl<'a> Widget for TextBox<'a> {
 
         let text_color = style.text_color(ui.theme());
         let font_id = style.font_id(&ui.theme).or(ui.fonts.ids().next());
-        if let Some(new_string) = widget::TextEdit::new(text)
-            .and_then(font_id, widget::TextEdit::font_id)
+        if let Some(new_string) = crate::TextEdit::new(text)
+            .and_then(font_id, crate::TextEdit::font_id)
             .wh(text_rect.dim())
             .xy(text_rect.xy())
             .font_size(font_size)

@@ -1,11 +1,21 @@
 //! A simple, non-interactive widget for drawing a single **Oval**.
 
-use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Theme, Widget};
-use graph;
+use crate::{
+    Color,
+    Colorable,
+    Dimensions,
+    Point,
+    Rect,
+    Scalar,
+    Sizeable,
+    Theme,
+    Widget,
+    graph,
+    widget,
+    widget::triangles::Triangle
+};
 use std;
 use super::Style as Style;
-use widget;
-use widget::triangles::Triangle;
 
 
 /// A simple, non-interactive widget for drawing a single **Oval**.
