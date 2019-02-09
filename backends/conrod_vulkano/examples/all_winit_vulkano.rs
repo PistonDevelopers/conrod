@@ -1,7 +1,4 @@
-//! A demonstration of using `winit` to provide events and GFX to draw the UI.
-//!
-//! `winit` is used via the `glutin` crate which also provides an OpenGL context for drawing
-//! `conrod_core::render::Primitives` to the screen.
+//! A demonstration of using `winit` to provide events and `vulkano` to draw the UI.
 
 #![allow(unused_variables)]
 
