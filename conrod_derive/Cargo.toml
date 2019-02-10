@@ -1,6 +1,6 @@
 [package]
 name = "conrod_derive"
-version = "0.62.0"
+version = "0.63.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
 description = "A crate providing procedural macros for the conrod library"
 license = "MIT OR Apache-2.0"
@@ -14,4 +14,4 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "0.4.2"
 quote = "0.6"
-syn = { version = "0.14", features = ["extra-traits", "full"] }
+syn = { version = "0.15", features = ["extra-traits", "full"] }

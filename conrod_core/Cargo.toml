@@ -1,6 +1,6 @@
 [package]
 name = "conrod_core"
-version = "0.62.0"
+version = "0.63.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -18,9 +18,9 @@ categories = ["gui"]
 all-features = true
 
 [dependencies]
-conrod_derive = { path = "../conrod_derive", version = "0.62" }
+conrod_derive = { path = "../conrod_derive", version = "0.63" }
 daggy = "0.5"
 fnv = "1.0"
 num = "0.2"
-pistoncore-input = "0.23"
+pistoncore-input = "0.24"
 rusttype = { version = "0.7", features = ["gpu_cache"] }
