@@ -24,7 +24,7 @@ use vulkano::{
     image::AttachmentImage,
     swapchain,
     swapchain::AcquireError,
-    sync::{now, FlushError, GpuFuture},
+    sync::{FenceSignalFuture, GpuFuture},
 };
 
 use conrod_vulkano::{Image as VulkanoGuiImage, Renderer};
@@ -92,7 +92,17 @@ fn main() {
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
-    let mut previous_frame_end = Box::new(logo_texture_future) as Box<GpuFuture>;
+    // Keep track of the previous frame so we can wait for it to complete before presenting a new
+    // one. This should make sure the CPU never gets ahead of the presentation of frames, which can
+    // cause high user-input latency and synchronisation strange bugs.
+    let mut previous_frame_end: Option<FenceSignalFuture<_>> = None;
+
+    // Wait for the logo to load onto the GPU before we begin our main loop.
+    logo_texture_future
+        .then_signal_fence_and_flush()
+        .expect("failed to signal fence and flush logo future")
+        .wait(None)
+        .expect("failed to wait for logo texture to load");
 
     'main: loop {
         // If the window is closed, this will be None for one tick, so to avoid panicking with
@@ -113,9 +123,6 @@ fn main() {
                     }
                     Err(err) => panic!("{:?}", err),
                 };
-
-            // We are tidy little fellows and cleanup our leftovers
-            previous_frame_end.cleanup_finished();
 
             let mut command_buffer_builder = AutoCommandBufferBuilder::primary_one_time_submit(
                 window.device.clone(),
@@ -179,21 +186,23 @@ fn main() {
                 .build()
                 .unwrap();
 
-            let future = previous_frame_end
-                .join(acquire_future)
+            // Wait for the previous frame to finish presentation.
+            if let Some(prev_frame) = previous_frame_end.take() {
+                prev_frame
+                    .wait(None)
+                    .expect("failed to wait for presentation of previous frame");
+            }
+
+            let future_result = acquire_future
                 .then_execute(window.queue.clone(), command_buffer)
-                .expect("Failed to join previous frame with new one")
+                .expect("failed to join previous frame with new one")
                 .then_swapchain_present(window.queue.clone(), window.swapchain.clone(), image_num)
                 .then_signal_fence_and_flush();
 
-            match future {
-                Ok(future) => previous_frame_end = Box::new(future) as Box<_>,
-                Err(FlushError::OutOfDate) => {
-                    previous_frame_end = Box::new(now(window.device.clone())) as Box<_>
-                }
-                Err(e) => {
-                    previous_frame_end = Box::new(now(window.device.clone())) as Box<_>;
-                }
+            // Hold onto the future representing the presentation of this frame.
+            // We'll wait for it before we present the next one.
+            if let Ok(future) = future_result {
+                previous_frame_end = Some(future);
             }
         }
 
