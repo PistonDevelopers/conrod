@@ -940,6 +940,7 @@ impl Ui {
     /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
     pub fn calc_xy(&self,
                    maybe_id: Option<widget::Id>,
+                   maybe_parent_id: Option<widget::Id>,
                    x_position: Position,
                    y_position: Position,
                    dim: Dimensions,
@@ -952,6 +953,7 @@ impl Ui {
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
         fn abs_from_position<R, P>(ui: &Ui,
+                                   maybe_parent_id: Option<widget::Id>,
                                    position: Position,
                                    dim: Scalar,
                                    place_on_kid_area: bool,
@@ -1003,6 +1005,7 @@ impl Ui {
 
                 position::Relative::Place(place) => {
                     let parent_id = maybe_id
+                        .or(maybe_parent_id)
                         .or(ui.maybe_current_parent_id)
                         .unwrap_or(ui.window.into());
                     let maybe_area = match place_on_kid_area {
@@ -1034,8 +1037,8 @@ impl Ui {
         fn y_range(rect: Rect) -> Range { rect.y }
         fn x_pad(pad: Padding) -> Range { pad.x }
         fn y_pad(pad: Padding) -> Range { pad.y }
-        let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
-        let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
+        let x = abs_from_position(self, maybe_parent_id, x_position, dim[0], place_on_kid_area, x_range, x_pad);
+        let y = abs_from_position(self, maybe_parent_id, y_position, dim[1], place_on_kid_area, y_range, y_pad);
         let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
