@@ -1,0 +1,24 @@
+[package]
+name = "conrod_crayon"
+version = "0.62.0"
+authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
+license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "https://docs.rs/conrod"
+categories = ["gui"]
+
+[lib]
+name = "conrod_crayon"
+path = "./src/lib.rs"
+
+[dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.63" }
+crayon = { path = "../../../wasm/crayon"}
+
+[dev-dependencies]
+find_folder = "0.3.0"
+image = "0.21"
