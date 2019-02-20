@@ -11,3 +11,6 @@ members = [
     "backends/conrod_ggez",
     "backends/conrod_crayon"
 ]
+[assets]
+source = 'assets'
+destination = 'resources'

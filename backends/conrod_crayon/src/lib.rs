@@ -34,8 +34,8 @@ impl Renderer{
     pub fn new(dim:(f64,f64),dpi_factor: f64)->Self{
         let mut params = RenderTextureParams::default();
         params.format = RenderTextureFormat::RGBA8;
-        params.dimensions = (dim.1,dim.2).into();
-        let rendered_texture = video::create_render_texture(params)?;
+        params.dimensions = (dim.0 as u32,dim.1 as u32).into();
+        let rendered_texture = video::create_render_texture(params).unwrap();
         let attributes = AttributeLayoutBuilder::new()
             .with(Attribute::Position, 2)
             .finish();
@@ -45,7 +45,7 @@ impl Renderer{
         let fs = include_str!("shaders/conrod.fs").to_owned();
         let shader = video::create_shader(params, vs, fs).unwrap();
         let mut params = SurfaceParams::default();
-        params.set_attachments(&[rendered_texture], None)?;
+        params.set_attachments(&[rendered_texture], None).unwrap();
         params.set_clear(Color::gray(), None, None);
         
         let surface = video::create_surface(params).unwrap();

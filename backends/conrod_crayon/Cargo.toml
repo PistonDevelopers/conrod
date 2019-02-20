@@ -18,6 +18,7 @@ path = "./src/lib.rs"
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.63" }
 crayon = { path = "../../../wasm/crayon"}
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.63" }
 
 [dev-dependencies]
 find_folder = "0.3.0"
