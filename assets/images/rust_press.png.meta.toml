@@ -1,0 +1,6 @@
+name = 'images/rust_press.png'
+uuid = 'e1674a5f-a55d-44a7-951e-ebfd827b267f'
+resources = []
+
+[params]
+type = 'Bytes'

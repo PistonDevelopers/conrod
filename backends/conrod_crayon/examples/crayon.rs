@@ -6,6 +6,7 @@ use crayon::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
+use std::time::SystemTime;
 
 struct Window {
     renderer: Renderer,
@@ -78,15 +79,34 @@ impl LifecycleListener for Window {
 
         self.time += 0.05;
         */
+        {
+        let mut ui = self.ui.set_widgets();
+        conrod_example_shared::gui(&mut ui, &self.ids, &mut self.app);
+        }
+        let dpi_factor  =device_pixel_ratio() as f64;
+        //let dpi_factor  =1.16;
+        if let Some(primitives) = self.ui.draw_if_changed() {
+            println!("get_hidpi_factor {:?} {:?}",dpi_factor,SystemTime::now());
+            let dims = (WIN_W as f64 * dpi_factor, WIN_H as f64 * dpi_factor);
+            self.renderer.fill(dims,dpi_factor as f64,primitives,&self.image_map);
+            self.renderer.draw(&mut self.batch);   
+        }
         Ok(())
     }
 }
 fn load_rust_logo() -> TextureHandle {
-    video::create_texture_from("res:images/rust.png").unwrap()
+    video::create_texture_from("res:crate.bmp").unwrap()
 }
 main!({
+     #[cfg(not(target_arch = "wasm32"))]
+    let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
+    #[cfg(target_arch = "wasm32")]
+    let res = format!("http://localhost:8080/examples/resources/");
+    println!("{}", env!("CARGO_MANIFEST_DIR"));
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
     params.window.size = (568, 320).into();
+    params.res.shortcuts.add("res:", res).unwrap();
+    params.res.dirs.push("res:".into());
     crayon::application::setup(params, Window::build).unwrap();
 });

@@ -13,7 +13,7 @@ use conrod_core::{
 impl_vertex! {
     Vertex {
         pos => [Position; Float; 2; false],
-        uv =>[Bitangent; Float; 2; false],
+        uv =>[Texcoord0; Float; 2; false],
         color =>[Color0; Float; 4; true],
         mode => [Tangent; UShort; 2;false],
     }
@@ -41,6 +41,7 @@ impl Renderer{
             .finish();
         let mut params = ShaderParams::default();
         params.attributes = attributes;
+        //looking for Position
         let vs = include_str!("shaders/conrod.vs").to_owned();
         let fs = include_str!("shaders/conrod.fs").to_owned();
         let shader = video::create_shader(params, vs, fs).unwrap();
@@ -56,7 +57,7 @@ impl Renderer{
           rendered_texture:rendered_texture,
         }
     }
-    pub fn fill<P>(&mut self,dims: (f64, f64),dpi_factor: f64,mut primitives: P, image_map:conrod_core::image::Map<TextureHandle> )where P: render::PrimitiveWalker{
+    pub fn fill<P>(&mut self,dims: (f64, f64),dpi_factor: f64,mut primitives: P, image_map:&conrod_core::image::Map<TextureHandle> )where P: render::PrimitiveWalker{
         let (screen_w, screen_h) = dims;
         let half_win_w = screen_w / 2.0;
         let half_win_h = screen_h / 2.0;
@@ -88,6 +89,7 @@ impl Renderer{
             }
             match kind {
                 render::PrimitiveKind::Rectangle { color } => {
+                    dbg!("there is rect");
                     let color = gamma_srgb_to_linear(color.to_fsa());
                     let (l, r, b, t) = rect.l_r_b_t();
                     let v = |x, y| {
