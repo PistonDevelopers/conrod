@@ -64,26 +64,12 @@ impl Drop for Window {
 
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
-        /*
-        let surface = self.pass.surface;
-        let dc = Draw::new(self.pass.shader, self.pass.mesh);
-        self.batch.draw(dc);
-        self.batch.submit(surface)?;
-
-        let surface = self.post_effect.surface;
-        let mut dc = Draw::new(self.post_effect.shader, self.post_effect.mesh);
-        dc.set_uniform_variable("renderedTexture", self.texture);
-        dc.set_uniform_variable("time", self.time);
-        self.batch.draw(dc);
-        self.batch.submit(surface)?;
-
-        self.time += 0.05;
-        */
+        conrod_crayon::events::convert_event(&mut self.ui);
         {
-        let mut ui = self.ui.set_widgets();
-        conrod_example_shared::gui(&mut ui, &self.ids, &mut self.app);
+            let mut ui = self.ui.set_widgets();
+            conrod_example_shared::gui(&mut ui, &self.ids, &mut self.app);
         }
-        let dpi_factor  =device_pixel_ratio() as f64;
+        let dpi_factor = device_pixel_ratio() as f64;
         //let dpi_factor  =1.16;
         if let Some(primitives) = self.ui.draw_if_changed() {
             println!("get_hidpi_factor {:?} {:?}",dpi_factor,SystemTime::now());
