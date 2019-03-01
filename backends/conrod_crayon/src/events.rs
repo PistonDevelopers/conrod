@@ -10,6 +10,7 @@ use serde_json::Result;
 pub fn convert_event(ui:&mut Ui){
     let mouse_presses = input::mouse_presses();
     for mp in mouse_presses.iter(){
+        println!("mp {:?}",mp);
         let e = match mp{
             crayon::input::mouse::MouseButton::Left => conrod_core::input::state::mouse::Button::Left,
             crayon::input::mouse::MouseButton::Right => conrod_core::input::state::mouse::Button::Right,

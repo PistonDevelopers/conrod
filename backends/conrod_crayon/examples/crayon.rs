@@ -2,12 +2,13 @@ extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
 extern crate find_folder;
+extern crate conrod_core;
 use crayon::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
-
+use conrod_core::{color, widget, Widget,Positionable,event::{Input}};
 struct Window {
     renderer: Renderer,
     app: conrod_example_shared::DemoApp,
@@ -49,6 +50,7 @@ impl Window {
 
 impl Drop for Window {
     fn drop(&mut self) {
+
         /*video::delete_render_texture(self.texture);
 
         video::delete_mesh(self.pass.mesh);
@@ -64,19 +66,20 @@ impl Drop for Window {
 
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
-        conrod_crayon::events::convert_event(&mut self.ui);
+        //conrod_crayon::events::convert_event(&mut self.ui);
+        self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
         {
-            let mut ui = self.ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &self.ids, &mut self.app);
+            let ui = &mut self.ui.set_widgets();
+            widget::Rectangle::fill([80.0, 80.0]).middle().set(self.ids.rectangle_fill, ui);
         }
+        
         let dpi_factor = device_pixel_ratio() as f64;
         //let dpi_factor  =1.16;
-        if let Some(primitives) = self.ui.draw_if_changed() {
-            println!("get_hidpi_factor {:?} {:?}",dpi_factor,SystemTime::now());
-            let dims = (WIN_W as f64 * dpi_factor, WIN_H as f64 * dpi_factor);
-            self.renderer.fill(dims,dpi_factor as f64,primitives,&self.image_map);
-            self.renderer.draw(&mut self.batch);   
-        }
+        let primitives = self.ui.draw();
+        let dims = (WIN_W as f64 * dpi_factor, WIN_H as f64 * dpi_factor);
+        self.renderer.fill(dims,dpi_factor as f64,primitives,&self.image_map);
+        self.renderer.draw(&mut self.batch);
+        
         Ok(())
     }
 }
@@ -88,10 +91,9 @@ main!({
     let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
     #[cfg(target_arch = "wasm32")]
     let res = format!("http://localhost:8080/examples/resources/");
-    println!("{}", env!("CARGO_MANIFEST_DIR"));
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
-    params.window.size = (568, 320).into();
+    params.window.size = (464, 434).into();
     params.res.shortcuts.add("res:", res).unwrap();
     params.res.dirs.push("res:".into());
     crayon::application::setup(params, Window::build).unwrap();

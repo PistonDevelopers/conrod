@@ -484,7 +484,7 @@ impl Renderer {
         //
         // The buffer is only used if an older version was detected, otherwise the text GPU cache
         // uses the rusttype `data` buffer directly.
-        let mut text_data_u8u8u8 = Vec::new();
+        //let mut text_data_u8u8u8 = Vec::new();
 
         // Determine the texture format that we're using.
         let opengl_version = display.get_opengl_version();
@@ -542,7 +542,7 @@ impl Renderer {
                 height: std::cmp::min(height, screen_h),
             }
         };
-
+        let mut c= 0;
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
@@ -569,6 +569,8 @@ impl Renderer {
             match kind {
 
                 render::PrimitiveKind::Rectangle { color } => {
+                    println!("c {:?}",c);
+                    c = c+1;
                     switch_to_plain_state!();
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
@@ -596,7 +598,8 @@ impl Renderer {
                     push_v(r, b);
                     push_v(r, t);
                 },
-
+                _ =>{},
+                /*
                 render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
                     if triangles.is_empty() {
                         continue;
@@ -808,6 +811,7 @@ impl Renderer {
 
                 // We have no special case widgets to handle.
                 render::PrimitiveKind::Other(_) => (),
+                */
             }
 
         }
@@ -857,6 +861,7 @@ impl Renderer {
                     //
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
+                        println!("slice {:?}",slice);
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice)?;
                         surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
                     },

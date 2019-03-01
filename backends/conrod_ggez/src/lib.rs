@@ -376,8 +376,9 @@ impl<'a> Renderer<'a> {
                     push_v(l, t);
                     push_v(r, b);
                     push_v(r, t);
-                }
-
+                },
+                _ =>{}
+/*
                 render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
                     if triangles.is_empty() {
                         continue;
@@ -558,7 +559,9 @@ impl<'a> Renderer<'a> {
 
                 // We have no special case widgets to handle.
                 render::PrimitiveKind::Other(_) => (),
+            */
             }
+            
         }
 
         // Enter the final command.
