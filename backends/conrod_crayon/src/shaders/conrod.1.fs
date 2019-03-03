@@ -7,7 +7,6 @@ uniform sampler2D tex;
 
 void main() {
     // Text
-    gl_FragColor = v_color;
     if (v_mode == 0.0) {
         gl_FragColor = v_color * vec4(1.0, 1.0, 1.0, texture2D(tex, v_tex_coords).r);
 

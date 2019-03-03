@@ -8,7 +8,7 @@ use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
-use conrod_core::{color, widget, Widget,Positionable,event::{Input}};
+use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
 struct Window {
     renderer: Renderer,
     app: conrod_example_shared::DemoApp,
@@ -31,7 +31,7 @@ impl Window {
         ui.fonts.insert_from_file(font_path).unwrap();
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
         let rust_logo = image_map.insert(load_rust_logo());
-
+        dbg!("l");
         // Demonstration app state that we'll control with our conrod GUI.
         let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
@@ -69,8 +69,18 @@ impl LifecycleListener for Window {
         //conrod_crayon::events::convert_event(&mut self.ui);
         self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
         {
-            let ui = &mut self.ui.set_widgets();
-            widget::Rectangle::fill([80.0, 80.0]).middle().set(self.ids.rectangle_fill, ui);
+            let mut ui = &mut self.ui.set_widgets();
+            
+            const LOGO_SIDE: conrod_core::Scalar = 306.0;
+            widget::Image::new(self.app.rust_logo)
+                .w_h(LOGO_SIDE, LOGO_SIDE)
+                .middle()
+                .set(self.ids.rust_logo, ui);
+            /*        
+            widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
+                .middle()
+                .set(self.ids.rust_logo, ui);
+            */ 
         }
         
         let dpi_factor = device_pixel_ratio() as f64;
@@ -78,7 +88,7 @@ impl LifecycleListener for Window {
         let primitives = self.ui.draw();
         let dims = (WIN_W as f64 * dpi_factor, WIN_H as f64 * dpi_factor);
         self.renderer.fill(dims,dpi_factor as f64,primitives,&self.image_map);
-        self.renderer.draw(&mut self.batch);
+        self.renderer.draw(&mut self.batch,&self.image_map);
         
         Ok(())
     }

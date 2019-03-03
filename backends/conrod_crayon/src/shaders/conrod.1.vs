@@ -12,7 +12,7 @@ varying float v_mode;
 
 void main() {
     gl_Position = vec4(Position, 0.0, 1.0);
-    v_tex_coords = Texcoord0;
+    v_tex_coords = (Position + vec2(1.0, 1.0)) / 2.0;
     v_color = Color0;
     v_mode = Tangent.x;
 }

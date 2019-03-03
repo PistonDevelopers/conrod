@@ -21,7 +21,7 @@ pub struct DemoApp {
     ball_xy: conrod_core::Point,
     ball_color: conrod_core::Color,
     sine_frequency: f32,
-    rust_logo: conrod_core::image::Id,
+    pub rust_logo: conrod_core::image::Id,
 }
 
 
