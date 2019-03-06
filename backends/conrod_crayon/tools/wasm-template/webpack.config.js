@@ -20,9 +20,9 @@ module.exports = {
         })
     ],
     devServer: {
-        contentBase: [__dirname, path.join(__dirname, '../..')],
+        contentBase: [__dirname, path.join(__dirname, '../../../../assets/crayon')],
         inline:true,
-        port: 80
+        port: 8080
     },
     mode: 'development'
 };

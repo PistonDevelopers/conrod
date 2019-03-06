@@ -1,7 +1,6 @@
 extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
-extern crate find_folder;
 extern crate conrod_core;
 use crayon::prelude::*;
 use crayon::window::device_pixel_ratio;
@@ -26,9 +25,6 @@ impl Window {
             .theme(conrod_example_shared::theme())
             .build();
         let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
-        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
-        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-        ui.fonts.insert_from_file(font_path).unwrap();
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
         let rust_logo = image_map.insert(load_rust_logo());
         dbg!("l");
@@ -72,15 +68,16 @@ impl LifecycleListener for Window {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
+            
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
-            /*        
+            /*   
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
-            */ 
+            */
         }
         
         let dpi_factor = device_pixel_ratio() as f64;
@@ -100,7 +97,7 @@ main!({
      #[cfg(not(target_arch = "wasm32"))]
     let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
     #[cfg(target_arch = "wasm32")]
-    let res = format!("http://localhost:8080/examples/resources/");
+    let res = format!("http://localhost:8080/resources/");
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
     params.window.size = (464, 434).into();
