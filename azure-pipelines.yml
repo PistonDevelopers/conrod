@@ -14,7 +14,8 @@ steps:
 - template: ci/azure-install-node.yml
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
-- script: cargo build
+- script: cd backends/conrod_crayon/tools/wasm-template && npm install
+- script: backends/conrod_crayon/tools/run.sh
 - script: node -v
 - script: |
     echo Add other tasks to build, test, and deploy your project.
