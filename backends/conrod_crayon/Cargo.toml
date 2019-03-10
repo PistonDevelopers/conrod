@@ -17,7 +17,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.63" }
-crayon = { path = "../../../wasm/crayon"}
+crayon = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.63" }
 serde_json = "1.0"
 
