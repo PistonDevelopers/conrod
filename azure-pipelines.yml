@@ -10,9 +10,12 @@ pool:
   vmImage: 'Ubuntu-16.04'
 
 steps:
+- template: ci/azure-install-rust.yml
+- template: ci/azure-install-node.yml
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
-
+- script: cargo build
+- script: node -v
 - script: |
     echo Add other tasks to build, test, and deploy your project.
     echo See https://aka.ms/yaml
