@@ -4,7 +4,7 @@
 //! The primary type of interest in this module is the [**Graph**](./struct.Graph) type.
 
 use daggy;
-use position::{Axis, Depth, Rect};
+use position::{Axis, Depth, Point, Rect};
 use std;
 use std::any::Any;
 use std::ops::{Index, IndexMut};
@@ -79,6 +79,8 @@ pub struct Container {
     pub depth: Depth,
     /// The area in which child widgets are placed.
     pub kid_area: widget::KidArea,
+    /// If widget is draggable and is being dragged, this is where it started
+    pub maybe_dragged_from: Option<Point>,
     /// Whether or not the widget is a "Floating" widget.
     ///
     /// See the `Widget::float` docs for an explanation of what this means.
@@ -624,7 +626,7 @@ impl Graph {
     {
         let widget::PreUpdateCache {
             type_id, id, maybe_parent_id, maybe_x_positioned_relatively_id,
-            maybe_y_positioned_relatively_id, rect, depth, kid_area, maybe_floating,
+            maybe_y_positioned_relatively_id, rect, depth, kid_area, maybe_dragged_from, maybe_floating,
             crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for, is_over,
         } = widget;
 
@@ -637,6 +639,7 @@ impl Graph {
             rect: rect,
             depth: depth,
             kid_area: kid_area,
+            maybe_dragged_from: maybe_dragged_from,
             maybe_floating: maybe_floating,
             crop_kids: crop_kids,
             maybe_x_scroll_state: maybe_x_scroll_state,
@@ -689,6 +692,7 @@ impl Graph {
                 container.rect = rect;
                 container.depth = depth;
                 container.kid_area = kid_area;
+                container.maybe_dragged_from = maybe_dragged_from;
                 container.maybe_floating = maybe_floating;
                 container.crop_kids = crop_kids;
                 container.maybe_x_scroll_state = maybe_x_scroll_state;
