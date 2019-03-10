@@ -22,6 +22,7 @@ pub struct DemoApp {
     ball_color: conrod_core::Color,
     sine_frequency: f32,
     pub rust_logo: conrod_core::image::Id,
+    pub textedit: String
 }
 
 
@@ -33,6 +34,7 @@ impl DemoApp {
             ball_color: conrod_core::color::WHITE,
             sine_frequency: 1.0,
             rust_logo: rust_logo,
+            textedit: "".to_owned()
         }
     }
 }
@@ -97,6 +99,7 @@ widget_ids! {
         plot_path,
         // Scrollbar
         canvas_scrollbar,
+        text_edit
     }
 }
 

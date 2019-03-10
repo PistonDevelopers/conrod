@@ -7,6 +7,7 @@ use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
+use std::collections::HashMap;
 use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
 struct Window {
     renderer: Renderer,
@@ -62,7 +63,18 @@ impl Drop for Window {
 
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
-        //conrod_crayon::events::convert_event(&mut self.ui);
+        let mut text_edit:HashMap<String,String> = HashMap::new();
+        text_edit.insert("text_edit".to_owned(),self.app.textedit.clone());
+        conrod_crayon::events::convert_event(&mut self.ui,Box::new(|vt:&mut HashMap<String,String>|{
+            for (id,val) in input::text_edit(){
+                if let Some(k) = vt.get_mut(&id.clone()){
+                    *k = val;
+                }
+            }
+        }),&mut text_edit);
+        let k = "text_edit".to_owned();
+        self.app.textedit = text_edit.get(&k).unwrap().clone();
+        
         self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
         {
             let mut ui = &mut self.ui.set_widgets();

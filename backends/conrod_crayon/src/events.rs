@@ -7,7 +7,7 @@ use crayon::prelude::*;
 use crayon::utils::hash::FastHashSet;
 use serde_json::Result;
 
-pub fn convert_event(ui:&mut Ui){
+pub fn convert_event<T>(ui:&mut Ui,closure:Box<FnMut(&mut T)>,app:&mut T){
     let mouse_presses = input::mouse_presses();
     for mp in mouse_presses.iter(){
         println!("mp {:?}",mp);
@@ -50,4 +50,5 @@ pub fn convert_event(ui:&mut Ui){
     if j.x > 0.0 || j.y >0.0{
         ui.handle_event(Input::Motion(Motion::Scroll{x:j.x as f64,y:j.y as f64}));
     }
+
 }
