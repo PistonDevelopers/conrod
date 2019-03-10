@@ -15,7 +15,7 @@ steps:
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
-- script: backends/conrod_crayon/tools/wasm-template/run.sh
+- script: backends/conrod_crayon/tools/wasm-template/run.sh crayon
 - script: node -v
 - script: |
     echo Add other tasks to build, test, and deploy your project.
