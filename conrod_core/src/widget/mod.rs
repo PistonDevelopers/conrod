@@ -963,6 +963,9 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
     let (xy, maybe_dragged_from) = maybe_prev_common
         .as_ref()
         .and_then(|prev| {
+            if widget.common().maybe_graphics_for.is_some() {
+                return None;
+            }
             let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
             maybe_drag_area.map(|drag_area| {
                 let mut current_dragged_from = prev.maybe_dragged_from;
