@@ -14,6 +14,7 @@ steps:
 - template: ci/azure-install-node.yml
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
+- script: cargo install wasm-bindgen-cli
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
 - script: backends/conrod_crayon/tools/wasm-template/run.sh crayon
 - script: node -v
