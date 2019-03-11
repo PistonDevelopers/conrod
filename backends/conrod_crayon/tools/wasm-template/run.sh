@@ -9,4 +9,4 @@ cp $BASE_DIR/target/wasm32-unknown-unknown/debug/examples/$1.wasm $SCRIPT_DIR/di
 wasm-bindgen $SCRIPT_DIR/dist/intermediate/native.wasm --out-dir $SCRIPT_DIR/dist
 
 cd $SCRIPT_DIR
-npm run serve
+npm run build

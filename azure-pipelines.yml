@@ -17,8 +17,11 @@ steps:
 - script: cargo install wasm-bindgen-cli
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
 - script: backends/conrod_crayon/tools/wasm-template/run.sh crayon
-- script: node -v
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: AzureRmWebAppDeployment@3
+  inputs:
+    azureSubscription: 'Free Trial'
+    WebAppName: 'conrod'
+    Package: '$(System.DefaultWorkingDirectory)/backends/conrod_crayon/tools/wasm-template'
+    GenerateWebConfig: true
+    WebConfigParameters: '-Handler iisnode -NodeStartFile app.js -appType node'
+
