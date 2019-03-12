@@ -109,7 +109,7 @@ main!({
      #[cfg(not(target_arch = "wasm32"))]
     let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
     #[cfg(target_arch = "wasm32")]
-    let res = format!("http://localhost:8080/resources/");
+    let res = format!("/resources/");
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
     params.window.size = (464, 434).into();

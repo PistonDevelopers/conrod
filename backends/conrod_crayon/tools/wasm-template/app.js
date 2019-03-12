@@ -1,8 +1,14 @@
-var express = require('express')
-var app = express()
 
-// respond with "hello world" when a GET request is made to the homepage
+var port = process.env.PORT || 8080;
+const config = require('./webpack.config.js')
+const webpack = require('webpack');
+const middleware = require('webpack-dev-middleware');
+const compiler = webpack(config);
+const express = require('express');
+const app = express();
 
-app.use(express.static('dist'));
-var port = process.env.PORT || 1337;
-app.listen(port);
+app.use(middleware(compiler, {
+  // webpack-dev-middleware options
+}));
+
+app.listen(port, () => console.log('Example app listening on port 8080!'))
