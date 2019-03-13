@@ -1,5 +1,5 @@
 # Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod) [![Crates.io](https://img.shields.io/crates/l/conrod_core.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE)
-
+[![Build Status](https://dev.azure.com/K1720055F/conrod/_apis/build/status/alanpoon.conrod%20(1)?branchName=master)](https://dev.azure.com/K1720055F/conrod/_build/latest?definitionId=3&branchName=master)
 An easy-to-use, 2D GUI library written entirely in Rust.
 
 Guide
