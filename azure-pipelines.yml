@@ -16,6 +16,8 @@ steps:
   displayName: 'Run a one-line script'
 - script: cargo install wasm-bindgen-cli
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
+- script: npm ls | grep webpack
+  displayName: webpack version
 - script: backends/conrod_crayon/tools/wasm-template/run.sh crayon
 - task: AzureRmWebAppDeployment@3
   inputs:
