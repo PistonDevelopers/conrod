@@ -23,7 +23,7 @@ flexible and readable set of arguments.
 
 If you have an awesome looking GUI made with conrod, please send us a screenshot and we'll add it here :)
 
-Here's [a youtube demo](https://www.youtube.com/watch?v=n2UrjogA0j0) of the [all_widgets.rs example](https://github.com/PistonDevelopers/conrod/blob/master/examples/all_widgets.rs).
+Here's [a youtube demo](https://www.youtube.com/watch?v=n2UrjogA0j0) of the all widgets example.
 
 Here's [another youtube demo](https://www.youtube.com/watch?v=_ZXLCVibI8c) of conrod being used to create a basic synth editor.
 
@@ -31,11 +31,11 @@ Here's [another youtube demo](https://www.youtube.com/watch?v=_ZXLCVibI8c) of co
 
 <img src="http://imgur.com/34NEw90.png" alt="timeline" style="width:700px;">
 
-**The [all_piston_window.rs example](https://github.com/PistonDevelopers/conrod/blob/master/examples/all_piston_window.rs).**
+**The [all_piston_window.rs example](https://github.com/PistonDevelopers/conrod/blob/master/backends/conrod_piston/examples/all_piston_window.rs).**
 
 <img src="http://i.imgur.com/xKXISdc.png" alt="all_widgets.rs" style="width:700px;">
 
-**The [canvas.rs example](https://github.com/PistonDevelopers/conrod/blob/master/examples/canvas.rs).**
+**The [canvas.rs example](https://github.com/PistonDevelopers/conrod/blob/master/backends/conrod_glium/examples/canvas.rs).**
 
 <img src="http://i.imgur.com/YtjjEJX.png" alt="canvas.rs" style="width:700px;">
 
