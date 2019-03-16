@@ -1005,7 +1005,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
         // A function for generating the xy coords from the given alignment and Position.
         .unwrap_or_else(|| {
             (
-                ui.calc_xy(Some(id), x_pos, y_pos, dim, place_on_kid_area),
+                ui.calc_xy(Some(id), maybe_parent_id, x_pos, y_pos, dim, place_on_kid_area),
                 None,
             )
         });
