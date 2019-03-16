@@ -980,7 +980,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
         // If there is no previous state to compare for dragging, return an initial state.
         //
         // A function for generating the xy coords from the given alignment and Position.
-        .unwrap_or_else(|| ui.calc_xy(Some(id), x_pos, y_pos, dim, place_on_kid_area));
+        .unwrap_or_else(|| ui.calc_xy(Some(id), maybe_parent_id, x_pos, y_pos, dim, place_on_kid_area));
 
     // Construct the rectangle describing our Widget's area.
     let rect = Rect::from_xy_dim(xy, dim);
