@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate conrod_core;
 extern crate conrod_glium;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
@@ -165,3 +166,7 @@ impl conrod_winit::WinitWindow for GliumDisplayWinitWrapper {
         self.0.gl_window().get_hidpi_factor() as _
     }
 }
+
+// Generate functions for converting between types from glium's version of `winit` and
+// `conrod_core`.
+conrod_winit::conversion_fns!();

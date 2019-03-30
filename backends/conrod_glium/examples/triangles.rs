@@ -4,6 +4,7 @@
 extern crate conrod_core;
 extern crate glium;
 extern crate conrod_glium;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 
@@ -67,7 +68,7 @@ fn main() {
         }
 
         // Use the `winit` backend feature to convert the winit event to a conrod one.
-        let input = match conrod_winit::convert_event(event, &display) {
+        let input = match support::convert_event(event, &display) {
             None => return glium::glutin::ControlFlow::Continue,
             Some(input) => input,
         };

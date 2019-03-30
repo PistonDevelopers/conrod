@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate conrod_core;
 extern crate conrod_glium;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
@@ -63,7 +64,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+            if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }
@@ -90,7 +91,7 @@ fn main() {
 
         // Get the underlying winit window and update the mouse cursor as set by conrod.
         display.0.gl_window().window()
-            .set_cursor(conrod_winit::convert_mouse_cursor(ui.mouse_cursor()));
+            .set_cursor(support::convert_mouse_cursor(ui.mouse_cursor()));
 
         // Render the `Ui` and then display it on the screen.
         if let Some(primitives) = ui.draw_if_changed() {

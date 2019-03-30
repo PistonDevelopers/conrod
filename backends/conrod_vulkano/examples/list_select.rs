@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate conrod_core;
 extern crate conrod_vulkano;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate image;
@@ -41,7 +42,8 @@ widget_ids! {
 }
 
 fn main() {
-    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano");
+    let mut events_loop = winit::EventsLoop::new();
+    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano", &events_loop);
 
     let mut render_target = RenderTarget::new(&window);
 
@@ -201,15 +203,13 @@ fn main() {
 
         let mut should_quit = false;
 
-        let winit_window_handle = window.surface.window();
-
-        window.events_loop.poll_events(|event| {
+        events_loop.poll_events(|event| {
             let (w, h) = (win_w as conrod_core::Scalar, win_h as conrod_core::Scalar);
             //let dpi_factor = dpi_factor as conrod_core::Scalar;
 
             // Convert winit event to conrod event, requires conrod to be built with the `winit`
             // feature
-            if let Some(event) = conrod_winit::convert_event(event.clone(), winit_window_handle) {
+            if let Some(event) = support::convert_event(event.clone(), &window) {
                 ui.handle_event(event);
             }
 

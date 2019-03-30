@@ -19,5 +19,3 @@ name = "conrod_winit"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.63" }
-winit = { version = "0.18" }
