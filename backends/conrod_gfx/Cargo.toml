@@ -29,3 +29,4 @@ petgraph = "0.4"
 ## glutin_gfx.rs example dependencies
 gfx_window_glutin = "0.28"
 glutin = "0.19"
+winit = "0.18"

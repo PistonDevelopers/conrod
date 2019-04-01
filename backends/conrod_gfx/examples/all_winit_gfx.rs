@@ -8,6 +8,7 @@
 extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_gfx;
+#[macro_use]
 extern crate conrod_winit;
 extern crate gfx;
 extern crate gfx_core;
@@ -15,8 +16,7 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate find_folder;
 extern crate image;
-
-use self::conrod_winit::winit;
+extern crate winit;
 
 use conrod_example_shared::{WIN_W, WIN_H};
 use gfx::Device;
@@ -24,6 +24,24 @@ use gfx::Device;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 type DepthFormat = gfx::format::DepthStencil;
+
+// A wrapper around the winit window that allows us to implement the trait necessary for enabling
+// the winit <-> conrod conversion functions.
+struct WindowRef<'a>(&'a winit::Window);
+
+// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible conversion
+// functions.
+impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
+    fn get_inner_size(&self) -> Option<(u32, u32)> {
+        winit::Window::get_inner_size(&self.0).map(Into::into)
+    }
+    fn hidpi_factor(&self) -> f32 {
+        winit::Window::get_hidpi_factor(&self.0) as _
+    }
+}
+
+// Generate the winit <-> conrod_core type conversion fns.
+conrod_winit::conversion_fns!();
 
 fn main() {
     // Builder for window
@@ -121,7 +139,7 @@ fn main() {
         events_loop.poll_events(|event|{
 
             // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-            if let Some(event) = conrod_winit::convert_event(event.clone(), window.window()) {
+            if let Some(event) = convert_event(event.clone(), &WindowRef(window.window())) {
                 ui.handle_event(event);
             }
 

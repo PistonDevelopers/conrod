@@ -3,7 +3,7 @@ extern crate glium;
 
 extern crate find_folder;
 extern crate conrod_glium;
-extern crate conrod_winit;
+#[macro_use] extern crate conrod_winit;
 
 mod support;
 
@@ -48,7 +48,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+            if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
             }
 
