@@ -32,6 +32,7 @@ impl Window {
         // Demonstration app state that we'll control with our conrod GUI.
         let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
+        println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
         Ok(Window {
             app:app,
@@ -119,12 +120,12 @@ fn load_rust_logo() -> TextureHandle {
 }
 main!({
     #[cfg(not(target_arch = "wasm32"))]
-    let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
+    let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR").replace("\\","/"));
     #[cfg(target_arch = "wasm32")]
     let res = format!("/resources/");
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
-    params.window.size = (464, 434).into();
+    params.window.size = (WIN_W as u32, WIN_H as u32).into();
     params.res.shortcuts.add("res:", res).unwrap();
     params.res.dirs.push("res:".into());
     crayon::application::setup(params, Window::build).unwrap();

@@ -7,8 +7,10 @@ use crayon::prelude::*;
 use crayon::utils::hash::FastHashSet;
 use serde_json::Result;
 
-pub fn convert_event<T>(ui:&mut Ui,closure:Box<FnMut(&mut T)>,app:&mut T){
+pub fn convert_event<T>(ui:&mut Ui, closure:Box<FnMut(&mut T)>,app:&mut T){
     let mouse_presses = input::mouse_presses();
+    let w = ui.win_w;
+    let h = ui.win_h;
     for mp in mouse_presses.iter(){
         let e = match mp{
             crayon::input::mouse::MouseButton::Left => conrod_core::input::state::mouse::Button::Left,
@@ -41,13 +43,13 @@ pub fn convert_event<T>(ui:&mut Ui,closure:Box<FnMut(&mut T)>,app:&mut T){
         ui.handle_event(Input::Release(Keyboard(ee)));
     }
     let k = input::mouse_movement();
-    if k.x >0.0 || k.y >0.0 {
+    //if k.x >0.0 || k.y >0.0 {
         let j = input::mouse_position();
-        ui.handle_event(Input::Motion(Motion::MouseCursor{x:j.x as f64,y:j.y as f64}));
-    }
+        ui.handle_event(Input::Motion(Motion::MouseCursor{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
+    //}
     let j = input::mouse_scroll();
     if j.x > 0.0 || j.y >0.0{
-        ui.handle_event(Input::Motion(Motion::Scroll{x:j.x as f64,y:j.y as f64}));
+        ui.handle_event(Input::Motion(Motion::Scroll{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
     }
 
 }
