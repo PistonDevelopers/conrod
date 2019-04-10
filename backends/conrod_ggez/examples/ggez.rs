@@ -86,7 +86,6 @@ impl<'a> event::EventHandler for MainState<'a> {
         Ok(())
     }
     fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
-        println!("button {:?}",button);
         conrod_ggez::event::mouse_button_down_event(&mut self.ui,button);
     }
 

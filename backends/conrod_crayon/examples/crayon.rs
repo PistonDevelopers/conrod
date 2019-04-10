@@ -75,7 +75,7 @@ impl LifecycleListener for Window {
         let k = "text_edit".to_owned();
         self.app.textedit = text_edit.get(&k).unwrap().clone();
         
-        self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
+        //self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
         {
             let mut ui = &mut self.ui.set_widgets();
             
@@ -85,13 +85,25 @@ impl LifecycleListener for Window {
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
-            /*   
+            /*  
+            widget::text_box::TextBox::new(&self.app.textedit)
+                .w_h(200.0,50.0)
+                .mid_bottom()
+                .set(self.ids.text_edit,ui);
+            */
+            widget::button::Button::new()
+                .w_h(200.0,50.0)
+                .hover_color(color::RED)
+                .press_color(color::ORANGE)
+                .mid_bottom()
+                .set(self.ids.text_edit,ui);
+            /* 
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
             */
         }
-        
+
         let dpi_factor = device_pixel_ratio() as f64;
         //let dpi_factor  =1.16;
         let primitives = self.ui.draw();
@@ -106,7 +118,7 @@ fn load_rust_logo() -> TextureHandle {
     video::create_texture_from("res:crate.bmp").unwrap()
 }
 main!({
-     #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_arch = "wasm32"))]
     let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR"));
     #[cfg(target_arch = "wasm32")]
     let res = format!("/resources/");

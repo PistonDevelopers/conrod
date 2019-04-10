@@ -420,13 +420,15 @@ impl Ui {
                     };
                     let widget = self.global_input.current.widget_capturing_mouse;
                     let press_event = event::Ui::Press(widget, press).into();
+                    println!("press");
                     self.global_input.push_event(press_event);
-
+                    
                     if let MouseButton::Left = mouse_button {
                         // Check to see if we need to uncapture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
                             if Some(idx) != self.global_input.current.widget_under_mouse {
                                 let source = input::Source::Keyboard;
+                                println!("press_O {:?}",idx);
                                 let event = event::Ui::WidgetUncapturesInputSource(idx, source);
                                 self.global_input.push_event(event.into());
                                 self.global_input.current.widget_capturing_keyboard = None;
@@ -435,6 +437,7 @@ impl Ui {
 
                         // Check to see if we need to capture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_under_mouse {
+                            println!("press_2 {:?}",idx);
                             let source = input::Source::Keyboard;
                             let event = event::Ui::WidgetCapturesInputSource(idx, source);
                             self.global_input.push_event(event.into());
@@ -444,6 +447,7 @@ impl Ui {
 
                     // Keep track of pressed buttons in the current input::State.
                     let xy = self.global_input.current.mouse.xy;
+                    println!("xy {:?}",xy);
                     let widget = self.global_input.current.widget_under_mouse;
                     self.global_input.current.mouse.buttons.press(mouse_button, xy, widget);
                 },

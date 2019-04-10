@@ -183,7 +183,6 @@ impl Renderer{
             match kind {
                 
                 render::PrimitiveKind::Rectangle { color } => {
-    
                     switch_to_plain_state!();
                     let color = gamma_srgb_to_linear(color.to_fsa());
                     let (l, r, b, t) = rect.l_r_b_t();

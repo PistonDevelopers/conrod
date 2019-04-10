@@ -298,7 +298,6 @@ impl<'a> Widget for Button<'a, Flat> {
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
-
         let (interaction, times_triggered) = interaction_and_times_triggered(id, ui);
         let color = match interaction {
             Interaction::Idle => style.color(&ui.theme),
@@ -388,6 +387,7 @@ fn interaction_and_times_triggered(button_id: widget::Id, ui: &UiCell) -> (Inter
             mouse.buttons.left().is_down()
             || ui.global_input().current.touch.values()
                  .any(|t| t.start.widget == Some(button_id));
+        println!("is_pressed {:?}",is_pressed);
         if is_pressed { Interaction::Press } else { Interaction::Hover }
     });
     let times_triggered = (input.clicks().left().count() + input.taps().count()) as u16;
