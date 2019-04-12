@@ -68,8 +68,20 @@ pub fn lines<I>(text: &str, ranges: I) -> Lines<I>
 
 
 /// Converts the given font size in "points" to its font size in pixels.
+/// This is useful for when the font size is not an integer.
+pub fn f32_pt_to_px(font_size_in_points: f32) -> f32 {
+    font_size_in_points * 4.0 / 3.0
+}
+
+/// Converts the given font size in "points" to a uniform `rusttype::Scale`.
+/// This is useful for when the font size is not an integer.
+pub fn f32_pt_to_scale(font_size_in_points: f32) -> Scale {
+    Scale::uniform(f32_pt_to_px(font_size_in_points))
+}
+
+/// Converts the given font size in "points" to its font size in pixels.
 pub fn pt_to_px(font_size_in_points: FontSize) -> f32 {
-    (font_size_in_points * 4) as f32 / 3.0
+    f32_pt_to_px(font_size_in_points as f32)
 }
 
 /// Converts the given font size in "points" to a uniform `rusttype::Scale`.
