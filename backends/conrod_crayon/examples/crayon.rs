@@ -64,41 +64,35 @@ impl Drop for Window {
 
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
-        let mut text_edit:HashMap<String,String> = HashMap::new();
-        text_edit.insert("text_edit".to_owned(),self.app.textedit.clone());
-        conrod_crayon::events::convert_event(&mut self.ui,Box::new(|vt:&mut HashMap<String,String>|{
-            for (id,val) in input::text_edit(){
-                if let Some(k) = vt.get_mut(&id.clone()){
-                    *k = val;
-                }
-            }
-        }),&mut text_edit);
-        let k = "text_edit".to_owned();
-        self.app.textedit = text_edit.get(&k).unwrap().clone();
-        
-        //self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
+        conrod_crayon::events::convert_event(&mut self.ui);
         {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
-            
+            /*
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
-                .set(self.ids.rust_logo, ui);
-            /*  
-            widget::text_box::TextBox::new(&self.app.textedit)
-                .w_h(200.0,50.0)
-                .mid_bottom()
-                .set(self.ids.text_edit,ui);
-            */
+                .set(self.ids.rust_logo, ui);*/
+           for edit in widget::TextEdit::new(&self.app.textedit)
+                .color(color::WHITE)
+                .w_h(LOGO_SIDE, LOGO_SIDE)
+                .middle()
+                .center_justify()
+                .line_spacing(2.5)
+                //.restrict_to_height(false) // Let the height grow infinitely and scroll.
+                .set(self.ids.text_edit, ui)
+            {
+                self.app.textedit = edit;
+            }
+            /*
             widget::button::Button::new()
                 .w_h(200.0,50.0)
                 .hover_color(color::RED)
                 .press_color(color::ORANGE)
                 .mid_bottom()
                 .set(self.ids.text_edit,ui);
-            /* 
+             
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
