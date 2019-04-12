@@ -17,6 +17,10 @@ categories = ["gui"]
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+stdweb = [ "instant/stdweb" ]
+wasm-bindgen = [ "instant/wasm-bindgen" ]
+
 [dependencies]
 conrod_derive = { path = "../conrod_derive", version = "0.63" }
 daggy = "0.5"
@@ -24,3 +28,4 @@ fnv = "1.0"
 num = "0.2"
 pistoncore-input = "0.24"
 rusttype = { version = "0.7", features = ["gpu_cache"] }
+instant = "0.1"

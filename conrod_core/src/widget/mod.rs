@@ -189,7 +189,7 @@ impl MaybeParent {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floating {
     /// The time the **Widget** was last clicked (used for depth sorting in the widget **Graph**).
-    pub time_last_clicked: std::time::Instant,
+    pub time_last_clicked: instant::Instant,
 }
 
 /// A struct containing builder data common to all **Widget** types.
@@ -1017,7 +1017,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
     let maybe_floating = if widget.common().is_floating {
 
         fn new_floating() -> Floating {
-            Floating { time_last_clicked: std::time::Instant::now() }
+            Floating { time_last_clicked: instant::Instant::now() }
         }
 
         // If it is floating, check to see if we need to update the last time it was clicked.

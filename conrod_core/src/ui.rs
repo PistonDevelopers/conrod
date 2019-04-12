@@ -515,7 +515,7 @@ impl Ui {
                         let click_event = event::Ui::Click(clicked_widget, click).into();
                         self.global_input.push_event(click_event);
 
-                        let now = std::time::Instant::now();
+                        let now = instant::Instant::now();
                         let double_click = self.global_input.last_click
                             .and_then(|(last_time, last_click)| {
 
@@ -811,7 +811,7 @@ impl Ui {
 
                     // The start of the touch interaction state to be stored.
                     let start = input::state::touch::Start {
-                        time: std::time::Instant::now(),
+                        time: instant::Instant::now(),
                         xy: touch.xy,
                         widget: widget_under_touch,
                     };
