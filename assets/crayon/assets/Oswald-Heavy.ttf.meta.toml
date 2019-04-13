@@ -1,0 +1,10 @@
+name = 'Oswald-Heavy.ttf'
+uuid = 'b148e135-5e22-451b-92f6-3671e60ac865'
+
+[[resources]]
+type = 'Bytes'
+name = 'Oswald-Heavy.ttf'
+uuid = '26aa066c-5983-4da8-884c-4ac7bf9c49f6'
+
+[params]
+type = 'Bytes'

@@ -1,0 +1,40 @@
+[assets]
+source = 'assets'
+destination = 'resources'
+
+[[assets.importers]]
+type = 'Texture'
+extensions = [
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.bmp',
+    '.tga',
+    '.psd', # Yes, we do supports .PSD files.
+]
+
+[[assets.importers]]
+type = 'Transmission'
+extensions = [
+    '.obj',
+    '.blend',
+    '.fbx',
+    '.gltf',
+    '.dae',
+    '.3ds',
+]
+
+[[assets.importers]]
+type = 'Audio'
+extensions = [
+    '.mp3',
+    '.wav',
+    '.ogg',
+]
+
+[[assets.importers]]
+type = 'Bytes'
+extensions = [
+    '.ttf',
+    '.otf',
+]

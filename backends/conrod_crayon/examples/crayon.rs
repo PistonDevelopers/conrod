@@ -3,7 +3,9 @@ extern crate conrod_crayon;
 extern crate conrod_example_shared;
 extern crate conrod_core;
 extern crate crayon_bytes;
+
 use crayon::prelude::*;
+use crayon_bytes::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
@@ -11,6 +13,25 @@ use std::time::SystemTime;
 use std::collections::HashMap;
 use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
 use conrod_core::text::{Font,FontCollection};
+#[derive(Debug, Clone, Copy)]
+struct WindowResources {
+    b: BytesHandle,
+}
+
+impl WindowResources {
+    pub fn new() -> CrResult<Self> {
+        crayon_bytes::setup()?;
+        Ok(WindowResources {
+            b: crayon_bytes::create_bytes_from("res:Oswald-Heavy.ttf")?,
+        })
+    }
+}
+impl LatchProbe for WindowResources {
+    fn is_set(&self) -> bool {
+        crayon_bytes::state(self.b) != ResourceState::NotReady
+    }
+}
+
 struct Window {
     renderer: Renderer,
     app: conrod_example_shared::DemoApp,
@@ -19,10 +40,11 @@ struct Window {
     image_map: conrod_core::image::Map<TextureHandle>,
     batch: CommandBuffer,
     time: f32,
+    resources: WindowResources
 }
 
 impl Window {
-    pub fn build() -> CrResult<Self> {
+    pub fn build(resources: &WindowResources) -> CrResult<Self> {
         
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
@@ -36,7 +58,8 @@ impl Window {
         let dpi_factor = device_pixel_ratio();
         println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
-        let f = ui.fonts.insert(load_bold());
+        let f = ui.fonts.insert(load_bold(resources.b));
+        ui.theme.font_id = Some(f);
         Ok(Window {
             app:app,
             ui:ui,
@@ -45,6 +68,7 @@ impl Window {
             renderer:renderer,
             batch: CommandBuffer::new(),
             time: 0.0,
+            resources: *resources
         })
     }
 }
@@ -89,18 +113,12 @@ impl LifecycleListener for Window {
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
-            /*  
+            
             widget::text_box::TextBox::new(&self.app.textedit)
                 .w_h(200.0,50.0)
                 .mid_bottom()
                 .set(self.ids.text_edit,ui);
-            */
-            widget::button::Button::new()
-                .w_h(200.0,50.0)
-                .hover_color(color::RED)
-                .press_color(color::ORANGE)
-                .mid_bottom()
-                .set(self.ids.text_edit,ui);
+        
             /* 
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
@@ -121,8 +139,8 @@ impl LifecycleListener for Window {
 fn load_rust_logo() -> TextureHandle {
     video::create_texture_from("res:crate.bmp").unwrap()
 }
-fn load_bold() ->Font{
-    FontCollection::from_bytes(crayon_bytes::state(crayon_bytes::create_bytes_from("res:Oswald-Heavy.ttf")?)).into_font().unwrap()
+fn load_bold(handle:BytesHandle) ->Font{
+    FontCollection::from_bytes(crayon_bytes::create_bytes(handle).unwrap()).unwrap().into_font().unwrap()
 }
 main!({
     #[cfg(not(target_arch = "wasm32"))]
@@ -134,5 +152,8 @@ main!({
     params.window.size = (WIN_W as u32, WIN_H as u32).into();
     params.res.shortcuts.add("res:", res).unwrap();
     params.res.dirs.push("res:".into());
-    crayon::application::setup(params, Window::build).unwrap();
+    crayon::application::setup(params,|| {
+        let resources = WindowResources::new()?;
+        Ok(Launcher::new(resources, |r| Window::build(r)))
+    }).unwrap();
 });
