@@ -1,11 +1,8 @@
 use conrod_core::event::Input;
 use conrod_core::input::Button::Keyboard;
-use conrod_core::input::Button::Mouse;
 use conrod_core::input::Motion;
 use conrod_core::Ui;
 use crayon::prelude::*;
-use crayon::utils::hash::FastHashSet;
-use serde_json::Result;
 
 pub fn convert_event<T>(ui:&mut Ui, closure:Box<FnMut(&mut T)>,app:&mut T){
     let mouse_presses = input::mouse_presses();

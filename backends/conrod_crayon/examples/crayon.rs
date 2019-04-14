@@ -114,9 +114,10 @@ impl LifecycleListener for Window {
                 .middle()
                 .set(self.ids.rust_logo, ui);
             
-            widget::text_box::TextBox::new(&self.app.textedit)
+            widget::Text::new("CAB")
+                .color(color::LIGHT_GREEN)
                 .w_h(200.0,50.0)
-                .mid_bottom()
+                .middle()
                 .set(self.ids.text_edit,ui);
         
             /* 
