@@ -127,6 +127,9 @@ impl Renderer{
             .with("mode", UniformVariableType::I32)
             .finish();
         let mut params = ShaderParams::default();
+        params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
+        crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
+        crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
         params.attributes = attributes;
         params.uniforms = uniforms;
         //looking for Position
@@ -135,7 +138,6 @@ impl Renderer{
         let shader = video::create_shader(params.clone(), vs, fs).unwrap();
 
         let mut params = SurfaceParams::default();
-        //params.set_attachments(&[rendered_texture], None).unwrap();
         params.set_clear(Color::gray(), None, None);
         let vert:Vec<Vertex> = Vec::new();
         let commands:Vec<PreparedCommand> = Vec::new();
@@ -146,7 +148,6 @@ impl Renderer{
           vertices: vert,
           shader:shader,
           surface:surface,
-          //rendered_texture:rendered_texture,
           commands: commands
         }
     }
@@ -160,7 +161,6 @@ impl Renderer{
     }
     pub fn fill<P>(&mut self,dims: (f64, f64),dpi_factor: f64,mut primitives: P, image_map:&conrod_core::image::Map<TextureHandle> )where P: render::PrimitiveWalker{
         let (screen_w, screen_h) = dims;
-        println!("dim {:?} {:?}",screen_w,screen_h);
         let half_win_w = screen_w / 2.0;
         let half_win_h = screen_h / 2.0;    
         let Renderer { ref mut vertices,shader,surface,ref mut commands, ref mut glyph_cache,..} = *self;
@@ -304,21 +304,15 @@ impl Renderer{
                     cache.cache_queued(|rect, data| {
                         let width = rect.width();
                         let height = rect.height();
-                        println!("rect2 {:?}",rect);
                         let lbwh = [rect.min.x,rect.min.y,rect.max.x,rect.max.y];
                         let p1 = cgmath::Point2::new(lbwh[0],lbwh[1]);
                         let p2 = cgmath::Point2::new(lbwh[2],lbwh[3]);
                         let rect = crayon::math::aabb::Aabb2::new(p1,p2);
-                        //let dataz =vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 79, 92, 92, 92, 20, 0, 64, 92, 92, 92, 36, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 206, 193, 236, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 255, 255, 255, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 255, 255, 255, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 91, 45, 191, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 219, 255, 255, 255, 56, 0, 177, 255, 255, 255, 100, 0, 0, 73, 85, 85, 85, 19, 0, 59, 85, 85, 85, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-                        //let datal = dataz.as_slice();
-                        //println!("d {:?} {:?} {:?}",data,width,height);
-                        //let data = std::borrow::Cow::Owned(data);
                         video::update_texture(*texture,rect,data).unwrap();
         
                     }).unwrap();
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
-
                     let cache_id = font_id.index();
 
                     let origin = text::rt::point(0.0, 0.0);
@@ -336,7 +330,6 @@ impl Renderer{
                         if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
                             
                             let gl_rect = to_gl_rect(screen_rect);
-                            println!("gl_rect {:?}",gl_rect);
                             let v = |p:[f32;2],t:[f32;2]| {Vertex::new(p,t,color)};
                             let mut push_v = |p, t| vertices.push(v(p, t));
                             push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
@@ -471,7 +464,7 @@ impl Renderer{
                         let mesh = video::create_mesh(params.clone(), Some(data)).unwrap();
                         let mut dc = Draw::new(self.shader, mesh);
                         dc.set_uniform_variable("tex", *uniform);
-                        dc.set_uniform_variable("mode",MODE_TEXT);
+                        dc.set_uniform_variable("mode",mode);
                         batch.draw(dc);
                         batch.submit(self.surface).unwrap();
                        
@@ -538,7 +531,6 @@ impl<'a> Iterator for Commands<'a> {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
             PreparedCommand::Plain(ref range,mode) =>
                 Command::Draw(DrawE::Plain(&vertices[range.clone()],mode)),
-              //   Command::Draw(DrawE::Test),
             PreparedCommand::Image(id, ref range) =>
                 Command::Draw(DrawE::Image(id, &vertices[range.clone()])),
         })
@@ -563,14 +555,14 @@ fn glyph_cache_texture(
 {
     // Determine the optimal texture format to use given the opengl version.
     let mut params = TextureParams::default();
-    //params.format = TextureFormat::RGBA8;
+    params.format = TextureFormat::R8;
     //params.hint = TextureHint::Stream;
     params.hint = TextureHint::Stream;
     params.dimensions = (width, height).into();
     let data_size = params.format.size(params.dimensions) as usize;
-    let bytes = vec![128u8; data_size];
+    let bytes = vec![];
     let data = TextureData{
-     bytes:   vec![bytes.into_boxed_slice()]
+       bytes:bytes
     };
     video::create_texture(params,data)
 }

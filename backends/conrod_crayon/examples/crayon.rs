@@ -1,7 +1,7 @@
 extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
-extern crate conrod_core;
+#[macro_use] extern crate conrod_core;
 extern crate crayon_bytes;
 
 use crayon::prelude::*;
@@ -11,7 +11,7 @@ use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
 use std::collections::HashMap;
-use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
+use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable,Labelable};
 use conrod_core::text::{Font,FontCollection};
 #[derive(Debug, Clone, Copy)]
 struct WindowResources {
@@ -31,37 +31,40 @@ impl LatchProbe for WindowResources {
         crayon_bytes::state(self.b) != ResourceState::NotReady
     }
 }
-
+widget_ids!(struct Ids { text });
 struct Window {
     renderer: Renderer,
-    app: conrod_example_shared::DemoApp,
+    //app: conrod_example_shared::DemoApp,
     ui: conrod_core::Ui,
-    ids: conrod_example_shared::Ids,
+    ids: Ids,
     image_map: conrod_core::image::Map<TextureHandle>,
     batch: CommandBuffer,
     time: f32,
     resources: WindowResources
 }
-
+//crayon_bytes = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
+//crayon = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
 impl Window {
     pub fn build(resources: &WindowResources) -> CrResult<Self> {
         
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
             .build();
-        let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+        //let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+        
+        let ids = Ids::new(ui.widget_id_generator());
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
-        let rust_logo = image_map.insert(load_rust_logo());
+        //let rust_logo = image_map.insert(load_rust_logo());
         dbg!("l");
         // Demonstration app state that we'll control with our conrod GUI.
-        let app = conrod_example_shared::DemoApp::new(rust_logo);
+        //let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
         println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
         let f = ui.fonts.insert(load_bold(resources.b));
         ui.theme.font_id = Some(f);
         Ok(Window {
-            app:app,
+            //app:app,
             ui:ui,
             ids:ids,
             image_map:image_map,
@@ -92,7 +95,7 @@ impl Drop for Window {
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
         let mut text_edit:HashMap<String,String> = HashMap::new();
-        text_edit.insert("text_edit".to_owned(),self.app.textedit.clone());
+        text_edit.insert("text_edit".to_owned(),"t".to_owned());
         conrod_crayon::events::convert_event(&mut self.ui,Box::new(|vt:&mut HashMap<String,String>|{
             for (id,val) in input::text_edit(){
                 if let Some(k) = vt.get_mut(&id.clone()){
@@ -101,24 +104,25 @@ impl LifecycleListener for Window {
             }
         }),&mut text_edit);
         let k = "text_edit".to_owned();
-        self.app.textedit = text_edit.get(&k).unwrap().clone();
+        //self.app.textedit = text_edit.get(&k).unwrap().clone();
         
         //self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
         {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
-            
+            /*
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
-            
-            widget::Text::new("CAB")
+            */
+            widget::Text::new("H")
                 .color(color::LIGHT_GREEN)
+                .font_size(120)
                 .w_h(200.0,50.0)
                 .middle()
-                .set(self.ids.text_edit,ui);
+                .set(self.ids.text,ui);
         
             /* 
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
