@@ -2,6 +2,7 @@ extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
 extern crate conrod_core;
+extern crate crayon_bytes;
 use crayon::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
@@ -9,6 +10,7 @@ use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
 use std::collections::HashMap;
 use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
+use conrod_core::text::{Font,FontCollection};
 struct Window {
     renderer: Renderer,
     app: conrod_example_shared::DemoApp,
@@ -34,6 +36,7 @@ impl Window {
         let dpi_factor = device_pixel_ratio();
         println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
+        let f = ui.fonts.insert(load_bold());
         Ok(Window {
             app:app,
             ui:ui,
@@ -111,6 +114,9 @@ impl LifecycleListener for Window {
 }
 fn load_rust_logo() -> TextureHandle {
     video::create_texture_from("res:crate.bmp").unwrap()
+}
+fn load_bold() ->Font{
+    FontCollection::from_bytes(crayon_bytes::state(crayon_bytes::create_bytes_from("res:Oswald-Heavy.ttf")?)).into_font().unwrap()
 }
 main!({
     #[cfg(not(target_arch = "wasm32"))]
