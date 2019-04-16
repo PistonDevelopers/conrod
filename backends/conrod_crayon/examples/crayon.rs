@@ -1,50 +1,77 @@
 extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
-extern crate conrod_core;
+#[macro_use] extern crate conrod_core;
 extern crate crayon_bytes;
+
 use crayon::prelude::*;
+use crayon_bytes::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
 use std::time::SystemTime;
 use std::collections::HashMap;
-use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable};
+use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable,Labelable};
 use conrod_core::text::{Font,FontCollection};
+#[derive(Debug, Clone, Copy)]
+struct WindowResources {
+    b: BytesHandle,
+}
+
+impl WindowResources {
+    pub fn new() -> CrResult<Self> {
+        crayon_bytes::setup()?;
+        Ok(WindowResources {
+            b: crayon_bytes::create_bytes_from("res:Oswald-Heavy.ttf")?,
+        })
+    }
+}
+impl LatchProbe for WindowResources {
+    fn is_set(&self) -> bool {
+        crayon_bytes::state(self.b) != ResourceState::NotReady
+    }
+}
+widget_ids!(struct Ids { text });
 struct Window {
     renderer: Renderer,
-    app: conrod_example_shared::DemoApp,
+    //app: conrod_example_shared::DemoApp,
     ui: conrod_core::Ui,
-    ids: conrod_example_shared::Ids,
+    ids: Ids,
     image_map: conrod_core::image::Map<TextureHandle>,
     batch: CommandBuffer,
     time: f32,
+    resources: WindowResources
 }
-
+//crayon_bytes = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
+//crayon = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
 impl Window {
-    pub fn build() -> CrResult<Self> {
+    pub fn build(resources: &WindowResources) -> CrResult<Self> {
         
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
             .build();
-        let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+        //let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+        
+        let ids = Ids::new(ui.widget_id_generator());
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
-        let rust_logo = image_map.insert(load_rust_logo());
+        //let rust_logo = image_map.insert(load_rust_logo());
         dbg!("l");
         // Demonstration app state that we'll control with our conrod GUI.
-        let app = conrod_example_shared::DemoApp::new(rust_logo);
+        //let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
         println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
-        let f = ui.fonts.insert(load_bold());
+        let f = ui.fonts.insert(load_bold(resources.b));
+        ui.theme.font_id = Some(f);
         Ok(Window {
-            app:app,
+            //app:app,
             ui:ui,
             ids:ids,
             image_map:image_map,
             renderer:renderer,
             batch: CommandBuffer::new(),
             time: 0.0,
+            resources: *resources
         })
     }
 }
@@ -67,7 +94,23 @@ impl Drop for Window {
 
 impl LifecycleListener for Window {
     fn on_update(&mut self) -> CrResult<()> {
+<<<<<<< HEAD
         conrod_crayon::events::convert_event(&mut self.ui);
+=======
+        let mut text_edit:HashMap<String,String> = HashMap::new();
+        text_edit.insert("text_edit".to_owned(),"t".to_owned());
+        conrod_crayon::events::convert_event(&mut self.ui,Box::new(|vt:&mut HashMap<String,String>|{
+            for (id,val) in input::text_edit(){
+                if let Some(k) = vt.get_mut(&id.clone()){
+                    *k = val;
+                }
+            }
+        }),&mut text_edit);
+        let k = "text_edit".to_owned();
+        //self.app.textedit = text_edit.get(&k).unwrap().clone();
+        
+        //self.ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(conrod_core::input::state::mouse::Button::Left)));
+>>>>>>> primitivetext
         {
             let mut ui = &mut self.ui.set_widgets();
             
@@ -76,6 +119,7 @@ impl LifecycleListener for Window {
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
+<<<<<<< HEAD
                 .set(self.ids.rust_logo, ui);*/
            for edit in widget::TextEdit::new(&self.app.textedit)
                 .color(color::WHITE)
@@ -96,6 +140,18 @@ impl LifecycleListener for Window {
                 .mid_bottom()
                 .set(self.ids.text_edit,ui);
              
+=======
+                .set(self.ids.rust_logo, ui);
+            */
+            widget::Text::new("H")
+                .color(color::LIGHT_GREEN)
+                .font_size(120)
+                .w_h(200.0,50.0)
+                .middle()
+                .set(self.ids.text,ui);
+        
+            /* 
+>>>>>>> primitivetext
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
                 .set(self.ids.rust_logo, ui);
@@ -115,8 +171,8 @@ impl LifecycleListener for Window {
 fn load_rust_logo() -> TextureHandle {
     video::create_texture_from("res:crate.bmp").unwrap()
 }
-fn load_bold() ->Font{
-    FontCollection::from_bytes(crayon_bytes::state(crayon_bytes::create_bytes_from("res:Oswald-Heavy.ttf")?)).into_font().unwrap()
+fn load_bold(handle:BytesHandle) ->Font{
+    FontCollection::from_bytes(crayon_bytes::create_bytes(handle).unwrap()).unwrap().into_font().unwrap()
 }
 main!({
     #[cfg(not(target_arch = "wasm32"))]
@@ -128,5 +184,8 @@ main!({
     params.window.size = (WIN_W as u32, WIN_H as u32).into();
     params.res.shortcuts.add("res:", res).unwrap();
     params.res.dirs.push("res:".into());
-    crayon::application::setup(params, Window::build).unwrap();
+    crayon::application::setup(params,|| {
+        let resources = WindowResources::new()?;
+        Ok(Launcher::new(resources, |r| Window::build(r)))
+    }).unwrap();
 });

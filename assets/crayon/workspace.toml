@@ -36,4 +36,8 @@ extensions = [
 type = 'Bytes'
 extensions = [
     '.ttf',
+<<<<<<< HEAD
+=======
+    '.otf',
+>>>>>>> primitivetext
 ]

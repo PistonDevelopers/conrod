@@ -1,11 +1,8 @@
 use conrod_core::event::Input;
 use conrod_core::input::Button::Keyboard;
-use conrod_core::input::Button::Mouse;
 use conrod_core::input::Motion;
 use conrod_core::Ui;
 use crayon::prelude::*;
-use crayon::utils::hash::FastHashSet;
-use serde_json::Result;
 
 pub fn convert_event(ui:&mut Ui){
     let mouse_presses = input::mouse_presses();
@@ -32,24 +29,27 @@ pub fn convert_event(ui:&mut Ui){
     }
     let key_presses = input::key_presses();
     for kp in key_presses.iter(){
-        let e = serde_json::to_string(kp).unwrap();
+        let e = key_convert(serde_json::to_string(kp).unwrap());
         let ee:conrod_core::input::keyboard::Key = serde_json::from_str(&e).unwrap();
         ui.handle_event(Input::Press(Keyboard(ee)));
     }
     let key_releases = input::key_releases();
     for kp in key_releases.iter(){
-        let e = serde_json::to_string(kp).unwrap();
+        let e = key_convert(serde_json::to_string(kp).unwrap());
         let ee:conrod_core::input::keyboard::Key = serde_json::from_str(&e).unwrap();
         ui.handle_event(Input::Release(Keyboard(ee)));
     }
-    let k = input::mouse_movement();
-    //if k.x >0.0 || k.y >0.0 {
-        let j = input::mouse_position();
-        ui.handle_event(Input::Motion(Motion::MouseCursor{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
-    //}
+
+    let j = input::mouse_position();
+    ui.handle_event(Input::Motion(Motion::MouseCursor{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
     let j = input::mouse_scroll();
     if j.x > 0.0 || j.y >0.0{
         ui.handle_event(Input::Motion(Motion::Scroll{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
     }
 
+}
+
+pub fn key_convert(j:String)->String{
+    j.replace("Key","D").replace("Control","Ctrl").replace("LBracket","LeftBracket").replace("RBracket","RightBracket")
+    .replace("Subtract","Minus")
 }

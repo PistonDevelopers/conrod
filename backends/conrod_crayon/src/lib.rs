@@ -1,8 +1,12 @@
 extern crate crayon;
 extern crate conrod_core;
 extern crate serde_json;
+extern crate cgmath;
 use crayon::impl_vertex;
 use crayon::prelude::*;
+use crayon::errors::Result;
+use crayon::video::assets::texture::*;
+
 pub mod events;
 use conrod_core::{
     Rect,
@@ -10,7 +14,7 @@ use conrod_core::{
     color,
     image,
     render,
-    text::{rt, GlyphCache},
+    text,
 };
 
 impl_vertex! {
@@ -21,13 +25,6 @@ impl_vertex! {
     }
 }
 
-/*
-impl_vertex! {
-    Vertex {
-        position => [Position; Float; 2; false],
-    }
-}
-*/
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: i32 = 0;
 /// Draw an image from the texture at `tex` in the fragment shader.
@@ -38,16 +35,62 @@ pub const MODE_GEOMETRY: i32 = 2;
 #[derive(Clone, Debug)]
 pub enum Command<'a> {
     /// Draw to the target.
-    Draw(Draw_e<'a>),
+    Draw(DrawE<'a>),
     /// Update the scizzor within the `glium::DrawParameters`.
     Scizzor(SurfaceScissor),
 }
 enum PreparedCommand {
     Image(image::Id, std::ops::Range<usize>),
-    Plain(std::ops::Range<usize>),
+    Plain(std::ops::Range<usize>,i32),
     Scizzor(SurfaceScissor),
 }
+/// A rusttype `GlyphCache` along with a `glium::texture::Texture2d` for caching text on the `GPU`.
+pub struct GlyphCache {
+    cache: text::GlyphCache<'static>,
+    texture: TextureHandle,
+}
+
+impl GlyphCache {
+    /// Construct a **GlyphCache** with the given texture dimensions.
+    ///
+    /// When calling `GlyphCache::new`, the `get_framebuffer_dimensions` method is used to produce
+    /// the width and height. However, often creating a texture the size of the screen might not be
+    /// large enough to cache the necessary text for an application. The following constant
+    /// multiplier is used to ensure plenty of room in the cache.
+    pub fn with_dimensions(
+        width: u32,
+        height: u32,
+    ) -> Result<Self>
+    {
+        // First, the rusttype `Cache` which performs the logic for rendering and laying out glyphs
+        // in the cache.
+        let cache = rusttype_glyph_cache(width, height);
+
+        // Now the texture to which glyphs will be rendered.
+        let texture = glyph_cache_texture(width, height)?;
+
+        Ok(GlyphCache {
+            cache: cache,
+            texture: texture,
+        })
+    }
+
+    /// Construct a `GlyphCache` with a size equal to the given `Display`'s current framebuffer
+    /// dimensions.
+    pub fn new(dim:(f64,f64)) -> Result<Self>
+    {
+        println!("inii {:?}",dim);
+        Self::with_dimensions(dim.0 as u32, dim.1 as u32)
+    }
+
+    /// The texture used to cache the glyphs on the GPU.
+    pub fn texture(&self) -> &TextureHandle {
+        &self.texture
+    }
+}
+
 pub struct Renderer {
+    glyph_cache: GlyphCache,
     vertices: Vec<Vertex>,
     shader: ShaderHandle,
     surface: SurfaceHandle,
@@ -58,12 +101,12 @@ pub struct Renderer {
 ///
 /// Each variant describes how to draw the contents of the vertex buffer.
 #[derive(Clone, Debug)]
-pub enum Draw_e<'a> {
+pub enum DrawE<'a> {
     /// A range of vertices representing triangles textured with the image in the
     /// image_map at the given `widget::Id`.
     Image(image::Id, &'a [Vertex]),
     /// A range of vertices representing plain triangles.
-    Plain(&'a [Vertex]),
+    Plain(&'a [Vertex],i32),
     Test,
 }
 
@@ -73,11 +116,7 @@ pub struct Commands<'a> {
 }
 impl Renderer{
     pub fn new(dim:(f64,f64),dpi_factor: f64)->Self{
-        /*let mut params = RenderTextureParams::default();
-        params.format = RenderTextureFormat::RGBA8;
-        params.dimensions = (dim.0 as u32,dim.1 as u32).into();
-        let rendered_texture = video::create_render_texture(params).unwrap();
-        */
+
         let attributes = AttributeLayoutBuilder::new()
             .with(Attribute::Position, 2)
             .with(Attribute::Texcoord0, 2)
@@ -88,6 +127,9 @@ impl Renderer{
             .with("mode", UniformVariableType::I32)
             .finish();
         let mut params = ShaderParams::default();
+        params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
+        crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
+        crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
         params.attributes = attributes;
         params.uniforms = uniforms;
         //looking for Position
@@ -96,20 +138,20 @@ impl Renderer{
         let shader = video::create_shader(params.clone(), vs, fs).unwrap();
 
         let mut params = SurfaceParams::default();
-        //params.set_attachments(&[rendered_texture], None).unwrap();
         params.set_clear(Color::gray(), None, None);
         let vert:Vec<Vertex> = Vec::new();
         let commands:Vec<PreparedCommand> = Vec::new();
         let surface = video::create_surface(params).unwrap();
         
         Renderer{
+          glyph_cache:GlyphCache::new((dim.0 * dpi_factor,dim.1 * dpi_factor)).unwrap(),
           vertices: vert,
           shader:shader,
           surface:surface,
-          //rendered_texture:rendered_texture,
           commands: commands
         }
     }
+    
     pub fn commands(&self) -> Commands {
         let Renderer { ref commands, ref vertices, .. } = *self;
         Commands {
@@ -121,7 +163,7 @@ impl Renderer{
         let (screen_w, screen_h) = dims;
         let half_win_w = screen_w / 2.0;
         let half_win_h = screen_h / 2.0;    
-        let Renderer { ref mut vertices,shader,surface,ref mut commands,..} = *self;
+        let Renderer { ref mut vertices,shader,surface,ref mut commands, ref mut glyph_cache,..} = *self;
         commands.clear();
         vertices.clear();
         let mut current_scissor =SurfaceScissor::Enable{
@@ -158,16 +200,21 @@ impl Renderer{
         
         let vx = |x: f64| (x * dpi_factor / half_win_w) as f32;
         let vy = |y: f64| (y * dpi_factor / half_win_h) as f32;
-        let mut c = 0;
+        let mut mode = MODE_GEOMETRY;
+        
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
             
             let new_scissor = rect_to_crayon_rect(scizzor);
+            if let render::PrimitiveKind::Text { .. } = kind{
+                mode = MODE_TEXT;
+            }   
+            
             if new_scissor != current_scissor {
                 // Finish the current command.
                 match current_state {
                     State::Plain { start } =>
-                        commands.push(PreparedCommand::Plain(start..vertices.len())),
+                        commands.push(PreparedCommand::Plain(start..vertices.len(),mode)),
                     State::Image { image_id, start } =>
                         commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
                 }
@@ -241,7 +288,62 @@ impl Renderer{
                         vertices.push(v(triangle[2]));
                     }
                 },
-                
+                render::PrimitiveKind::Text { color, text, font_id } => {
+                    switch_to_plain_state!();
+
+                    let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
+
+                    let GlyphCache { ref mut cache, ref mut texture } = *glyph_cache;
+
+                    // Queue the glyphs to be cached.
+                    for glyph in positioned_glyphs.iter() {
+                        cache.queue_glyph(font_id.index(), glyph.clone());
+                    }
+
+                    // Cache the glyphs on the GPU.
+                    cache.cache_queued(|rect, data| {
+                        let width = rect.width();
+                        let height = rect.height();
+                        let lbwh = [rect.min.x,rect.min.y,rect.max.x,rect.max.y];
+                        let p1 = cgmath::Point2::new(lbwh[0],lbwh[1]);
+                        let p2 = cgmath::Point2::new(lbwh[2],lbwh[3]);
+                        let rect = crayon::math::aabb::Aabb2::new(p1,p2);
+                        video::update_texture(*texture,rect,data).unwrap();
+        
+                    }).unwrap();
+
+                    let color = gamma_srgb_to_linear(color.to_fsa());
+                    let cache_id = font_id.index();
+
+                    let origin = text::rt::point(0.0, 0.0);
+                    let to_gl_rect = |screen_rect: text::rt::Rect<i32>| text::rt::Rect {
+                        min: origin
+                            + (text::rt::vector(screen_rect.min.x as f32 / screen_w as f32 - 0.5,
+                                          1.0 - screen_rect.min.y as f32 / screen_h as f32 - 0.5)) * 2.0,
+                        max: origin
+                            + (text::rt::vector(screen_rect.max.x as f32 / screen_w as f32 - 0.5,
+                                          1.0 - screen_rect.max.y as f32 / screen_h as f32 - 0.5)) * 2.0
+                    };
+                    let mut l =0;
+                    for g in positioned_glyphs {
+                        
+                        if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
+                            
+                            let gl_rect = to_gl_rect(screen_rect);
+                            let v = |p:[f32;2],t:[f32;2]| {Vertex::new(p,t,color)};
+                            let mut push_v = |p, t| vertices.push(v(p, t));
+                            push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                            push_v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
+                            push_v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
+                            push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                        l = l+1;
+                        
+                        }
+                    }
+                    
+                },
                 render::PrimitiveKind::Image { image_id, color, source_rect } => {
                     // Switch to the `Image` state for this image if we're not in it already.
                     let new_image_id = image_id;
@@ -252,7 +354,7 @@ impl Renderer{
 
                         // If we were in the `Plain` drawing state, switch to Image drawing state.
                         State::Plain { start } => {
-                            commands.push(PreparedCommand::Plain(start..vertices.len()));
+                            commands.push(PreparedCommand::Plain(start..vertices.len(),mode));
                             current_state = State::Image {
                                 image_id: new_image_id,
                                 start: vertices.len(),
@@ -326,7 +428,7 @@ impl Renderer{
         
         match current_state {
             State::Plain { start } =>
-                commands.push(PreparedCommand::Plain(start..vertices.len())),
+                commands.push(PreparedCommand::Plain(start..vertices.len(),mode)),
             State::Image { image_id, start } =>
                 commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
         }
@@ -334,6 +436,8 @@ impl Renderer{
     }
     pub fn draw(&self,batch: &mut CommandBuffer,image_map:&conrod_core::image::Map<TextureHandle>){
         const NUM_VERTICES_IN_TRIANGLE: usize = 3;
+        let uniform =self.glyph_cache.texture(); //can use rendertexture
+
         for command in self.commands() {
             match command {
                 Command::Scizzor(scizzor) => {
@@ -342,7 +446,7 @@ impl Renderer{
 
                 // Draw to the target with the given `draw` command.
                 Command::Draw(draw) => match draw {
-                    Draw_e::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
+                    DrawE::Plain(slice,mode) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let mut idxes:Vec<u16> = vec![];
                         for i in 0..slice.len(){
                             idxes.push(i as u16);
@@ -357,10 +461,10 @@ impl Renderer{
                             vptr: Vertex::encode(&slice[..]).into(),
                             iptr: IndexFormat::encode(&idxes).into(),
                         };
-                        
                         let mesh = video::create_mesh(params.clone(), Some(data)).unwrap();
                         let mut dc = Draw::new(self.shader, mesh);
-                        dc.set_uniform_variable("mode",MODE_GEOMETRY);
+                        dc.set_uniform_variable("tex", *uniform);
+                        dc.set_uniform_variable("mode",mode);
                         batch.draw(dc);
                         batch.submit(self.surface).unwrap();
                        
@@ -369,7 +473,7 @@ impl Renderer{
                     // given `id`.
                     //
                     // Only submit the vertices if there is enough for at least one triangle.
-                    Draw_e::Image(image_id, slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
+                    DrawE::Image(image_id, slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         if let Some(&image) = image_map.get(&image_id) {
                             
                             let mut idxes:Vec<u16> = vec![];
@@ -425,11 +529,40 @@ impl<'a> Iterator for Commands<'a> {
         let Commands { ref mut commands, ref vertices } = *self;
         commands.next().map(|command| match *command {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
-            PreparedCommand::Plain(ref range) =>
-                Command::Draw(Draw_e::Plain(&vertices[range.clone()])),
-              //   Command::Draw(Draw_e::Test),
+            PreparedCommand::Plain(ref range,mode) =>
+                Command::Draw(DrawE::Plain(&vertices[range.clone()],mode)),
             PreparedCommand::Image(id, ref range) =>
-                Command::Draw(Draw_e::Image(id, &vertices[range.clone()])),
+                Command::Draw(DrawE::Image(id, &vertices[range.clone()])),
         })
     }
+}
+// Creating the rusttype glyph cache used within a `GlyphCache`.
+fn rusttype_glyph_cache(w: u32, h: u32) -> text::GlyphCache<'static> {
+    const SCALE_TOLERANCE: f32 = 0.1;
+    const POSITION_TOLERANCE: f32 = 0.1;
+    text::GlyphCache::builder()
+        .dimensions(w, h)
+        .scale_tolerance(SCALE_TOLERANCE)
+        .position_tolerance(POSITION_TOLERANCE)
+        .build()
+}
+
+// Create the texture used within a `GlyphCache` of the given size.
+fn glyph_cache_texture(
+    width: u32,
+    height: u32,
+) -> Result<TextureHandle>
+{
+    // Determine the optimal texture format to use given the opengl version.
+    let mut params = TextureParams::default();
+    params.format = TextureFormat::R8;
+    //params.hint = TextureHint::Stream;
+    params.hint = TextureHint::Stream;
+    params.dimensions = (width, height).into();
+    let data_size = params.format.size(params.dimensions) as usize;
+    let bytes = vec![];
+    let data = TextureData{
+       bytes:bytes
+    };
+    video::create_texture(params,data)
 }
