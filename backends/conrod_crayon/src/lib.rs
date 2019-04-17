@@ -22,16 +22,16 @@ impl_vertex! {
         pos => [Position; Float; 2; false],
         uv =>[Texcoord0; Float; 2; false],
         color =>[Color0; Float; 4; true],
-        mode =>[Weight; UShort; 1; false],
+        mode =>[Weight; UByte; 1; false],
     }
 }
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
-pub const MODE_TEXT: u32 = 0;
+pub const MODE_TEXT: u8 = 0;
 /// Draw an image from the texture at `tex` in the fragment shader.
-pub const MODE_IMAGE: u32 = 1;
+pub const MODE_IMAGE: u8 = 1;
 /// Ignore `tex` and draw simple, colored 2D geometry.
-pub const MODE_GEOMETRY: u32 = 2;
+pub const MODE_GEOMETRY: u8 = 2;
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
 pub enum Command<'a> {
@@ -128,10 +128,10 @@ impl Renderer{
             .with("tex", UniformVariableType::Texture)
             .finish();
         let mut params = ShaderParams::default();
-       /* params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
+         params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
         crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
         crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
-        */
+        
         params.attributes = attributes;
         params.uniforms = uniforms;
         //looking for Position
@@ -229,7 +229,7 @@ impl Renderer{
                 render::PrimitiveKind::Rectangle { color } => {
                     switch_to_plain_state!();
                     let color = gamma_srgb_to_linear(color.to_fsa());
-                    println!("rec {:?} {:?}",color,rect);
+
                     let (l, r, b, t) = rect.l_r_b_t();
                     let v = |x, y| {
                         Vertex::new([vx(x),vy(y)],[0.0,0.0],color,MODE_GEOMETRY)

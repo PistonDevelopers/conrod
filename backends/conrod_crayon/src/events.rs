@@ -47,9 +47,15 @@ pub fn convert_event(ui:&mut Ui){
         ui.handle_event(Input::Motion(Motion::Scroll{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
     }
 
+    for k in input::chars(){
+        if k != '\u{8}'{
+            ui.handle_event(Input::Text(k.to_string()));
+        }
+    }
+
 }
 
 pub fn key_convert(j:String)->String{
     j.replace("Key","D").replace("Control","Ctrl").replace("LBracket","LeftBracket").replace("RBracket","RightBracket")
-    .replace("Subtract","Minus")
+    .replace("Subtract","Minus").replace("Add","Plus").replace("Back","Backspace").replace("Backspaceslash","Backslash")
 }
