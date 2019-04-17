@@ -31,8 +31,9 @@ impl LatchProbe for WindowResources {
         crayon_bytes::state(self.b) != ResourceState::NotReady
     }
 }
-widget_ids!(struct Ids { text });
+widget_ids!(struct Ids { text,canvas });
 struct Window {
+    text:String,
     renderer: Renderer,
     //app: conrod_example_shared::DemoApp,
     ui: conrod_core::Ui,
@@ -63,8 +64,16 @@ impl Window {
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
         let f = ui.fonts.insert(load_bold(resources.b));
         ui.theme.font_id = Some(f);
+        let mut demo_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+        Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \
+        finibus odio nec elit condimentum, rhoncus fermentum purus lacinia. Interdum et malesuada \
+        fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
+        Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
+        Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
+        magna est, efficitur suscipit dolor eu, consectetur consectetur urna.".to_owned();
         Ok(Window {
             //app:app,
+            text: demo_text,
             ui:ui,
             ids:ids,
             image_map:image_map,
@@ -105,13 +114,22 @@ impl LifecycleListener for Window {
                 .middle()
                 .set(self.ids.rust_logo, ui);
             */
-            widget::Text::new("H")
-                .color(color::LIGHT_GREEN)
-                .font_size(120)
-                .w_h(200.0,50.0)
-                .middle()
-                .set(self.ids.text,ui);
-        
+            widget::Canvas::new()
+                .scroll_kids_vertically()
+                .color(color::DARK_CHARCOAL)
+                .set(self.ids.canvas, ui);
+            for edit in widget::TextEdit::new(&self.text)
+                .color(color::WHITE)
+                .font_size(20)
+                .padded_w_of(self.ids.canvas, 20.0)
+                .mid_top_of(self.ids.canvas)
+                .center_justify()
+                .line_spacing(2.5)
+                .set(self.ids.text,ui){
+                    println!("aa{:?}",edit.clone());
+                    self.text = edit;
+                    
+                }
             /* 
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
