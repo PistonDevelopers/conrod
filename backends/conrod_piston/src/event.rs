@@ -25,7 +25,6 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input
     if let Some(xy) = event.mouse_scroll_args() {
         // Invert the scrolling of the *y* axis as *y* is up in conrod.
         let (x, y) = (xy[0], -xy[1]);
-        println!("kk {:?}",(x, y));
         return Some(event::Input::Motion(input::Motion::Scroll { x: x, y: y }));
     }
 

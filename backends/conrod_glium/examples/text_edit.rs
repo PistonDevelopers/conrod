@@ -109,7 +109,7 @@ fn set_ui(ref mut ui: conrod_core::UiCell, ids: &Ids, demo_text: &mut String) {
 
     widget::Canvas::new()
         .scroll_kids_vertically()
-        .color(color::DARK_CHARCOAL)
+        .color(color::BLUE)
         .set(ids.canvas, ui);
 
     for edit in widget::TextEdit::new(demo_text)

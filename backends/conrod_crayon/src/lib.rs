@@ -22,15 +22,16 @@ impl_vertex! {
         pos => [Position; Float; 2; false],
         uv =>[Texcoord0; Float; 2; false],
         color =>[Color0; Float; 4; true],
+        mode =>[Weight; UShort; 1; false],
     }
 }
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
-pub const MODE_TEXT: i32 = 0;
+pub const MODE_TEXT: u32 = 0;
 /// Draw an image from the texture at `tex` in the fragment shader.
-pub const MODE_IMAGE: i32 = 1;
+pub const MODE_IMAGE: u32 = 1;
 /// Ignore `tex` and draw simple, colored 2D geometry.
-pub const MODE_GEOMETRY: i32 = 2;
+pub const MODE_GEOMETRY: u32 = 2;
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
 pub enum Command<'a> {
@@ -41,7 +42,7 @@ pub enum Command<'a> {
 }
 enum PreparedCommand {
     Image(image::Id, std::ops::Range<usize>),
-    Plain(std::ops::Range<usize>,i32),
+    Plain(std::ops::Range<usize>),
     Scizzor(SurfaceScissor),
 }
 /// A rusttype `GlyphCache` along with a `glium::texture::Texture2d` for caching text on the `GPU`.
@@ -106,7 +107,7 @@ pub enum DrawE<'a> {
     /// image_map at the given `widget::Id`.
     Image(image::Id, &'a [Vertex]),
     /// A range of vertices representing plain triangles.
-    Plain(&'a [Vertex],i32),
+    Plain(&'a [Vertex]),
     Test,
 }
 
@@ -121,15 +122,16 @@ impl Renderer{
             .with(Attribute::Position, 2)
             .with(Attribute::Texcoord0, 2)
             .with(Attribute::Color0, 4)
+            .with(Attribute::Weight,1)
             .finish();
         let uniforms = UniformVariableLayout::build()
             .with("tex", UniformVariableType::Texture)
-            .with("mode", UniformVariableType::I32)
             .finish();
         let mut params = ShaderParams::default();
-        params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
+       /* params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
         crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
         crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
+        */
         params.attributes = attributes;
         params.uniforms = uniforms;
         //looking for Position
@@ -200,21 +202,16 @@ impl Renderer{
         
         let vx = |x: f64| (x * dpi_factor / half_win_w) as f32;
         let vy = |y: f64| (y * dpi_factor / half_win_h) as f32;
-        let mut mode = MODE_GEOMETRY;
         
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
             
-            let new_scissor = rect_to_crayon_rect(scizzor);
-            if let render::PrimitiveKind::Text { .. } = kind{
-                mode = MODE_TEXT;
-            }   
-            
+            let new_scissor = rect_to_crayon_rect(scizzor);            
             if new_scissor != current_scissor {
                 // Finish the current command.
                 match current_state {
                     State::Plain { start } =>
-                        commands.push(PreparedCommand::Plain(start..vertices.len(),mode)),
+                        commands.push(PreparedCommand::Plain(start..vertices.len())),
                     State::Image { image_id, start } =>
                         commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
                 }
@@ -232,9 +229,10 @@ impl Renderer{
                 render::PrimitiveKind::Rectangle { color } => {
                     switch_to_plain_state!();
                     let color = gamma_srgb_to_linear(color.to_fsa());
+                    println!("rec {:?} {:?}",color,rect);
                     let (l, r, b, t) = rect.l_r_b_t();
                     let v = |x, y| {
-                        Vertex::new([vx(x),vy(y)],[0.0,0.0],color)
+                        Vertex::new([vx(x),vy(y)],[0.0,0.0],color,MODE_GEOMETRY)
                     };
                     
                     let mut push_v = |x, y| vertices.push(v(x, y));
@@ -261,7 +259,7 @@ impl Renderer{
                     let color = gamma_srgb_to_linear(color.into());
 
                     let v = |p: [Scalar; 2]| {
-                        Vertex::new([vx(p[0]), vy(p[1])],[0.0,0.0],color)
+                        Vertex::new([vx(p[0]), vy(p[1])],[0.0,0.0],color,MODE_GEOMETRY)
                     };
 
                     for triangle in triangles {
@@ -279,7 +277,7 @@ impl Renderer{
                     switch_to_plain_state!();
 
                     let v = |(p, c): ([Scalar; 2], color::Rgba)| {
-                        Vertex::new([vx(p[0]), vy(p[1])],[0.0,0.0],gamma_srgb_to_linear(c.into()))
+                        Vertex::new([vx(p[0]), vy(p[1])],[0.0,0.0],gamma_srgb_to_linear(c.into()),MODE_GEOMETRY)
                     };
 
                     for triangle in triangles {
@@ -330,7 +328,7 @@ impl Renderer{
                         if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
                             
                             let gl_rect = to_gl_rect(screen_rect);
-                            let v = |p:[f32;2],t:[f32;2]| {Vertex::new(p,t,color)};
+                            let v = |p:[f32;2],t:[f32;2]| {Vertex::new(p,t,color,MODE_TEXT)};
                             let mut push_v = |p, t| vertices.push(v(p, t));
                             push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
                             push_v([gl_rect.min.x, gl_rect.min.y], [uv_rect.min.x, uv_rect.min.y]);
@@ -354,7 +352,7 @@ impl Renderer{
 
                         // If we were in the `Plain` drawing state, switch to Image drawing state.
                         State::Plain { start } => {
-                            commands.push(PreparedCommand::Plain(start..vertices.len(),mode));
+                            commands.push(PreparedCommand::Plain(start..vertices.len()));
                             current_state = State::Image {
                                 image_id: new_image_id,
                                 start: vertices.len(),
@@ -402,7 +400,7 @@ impl Renderer{
                             // Convert from conrod Scalar range to GL range -1.0 to 1.0.
                             let x = (x * dpi_factor as Scalar / half_win_w) as f32;
                             let y = (y * dpi_factor as Scalar / half_win_h) as f32;
-                            Vertex::new([x, y],t,color)
+                            Vertex::new([x, y],t,color,MODE_IMAGE)
                         };
 
                         let mut push_v = |x, y, t| vertices.push(v(x, y, t));
@@ -428,7 +426,7 @@ impl Renderer{
         
         match current_state {
             State::Plain { start } =>
-                commands.push(PreparedCommand::Plain(start..vertices.len(),mode)),
+                commands.push(PreparedCommand::Plain(start..vertices.len())),
             State::Image { image_id, start } =>
                 commands.push(PreparedCommand::Image(image_id, start..vertices.len())),
         }
@@ -446,7 +444,7 @@ impl Renderer{
 
                 // Draw to the target with the given `draw` command.
                 Command::Draw(draw) => match draw {
-                    DrawE::Plain(slice,mode) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
+                    DrawE::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let mut idxes:Vec<u16> = vec![];
                         for i in 0..slice.len(){
                             idxes.push(i as u16);
@@ -464,7 +462,6 @@ impl Renderer{
                         let mesh = video::create_mesh(params.clone(), Some(data)).unwrap();
                         let mut dc = Draw::new(self.shader, mesh);
                         dc.set_uniform_variable("tex", *uniform);
-                        dc.set_uniform_variable("mode",mode);
                         batch.draw(dc);
                         batch.submit(self.surface).unwrap();
                        
@@ -494,7 +491,6 @@ impl Renderer{
                             let mesh = video::create_mesh(params, Some(data)).unwrap();
                             let mut dc = Draw::new(self.shader, mesh);
                             dc.set_uniform_variable("tex", image);
-                            dc.set_uniform_variable("mode",MODE_IMAGE);
                             batch.draw(dc);
                             batch.submit(self.surface).unwrap()
                         }
@@ -529,8 +525,8 @@ impl<'a> Iterator for Commands<'a> {
         let Commands { ref mut commands, ref vertices } = *self;
         commands.next().map(|command| match *command {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
-            PreparedCommand::Plain(ref range,mode) =>
-                Command::Draw(DrawE::Plain(&vertices[range.clone()],mode)),
+            PreparedCommand::Plain(ref range) =>
+                Command::Draw(DrawE::Plain(&vertices[range.clone()])),
             PreparedCommand::Image(id, ref range) =>
                 Command::Draw(DrawE::Image(id, &vertices[range.clone()])),
         })

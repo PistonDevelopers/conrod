@@ -31,7 +31,7 @@ impl LatchProbe for WindowResources {
         crayon_bytes::state(self.b) != ResourceState::NotReady
     }
 }
-widget_ids!(struct Ids { text,canvas });
+widget_ids!(struct Ids { text,canvas,scrollbar });
 struct Window {
     text:String,
     renderer: Renderer,
@@ -49,7 +49,7 @@ impl Window {
     pub fn build(resources: &WindowResources) -> CrResult<Self> {
         
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
-            .theme(conrod_example_shared::theme())
+           // .theme(conrod_example_shared::theme())
             .build();
         //let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
         
@@ -116,8 +116,9 @@ impl LifecycleListener for Window {
             */
             widget::Canvas::new()
                 .scroll_kids_vertically()
-                .color(color::DARK_CHARCOAL)
+                .color(color::BLUE)
                 .set(self.ids.canvas, ui);
+            
             for edit in widget::TextEdit::new(&self.text)
                 .color(color::WHITE)
                 .font_size(20)
@@ -130,10 +131,12 @@ impl LifecycleListener for Window {
                     self.text = edit;
                     
                 }
-            /* 
+
+            widget::Scrollbar::y_axis(self.ids.canvas).auto_hide(true).set(self.ids.scrollbar, ui);
+            /*
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
-                .set(self.ids.rust_logo, ui);
+                .set(self.ids.text, ui);
             */
         }
 
