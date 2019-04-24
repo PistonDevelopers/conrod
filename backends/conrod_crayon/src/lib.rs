@@ -22,16 +22,16 @@ impl_vertex! {
         pos => [Position; Float; 2; false],
         uv =>[Texcoord0; Float; 2; false],
         color =>[Color0; Float; 4; true],
-        mode =>[Weight; UByte; 1; false],
+        mode =>[Weight; Short; 1; false],
     }
 }
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
-pub const MODE_TEXT: u8 = 0;
+pub const MODE_TEXT: i32 = 0;
 /// Draw an image from the texture at `tex` in the fragment shader.
-pub const MODE_IMAGE: u8 = 1;
+pub const MODE_IMAGE: i32 = 1;
 /// Ignore `tex` and draw simple, colored 2D geometry.
-pub const MODE_GEOMETRY: u8 = 2;
+pub const MODE_GEOMETRY: i32 = 2;
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
 pub enum Command<'a> {

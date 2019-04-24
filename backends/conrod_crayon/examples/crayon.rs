@@ -35,7 +35,7 @@ widget_ids!(struct Ids { text,canvas,scrollbar });
 struct Window {
     text:String,
     renderer: Renderer,
-    //app: conrod_example_shared::DemoApp,
+    app: conrod_example_shared::DemoApp,
     ui: conrod_core::Ui,
     ids: Ids,
     image_map: conrod_core::image::Map<TextureHandle>,
@@ -55,10 +55,10 @@ impl Window {
         
         let ids = Ids::new(ui.widget_id_generator());
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
-        //let rust_logo = image_map.insert(load_rust_logo());
+        let rust_logo = image_map.insert(load_rust_logo());
         dbg!("l");
         // Demonstration app state that we'll control with our conrod GUI.
-        //let app = conrod_example_shared::DemoApp::new(rust_logo);
+        let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
         println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
@@ -72,7 +72,7 @@ impl Window {
         Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
         magna est, efficitur suscipit dolor eu, consectetur consectetur urna.".to_owned();
         Ok(Window {
-            //app:app,
+            app:app,
             text: demo_text,
             ui:ui,
             ids:ids,
@@ -108,17 +108,18 @@ impl LifecycleListener for Window {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
-            /*
+            
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
-                .set(self.ids.rust_logo, ui);
-            */
-            widget::Canvas::new()
+                .set(self.ids.canvas, ui);
+            
+            /*widget::Canvas::new()
                 .scroll_kids_vertically()
                 .color(color::BLUE)
                 .set(self.ids.canvas, ui);
-            
+            */
+            /*
             for edit in widget::TextEdit::new(&self.text)
                 .color(color::WHITE)
                 .font_size(20)
@@ -131,8 +132,8 @@ impl LifecycleListener for Window {
                     self.text = edit;
                     
                 }
-
-            widget::Scrollbar::y_axis(self.ids.canvas).auto_hide(true).set(self.ids.scrollbar, ui);
+            */
+            //widget::Scrollbar::y_axis(self.ids.canvas).auto_hide(true).set(self.ids.scrollbar, ui);
             /*
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
                 .middle()
@@ -160,7 +161,7 @@ main!({
     #[cfg(not(target_arch = "wasm32"))]
     let res = format!("file://{}/../../assets/crayon/resources/", env!("CARGO_MANIFEST_DIR").replace("\\","/"));
     #[cfg(target_arch = "wasm32")]
-    let res = format!("/resources/");
+    let res = format!("http://localhost:8080/resources/");
     let mut params = Params::default();
     params.window.title = "CR: RenderTexture".into();
     params.window.size = (WIN_W as u32, WIN_H as u32).into();

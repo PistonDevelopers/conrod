@@ -1,4 +1,5 @@
-#version 140
+#version 300 es
+precision mediump float;
 uniform sampler2D tex;
 
 flat in int v_mode;

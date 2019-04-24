@@ -1,4 +1,5 @@
-#version 140
+#version 300 es
+precision mediump float;
 
 in vec2 Position;
 in vec2 Texcoord0;
