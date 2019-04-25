@@ -22,16 +22,16 @@ impl_vertex! {
         pos => [Position; Float; 2; false],
         uv =>[Texcoord0; Float; 2; false],
         color =>[Color0; Float; 4; true],
-        mode =>[Weight; Short; 1; false],
+        mode =>[Weight; Float; 1; false],
     }
 }
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
-pub const MODE_TEXT: i32 = 0;
+pub const MODE_TEXT: f32 = 0.0;
 /// Draw an image from the texture at `tex` in the fragment shader.
-pub const MODE_IMAGE: i32 = 1;
+pub const MODE_IMAGE: f32 = 1.0;
 /// Ignore `tex` and draw simple, colored 2D geometry.
-pub const MODE_GEOMETRY: i32 = 2;
+pub const MODE_GEOMETRY: f32 = 2.0;
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
 pub enum Command<'a> {
@@ -306,7 +306,7 @@ impl Renderer{
                         let p1 = cgmath::Point2::new(lbwh[0],lbwh[1]);
                         let p2 = cgmath::Point2::new(lbwh[2],lbwh[3]);
                         let rect = crayon::math::aabb::Aabb2::new(p1,p2);
-                        video::update_texture(*texture,rect,data).unwrap();
+                        //video::update_texture(*texture,rect,data).unwrap();
         
                     }).unwrap();
 

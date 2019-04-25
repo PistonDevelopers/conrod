@@ -108,18 +108,18 @@ impl LifecycleListener for Window {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
-            
+            /*
             widget::Image::new(self.app.rust_logo)
                 .w_h(LOGO_SIDE, LOGO_SIDE)
                 .middle()
                 .set(self.ids.canvas, ui);
-            
-            /*widget::Canvas::new()
+            */
+            widget::Canvas::new()
                 .scroll_kids_vertically()
                 .color(color::BLUE)
                 .set(self.ids.canvas, ui);
-            */
-            /*
+            
+            
             for edit in widget::TextEdit::new(&self.text)
                 .color(color::WHITE)
                 .font_size(20)
@@ -132,7 +132,7 @@ impl LifecycleListener for Window {
                     self.text = edit;
                     
                 }
-            */
+            
             //widget::Scrollbar::y_axis(self.ids.canvas).auto_hide(true).set(self.ids.scrollbar, ui);
             /*
             widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
