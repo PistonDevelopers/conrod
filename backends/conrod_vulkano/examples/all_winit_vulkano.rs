@@ -134,21 +134,13 @@ fn main() {
 
             let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
             let dpi_factor = window.surface.window().get_hidpi_factor() as f64;
-            let mut cmds = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap();
-            for cmd in cmds.commands.drain(..) {
-                let buffer = cmds.glyph_cpu_buffer_pool.chunk(cmd.data.iter().cloned()).unwrap();
+            if let Some(cmd) = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap() {
+                let buffer = cmd.glyph_cpu_buffer_pool
+                    .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
+                    .unwrap();
                 command_buffer_builder = command_buffer_builder
-                    .copy_buffer_to_image_dimensions(
-                        buffer,
-                        cmds.glyph_cache_texture.clone(),
-                        [cmd.offset[0], cmd.offset[1], 0],
-                        [cmd.size[0], cmd.size[1], 1],
-                        0,
-                        1,
-                        0
-                    )
+                    .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
                     .expect("failed to submit command for caching glyph");
-
             }
 
             let mut command_buffer_builder = command_buffer_builder
