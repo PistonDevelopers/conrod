@@ -178,18 +178,7 @@ pub struct Renderer {
     tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract + Send + Sync>>,
 }
 
-// /// All commands that must be submitted to the command buffer for caching text glyphs.
-// pub struct GlyphCacheCommands {
-//     /// The GPU image to which the glyphs are cached
-//     pub glyph_cache_texture: Arc<StorageImage<R8Unorm>>,
-//     /// The cpu buffer pool used to upload glyphs.
-//     pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<u8>>,
-//     /// Commands for caching individual glyphs.
-//     pub commands: Vec<GlyphCacheCommand>,
-// }
-
 /// An command for uploading an individual glyph.
-//#[derive(Debug)]
 pub struct GlyphCacheCommand<'a> {
     /// The CPU buffer containing the pixel data.
     pub glyph_cache_pixel_buffer: &'a [u8],
