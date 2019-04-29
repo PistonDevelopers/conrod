@@ -1,6 +1,6 @@
 [package]
 name = "conrod_vulkano"
-version = "0.63.0"
+version = "0.64.0"
 authors = [
     "mitchmindtree <mitchell.nordine@gmail.com>",
     "Kurble",
@@ -17,13 +17,13 @@ categories = ["gui"]
 edition = "2018"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.63" }
+conrod_core = { path = "../../conrod_core", version = "0.64" }
 vulkano = "0.11"
 vulkano-shaders = "0.11"
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.63" }
-conrod_winit = { path = "../conrod_winit", version = "0.63" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.64" }
+conrod_winit = { path = "../conrod_winit", version = "0.64" }
 find_folder = "0.3"
 image = "0.21"
 vulkano-win = "0.11"
