@@ -120,7 +120,7 @@ layout(location = 0) out vec4 Target0;
 void main() {
     // Text
     if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).a);
+        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).r);
 
     // Image
     } else if (v_Mode == uint(1)) {
@@ -169,8 +169,8 @@ impl_vertex!(Vertex, pos, uv, color, mode);
 pub struct Renderer {
     pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
     glyph_cache: GlyphCache<'static>,
-    glyph_uploads: Arc<CpuBufferPool<[u8; 4]>>,
-    glyph_cache_tex: Arc<StorageImage<R8G8B8A8Unorm>>,
+    glyph_uploads: Arc<CpuBufferPool<u8>>,
+    glyph_cache_tex: Arc<StorageImage<R8Unorm>>,
     sampler: Arc<Sampler>,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
@@ -180,9 +180,9 @@ pub struct Renderer {
 /// All commands that must be submitted to the command buffer for caching text glyphs.
 pub struct GlyphCacheCommands {
     /// The GPU image to which the glyphs are cached
-    pub glyph_cache_texture: Arc<StorageImage<R8G8B8A8Unorm>>,
+    pub glyph_cache_texture: Arc<StorageImage<R8Unorm>>,
     /// The cpu buffer pool used to upload glyphs.
-    pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<[u8; 4]>>,
+    pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<u8>>,
     /// Commands for caching individual glyphs.
     pub commands: Vec<GlyphCacheCommand>,
 }
@@ -192,7 +192,7 @@ pub struct GlyphCacheCommands {
 pub struct GlyphCacheCommand {
     pub offset: [u32; 2],
     pub size: [u32; 2],
-    pub data: Vec<[u8; 4]>,
+    pub data: Vec<u8>,
 }
 
 /// A draw command that maps directly to the `AutoCommandBufferBuilder::draw` method. By returning
@@ -306,7 +306,7 @@ impl Renderer {
             let glyph_cache_tex = StorageImage::with_usage(
                 device.clone(),
                 Dimensions::Dim2d { width, height },
-                R8G8B8A8Unorm,
+                R8Unorm,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
@@ -543,8 +543,8 @@ impl Renderer {
 
                         let data = data
                             .iter()
-                            .map(|x| [255, 255, 255, *x])
-                            .collect::<Vec<[u8; 4]>>();
+                            .cloned()
+                            .collect::<Vec<u8>>();
 
                         let cmd = GlyphCacheCommand { offset, size, data };
                         glyph_cache_commands.push(cmd);
