@@ -381,13 +381,12 @@ impl Ui {
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
     pub fn handle_event(&mut self, event: event::Input) {
-        use event::{self, Input};
+        use event::Input;
         use input::{Button, Key, ModifierKey, Motion};
         use input::state::mouse::Button as MouseButton;
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use input::keyboard::ModifierKey;
             match key {
                 Key::LCtrl | Key::RCtrl => Some(ModifierKey::CTRL),
                 Key::LShift | Key::RShift => Some(ModifierKey::SHIFT),
@@ -696,8 +695,6 @@ impl Ui {
                             fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
                                                      additional_offset: Scalar) -> bool
                             {
-                                use utils;
-
                                 fn approx_eq(a: Scalar, b: Scalar) -> bool {
                                     (a - b).abs() < 0.000001
                                 }
@@ -1069,7 +1066,7 @@ impl Ui {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use {color, Colorable, Borderable, Positionable, Widget};
+            use {color, Colorable, Borderable, Positionable};
             type Window = widget::BorderedRectangle;
             Window::new([ui_cell.win_w, ui_cell.win_h])
                 .no_parent()

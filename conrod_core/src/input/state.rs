@@ -66,7 +66,6 @@ impl State {
 /// Touch specific state.
 pub mod touch {
     use position::Point;
-    use std;
     use widget;
 
     /// State stored about the start of a `Touch` interaction.

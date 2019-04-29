@@ -638,7 +638,7 @@ fn create_texture<F, R>(factory: &mut F, width: u32, height: u32, data: &[u8])
               R: gfx::Resources,
               T: gfx::format::TextureFormat
     {
-        use gfx::{format, texture};
+        use gfx::format;
         use gfx::memory::Usage;
         use gfx::memory::Bind;
 
