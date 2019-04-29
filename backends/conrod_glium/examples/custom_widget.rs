@@ -235,9 +235,8 @@ mod circular_button {
 }
 
 fn main() {
-    use conrod_core::{self, widget, widget_ids, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use glium::{self, Surface};
-    use support;
+    use conrod_core::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
+    use glium::Surface;
     use self::circular_button::CircularButton;
 
     const WIDTH: u32 = 1200;
