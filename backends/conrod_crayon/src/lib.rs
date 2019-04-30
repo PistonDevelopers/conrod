@@ -306,7 +306,7 @@ impl Renderer{
                         let p1 = cgmath::Point2::new(lbwh[0],lbwh[1]);
                         let p2 = cgmath::Point2::new(lbwh[2],lbwh[3]);
                         let rect = crayon::math::aabb::Aabb2::new(p1,p2);
-                        //video::update_texture(*texture,rect,data).unwrap();
+                        video::update_texture(*texture,rect,data).unwrap();
         
                     }).unwrap();
 
@@ -552,7 +552,6 @@ fn glyph_cache_texture(
     // Determine the optimal texture format to use given the opengl version.
     let mut params = TextureParams::default();
     params.format = TextureFormat::R8;
-    //params.hint = TextureHint::Stream;
     params.hint = TextureHint::Stream;
     params.dimensions = (width, height).into();
     let data_size = params.format.size(params.dimensions) as usize;
