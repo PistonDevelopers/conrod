@@ -1,6 +1,11 @@
-> Vertex {  pos: [-0.3314286, 0.032653093], uv: [0.0014285714, 0.036734693], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex {  pos: [-0.3314286, 0.10204077], uv: [0.0014285714, 0.0020408162], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex {  pos: [-0.3, 0.10204077], uv: [0.017142856, 0.0020408162], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex {  pos: [-0.3, 0.10204077], uv: [0.017142856, 0.0020408162], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex {  pos: [-0.3, 0.032653093], uv: [0.017142856, 0.036734693], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex {  pos: [-0.3314286, 0.032653093], uv: [0.0014285714, 0.036734693], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }]
-(Rect { min: Point { x: 0.0014285714, y: 0.0020408162 }, max: Point { x: 0.017142856, y: 0.036734693 } }, Rect { min: Point { x: 234, y: 220 }, max: Point { x: 245, y: 237 } })
-> Vertex { pos: [-0.3314286, 0.032652974], uv: [0.0014306152, 0.036809817], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex { pos: [-0.3314286, 0.10204077], uv: [0.0014306152, 0.0020449897], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex { pos: [-0.3, 0.10204077], uv: [0.017167382, 0.0020449897], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex { pos: [-0.3, 0.10204077], uv: [0.017167382, 0.0020449897], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex { pos: [-0.3, 0.032652974], uv: [0.017167382, 0.036809817], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }, Vertex { pos: [-0.3314286, 0.032652974], uv: [0.0014306152, 0.036809817], color: [0.25415218, 0.76052463, 0.034339808, 1.0] }]
- min: Point { x: -0.3314286, y: 0.106122375 }, max: Point { x: -0.3, y: 0.028571367 } }
-
- www.arewewebyet.org
+Ft@http://localhost:8080/2.index.js:1:17622
+__wbg_new_59cb74e423758ede@http://localhost:8080/index.js:1:15967
+console_error_panic_hook::Error::new::hce71d1bffc638a0a@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[11033]:0x565f41
+console_error_panic_hook::hook_impl::had064aee99cdcd99@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[4034]:0x3f83c7
+console_error_panic_hook::hook::hfe3e8b789503c05c@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[20382]:0x6277bd
+core::ops::function::Fn::call::h70db32678ee792a0@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[18412]:0x609d34
+std::panicking::rust_panic_with_hook::h5d8808384a53a826@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[5773]:0x48333b
+std::panicking::begin_panic::h2d913a1addbca25c@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[22371]:0x640079
+std::sys::wasm::TimeSysCall::perform::h259f94c872aa209b@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[23932]:0x64d183
+std::sys::wasm::time::Instant::now::hfac796bd8f165e83@http://localhost:8080/8434eb05ac5fcc2e8cda.module.wasm:wasm-function[24112]:0x64d9fa
+std::time::Instant::now::hb25be8

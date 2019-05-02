@@ -7,6 +7,5 @@ rm -rf $SCRIPT_DIR/dist
 mkdir $SCRIPT_DIR/dist
 mkdir $SCRIPT_DIR/dist/intermediate
 cp $BASE_DIR/target/wasm32-unknown-unknown/debug/examples/$1.wasm $SCRIPT_DIR/dist/intermediate/native.wasm
-wasm-bindgen $SCRIPT_DIR/dist/intermediate/native.wasm --out-dir $SCRIPT_DIR/dist --no-typescript
-
+wasm-bindgen --target web $SCRIPT_DIR/dist/intermediate/native.wasm --out-dir $SCRIPT_DIR/dist --no-typescript
 cd $SCRIPT_DIR
