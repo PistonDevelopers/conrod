@@ -407,7 +407,6 @@ impl GlyphCache {
         F: glium::backend::Facade,
     {
         let (w, h) = facade.get_context().get_framebuffer_dimensions();
-        println!("inii {:?}",(w,h));
         Self::with_dimensions(facade, w, h)
     }
 
@@ -514,7 +513,6 @@ impl Renderer {
 
         // Framebuffer dimensions and the "dots per inch" factor.
         let (screen_w, screen_h) = display.get_framebuffer_dimensions();
-        println!("dim {:?} {:?}",screen_w,screen_h);
         let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
@@ -544,7 +542,7 @@ impl Renderer {
                 height: std::cmp::min(height, screen_h),
             }
         };
-
+        println!("kk");
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
@@ -616,8 +614,9 @@ impl Renderer {
                             mode: MODE_GEOMETRY,
                         }
                     };
-
+                    
                     for triangle in triangles {
+                        println!("t: ({:?},{:?},{:?})",v(triangle[0]).position,v(triangle[1]).position,v(triangle[2]).position);
                         vertices.push(v(triangle[0]));
                         vertices.push(v(triangle[1]));
                         vertices.push(v(triangle[2]));
@@ -661,7 +660,6 @@ impl Renderer {
 
                     // Cache the glyphs on the GPU.
                     cache.cache_queued(|rect, data| {
-                        println!("rect2 {:?}",rect);
                         let w = rect.width();
                         let h = rect.height();
                         let glium_rect = glium::Rect {
@@ -687,7 +685,6 @@ impl Renderer {
                             // The text cache is only ever created with U8 or U8U8U8 formats.
                             _ => unreachable!(),
                         };
-                        println!("data {:?} {:?} {:?}",data,w,h);
                         let image = glium::texture::RawImage2d {
                             data: data,
                             width: w,
@@ -713,7 +710,6 @@ impl Renderer {
                     let mut l =0;
                     for g in positioned_glyphs {
                         if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
-                            println!("g {:?} {:?}",cache_id,g);
                             let gl_rect = to_gl_rect(screen_rect);
                             let v = |p, t| Vertex {
                                 position: p,
@@ -729,7 +725,6 @@ impl Renderer {
                             push_v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
                             push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
                         l = l+1;
-                        println!("mm {:?}",(uv_rect, screen_rect));
                         }
                     }
                    
@@ -876,7 +871,6 @@ impl Renderer {
                     //
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Image(image_id, slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
-                        println!("slice {:?}",slice);
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice).unwrap();
                         if let Some(image) = image_map.get(&image_id) {
                             let image_uniforms = uniform! {

@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
-    entry: './index.js',
+    entry: './index1.js',
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: 'index.js',
@@ -23,5 +23,9 @@ module.exports = {
         contentBase: [__dirname, path.join(__dirname, '../../../../assets/crayon')],
         port: 8080
     },
+    node: {
+        fs: "empty"
+    },
+    externals: [ 'utf-8-validate', 'bufferutil'],
     mode: 'development'
 };

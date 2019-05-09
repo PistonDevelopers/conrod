@@ -24,3 +24,4 @@ fnv = "1.0"
 num = "0.2"
 pistoncore-input = "0.24"
 rusttype = { version = "0.7", features = ["gpu_cache"] }
+polygon2 = "0.3"
