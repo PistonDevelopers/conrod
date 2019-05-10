@@ -6,7 +6,7 @@ use super::Style;
 use widget;
 use widget::triangles::Triangle;
 use utils::{bounding_box_for_points, vec2_add, vec2_sub};
-
+use polygon2::{triangulate};
 
 /// A basic, non-interactive, arbitrary **Polygon** widget.
 ///
@@ -232,6 +232,14 @@ impl<I> Widget for Polygon<I>
                     state.update(|state| state.points.truncate(total)),
                 None => (),
             }
+            state.update(|state| state.points.push(state.points[0]));//close polygon
+            let triangles = triangulate(&state.points);
+            let mut points_k = vec![];
+
+            for ta in triangles{
+                points_k.push([state.points[ta][0],state.points[ta][1]]);
+            }
+            state.update(|state| state.points=points_k);
         }
 
         // Check whether or not we need to centre the points.
@@ -271,18 +279,10 @@ impl<I> Colorable for Polygon<I> {
 pub fn triangles<I>(points: I) -> Option<Triangles<I::IntoIter>>
     where I: IntoIterator<Item=Point>,
 {
-    let mut points = points.into_iter();
-    let first = match points.next() {
-        Some(p) => p,
-        None => return None,
-    };
-    let prev = match points.next() {
-        Some(p) => p,
-        None => return None,
-    };
+    let points = points.into_iter();
     Some(Triangles {
-        first: first,
-        prev: prev,
+        first: [0.0,0.0],
+        prev: [0.0,0.0],
         points: points,
     })
 }
@@ -292,11 +292,19 @@ impl<I> Iterator for Triangles<I>
 {
     type Item = Triangle<Point>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.points.next().map(|point| {
-            let t = Triangle([self.first, self.prev, point]);
-            self.prev = point;
-            t
-        })
+        let first = match self.points.next() {
+            Some(p) => p,
+            None => return None,
+        };
+        let prev = match self.points.next() {
+            Some(p) => p,
+            None => return None,
+        };
+        let point = match self.points.next() {
+            Some(p) => p,
+            None => return None,
+        };
+        Some(Triangle([first, prev, point]))
     }
 }
 
