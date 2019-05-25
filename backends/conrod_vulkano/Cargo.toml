@@ -18,13 +18,13 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.64" }
-vulkano = { git = "https://github.com/vulkano-rs/vulkano", branch = "master" }
-vulkano-shaders = { git = "https://github.com/vulkano-rs/vulkano", branch = "master" }
+vulkano = "0.12"
+vulkano-shaders = "0.12"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.64" }
 conrod_winit = { path = "../conrod_winit", version = "0.64" }
 find_folder = "0.3"
 image = "0.21"
-vulkano-win = { git = "https://github.com/vulkano-rs/vulkano", branch = "master" }
+vulkano-win = "0.12"
 winit = "0.19"
