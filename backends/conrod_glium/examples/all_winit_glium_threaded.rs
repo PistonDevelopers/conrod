@@ -80,7 +80,7 @@ fn main() {
         let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
         // The `widget::Id` of each widget instantiated in `conrod_example_shared::gui`.
-        let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+        let gui = conrod_example_shared::Gui::new(&mut ui);
 
         // Many widgets require another frame to finish drawing after clicks or hovers, so we
         // insert an update into the conrod loop using this `bool` after each event.
@@ -110,7 +110,8 @@ fn main() {
             }
 
             // Instantiate a GUI demonstrating every widget type provided by conrod.
-            conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+            let mut ui = &mut ui.set_widgets();
+            gui.update(&mut ui, &mut app);
 
             // Render the `Ui` to a list of primitives that we can send to the main thread for
             // display. Wakeup `winit` for rendering.

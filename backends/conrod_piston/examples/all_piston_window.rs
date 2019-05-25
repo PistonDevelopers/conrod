@@ -54,7 +54,7 @@ pub fn main() {
     };
 
     // Instantiate the generated list of widget identifiers.
-    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+    let gui = conrod_example_shared::Gui::new(&mut ui);
 
     // Load the rust logo from file to a piston_window texture.
     let rust_logo: G2dTexture = {
@@ -84,8 +84,8 @@ pub fn main() {
         }
 
         event.update(|_| {
-            let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+            let mut ui = &mut ui.set_widgets();
+            gui.update(&mut ui, &mut app);
         });
 
         window.draw_2d(&event, |context, graphics| {
