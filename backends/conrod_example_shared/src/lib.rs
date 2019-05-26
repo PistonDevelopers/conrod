@@ -14,6 +14,7 @@
 extern crate rand;
 
 mod layout;
+mod text;
 mod shapes;
 mod image;
 mod button_xy_pad_toggle;
@@ -73,9 +74,6 @@ widget_ids! {
     pub struct Ids {
         // The scrollable canvas.
         canvas,
-        // The title and introduction widgets.
-        title,
-        introduction,
         // Scrollbar
         canvas_scrollbar,
     }
@@ -83,6 +81,7 @@ widget_ids! {
 
 pub struct Gui {
     ids: Ids,
+    text: text::Gui,
     shapes: shapes::Gui,
     image: image::Gui,
     button_xy_pad_toggle: button_xy_pad_toggle::Gui,
@@ -93,6 +92,7 @@ impl Gui {
     pub fn new(ui: &mut Ui) -> Self {
         Self {
             ids: Ids::new(ui.widget_id_generator()),
+            text: text::Gui::new(ui),
             shapes: shapes::Gui::new(ui),
             image: image::Gui::new(ui),
             button_xy_pad_toggle: button_xy_pad_toggle::Gui::new(ui),
@@ -110,7 +110,7 @@ impl Gui {
         // following widgets, as well as a scrollable container for the children widgets.
         widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(canvas, ui);
 
-        self.update_text(ui);
+        self.text.update(ui, canvas);
 
         let last = self.shapes.update(ui, canvas);
 
@@ -131,30 +131,6 @@ impl Gui {
         /////////////////////
 
         widget::Scrollbar::y_axis(canvas).auto_hide(true).set(ids.canvas_scrollbar, ui);
-    }
-
-    fn update_text(&self, ui: &mut conrod_core::UiCell){
-        let ids = &self.ids;
-
-        // We'll demonstrate the `Text` primitive widget by using it to draw a title and an
-        // introduction to the example.
-        const TITLE: &'static str = "All Widgets";
-        widget::Text::new(TITLE).font_size(TITLE_SIZE).mid_top_of(ids.canvas).set(ids.title, ui);
-
-        const INTRODUCTION: &'static str =
-            "This example aims to demonstrate all widgets that are provided by conrod.\
-            \n\nThe widget that you are currently looking at is the Text widget. The Text widget \
-            is one of several special \"primitive\" widget types which are used to construct \
-            all other widget types. These types are \"special\" in the sense that conrod knows \
-            how to render them via `conrod_core::render::Primitive`s.\
-            \n\nScroll down to see more widgets!";
-        widget::Text::new(INTRODUCTION)
-            .padded_w_of(ids.canvas, MARGIN)
-            .down(60.0)
-            .align_middle_x_of(ids.canvas)
-            .center_justify()
-            .line_spacing(5.0)
-            .set(ids.introduction, ui);
     }
 
 }
