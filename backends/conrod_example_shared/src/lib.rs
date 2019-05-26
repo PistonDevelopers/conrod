@@ -13,7 +13,12 @@
 #[macro_use] extern crate conrod_core;
 extern crate rand;
 
-use conrod_core::{widget, Colorable, Labelable, Positionable, Rect, Scalar, Sizeable, Ui, UiCell, Widget};
+mod layout;
+mod button_xy_pad_toggle;
+
+use layout::*;
+
+use conrod_core::{widget, Colorable, Labelable, Positionable, Rect, Sizeable, Ui, UiCell, Widget};
 use std::iter::once;
 
 pub const WIN_W: u32 = 600;
@@ -21,8 +26,7 @@ pub const WIN_H: u32 = 420;
 
 /// A demonstration of some application state we want to control with a conrod GUI.
 pub struct DemoApp {
-    ball_xy: conrod_core::Point,
-    ball_color: conrod_core::Color,
+    button_xy_pad_toggle: button_xy_pad_toggle::GuiState,
     sine_frequency: f32,
     rust_logo: conrod_core::image::Id,
 }
@@ -32,8 +36,7 @@ impl DemoApp {
     /// Simple constructor for the `DemoApp`.
     pub fn new(rust_logo: conrod_core::image::Id) -> Self {
         DemoApp {
-            ball_xy: [0.0, 0.0],
-            ball_color: conrod_core::color::WHITE,
+            button_xy_pad_toggle: button_xy_pad_toggle::GuiState::new(),
             sine_frequency: 1.0,
             rust_logo: rust_logo,
         }
@@ -88,12 +91,6 @@ widget_ids! {
         // Image.
         image_title,
         rust_logo,
-        // Button, XyPad, Toggle.
-        button_title,
-        button,
-        xy_pad,
-        toggle,
-        ball,
         // NumberDialer, PlotPath
         dialer_title,
         number_dialer,
@@ -105,17 +102,14 @@ widget_ids! {
 
 pub struct Gui {
     ids: Ids,
+    button_xy_pad_toggle: button_xy_pad_toggle::Gui,
 }
-
-const MARGIN: Scalar = 30.0;
-const SHAPE_GAP: Scalar = 50.0;
-const TITLE_SIZE: conrod_core::FontSize = 42;
-const SUBTITLE_SIZE: conrod_core::FontSize = 32;
 
 impl Gui {
     pub fn new(ui: &mut Ui) -> Self {
         Self {
             ids: Ids::new(ui.widget_id_generator()),
+            button_xy_pad_toggle: button_xy_pad_toggle::Gui::new(ui),
         }
     }
 
@@ -139,7 +133,7 @@ impl Gui {
         let rect = Rect::from_xy_dim([0.0, 0.0], [ball_x_range * 2.0 / 3.0, ball_y_range * 2.0 / 3.0]);
         let side = 130.0;
         
-        self.update_button_xy_pad_toggle(ui, app, &rect, side);
+        self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, ids.canvas, &rect, side);
 
         self.update_number_dialer_plotpath(ui, app, &rect, side);
 
@@ -254,68 +248,13 @@ impl Gui {
             .set(ids.rust_logo, ui);
     }
 
-    fn update_button_xy_pad_toggle(&self, ui: &mut conrod_core::UiCell, app: &mut DemoApp,
-        rect: &Rect, side: f64)
-    {
-        let ids = &self.ids;
-
-        widget::Text::new("Button, XYPad and Toggle")
-            .down_from(ids.rust_logo, 60.0)
-            .align_middle_x_of(ids.canvas)
-            .font_size(SUBTITLE_SIZE)
-            .set(ids.button_title, ui);
-
-        for _press in widget::Button::new()
-            .label("PRESS ME")
-            .mid_left_with_margin_on(ids.canvas, MARGIN)
-            .down_from(ids.button_title, 60.0)
-            .w_h(side, side)
-            .set(ids.button, ui)
-        {
-            let x = rand::random::<conrod_core::Scalar>() * (rect.x.end - rect.x.start) - rect.x.end;
-            let y = rand::random::<conrod_core::Scalar>() * (rect.y.end - rect.y.start) - rect.y.end;
-            app.ball_xy = [x, y];
-        }
-
-        for (x, y) in widget::XYPad::new(app.ball_xy[0], rect.x.start, rect.x.end,
-                                        app.ball_xy[1], rect.y.start, rect.y.end)
-            .label("BALL XY")
-            .wh_of(ids.button)
-            .align_middle_y_of(ids.button)
-            .align_middle_x_of(ids.canvas)
-            .parent(ids.canvas)
-            .set(ids.xy_pad, ui)
-        {
-            app.ball_xy = [x, y];
-        }
-
-        let is_white = app.ball_color == conrod_core::color::WHITE;
-        let label = if is_white { "WHITE" } else { "BLACK" };
-        for is_white in widget::Toggle::new(is_white)
-            .label(label)
-            .label_color(if is_white { conrod_core::color::WHITE } else { conrod_core::color::LIGHT_CHARCOAL })
-            .mid_right_with_margin_on(ids.canvas, MARGIN)
-            .align_middle_y_of(ids.button)
-            .set(ids.toggle, ui)
-        {
-            app.ball_color = if is_white { conrod_core::color::WHITE } else { conrod_core::color::BLACK };
-        }
-
-        let ball_x = app.ball_xy[0];
-        let ball_y = app.ball_xy[1] - rect.y.end - side * 0.5 - MARGIN;
-        widget::Circle::fill(20.0)
-            .color(app.ball_color)
-            .x_y_relative_to(ids.xy_pad, ball_x, ball_y)
-            .set(ids.ball, ui);
-    }
-
     fn update_number_dialer_plotpath(&self, ui: &mut conrod_core::UiCell, app: &mut DemoApp,
         rect: &Rect, side: f64)
     {
         let ids = &self.ids;
 
         widget::Text::new("NumberDialer and PlotPath")
-            .down_from(ids.xy_pad, rect.y.end - rect.y.start + side * 0.5 + MARGIN)
+            .down(rect.y.end - rect.y.start + side * 0.5 + MARGIN)
             .align_middle_x_of(ids.canvas)
             .font_size(SUBTITLE_SIZE)
             .set(ids.dialer_title, ui);
