@@ -19,7 +19,7 @@ mod button_xy_pad_toggle;
 
 use layout::*;
 
-use conrod_core::{widget, Labelable, Positionable, Rect, Sizeable, Ui, UiCell, Widget};
+use conrod_core::{widget, Labelable, Positionable, Rect, Scalar, Sizeable, Ui, UiCell, Widget};
 
 pub const WIN_W: u32 = 600;
 pub const WIN_H: u32 = 420;
@@ -121,9 +121,10 @@ impl Gui {
         let rect = Rect::from_xy_dim([0.0, 0.0], [ball_x_range * 2.0 / 3.0, ball_y_range * 2.0 / 3.0]);
         let side = 130.0;
         
-        self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, ids.canvas, &rect, side);
-
-        self.update_number_dialer_plotpath(ui, app, &rect, side);
+        let last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, ids.canvas, &rect, side);
+        
+        let space = rect.y.end - rect.y.start + side * 0.5 + MARGIN;
+        self.update_number_dialer_plotpath(ui, app, last, space);
 
         /////////////////////
         ///// Scrollbar /////
@@ -174,12 +175,12 @@ impl Gui {
     }
 
     fn update_number_dialer_plotpath(&self, ui: &mut conrod_core::UiCell, app: &mut DemoApp,
-        rect: &Rect, side: f64)
+        last: widget::Id, space: Scalar)
     {
         let ids = &self.ids;
 
         widget::Text::new("NumberDialer and PlotPath")
-            .down(rect.y.end - rect.y.start + side * 0.5 + MARGIN)
+            .down_from(last, space)
             .align_middle_x_of(ids.canvas)
             .font_size(SUBTITLE_SIZE)
             .set(ids.dialer_title, ui);

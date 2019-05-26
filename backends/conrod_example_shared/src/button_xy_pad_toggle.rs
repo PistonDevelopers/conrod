@@ -48,8 +48,8 @@ impl Gui {
         }
     }
 
-    pub fn update(&self, ui: &mut UiCell, state: &mut GuiState, canvas: widget::Id, rect: &Rect, side: f64) {
-
+    /// Returns id of widget that the next Gui should be down_from
+    pub fn update(&self, ui: &mut UiCell, state: &mut GuiState, canvas: widget::Id, rect: &Rect, side: f64) -> widget::Id {
         let ids = &self.ids;
 
         widget::Text::new("Button, XYPad and Toggle")
@@ -100,5 +100,7 @@ impl Gui {
             .color(state.ball_color)
             .x_y_relative_to(ids.xy_pad, ball_x, ball_y)
             .set(ids.ball, ui);
+
+        ids.xy_pad // Return id of widget that the next Gui should be down_from
     }
 }

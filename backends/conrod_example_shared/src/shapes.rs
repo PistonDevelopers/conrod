@@ -40,6 +40,7 @@ impl Gui {
         }
     }
 
+    /// Returns id of widget that the next Gui should be down_from
     pub fn update(&self, ui: &mut UiCell, canvas: widget::Id) -> widget::Id {
         use std::iter::once;
 
@@ -104,6 +105,6 @@ impl Gui {
 
         widget::Circle::fill(40.0).right(SHAPE_GAP).align_middle_y().set(ids.circle, ui);
 
-        ids.shapes_canvas
+        ids.shapes_canvas // Return id of widget that the next Gui should be down_from
     }
 }
