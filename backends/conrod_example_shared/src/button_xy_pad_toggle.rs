@@ -49,11 +49,11 @@ impl Gui {
     }
 
     /// Returns id of widget that the next Gui should be down_from
-    pub fn update(&self, ui: &mut UiCell, state: &mut GuiState, canvas: widget::Id, rect: &Rect, side: f64) -> widget::Id {
+    pub fn update(&self, ui: &mut UiCell, state: &mut GuiState, canvas: widget::Id, last: widget::Id, rect: &Rect, side: f64) -> widget::Id {
         let ids = &self.ids;
 
         widget::Text::new("Button, XYPad and Toggle")
-            .down(60.0)
+            .down_from(last, 60.0)
             .align_middle_x_of(canvas)
             .font_size(SUBTITLE_SIZE)
             .set(ids.button_title, ui);

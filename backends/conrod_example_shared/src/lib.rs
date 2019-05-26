@@ -15,6 +15,7 @@ extern crate rand;
 
 mod layout;
 mod shapes;
+mod image;
 mod button_xy_pad_toggle;
 mod number_dialer_plotpath;
 
@@ -75,9 +76,6 @@ widget_ids! {
         // The title and introduction widgets.
         title,
         introduction,
-        // Image.
-        image_title,
-        rust_logo,
         // Scrollbar
         canvas_scrollbar,
     }
@@ -86,6 +84,7 @@ widget_ids! {
 pub struct Gui {
     ids: Ids,
     shapes: shapes::Gui,
+    image: image::Gui,
     button_xy_pad_toggle: button_xy_pad_toggle::Gui,
     number_dialer_plotpath: number_dialer_plotpath::Gui,
 }
@@ -95,6 +94,7 @@ impl Gui {
         Self {
             ids: Ids::new(ui.widget_id_generator()),
             shapes: shapes::Gui::new(ui),
+            image: image::Gui::new(ui),
             button_xy_pad_toggle: button_xy_pad_toggle::Gui::new(ui),
             number_dialer_plotpath: number_dialer_plotpath::Gui::new(ui),
         }
@@ -103,33 +103,34 @@ impl Gui {
     /// Instantiate a GUI demonstrating every widget available in conrod.
     pub fn update(&self, ui: &mut UiCell, app: &mut DemoApp) {
         let ids = &self.ids;
+        let canvas = ids.canvas;
 
         // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
         // By default, its size is the size of the window. We'll use this as a background for the
         // following widgets, as well as a scrollable container for the children widgets.
-        widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(ids.canvas, ui);
+        widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(canvas, ui);
 
         self.update_text(ui);
 
-        let last = self.shapes.update(ui, ids.canvas);
+        let last = self.shapes.update(ui, canvas);
 
-        self.update_image(ui, app, last);
+        let last = self.image.update(ui, app.rust_logo, canvas, last);
 
-        let ball_x_range = ui.kid_area_of(ids.canvas).unwrap().w();
+        let ball_x_range = ui.kid_area_of(canvas).unwrap().w();
         let ball_y_range = ui.h_of(ui.window).unwrap() * 0.5;
         let rect = Rect::from_xy_dim([0.0, 0.0], [ball_x_range * 2.0 / 3.0, ball_y_range * 2.0 / 3.0]);
         let side = 130.0;
         
-        let last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, ids.canvas, &rect, side);
+        let last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, canvas, last, &rect, side);
         
         let space = rect.y.end - rect.y.start + side * 0.5 + MARGIN;
-        self.number_dialer_plotpath.update(ui, &mut app.sine_frequency, ids.canvas, last, space);
+        self.number_dialer_plotpath.update(ui, &mut app.sine_frequency, canvas, last, space);
 
         /////////////////////
         ///// Scrollbar /////
         /////////////////////
 
-        widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.canvas_scrollbar, ui);
+        widget::Scrollbar::y_axis(canvas).auto_hide(true).set(ids.canvas_scrollbar, ui);
     }
 
     fn update_text(&self, ui: &mut conrod_core::UiCell){
@@ -154,23 +155,6 @@ impl Gui {
             .center_justify()
             .line_spacing(5.0)
             .set(ids.introduction, ui);
-    }
-
-    fn update_image(&self, ui: &mut conrod_core::UiCell, app: &mut DemoApp, last: widget::Id){
-        let ids = &self.ids;
-
-        widget::Text::new("Image")
-            .down_from(last, MARGIN)
-            .align_middle_x_of(ids.canvas)
-            .font_size(SUBTITLE_SIZE)
-            .set(ids.image_title, ui);
-
-        const LOGO_SIDE: conrod_core::Scalar = 144.0;
-        widget::Image::new(app.rust_logo)
-            .w_h(LOGO_SIDE, LOGO_SIDE)
-            .down(60.0)
-            .align_middle_x_of(ids.canvas)
-            .set(ids.rust_logo, ui);
     }
 
 }
