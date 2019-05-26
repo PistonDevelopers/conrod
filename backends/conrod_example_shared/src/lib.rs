@@ -22,7 +22,7 @@ mod number_dialer_plotpath;
 
 use layout::*;
 
-use conrod_core::{widget, Positionable, Rect, Sizeable, Ui, UiCell, Widget};
+use conrod_core::{widget, Rect, Ui, UiCell, Widget};
 
 pub const WIN_W: u32 = 600;
 pub const WIN_H: u32 = 420;
@@ -110,18 +110,18 @@ impl Gui {
         // following widgets, as well as a scrollable container for the children widgets.
         widget::Canvas::new().pad(MARGIN).scroll_kids_vertically().set(canvas, ui);
 
-        self.text.update(ui, canvas);
+        let mut last = self.text.update(ui, canvas);
 
-        let last = self.shapes.update(ui, canvas);
+        last = self.shapes.update(ui, canvas, last);
 
-        let last = self.image.update(ui, app.rust_logo, canvas, last);
+        last = self.image.update(ui, app.rust_logo, canvas, last);
 
         let ball_x_range = ui.kid_area_of(canvas).unwrap().w();
         let ball_y_range = ui.h_of(ui.window).unwrap() * 0.5;
         let rect = Rect::from_xy_dim([0.0, 0.0], [ball_x_range * 2.0 / 3.0, ball_y_range * 2.0 / 3.0]);
         let side = 130.0;
         
-        let last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, canvas, last, &rect, side);
+        last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, canvas, last, &rect, side);
         
         let space = rect.y.end - rect.y.start + side * 0.5 + MARGIN;
         self.number_dialer_plotpath.update(ui, &mut app.sine_frequency, canvas, last, space);

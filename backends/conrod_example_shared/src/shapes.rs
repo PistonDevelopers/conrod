@@ -41,13 +41,13 @@ impl Gui {
     }
 
     /// Returns id of widget that the next Gui should be down_from
-    pub fn update(&self, ui: &mut UiCell, canvas: widget::Id) -> widget::Id {
+    pub fn update(&self, ui: &mut UiCell, canvas: widget::Id, last: widget::Id) -> widget::Id {
         use std::iter::once;
 
         let ids = &self.ids;
 
         widget::Text::new("Lines and Shapes")
-            .down(70.0)
+            .down_from(last, 70.0)
             .align_middle_x_of(canvas)
             .font_size(SUBTITLE_SIZE)
             .set(ids.shapes_title, ui);
