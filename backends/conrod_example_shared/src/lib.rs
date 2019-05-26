@@ -16,10 +16,11 @@ extern crate rand;
 mod layout;
 mod shapes;
 mod button_xy_pad_toggle;
+mod number_dialer_plotpath;
 
 use layout::*;
 
-use conrod_core::{widget, Labelable, Positionable, Rect, Scalar, Sizeable, Ui, UiCell, Widget};
+use conrod_core::{widget, Positionable, Rect, Sizeable, Ui, UiCell, Widget};
 
 pub const WIN_W: u32 = 600;
 pub const WIN_H: u32 = 420;
@@ -77,10 +78,6 @@ widget_ids! {
         // Image.
         image_title,
         rust_logo,
-        // NumberDialer, PlotPath
-        dialer_title,
-        number_dialer,
-        plot_path,
         // Scrollbar
         canvas_scrollbar,
     }
@@ -88,16 +85,18 @@ widget_ids! {
 
 pub struct Gui {
     ids: Ids,
-    button_xy_pad_toggle: button_xy_pad_toggle::Gui,
     shapes: shapes::Gui,
+    button_xy_pad_toggle: button_xy_pad_toggle::Gui,
+    number_dialer_plotpath: number_dialer_plotpath::Gui,
 }
 
 impl Gui {
     pub fn new(ui: &mut Ui) -> Self {
         Self {
             ids: Ids::new(ui.widget_id_generator()),
-            button_xy_pad_toggle: button_xy_pad_toggle::Gui::new(ui),
             shapes: shapes::Gui::new(ui),
+            button_xy_pad_toggle: button_xy_pad_toggle::Gui::new(ui),
+            number_dialer_plotpath: number_dialer_plotpath::Gui::new(ui),
         }
     }
 
@@ -124,7 +123,7 @@ impl Gui {
         let last = self.button_xy_pad_toggle.update(ui, &mut app.button_xy_pad_toggle, ids.canvas, &rect, side);
         
         let space = rect.y.end - rect.y.start + side * 0.5 + MARGIN;
-        self.update_number_dialer_plotpath(ui, app, last, space);
+        self.number_dialer_plotpath.update(ui, &mut app.sine_frequency, ids.canvas, last, space);
 
         /////////////////////
         ///// Scrollbar /////
@@ -174,43 +173,4 @@ impl Gui {
             .set(ids.rust_logo, ui);
     }
 
-    fn update_number_dialer_plotpath(&self, ui: &mut conrod_core::UiCell, app: &mut DemoApp,
-        last: widget::Id, space: Scalar)
-    {
-        let ids = &self.ids;
-
-        widget::Text::new("NumberDialer and PlotPath")
-            .down_from(last, space)
-            .align_middle_x_of(ids.canvas)
-            .font_size(SUBTITLE_SIZE)
-            .set(ids.dialer_title, ui);
-
-        // Use a `NumberDialer` widget to adjust the frequency of the sine wave below.
-        let min = 0.5;
-        let max = 200.0;
-        let decimal_precision = 1;
-        for new_freq in widget::NumberDialer::new(app.sine_frequency, min, max, decimal_precision)
-            .down(60.0)
-            .align_middle_x_of(ids.canvas)
-            .w_h(160.0, 40.0)
-            .label("F R E Q")
-            .set(ids.number_dialer, ui)
-        {
-            app.sine_frequency = new_freq;
-        }
-
-        // Use the `PlotPath` widget to display a sine wave.
-        let min_x = 0.0;
-        let max_x = std::f32::consts::PI * 2.0 * app.sine_frequency;
-        let min_y = -1.0;
-        let max_y = 1.0;
-        widget::PlotPath::new(min_x, max_x, min_y, max_y, f32::sin)
-            .kid_area_w_of(ids.canvas)
-            .h(240.0)
-            .down(60.0)
-            .align_middle_x_of(ids.canvas)
-            .set(ids.plot_path, ui);
-    }
-
 }
-
