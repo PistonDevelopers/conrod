@@ -491,7 +491,7 @@ impl<'a> Primitives<'a> {
                     match *style {
 
                         ShapeStyle::Fill(_) => {
-                            let triangles = match widget::polygon::triangles(points) {
+                            let triangles = match widget::polygon::triangles(points,state.reflect,state.white_points_index) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);

@@ -9,10 +9,9 @@ use std::sync::atomic::{self, AtomicUsize};
 use fnv;
 use text;
 use theme::Theme;
-use utils;
 use widget::{self, Widget};
 use cursor;
-
+use utils;
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
     /// The initial dimensions of the window in which the `Ui` exists.
@@ -447,7 +446,6 @@ impl Ui {
 
                     // Keep track of pressed buttons in the current input::State.
                     let xy = self.global_input.current.mouse.xy;
-                    println!("xy {:?}",xy);
                     let widget = self.global_input.current.widget_under_mouse;
                     self.global_input.current.mouse.buttons.press(mouse_button, xy, widget);
                 },
@@ -623,7 +621,7 @@ impl Ui {
             // 2. `WidgetUncapturesMouse`
             // 3. `WidgetCapturesMouse`
             Input::Motion(motion) => {
-
+                
                 // Create a `Motion` event.
                 let move_ = event::Motion {
                     motion: motion,
@@ -700,7 +698,6 @@ impl Ui {
                             fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
                                                      additional_offset: Scalar) -> bool
                             {
-                                use utils;
 
                                 fn approx_eq(a: Scalar, b: Scalar) -> bool {
                                     (a - b).abs() < 0.000001

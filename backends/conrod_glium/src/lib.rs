@@ -542,7 +542,6 @@ impl Renderer {
                 height: std::cmp::min(height, screen_h),
             }
         };
-        println!("kk");
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
@@ -616,7 +615,6 @@ impl Renderer {
                     };
                     
                     for triangle in triangles {
-                        println!("t: ({:?},{:?},{:?})",v(triangle[0]).position,v(triangle[1]).position,v(triangle[2]).position);
                         vertices.push(v(triangle[0]));
                         vertices.push(v(triangle[1]));
                         vertices.push(v(triangle[2]));

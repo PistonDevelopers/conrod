@@ -15,6 +15,7 @@ extern crate num;
 extern crate input as piston_input;
 extern crate rusttype;
 extern crate polygon2;
+extern crate rtriangulate;
 
 pub use color::{Color, Colorable};
 pub use conrod_derive::*;
