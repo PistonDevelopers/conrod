@@ -6,8 +6,8 @@ use super::Style;
 use widget;
 use widget::triangles::Triangle;
 use utils::{bounding_box_for_points, vec2_add, vec2_sub};
-use polygon2::{triangulate};
-use rtriangulate;
+
+
 /// A basic, non-interactive, arbitrary **Polygon** widget.
 ///
 /// The **Polygon** is described by specifying its corners in order.
@@ -25,10 +25,6 @@ pub struct Polygon<I> {
     pub style: Style,
     /// Whether or not the points should be automatically centred to the widget position.
     pub maybe_shift_to_centre_from: Option<Point>,
-    /// reflect y-axis after triangulation
-    pub reflect:bool,
-    /// Removes faces formed in these points, white_points_index
-    pub white_points_index: Option<usize>
 }
 
 /// Unique state for the **Polygon**.
@@ -38,10 +34,6 @@ pub struct State {
     kind: Kind,
     /// An owned version of the points yielded by the **Polygon**'s `points` iterator.
     pub points: Vec<Point>,
-    /// reflect y-axis after triangulation
-    pub reflect:bool,
-    /// Removes faces formed in these points, white_points_index
-    pub white_points_index: Option<usize>
 }
 
 /// Whether the rectangle is drawn as an outline or a filled color.
@@ -57,6 +49,8 @@ pub enum Kind {
 /// edges.
 #[derive(Clone)]
 pub struct Triangles<I> {
+    first: Point,
+    prev: Point,
     points: I,
 }
 
@@ -69,9 +63,7 @@ impl<I> Polygon<I> {
             points: points,
             common: widget::CommonBuilder::default(),
             style: style,
-            reflect:false,
             maybe_shift_to_centre_from: None,
-            white_points_index:None
         }
     }
 
@@ -207,8 +199,6 @@ impl<I> Widget for Polygon<I>
         State {
             kind: Kind::Fill,
             points: Vec::new(),
-            white_points_index:None,
-            reflect: false
         }
     }
 
@@ -224,8 +214,8 @@ impl<I> Widget for Polygon<I>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, style, .. } = args;
-        let Polygon { points, maybe_shift_to_centre_from,reflect,white_points_index, .. } = self;
-        
+        let Polygon { points, maybe_shift_to_centre_from, .. } = self;
+
         // A function that compares the given points iterator to the points currently owned by
         // `State` and updates only if necessary.
         fn update_points<I>(state: &mut widget::State<State>, points: I)
@@ -242,7 +232,6 @@ impl<I> Widget for Polygon<I>
                     state.update(|state| state.points.truncate(total)),
                 None => (),
             }
-        
         }
 
         // Check whether or not we need to centre the points.
@@ -250,8 +239,7 @@ impl<I> Widget for Polygon<I>
             Some(original) => {
                 let xy = rect.xy();
                 let difference = vec2_sub(xy, original);
-                let point_iter = points.into_iter().map(|point| vec2_add(point, difference));
-                update_points(state,point_iter)
+                update_points(state, points.into_iter().map(|point| vec2_add(point, difference)))
             },
             None => update_points(state, points),
         }
@@ -263,12 +251,6 @@ impl<I> Widget for Polygon<I>
 
         if state.kind != kind {
             state.update(|state| state.kind = kind);
-        }
-        if state.reflect != reflect {
-            state.update(|state| state.reflect = reflect);
-        }
-        if state.white_points_index != white_points_index {
-            state.update(|state| state.white_points_index = white_points_index);
         }
     }
 
@@ -282,69 +264,26 @@ impl<I> Colorable for Polygon<I> {
     }
 }
 
-impl<T>Polygon<T>{
-    /// Reflect y-axis
-    pub fn reflect(mut self) ->Self{
-        self.reflect = true;
-        self
-    }
-    /// Set White points, Remove faces form in these points
-    pub fn white_points_index(mut self,white_points_index:usize)->Self
-    {
-        self.white_points_index = Some(white_points_index);
-        self
-    }
-}
 
 /// Triangulate the polygon given as a list of `Point`s describing its sides.
 ///
 /// Returns `None` if the given iterator yields less than two points.
-pub fn triangles<I>(points: I,reflect:bool,white_points_index:Option<usize>) -> Option<Triangles<I::IntoIter>>
+pub fn triangles<I>(points: I) -> Option<Triangles<I::IntoIter>>
     where I: IntoIterator<Item=Point>,
 {
-    
-    //let points = points.into_iter();
-    points.extend([2.0,2.0]);
-    let mut points_c = points.into_iter().collect::<Vec<Point>>();
-    let mut points_k = vec![];
-    if let None = white_points_index{
-        let triangles = triangulate(&points_c);
-        
-        let l = if reflect{
-            -1.0
-        }else{
-            1.0
-        };
-        for ta in triangles{
-            points_k.push([points_c[ta][0],l*points_c[ta][1]]);
-        }
-    }else if let Some(white_index) = white_points_index{
-        let s = points_c.split_at(white_index-1).clone();
-        let subject = s.1;
-        let clip = s.0;
-        let det =  points_c.iter().map(|t| rtriangulate::TriangulationPoint::new(t[0],t[1])).collect::<Vec<rtriangulate::TriangulationPoint<f64>>>();
-        let det_clip = clip.iter().map(|t| rtriangulate::TriangulationPoint::new(t[0],t[1])).collect::<Vec<rtriangulate::TriangulationPoint<f64>>>();
-        let subject_triangles = rtriangulate::triangulate(&det).unwrap();
-        let clip_triangles = rtriangulate::triangulate(&det_clip).unwrap();
-        for i in subject_triangles{
-            let mut in_white =false;
-            let rtriangulate::Triangle(p1,p2,p3) = i;
-            for y in &clip_triangles{
-                let rtriangulate::Triangle(y1,y2,y3) = y;
-                if p1*p1+p2*p2+p3*p3 == y1*y1+y2*y2+y3*y3{
-                    in_white = true;
-                    break;
-                }
-            }
-            if !in_white{
-                points_k.push(points_c.get(p1.clone()).unwrap().clone());
-                points_k.push(points_c.get(p2.clone()).unwrap().clone());
-                points_k.push(points_c.get(p3.clone()).unwrap().clone());
-            }
-        }
-    }
+    let mut points = points.into_iter();
+    let first = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
+    let prev = match points.next() {
+        Some(p) => p,
+        None => return None,
+    };
     Some(Triangles {
-        points: points_k.into_iter(),
+        first: first,
+        prev: prev,
+        points: points,
     })
 }
 
@@ -353,11 +292,11 @@ impl<I> Iterator for Triangles<I>
 {
     type Item = Triangle<Point>;
     fn next(&mut self) -> Option<Self::Item> {
-        let point = match self.points.next() {
-            Some(p) => p,
-            None => return None,
-        };
-        Some(Triangle([point]))
+        self.points.next().map(|point| {
+            let t = Triangle([self.first, self.prev, point]);
+            self.prev = point;
+            t
+        })
     }
 }
 
