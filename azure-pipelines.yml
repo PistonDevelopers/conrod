@@ -15,7 +15,7 @@ steps:
 - script: which cargo
   displayName: 'Run a one-line script'
 - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
-    inputs:
+  inputs:
     keyfile: '**/package-lock.json, !**/node_modules/**/package-lock.json, Cargo.lock, Cargo.lock, Cargo.lock'
     targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
     vstsFeed: '$(ArtifactFeed)'
