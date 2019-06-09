@@ -3,11 +3,12 @@ use conrod_core::input::Button::Keyboard;
 use conrod_core::input::Motion;
 use conrod_core::Ui;
 use crayon::prelude::*;
-
-pub fn convert_event(ui:&mut Ui){
+use std::time::Instant;
+pub fn convert_event(ui:&mut Ui)->Option<Instant>{
     let mouse_presses = input::mouse_presses();
     let w = ui.win_w;
     let h = ui.win_h;
+    let mut action_time = None;
     for mp in mouse_presses.iter(){
         let e = match mp{
             crayon::input::mouse::MouseButton::Left => conrod_core::input::state::mouse::Button::Left,
@@ -16,6 +17,9 @@ pub fn convert_event(ui:&mut Ui){
             crayon::input::mouse::MouseButton::Other(_j) => conrod_core::input::state::mouse::Button::Unknown
         };
         ui.handle_event(Input::Press(conrod_core::input::Button::Mouse(e)));
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
     let mouse_releases = input::mouse_releases();
     for mp in mouse_releases.iter(){
@@ -26,18 +30,27 @@ pub fn convert_event(ui:&mut Ui){
             crayon::input::mouse::MouseButton::Other(_j) => conrod_core::input::state::mouse::Button::Unknown
         };
         ui.handle_event(Input::Release(conrod_core::input::Button::Mouse(e)));
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
     let key_presses = input::key_presses();
     for kp in key_presses.iter(){
         let e = key_convert(serde_json::to_string(kp).unwrap());
         let ee:conrod_core::input::keyboard::Key = serde_json::from_str(&e).unwrap();
         ui.handle_event(Input::Press(Keyboard(ee)));
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
     let key_releases = input::key_releases();
     for kp in key_releases.iter(){
         let e = key_convert(serde_json::to_string(kp).unwrap());
         let ee:conrod_core::input::keyboard::Key = serde_json::from_str(&e).unwrap();
         ui.handle_event(Input::Release(Keyboard(ee)));
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
 
     let j = input::mouse_position();
@@ -45,14 +58,20 @@ pub fn convert_event(ui:&mut Ui){
     let j = input::mouse_scroll();
     if j.x > 0.0 || j.y >0.0{
         ui.handle_event(Input::Motion(Motion::Scroll{x:(j.x as f64)-w/2.0,y:(j.y as f64)-h/2.0}));
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
 
     for k in input::chars(){
         if k != '\u{8}'{
             ui.handle_event(Input::Text(k.to_string()));
         }
+        if let None = action_time{
+            action_time = Some(Instant::now());
+        }
     }
-
+    action_time
 }
 
 pub fn key_convert(j:String)->String{
