@@ -12,19 +12,19 @@ pool:
 steps:
 - template: ci/azure-install-rust.yml
 - template: ci/azure-install-node.yml
-- script: echo Hello, world!
+- script: which cargo
   displayName: 'Run a one-line script'
-- script: cargo install wasm-bindgen-cli
 - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
-  inputs:
-    keyfile: '**/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock'
-    targetfolder: '**/node_modules, !**/node_modules/**/node_modules'
+    inputs:
+    keyfile: '**/package-lock.json, !**/node_modules/**/package-lock.json, Cargo.lock, Cargo.lock, Cargo.lock'
+    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
     vstsFeed: '$(ArtifactFeed)'
+- script: cargo install wasm-bindgen-cli
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
 - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
   inputs:
-    keyfile: '**/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock'
-    targetfolder: '**/node_modules, !**/node_modules/**/node_modules'
+    keyfile: '**/package-lock.json, !**/node_modules/**/package-lock.json, Cargo.lock, Cargo.lock, Cargo.lock'
+    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
     vstsFeed: '$(ArtifactFeed)'
 - script: cd backends/conrod_crayon/tools/wasm-template && npm ls | grep webpack
   displayName: webpack version
