@@ -20,6 +20,7 @@ steps:
     targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
     vstsFeed: '$(ArtifactFeed)'
 - script: cargo install wasm-bindgen-cli
+- script: cargo install xargo
 - script: cd backends/conrod_crayon/tools/wasm-template && npm install
 - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
   inputs:
