@@ -1,6 +1,6 @@
 [package]
 name = "conrod_crayon"
-version = "0.62.0"
+version = "0.65.0"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
@@ -16,9 +16,9 @@ name = "conrod_crayon"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.63" }
+conrod_core = { path = "../../conrod_core", version = "0.65" }
 crayon = { path = "../../../wasm/crayon"}
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.63" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.65" }
 serde_json = "1.0"
 crayon_bytes = { path = "../../../wasm/crayon/modules/bytes"}
 cgmath = "0.16.1"
