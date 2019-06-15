@@ -4,6 +4,7 @@
 extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_glium;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
@@ -154,7 +155,7 @@ fn main() {
 
         events_loop.run_forever(|event| {
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+            if let Some(event) = support::convert_event(event.clone(), &display) {
                 event_tx.send(event).unwrap();
             }
 

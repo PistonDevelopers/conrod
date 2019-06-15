@@ -120,7 +120,7 @@ layout(location = 0) out vec4 Target0;
 void main() {
     // Text
     if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).a);
+        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).r);
 
     // Image
     } else if (v_Mode == uint(1)) {
@@ -169,30 +169,23 @@ impl_vertex!(Vertex, pos, uv, color, mode);
 pub struct Renderer {
     pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
     glyph_cache: GlyphCache<'static>,
-    glyph_uploads: Arc<CpuBufferPool<[u8; 4]>>,
-    glyph_cache_tex: Arc<StorageImage<R8G8B8A8Unorm>>,
+    glyph_uploads: Arc<CpuBufferPool<u8>>,
+    glyph_cache_tex: Arc<StorageImage<R8Unorm>>,
+    glyph_cache_pixel_buffer: Vec<u8>,
     sampler: Arc<Sampler>,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
     tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract + Send + Sync>>,
 }
 
-/// All commands that must be submitted to the command buffer for caching text glyphs.
-pub struct GlyphCacheCommands {
-    /// The GPU image to which the glyphs are cached
-    pub glyph_cache_texture: Arc<StorageImage<R8G8B8A8Unorm>>,
-    /// The cpu buffer pool used to upload glyphs.
-    pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<[u8; 4]>>,
-    /// Commands for caching individual glyphs.
-    pub commands: Vec<GlyphCacheCommand>,
-}
-
 /// An command for uploading an individual glyph.
-#[derive(Debug)]
-pub struct GlyphCacheCommand {
-    pub offset: [u32; 2],
-    pub size: [u32; 2],
-    pub data: Vec<[u8; 4]>,
+pub struct GlyphCacheCommand<'a> {
+    /// The CPU buffer containing the pixel data.
+    pub glyph_cache_pixel_buffer: &'a [u8],
+    /// The cpu buffer pool used to upload glyph pixels.
+    pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<u8>>,
+    /// The GPU image to which the glyphs are cached.
+    pub glyph_cache_texture: Arc<StorageImage<R8Unorm>>,
 }
 
 /// A draw command that maps directly to the `AutoCommandBufferBuilder::draw` method. By returning
@@ -291,7 +284,7 @@ impl Renderer {
                 .build(device.clone())?
         );
 
-        let (glyph_cache, glyph_cache_tex) = {
+        let (glyph_cache, glyph_cache_tex, glyph_cache_pixel_buffer) = {
             let [width, height] = glyph_cache_dims;
 
             const SCALE_TOLERANCE: f32 = 0.1;
@@ -306,7 +299,7 @@ impl Renderer {
             let glyph_cache_tex = StorageImage::with_usage(
                 device.clone(),
                 Dimensions::Dim2d { width, height },
-                R8G8B8A8Unorm,
+                R8Unorm,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
@@ -315,7 +308,9 @@ impl Renderer {
                 vec![graphics_queue_family],
             )?;
 
-            (glyph_cache, glyph_cache_tex)
+            let glyph_cache_pixel_buffer = vec![0u8; width as usize * height as usize];
+
+            (glyph_cache, glyph_cache_tex, glyph_cache_pixel_buffer)
         };
 
         let tex_descs = FixedSizeDescriptorSetsPool::new(pipeline.clone() as Arc<_>, 0);
@@ -326,6 +321,7 @@ impl Renderer {
             glyph_cache,
             glyph_uploads,
             glyph_cache_tex,
+            glyph_cache_pixel_buffer,
             sampler,
             commands: Vec::new(),
             vertices: Vec::new(),
@@ -347,25 +343,29 @@ impl Renderer {
     }
 
     /// Fill the inner vertex and command buffers by translating the given `primitives`.
-    pub fn fill<P: render::PrimitiveWalker>(
-        &mut self,
+    ///
+    /// This method may return an `Option<GlyphCacheCommand>`, in which case the user should use
+    /// the contained `glyph_cpu_buffer_pool` to write the pixel data to the GPU, and then use a
+    /// `copy_buffer_to_image` command to write the data to the given `glyph_cache_texture` image.
+    pub fn fill<'a, P: render::PrimitiveWalker>(
+        &'a mut self,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
         dpi_factor: f64,
         mut primitives: P,
-    ) -> Result<GlyphCacheCommands, rt::gpu_cache::CacheWriteErr> {
+    ) -> Result<Option<GlyphCacheCommand<'a>>, rt::gpu_cache::CacheWriteErr> {
         let Renderer {
             ref mut commands,
             ref mut vertices,
             ref mut glyph_cache,
             ref glyph_uploads,
             ref glyph_cache_tex,
+            ref mut glyph_cache_pixel_buffer,
             ..
         } = *self;
 
         commands.clear();
         vertices.clear();
-        let mut glyph_cache_commands = vec![];
 
         enum State {
             Image { image_id: image::Id, start: usize },
@@ -399,6 +399,12 @@ impl Renderer {
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
         let vy = |y: Scalar| -1.0 * (y * dpi_factor / half_win_h) as f32;
+
+        // The width of the glyph cache, useful for copying pixel data.
+        let glyph_cache_w = StorageImage::dimensions(glyph_cache_tex).width() as usize;
+
+        // Keep track of whether or not the glyph cache texture needs to be updated.
+        let mut update_glyph_cache_tex = false;
 
         let mut current_scizzor = Scissor {
             origin: [0, 0],
@@ -538,16 +544,20 @@ impl Renderer {
                     }
 
                     glyph_cache.cache_queued(|rect, data| {
-                        let offset = [rect.min.x as u32, rect.min.y as u32];
-                        let size = [rect.width() as u32, rect.height() as u32];
-
-                        let data = data
-                            .iter()
-                            .map(|x| [255, 255, 255, *x])
-                            .collect::<Vec<[u8; 4]>>();
-
-                        let cmd = GlyphCacheCommand { offset, size, data };
-                        glyph_cache_commands.push(cmd);
+                        let width = (rect.max.x - rect.min.x) as usize;
+                        let height = (rect.max.y - rect.min.y) as usize;
+                        let mut dst_ix = rect.min.y as usize * glyph_cache_w + rect.min.x as usize;
+                        let mut src_ix = 0;
+                        for _ in 0..height {
+                            let dst_range = dst_ix..dst_ix + width;
+                            let src_range = src_ix..src_ix + width;
+                            let dst_slice = &mut glyph_cache_pixel_buffer[dst_range];
+                            let src_slice = &data[src_range];
+                            dst_slice.copy_from_slice(src_slice);
+                            dst_ix += glyph_cache_w;
+                            src_ix += width;
+                        }
+                        update_glyph_cache_tex = true;
                     })?;
 
                     let color = gamma_srgb_to_linear(color.to_fsa());
@@ -707,11 +717,16 @@ impl Renderer {
             }
         }
 
-        Ok(GlyphCacheCommands {
-            glyph_cache_texture: glyph_cache_tex.clone(),
-            glyph_cpu_buffer_pool: glyph_uploads.clone(),
-            commands: glyph_cache_commands,
-        })
+        let glyph_cache_cmd = match update_glyph_cache_tex {
+            false => None,
+            true => Some(GlyphCacheCommand {
+                glyph_cache_pixel_buffer: glyph_cache_pixel_buffer,
+                glyph_cpu_buffer_pool: glyph_uploads.clone(),
+                glyph_cache_texture: glyph_cache_tex.clone(),
+            }),
+        };
+
+        Ok(glyph_cache_cmd)
     }
 
     /// Draws using the inner list of `Command`s to a list of `DrawCommand`s compatible with the

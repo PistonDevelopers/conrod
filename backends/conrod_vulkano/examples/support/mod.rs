@@ -15,13 +15,12 @@ pub struct Window {
     pub surface: Arc<Surface<winit::Window>>,
     pub swapchain: Arc<Swapchain<winit::Window>>,
     pub queue: Arc<Queue>,
-    pub events_loop: EventsLoop,
     pub device: Arc<Device>,
     pub images: Vec<Arc<SwapchainImage<winit::Window>>>,
 }
 
 impl Window {
-    pub fn new(width: u32, height: u32, title: &str) -> Self {
+    pub fn new(width: u32, height: u32, title: &str, events_loop: &EventsLoop) -> Self {
         let size = winit::dpi::LogicalSize::new(width as f64, height as f64);
         let (width, height): (u32, u32) = size.into();
 
@@ -37,12 +36,11 @@ impl Window {
                 .next()
                 .expect("no device available");
 
-        let events_loop = winit::EventsLoop::new();
         let surface = winit::WindowBuilder::new()
             .with_dimensions(size)
             .with_resizable(false)
             .with_title(title)
-            .build_vk_surface(&events_loop, instance.clone())
+            .build_vk_surface(events_loop, instance.clone())
             .unwrap();
 
         let queue = physical
@@ -105,7 +103,6 @@ impl Window {
             surface,
             swapchain,
             queue,
-            events_loop,
             device,
             images,
         }
@@ -143,6 +140,20 @@ impl Window {
         self.images = new_images;
     }
 }
+
+// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible conversion
+// functions.
+impl conrod_winit::WinitWindow for Window {
+    fn get_inner_size(&self) -> Option<(u32, u32)> {
+        winit::Window::get_inner_size(self.surface.window()).map(Into::into)
+    }
+    fn hidpi_factor(&self) -> f32 {
+        winit::Window::get_hidpi_factor(self.surface.window()) as _
+    }
+}
+
+// Generate the winit <-> conrod type conversion fns.
+conrod_winit::conversion_fns!();
 
 pub fn format_is_srgb(format: Format) -> bool {
     use vulkano::format::Format::*;

@@ -165,22 +165,22 @@ macro_rules! builder_method {
 #[macro_export]
 macro_rules! builder_methods {
     (pub $fn_name:ident { $($assignee:ident).+ = Some($Type:ty) } $($rest:tt)*) => {
-        builder_method!(pub $fn_name { $($assignee).+ = Some($Type) });
+        $crate::builder_method!(pub $fn_name { $($assignee).+ = Some($Type) });
         builder_methods!($($rest)*);
     };
 
     ($fn_name:ident { $($assignee:ident).+ = Some($Type:ty) } $($rest:tt)*) => {
-        builder_method!($fn_name { $($assignee).+ = Some($Type) });
+        $crate::builder_method!($fn_name { $($assignee).+ = Some($Type) });
         builder_methods!($($rest)*);
     };
     
     (pub $fn_name:ident { $($assignee:ident).+ = $Type:ty } $($rest:tt)*) => {
-        builder_method!(pub $fn_name { $($assignee).+ = $Type });
+        $crate::builder_method!(pub $fn_name { $($assignee).+ = $Type });
         builder_methods!($($rest)*);
     };
 
     ($fn_name:ident { $($assignee:ident).+ = $Type:ty } $($rest:tt)*) => {
-        builder_method!($fn_name { $($assignee).+ = $Type });
+        $crate::builder_method!($fn_name { $($assignee).+ = $Type });
         builder_methods!($($rest)*);
     };
 

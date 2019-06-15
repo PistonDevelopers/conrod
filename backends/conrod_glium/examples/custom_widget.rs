@@ -13,7 +13,7 @@
 
 #[macro_use] extern crate conrod_core;
 extern crate conrod_glium;
-extern crate conrod_winit;
+#[macro_use] extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -235,9 +235,8 @@ mod circular_button {
 }
 
 fn main() {
-    use conrod_core::{self, widget, widget_ids, Colorable, Labelable, Positionable, Sizeable, Widget};
-    use glium::{self, Surface};
-    use support;
+    use conrod_core::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
+    use glium::Surface;
     use self::circular_button::CircularButton;
 
     const WIDTH: u32 = 1200;
@@ -288,7 +287,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+            if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
                 event_loop.needs_update();
             }

@@ -3,7 +3,7 @@
 
 #[macro_use] extern crate conrod_core;
 extern crate conrod_glium;
-extern crate conrod_winit;
+#[macro_use] extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -84,7 +84,7 @@ fn main() {
             };
 
             // Use the `winit` backend feature to convert the winit event to a conrod input.
-            let input = match conrod_winit::convert_event(event, &display) {
+            let input = match support::convert_event(event, &display) {
                 None => continue,
                 Some(input) => input,
             };

@@ -289,8 +289,5 @@ fn crop_context(context: Context, rect: Rect) -> Context {
         }
     }
 
-    // The y coordinate is backwards, min to prevent overflow
-    let y = draw_dim[1] as u32 - (y+h).min(draw_dim[1] as u32);
-
     Context { draw_state: draw_state.scissor([x, y, w, h]), ..context }
 }

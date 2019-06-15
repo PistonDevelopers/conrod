@@ -20,7 +20,7 @@ pub struct Global {
     events: Vec<event::Event>,
     /// Tracks the last click that occurred and the time at which it occurred in order to create
     /// double-click events.
-    pub last_click: Option<(std::time::Instant, event::Click)>,
+    pub last_click: Option<(instant::Instant, event::Click)>,
 }
 
 /// Iterator over all global `event::Event`s that have occurred since the last time
