@@ -2,6 +2,7 @@ extern crate crayon;
 extern crate conrod_core;
 extern crate serde_json;
 extern crate cgmath;
+extern crate instant;
 use crayon::impl_vertex;
 use crayon::prelude::*;
 use crayon::errors::Result;
@@ -80,7 +81,6 @@ impl GlyphCache {
     /// dimensions.
     pub fn new(dim:(f64,f64)) -> Result<Self>
     {
-        println!("inii {:?}",dim);
         Self::with_dimensions(dim.0 as u32, dim.1 as u32)
     }
 
@@ -128,9 +128,11 @@ impl Renderer{
             .with("tex", UniformVariableType::Texture)
             .finish();
         let mut params = ShaderParams::default();
-         params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
+        
+        params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
         crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
         crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
+        params.state.color_write = (true,true,true,false);
         
         params.attributes = attributes;
         params.uniforms = uniforms;
@@ -140,7 +142,7 @@ impl Renderer{
         let shader = video::create_shader(params.clone(), vs, fs).unwrap();
 
         let mut params = SurfaceParams::default();
-        params.set_clear(Color::gray(), None, None);
+        //params.set_clear(Color::transparent(), None, None);
         let vert:Vec<Vertex> = Vec::new();
         let commands:Vec<PreparedCommand> = Vec::new();
         let surface = video::create_surface(params).unwrap();

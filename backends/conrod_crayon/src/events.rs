@@ -3,7 +3,7 @@ use conrod_core::input::Button::Keyboard;
 use conrod_core::input::Motion;
 use conrod_core::Ui;
 use crayon::prelude::*;
-use std::time::Instant;
+use instant::Instant;
 pub fn convert_event(ui:&mut Ui)->Option<Instant>{
     let mouse_presses = input::mouse_presses();
     let w = ui.win_w;
