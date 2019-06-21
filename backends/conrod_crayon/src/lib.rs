@@ -132,7 +132,6 @@ impl Renderer{
         params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
         crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
         crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
-        params.state.color_write = (true,true,true,false);
         
         params.attributes = attributes;
         params.uniforms = uniforms;
@@ -142,7 +141,7 @@ impl Renderer{
         let shader = video::create_shader(params.clone(), vs, fs).unwrap();
 
         let mut params = SurfaceParams::default();
-        //params.set_clear(Color::transparent(), None, None);
+        params.set_clear(None, None, None);
         let vert:Vec<Vertex> = Vec::new();
         let commands:Vec<PreparedCommand> = Vec::new();
         let surface = video::create_surface(params).unwrap();
@@ -231,7 +230,6 @@ impl Renderer{
                 render::PrimitiveKind::Rectangle { color } => {
                     switch_to_plain_state!();
                     let color = gamma_srgb_to_linear(color.to_fsa());
-
                     let (l, r, b, t) = rect.l_r_b_t();
                     let v = |x, y| {
                         Vertex::new([vx(x),vy(y)],[0.0,0.0],color,MODE_GEOMETRY)
