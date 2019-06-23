@@ -163,8 +163,8 @@ macro_rules! convert_window_event {
         let ty = |y: conrod_core::Scalar| -(y - win_h / 2.0);
 
         // Functions for converting keys and mouse buttons.
-        let map_key = |key| convert_key!(key);
-        let map_mouse = |button| convert_mouse_button!(button);
+        let map_key = |key| $crate::convert_key!(key);
+        let map_mouse = |button| $crate::convert_mouse_button!(button);
 
         match $event {
             winit::WindowEvent::Resized(winit::dpi::LogicalSize { width, height }) => {
@@ -263,7 +263,7 @@ macro_rules! convert_window_event {
 macro_rules! convert_event {
     ($event:expr, $window:expr) => {{
         match $event {
-            winit::Event::WindowEvent { event, .. } => convert_window_event!(event, $window),
+            winit::Event::WindowEvent { event, .. } => $crate::convert_window_event!(event, $window),
             _ => None,
         }
     }};
@@ -299,21 +299,21 @@ macro_rules! conversion_fns {
     () => {
         /// Convert a `winit::VirtualKeyCode` to a `conrod_core::input::keyboard::Key`.
         pub fn convert_key(keycode: winit::VirtualKeyCode) -> conrod_core::input::keyboard::Key {
-            convert_key!(keycode)
+            $crate::convert_key!(keycode)
         }
 
         /// Convert a `winit::MouseButton` to a `conrod_core::input::MouseButton`.
         pub fn convert_mouse_button(
             mouse_button: winit::MouseButton,
         ) -> conrod_core::input::MouseButton {
-            convert_mouse_button!(mouse_button)
+            $crate::convert_mouse_button!(mouse_button)
         }
 
         /// Convert a given conrod mouse cursor to the corresponding winit cursor type.
         pub fn convert_mouse_cursor(
             cursor: conrod_core::cursor::MouseCursor,
         ) -> winit::MouseCursor {
-            convert_mouse_cursor!(cursor)
+            $crate::convert_mouse_cursor!(cursor)
         }
 
         /// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
@@ -324,7 +324,7 @@ macro_rules! conversion_fns {
         where
             W: $crate::WinitWindow,
         {
-            convert_window_event!(event, window)
+            $crate::convert_window_event!(event, window)
         }
 
         /// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
@@ -335,7 +335,7 @@ macro_rules! conversion_fns {
         where
             W: $crate::WinitWindow,
         {
-            convert_event!(event, window)
+            $crate::convert_event!(event, window)
         }
     };
 }
