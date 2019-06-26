@@ -12,6 +12,7 @@ use theme::Theme;
 use widget::{self, Widget};
 use cursor;
 use utils;
+use instant;
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
     /// The initial dimensions of the window in which the `Ui` exists.

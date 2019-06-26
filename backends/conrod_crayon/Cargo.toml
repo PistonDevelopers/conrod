@@ -22,7 +22,7 @@ conrod_example_shared = { path = "../conrod_example_shared", version = "0.65" }
 serde_json = "1.0"
 crayon_bytes = { path = "../../../wasm/crayon/modules/bytes"}
 cgmath = "0.16.1"
-instant = "0.1" 
+instant =  {path="../../../wasm/instant", version="0.1.1", features = [ "wasm-bindgen","now" ]}
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.43"
+wasm-bindgen = "0.2.47"
 

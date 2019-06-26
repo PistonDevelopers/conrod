@@ -9,7 +9,6 @@ use crayon_bytes::prelude::*;
 use crayon::window::device_pixel_ratio;
 use conrod_crayon::Renderer;
 use conrod_example_shared::{WIN_W, WIN_H};
-use std::time::SystemTime;
 use std::collections::HashMap;
 use conrod_core::{color,Colorable, widget, Widget,Positionable,event::{Input},Sizeable,Labelable};
 use conrod_core::text::{Font,FontCollection};

@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
 module.exports = {
-    entry: './index1.js',
+    entry: './index.js',
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: 'index.js',
@@ -25,6 +25,14 @@ module.exports = {
     },
     node: {
         fs: "empty"
+    },
+    module: {
+        rules: [
+            {
+            test: /\.js$/,
+            loader: require.resolve('@open-wc/webpack-import-meta-loader'),
+            },
+        ],
     },
     externals: [ 'utf-8-validate', 'bufferutil'],
     mode: 'development'
