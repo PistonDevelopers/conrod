@@ -63,8 +63,10 @@ enum PreparedCommand {
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
-    /// The actual image.
-    pub image_access: Arc<ImmutableImage<R8G8B8A8Unorm>>,
+    /// The immutable image type, represents the data loaded onto the GPU.
+    ///
+    /// Uses a dynamic format for flexibility on the kinds of images that might be loaded.
+    pub image_access: Arc<ImmutableImage<Format>>,
     /// The width of the image.
     pub width: u32,
     /// The height of the image.
