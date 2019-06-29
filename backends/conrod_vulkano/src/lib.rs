@@ -63,8 +63,10 @@ enum PreparedCommand {
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
-    /// The actual image.
-    pub image_access: Arc<ImmutableImage<R8G8B8A8Unorm>>,
+    /// The immutable image type, represents the data loaded onto the GPU.
+    ///
+    /// Uses a dynamic format for flexibility on the kinds of images that might be loaded.
+    pub image_access: Arc<ImmutableImage<Format>>,
     /// The width of the image.
     pub width: u32,
     /// The height of the image.
@@ -660,20 +662,18 @@ impl Renderer {
                     //
                     // Texture coordinates range:
                     // - left to right: 0.0 to 1.0
-                    // - bottom to top: 0.0 to 0.1
-                    // Note bottom and top are flipped in comparison to glium so that we don't need
-                    //  to flip images when loading
-                    let (uv_l, uv_r, uv_t, uv_b) = match source_rect {
+                    // - bottom to top: 1.0 to 0.0
+                    let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
                         Some(src_rect) => {
                             let (l, r, b, t) = src_rect.l_r_b_t();
                             (
                                 (l / image_w) as f32,
                                 (r / image_w) as f32,
-                                (t / image_h) as f32,
-                                (b / image_h) as f32,
+                                1.0 - (b / image_h) as f32,
+                                1.0 - (t / image_h) as f32,
                             )
                         }
-                        None => (0.0, 1.0, 0.0, 1.0),
+                        None => (0.0, 1.0, 1.0, 0.0),
                     };
 
                     let v = |x, y, t| {
