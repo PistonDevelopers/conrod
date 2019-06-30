@@ -1,3 +1,4 @@
+//Resources to be build by crayon-cli tool
 extern crate crayon;
 extern crate conrod_crayon;
 extern crate conrod_example_shared;
@@ -42,24 +43,17 @@ struct Window {
     time: f32,
     resources: WindowResources
 }
-//crayon_bytes = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
-//crayon = { git = "https://github.com/alanpoon/crayon.git", branch ="textedit"}
+
 impl Window {
     pub fn build(resources: &WindowResources) -> CrResult<Self> {
         
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
-           // .theme(conrod_example_shared::theme())
             .build();
-        //let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
-        
         let ids = Ids::new(ui.widget_id_generator());
         let mut image_map: conrod_core::image::Map<TextureHandle> = conrod_core::image::Map::new();
-        let rust_logo = image_map.insert(load_rust_logo());
-        dbg!("l");
-        // Demonstration app state that we'll control with our conrod GUI.
+        let rust_logo = image_map.insert(load_crate_logo());
         let app = conrod_example_shared::DemoApp::new(rust_logo);
         let dpi_factor = device_pixel_ratio();
-        println!("dpi {:?}",dpi_factor);
         let renderer = conrod_crayon::Renderer::new((WIN_W as f64,WIN_H as f64),  dpi_factor as f64);
         let f = ui.fonts.insert(load_bold(resources.b));
         ui.theme.font_id = Some(f);
@@ -87,16 +81,6 @@ impl Window {
 impl Drop for Window {
     fn drop(&mut self) {
 
-        /*video::delete_render_texture(self.texture);
-
-        video::delete_mesh(self.pass.mesh);
-        video::delete_shader(self.pass.shader);
-        video::delete_surface(self.pass.surface);
-
-        video::delete_mesh(self.post_effect.mesh);
-        video::delete_shader(self.post_effect.shader);
-        video::delete_surface(self.post_effect.surface);
-        */
     }
 }
 
@@ -107,12 +91,7 @@ impl LifecycleListener for Window {
             let mut ui = &mut self.ui.set_widgets();
             
             const LOGO_SIDE: conrod_core::Scalar = 306.0;
-            /*
-            widget::Image::new(self.app.rust_logo)
-                .w_h(LOGO_SIDE, LOGO_SIDE)
-                .middle()
-                .set(self.ids.canvas, ui);
-            */
+
             widget::Canvas::new()
                 .scroll_kids_vertically()
                 .color(color::BLUE)
@@ -127,21 +106,13 @@ impl LifecycleListener for Window {
                 .center_justify()
                 .line_spacing(2.5)
                 .set(self.ids.text,ui){
-                    println!("aa{:?}",edit.clone());
                     self.text = edit;
                     
                 }
-            
-            //widget::Scrollbar::y_axis(self.ids.canvas).auto_hide(true).set(self.ids.scrollbar, ui);
-            /*
-            widget::Rectangle::fill_with([80.0, 80.0],color::ORANGE)
-                .middle()
-                .set(self.ids.text, ui);
-            */
+        
         }
 
         let dpi_factor = device_pixel_ratio() as f64;
-        //let dpi_factor  =1.16;
         let primitives = self.ui.draw();
         let dims = (WIN_W as f64 * dpi_factor, WIN_H as f64 * dpi_factor);
         self.renderer.fill(dims,dpi_factor as f64,primitives,&self.image_map);
@@ -150,7 +121,7 @@ impl LifecycleListener for Window {
         Ok(())
     }
 }
-fn load_rust_logo() -> TextureHandle {
+fn load_crate_logo() -> TextureHandle {
     video::create_texture_from("res:crate.bmp").unwrap()
 }
 fn load_bold(handle:BytesHandle) ->Font{

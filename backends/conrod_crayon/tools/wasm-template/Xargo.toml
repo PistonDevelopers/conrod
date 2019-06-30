@@ -1,4 +1,0 @@
-[dependencies.std]
-features = [
-  "wasm_syscall",
-]
