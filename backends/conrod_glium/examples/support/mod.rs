@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-extern crate conrod_winit;
-
 use std;
 use glium;
 
@@ -73,3 +71,7 @@ impl EventLoop {
         self.ui_needs_update = true;
     }
 }
+
+// Conversion functions for converting between types from glium's version of `winit` and
+// `conrod_core`.
+conrod_winit::conversion_fns!();

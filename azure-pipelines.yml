@@ -1,0 +1,40 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'Ubuntu-16.04'
+
+steps:
+- template: ci/azure-install-rust.yml
+- template: ci/azure-install-node.yml
+- script: which cargo
+  displayName: 'Run a one-line script'
+- task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+  inputs:
+    keyfile: '**/package-lock.json, !**/node_modules/**/package-lock.json, Cargo.lock, Cargo.lock, Cargo.lock'
+    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
+    vstsFeed: '$(ArtifactFeed)'
+- script: cargo install wasm-bindgen-cli
+- script: cargo install xargo
+- script: cd backends/conrod_crayon/tools/wasm-template && npm install
+- task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
+  inputs:
+    keyfile: '**/package-lock.json, !**/node_modules/**/package-lock.json, Cargo.lock, Cargo.lock, Cargo.lock'
+    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, target/debug/.fingerprint, target/debug/build, target/debug/deps, /usr/local/cargo/registry'
+    vstsFeed: '$(ArtifactFeed)'
+- script: cd backends/conrod_crayon/tools/wasm-template && npm ls | grep webpack
+  displayName: webpack version
+- script: backends/conrod_crayon/tools/wasm-template/run.sh crayon
+- task: AzureRmWebAppDeployment@3
+  inputs:
+    azureSubscription: 'Free Trial'
+    WebAppName: 'conrod'
+    Package: '$(System.DefaultWorkingDirectory)/backends/conrod_crayon/tools/wasm-template'
+    GenerateWebConfig: true
+    WebConfigParameters: '-Handler iisnode -NodeStartFile app.js -appType node'
+

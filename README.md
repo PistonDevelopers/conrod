@@ -1,5 +1,5 @@
 # Conrod [![Build Status](https://travis-ci.org/PistonDevelopers/conrod.svg?branch=master)](https://travis-ci.org/PistonDevelopers/conrod) [![Crates.io](https://img.shields.io/crates/l/conrod_core.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE)
-
+[![Build Status](https://dev.azure.com/K1720055F/conrod/_apis/build/status/alanpoon.conrod%20(1)?branchName=master)](https://dev.azure.com/K1720055F/conrod/_build/latest?definitionId=3&branchName=master)
 An easy-to-use, 2D GUI library written entirely in Rust.
 
 Guide
@@ -98,23 +98,23 @@ dual licensed as above, without any additional terms or conditions.
 
 
 [The API Documentation]: https://docs.rs/conrod/
-[The Guide]: http://docs.piston.rs/conrod/conrod/guide/index.html
+[The Guide]: https://docs.rs/conrod/latest/conrod/guide/index.html
 
-[1]:        http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html
-[1.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#a-brief-history
-[1.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#screenshots-and-videos
-[1.3]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#feature-overview
-[1.4]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#available-widgets
-[1.4.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#primitive-widgets
-[1.4.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#common-use-widgets
-[1.5]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#immediate-mode
-[1.5.1]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#what-is-it
-[1.5.2]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#why-use-it
-[1.5.3]:    http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
-[1.6]:      http://docs.piston.rs/conrod/conrod/guide/chapter_1/index.html#the-builder-pattern
-[2]:        http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html
-[2.1]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
-[2.2]:      http://docs.piston.rs/conrod/conrod/guide/chapter_2/index.html#running-the-conrod-examples
+[1]:        https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html
+[1.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#a-brief-history
+[1.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#screenshots-and-videos
+[1.3]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#feature-overview
+[1.4]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#available-widgets
+[1.4.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#primitive-widgets
+[1.4.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#common-use-widgets
+[1.5]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#immediate-mode
+[1.5.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#what-is-it
+[1.5.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#why-use-it
+[1.5.3]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
+[1.6]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#the-builder-pattern
+[2]:        https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html
+[2.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
+[2.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#running-the-conrod-examples
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0

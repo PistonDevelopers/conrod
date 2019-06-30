@@ -9,10 +9,10 @@ use std::sync::atomic::{self, AtomicUsize};
 use fnv;
 use text;
 use theme::Theme;
-use utils;
 use widget::{self, Widget};
 use cursor;
-
+use utils;
+use instant;
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
     /// The initial dimensions of the window in which the `Ui` exists.
@@ -381,13 +381,12 @@ impl Ui {
     /// The given `event` must implement the **ToRawEvent** trait so that it can be converted to a
     /// `RawEvent` that can be used by the `Ui`.
     pub fn handle_event(&mut self, event: event::Input) {
-        use event::{self, Input};
+        use event::Input;
         use input::{Button, Key, ModifierKey, Motion};
         use input::state::mouse::Button as MouseButton;
 
         // A function for filtering `ModifierKey`s.
         fn filter_modifier(key: Key) -> Option<ModifierKey> {
-            use input::keyboard::ModifierKey;
             match key {
                 Key::LCtrl | Key::RCtrl => Some(ModifierKey::CTRL),
                 Key::LShift | Key::RShift => Some(ModifierKey::SHIFT),
@@ -421,7 +420,7 @@ impl Ui {
                     let widget = self.global_input.current.widget_capturing_mouse;
                     let press_event = event::Ui::Press(widget, press).into();
                     self.global_input.push_event(press_event);
-
+                    
                     if let MouseButton::Left = mouse_button {
                         // Check to see if we need to uncapture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
@@ -515,7 +514,7 @@ impl Ui {
                         let click_event = event::Ui::Click(clicked_widget, click).into();
                         self.global_input.push_event(click_event);
 
-                        let now = std::time::Instant::now();
+                        let now = instant::Instant::now();
                         let double_click = self.global_input.last_click
                             .and_then(|(last_time, last_click)| {
 
@@ -619,7 +618,7 @@ impl Ui {
             // 2. `WidgetUncapturesMouse`
             // 3. `WidgetCapturesMouse`
             Input::Motion(motion) => {
-
+                
                 // Create a `Motion` event.
                 let move_ = event::Motion {
                     motion: motion,
@@ -696,8 +695,6 @@ impl Ui {
                             fn offset_is_at_bound<A>(scroll: &widget::scroll::State<A>,
                                                      additional_offset: Scalar) -> bool
                             {
-                                use utils;
-
                                 fn approx_eq(a: Scalar, b: Scalar) -> bool {
                                     (a - b).abs() < 0.000001
                                 }
@@ -811,7 +808,7 @@ impl Ui {
 
                     // The start of the touch interaction state to be stored.
                     let start = input::state::touch::Start {
-                        time: std::time::Instant::now(),
+                        time: instant::Instant::now(),
                         xy: touch.xy,
                         widget: widget_under_touch,
                     };
@@ -940,6 +937,7 @@ impl Ui {
     /// should target a **Widget**'s `kid_area`, or simply the **Widget**'s total area.
     pub fn calc_xy(&self,
                    maybe_id: Option<widget::Id>,
+                   maybe_parent_id: Option<widget::Id>,
                    x_position: Position,
                    y_position: Position,
                    dim: Dimensions,
@@ -952,6 +950,7 @@ impl Ui {
         // The axis used is specified by the given range_from_rect function which, given some
         // **Rect**, returns the relevant **Range**.
         fn abs_from_position<R, P>(ui: &Ui,
+                                   maybe_parent_id: Option<widget::Id>,
                                    position: Position,
                                    dim: Scalar,
                                    place_on_kid_area: bool,
@@ -1003,6 +1002,7 @@ impl Ui {
 
                 position::Relative::Place(place) => {
                     let parent_id = maybe_id
+                        .or(maybe_parent_id)
                         .or(ui.maybe_current_parent_id)
                         .unwrap_or(ui.window.into());
                     let maybe_area = match place_on_kid_area {
@@ -1034,8 +1034,8 @@ impl Ui {
         fn y_range(rect: Rect) -> Range { rect.y }
         fn x_pad(pad: Padding) -> Range { pad.x }
         fn y_pad(pad: Padding) -> Range { pad.y }
-        let x = abs_from_position(self, x_position, dim[0], place_on_kid_area, x_range, x_pad);
-        let y = abs_from_position(self, y_position, dim[1], place_on_kid_area, y_range, y_pad);
+        let x = abs_from_position(self, maybe_parent_id, x_position, dim[0], place_on_kid_area, x_range, x_pad);
+        let y = abs_from_position(self, maybe_parent_id, y_position, dim[1], place_on_kid_area, y_range, y_pad);
         let xy = [x, y];
 
         // Add the widget's parents' total combined scroll offset to the given xy.
@@ -1066,7 +1066,7 @@ impl Ui {
         // This widget acts as the parent-most widget and root node for the Ui's `widget_graph`,
         // upon which all other widgets are placed.
         {
-            use {color, Colorable, Borderable, Positionable, Widget};
+            use {color, Colorable, Borderable, Positionable};
             type Window = widget::BorderedRectangle;
             Window::new([ui_cell.win_w, ui_cell.win_h])
                 .no_parent()

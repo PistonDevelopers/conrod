@@ -1,13 +1,11 @@
-//! A demonstration of using `winit` to provide events and GFX to draw the UI.
-//!
-//! `winit` is used via the `glutin` crate which also provides an OpenGL context for drawing
-//! `conrod_core::render::Primitives` to the screen.
+//! A demonstration of using `winit` to provide events and `vulkano` to draw the UI.
 
 #![allow(unused_variables)]
 
 extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_vulkano;
+#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate image;
@@ -27,7 +25,7 @@ use vulkano::{
     image::AttachmentImage,
     swapchain,
     swapchain::AcquireError,
-    sync::{now, FlushError, GpuFuture},
+    sync::{FenceSignalFuture, GpuFuture},
 };
 
 use conrod_vulkano::{Image as VulkanoGuiImage, Renderer};
@@ -38,7 +36,8 @@ const DEPTH_FORMAT: Format = Format::D16Unorm;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 fn main() {
-    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano");
+    let mut events_loop = winit::EventsLoop::new();
+    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano", &events_loop);
 
     let mut render_target = RenderTarget::new(&window);
 
@@ -95,7 +94,17 @@ fn main() {
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
-    let mut previous_frame_end = Box::new(logo_texture_future) as Box<GpuFuture>;
+    // Keep track of the previous frame so we can wait for it to complete before presenting a new
+    // one. This should make sure the CPU never gets ahead of the presentation of frames, which can
+    // cause high user-input latency and synchronisation strange bugs.
+    let mut previous_frame_end: Option<FenceSignalFuture<_>> = None;
+
+    // Wait for the logo to load onto the GPU before we begin our main loop.
+    logo_texture_future
+        .then_signal_fence_and_flush()
+        .expect("failed to signal fence and flush logo future")
+        .wait(None)
+        .expect("failed to wait for logo texture to load");
 
     'main: loop {
         // If the window is closed, this will be None for one tick, so to avoid panicking with
@@ -117,9 +126,6 @@ fn main() {
                     Err(err) => panic!("{:?}", err),
                 };
 
-            // We are tidy little fellows and cleanup our leftovers
-            previous_frame_end.cleanup_finished();
-
             let mut command_buffer_builder = AutoCommandBufferBuilder::primary_one_time_submit(
                 window.device.clone(),
                 window.queue.family(),
@@ -128,21 +134,13 @@ fn main() {
 
             let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
             let dpi_factor = window.surface.window().get_hidpi_factor() as f64;
-            let mut cmds = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap();
-            for cmd in cmds.commands.drain(..) {
-                let buffer = cmds.glyph_cpu_buffer_pool.chunk(cmd.data.iter().cloned()).unwrap();
+            if let Some(cmd) = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap() {
+                let buffer = cmd.glyph_cpu_buffer_pool
+                    .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
+                    .unwrap();
                 command_buffer_builder = command_buffer_builder
-                    .copy_buffer_to_image_dimensions(
-                        buffer,
-                        cmds.glyph_cache_texture.clone(),
-                        [cmd.offset[0], cmd.offset[1], 0],
-                        [cmd.size[0], cmd.size[1], 1],
-                        0,
-                        1,
-                        0
-                    )
+                    .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
                     .expect("failed to submit command for caching glyph");
-
             }
 
             let mut command_buffer_builder = command_buffer_builder
@@ -182,35 +180,32 @@ fn main() {
                 .build()
                 .unwrap();
 
-            let future = previous_frame_end
-                .join(acquire_future)
+            // Wait for the previous frame to finish presentation.
+            if let Some(prev_frame) = previous_frame_end.take() {
+                prev_frame
+                    .wait(None)
+                    .expect("failed to wait for presentation of previous frame");
+            }
+
+            let future_result = acquire_future
                 .then_execute(window.queue.clone(), command_buffer)
-                .expect("Failed to join previous frame with new one")
+                .expect("failed to join previous frame with new one")
                 .then_swapchain_present(window.queue.clone(), window.swapchain.clone(), image_num)
                 .then_signal_fence_and_flush();
 
-            match future {
-                Ok(future) => previous_frame_end = Box::new(future) as Box<_>,
-                Err(FlushError::OutOfDate) => {
-                    previous_frame_end = Box::new(now(window.device.clone())) as Box<_>
-                }
-                Err(e) => {
-                    previous_frame_end = Box::new(now(window.device.clone())) as Box<_>;
-                }
+            // Hold onto the future representing the presentation of this frame.
+            // We'll wait for it before we present the next one.
+            if let Ok(future) = future_result {
+                previous_frame_end = Some(future);
             }
         }
 
         let mut should_quit = false;
 
-        let winit_window_handle = window.surface.window();
-
-        window.events_loop.poll_events(|event| {
-            let (w, h) = (win_w as conrod_core::Scalar, win_h as conrod_core::Scalar);
-            //let dpi_factor = dpi_factor as conrod_core::Scalar;
-
-            // Convert winit event to conrod event, requires conrod to be built with the `winit`
-            // feature
-            if let Some(event) = conrod_winit::convert_event(event.clone(), winit_window_handle) {
+        events_loop.poll_events(|event| {
+            // Convert winit event to conrod event.
+            // Function generated by `conrod_winit::conversion_fns` in `support` module.
+            if let Some(event) = support::convert_event(event.clone(), &window) {
                 ui.handle_event(event);
             }
 

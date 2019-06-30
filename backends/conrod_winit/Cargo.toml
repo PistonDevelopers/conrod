@@ -1,6 +1,6 @@
 [package]
 name = "conrod_winit"
-version = "0.62.0"
+version = "0.65.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -19,5 +19,3 @@ name = "conrod_winit"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.62" }
-winit = { version = "0.18" }

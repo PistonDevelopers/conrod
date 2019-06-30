@@ -1,0 +1,6 @@
+name = 'rust_hover.png'
+uuid = '24ec0d61-9ee5-4f9c-8b74-acd2f09ae404'
+resources = []
+
+[params]
+type = 'Bytes'

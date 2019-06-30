@@ -5,7 +5,7 @@
 #[macro_use] extern crate conrod_core;
 extern crate glium;
 extern crate conrod_glium;
-extern crate conrod_winit;
+#[macro_use] extern crate conrod_winit;
 extern crate find_folder;
 extern crate image;
 
@@ -55,7 +55,7 @@ fn main() {
         for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+            if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
             }
 
@@ -80,7 +80,7 @@ fn main() {
         {
             let ui = &mut ui.set_widgets();
             // Draw a light blue background.
-            widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
+            //widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
             // Instantiate the `Image` at its full size in the middle of the window.
             widget::Image::new(rust_logo).w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
         }
@@ -99,7 +99,7 @@ fn main() {
 // Load the Rust logo from our assets folder to use as an example image.
 fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
     let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
-    let path = assets.join("images/rust.png");
+    let path = assets.join("images/crate.bmp");
     let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
     let image_dimensions = rgba_image.dimensions();
     let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);

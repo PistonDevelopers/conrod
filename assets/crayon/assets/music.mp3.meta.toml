@@ -1,0 +1,11 @@
+name = 'music.mp3'
+uuid = '6d4cf11e-a3f2-4e6f-8d1f-117c00a2622f'
+
+[[resources]]
+type = 'AudioClip'
+name = 'music.mp3'
+uuid = '4572a4b5-c9f1-46bd-8451-7f6fa535fae6'
+
+[params]
+type = 'Audio'
+compression = 'HighQuality'

@@ -271,7 +271,7 @@ impl<'a> Text<'a> {
 
         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
         positioned_glyphs.clear();
-        let scale = text::pt_to_scale((font_size as f32 * dpi_factor) as FontSize);
+        let scale = text::f32_pt_to_scale(font_size as f32 * dpi_factor);
         for (line, line_rect) in lines.zip(line_rects) {
             let (x, y) = (trans_x(line_rect.left()) as f32, trans_y(line_rect.bottom()) as f32);
             let point = text::rt::Point { x: x, y: y };
@@ -487,6 +487,7 @@ impl<'a> Primitives<'a> {
 
                     let color = style.get_color(theme);
                     let points = state.points.iter().cloned();
+                    
                     match *style {
 
                         ShapeStyle::Fill(_) => {
@@ -497,6 +498,7 @@ impl<'a> Primitives<'a> {
                                     &triangles[..]
                                 },
                             };
+                            
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,

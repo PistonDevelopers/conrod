@@ -1,0 +1,31 @@
+name = 'cornell_box.obj'
+uuid = '13b56f8c-7724-4313-a5ff-d870db23b243'
+
+[[resources]]
+type = 'Prefab'
+name = 'cornell_box.obj'
+uuid = '64cd2e4e-1949-4718-ad79-bec5f4cd5600'
+
+[[resources]]
+type = 'Mesh'
+name = 'floor'
+uuid = '6f0c4447-040f-47c2-8f48-bb8284df5678'
+
+[[resources]]
+type = 'Mesh'
+name = 'shortBox'
+uuid = 'd0cb0ac2-ac69-49c9-98cb-f5841751b3fd'
+
+[[resources]]
+type = 'Mesh'
+name = 'tallBox'
+uuid = 'e32f80df-6b59-46d9-b49e-4651aaf8a64e'
+
+[params]
+type = 'Transmission'
+
+[params.mesh]
+optimize = true
+calculate_normals = true
+calculate_tangents = false
+calculate_texcoord = false

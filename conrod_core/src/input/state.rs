@@ -66,14 +66,13 @@ impl State {
 /// Touch specific state.
 pub mod touch {
     use position::Point;
-    use std;
     use widget;
 
     /// State stored about the start of a `Touch` interaction.
     #[derive(Copy, Clone, Debug, PartialEq)]
     pub struct Start {
         /// The time at which the `Touch` began.
-        pub time: std::time::Instant,
+        pub time: instant::Instant,
         /// The position at which the touch began.
         pub xy: Point,
         /// The widget under the beginning of the touch if there was one.
