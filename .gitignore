@@ -20,5 +20,7 @@ target/
 /.rust/
 rusti.sh
 /examples/**/target
-
+assets/crayon/resources
 Cargo.lock
+*/**/dist
+*/**/node_modules
