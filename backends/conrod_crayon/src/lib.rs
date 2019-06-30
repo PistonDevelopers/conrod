@@ -7,7 +7,6 @@ use crayon::impl_vertex;
 use crayon::prelude::*;
 use crayon::errors::Result;
 use crayon::video::assets::texture::*;
-
 pub mod events;
 use conrod_core::{
     Rect,
@@ -117,7 +116,6 @@ pub struct Commands<'a> {
 }
 impl Renderer{
     pub fn new(dim:(f64,f64),dpi_factor: f64)->Self{
-
         let attributes = AttributeLayoutBuilder::new()
             .with(Attribute::Position, 2)
             .with(Attribute::Texcoord0, 2)
@@ -132,7 +130,7 @@ impl Renderer{
         params.state.color_blend = Some((crayon::video::assets::shader::Equation::Add,
         crayon::video::assets::shader::BlendFactor::Value(crayon::video::assets::shader::BlendValue::SourceAlpha),
         crayon::video::assets::shader::BlendFactor::OneMinusValue(crayon::video::assets::shader::BlendValue::SourceAlpha)));
-        
+
         params.attributes = attributes;
         params.uniforms = uniforms;
         //looking for Position
@@ -306,7 +304,14 @@ impl Renderer{
                         let p1 = cgmath::Point2::new(lbwh[0],lbwh[1]);
                         let p2 = cgmath::Point2::new(lbwh[2],lbwh[3]);
                         let rect = crayon::math::aabb::Aabb2::new(p1,p2);
-                        video::update_texture(*texture,rect,data).unwrap();
+                        let mut new_data:Vec<u8> = vec![];
+                        for j in data.to_vec(){
+                            new_data.push(j);
+                            for _z in 1..4{
+                                new_data.push(0);
+                            }
+                        }
+                        video::update_texture(*texture,rect,&new_data).unwrap();
         
                     }).unwrap();
 
@@ -328,6 +333,7 @@ impl Renderer{
                         if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
                             
                             let gl_rect = to_gl_rect(screen_rect);
+                            
                             let v = |p:[f32;2],t:[f32;2]| {Vertex::new(p,t,color,MODE_TEXT)};
                             let mut push_v = |p, t| vertices.push(v(p, t));
                             push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
@@ -551,7 +557,7 @@ fn glyph_cache_texture(
 {
     // Determine the optimal texture format to use given the opengl version.
     let mut params = TextureParams::default();
-    params.format = TextureFormat::R8;
+    params.format = TextureFormat::RGBA8;
     params.hint = TextureHint::Stream;
     params.dimensions = (width, height).into();
     let data_size = params.format.size(params.dimensions) as usize;
