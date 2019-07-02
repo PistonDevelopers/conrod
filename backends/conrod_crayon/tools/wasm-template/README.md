@@ -1,8 +1,9 @@
 # Wasm-Template
-
+You will need to install crayon-cli. You may cargo install crayon-cli.
 ```sh
-$ cd ./tools/wasm-template
+$ cd assets/crayon
+$ crayon-cli build
+$ cd ../../tools/wasm-template
 $ npm install
-$ cd ../..
-$ ./tools/wasm-template/run.sh crayon
+$ ./run.sh crayon
 ```
