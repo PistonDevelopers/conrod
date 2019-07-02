@@ -138,7 +138,7 @@ void main() {
 }
 
 /// The `Vertex` type passed to the vertex shader.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Vertex {
     /// The position of the vertex within vector space.
     ///
