@@ -8,7 +8,11 @@ members = [
     "backends/conrod_glium",
     "backends/conrod_piston",
     "backends/conrod_vulkano",
+<<<<<<< HEAD
     "backends/conrod_ggez",
     "backends/conrod_crayon",
     "backends/conrod_svg",
+=======
+    "backends/conrod_crayon",
+>>>>>>> 435fcdfd536dfbb8ef845b3f160caf44008001d8
 ]

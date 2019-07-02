@@ -78,7 +78,7 @@ fn main() {
             width: logo_dimensions.0,
             height: logo_dimensions.1,
         },
-        vulkano::format::R8G8B8A8Unorm,
+        vulkano::format::Format::R8G8B8A8Srgb,
         window.queue.clone(),
     )
     .expect("Couldn't create vulkan texture for logo");
