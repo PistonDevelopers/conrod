@@ -23,6 +23,4 @@ rusti.sh
 Cargo.lock
 */**/dist
 */**/node_modules
-assets/crayon/resources
-**.meta.toml
 backends/conrod_crayon/tools/wasm-template/package-lock.json
