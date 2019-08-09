@@ -1,0 +1,11 @@
+name = 'sound_efx.ogg'
+uuid = 'c8c0425f-79ed-41bc-baf1-2c8b6df6b0e9'
+
+[[resources]]
+type = 'AudioClip'
+name = 'sound_efx.ogg'
+uuid = '427eb273-e774-46b8-b701-0ace1b7652ee'
+
+[params]
+type = 'Audio'
+compression = 'HighQuality'

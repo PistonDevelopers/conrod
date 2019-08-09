@@ -1,0 +1,15 @@
+name = 'crate.bmp'
+uuid = '31ae371a-0b79-4eb2-a2bb-0bd527937e2d'
+
+[[resources]]
+type = 'Texture'
+name = 'crate.bmp'
+uuid = '2943b938-6a27-4730-a507-02a904f384d5'
+
+[params]
+type = 'Texture'
+mipmap = true
+alpha_premultiply = false
+wrap = 'Clamp'
+filter = 'Linear'
+compression = 'HighQuality'

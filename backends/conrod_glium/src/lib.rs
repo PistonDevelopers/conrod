@@ -542,7 +542,6 @@ impl Renderer {
                 height: std::cmp::min(height, screen_h),
             }
         };
-
         // Draw each primitive in order of depth.
         while let Some(primitive) = primitives.next_primitive() {
             let render::Primitive { kind, scizzor, rect, .. } = primitive;
@@ -614,7 +613,7 @@ impl Renderer {
                             mode: MODE_GEOMETRY,
                         }
                     };
-
+                    
                     for triangle in triangles {
                         vertices.push(v(triangle[0]));
                         vertices.push(v(triangle[1]));
@@ -684,7 +683,6 @@ impl Renderer {
                             // The text cache is only ever created with U8 or U8U8U8 formats.
                             _ => unreachable!(),
                         };
-
                         let image = glium::texture::RawImage2d {
                             data: data,
                             width: w,
@@ -707,7 +705,7 @@ impl Renderer {
                             + (text::rt::vector(screen_rect.max.x as f32 / screen_w as f32 - 0.5,
                                           1.0 - screen_rect.max.y as f32 / screen_h as f32 - 0.5)) * 2.0
                     };
-
+                    let mut l =0;
                     for g in positioned_glyphs {
                         if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
                             let gl_rect = to_gl_rect(screen_rect);
@@ -724,8 +722,10 @@ impl Renderer {
                             push_v([gl_rect.max.x, gl_rect.min.y], [uv_rect.max.x, uv_rect.min.y]);
                             push_v([gl_rect.max.x, gl_rect.max.y], [uv_rect.max.x, uv_rect.max.y]);
                             push_v([gl_rect.min.x, gl_rect.max.y], [uv_rect.min.x, uv_rect.max.y]);
+                        l = l+1;
                         }
                     }
+                   
                 },
 
                 render::PrimitiveKind::Image { image_id, color, source_rect } => {
@@ -858,7 +858,10 @@ impl Renderer {
                     // Only submit the vertices if there is enough for at least one triangle.
                     Draw::Plain(slice) => if slice.len() >= NUM_VERTICES_IN_TRIANGLE {
                         let vertex_buffer = glium::VertexBuffer::new(facade, slice)?;
-                        surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
+                        //surface.draw(&vertex_buffer, no_indices, &self.program, &uniforms, &draw_params).unwrap();
+                        //glium::uniforms::EmptyUniforms
+                        
+                        surface.draw(&vertex_buffer, no_indices, &self.program, &glium::uniforms::EmptyUniforms, &draw_params).unwrap();
                     },
 
                     // Draw an image whose texture data lies within the `image_map` at the

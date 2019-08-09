@@ -20,5 +20,8 @@ target/
 /.rust/
 rusti.sh
 /examples/**/target
-
 Cargo.lock
+*/**/dist
+*/**/node_modules
+backends/conrod_crayon/tools/wasm-template/package-lock.json
+.travis.yml

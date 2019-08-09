@@ -298,7 +298,6 @@ impl<'a> Widget for Button<'a, Flat> {
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
         let Button { show, maybe_label, .. } = self;
-
         let (interaction, times_triggered) = interaction_and_times_triggered(id, ui);
         let color = match interaction {
             Interaction::Idle => style.color(&ui.theme),

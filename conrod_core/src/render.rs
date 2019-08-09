@@ -487,6 +487,7 @@ impl<'a> Primitives<'a> {
 
                     let color = style.get_color(theme);
                     let points = state.points.iter().cloned();
+                    
                     match *style {
 
                         ShapeStyle::Fill(_) => {
@@ -497,6 +498,7 @@ impl<'a> Primitives<'a> {
                                     &triangles[..]
                                 },
                             };
+                            
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,

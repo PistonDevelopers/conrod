@@ -9,11 +9,11 @@ extern crate glium;
 
 mod support;
 
-use conrod_core::{widget, Colorable, Positionable, Widget};
+use conrod_core::{widget, Colorable, Positionable, Widget,color,Sizeable};
 use glium::Surface;
 
-const WIDTH: u32 = 400;
-const HEIGHT: u32 = 200;
+const WIDTH: u32 = 600;
+const HEIGHT: u32 = 420;
 
 fn main() {
     // Build the window.
@@ -36,7 +36,7 @@ fn main() {
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
-    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    let font_path = assets.join("crayon/assets/Oswald-Heavy.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
@@ -96,10 +96,10 @@ fn main() {
             let ui = &mut ui.set_widgets();
 
             // "Hello World!" in the middle of the screen.
-            widget::Text::new("Hello World!")
-                .middle_of(ui.window)
-                .color(conrod_core::color::WHITE)
-                .font_size(32)
+            widget::Text::new("H")
+                .color(color::LIGHT_GREEN)
+                .w_h(200.0,50.0)
+                .middle()
                 .set(ids.text, ui);
         }
 

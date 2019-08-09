@@ -21,7 +21,8 @@ pub struct DemoApp {
     ball_xy: conrod_core::Point,
     ball_color: conrod_core::Color,
     sine_frequency: f32,
-    rust_logo: conrod_core::image::Id,
+    pub rust_logo: conrod_core::image::Id,
+    pub textedit: String
 }
 
 
@@ -33,6 +34,7 @@ impl DemoApp {
             ball_color: conrod_core::color::WHITE,
             sine_frequency: 1.0,
             rust_logo: rust_logo,
+            textedit: "".to_owned()
         }
     }
 }
@@ -97,6 +99,7 @@ widget_ids! {
         plot_path,
         // Scrollbar
         canvas_scrollbar,
+        text_edit
     }
 }
 
@@ -177,7 +180,7 @@ pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp) {
     let radius = 10.0;
     widget::RoundedRectangle::fill([w, h], radius)
         .color(conrod_core::color::CHARCOAL.alpha(0.25))
-        .middle_of(ids.shapes_canvas)
+        .mid_top_of(ids.canvas)
         .set(ids.rounded_rectangle, ui);
 
     let start = [-40.0, -40.0];
@@ -190,7 +193,7 @@ pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp) {
     let points = once(left).chain(once(top)).chain(once(right));
     widget::PointPath::centred(points).right(SHAPE_GAP).set(ids.point_path, ui);
 
-    widget::Rectangle::fill([80.0, 80.0]).right(SHAPE_GAP).set(ids.rectangle_fill, ui);
+    widget::Rectangle::fill([80.0, 80.0]).mid_top_of(ids.canvas).set(ids.rectangle_fill, ui);
 
     widget::Rectangle::outline([80.0, 80.0]).right(SHAPE_GAP).set(ids.rectangle_outline, ui);
 

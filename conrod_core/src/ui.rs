@@ -9,10 +9,10 @@ use std::sync::atomic::{self, AtomicUsize};
 use fnv;
 use text;
 use theme::Theme;
-use utils;
 use widget::{self, Widget};
 use cursor;
-
+use utils;
+use instant;
 /// A constructor type for building a `Ui` instance with a set of optional parameters.
 pub struct UiBuilder {
     /// The initial dimensions of the window in which the `Ui` exists.
@@ -420,7 +420,7 @@ impl Ui {
                     let widget = self.global_input.current.widget_capturing_mouse;
                     let press_event = event::Ui::Press(widget, press).into();
                     self.global_input.push_event(press_event);
-
+                    
                     if let MouseButton::Left = mouse_button {
                         // Check to see if we need to uncapture the keyboard.
                         if let Some(idx) = self.global_input.current.widget_capturing_keyboard {
@@ -618,7 +618,7 @@ impl Ui {
             // 2. `WidgetUncapturesMouse`
             // 3. `WidgetCapturesMouse`
             Input::Motion(motion) => {
-
+                
                 // Create a `Motion` event.
                 let move_ = event::Motion {
                     motion: motion,

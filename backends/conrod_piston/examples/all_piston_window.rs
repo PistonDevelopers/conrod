@@ -80,6 +80,7 @@ pub fn main() {
         let size = window.size();
         let (win_w, win_h) = (size.width as conrod_core::Scalar, size.height as conrod_core::Scalar);
         if let Some(e) = conrod_piston::event::convert(event.clone(), win_w, win_h) {
+            println!("e{:?}",e.clone());
             ui.handle_event(e);
         }
 
