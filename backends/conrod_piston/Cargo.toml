@@ -1,6 +1,6 @@
 [package]
 name = "conrod_piston"
-version = "0.66.0"
+version = "0.67.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -22,12 +22,12 @@ name = "conrod_piston"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.66" }
+conrod_core = { path = "../../conrod_core", version = "0.67" }
 piston2d-graphics = { version = "0.30" }
 pistoncore-input = "0.24.0"
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.66" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.67" }
 find_folder = "0.3.0"
 image = "0.21"
 petgraph = "0.4"
