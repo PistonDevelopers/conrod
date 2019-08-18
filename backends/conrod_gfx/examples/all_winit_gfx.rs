@@ -8,7 +8,6 @@
 extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_gfx;
-#[macro_use]
 extern crate conrod_winit;
 extern crate gfx;
 extern crate gfx_core;
@@ -55,11 +54,11 @@ fn main() {
     let mut events_loop = winit::EventsLoop::new();
 
     // Initialize gfx things
-    let (window, mut device, mut factory, rtv, _) =
+    let (context, mut device, mut factory, rtv, _) =
         gfx_window_glutin::init::<conrod_gfx::ColorFormat, DepthFormat>(builder, context, &events_loop).unwrap();
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let mut renderer = conrod_gfx::Renderer::new(&mut factory, &rtv, window.get_hidpi_factor() as f64).unwrap();
+    let mut renderer = conrod_gfx::Renderer::new(&mut factory, &rtv, context.window().get_hidpi_factor() as f64).unwrap();
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -113,12 +112,12 @@ fn main() {
     'main: loop {
         // If the window is closed, this will be None for one tick, so to avoid panicking with
         // unwrap, instead break the loop
-        let (win_w, win_h): (u32, u32) = match window.get_inner_size() {
+        let (win_w, win_h): (u32, u32) = match context.window().get_inner_size() {
             Some(s) => s.into(),
             None => break 'main,
         };
 
-        let dpi_factor = window.get_hidpi_factor() as f32;
+        let dpi_factor = context.window().get_hidpi_factor() as f32;
 
         if let Some(primitives) = ui.draw_if_changed() {
             let dims = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
@@ -131,7 +130,7 @@ fn main() {
             renderer.draw(&mut factory,&mut encoder,&image_map);
 
             encoder.flush(&mut device);
-            window.swap_buffers().unwrap();
+            context.swap_buffers().unwrap();
             device.cleanup();
         }
 
@@ -139,7 +138,7 @@ fn main() {
         events_loop.poll_events(|event|{
 
             // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-            if let Some(event) = convert_event(event.clone(), &WindowRef(window.window())) {
+            if let Some(event) = convert_event(event.clone(), &WindowRef(context.window())) {
                 ui.handle_event(event);
             }
 
@@ -150,10 +149,10 @@ fn main() {
                         winit::WindowEvent::KeyboardInput{ input: winit::KeyboardInput{ virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..} |
                         winit::WindowEvent::CloseRequested => should_quit = true,
                         winit::WindowEvent::Resized(logical_size) => {
-                            let hidpi_factor = window.get_hidpi_factor();
+                            let hidpi_factor = context.window().get_hidpi_factor();
                             let physical_size = logical_size.to_physical(hidpi_factor);
-                            window.resize(physical_size);
-                            let (new_color, _) = gfx_window_glutin::new_views::<conrod_gfx::ColorFormat, DepthFormat>(&window);
+                            context.resize(physical_size);
+                            let (new_color, _) = gfx_window_glutin::new_views::<conrod_gfx::ColorFormat, DepthFormat>(&context);
                             renderer.on_resize(new_color);
                         }
                         _ => {},
