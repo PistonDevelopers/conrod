@@ -636,21 +636,25 @@ impl Ui {
                         let last_mouse_xy = self.global_input.current.mouse.xy;
                         let mouse_xy = [x, y];
                         let delta_xy = utils::vec2_sub(mouse_xy, last_mouse_xy);
-                        let distance = (delta_xy[0] + delta_xy[1]).abs().sqrt();
-                        if distance > self.theme.mouse_drag_threshold {
-                            // For each button that is down, trigger a drag event.
-                            let buttons = self.global_input.current.mouse.buttons.clone();
-                            for (btn, btn_xy, widget) in buttons.pressed() {
-                                let total_delta_xy = utils::vec2_sub(mouse_xy, btn_xy);
-                                let event = event::Ui::Drag(widget, event::Drag {
-                                    button: btn,
-                                    origin: btn_xy,
-                                    from: last_mouse_xy,
-                                    to: mouse_xy,
-                                    delta_xy: delta_xy,
-                                    total_delta_xy: total_delta_xy,
-                                    modifiers: self.global_input.current.modifiers,
-                                }).into();
+                        // For each button that is down, trigger a drag event.
+                        let buttons = self.global_input.current.mouse.buttons.clone();
+                        for (btn, btn_xy, widget) in buttons.pressed() {
+                            let total_delta_xy = utils::vec2_sub(mouse_xy, btn_xy);
+                            let distance = (total_delta_xy[0] + total_delta_xy[1]).abs().sqrt();
+                            if distance > self.theme.mouse_drag_threshold {
+                                let event = event::Ui::Drag(
+                                    widget,
+                                    event::Drag {
+                                        button: btn,
+                                        origin: btn_xy,
+                                        from: last_mouse_xy,
+                                        to: mouse_xy,
+                                        delta_xy: delta_xy,
+                                        total_delta_xy: total_delta_xy,
+                                        modifiers: self.global_input.current.modifiers,
+                                    },
+                                )
+                                .into();
                                 self.global_input.push_event(event);
                             }
                         }
