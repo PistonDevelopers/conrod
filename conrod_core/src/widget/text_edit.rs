@@ -242,7 +242,6 @@ impl<'a> Widget for TextEdit<'a> {
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let TextEdit { text, .. } = self;
         let mut text = std::borrow::Cow::Borrowed(text);
-        let mut clipboard: ClipboardContext = ClipboardContext::new().unwrap();
 
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
@@ -617,6 +616,8 @@ impl<'a> Widget for TextEdit<'a> {
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
                                 match cursor {
                                     Cursor::Selection { start, end } => {
+                                        let mut clipboard: ClipboardContext = ClipboardContext::new().unwrap();
+
                                         let (start_idx, end_idx) = {
                                             let line_infos = state.line_infos.iter().cloned();
                                             (
@@ -669,6 +670,7 @@ impl<'a> Widget for TextEdit<'a> {
                         input::Key::V => {
                             // Paste selected text at the current cursor position on ctrl+v.
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
+                                let mut clipboard: ClipboardContext = ClipboardContext::new().unwrap();
                                 let font = ui.fonts.get(font_id).unwrap();
                                 match insert_text(
                                     &clipboard.get_contents().unwrap(),
