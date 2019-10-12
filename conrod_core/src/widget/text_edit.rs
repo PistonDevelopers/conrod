@@ -10,7 +10,7 @@ use utils;
 use widget;
 use cursor;
 use widget::primitive::text::Wrap;
-
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 /// A widget for displaying and mutating multi-line text, given as a `String`.
 ///
@@ -242,6 +242,7 @@ impl<'a> Widget for TextEdit<'a> {
         let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
         let TextEdit { text, .. } = self;
         let mut text = std::borrow::Cow::Borrowed(text);
+        let mut clipboard: ClipboardContext = ClipboardContext::new().unwrap();
 
         // Retrieve the `font_id`, as long as a valid `Font` for it still exists.
         //
@@ -611,6 +612,45 @@ impl<'a> Widget for TextEdit<'a> {
                             }
                         },
 
+                        input::Key::C => {
+                            // Copy selected text.
+                            if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
+                                // Calculate start/end indices of text to copy
+                                match cursor {
+                                    Cursor::Selection { start, end } => {
+                                        let (start_idx, end_idx) = {
+                                            let line_infos = state.line_infos.iter().cloned();
+                                            (
+                                                text::glyph::index_after_cursor(
+                                                    line_infos.clone(),
+                                                    start,
+                                                ),
+                                                text::glyph::index_after_cursor(line_infos, end),
+                                            )
+                                        };
+
+                                        if let (Some(start_idx), Some(end_idx)) =
+                                            (start_idx, end_idx)
+                                        {
+                                            let (start_idx, end_idx) = (
+                                                std::cmp::min(start_idx, end_idx),
+                                                std::cmp::max(start_idx, end_idx),
+                                            );
+
+                                            let text_to_copy: String = text
+                                                .chars() // std::str::Chars
+                                                .skip(start_idx)
+                                                .take(end_idx - start_idx)
+                                                .collect();
+
+                                            clipboard.set_contents(text_to_copy).unwrap();
+                                        }
+                                    }
+                                    Cursor::Idx(_) => {}
+                                };
+                            }
+                        }
+
                         input::Key::E => {
                             // move cursor to end.
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
@@ -626,6 +666,27 @@ impl<'a> Widget for TextEdit<'a> {
                                 }
                             }
                         },
+
+                        input::Key::V => {
+                            // Paste selected text at the current cursor position.
+                            if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
+                                let font = ui.fonts.get(font_id).unwrap();
+                                match insert_text(
+                                    &clipboard.get_contents().unwrap(),
+                                    cursor,
+                                    &text,
+                                    &state.line_infos,
+                                    font,
+                                ) {
+                                    Some((new_text, new_cursor, new_line_infos)) => {
+                                        *text.to_mut() = new_text;
+                                        cursor = new_cursor;
+                                        state.update(|state| state.line_infos = new_line_infos);
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        }
 
                         input::Key::End => { // move cursor to end.
                             let mut line_infos = state.line_infos.iter().cloned();
