@@ -613,9 +613,8 @@ impl<'a> Widget for TextEdit<'a> {
                         },
 
                         input::Key::C => {
-                            // Copy selected text.
+                            // Copy selected text on Ctrl+c.
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
-                                // Calculate start/end indices of text to copy
                                 match cursor {
                                     Cursor::Selection { start, end } => {
                                         let (start_idx, end_idx) = {
@@ -638,7 +637,7 @@ impl<'a> Widget for TextEdit<'a> {
                                             );
 
                                             let text_to_copy: String = text
-                                                .chars() // std::str::Chars
+                                                .chars()
                                                 .skip(start_idx)
                                                 .take(end_idx - start_idx)
                                                 .collect();
@@ -668,7 +667,7 @@ impl<'a> Widget for TextEdit<'a> {
                         },
 
                         input::Key::V => {
-                            // Paste selected text at the current cursor position.
+                            // Paste selected text at the current cursor position on ctrl+v.
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
                                 let font = ui.fonts.get(font_id).unwrap();
                                 match insert_text(
