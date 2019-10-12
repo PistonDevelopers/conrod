@@ -427,6 +427,7 @@ impl<'a> Widget for TextEdit<'a> {
 
         // Check for the following events:
         // - `Text` events for receiving new text.
+        // - Left mouse 'DoubleClick' to select a word.
         // - Left mouse `Press` events for either:
         //     - setting the cursor or start of a selection.
         //     - begin dragging selected text.
@@ -434,9 +435,37 @@ impl<'a> Widget for TextEdit<'a> {
         // - Key presses for cursor movement.
         'events: for widget_event in ui.widget_input(id).events() {
             match widget_event {
+                event::Widget::DoubleClick(click) => {
+                    // Select word on double-click with L mouse button
+                    if let input::MouseButton::Left = click.button {
+                        let abs_xy = utils::vec2_add(click.xy, rect.xy());
+                        let infos = &state.line_infos;
+                        let font = ui.fonts.get(font_id).unwrap();
+                        let closest = closest_cursor_index_and_xy(abs_xy, &text, infos, font);
 
+                        if let Some((closest_cursor, _)) = closest {
+                            cursor = Cursor::Idx(closest_cursor);
+
+                            let (_, cursor_idx) = match cursor {
+                                Cursor::Idx(idx) => (idx, idx),
+                                Cursor::Selection { start, end } => (start, end),
+                            };
+
+                            let line_infos = state.line_infos.iter().cloned();
+
+                            let (start, end) = (
+                                cursor_idx.previous_word_start(&text, line_infos.clone()).unwrap(),
+                                cursor_idx.next_word_end(&text, line_infos).unwrap(),
+                            );
+
+                            cursor = Cursor::Selection {
+                                start,
+                                end,
+                            };
+                        }
+                    }
+                }
                 event::Widget::Press(press) => match press.button {
-
                     // If the left mouse button was pressed, place a `Cursor` with the starting
                     // index at the mouse position.
                     event::Button::Mouse(input::MouseButton::Left, rel_xy) => {
