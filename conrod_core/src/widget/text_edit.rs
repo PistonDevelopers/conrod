@@ -447,8 +447,10 @@ impl<'a> Widget for TextEdit<'a> {
                             let line_infos = state.line_infos.iter().cloned();
 
                             let (start, end) = (
-                                cursor_idx.previous_word_start(&text, line_infos.clone()).unwrap(),
-                                cursor_idx.next_word_end(&text, line_infos).unwrap(),
+                                cursor_idx.previous_word_start(&text, line_infos.clone())
+                                    .unwrap_or(cursor_idx), // account for the first position of the text
+                                cursor_idx.next_word_end(&text, line_infos)
+                                    .unwrap_or(cursor_idx), // account for the last position of the text
                             );
 
                             cursor = Cursor::Selection {
