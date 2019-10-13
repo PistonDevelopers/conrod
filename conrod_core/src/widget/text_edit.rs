@@ -443,14 +443,7 @@ impl<'a> Widget for TextEdit<'a> {
                         let font = ui.fonts.get(font_id).unwrap();
                         let closest = closest_cursor_index_and_xy(abs_xy, &text, infos, font);
 
-                        if let Some((closest_cursor, _)) = closest {
-                            cursor = Cursor::Idx(closest_cursor);
-
-                            let (_, cursor_idx) = match cursor {
-                                Cursor::Idx(idx) => (idx, idx),
-                                Cursor::Selection { start, end } => (start, end),
-                            };
-
+                        if let Some((cursor_idx, _)) = closest {
                             let line_infos = state.line_infos.iter().cloned();
 
                             let (start, end) = (
