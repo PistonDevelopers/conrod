@@ -444,8 +444,22 @@ impl<'a> Widget for TextEdit<'a> {
                         let infos = &state.line_infos;
                         let font = ui.fonts.get(font_id).unwrap();
                         let closest = closest_cursor_index_and_xy(abs_xy, &text, infos, font);
+
                         if let Some((closest_cursor, _)) = closest {
-                            cursor = Cursor::Idx(closest_cursor);
+                            // We may be handling a range selection if the SHIFT key is held while left clicking
+                            if press.modifiers.contains(input::keyboard::ModifierKey::SHIFT) {
+                                let (old_selection_start, _) = match cursor {
+                                    Cursor::Idx(idx) => (idx, idx),
+                                    Cursor::Selection { start, end } => (start, end),
+                                };
+
+                                cursor = Cursor::Selection {
+                                    start: old_selection_start,
+                                    end: closest_cursor,
+                                };
+                            } else {
+                                cursor = Cursor::Idx(closest_cursor);
+                            }
                         }
 
                         // TODO: Differentiate between Selecting and MoveSelection.
