@@ -672,19 +672,23 @@ impl<'a> Widget for TextEdit<'a> {
                             if press.modifiers.contains(input::keyboard::ModifierKey::CTRL) {
                                 let mut clipboard: ClipboardContext = ClipboardContext::new().unwrap();
                                 let font = ui.fonts.get(font_id).unwrap();
-                                match insert_text(
-                                    &clipboard.get_contents().unwrap(),
-                                    cursor,
-                                    &text,
-                                    &state.line_infos,
-                                    font,
-                                ) {
-                                    Some((new_text, new_cursor, new_line_infos)) => {
-                                        *text.to_mut() = new_text;
-                                        cursor = new_cursor;
-                                        state.update(|state| state.line_infos = new_line_infos);
+                                let content = &clipboard.get_contents().unwrap_or(String::from(""));
+
+                                if content.len() > 0 {
+                                    match insert_text(
+                                        content,
+                                        cursor,
+                                        &text,
+                                        &state.line_infos,
+                                        font,
+                                    ) {
+                                        Some((new_text, new_cursor, new_line_infos)) => {
+                                            *text.to_mut() = new_text;
+                                            cursor = new_cursor;
+                                            state.update(|state| state.line_infos = new_line_infos);
+                                        }
+                                        _ => (),
                                     }
-                                    _ => (),
                                 }
                             }
                         }
