@@ -41,7 +41,6 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod_core::image::Map` which describes each of our widget->image mappings.
-    // In our case we only have one image, however the macro may be used to list multiple.
     let rust_logo = load_rust_logo(&display.0);
     let (w, h) = (rust_logo.get_width(), rust_logo.get_height().unwrap());
     let mut image_map = conrod_core::image::Map::new();

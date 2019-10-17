@@ -66,7 +66,6 @@ pub fn main() {
     };
 
     // Create our `conrod_core::image::Map` which describes each of our widget->image mappings.
-    // In our case we only have one image, however the macro may be used to list multiple.
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = image_map.insert(rust_logo);
 
