@@ -22,3 +22,6 @@ rusti.sh
 /examples/**/target
 
 Cargo.lock
+
+#Intellij IDE project configuration files
+.idea/
