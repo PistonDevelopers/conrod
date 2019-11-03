@@ -14,6 +14,7 @@ extern crate fnv;
 extern crate num;
 extern crate input as piston_input;
 extern crate rusttype;
+extern crate copypasta;
 
 pub use color::{Color, Colorable};
 pub use conrod_derive::*;

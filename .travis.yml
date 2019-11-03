@@ -16,6 +16,8 @@ addons:
         packages:
             - libxxf86vm-dev
             - libosmesa6-dev
+            - libxcb-shape0-dev
+            - libxcb-xfixes0-dev
 
 script:
     - cargo check --verbose

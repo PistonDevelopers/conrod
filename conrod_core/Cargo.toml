@@ -29,3 +29,4 @@ num = "0.2"
 pistoncore-input = "0.24"
 rusttype = { version = "0.7", features = ["gpu_cache"] }
 instant = "0.1"
+copypasta = "0.6"
