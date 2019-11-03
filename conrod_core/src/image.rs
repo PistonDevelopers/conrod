@@ -16,15 +16,7 @@ pub struct Id(u32);
 /// A type used to map the `widget::Id` of `Image` widgets to their associated `Img` data.
 ///
 /// The `image::Map` type is usually instantiated and loaded during the "setup" stage of the
-/// application before the main loop begins. A macro is provided to simplify the construction of
-/// maps with multiple images.
-///
-/// ```ignore
-/// let image_map = image_map! {
-///     (RUST_LOGO, image::open("rust-logo.png")?),
-///     (CAT_PIC, image::open("floof.jpeg")?),
-/// };
-/// ```
+/// application before the main loop begins.
 pub struct Map<Img> {
     next_index: u32,
     map: HashMap<Img>,
