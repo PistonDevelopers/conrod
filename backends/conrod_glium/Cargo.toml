@@ -1,6 +1,6 @@
 [package]
 name = "conrod_glium"
-version = "0.67.0"
+version = "0.68.0"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
@@ -16,12 +16,12 @@ name = "conrod_glium"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.67" }
+conrod_core = { path = "../../conrod_core", version = "0.68" }
 glium = { version = "0.24" }
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.67" }
-conrod_winit = { path = "../conrod_winit", version = "0.67" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+conrod_winit = { path = "../conrod_winit", version = "0.68" }
 find_folder = "0.3.0"
 image = "0.21"
 petgraph = "0.4"
