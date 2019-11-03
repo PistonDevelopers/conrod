@@ -18,13 +18,13 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.67" }
-vulkano = "0.14"
-vulkano-shaders = "0.14"
+vulkano = "0.16"
+vulkano-shaders = "0.16"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.67" }
 conrod_winit = { path = "../conrod_winit", version = "0.67" }
 find_folder = "0.3"
 image = "0.21"
-vulkano-win = "0.14"
+vulkano-win = "0.16"
 winit = "0.19"

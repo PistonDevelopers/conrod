@@ -773,9 +773,9 @@ impl Renderer {
         };
 
         let dynamic_state = |scissor| DynamicState {
-            line_width: None,
             viewports: Some(vec![current_viewport.clone()]),
             scissors: Some(vec![scissor]),
+            ..DynamicState::none()
         };
 
         let mut draw_commands = vec![];
