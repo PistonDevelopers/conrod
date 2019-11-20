@@ -17,7 +17,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.68" }
-glium = { version = "0.24" }
+glium = { version = "0.26.0-alpha5" }
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
@@ -26,4 +26,4 @@ find_folder = "0.3.0"
 image = "0.21"
 petgraph = "0.4"
 rand = "0.6"
-winit = "0.19"
+winit = "0.20.0-alpha4"
