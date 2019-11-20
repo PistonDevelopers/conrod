@@ -14,6 +14,8 @@ impl conrod_winit::WinitWindow for GliumDisplayWinitWrapper {
     }
 }
 
+/*
+
 /// In most of the examples the `glutin` crate is used for providing the window context and
 /// events while the `glium` crate is used for displaying `conrod_core::render::Primitives` to the
 /// screen.
@@ -71,6 +73,7 @@ impl EventLoop {
         self.ui_needs_update = true;
     }
 }
+*/
 
 // Conversion functions for converting between types from glium's version of `winit` and
 // `conrod_core`.

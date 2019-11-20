@@ -1,30 +1,34 @@
 //! A simple example that demonstrates using conrod within a basic `winit` window loop, using
 //! `glium` to render the `conrod_core::render::Primitives` to screen.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
+extern crate winit;
 
 mod support;
 
 use conrod_core::{widget, Colorable, Positionable, Widget};
 use glium::Surface;
+use winit::event_loop::ControlFlow;
 
 const WIDTH: u32 = 400;
 const HEIGHT: u32 = 200;
 
 fn main() {
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("Hello Conrod!")
-        .with_dimensions((WIDTH, HEIGHT).into());
+        .with_inner_size((WIDTH, HEIGHT).into());
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
     let display = support::GliumDisplayWinitWrapper(display);
 
     // construct our `Ui`.
@@ -35,7 +39,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -46,62 +52,45 @@ fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
 
-    let mut events = Vec::new();
-
-    'render: loop {
-        events.clear();
-
-        // Get all the new events since the last frame.
-        events_loop.poll_events(|event| { events.push(event); });
-
-        // If there are no new events, wait for one.
-        if events.is_empty() {
-            events_loop.run_forever(|event| {
-                events.push(event);
-                glium::glutin::ControlFlow::Break
-            });
-        }
-
-        // Process the events.
-        for event in events.drain(..) {
-
-            // Break from the loop upon `Escape` or closed window.
-            match event.clone() {
-                glium::glutin::Event::WindowEvent { event, .. } => {
-                    match event {
-                        glium::glutin::WindowEvent::CloseRequested |
-                        glium::glutin::WindowEvent::KeyboardInput {
-                            input: glium::glutin::KeyboardInput {
-                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                                ..
-                            },
+    event_loop.run(move |event, _, control_flow| {
+        // Break from the loop upon `Escape` or closed window.
+        match event.clone() {
+            glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                glium::glutin::event::WindowEvent::CloseRequested
+                | glium::glutin::event::WindowEvent::KeyboardInput {
+                    input:
+                        glium::glutin::event::KeyboardInput {
+                            virtual_keycode: Some(glium::glutin::event::VirtualKeyCode::Escape),
                             ..
-                        } => break 'render,
-                        _ => (),
-                    }
+                        },
+                    ..
+                } => {
+                    *control_flow = ControlFlow::Exit;
+                    return;
                 }
                 _ => (),
-            };
+            },
+            _ => (),
+        };
 
-            // Use the `winit` backend feature to convert the winit event to a conrod input.
-            let input = match support::convert_event(event, &display) {
-                None => continue,
-                Some(input) => input,
-            };
+        // Use the `winit` backend feature to convert the winit event to a conrod input.
+        let input = match support::convert_event(event, &display) {
+            None => return,
+            Some(input) => input,
+        };
 
-            // Handle the input with the `Ui`.
-            ui.handle_event(input);
+        // Handle the input with the `Ui`.
+        ui.handle_event(input);
 
-            // Set the widgets.
-            let ui = &mut ui.set_widgets();
+        // Set the widgets.
+        let ui = &mut ui.set_widgets();
 
-            // "Hello World!" in the middle of the screen.
-            widget::Text::new("Hello World!")
-                .middle_of(ui.window)
-                .color(conrod_core::color::WHITE)
-                .font_size(32)
-                .set(ids.text, ui);
-        }
+        // "Hello World!" in the middle of the screen.
+        widget::Text::new("Hello World!")
+            .middle_of(ui.window)
+            .color(conrod_core::color::WHITE)
+            .font_size(32)
+            .set(ids.text, ui);
 
         // Draw the `Ui` if it has changed.
         if let Some(primitives) = ui.draw_if_changed() {
@@ -111,5 +100,5 @@ fn main() {
             renderer.draw(&display.0, &mut target, &image_map).unwrap();
             target.finish().unwrap();
         }
-    }
+    });
 }
