@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
@@ -38,13 +37,24 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let noto_sans = assets.join("fonts/NotoSans");
     // Store our `font::Id`s in a struct for easy access in the `set_ui` function.
     let fonts = Fonts {
-        regular: ui.fonts.insert_from_file(noto_sans.join("NotoSans-Regular.ttf")).unwrap(),
-        italic: ui.fonts.insert_from_file(noto_sans.join("NotoSans-Italic.ttf")).unwrap(),
-        bold: ui.fonts.insert_from_file(noto_sans.join("NotoSans-Bold.ttf")).unwrap(),
+        regular: ui
+            .fonts
+            .insert_from_file(noto_sans.join("NotoSans-Regular.ttf"))
+            .unwrap(),
+        italic: ui
+            .fonts
+            .insert_from_file(noto_sans.join("NotoSans-Italic.ttf"))
+            .unwrap(),
+        bold: ui
+            .fonts
+            .insert_from_file(noto_sans.join("NotoSans-Bold.ttf"))
+            .unwrap(),
     };
 
     // Specify the default font to use when none is specified by the widget.
@@ -63,10 +73,8 @@ fn main() {
     // Poll events from the window.
     let mut event_loop = support::EventLoop::new();
     'main: loop {
-
         // Handle all events.
         for event in event_loop.next(&mut events_loop) {
-
             // Use the `winit` backend feature to convert the winit event to a conrod one.
             if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
@@ -75,12 +83,13 @@ fn main() {
             match event {
                 glium::glutin::Event::WindowEvent { event, .. } => match event {
                     // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                            ..
-                        },
+                    glium::glutin::WindowEvent::CloseRequested
+                    | glium::glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
                         ..
                     } => break 'main,
                     _ => (),
@@ -119,11 +128,16 @@ fn set_ui(ref mut ui: conrod_core::UiCell, ids: &Ids, fonts: &Fonts) {
     use conrod_core::{color, widget, Colorable, Positionable, Scalar, Sizeable, Widget};
 
     // Our `Canvas` tree, upon which we will place our text widgets.
-    widget::Canvas::new().flow_right(&[
-        (ids.left_col, widget::Canvas::new().color(color::BLACK)),
-        (ids.middle_col, widget::Canvas::new().color(color::DARK_CHARCOAL)),
-        (ids.right_col, widget::Canvas::new().color(color::CHARCOAL)),
-    ]).set(ids.master, ui);
+    widget::Canvas::new()
+        .flow_right(&[
+            (ids.left_col, widget::Canvas::new().color(color::BLACK)),
+            (
+                ids.middle_col,
+                widget::Canvas::new().color(color::DARK_CHARCOAL),
+            ),
+            (ids.right_col, widget::Canvas::new().color(color::CHARCOAL)),
+        ])
+        .set(ids.master, ui);
 
     const DEMO_TEXT: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Mauris aliquet porttitor tellus vel euismod. Integer lobortis volutpat bibendum. Nulla \

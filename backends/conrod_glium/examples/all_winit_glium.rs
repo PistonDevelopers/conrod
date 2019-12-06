@@ -2,7 +2,6 @@
 extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_glium;
-#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
@@ -10,7 +9,7 @@ extern crate image;
 
 mod support;
 
-use conrod_example_shared::{WIN_W, WIN_H};
+use conrod_example_shared::{WIN_H, WIN_W};
 use conrod_glium::Renderer;
 use glium::Surface;
 
@@ -27,23 +26,32 @@ fn main() {
     let display = support::GliumDisplayWinitWrapper(display);
 
     // Construct our `Ui`.
-    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(conrod_example_shared::theme()).build();
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+        .theme(conrod_example_shared::theme())
+        .build();
 
     // The `widget::Id` of each widget instantiated in `conrod_example_shared::gui`.
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Load the Rust logo from our assets folder to use as an example image.
     fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-        let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets")
+            .unwrap();
         let path = assets.join("images/rust.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
-        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+            &rgba_image.into_raw(),
+            image_dimensions,
+        );
         let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
         texture
     }
@@ -73,10 +81,8 @@ fn main() {
     // - Repeat.
     let mut event_loop = support::EventLoop::new();
     'main: loop {
-
         // Handle all events.
         for event in event_loop.next(&mut events_loop) {
-
             // Use the `winit` backend feature to convert the winit event to a conrod one.
             if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
@@ -86,12 +92,13 @@ fn main() {
             match event {
                 glium::glutin::Event::WindowEvent { event, .. } => match event {
                     // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                            ..
-                        },
+                    glium::glutin::WindowEvent::CloseRequested
+                    | glium::glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
                         ..
                     } => break 'main,
                     _ => (),

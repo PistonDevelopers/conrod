@@ -1,0 +1,23 @@
+[package]
+name = "conrod_rendy"
+version = "0.1.0"
+authors = ["David Partouche <david@kaligs.com>"]
+edition = "2018"
+
+[dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.68" }
+rendy = { version = "0.5.1", features = ["base", "init-winit", "vulkan", "texture-image"] }
+lazy_static = "1.4.0"
+env_logger = "0.7.1"
+log = "0.4.8"
+
+[dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+conrod_winit = { path = "../conrod_winit", version = "0.68" }
+find_folder = "0.3.0"
+image = "0.21"
+petgraph = "0.4"
+## glutin_gfx.rs example dependencies
+gfx_window_glutin = "0.31"
+glutin = "0.21"
+winit = "0.19"

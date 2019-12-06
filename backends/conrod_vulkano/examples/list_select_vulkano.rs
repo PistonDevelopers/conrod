@@ -5,7 +5,6 @@
 #[macro_use]
 extern crate conrod_core;
 extern crate conrod_vulkano;
-#[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate image;
@@ -56,7 +55,8 @@ fn main() {
         queue.family(),
         [WIN_W, WIN_H],
         window.surface.window().get_hidpi_factor() as f64,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).build();
@@ -93,7 +93,7 @@ fn main() {
         "Indian Tent Turtle".to_string(),
         "Mud Turtle".to_string(),
         "Painted Turtle".to_string(),
-        "Spotted Turtle".to_string()
+        "Spotted Turtle".to_string(),
     ];
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
@@ -127,8 +127,12 @@ fn main() {
 
             let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
             let dpi_factor = window.surface.window().get_hidpi_factor() as f64;
-            if let Some(cmd) = renderer.fill(&image_map, viewport, dpi_factor, primitives).unwrap() {
-                let buffer = cmd.glyph_cpu_buffer_pool
+            if let Some(cmd) = renderer
+                .fill(&image_map, viewport, dpi_factor, primitives)
+                .unwrap()
+            {
+                let buffer = cmd
+                    .glyph_cpu_buffer_pool
                     .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
                     .unwrap();
                 command_buffer_builder = command_buffer_builder
@@ -144,11 +148,13 @@ fn main() {
                 ) // Info: We need to clear background AND depth buffer here!
                 .expect("Failed to begin render pass!");
 
-            let draw_cmds = renderer.draw(
-                window.queue.clone(),
-                &image_map,
-                [0.0, 0.0, win_w as f32, win_h as f32],
-            ).unwrap();
+            let draw_cmds = renderer
+                .draw(
+                    window.queue.clone(),
+                    &image_map,
+                    [0.0, 0.0, win_w as f32, win_h as f32],
+                )
+                .unwrap();
             for cmd in draw_cmds {
                 let conrod_vulkano::DrawCommand {
                     graphics_pipeline,
@@ -240,13 +246,15 @@ fn main() {
 
 pub struct RenderTarget {
     depth_buffer: Arc<AttachmentImage<D16Unorm>>,
-    render_pass: Arc<RenderPassAbstract + Send + Sync>,
-    framebuffers: Vec<Arc<FramebufferAbstract + Send + Sync>>,
+    render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+    framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 }
 
 impl RenderTarget {
     pub fn new(window: &support::Window) -> Self {
-        let (win_w, win_h) = window.get_dimensions().expect("couldn't get window dimensions");
+        let (win_w, win_h) = window
+            .get_dimensions()
+            .expect("couldn't get window dimensions");
         let win_dims = [win_w, win_h];
         let device = window.device.clone();
         let depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY).unwrap();
@@ -286,26 +294,25 @@ impl RenderTarget {
 
     pub fn handle_resize(&mut self, window: &support::Window) {
         let [fb_w, fb_h, _] = self.framebuffers[0].dimensions();
-        let (win_w, win_h) = window.get_dimensions().expect("couldn't get window dimensions");
+        let (win_w, win_h) = window
+            .get_dimensions()
+            .expect("couldn't get window dimensions");
         let win_dims = [win_w, win_h];
         let device = window.device.clone();
         if fb_w != win_w || fb_h != win_h {
-            self.depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY)
-                .unwrap();
-            self.framebuffers = create_framebuffers(
-                window,
-                self.render_pass.clone(),
-                self.depth_buffer.clone(),
-            );
+            self.depth_buffer =
+                AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY).unwrap();
+            self.framebuffers =
+                create_framebuffers(window, self.render_pass.clone(), self.depth_buffer.clone());
         }
     }
 }
 
 fn create_framebuffers(
     window: &support::Window,
-    render_pass: Arc<RenderPassAbstract + Send + Sync>,
+    render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
     depth_buffer: Arc<AttachmentImage<D16Unorm>>,
-) -> Vec<Arc<FramebufferAbstract + Send + Sync>> {
+) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
     window
         .images
         .iter()
@@ -331,7 +338,9 @@ fn gui(
 ) {
     use conrod_core::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
 
-    widget::Canvas::new().color(conrod_core::color::BLUE).set(ids.canvas, ui);
+    widget::Canvas::new()
+        .color(conrod_core::color::BLUE)
+        .set(ids.canvas, ui);
 
     // Instantiate the `ListSelect` widget.
     let num_items = list_items.len();
@@ -349,7 +358,6 @@ fn gui(
     while let Some(event) = events.next(ui, |i| list_selected.contains(&i)) {
         use conrod_core::widget::list_select::Event;
         match event {
-
             // For the `Item` events we instantiate the `List`'s items.
             Event::Item(item) => {
                 let label = &list_items[item.i];
@@ -378,5 +386,7 @@ fn gui(
     }
 
     // Instantiate the scrollbar for the list.
-    if let Some(s) = scrollbar { s.set(ui); }
+    if let Some(s) = scrollbar {
+        s.set(ui);
+    }
 }
