@@ -104,7 +104,7 @@ pub struct ConrodPipelineDesc;
 
 #[derive(Debug)]
 pub struct ConrodPipeline<B: Backend> {
-    buffer: Escape<Buffer<B>>,
+    buffer: Option<Escape<Buffer<B>>>,
     vertice_count: u32,
 }
 
@@ -136,9 +136,9 @@ where
     fn build<'a>(
         self,
         _ctx: &GraphContext<B>,
-        factory: &mut Factory<B>,
+        _factory: &mut Factory<B>,
         _queue: QueueId,
-        ui: &Ui,
+        _ui: &Ui,
         buffers: Vec<NodeBuffer>,
         images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
@@ -147,6 +147,27 @@ where
         assert!(images.is_empty());
         assert!(set_layouts.is_empty());
 
+        Ok(ConrodPipeline {
+            buffer: None,
+            vertice_count: 0,
+        })
+    }
+}
+
+impl<B> SimpleGraphicsPipeline<B, Ui> for ConrodPipeline<B>
+where
+    B: Backend,
+{
+    type Desc = ConrodPipelineDesc;
+
+    fn prepare(
+        &mut self,
+        factory: &Factory<B>,
+        _queue: QueueId,
+        _set_layouts: &[Handle<DescriptorSetLayout<B>>],
+        _index: usize,
+        ui: &Ui,
+    ) -> PrepareResult {
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         const WIN_W: f32 = 600.0;
         const WIN_H: f32 = 420.0;
@@ -164,16 +185,7 @@ where
                     | PrimitiveKind::Image {
                         color: Some(color), ..
                     } => {
-                        let mut color = color.to_fsa();
-                        match primitive.kind {
-                            PrimitiveKind::Text { .. } => {
-                                color = [1.0, 0.0, 0.0, 1.0];
-                            }
-                            PrimitiveKind::Image { .. } => {
-                                color = [0.0, 1.0, 0.0, 1.0];
-                            }
-                            _ => {}
-                        }
+                        let color = color.to_fsa();
                         let (l, r, b, t) = primitive.rect.l_r_b_t();
 
                         let v = |x, y| {
@@ -229,50 +241,32 @@ where
                     _ => {}
                 }
             }
-        }
 
-        let buffer_size =
-            SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64 * vertices.len() as u64;
+            let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
+                * vertices.len() as u64;
 
-        let mut buffer = factory
-            .create_buffer(
-                BufferInfo {
-                    size: buffer_size,
-                    usage: hal::buffer::Usage::VERTEX,
-                },
-                Dynamic,
-            )
-            .unwrap();
-
-        unsafe {
-            // Fresh buffer.
-            factory
-                .upload_visible_buffer(&mut buffer, 0, &vertices)
+            let mut buffer = factory
+                .create_buffer(
+                    BufferInfo {
+                        size: buffer_size,
+                        usage: hal::buffer::Usage::VERTEX,
+                    },
+                    Dynamic,
+                )
                 .unwrap();
+
+            unsafe {
+                // Fresh buffer.
+                factory
+                    .upload_visible_buffer(&mut buffer, 0, &vertices)
+                    .unwrap();
+            }
+            self.buffer = Some(buffer);
+            self.vertice_count = vertices.len() as u32;
+            PrepareResult::DrawRecord
+        } else {
+            PrepareResult::DrawReuse
         }
-
-        Ok(ConrodPipeline {
-            buffer,
-            vertice_count: vertices.len() as u32,
-        })
-    }
-}
-
-impl<B> SimpleGraphicsPipeline<B, Ui> for ConrodPipeline<B>
-where
-    B: Backend,
-{
-    type Desc = ConrodPipelineDesc;
-
-    fn prepare(
-        &mut self,
-        _factory: &Factory<B>,
-        _queue: QueueId,
-        _set_layouts: &[Handle<DescriptorSetLayout<B>>],
-        _index: usize,
-        _aux: &Ui,
-    ) -> PrepareResult {
-        PrepareResult::DrawReuse
     }
 
     fn draw(
@@ -282,9 +276,11 @@ where
         _index: usize,
         _aux: &Ui,
     ) {
-        unsafe {
-            encoder.bind_vertex_buffers(0, Some((self.buffer.raw(), 0)));
-            encoder.draw(0..self.vertice_count, 0..1);
+        if let Some(buffer) = &self.buffer {
+            unsafe {
+                encoder.bind_vertex_buffers(0, Some((buffer.raw(), 0)));
+                encoder.draw(0..self.vertice_count, 0..1);
+            }
         }
     }
 
