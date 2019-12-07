@@ -16,6 +16,8 @@ use rendy::shader::{
     SpirvShader,
 };
 
+pub mod winit;
+
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
 /// Draw an image from the texture at `tex` in the fragment shader.

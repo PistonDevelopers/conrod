@@ -1,6 +1,6 @@
 use conrod_core::Ui;
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::ConrodPipeline;
+use conrod_rendy::{self, ConrodPipeline};
 use env_logger::Env;
 use rendy::command::Families;
 use rendy::factory::{Config, Factory};
@@ -14,7 +14,7 @@ use rendy::init::{
     winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
-        window::WindowBuilder,
+        window::{Window, WindowBuilder},
     },
     AnyWindowedRendy,
 };
@@ -77,7 +77,7 @@ fn main() {
                 .build(&mut factory, &mut families, &ui)
                 .unwrap();
 
-            run(event_loop, factory, families, graph, ui, ids, app);
+            run(event_loop, factory, families, window, graph, ui, ids, app);
         }
     );
 }
@@ -86,6 +86,7 @@ pub fn run<B: Backend>(
     event_loop: EventLoop<()>,
     mut factory: Factory<B>,
     mut families: Families<B>,
+    window: Window,
     graph: Graph<B, Ui>,
     mut ui: Ui,
     ids: conrod_example_shared::Ids,
@@ -94,6 +95,10 @@ pub fn run<B: Backend>(
     let mut graph = Some(graph);
 
     event_loop.run(move |event, _, control_flow| {
+        if let Some(event) = conrod_rendy::winit::convert_event(event.clone(), &window) {
+            ui.handle_event(event);
+        }
+
         match event {
             Event::EventsCleared => {
                 if let Some(ref mut graph) = graph {

@@ -13,11 +13,6 @@ log = "0.4.8"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
-conrod_winit = { path = "../conrod_winit", version = "0.68" }
 find_folder = "0.3.0"
 image = "0.21"
 petgraph = "0.4"
-## glutin_gfx.rs example dependencies
-gfx_window_glutin = "0.31"
-glutin = "0.21"
-winit = "0.19"
