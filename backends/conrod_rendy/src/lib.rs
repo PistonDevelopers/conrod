@@ -1,13 +1,25 @@
-use conrod_core::render::{PrimitiveKind, PrimitiveWalker};
+use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
 use conrod_core::{color, Scalar, Ui};
-use rendy::command::{QueueId, RenderPassEncoder};
+use gfx_backend_vulkan;
+use rendy::command::{Families, QueueId, RenderPassEncoder};
 use rendy::core::{hal, hal::pso::CreationError, types::Layout};
-use rendy::factory::Factory;
-use rendy::graph::{render::*, GraphContext, NodeBuffer, NodeImage};
+use rendy::factory::{Config, Factory};
+use rendy::graph::{
+    present::PresentNode, render::*, Graph, GraphBuilder, GraphContext, NodeBuffer, NodeImage,
+};
 use rendy::hal::{
+    command::{ClearColor, ClearValue},
     format::Format,
+    image::Kind,
     pso::{DepthStencilDesc, Element, VertexInputRate},
     Backend,
+};
+use rendy::init::{
+    winit::{
+        event_loop::EventLoop,
+        window::{Window, WindowBuilder},
+    },
+    WindowedRendy,
 };
 use rendy::memory::Dynamic;
 use rendy::resource::{Buffer, BufferInfo, DescriptorSetLayout, Escape, Handle};
@@ -16,7 +28,7 @@ use rendy::shader::{
     SpirvShader,
 };
 
-pub mod winit;
+pub mod winit_convert;
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
@@ -168,78 +180,11 @@ where
         _index: usize,
         ui: &Ui,
     ) -> PrepareResult {
-        // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
-        const WIN_W: f32 = 600.0;
-        const WIN_H: f32 = 420.0;
-
-        let vx = |x: Scalar| (x as f32 / (WIN_W / 2.0));
-        let vy = |y: Scalar| -1.0 * (y as f32 / (WIN_H / 2.0));
-
         let mut vertices = vec![];
 
         if let Some(mut primitives) = ui.draw_if_changed() {
             while let Some(primitive) = primitives.next_primitive() {
-                match primitive.kind {
-                    PrimitiveKind::Rectangle { color }
-                    | PrimitiveKind::Text { color, .. }
-                    | PrimitiveKind::Image {
-                        color: Some(color), ..
-                    } => {
-                        let color = color.to_fsa();
-                        let (l, r, b, t) = primitive.rect.l_r_b_t();
-
-                        let v = |x, y| {
-                            // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                            Vertex {
-                                pos: [vx(x), vy(y)],
-                                uv: [0.0, 0.0],
-                                color,
-                                mode: MODE_GEOMETRY,
-                            }
-                        };
-
-                        let mut push_v = |x, y| vertices.push(v(x, y));
-
-                        // Bottom left triangle.
-                        push_v(l, t);
-                        push_v(r, b);
-                        push_v(l, b);
-
-                        // Top right triangle.
-                        push_v(l, t);
-                        push_v(r, b);
-                        push_v(r, t);
-                    }
-                    PrimitiveKind::TrianglesSingleColor { color, triangles } => {
-                        let v = |p: [Scalar; 2]| Vertex {
-                            pos: [vx(p[0]), vy(p[1])],
-                            uv: [0.0, 0.0],
-                            color: color.into(),
-                            mode: MODE_GEOMETRY,
-                        };
-
-                        for triangle in triangles {
-                            vertices.push(v(triangle[0]));
-                            vertices.push(v(triangle[1]));
-                            vertices.push(v(triangle[2]));
-                        }
-                    }
-                    PrimitiveKind::TrianglesMultiColor { triangles } => {
-                        let v = |(p, c): ([Scalar; 2], color::Rgba)| Vertex {
-                            pos: [vx(p[0]), vy(p[1])],
-                            uv: [0.0, 0.0],
-                            color: c.into(),
-                            mode: MODE_GEOMETRY,
-                        };
-
-                        for triangle in triangles {
-                            vertices.push(v(triangle[0]));
-                            vertices.push(v(triangle[1]));
-                            vertices.push(v(triangle[2]));
-                        }
-                    }
-                    _ => {}
-                }
+                vertices.append(&mut self.fill(ui, primitive));
             }
 
             let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
@@ -285,4 +230,152 @@ where
     }
 
     fn dispose(self, _factory: &mut Factory<B>, _aux: &Ui) {}
+}
+
+impl<B: Backend> ConrodPipeline<B> {
+    fn fill(&self, ui: &Ui, primitive: Primitive) -> Vec<Vertex> {
+        // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
+        let vx = |x: Scalar| (x / (ui.win_w / 2.0)) as f32;
+        let vy = |y: Scalar| -1.0 * (y / (ui.win_h / 2.0)) as f32;
+
+        let mut vertices = vec![];
+
+        match primitive.kind {
+            PrimitiveKind::Rectangle { color }
+            | PrimitiveKind::Text { color, .. }
+            | PrimitiveKind::Image {
+                color: Some(color), ..
+            } => {
+                let color = color.to_fsa();
+                let (l, r, b, t) = primitive.rect.l_r_b_t();
+
+                let v = |x, y| {
+                    // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                    Vertex {
+                        pos: [vx(x), vy(y)],
+                        uv: [0.0, 0.0],
+                        color,
+                        mode: MODE_GEOMETRY,
+                    }
+                };
+
+                let mut push_v = |x, y| vertices.push(v(x, y));
+
+                // Bottom left triangle.
+                push_v(l, t);
+                push_v(r, b);
+                push_v(l, b);
+
+                // Top right triangle.
+                push_v(l, t);
+                push_v(r, b);
+                push_v(r, t);
+            }
+            PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                let v = |p: [Scalar; 2]| Vertex {
+                    pos: [vx(p[0]), vy(p[1])],
+                    uv: [0.0, 0.0],
+                    color: color.into(),
+                    mode: MODE_GEOMETRY,
+                };
+
+                for triangle in triangles {
+                    vertices.push(v(triangle[0]));
+                    vertices.push(v(triangle[1]));
+                    vertices.push(v(triangle[2]));
+                }
+            }
+            PrimitiveKind::TrianglesMultiColor { triangles } => {
+                let v = |(p, c): ([Scalar; 2], color::Rgba)| Vertex {
+                    pos: [vx(p[0]), vy(p[1])],
+                    uv: [0.0, 0.0],
+                    color: c.into(),
+                    mode: MODE_GEOMETRY,
+                };
+
+                for triangle in triangles {
+                    vertices.push(v(triangle[0]));
+                    vertices.push(v(triangle[1]));
+                    vertices.push(v(triangle[2]));
+                }
+            }
+            _ => {}
+        }
+        vertices
+    }
+}
+
+pub struct Renderer {
+    window: Window,
+    factory: Factory<gfx_backend_vulkan::Backend>,
+    families: Families<gfx_backend_vulkan::Backend>,
+    graph: Option<Graph<gfx_backend_vulkan::Backend, Ui>>,
+}
+
+impl Renderer {
+    pub fn new(
+        window_builder: WindowBuilder,
+        event_loop: &EventLoop<()>,
+        ui: &Ui,
+        clear_color: [f32; 4],
+    ) -> Self {
+        let config: Config = Default::default();
+        let mut rendy = WindowedRendy::init(&config, window_builder, event_loop).unwrap();
+
+        let mut graph_builder = GraphBuilder::<gfx_backend_vulkan::Backend, Ui>::new();
+        let size = rendy
+            .window
+            .inner_size()
+            .to_physical(rendy.window.hidpi_factor());
+
+        let color = graph_builder.create_image(
+            Kind::D2(size.width as u32, size.height as u32, 1, 1),
+            1,
+            (&rendy.factory as &Factory<gfx_backend_vulkan::Backend>)
+                .get_surface_format(&rendy.surface),
+            Some(ClearValue {
+                color: ClearColor {
+                    float32: clear_color,
+                },
+            }),
+        );
+
+        let pass = graph_builder.add_node(
+            ConrodPipeline::builder()
+                .into_subpass()
+                .with_color(color)
+                .into_pass(),
+        );
+
+        graph_builder.add_node(
+            PresentNode::builder(&rendy.factory, rendy.surface, color).with_dependency(pass),
+        );
+
+        let graph = graph_builder
+            .build(&mut rendy.factory, &mut rendy.families, ui)
+            .unwrap();
+
+        Self {
+            window: rendy.window,
+            factory: rendy.factory,
+            families: rendy.families,
+            graph: Some(graph),
+        }
+    }
+
+    pub fn draw(&mut self, ui: &Ui) {
+        if let Some(graph) = self.graph.as_mut() {
+            graph.run(&mut self.factory, &mut self.families, &ui);
+        }
+    }
+
+    pub fn dispose(&mut self, ui: &Ui) {
+        if let Some(graph) = self.graph.take() {
+            graph.dispose(&mut self.factory, &ui);
+        }
+    }
+
+    pub fn get_window(&self) -> &Window {
+        &self.window
+    }
 }
