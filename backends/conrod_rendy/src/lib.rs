@@ -261,10 +261,8 @@ where
             }
             self.buffer = Some(buffer);
             self.vertice_count = vertices.len() as u32;
-            PrepareResult::DrawRecord
-        } else {
-            PrepareResult::DrawReuse
         }
+        PrepareResult::DrawRecord
     }
 
     fn draw(
