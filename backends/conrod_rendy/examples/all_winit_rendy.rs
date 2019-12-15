@@ -1,6 +1,5 @@
-use conrod_core::Ui;
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::Renderer;
+use conrod_rendy::{ConrodAux, Image, Renderer};
 use rendy::init::winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -10,32 +9,47 @@ use rendy::init::winit::{
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 fn main() {
+    // Create the window manager
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_inner_size((WIN_W, WIN_H).into())
         .with_title("Conrod with Rendy and winit");
 
+    // Create the UI
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
         .build();
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+
+    // Load images
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
+    let logo_path = assets.join("images/rust.png");
+    let image = Image::new(logo_path).unwrap();
     let mut image_map = conrod_core::image::Map::new();
-    struct FakeImage;
-    let rust_logo = image_map.insert(FakeImage);
+    let rust_logo = image_map.insert(image);
+
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
     {
         let mut ui_cell = ui.set_widgets();
         conrod_example_shared::gui(&mut ui_cell, &ids, &mut app);
     }
 
-    let renderer = Renderer::new(window, &event_loop, &ui, CLEAR_COLOR);
-    run(event_loop, renderer, ui, ids, app);
+    let aux = ConrodAux {
+        ui,
+        image_map,
+        image_id: rust_logo,
+    };
+
+    let renderer = Renderer::new(window, &event_loop, &aux, CLEAR_COLOR);
+    run(event_loop, renderer, aux, ids, app);
 }
 
 pub fn run(
     event_loop: EventLoop<()>,
     mut renderer: Renderer,
-    mut ui: Ui,
+    mut aux: ConrodAux,
     ids: conrod_example_shared::Ids,
     mut app: conrod_example_shared::DemoApp,
 ) {
@@ -43,12 +57,12 @@ pub fn run(
         if let Some(event) =
             conrod_rendy::winit_convert::convert_event(event.clone(), renderer.get_window())
         {
-            ui.handle_event(event);
+            aux.ui.handle_event(event);
         }
 
         match event {
             Event::EventsCleared => {
-                renderer.draw(&ui);
+                renderer.draw(&aux);
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -58,12 +72,12 @@ pub fn run(
         }
 
         if *control_flow == ControlFlow::Exit {
-            renderer.dispose(&ui);
+            renderer.dispose(&aux);
         }
 
         // Update widgets if any event has happened
-        if ui.global_input().events().next().is_some() {
-            let mut ui = ui.set_widgets();
+        if aux.ui.global_input().events().next().is_some() {
+            let mut ui = aux.ui.set_widgets();
             conrod_example_shared::gui(&mut ui, &ids, &mut app);
         }
     });

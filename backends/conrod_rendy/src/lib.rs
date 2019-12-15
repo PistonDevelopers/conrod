@@ -1,5 +1,6 @@
 pub mod winit_convert;
 
+use conrod_core::image;
 use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
 use conrod_core::{color, Scalar, Ui};
 use gfx_backend_vulkan;
@@ -30,9 +31,10 @@ use rendy::shader::{
     ShaderKind, ShaderSet, ShaderSetBuilder, SourceLanguage, SourceShaderInfo, SpirvReflection,
     SpirvShader,
 };
-use rendy::texture::{image::ImageTextureConfig, Texture};
+use rendy::texture::{image::ImageTextureConfig, Texture, TextureBuilder};
 use std::fs::File;
 use std::io::BufReader;
+use std::path::PathBuf;
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
@@ -116,6 +118,34 @@ pub struct Vertex {
     pub mode: u32,
 }
 
+pub struct Image {
+    texture_builder: TextureBuilder<'static>,
+}
+
+impl Image {
+    pub fn new(path: PathBuf) -> Result<Image, hal::pso::CreationError> {
+        let image_reader =
+            BufReader::new(File::open(path).map_err(|_| hal::pso::CreationError::Other)?);
+
+        let texture_builder = rendy::texture::image::load_from_image(
+            image_reader,
+            ImageTextureConfig {
+                generate_mips: true,
+                ..Default::default()
+            },
+        )
+        .map_err(|_| hal::pso::CreationError::Other)?;
+
+        Ok(Image { texture_builder })
+    }
+}
+
+pub struct ConrodAux {
+    pub ui: Ui,
+    pub image_map: image::Map<Image>,
+    pub image_id: image::Id,
+}
+
 #[derive(Debug, Default)]
 pub struct ConrodPipelineDesc;
 
@@ -123,11 +153,11 @@ pub struct ConrodPipelineDesc;
 pub struct ConrodPipeline<B: Backend> {
     descriptor_set: Escape<DescriptorSet<B>>,
     buffer: Option<Escape<Buffer<B>>>,
-    texture: Texture<B>,
+    texture: Option<Texture<B>>,
     vertice_count: u32,
 }
 
-impl<B> SimpleGraphicsPipelineDesc<B, Ui> for ConrodPipelineDesc
+impl<B> SimpleGraphicsPipelineDesc<B, ConrodAux> for ConrodPipelineDesc
 where
     B: Backend,
 {
@@ -148,7 +178,7 @@ where
         SHADER_REFLECTION.layout().unwrap()
     }
 
-    fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &Ui) -> ShaderSet<B> {
+    fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &ConrodAux) -> ShaderSet<B> {
         SHADERS.build(factory, Default::default()).unwrap()
     }
 
@@ -157,58 +187,48 @@ where
         _ctx: &GraphContext<B>,
         factory: &mut Factory<B>,
         queue: QueueId,
-        _ui: &Ui,
+        aux: &ConrodAux,
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
     ) -> Result<Self::Pipeline, CreationError> {
-        // This is how we can load an image and create a new texture.
-        let assets = find_folder::Search::KidsThenParents(3, 5)
-            .for_folder("assets")
-            .unwrap();
-        let logo_path = assets.join("images/rust.png");
-        let image_reader =
-            BufReader::new(File::open(logo_path).map_err(|_| hal::pso::CreationError::Other)?);
-
-        let texture_builder = rendy::texture::image::load_from_image(
-            image_reader,
-            ImageTextureConfig {
-                generate_mips: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|_| hal::pso::CreationError::Other)?;
-
-        let texture = texture_builder
-            .build(
-                ImageState {
-                    queue,
-                    stage: hal::pso::PipelineStage::FRAGMENT_SHADER,
-                    access: hal::image::Access::SHADER_READ,
-                    layout: hal::image::Layout::ShaderReadOnlyOptimal,
-                },
-                factory,
-            )
-            .unwrap();
-
         let descriptor_set = factory
             .create_descriptor_set(set_layouts[0].clone())
             .unwrap();
 
-        unsafe {
-            factory
-                .device()
-                .write_descriptor_sets(vec![hal::pso::DescriptorSetWrite {
-                    set: descriptor_set.raw(),
-                    binding: 0,
-                    array_offset: 0,
-                    descriptors: vec![hal::pso::Descriptor::CombinedImageSampler(
-                        texture.view().raw(),
-                        hal::image::Layout::ShaderReadOnlyOptimal,
-                        texture.sampler().raw(),
-                    )],
-                }]);
-        }
+        let image = aux.image_map.get(&aux.image_id);
+        let texture = if let Some(image) = image {
+            let texture = image
+                .texture_builder
+                .build(
+                    ImageState {
+                        queue,
+                        stage: hal::pso::PipelineStage::FRAGMENT_SHADER,
+                        access: hal::image::Access::SHADER_READ,
+                        layout: hal::image::Layout::ShaderReadOnlyOptimal,
+                    },
+                    factory,
+                )
+                .unwrap();
+
+            unsafe {
+                factory
+                    .device()
+                    .write_descriptor_sets(vec![hal::pso::DescriptorSetWrite {
+                        set: descriptor_set.raw(),
+                        binding: 0,
+                        array_offset: 0,
+                        descriptors: vec![hal::pso::Descriptor::CombinedImageSampler(
+                            texture.view().raw(),
+                            hal::image::Layout::ShaderReadOnlyOptimal,
+                            texture.sampler().raw(),
+                        )],
+                    }]);
+            }
+            Some(texture)
+        } else {
+            None
+        };
 
         Ok(ConrodPipeline {
             descriptor_set,
@@ -219,7 +239,7 @@ where
     }
 }
 
-impl<B> SimpleGraphicsPipeline<B, Ui> for ConrodPipeline<B>
+impl<B> SimpleGraphicsPipeline<B, ConrodAux> for ConrodPipeline<B>
 where
     B: Backend,
 {
@@ -231,13 +251,13 @@ where
         _queue: QueueId,
         _set_layouts: &[Handle<DescriptorSetLayout<B>>],
         _index: usize,
-        ui: &Ui,
+        aux: &ConrodAux,
     ) -> PrepareResult {
         let mut vertices = vec![];
 
-        if let Some(mut primitives) = ui.draw_if_changed() {
+        if let Some(mut primitives) = aux.ui.draw_if_changed() {
             while let Some(primitive) = primitives.next_primitive() {
-                vertices.append(&mut self.fill(ui, primitive));
+                vertices.append(&mut self.fill(&aux.ui, primitive));
             }
 
             let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
@@ -270,7 +290,7 @@ where
         layout: &<B as Backend>::PipelineLayout,
         mut encoder: RenderPassEncoder<'_, B>,
         _index: usize,
-        _aux: &Ui,
+        _aux: &ConrodAux,
     ) {
         if let Some(buffer) = &self.buffer {
             unsafe {
@@ -286,7 +306,7 @@ where
         }
     }
 
-    fn dispose(self, _factory: &mut Factory<B>, _aux: &Ui) {}
+    fn dispose(self, _factory: &mut Factory<B>, _aux: &ConrodAux) {}
 }
 
 impl<B: Backend> ConrodPipeline<B> {
@@ -416,20 +436,20 @@ pub struct Renderer {
     window: Window,
     factory: Factory<gfx_backend_vulkan::Backend>,
     families: Families<gfx_backend_vulkan::Backend>,
-    graph: Option<Graph<gfx_backend_vulkan::Backend, Ui>>,
+    graph: Option<Graph<gfx_backend_vulkan::Backend, ConrodAux>>,
 }
 
 impl Renderer {
     pub fn new(
         window_builder: WindowBuilder,
         event_loop: &EventLoop<()>,
-        ui: &Ui,
+        aux: &ConrodAux,
         clear_color: [f32; 4],
     ) -> Self {
         let config: Config = Default::default();
         let mut rendy = WindowedRendy::init(&config, window_builder, event_loop).unwrap();
 
-        let mut graph_builder = GraphBuilder::<gfx_backend_vulkan::Backend, Ui>::new();
+        let mut graph_builder = GraphBuilder::<gfx_backend_vulkan::Backend, ConrodAux>::new();
         let size = rendy
             .window
             .inner_size()
@@ -459,7 +479,7 @@ impl Renderer {
         );
 
         let graph = graph_builder
-            .build(&mut rendy.factory, &mut rendy.families, ui)
+            .build(&mut rendy.factory, &mut rendy.families, aux)
             .unwrap();
 
         Self {
@@ -470,16 +490,16 @@ impl Renderer {
         }
     }
 
-    pub fn draw(&mut self, ui: &Ui) {
+    pub fn draw(&mut self, aux: &ConrodAux) {
         self.factory.maintain(&mut self.families);
         if let Some(graph) = self.graph.as_mut() {
-            graph.run(&mut self.factory, &mut self.families, &ui);
+            graph.run(&mut self.factory, &mut self.families, aux);
         }
     }
 
-    pub fn dispose(&mut self, ui: &Ui) {
+    pub fn dispose(&mut self, aux: &ConrodAux) {
         if let Some(graph) = self.graph.take() {
-            graph.dispose(&mut self.factory, &ui);
+            graph.dispose(&mut self.factory, aux);
         }
     }
 
