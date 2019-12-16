@@ -1,9 +1,26 @@
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::{ConrodAux, Image, Renderer};
-use rendy::init::winit::{
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+use conrod_rendy::{ConrodAux, Image, ConrodPipeline};
+use rendy::{
+    command::{Families},
+    factory::{self, Factory},
+    graph::{
+        Graph,
+        GraphBuilder,
+        present::PresentNode,
+        render::{RenderGroupBuilder, SimpleGraphicsPipeline},
+    },
+    hal::{
+        command::{ClearColor, ClearValue},
+        image::Kind,
+    },
+    init::{
+        WindowedRendy,
+        winit::{
+            event::{Event, WindowEvent},
+            event_loop::{ControlFlow, EventLoop},
+            window::{Window, WindowBuilder},
+        },
+    },
 };
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
@@ -11,7 +28,7 @@ const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 fn main() {
     // Create the window manager
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
+    let window_builder = WindowBuilder::new()
         .with_inner_size((WIN_W, WIN_H).into())
         .with_title("Conrod with Rendy and winit");
 
@@ -42,27 +59,71 @@ fn main() {
         image_id: rust_logo,
     };
 
-    let renderer = Renderer::new(window, &event_loop, &aux, CLEAR_COLOR);
-    run(event_loop, renderer, aux, ids, app);
+    let config: factory::Config = Default::default();
+    let rendy = WindowedRendy::init(&config, window_builder, &event_loop).unwrap();
+    let mut factory = rendy.factory;
+    let mut families = rendy.families;
+    let surface = rendy.surface;
+    let window = rendy.window;
+
+    let mut graph_builder = GraphBuilder::<gfx_backend_vulkan::Backend, ConrodAux>::new();
+    let size = window
+        .inner_size()
+        .to_physical(window.hidpi_factor());
+
+    let color = graph_builder.create_image(
+        Kind::D2(size.width as u32, size.height as u32, 1, 1),
+        1,
+        (&factory as &Factory<gfx_backend_vulkan::Backend>)
+            .get_surface_format(&surface),
+        Some(ClearValue {
+            color: ClearColor {
+                float32: CLEAR_COLOR,
+            },
+        }),
+    );
+
+    let pass = graph_builder.add_node(
+        ConrodPipeline::builder()
+            .into_subpass()
+            .with_color(color)
+            .into_pass(),
+    );
+
+    graph_builder.add_node(
+        PresentNode::builder(&factory, surface, color).with_dependency(pass),
+    );
+
+    let graph = graph_builder
+        .build(&mut factory, &mut families, &aux)
+        .unwrap();
+
+    run(event_loop, aux, ids, app, factory, families, window, Some(graph));
 }
 
 pub fn run(
     event_loop: EventLoop<()>,
-    mut renderer: Renderer,
     mut aux: ConrodAux,
     ids: conrod_example_shared::Ids,
     mut app: conrod_example_shared::DemoApp,
+    mut factory: Factory<gfx_backend_vulkan::Backend>,
+    mut families: Families<gfx_backend_vulkan::Backend>,
+    window: Window,
+    mut graph: Option<Graph<gfx_backend_vulkan::Backend, ConrodAux>>,
 ) {
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) =
-            conrod_rendy::winit_convert::convert_event(event.clone(), renderer.get_window())
+            conrod_rendy::winit_convert::convert_event(event.clone(), &window)
         {
             aux.ui.handle_event(event);
         }
 
         match event {
             Event::EventsCleared => {
-                renderer.draw(&aux);
+                factory.maintain(&mut families);
+                if let Some(graph) = graph.as_mut() {
+                    graph.run(&mut factory, &mut families, &aux);
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -72,7 +133,9 @@ pub fn run(
         }
 
         if *control_flow == ControlFlow::Exit {
-            renderer.dispose(&aux);
+            if let Some(graph) = graph.take() {
+                graph.dispose(&mut factory, &aux);
+            }
         }
 
         // Update widgets if any event has happened

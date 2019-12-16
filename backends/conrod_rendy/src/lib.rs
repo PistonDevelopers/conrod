@@ -3,27 +3,17 @@ pub mod winit_convert;
 use conrod_core::image;
 use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
 use conrod_core::{color, Scalar, Ui};
-use gfx_backend_vulkan;
-use rendy::command::{Families, QueueId, RenderPassEncoder};
+use rendy::command::{QueueId, RenderPassEncoder};
 use rendy::core::{hal, hal::pso::CreationError, types::Layout};
-use rendy::factory::{Config, Factory, ImageState};
+use rendy::factory::{Factory, ImageState};
 use rendy::graph::{
-    present::PresentNode, render::*, Graph, GraphBuilder, GraphContext, NodeBuffer, NodeImage,
+    render::*, GraphContext, NodeBuffer, NodeImage,
 };
 use rendy::hal::{
-    command::{ClearColor, ClearValue},
     device::Device,
     format::Format,
-    image::Kind,
     pso::{DepthStencilDesc, Element, VertexInputRate},
     Backend,
-};
-use rendy::init::{
-    winit::{
-        event_loop::EventLoop,
-        window::{Window, WindowBuilder},
-    },
-    WindowedRendy,
 };
 use rendy::memory::Dynamic;
 use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Handle};
@@ -429,81 +419,5 @@ impl<B: Backend> ConrodPipeline<B> {
             _ => {}
         }
         vertices
-    }
-}
-
-pub struct Renderer {
-    window: Window,
-    factory: Factory<gfx_backend_vulkan::Backend>,
-    families: Families<gfx_backend_vulkan::Backend>,
-    graph: Option<Graph<gfx_backend_vulkan::Backend, ConrodAux>>,
-}
-
-impl Renderer {
-    pub fn new(
-        window_builder: WindowBuilder,
-        event_loop: &EventLoop<()>,
-        aux: &ConrodAux,
-        clear_color: [f32; 4],
-    ) -> Self {
-        let config: Config = Default::default();
-        let mut rendy = WindowedRendy::init(&config, window_builder, event_loop).unwrap();
-
-        let mut graph_builder = GraphBuilder::<gfx_backend_vulkan::Backend, ConrodAux>::new();
-        let size = rendy
-            .window
-            .inner_size()
-            .to_physical(rendy.window.hidpi_factor());
-
-        let color = graph_builder.create_image(
-            Kind::D2(size.width as u32, size.height as u32, 1, 1),
-            1,
-            (&rendy.factory as &Factory<gfx_backend_vulkan::Backend>)
-                .get_surface_format(&rendy.surface),
-            Some(ClearValue {
-                color: ClearColor {
-                    float32: clear_color,
-                },
-            }),
-        );
-
-        let pass = graph_builder.add_node(
-            ConrodPipeline::builder()
-                .into_subpass()
-                .with_color(color)
-                .into_pass(),
-        );
-
-        graph_builder.add_node(
-            PresentNode::builder(&rendy.factory, rendy.surface, color).with_dependency(pass),
-        );
-
-        let graph = graph_builder
-            .build(&mut rendy.factory, &mut rendy.families, aux)
-            .unwrap();
-
-        Self {
-            window: rendy.window,
-            factory: rendy.factory,
-            families: rendy.families,
-            graph: Some(graph),
-        }
-    }
-
-    pub fn draw(&mut self, aux: &ConrodAux) {
-        self.factory.maintain(&mut self.families);
-        if let Some(graph) = self.graph.as_mut() {
-            graph.run(&mut self.factory, &mut self.families, aux);
-        }
-    }
-
-    pub fn dispose(&mut self, aux: &ConrodAux) {
-        if let Some(graph) = self.graph.take() {
-            graph.dispose(&mut self.factory, aux);
-        }
-    }
-
-    pub fn get_window(&self) -> &Window {
-        &self.window
     }
 }
