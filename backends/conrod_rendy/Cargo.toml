@@ -6,12 +6,12 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.68" }
-rendy = { version = "0.5.1", features = ["base", "init-winit", "vulkan", "texture-image"] }
+rendy = { version = "0.5.1", features = ["base", "init-winit", "texture-image"] }
 lazy_static = "1.4.0"
-gfx-backend-vulkan = "0.4.0"
-find_folder = "0.3.0"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+find_folder = "0.3.0"
 image = "0.21"
 petgraph = "0.4"
+rendy = { version = "0.5.1", features = ["vulkan"] }
