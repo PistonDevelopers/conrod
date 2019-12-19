@@ -1,5 +1,5 @@
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::{ConrodAux, ConrodPipeline, Image};
+use conrod_rendy::{ConrodAux, ConrodImage, ConrodPipeline};
 use rendy::{
     command::Families,
     factory::{self, Factory},
@@ -32,18 +32,22 @@ fn main() {
         .with_inner_size((WIN_W, WIN_H).into())
         .with_title("Conrod with Rendy and winit");
 
-    // Create the UI
+    // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
         .build();
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
-    // Load images
+    // Load font from file
     let assets = find_folder::Search::KidsThenParents(3, 5)
         .for_folder("assets")
         .unwrap();
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
+
+    // Load the Rust logo from our assets folder to use as an example image.
     let logo_path = assets.join("images/rust.png");
-    let image = Image::new(logo_path).unwrap();
+    let image = ConrodImage::new(logo_path).unwrap();
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = image_map.insert(image);
 

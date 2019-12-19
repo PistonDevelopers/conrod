@@ -1,17 +1,17 @@
 pub mod winit_convert;
 
-use conrod_core::image;
+use conrod_core::image::{Id, Map};
 use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
 use conrod_core::{color, Scalar, Ui};
+use image;
 use rendy::command::{QueueId, RenderPassEncoder};
 use rendy::core::{hal, hal::pso::CreationError, types::Layout};
 use rendy::factory::{Factory, ImageState};
-use rendy::graph::{
-    render::*, GraphContext, NodeBuffer, NodeImage,
-};
+use rendy::graph::{render::*, GraphContext, NodeBuffer, NodeImage};
 use rendy::hal::{
     device::Device,
     format::Format,
+    image::{Kind, ViewKind},
     pso::{DepthStencilDesc, Element, VertexInputRate},
     Backend,
 };
@@ -21,9 +21,7 @@ use rendy::shader::{
     ShaderKind, ShaderSet, ShaderSetBuilder, SourceLanguage, SourceShaderInfo, SpirvReflection,
     SpirvShader,
 };
-use rendy::texture::{image::ImageTextureConfig, Texture, TextureBuilder};
-use std::fs::File;
-use std::io::BufReader;
+use rendy::texture::{Texture, TextureBuilder};
 use std::path::PathBuf;
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
@@ -108,32 +106,36 @@ pub struct Vertex {
     pub mode: u32,
 }
 
-pub struct Image {
+pub struct ConrodImage {
     texture_builder: TextureBuilder<'static>,
+    width: u32,
+    height: u32,
 }
 
-impl Image {
-    pub fn new(path: PathBuf) -> Result<Image, hal::pso::CreationError> {
-        let image_reader =
-            BufReader::new(File::open(path).map_err(|_| hal::pso::CreationError::Other)?);
+impl ConrodImage {
+    pub fn new(path: PathBuf) -> Result<ConrodImage, image::ImageError> {
+        let image = image::open(path)?.to_rgba();
+        let (width, height) = image.dimensions();
 
-        let texture_builder = rendy::texture::image::load_from_image(
-            image_reader,
-            ImageTextureConfig {
-                generate_mips: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|_| hal::pso::CreationError::Other)?;
+        let texture_builder = TextureBuilder::new()
+            .with_raw_data(image.into_vec(), Format::Rgba8Srgb)
+            .with_data_width(width)
+            .with_data_height(height)
+            .with_kind(Kind::D2(width, height, 1, 1))
+            .with_view_kind(ViewKind::D2);
 
-        Ok(Image { texture_builder })
+        Ok(ConrodImage {
+            texture_builder,
+            width,
+            height,
+        })
     }
 }
 
 pub struct ConrodAux {
     pub ui: Ui,
-    pub image_map: image::Map<Image>,
-    pub image_id: image::Id,
+    pub image_map: Map<ConrodImage>,
+    pub image_id: Id,
 }
 
 #[derive(Debug, Default)]
@@ -247,7 +249,7 @@ where
 
         if let Some(mut primitives) = aux.ui.draw_if_changed() {
             while let Some(primitive) = primitives.next_primitive() {
-                vertices.append(&mut self.fill(&aux.ui, primitive));
+                vertices.append(&mut self.fill(aux, primitive));
             }
 
             let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
@@ -300,11 +302,11 @@ where
 }
 
 impl<B: Backend> ConrodPipeline<B> {
-    fn fill(&self, ui: &Ui, primitive: Primitive) -> Vec<Vertex> {
+    fn fill(&self, aux: &ConrodAux, primitive: Primitive) -> Vec<Vertex> {
         // TODO: Get the dpi factor
         let dpi_factor = 1.0;
-        let half_win_w = ui.win_w / 2.0;
-        let half_win_h = ui.win_h / 2.0;
+        let half_win_w = aux.ui.win_w / 2.0;
+        let half_win_h = aux.ui.win_h / 2.0;
 
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
@@ -368,53 +370,62 @@ impl<B: Backend> ConrodPipeline<B> {
                 }
             }
             PrimitiveKind::Image {
-                color, source_rect, ..
+                image_id,
+                color,
+                source_rect,
             } => {
-                let color = color.unwrap_or(color::WHITE).to_fsa();
-                // TODO: Get the image reference
-                //                let (image_w, image_h) = (image_ref.width, image_ref.height);
-                let (image_w, image_h) = (144, 144);
-                let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
+                if let Some(image_ref) = aux.image_map.get(&image_id) {
+                    let color = color.unwrap_or(color::WHITE).to_fsa();
+                    let (image_w, image_h) = (image_ref.width, image_ref.height);
+                    let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
 
-                let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
-                    Some(src_rect) => {
-                        let (l, r, b, t) = src_rect.l_r_b_t();
-                        (
-                            (l / image_w) as f32,
-                            (r / image_w) as f32,
-                            1.0 - (b / image_h) as f32,
-                            1.0 - (t / image_h) as f32,
-                        )
-                    }
-                    None => (0.0, 1.0, 1.0, 0.0),
-                };
+                    let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
+                        Some(src_rect) => {
+                            let (l, r, b, t) = src_rect.l_r_b_t();
+                            (
+                                (l / image_w) as f32,
+                                (r / image_w) as f32,
+                                1.0 - (b / image_h) as f32,
+                                1.0 - (t / image_h) as f32,
+                            )
+                        }
+                        None => (0.0, 1.0, 1.0, 0.0),
+                    };
 
-                let v = |x, y, t| {
-                    // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                    let x = (x * dpi_factor / half_win_w) as f32;
-                    let y = -((y * dpi_factor / half_win_h) as f32);
-                    Vertex {
-                        pos: [x, y],
-                        uv: t,
-                        color: color,
-                        mode: MODE_IMAGE,
-                    }
-                };
+                    let v = |x, y, t| {
+                        // Convert from conrod Scalar range to GL range -1.0 to 1.0.
+                        let x = (x * dpi_factor / half_win_w) as f32;
+                        let y = -((y * dpi_factor / half_win_h) as f32);
+                        Vertex {
+                            pos: [x, y],
+                            uv: t,
+                            color: color,
+                            mode: MODE_IMAGE,
+                        }
+                    };
 
-                let mut push_v = |x, y, t| vertices.push(v(x, y, t));
+                    let mut push_v = |x, y, t| vertices.push(v(x, y, t));
 
-                // Swap bottom and top to suit reversed vulkan coords.
-                let (l, r, b, t) = primitive.rect.l_r_b_t();
+                    // Swap bottom and top to suit reversed vulkan coords.
+                    let (l, r, b, t) = primitive.rect.l_r_b_t();
 
-                // Bottom left triangle.
-                push_v(l, t, [uv_l, uv_t]);
-                push_v(r, b, [uv_r, uv_b]);
-                push_v(l, b, [uv_l, uv_b]);
+                    // Bottom left triangle.
+                    push_v(l, t, [uv_l, uv_t]);
+                    push_v(r, b, [uv_r, uv_b]);
+                    push_v(l, b, [uv_l, uv_b]);
 
-                // Top right triangle.
-                push_v(l, t, [uv_l, uv_t]);
-                push_v(r, b, [uv_r, uv_b]);
-                push_v(r, t, [uv_r, uv_t]);
+                    // Top right triangle.
+                    push_v(l, t, [uv_l, uv_t]);
+                    push_v(r, b, [uv_r, uv_b]);
+                    push_v(r, t, [uv_r, uv_t]);
+                }
+            }
+            PrimitiveKind::Text {
+                color,
+                text,
+                font_id,
+            } => {
+                let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
             }
             _ => {}
         }
