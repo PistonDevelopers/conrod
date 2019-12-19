@@ -1,6 +1,7 @@
 pub mod winit_convert;
 
 use conrod_core::image::{Id, Map};
+use conrod_core::mesh::Mesh;
 use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
 use conrod_core::{color, Scalar, Ui};
 use image;
@@ -143,6 +144,7 @@ pub struct ConrodPipelineDesc;
 
 #[derive(Debug)]
 pub struct ConrodPipeline<B: Backend> {
+    mesh: Mesh,
     descriptor_set: Escape<DescriptorSet<B>>,
     buffer: Option<Escape<Buffer<B>>>,
     texture: Option<Texture<B>>,
@@ -222,7 +224,15 @@ where
             None
         };
 
+        let mesh = Mesh {
+            glyph_cache,
+            glyph_cache_pixel_buffer,
+            commands,
+            vertices,
+        };
+
         Ok(ConrodPipeline {
+            mesh,
             descriptor_set,
             buffer: None,
             texture,
