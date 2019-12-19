@@ -1,10 +1,9 @@
 pub mod winit_convert;
 
 use conrod_core::image::{Id, Map};
-use conrod_core::mesh::Mesh;
-use conrod_core::render::{Primitive, PrimitiveKind, PrimitiveWalker};
-use conrod_core::{color, Scalar, Ui};
 use image;
+use conrod_core::mesh::{self, Mesh};
+use conrod_core::{Rect, Ui};
 use rendy::command::{QueueId, RenderPassEncoder};
 use rendy::core::{hal, hal::pso::CreationError, types::Layout};
 use rendy::factory::{Factory, ImageState};
@@ -134,9 +133,11 @@ impl ConrodImage {
 }
 
 pub struct ConrodAux {
+    // TODO: This could just be a `&'a Ui` instead.
     pub ui: Ui,
     pub image_map: Map<ConrodImage>,
     pub image_id: Id,
+    pub dpi_factor: f64,
 }
 
 #[derive(Debug, Default)]
@@ -149,6 +150,12 @@ pub struct ConrodPipeline<B: Backend> {
     buffer: Option<Escape<Buffer<B>>>,
     texture: Option<Texture<B>>,
     vertice_count: u32,
+}
+
+impl mesh::ImageDimensions for ConrodImage {
+    fn dimensions(&self) -> [u32; 2] {
+        [self.width, self.height]
+    }
 }
 
 impl<B> SimpleGraphicsPipelineDesc<B, ConrodAux> for ConrodPipelineDesc
@@ -224,12 +231,10 @@ where
             None
         };
 
-        let mesh = Mesh {
-            glyph_cache,
-            glyph_cache_pixel_buffer,
-            commands,
-            vertices,
-        };
+        // TODO: Consider using `Mesh::with_glyph_cache_dimensions` and allowing user to specify
+        // glyph cache dimensions. Currently we just use the default size, but this is not always
+        // enough for large GUIs with lots of text.
+        let mesh = Mesh::new();
 
         Ok(ConrodPipeline {
             mesh,
@@ -255,35 +260,50 @@ where
         _index: usize,
         aux: &ConrodAux,
     ) -> PrepareResult {
-        let mut vertices = vec![];
+        let primitives = match aux.ui.draw_if_changed() {
+            None => return PrepareResult::DrawReuse,
+            Some(prims) => prims,
+        };
 
-        if let Some(mut primitives) = aux.ui.draw_if_changed() {
-            while let Some(primitive) = primitives.next_primitive() {
-                vertices.append(&mut self.fill(aux, primitive));
+        let viewport = Rect::from_xy_dim([0.0; 2], [aux.ui.win_w, aux.ui.win_h]);
+        let fill = self.mesh.fill(viewport, aux.dpi_factor, &aux.image_map, primitives)
+            .expect("failed to fill mesh");
+
+        // TODO: Re-upload `mesh.glyph_cache_pixel_buffer()` to GPU based on
+        // `mesh.glyph_cache_requires_upload`.
+
+        // TODO: Remove this in favour of `unsafe`ly casting the `&[conrod_core::mesh::Vertex]`
+        // to `&[Vertex]` after ensuring layouts are the same.
+        let vertices: Vec<Vertex> = self.mesh.vertices().iter().map(|v| {
+            Vertex {
+                pos: v.position,
+                uv: v.tex_coords,
+                color: v.rgba,
+                mode: v.mode,
             }
+        }).collect();
 
-            let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
-                * vertices.len() as u64;
+        let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
+            * vertices.len() as u64;
 
-            let mut buffer = factory
-                .create_buffer(
-                    BufferInfo {
-                        size: buffer_size,
-                        usage: hal::buffer::Usage::VERTEX,
-                    },
-                    Dynamic,
-                )
+        let mut buffer = factory
+            .create_buffer(
+                BufferInfo {
+                    size: buffer_size,
+                    usage: hal::buffer::Usage::VERTEX,
+                },
+                Dynamic,
+            )
+            .unwrap();
+
+        unsafe {
+            // Fresh buffer.
+            factory
+                .upload_visible_buffer(&mut buffer, 0, &vertices)
                 .unwrap();
-
-            unsafe {
-                // Fresh buffer.
-                factory
-                    .upload_visible_buffer(&mut buffer, 0, &vertices)
-                    .unwrap();
-            }
-            self.buffer = Some(buffer);
-            self.vertice_count = vertices.len() as u32;
         }
+        self.buffer = Some(buffer);
+        self.vertice_count = vertices.len() as u32;
         PrepareResult::DrawRecord
     }
 
@@ -309,136 +329,4 @@ where
     }
 
     fn dispose(self, _factory: &mut Factory<B>, _aux: &ConrodAux) {}
-}
-
-impl<B: Backend> ConrodPipeline<B> {
-    fn fill(&self, aux: &ConrodAux, primitive: Primitive) -> Vec<Vertex> {
-        // TODO: Get the dpi factor
-        let dpi_factor = 1.0;
-        let half_win_w = aux.ui.win_w / 2.0;
-        let half_win_h = aux.ui.win_h / 2.0;
-
-        // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
-        let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
-        let vy = |y: Scalar| -1.0 * (y * dpi_factor / half_win_h) as f32;
-
-        let mut vertices = vec![];
-
-        match primitive.kind {
-            PrimitiveKind::Rectangle { color } => {
-                let color = color.to_fsa();
-                let (l, r, b, t) = primitive.rect.l_r_b_t();
-
-                let v = |x, y| {
-                    // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                    Vertex {
-                        pos: [vx(x), vy(y)],
-                        uv: [0.0, 0.0],
-                        color,
-                        mode: MODE_GEOMETRY,
-                    }
-                };
-
-                let mut push_v = |x, y| vertices.push(v(x, y));
-
-                // Bottom left triangle.
-                push_v(l, t);
-                push_v(r, b);
-                push_v(l, b);
-
-                // Top right triangle.
-                push_v(l, t);
-                push_v(r, b);
-                push_v(r, t);
-            }
-            PrimitiveKind::TrianglesSingleColor { color, triangles } => {
-                let v = |p: [Scalar; 2]| Vertex {
-                    pos: [vx(p[0]), vy(p[1])],
-                    uv: [0.0, 0.0],
-                    color: color.into(),
-                    mode: MODE_GEOMETRY,
-                };
-
-                for triangle in triangles {
-                    vertices.push(v(triangle[0]));
-                    vertices.push(v(triangle[1]));
-                    vertices.push(v(triangle[2]));
-                }
-            }
-            PrimitiveKind::TrianglesMultiColor { triangles } => {
-                let v = |(p, c): ([Scalar; 2], color::Rgba)| Vertex {
-                    pos: [vx(p[0]), vy(p[1])],
-                    uv: [0.0, 0.0],
-                    color: c.into(),
-                    mode: MODE_GEOMETRY,
-                };
-
-                for triangle in triangles {
-                    vertices.push(v(triangle[0]));
-                    vertices.push(v(triangle[1]));
-                    vertices.push(v(triangle[2]));
-                }
-            }
-            PrimitiveKind::Image {
-                image_id,
-                color,
-                source_rect,
-            } => {
-                if let Some(image_ref) = aux.image_map.get(&image_id) {
-                    let color = color.unwrap_or(color::WHITE).to_fsa();
-                    let (image_w, image_h) = (image_ref.width, image_ref.height);
-                    let (image_w, image_h) = (image_w as Scalar, image_h as Scalar);
-
-                    let (uv_l, uv_r, uv_b, uv_t) = match source_rect {
-                        Some(src_rect) => {
-                            let (l, r, b, t) = src_rect.l_r_b_t();
-                            (
-                                (l / image_w) as f32,
-                                (r / image_w) as f32,
-                                1.0 - (b / image_h) as f32,
-                                1.0 - (t / image_h) as f32,
-                            )
-                        }
-                        None => (0.0, 1.0, 1.0, 0.0),
-                    };
-
-                    let v = |x, y, t| {
-                        // Convert from conrod Scalar range to GL range -1.0 to 1.0.
-                        let x = (x * dpi_factor / half_win_w) as f32;
-                        let y = -((y * dpi_factor / half_win_h) as f32);
-                        Vertex {
-                            pos: [x, y],
-                            uv: t,
-                            color: color,
-                            mode: MODE_IMAGE,
-                        }
-                    };
-
-                    let mut push_v = |x, y, t| vertices.push(v(x, y, t));
-
-                    // Swap bottom and top to suit reversed vulkan coords.
-                    let (l, r, b, t) = primitive.rect.l_r_b_t();
-
-                    // Bottom left triangle.
-                    push_v(l, t, [uv_l, uv_t]);
-                    push_v(r, b, [uv_r, uv_b]);
-                    push_v(l, b, [uv_l, uv_b]);
-
-                    // Top right triangle.
-                    push_v(l, t, [uv_l, uv_t]);
-                    push_v(r, b, [uv_r, uv_b]);
-                    push_v(r, t, [uv_r, uv_t]);
-                }
-            }
-            PrimitiveKind::Text {
-                color,
-                text,
-                font_id,
-            } => {
-                let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
-            }
-            _ => {}
-        }
-        vertices
-    }
 }

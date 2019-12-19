@@ -57,12 +57,6 @@ fn main() {
         conrod_example_shared::gui(&mut ui_cell, &ids, &mut app);
     }
 
-    let aux = ConrodAux {
-        ui,
-        image_map,
-        image_id: rust_logo,
-    };
-
     let config: factory::Config = Default::default();
     let rendy = AnyWindowedRendy::init_auto(&config, window_builder, &event_loop).unwrap();
     rendy::with_any_windowed_rendy!((rendy)
@@ -93,6 +87,13 @@ fn main() {
     graph_builder.add_node(
         PresentNode::builder(&factory, surface, color).with_dependency(pass),
     );
+
+    let aux = ConrodAux {
+        ui,
+        image_map,
+        image_id: rust_logo,
+        dpi_factor: window.hidpi_factor(),
+    };
 
     let graph = graph_builder
         .build(&mut factory, &mut families, &aux)
