@@ -10,13 +10,13 @@ use rendy::factory::{Factory, ImageState};
 use rendy::graph::{render::*, GraphContext, NodeBuffer, NodeImage};
 use rendy::hal::{
     device::Device,
-    format::Format,
-    image::{Kind, ViewKind},
+    format::{Aspects, Format},
+    image::{Kind, Offset, ViewKind},
     pso::{DepthStencilDesc, Element, VertexInputRate},
     Backend,
 };
 use rendy::memory::Dynamic;
-use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Handle};
+use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Extent, Handle};
 use rendy::shader::{
     ShaderKind, ShaderSet, ShaderSetBuilder, SourceLanguage, SourceShaderInfo, SpirvReflection,
     SpirvShader,
@@ -61,7 +61,8 @@ void main() {
     static ref FRAGMENT: SpirvShader = SourceShaderInfo::new(
     "
 #version 450
-layout(set = 0, binding = 0) uniform sampler2D t_Color;
+layout(set = 0, binding = 0) uniform sampler2D t_TextColor;
+layout(set = 0, binding = 1) uniform sampler2D t_ImgColor;
 
 layout(location = 0) in vec2 v_Uv;
 layout(location = 1) in vec4 v_Color;
@@ -72,11 +73,11 @@ layout(location = 0) out vec4 Target0;
 void main() {
     // Text
     if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).r);
+        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_TextColor, v_Uv).r);
 
     // Image
     } else if (v_Mode == uint(1)) {
-        Target0 = texture(t_Color, v_Uv);
+        Target0 = texture(t_ImgColor, v_Uv);
 
     // 2D Geometry
     } else if (v_Mode == uint(2)) {
@@ -149,6 +150,7 @@ pub struct ConrodPipeline<B: Backend> {
     descriptor_set: Escape<DescriptorSet<B>>,
     buffer: Option<Escape<Buffer<B>>>,
     texture: Option<Texture<B>>,
+    glyph_cache_texture: Texture<B>,
     vertice_count: u32,
 }
 
@@ -193,53 +195,70 @@ where
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
     ) -> Result<Self::Pipeline, CreationError> {
-        let descriptor_set = factory
-            .create_descriptor_set(set_layouts[0].clone())
-            .unwrap();
-
-        let image = aux.image_map.get(&aux.image_id);
-        let texture = if let Some(image) = image {
-            let texture = image
-                .texture_builder
-                .build(
-                    ImageState {
-                        queue,
-                        stage: hal::pso::PipelineStage::FRAGMENT_SHADER,
-                        access: hal::image::Access::SHADER_READ,
-                        layout: hal::image::Layout::ShaderReadOnlyOptimal,
-                    },
-                    factory,
-                )
-                .unwrap();
-
-            unsafe {
-                factory
-                    .device()
-                    .write_descriptor_sets(vec![hal::pso::DescriptorSetWrite {
-                        set: descriptor_set.raw(),
-                        binding: 0,
-                        array_offset: 0,
-                        descriptors: vec![hal::pso::Descriptor::CombinedImageSampler(
-                            texture.view().raw(),
-                            hal::image::Layout::ShaderReadOnlyOptimal,
-                            texture.sampler().raw(),
-                        )],
-                    }]);
-            }
-            Some(texture)
-        } else {
-            None
-        };
-
         // TODO: Consider using `Mesh::with_glyph_cache_dimensions` and allowing user to specify
         // glyph cache dimensions. Currently we just use the default size, but this is not always
         // enough for large GUIs with lots of text.
         let mesh = Mesh::new();
 
+        let descriptor_set = factory
+            .create_descriptor_set(set_layouts[0].clone())
+            .unwrap();
+
+        // Create the texture used for caching glyphs on the GPU.
+        let sampler_img_state = sampler_img_state(queue);
+        let (gc_width, gc_height) = mesh.glyph_cache().dimensions();
+        let init_data = mesh.glyph_cache_pixel_buffer().to_vec();
+        let glyph_cache_texture = TextureBuilder::new()
+            .with_raw_data(init_data, Format::R8Unorm)
+            .with_data_width(gc_width)
+            .with_data_height(gc_height)
+            .with_kind(Kind::D2(gc_width, gc_height, 1, 1))
+            .with_view_kind(ViewKind::D2)
+            .build(sampler_img_state, factory)
+            .expect("failed to create glyph cache texture");
+
+        // TODO: Move this into the `draw`?
+        // Write the descriptor set.
+        let glyph_cache_sampler_desc = hal::pso::Descriptor::CombinedImageSampler(
+            glyph_cache_texture.view().raw(),
+            hal::image::Layout::ShaderReadOnlyOptimal,
+            glyph_cache_texture.sampler().raw(),
+        );
+        let mut descriptors = vec![glyph_cache_sampler_desc];
+
+        let mut texture = None;
+        if let Some(image) = aux.image_map.get(&aux.image_id) {
+            texture = Some(
+                image
+                    .texture_builder
+                    .build(sampler_img_state, factory)
+                    .expect("failed to build texture for image")
+            );
+            let texture = texture.as_ref().unwrap();
+            let sampler_desc = hal::pso::Descriptor::CombinedImageSampler(
+                texture.view().raw(),
+                hal::image::Layout::ShaderReadOnlyOptimal,
+                texture.sampler().raw(),
+            );
+            descriptors.push(sampler_desc);
+        }
+
+        unsafe {
+            factory
+                .device()
+                .write_descriptor_sets(vec![hal::pso::DescriptorSetWrite {
+                    set: descriptor_set.raw(),
+                    binding: 0,
+                    array_offset: 0,
+                    descriptors,
+                }]);
+        }
+
         Ok(ConrodPipeline {
             mesh,
             descriptor_set,
             buffer: None,
+            glyph_cache_texture,
             texture,
             vertice_count: 0,
         })
@@ -255,7 +274,7 @@ where
     fn prepare(
         &mut self,
         factory: &Factory<B>,
-        _queue: QueueId,
+        queue: QueueId,
         _set_layouts: &[Handle<DescriptorSetLayout<B>>],
         _index: usize,
         aux: &ConrodAux,
@@ -269,8 +288,37 @@ where
         let fill = self.mesh.fill(viewport, aux.dpi_factor, &aux.image_map, primitives)
             .expect("failed to fill mesh");
 
-        // TODO: Re-upload `mesh.glyph_cache_pixel_buffer()` to GPU based on
-        // `mesh.glyph_cache_requires_upload`.
+        if fill.glyph_cache_requires_upload {
+            let (gc_width, gc_height) = self.mesh.glyph_cache().dimensions();
+            let img_layers = rendy::resource::SubresourceLayers {
+                aspects: Aspects::COLOR,
+                level: 0,
+                layers: 0..1,
+            };
+            let img_offset = Offset::ZERO;
+            let img_extent = Extent {
+                width: gc_width,
+                height: gc_height,
+                depth: 1,
+            };
+            let img_state = sampler_img_state(queue);
+            let (last, next) = (img_state, img_state);
+            unsafe {
+                factory
+                    .upload_image(
+                        self.glyph_cache_texture.image().clone(),
+                        gc_width,
+                        gc_height,
+                        img_layers,
+                        img_offset,
+                        img_extent,
+                        self.mesh.glyph_cache_pixel_buffer(),
+                        last,
+                        next,
+                    )
+                    .expect("failed to update glyph cache texture");
+            }
+        }
 
         // TODO: Remove this in favour of `unsafe`ly casting the `&[conrod_core::mesh::Vertex]`
         // to `&[Vertex]` after ensuring layouts are the same.
@@ -329,4 +377,13 @@ where
     }
 
     fn dispose(self, _factory: &mut Factory<B>, _aux: &ConrodAux) {}
+}
+
+fn sampler_img_state(queue_id: QueueId) -> ImageState {
+    ImageState {
+        queue: queue_id,
+        stage: hal::pso::PipelineStage::FRAGMENT_SHADER,
+        access: hal::image::Access::SHADER_READ,
+        layout: hal::image::Layout::ShaderReadOnlyOptimal,
+    }
 }
