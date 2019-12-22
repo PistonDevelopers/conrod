@@ -13,4 +13,4 @@ categories = ["gui"]
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.68" }
-rand = "0.6"
+rand = "0.7"
