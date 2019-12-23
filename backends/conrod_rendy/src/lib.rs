@@ -1,6 +1,6 @@
 pub mod winit_convert;
 
-use conrod_core::image::Map;
+use conrod_core::image::ImageMap;
 use image;
 use conrod_core::mesh::{self, Mesh};
 use conrod_core::{Rect, Ui};
@@ -37,7 +37,7 @@ pub trait UiAux {
     fn ui(&self) -> &Ui;
 
     /// Access to the user's images.
-    fn image_map(&self) -> &Map<UiImage>;
+    fn image_map(&self) -> &ImageMap<UiImage>;
 
     /// The DPI factor for translating from conrod's pixel-agnostic coordinates to pixel
     /// coordinates for the underlying surface.
@@ -165,7 +165,7 @@ pub struct UiPipeline<B: Backend> {
 /// rendy graph.
 pub struct SimpleUiAux {
     pub ui: Ui,
-    pub image_map: Map<UiImage>,
+    pub image_map: ImageMap<UiImage>,
     pub dpi_factor: f64,
 }
 
@@ -174,7 +174,7 @@ impl UiAux for SimpleUiAux {
         &self.ui
     }
 
-    fn image_map(&self) -> &Map<UiImage> {
+    fn image_map(&self) -> &ImageMap<UiImage> {
         &self.image_map
     }
 
@@ -237,9 +237,8 @@ where
         // Create the texture used for caching glyphs on the GPU.
         let sampler_img_state = sampler_img_state(queue);
         let (gc_width, gc_height) = mesh.glyph_cache().dimensions();
-        let init_data = mesh.glyph_cache_pixel_buffer().to_vec();
         let glyph_cache_texture = TextureBuilder::new()
-            .with_raw_data(init_data, Format::R8Unorm)
+            .with_raw_data(mesh.glyph_cache_pixel_buffer(), Format::R8Unorm)
             .with_data_width(gc_width)
             .with_data_height(gc_height)
             .with_kind(Kind::D2(gc_width, gc_height, 1, 1))
