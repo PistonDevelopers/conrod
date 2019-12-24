@@ -1,5 +1,5 @@
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::{ConrodAux, ConrodImage, ConrodPipeline};
+use conrod_rendy::{UiImage, UiPipeline, SimpleUiAux};
 use rendy::{
     command::Families,
     factory::{self, Factory},
@@ -47,7 +47,7 @@ fn main() {
 
     // Load the Rust logo from our assets folder to use as an example image.
     let logo_path = assets.join("images/rust.png");
-    let image = ConrodImage::new(logo_path).unwrap();
+    let image = UiImage::new(logo_path).unwrap();
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = image_map.insert(image);
 
@@ -61,7 +61,7 @@ fn main() {
     let rendy = AnyWindowedRendy::init_auto(&config, window_builder, &event_loop).unwrap();
     rendy::with_any_windowed_rendy!((rendy)
         (mut factory, mut families, surface, window) => {
-    let mut graph_builder = GraphBuilder::<_, ConrodAux>::new();
+    let mut graph_builder = GraphBuilder::<_, SimpleUiAux>::new();
     let size = window
         .inner_size()
         .to_physical(window.hidpi_factor());
@@ -78,7 +78,7 @@ fn main() {
     );
 
     let pass = graph_builder.add_node(
-        ConrodPipeline::builder()
+        UiPipeline::builder()
             .into_subpass()
             .with_color(color)
             .into_pass(),
@@ -88,10 +88,9 @@ fn main() {
         PresentNode::builder(&factory, surface, color).with_dependency(pass),
     );
 
-    let aux = ConrodAux {
+    let aux = SimpleUiAux {
         ui,
         image_map,
-        image_id: rust_logo,
         dpi_factor: window.hidpi_factor(),
     };
 
@@ -105,17 +104,23 @@ fn main() {
 
 pub fn run<B: Backend>(
     event_loop: EventLoop<()>,
-    mut aux: ConrodAux,
+    mut aux: SimpleUiAux,
     ids: conrod_example_shared::Ids,
     mut app: conrod_example_shared::DemoApp,
     mut factory: Factory<B>,
     mut families: Families<B>,
     window: Window,
-    mut graph: Option<Graph<B, ConrodAux>>,
+    mut graph: Option<Graph<B, SimpleUiAux>>,
 ) {
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = conrod_rendy::winit_convert::convert_event(event.clone(), &window) {
             aux.ui.handle_event(event);
+        }
+
+        // Update widgets if any event has happened
+        if aux.ui.global_input().events().next().is_some() {
+            let mut ui = aux.ui.set_widgets();
+            conrod_example_shared::gui(&mut ui, &ids, &mut app);
         }
 
         match event {
@@ -136,12 +141,6 @@ pub fn run<B: Backend>(
             if let Some(graph) = graph.take() {
                 graph.dispose(&mut factory, &aux);
             }
-        }
-
-        // Update widgets if any event has happened
-        if aux.ui.global_input().events().next().is_some() {
-            let mut ui = aux.ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
         }
     });
 }
