@@ -159,8 +159,11 @@ where
     }
 }
 
-#[derive(Debug, Default)]
-pub struct UiPipelineDesc;
+#[derive(Debug)]
+pub struct UiPipelineDesc {
+    /// The dimensions with which the glyph cache should be initialised.
+    pub glyph_cache_dimensions: [u32; 2],
+}
 
 #[derive(Debug)]
 pub struct UiPipeline<B: Backend> {
@@ -186,6 +189,15 @@ where
     pub ui: Ui,
     pub image_map: ImageMap<UiTexture<B>>,
     pub dpi_factor: f64,
+}
+
+impl Default for UiPipelineDesc {
+    fn default() -> Self {
+        let glyph_cache_dimensions = conrod_core::mesh::DEFAULT_GLYPH_CACHE_DIMS;
+        UiPipelineDesc {
+            glyph_cache_dimensions
+        }
+    }
 }
 
 impl<B> Deref for UiTexture<B>
@@ -296,7 +308,7 @@ where
         // TODO: Consider using `Mesh::with_glyph_cache_dimensions` and allowing user to specify
         // glyph cache dimensions. Currently we just use the default size, but this is not always
         // enough for large GUIs with lots of text.
-        let mesh = Mesh::new();
+        let mesh = Mesh::with_glyph_cache_dimensions(self.glyph_cache_dimensions);
 
         // Create the texture used for caching glyphs on the GPU.
         let sampler_img_state = sampler_img_state(queue);
